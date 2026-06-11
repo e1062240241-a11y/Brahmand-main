@@ -406,15 +406,6 @@ export default function SOSScreen() {
 
             <View style={{ flex: 1 }} />
 
-            <TouchableOpacity 
-              style={[styles.primaryButton, !emergencyType && styles.primaryButtonDisabled]} 
-              onPress={() => handleContinueToLocation()}
-              disabled={!emergencyType}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>CONTINUE</Text>
-            </TouchableOpacity>
-
             <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
               <Text style={styles.secondaryButtonText}>Cancel SOS</Text>
             </TouchableOpacity>

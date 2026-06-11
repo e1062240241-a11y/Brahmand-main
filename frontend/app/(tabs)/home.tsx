@@ -945,6 +945,7 @@ export default function HomeScreen() {
     progress: number;
     isCompressing: boolean;
     mediaUri?: string;
+    mediaType?: string;
   }>({ uploading: false, progress: 0, isCompressing: false });
 
   const handleUploadStart = async (
@@ -964,7 +965,8 @@ export default function HomeScreen() {
       uploading: true,
       progress: 0,
       isCompressing: false,
-      mediaUri: media.uri
+      mediaUri: media.uri,
+      mediaType: media.mediaType
     });
 
     try {
@@ -2749,7 +2751,9 @@ export default function HomeScreen() {
                       )}
                       <View style={styles.uploadingTextContainer}>
                         <Text style={styles.uploadingTitle}>
-                          {backgroundUpload.isCompressing ? 'Processing Video...' : 'Posting new Video...'}
+                          {backgroundUpload.isCompressing 
+                            ? 'Processing Video...' 
+                            : `Posting new ${backgroundUpload.mediaType === 'video' ? 'Video' : 'Image'}...`}
                         </Text>
                         <View style={styles.progressBarBg}>
                           <LinearGradient

@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { usePassportStore } from '../../../src/store/passportStore';
+import { useAuthStore } from '../../../src/store/authStore';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../../src/database';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,17 +29,48 @@ interface FlattenedBadge {
   description: string;
   earned_at: string;
   instanceIndex: number;
+  isLocked?: boolean;
+  unlockRule?: string;
 }
+
+const PRESET_BADGES = [
+  {
+    title: 'First Yatra',
+    description: 'Log your first travel journey to unlock this badge!',
+    unlockRule: 'Go to Travel Logs and record a new yatra journey.',
+    matcher: (title: string) => title.toLowerCase().includes('yatra') || title.toLowerCase().includes('first journey'),
+  },
+  {
+    title: 'Book Finisher',
+    description: 'Complete reading your first holy book to earn this badge!',
+    unlockRule: 'Finish reading any holy scripture (Gita, Ramayana, etc.) in the library.',
+    matcher: (title: string) => title.toLowerCase().includes('book') || title.toLowerCase().includes('finisher'),
+  },
+  {
+    title: 'First Jaap Milestone',
+    description: 'Complete a full mala cycle of chants to earn this badge!',
+    unlockRule: 'Start Chanting in Ekant or Live Jaap rooms and complete 108 chants.',
+    matcher: (title: string) => title.toLowerCase().includes('jaap') || title.toLowerCase().includes('milestone') || title.toLowerCase().includes('first jaap') || title.toLowerCase().includes('1000 jaaps'),
+  },
+  {
+    title: 'Daily Jaap Sadhak',
+    description: 'Complete the daily Sadhana target on any day!',
+    unlockRule: 'Complete 1 full Hanuman Chalisa jaap and 5 Malas (540 chants) of other jaaps in a single calendar day.',
+    matcher: (title: string) => title.toLowerCase().includes('daily jaap sadhak') || title.toLowerCase().includes('sadhana'),
+  }
+];
 
 function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   const router = useRouter();
   const { badgeTitle } = useLocalSearchParams<{ badgeTitle?: string }>();
   const loadPassport = usePassportStore((state) => state.loadPassport);
+  const userName = useAuthStore((state) => state.user?.name || 'Sadhak');
   const badges = observedBadges;
   
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<Record<string, boolean>>({});
+  const [selectedBadge, setSelectedBadge] = useState<FlattenedBadge | null>(null);
 
   useEffect(() => {
     loadPassport();
@@ -47,49 +79,18 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   // Map and expand badges by their count so they generate multiple items if completed multiple times
   const flattenedBadges: FlattenedBadge[] = [];
   
-  const filteredBadges = badgeTitle 
-    ? badges.filter(b => {
-        const bt = badgeTitle.toLowerCase();
-        const t = b.title?.toLowerCase() || '';
-        
-        // Match specific badge categories to avoid cross-matching
-        if (bt.includes('yatra')) {
-          return t.includes('yatra') || t.includes('journey');
-        }
-        if (bt.includes('book')) {
-          return t.includes('book');
-        }
-        if (bt.includes('jaap')) {
-          return t.includes('jaap');
-        }
-        
-        // Fallback exact match
-        return t === bt;
-      })
-    : badges;
+  // 1. Add all earned badges that match the filter (if any filter is present)
+  const earnedMatches = badges.filter(b => {
+    if (!badgeTitle) return true;
+    const bt = badgeTitle.toLowerCase();
+    const t = b.title?.toLowerCase() || '';
+    if (bt.includes('yatra')) return t.includes('yatra') || t.includes('journey');
+    if (bt.includes('book')) return t.includes('book');
+    if (bt.includes('jaap')) return t.includes('jaap');
+    return t === bt;
+  });
 
-  // If the store is empty or the specific badge isn't found, inject a fallback
-  const activeBadges = filteredBadges.length > 0 ? filteredBadges : (
-    badgeTitle ? [
-      {
-        id: `demo_${badgeTitle.replace(/\s+/g, '_')}`,
-        title: badgeTitle,
-        description: `Complete your ${badgeTitle} to unlock this badge!`,
-        earned_at: new Date().toISOString(),
-        count: 1
-      }
-    ] : [
-      {
-        id: 'demo_gita_1',
-        title: 'Bhagawad Gita',
-        description: 'Completed reading Bhagawad Gita',
-        earned_at: new Date().toISOString(),
-        count: 2
-      }
-    ]
-  );
-
-  activeBadges.forEach((badge) => {
+  earnedMatches.forEach((badge) => {
     const loopCount = badge.count || 1;
     for (let i = 0; i < loopCount; i++) {
       flattenedBadges.push({
@@ -97,8 +98,38 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
         title: badge.title,
         description: badge.description,
         earned_at: badge.earned_at,
-        instanceIndex: i
+        instanceIndex: i,
+        isLocked: false
       });
+    }
+  });
+
+  // 2. For each preset badge, if it is NOT earned (i.e. not matched by any badge in observedBadges),
+  // and it matches the badgeTitle filter (or no filter is present), append it as locked!
+  PRESET_BADGES.forEach((preset) => {
+    const isEarned = badges.some(b => preset.matcher(b.title));
+    if (!isEarned) {
+      let filterMatches = true;
+      if (badgeTitle) {
+        const bt = badgeTitle.toLowerCase();
+        const t = preset.title.toLowerCase();
+        if (bt.includes('yatra')) filterMatches = t.includes('yatra');
+        else if (bt.includes('book')) filterMatches = t.includes('book');
+        else if (bt.includes('jaap')) filterMatches = t.includes('jaap');
+        else filterMatches = t === bt;
+      }
+
+      if (filterMatches) {
+        flattenedBadges.push({
+          id: `locked_${preset.title.replace(/\s+/g, '_')}`,
+          title: preset.title,
+          description: preset.description,
+          earned_at: '',
+          instanceIndex: 0,
+          isLocked: true,
+          unlockRule: preset.unlockRule
+        });
+      }
     }
   });
 
@@ -179,12 +210,40 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
           styles.gridItem,
           selectionMode && isSelected && styles.gridItemSecondarySelected
         ]}
-        activeOpacity={selectionMode ? 0.8 : 1}
-        onPress={() => selectionMode && handleSelectItem(item.id)}
+        activeOpacity={selectionMode ? 0.8 : 0.7}
+        onPress={() => selectionMode ? handleSelectItem(item.id) : setSelectedBadge(item)}
       >
         <Text style={styles.badgeTitleText}>{item.title}</Text>
         
-        {isGita ? (
+        {item.isLocked ? (
+          <View style={styles.medalOuterLocked}>
+            <LinearGradient
+              colors={['#3A3F47', '#252830']}
+              style={styles.medalGradient}
+            />
+            <View style={styles.medalInnerBorderLocked}>
+              <Image 
+                source={getBadgeImage(item.title)} 
+                style={[styles.medalImage, { opacity: 0.25 }]} 
+                contentFit="cover"
+              />
+              <View style={styles.lockIconOverlay}>
+                <Ionicons name="lock-closed" size={32} color="#9CA3AF" />
+              </View>
+            </View>
+            
+            {/* Dark Ribbon */}
+            <View style={styles.ribbonWrapperLocked}>
+              <LinearGradient
+                colors={['#4B5563', '#374151']}
+                style={styles.ribbonGradient}
+              />
+              <Text style={styles.ribbonTextLocked} numberOfLines={1}>
+                ★ LOCKED ★
+              </Text>
+            </View>
+          </View>
+        ) : isGita ? (
           <Image 
             source={require('../../../assets/images/PhotoshopPreview_Image 1.png')} 
             style={styles.gitaBadgeImage} 
@@ -290,6 +349,125 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
         columnWrapperStyle={styles.gridRow}
         showsVerticalScrollIndicator={false}
       />
+
+      {/* Badge Achievement Detail Modal */}
+      <Modal
+        visible={!!selectedBadge}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedBadge(null)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSelectedBadge(null)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <LinearGradient
+              colors={['#0F2244', '#081428']}
+              style={styles.modalGradient}
+            >
+              {/* Outer Border (Silver/Grey for locked, Gold for unlocked) */}
+              <View style={selectedBadge?.isLocked ? styles.modalSilverBorder : styles.modalGoldBorder}>
+                {/* Dotted Ring */}
+                <View style={selectedBadge?.isLocked ? styles.modalDottedRingLocked : styles.modalDottedRing} />
+                
+                {/* Close Button */}
+                <TouchableOpacity 
+                  style={styles.modalCloseButton} 
+                  onPress={() => setSelectedBadge(null)}
+                >
+                  <Ionicons 
+                    name="close" 
+                    size={24} 
+                    color={selectedBadge?.isLocked ? "#9CA3AF" : "#ECC55E"} 
+                  />
+                </TouchableOpacity>
+
+                {/* Badge Image / Medal in Modal */}
+                {selectedBadge && (
+                  <View style={selectedBadge.isLocked ? styles.modalMedalContainerLocked : styles.modalMedalContainer}>
+                    <View style={styles.modalMedalInner}>
+                      <Image 
+                        source={getBadgeImage(selectedBadge.title)} 
+                        style={selectedBadge.isLocked ? [styles.modalMedalImage, { opacity: 0.3 }] : styles.modalMedalImage} 
+                        contentFit="cover"
+                      />
+                    </View>
+                    {selectedBadge.isLocked && (
+                      <View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }]}>
+                        <Ionicons name="lock-closed" size={32} color="#9CA3AF" />
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* Achievement Title */}
+                <Text style={selectedBadge?.isLocked ? styles.certificateHeaderLocked : styles.certificateHeader}>
+                  {selectedBadge?.isLocked ? "LOCKED ACHIEVEMENT" : "CERTIFICATE OF ACHIEVEMENT"}
+                </Text>
+                
+                <View style={styles.certificateDivider} />
+                
+                <Text style={styles.badgeTitleDetail}>{selectedBadge?.title}</Text>
+                <Text style={styles.badgeDescriptionDetail}>{selectedBadge?.description}</Text>
+                
+                {selectedBadge?.isLocked && (
+                  <View style={styles.unlockCard}>
+                    <LinearGradient
+                      colors={['rgba(236, 197, 94, 0.15)', 'rgba(194, 152, 49, 0.05)']}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <Ionicons name="key-outline" size={20} color="#ECC55E" style={{ marginBottom: 4 }} />
+                    <Text style={styles.unlockCardTitle}>HOW TO UNLOCK</Text>
+                    <Text style={styles.unlockCardRule}>{selectedBadge.unlockRule}</Text>
+                  </View>
+                )}
+
+                {!selectedBadge?.isLocked && (
+                  <>
+                    <Text style={styles.presentedToText}>This badge is proudly presented to</Text>
+                    <Text style={styles.recipientNameText}>{userName}</Text>
+                    
+                    <Text style={styles.achievementDescText}>
+                      For successfully achieving the milestone:
+                    </Text>
+                    
+                    <View style={styles.certificateDivider} />
+
+                    {/* Date & Signature Row */}
+                    <View style={styles.certificateFooter}>
+                      <View style={styles.footerCol}>
+                        <Text style={styles.footerValue}>
+                          {selectedBadge?.earned_at 
+                            ? new Date(selectedBadge.earned_at).toLocaleDateString(undefined, { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              }) 
+                            : new Date().toLocaleDateString(undefined, { 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric' 
+                              })}
+                        </Text>
+                        <View style={styles.footerLine} />
+                        <Text style={styles.footerLabel}>DATE OF ACHIEVEMENT</Text>
+                      </View>
+                      
+                      <View style={styles.footerCol}>
+                        <Text style={[styles.footerValue, styles.signatureFont]}>Brahmand</Text>
+                        <View style={styles.footerLine} />
+                        <Text style={styles.footerLabel}>AUTHORIZED SIGNATORY</Text>
+                      </View>
+                    </View>
+                  </>
+                )}
+              </View>
+            </LinearGradient>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -428,6 +606,64 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#0F2244',
   },
+  medalOuterLocked: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 4,
+    borderColor: '#4B5563',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    position: 'relative',
+  },
+  medalInnerBorderLocked: {
+    width: 114,
+    height: 114,
+    borderRadius: 57,
+    borderWidth: 2,
+    borderColor: '#6B7280',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    backgroundColor: '#1F2937',
+    position: 'relative',
+  },
+  lockIconOverlay: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ribbonWrapperLocked: {
+    position: 'absolute',
+    bottom: -12,
+    width: 128,
+    height: 38,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#4B5563',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    overflow: 'hidden',
+    paddingHorizontal: 4,
+  },
+  ribbonTextLocked: {
+    fontSize: 9.5,
+    fontWeight: '900',
+    color: '#D1D5DB',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
   medalImage: {
     width: '100%',
     height: '100%',
@@ -480,6 +716,243 @@ const styles = StyleSheet.create({
   gitaBadgeImage: {
     width: 150,
     height: 150,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  modalGradient: {
+    padding: 16,
+  },
+  modalGoldBorder: {
+    borderWidth: 2,
+    borderColor: '#C29831',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  modalDottedRing: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderWidth: 1,
+    borderColor: '#ECC55E',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    opacity: 0.4,
+    pointerEvents: 'none',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+    padding: 4,
+  },
+  modalMedalContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#ECC55E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0A1C3C',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  modalSilverBorder: {
+    borderWidth: 2,
+    borderColor: '#4B5563',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    position: 'relative',
+    width: '100%',
+  },
+  modalDottedRingLocked: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    right: 6,
+    bottom: 6,
+    borderWidth: 1,
+    borderColor: '#6B7280',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    opacity: 0.4,
+    pointerEvents: 'none',
+  },
+  modalMedalContainerLocked: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#4B5563',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1F2937',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    position: 'relative',
+  },
+  certificateHeaderLocked: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#9CA3AF',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  unlockCard: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 16,
+    alignItems: 'center',
+    position: 'relative',
+    borderWidth: 1,
+    borderColor: 'rgba(236, 197, 94, 0.3)',
+    overflow: 'hidden',
+  },
+  unlockCardTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#ECC55E',
+    letterSpacing: 1,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  unlockCardRule: {
+    fontSize: 12,
+    color: '#E5E7EB',
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingHorizontal: 8,
+  },
+  modalMedalInner: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    overflow: 'hidden',
+  },
+  modalMedalImage: {
+    width: '100%',
+    height: '100%',
+  },
+  certificateHeader: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#ECC55E',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  certificateDivider: {
+    width: '80%',
+    height: 1,
+    backgroundColor: '#C29831',
+    opacity: 0.4,
+    marginVertical: 16,
+  },
+  presentedToText: {
+    fontSize: 11,
+    color: '#8E9AA8',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  recipientNameText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFF',
+    textAlign: 'center',
+    marginVertical: 8,
+    letterSpacing: 0.5,
+  },
+  achievementDescText: {
+    fontSize: 10,
+    color: '#8E9AA8',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  badgeTitleDetail: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ECC55E',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  badgeDescriptionDetail: {
+    fontSize: 12,
+    color: '#D0D5DD',
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 10,
+    lineHeight: 16,
+  },
+  certificateFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 8,
+  },
+  footerCol: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  footerValue: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  signatureFont: {
+    fontFamily: Platform.OS === 'ios' ? 'Snell Roundhand' : 'serif',
+    fontSize: 13,
+    color: '#ECC55E',
+    fontStyle: 'italic',
+  },
+  footerLine: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#C29831',
+    opacity: 0.5,
+    marginVertical: 4,
+  },
+  footerLabel: {
+    fontSize: 7,
+    fontWeight: '700',
+    color: '#8E9AA8',
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
 });
 

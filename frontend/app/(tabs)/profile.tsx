@@ -187,6 +187,7 @@ export default function ProfileScreen() {
     progress: number;
     isCompressing: boolean;
     mediaUri?: string;
+    mediaType?: string;
   }>({ uploading: false, progress: 0, isCompressing: false });
 
   const handleUploadStart = async (
@@ -206,7 +207,8 @@ export default function ProfileScreen() {
       uploading: true, 
       progress: 0, 
       isCompressing: false, 
-      mediaUri: media.uri 
+      mediaUri: media.uri,
+      mediaType: media.mediaType
     });
 
     try {
@@ -1177,14 +1179,16 @@ export default function ProfileScreen() {
       <View style={styles.container}>
       {/* Background Upload Status */}
       {backgroundUpload.uploading && (
-        <View style={styles.uploadingStatusBar}>
+        <View style={[styles.uploadingStatusBar, { top: insets.top + NAV_BAR_HEIGHT + 10, bottom: undefined }]}>
           <View style={styles.uploadingStatusContent}>
             {backgroundUpload.mediaUri && (
               <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
             )}
             <View style={styles.uploadingTextContainer}>
               <Text style={styles.uploadingTitle}>
-                {backgroundUpload.isCompressing ? 'Finalizing post...' : `Uploading... ${backgroundUpload.progress}%`}
+                {backgroundUpload.isCompressing 
+                  ? 'Finalizing post...' 
+                  : `Posting new ${backgroundUpload.mediaType === 'video' ? 'Video' : 'Image'}... ${backgroundUpload.progress}%`}
               </Text>
               <View style={styles.progressBarBg}>
                 <LinearGradient
@@ -2512,7 +2516,7 @@ const styles = StyleSheet.create({
   },
   uploadingStatusBar: {
     position: 'absolute',
-    bottom: 90,
+    top: 10,
     left: 16,
     right: 16,
     backgroundColor: 'rgba(30, 30, 30, 0.95)',

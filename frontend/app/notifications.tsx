@@ -313,8 +313,9 @@ export default function NotificationsScreen() {
         status === 'accepted' ? 'Accepted' : 'Declined',
         response.data?.message || `You have ${status} the community group invitation successfully.`
       );
-      // Mark notification as read
+      // Remove this notification from state immediately
       if (notificationId) {
+        setNotifications(prev => prev.filter(n => n.id !== notificationId && n._id !== notificationId));
         await markNotificationRead(notificationId);
       }
       // Reload notifications list
