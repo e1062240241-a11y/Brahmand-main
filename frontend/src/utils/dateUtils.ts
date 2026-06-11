@@ -77,3 +77,26 @@ export const formatTimeAgo = (dateString: string | Date | null | undefined) => {
   if (minutes > 0) return `${minutes}m`;
   return 'now';
 };
+
+export const formatReelDate = (dateInput: string | Date | number | null | undefined, language?: string): string => {
+  const date = toISTDate(dateInput);
+  if (!date) return '';
+
+  const day = date.getDate();
+  if (language === 'hi') {
+    const hiMonthNames = [
+      'जन', 'फर', 'मार्च', 'अप्रैल', 'मई', 'जून',
+      'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'
+    ];
+    const month = hiMonthNames[date.getMonth()];
+    return `${day} ${month}`;
+  } else {
+    const enMonthNames = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    const month = enMonthNames[date.getMonth()];
+    return `${day} ${month}`;
+  }
+};
+
