@@ -2,23 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image as ExpoImage } from 'expo-image';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
-const ZODIAC_DATA = [
-  { id: 'aries', name: 'Aries', hindi: 'Mesh', image: require('../../assets/images/tab bar/rashi/Aries.png') },
-  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', image: require('../../assets/images/tab bar/rashi/Taurus.png') },
-  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', image: require('../../assets/images/tab bar/rashi/gemini.png') },
-  { id: 'cancer', name: 'Cancer', hindi: 'Kark', image: require('../../assets/images/tab bar/rashi/cancer.png') },
-  { id: 'leo', name: 'Leo', hindi: 'Simha', image: require('../../assets/images/tab bar/rashi/Leo.png') },
-  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', image: require('../../assets/images/tab bar/rashi/Virgo.png') },
-  { id: 'libra', name: 'Libra', hindi: 'Tula', image: require('../../assets/images/tab bar/rashi/Libra.png') },
-  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', image: require('../../assets/images/tab bar/rashi/Scorpio.png') },
-  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', image: require('../../assets/images/tab bar/rashi/sagittarius.png') },
-  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', image: require('../../assets/images/tab bar/rashi/Capricorn.png') },
-  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', image: require('../../assets/images/tab bar/rashi/Aquarius.png') },
-  { id: 'pisces', name: 'Pisces', hindi: 'Meen', image: require('../../assets/images/tab bar/rashi/Pisces.png') },
+const ZODIAC_DATA: Array<{ id: string; name: string; hindi: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }> = [
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', icon: 'zodiac-aries' },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', icon: 'zodiac-taurus' },
+  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', icon: 'zodiac-gemini' },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', icon: 'zodiac-cancer' },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', icon: 'zodiac-leo' },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', icon: 'zodiac-virgo' },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', icon: 'zodiac-libra' },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', icon: 'zodiac-scorpio' },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', icon: 'zodiac-sagittarius' },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', icon: 'zodiac-capricorn' },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', icon: 'zodiac-aquarius' },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', icon: 'zodiac-pisces' },
 ];
 
 export default function HomeJyotishSection() {
@@ -42,7 +42,7 @@ export default function HomeJyotishSection() {
               activeOpacity={0.8}
             >
               <View style={styles.iconContainer}>
-                <ExpoImage source={zodiac.image} style={{ width: 52, height: 52 }} contentFit="contain" />
+                <MaterialCommunityIcons name={zodiac.icon} size={36} color="#FF6B00" />
               </View>
               <Text style={styles.name}>{zodiac.name}</Text>
               <Text style={styles.hindiName}>{zodiac.hindi}</Text>

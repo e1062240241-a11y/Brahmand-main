@@ -144,13 +144,13 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   const getBadgeImage = (title: string) => {
     const cleanTitle = title.toLowerCase();
     if (cleanTitle.includes('gita')) {
-      return require('../../../assets/images/bhagavad_gita_3d_new.png');
+      return require('../../../assets/images/Bhagvad-geeta.jpg');
     } else if (cleanTitle.includes('mahabharat')) {
       return require('../../../assets/images/mahabharata.jpg');
     } else if (cleanTitle.includes('ramayan') || cleanTitle.includes('ramcharit')) {
       return require('../../../assets/images/Ramcharitmanas.jpg');
     }
-    return require('../../../assets/images/community_medal_icon.png');
+    return require('../../../assets/images/Rigveda.jpg');
   };
 
   const handleShare = async () => {
@@ -244,11 +244,11 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
             </View>
           </View>
         ) : isGita ? (
-          <Image 
-            source={require('../../../assets/images/PhotoshopPreview_Image 1.png')} 
-            style={styles.gitaBadgeImage} 
-            contentFit="contain"
-          />
+          <View style={[styles.gitaBadgeImage, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: '#FAF5EC', borderWidth: 4, borderColor: '#D4AF37', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 5 }}>
+              <Ionicons name="book" size={72} color="#D4AF37" />
+            </View>
+          </View>
         ) : (
           <View style={styles.medalOuter}>
             <LinearGradient

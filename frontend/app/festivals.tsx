@@ -78,7 +78,7 @@ const festivalImageMap: Record<string, any> = {
 };
 
 const getFestivalImage = (name: string) => {
-  const fallback = require('../assets/images/traditional_diya_footer.png');
+  const fallback = require('../assets/images/library_diya_new.jpg');
   if (!name) return fallback;
   // Try exact match
   if (festivalImageMap[name]) return festivalImageMap[name];

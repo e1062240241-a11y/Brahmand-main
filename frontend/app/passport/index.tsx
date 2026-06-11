@@ -81,11 +81,20 @@ export default function PassportCoverScreen() {
           disabled={isOpening}
         >
           <View style={styles.cardContainer}>
-            <Image 
-              source={require('../../assets/images/pass.png')}
+            <LinearGradient
+              colors={['#4A148C', '#311B92']}
               style={styles.passportImage}
-              contentFit="contain"
-            />
+            >
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                {/* Emblem / Star / Compass */}
+                <View style={{ width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: '#FED274', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+                  <Ionicons name="compass" size={60} color="#FED274" />
+                </View>
+                <Text style={{ color: '#FED274', fontSize: 18, fontWeight: '800', letterSpacing: 2, textAlign: 'center' }}>
+                  BHARAT
+                </Text>
+              </View>
+            </LinearGradient>
             <View style={styles.textOverlay}>
               <Text style={styles.userName}>{user?.name || 'Sanatani'}</Text>
               <Text style={styles.subText}>Your Sanatani Passport</Text>

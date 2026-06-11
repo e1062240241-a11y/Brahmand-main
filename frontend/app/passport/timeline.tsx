@@ -459,13 +459,10 @@ function PassportTimelineScreen({
               </TouchableOpacity>
             </View>
 
-            <View style={styles.illustrationWrapper}>
-              <Image 
-                source={require('../../assets/images/certificate_fixed.png')}
-                style={{ width: 120, height: 120 }}
-                contentFit="contain"
-              />
-              <View style={styles.imageOverlay} />
+            <View style={[styles.illustrationWrapper, { justifyContent: 'center', alignItems: 'center' }]}>
+              <View style={{ width: 100, height: 100, borderRadius: 12, backgroundColor: '#FFFEE5', borderWidth: 2, borderColor: '#D4AF37', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6 }}>
+                <Ionicons name="ribbon" size={54} color="#D4AF37" />
+              </View>
             </View>
           </View>
 

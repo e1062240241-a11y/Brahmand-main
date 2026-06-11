@@ -384,37 +384,24 @@ export function GlobalFAB() {
                           }, 200);
                         }}
                       >
-                        {item.key === 'myKrishna' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'festival' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'kundli' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/tab bar/hand_eye_phosphor.png')} style={{ width: 52, height: 52 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'brahmandPassport' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 62, height: 62 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'panchang' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'brahmandLibrary' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'jyotish' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 42, height: 42 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : (
-                          <Ionicons name={item.icon as any} size={28} color="#FFF" />
-                        )}
+                        {(() => {
+                          let vecIcon = 'help-outline';
+                          let color = '#FF7B00';
+                          let size = 28;
+                          if (item.key === 'myKrishna') { vecIcon = 'heart'; color = '#FF3B30'; size = 32; }
+                          else if (item.key === 'festival') { vecIcon = 'calendar'; color = '#E0A96D'; size = 30; }
+                          else if (item.key === 'kundli') { vecIcon = 'planet'; color = '#1E88E5'; size = 32; }
+                          else if (item.key === 'brahmandPassport') { vecIcon = 'compass'; color = '#8E24AA'; size = 32; }
+                          else if (item.key === 'panchang') { vecIcon = 'today'; color = '#43A047'; size = 30; }
+                          else if (item.key === 'brahmandLibrary') { vecIcon = 'library'; color = '#8D6E63'; size = 30; }
+                          else if (item.key === 'jyotish') { vecIcon = 'star'; color = '#F57C00'; size = 30; }
+                          
+                          return (
+                            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3 }}>
+                              <Ionicons name={vecIcon as any} size={size} color={color} />
+                            </View>
+                          );
+                        })()}
                       </TouchableOpacity>
                       <Text style={[fabStyles.menuItemLabel, (activeSOS || nearbySOSAlerts.length > 0) && { color: '#FFF' }]}>
                         {t(item.key)}
@@ -434,8 +421,8 @@ export function GlobalFAB() {
                       <Text style={fabStyles.sosActiveSub}>{t('sosActiveSub') || 'We are notifying nearby users and keeping you safe.'}</Text>
                     </View>
                     <View style={fabStyles.centerGuruContainerSOS}>
-                      <View style={fabStyles.guruImageWrapperSOS}>
-                        <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={fabStyles.guruImage} contentFit="cover" />
+                      <View style={[fabStyles.guruImageWrapperSOS, { backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' }]}>
+                        <Ionicons name="heart" size={40} color="#FF3B30" />
                       </View>
                     </View>
                     <View style={fabStyles.sosStatusCard}>
@@ -581,7 +568,7 @@ export function GlobalFAB() {
                     ]}
                   >
                     <TouchableOpacity
-                      style={fabStyles.centerButtonInner}
+                      style={[fabStyles.centerButtonInner, { backgroundColor: '#FF3B30', justifyContent: 'center', alignItems: 'center' }]}
                       activeOpacity={0.85}
                       onPress={() => {
                         toggleFab();
@@ -590,11 +577,7 @@ export function GlobalFAB() {
                         }, 200);
                       }}
                     >
-                      <Image
-                        source={require('../../assets/images/sos_icon_3.png')}
-                        style={{ width: 102, height: 102, borderRadius: 51, alignSelf: 'center' }}
-                        resizeMode="contain"
-                      />
+                      <Ionicons name="alert-circle" size={56} color="#FFF" />
                     </TouchableOpacity>
                     <Text style={fabStyles.centerLabel}>SOS</Text>
                   </Animated.View>
@@ -624,11 +607,7 @@ export function GlobalFAB() {
           {activeSOS || nearbySOSAlerts.length > 0 ? (
             <MaterialCommunityIcons name="alarm-light" size={30} color="#FFF" />
           ) : (
-            <ExpoImage
-              source={require('../../assets/images/tab bar/my_krishna.png')}
-              style={fabStyles.fabIcon}
-              contentFit="cover"
-            />
+            <Ionicons name="sparkles" size={30} color="#FFF" />
           )}
         </TouchableOpacity>
       </Animated.View>

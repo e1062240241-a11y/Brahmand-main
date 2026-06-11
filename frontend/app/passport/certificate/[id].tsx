@@ -73,11 +73,14 @@ function CertificateDetailScreen({ observedCertificates }: { observedCertificate
         {/* Certificate Frame Card */}
         <View style={styles.certCard}>
           <View style={styles.certCardInner}>
-            <Image
-              source={require('../../../assets/images/gita_cert_fixed.png')}
-              style={[styles.backgroundImage, StyleSheet.absoluteFillObject]}
-              contentFit="cover"
-            />
+            <LinearGradient
+              colors={['#FFF9F2', '#FAF5EC']}
+              style={[styles.backgroundImage, StyleSheet.absoluteFillObject, { borderWidth: 8, borderColor: '#D4AF37', borderRadius: 12, padding: 16 }]}
+            >
+              <View style={{ flex: 1, borderWidth: 2, borderColor: '#D4AF37', borderStyle: 'solid', borderRadius: 4, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="ribbon-outline" size={80} color="#D4AF37" style={{ opacity: 0.1, position: 'absolute', alignSelf: 'center' }} />
+              </View>
+            </LinearGradient>
             {/* Dynamic Name Overlay (covers the letter "S" or custom cert name field) */}
             <View style={styles.nameOverlay}>
               <Text style={styles.nameText} numberOfLines={1} adjustsFontSizeToFit>

@@ -157,50 +157,47 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   };
 
   const renderTabIcon = (routeName: string, focused: boolean) => {
-    let activeSrc: any;
-    let inactiveSrc: any;
-
+    let iconName: any = 'help-outline';
+    let isMaterial = false;
+    
     switch (routeName) {
       case 'home':
-        activeSrc = require('../../assets/images/tab bar/hoe.png');
-        inactiveSrc = require('../../assets/images/tab bar/home_outline.png');
+        iconName = focused ? 'home' : 'home-outline';
         break;
-      case 'messages': // Community
-        activeSrc = require('../../assets/images/tab bar/comunity2.png');
-        inactiveSrc = require('../../assets/images/tab bar/community.png');
+      case 'messages':
+        iconName = focused ? 'people' : 'people-outline';
         break;
-      case 'vendor': // Service
-        activeSrc = require('../../assets/images/tab bar/ser.png');
-        inactiveSrc = require('../../assets/images/tab bar/service.png');
+      case 'vendor':
+        iconName = focused ? 'hand-heart' : 'hand-heart-outline';
+        isMaterial = true;
         break;
-      case 'jaap': // Temple
-        activeSrc = require('../../assets/images/tab bar/temp.png');
-        inactiveSrc = require('../../assets/images/tab bar/temple.png');
+      case 'jaap':
+        iconName = 'hands-pray';
+        isMaterial = true;
         break;
       case 'profile':
-        activeSrc = require('../../assets/images/tab bar/profile2.png');
-        inactiveSrc = require('../../assets/images/tab bar/profile.png');
+        iconName = focused ? 'person' : 'person-outline';
         break;
-      default:
-        // Fallback if needed
-        return (
-          <Ionicons
-            name={TAB_META[routeName]?.[focused ? 'activeIcon' : 'inactiveIcon'] as any}
-            size={22}
-            color={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
-            style={focused ? styles.activeIconGlow : null}
-          />
-        );
+    }
+
+    if (isMaterial) {
+      const { MaterialCommunityIcons } = require('@expo/vector-icons');
+      return (
+        <MaterialCommunityIcons
+          name={iconName}
+          size={22}
+          color={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
+          style={focused ? styles.activeIconGlow : null}
+        />
+      );
     }
 
     return (
-      <Image
-        source={focused ? activeSrc : inactiveSrc}
-        style={[
-          { width: 22, height: 22 },
-          { tintColor: focused ? ACTIVE_ORANGE : INACTIVE_COLOR }
-        ]}
-        resizeMode="contain"
+      <Ionicons
+        name={iconName}
+        size={22}
+        color={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
+        style={focused ? styles.activeIconGlow : null}
       />
     );
   };
