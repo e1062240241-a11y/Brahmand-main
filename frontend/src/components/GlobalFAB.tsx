@@ -15,6 +15,8 @@ import {
   ActivityIndicator,
   Linking,
   AppState,
+  Keyboard,
+  Platform,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -43,23 +45,51 @@ export function GlobalFAB() {
   const [activeSOS, setActiveSOS] = useState<any>(null);
   const [nearbySOSAlerts, setNearbySOSAlerts] = useState<any[]>([]);
   const [isResponding, setIsResponding] = useState(false);
+  const keyboardVisibleRef = useRef(false);
+  const activeSOSRef = useRef<any>(null);
+  const nearbySOSAlertsRef = useRef<any[]>([]);
+  const lastLocationFetchRef = useRef(0);
+  const lastKnownLocationRef = useRef<{ lat?: number; lng?: number }>({});
 
-  const checkSOSStatus = useCallback(async () => {
+  const setActiveSOSIfChanged = useCallback((nextActiveSOS: any) => {
+    const current = activeSOSRef.current;
+    const currentKey = current ? `${current.id || ''}:${current.status || ''}:${current.responders?.length || 0}` : 'none';
+    const nextKey = nextActiveSOS ? `${nextActiveSOS.id || ''}:${nextActiveSOS.status || ''}:${nextActiveSOS.responders?.length || 0}` : 'none';
+    if (currentKey !== nextKey) {
+      activeSOSRef.current = nextActiveSOS;
+      setActiveSOS(nextActiveSOS);
+    }
+  }, []);
+
+  const setNearbySOSAlertsIfChanged = useCallback((nextAlerts: any[]) => {
+    const currentKey = nearbySOSAlertsRef.current.map((item) => `${item.id || ''}:${item.status || ''}`).join('|');
+    const nextKey = nextAlerts.map((item) => `${item.id || ''}:${item.status || ''}`).join('|');
+    if (currentKey !== nextKey) {
+      nearbySOSAlertsRef.current = nextAlerts;
+      setNearbySOSAlerts(nextAlerts);
+    }
+  }, []);
+
+  const checkSOSStatus = useCallback(async (options?: { forceLocation?: boolean }) => {
     try {
       const res = await getMySOSAlert();
-      setActiveSOS(res.data);
 
-      let lat = undefined;
-      let lng = undefined;
-      try {
-        const ok = await LocationService.ensureForegroundPermission();
-        if (ok) {
-          const location = await LocationService.getCurrentPosition({});
-          lat = location.coords.latitude;
-          lng = location.coords.longitude;
+      let { lat, lng } = lastKnownLocationRef.current;
+      const now = Date.now();
+      const shouldRefreshLocation = Boolean(options?.forceLocation || fabExpanded || !lat || !lng || now - lastLocationFetchRef.current > 120000);
+      if (shouldRefreshLocation && !keyboardVisibleRef.current) {
+        try {
+          const ok = await LocationService.ensureForegroundPermission();
+          if (ok) {
+            const location = await LocationService.getCurrentPosition({});
+            lat = location.coords.latitude;
+            lng = location.coords.longitude;
+            lastKnownLocationRef.current = { lat, lng };
+            lastLocationFetchRef.current = now;
+          }
+        } catch (locErr) {
+          console.warn('Location fetch failed in SOS check:', locErr);
         }
-      } catch (locErr) {
-        console.warn('Location fetch failed in SOS check:', locErr);
       }
 
       // Always fetch nearby alerts, even without location
@@ -71,7 +101,8 @@ export function GlobalFAB() {
       
       const nearbyRes = await getActiveSOSAlerts(params);
       const otherSOS = (nearbyRes.data || []).filter((s: any) => s.id !== res.data?.id);
-      setNearbySOSAlerts(otherSOS);
+      setActiveSOSIfChanged(res.data);
+      setNearbySOSAlertsIfChanged(otherSOS);
 
     } catch (e: any) {
       if (e?.message === 'Network Error') {
@@ -80,7 +111,7 @@ export function GlobalFAB() {
         console.warn('Failed to check SOS status:', e?.message || e);
       }
     }
-  }, []);
+  }, [fabExpanded, setActiveSOSIfChanged, setNearbySOSAlertsIfChanged]);
 
   const handleRespondToSOS = async (sosId: string) => {
     if (isResponding) return;
@@ -146,11 +177,25 @@ export function GlobalFAB() {
     }
   };
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      keyboardVisibleRef.current = true;
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      keyboardVisibleRef.current = false;
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
   // Poll & Listen for Realtime SOS events
   useEffect(() => {
     if (!user?.id) return;
 
-    checkSOSStatus();
+    checkSOSStatus({ forceLocation: true });
 
     const handleSOSAlert = () => {
       checkSOSStatus();
@@ -163,14 +208,14 @@ export function GlobalFAB() {
     socketService.onEvent('sos_response', handleSOSResponse);
 
     const interval = setInterval(() => {
-      if (AppState.currentState === 'active') {
+      if (AppState.currentState === 'active' && !keyboardVisibleRef.current) {
         checkSOSStatus();
       }
-    }, 10000);
+    }, 30000);
 
     const appStateSub = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        checkSOSStatus();
+      if (nextState === 'active' && !keyboardVisibleRef.current) {
+        checkSOSStatus({ forceLocation: true });
       }
     });
 
@@ -639,7 +684,7 @@ export function GlobalFAB() {
 const fabStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    backgroundColor: 'rgba(48, 24, 8, 0.28)',
     zIndex: 99999, // Ensure very high z-index
     justifyContent: 'center',
     alignItems: 'center',

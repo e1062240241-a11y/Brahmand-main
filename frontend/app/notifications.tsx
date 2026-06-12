@@ -21,6 +21,15 @@ import {
   unfollowUser
 } from '../src/services/api';
 
+const normalizeNotificationsResponse = (payload: any): any[] => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.notifications)) return payload.notifications;
+  if (Array.isArray(payload?.items)) return payload.items;
+  if (Array.isArray(payload?.results)) return payload.results;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
+
 const getTimeAgo = (dateString?: string) => {
   if (!dateString) return 'Just now';
   
@@ -97,7 +106,7 @@ export default function NotificationsScreen() {
   const params = useLocalSearchParams<{ filter?: string }>();
   const filter = params.filter;
   const { user, updateUser } = useAuthStore();
-  const { dismissBadge } = useNotificationStore();
+  const { dismissBadge, recentNotifications } = useNotificationStore();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [actorsMap, setActorsMap] = useState<Record<string, { name?: string; photo?: string; isVerified?: boolean }>>({});
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
@@ -119,7 +128,11 @@ export default function NotificationsScreen() {
         : Number(countRes.data?.unread_count ?? 0);
       setUnreadCount(countValue || 0);
       
-      let notificationsList = Array.isArray(notificationsRes.data) ? notificationsRes.data : [];
+      const serverNotifications = normalizeNotificationsResponse(notificationsRes.data);
+      const pendingNotifications = recentNotifications.filter((recent) =>
+        serverNotifications.every((serverNotif: any) => (serverNotif.id || serverNotif._id) !== (recent.id || recent._id)),
+      );
+      let notificationsList = [...pendingNotifications, ...serverNotifications];
       
       if (filter === 'vendor') {
         notificationsList = notificationsList.filter((notif) => {
@@ -186,8 +199,7 @@ export default function NotificationsScreen() {
 
   const refreshNotifications = useCallback(() => {
     loadNotifsRef.current(false);
-    setUnreadCount(0);
-  }, [setUnreadCount]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -202,7 +214,7 @@ export default function NotificationsScreen() {
         if (notifRefreshRef.current) clearInterval(notifRefreshRef.current);
         socketService.offEvent('new_notification', refreshNotifications);
       };
-    }, [user?.id, refreshNotifications])
+    }, [user?.id, refreshNotifications, recentNotifications])
   );
 
   useEffect(() => {
