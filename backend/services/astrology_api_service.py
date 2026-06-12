@@ -474,29 +474,39 @@ class AstrologyApiService:
 
         # 3. Map Manglik
         manglik_raw = raw_data.get("manglik") or {}
+        is_manglik = manglik_raw.get("is_present") or False
         manglik_data = {
             "response": {
-                "is_present": manglik_raw.get("is_present") or False,
+                "is_present": is_manglik,
+                "is_mangal_dosha_present": is_manglik,
+                "mangal_dosha_type": manglik_raw.get("manglik_status") or "none",
                 "manglik_present_rule": manglik_raw.get("manglik_report") or "",
-                "manglik_cancel_rule": "Cancelled: " + str(manglik_raw.get("is_mars_manglik_cancelled", False))
+                "manglik_cancel_rule": "Cancelled: " + str(manglik_raw.get("is_mars_manglik_cancelled", False)),
+                "description": manglik_raw.get("manglik_report") or "Mars alignment analysis for Manglik Dosha."
             }
         }
 
         # 4. Map Kalsarp
         kalsarpa_raw = raw_data.get("kalsarpa") or {}
+        is_kalsarpa = kalsarpa_raw.get("present") or False
         kalsarpa_data = {
             "response": {
-                "is_present": kalsarpa_raw.get("present") or False,
-                "one_line": kalsarpa_raw.get("one_line") or kalsarpa_raw.get("type") or "No Kaalsarp Dosha details available."
+                "is_present": is_kalsarpa,
+                "type": kalsarpa_raw.get("type") if is_kalsarpa else "none",
+                "one_line": kalsarpa_raw.get("one_line") or kalsarpa_raw.get("type") or "No Kaalsarp Dosha details available.",
+                "description": kalsarpa_raw.get("one_line") or "Kaal Sarp Dosha status and details."
             }
         }
 
         # 5. Map Pitra
         pitra_raw = raw_data.get("pitra") or {}
+        is_pitra = pitra_raw.get("is_pitri_dosha_present") or False
         pitra_data = {
             "response": {
-                "is_present": pitra_raw.get("is_pitri_dosha_present") or False,
-                "one_line": pitra_raw.get("conclusion") or pitra_raw.get("description") or "Pitra Dosha analysis."
+                "is_present": is_pitra,
+                "is_pitra_dosha_present": is_pitra,
+                "one_line": pitra_raw.get("conclusion") or pitra_raw.get("description") or "Pitra Dosha analysis.",
+                "description": pitra_raw.get("conclusion") or pitra_raw.get("description") or "Pitra Dosha analysis."
             }
         }
 
@@ -516,6 +526,7 @@ class AstrologyApiService:
         sade_data = {
             "response": {
                 "is_sadhesati": is_sadhesati,
+                "is_undergoing_sadhesati": is_sadhesati,
                 "sadhesati_status": "active" if is_sadhesati else "inactive",
                 "description": sade_raw.get("is_undergoing_sadhesati") or sade_raw.get("what_is_sadhesati") or "Sade Sati status details."
             }
