@@ -22,17 +22,39 @@ class VedicAstroApiService:
         return f"vedic_astro_api:{suffix}:{dob_str}:{tob_str}:{round(lat, 3)}:{round(lon, 3)}"
 
     def _format_date(self, dob_str: str) -> str:
-        """Convert YYYY-MM-DD to DD/MM/YYYY."""
+        """Robustly parse date in various formats and convert to DD/MM/YYYY."""
+        if not dob_str:
+            return datetime.now().strftime("%d/%m/%Y")
+        
+        cleaned = dob_str.strip()
+        # If there's a T or space followed by time, extract just the date part (first 10 chars)
+        if len(cleaned) > 10 and (cleaned[10] == 'T' or cleaned[10] == ' '):
+            cleaned = cleaned[:10]
+            
+        # Try YYYY-MM-DD
         try:
-            dt = datetime.strptime(dob_str.strip(), "%Y-%m-%d")
-            return dt.strftime("%d/%m/%y") if int(dt.strftime("%Y")) < 2000 else dt.strftime("%d/%m/%Y")
+            dt = datetime.strptime(cleaned, "%Y-%m-%d")
+            return dt.strftime("%d/%m/%Y")
         except Exception:
-            try:
-                # Try parsing if it is already DD/MM/YYYY
-                dt = datetime.strptime(dob_str.strip(), "%d/%m/%Y")
-                return dob_str.strip()
-            except Exception:
-                return dob_str
+            pass
+
+        # Try DD/MM/YYYY
+        try:
+            dt = datetime.strptime(cleaned, "%d/%m/%Y")
+            return dt.strftime("%d/%m/%Y")
+        except Exception:
+            pass
+
+        # Try DD-MM-YYYY
+        try:
+            dt = datetime.strptime(cleaned, "%d-%m-%Y")
+            return dt.strftime("%d/%m/%Y")
+        except Exception:
+            pass
+
+        # Fallback to whatever was passed, but log a warning
+        logger.warning("Could not parse date string: %s. Using as-is.", dob_str)
+        return dob_str
 
     async def _fetch_json_endpoint(self, endpoint: str, params: Dict[str, Any]) -> Any:
         url = f"{self.BASE_URL}/{endpoint}"
@@ -93,12 +115,11 @@ class VedicAstroApiService:
         lang: str = "en"
     ) -> Dict[str, Any]:
         """Fetch comprehensive Kundli, Charts, Doshas, Dashas, and Remedies from VedicAstroAPI."""
-        cache_key = self._cache_key(lat, lon, dob_str, tob_str, "kundli_full")
+        formatted_dob = self._format_date(dob_str)
+        cache_key = self._cache_key(lat, lon, formatted_dob, tob_str, "kundli_full")
         cached = await cache_manager.get(cache_key)
         if cached:
             return cached
-
-        formatted_dob = self._format_date(dob_str)
         base_params = {
             "dob": formatted_dob,
             "tob": tob_str,

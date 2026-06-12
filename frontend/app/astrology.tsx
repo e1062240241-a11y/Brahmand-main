@@ -26,6 +26,7 @@ import { useAuthStore } from '../src/store/authStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CHART_SIZE = SCREEN_WIDTH - 48;
 
 const ASTRO_TABS = [
   { key: 'charts', label: 'Vedic Charts', icon: 'grid-outline' },
@@ -86,8 +87,8 @@ export default function AstrologyScreen() {
   const handleSelectCity = (city: any) => {
     Keyboard.dismiss();
     if (city.coordinates && city.coordinates.length >= 2) {
-      setLat(city.coordinates[0]);
-      setLon(city.coordinates[1]);
+      setLat(city.coordinates[0].toString());
+      setLon(city.coordinates[1].toString());
     }
     if (city.tz !== undefined) {
       setTz(city.tz.toString());
@@ -99,23 +100,29 @@ export default function AstrologyScreen() {
   // Parse location and query backend
   const handleGenerate = async () => {
     Keyboard.dismiss();
-    if (!dob.trim()) {
+    const dobStr = (dob || '').trim();
+    const tobStr = (tob || '').trim();
+    const latStr = String(lat || '').trim();
+    const lonStr = String(lon || '').trim();
+    const tzStr = String(tz || '').trim();
+
+    if (!dobStr) {
       setError('Please enter your Date of Birth (YYYY-MM-DD)');
       return;
     }
-    if (!tob.trim()) {
+    if (!tobStr) {
       setError('Please enter your Time of Birth (HH:MM)');
       return;
     }
-    if (!lat.trim() || isNaN(Number(lat))) {
+    if (!latStr || isNaN(Number(latStr))) {
       setError('Please enter a valid Latitude');
       return;
     }
-    if (!lon.trim() || isNaN(Number(lon))) {
+    if (!lonStr || isNaN(Number(lonStr))) {
       setError('Please enter a valid Longitude');
       return;
     }
-    if (!tz.trim() || isNaN(Number(tz))) {
+    if (!tzStr || isNaN(Number(tzStr))) {
       setError('Please enter a valid Timezone Offset');
       return;
     }
@@ -124,11 +131,11 @@ export default function AstrologyScreen() {
       setError('');
       setLoading(true);
       const params = {
-        dob: dob.trim(),
-        tob: tob.trim(),
-        lat: parseFloat(lat),
-        lon: parseFloat(lon),
-        tz: parseFloat(tz),
+        dob: dobStr,
+        tob: tobStr,
+        lat: parseFloat(latStr),
+        lon: parseFloat(lonStr),
+        tz: parseFloat(tzStr),
       };
       
       const response = await getNakshatraReport(params);
@@ -149,11 +156,50 @@ export default function AstrologyScreen() {
     }
   };
 
-  // Pre-load on mount if user already has data in profile
+  // Pre-load on mount and synchronize state with loaded user profile details
   useEffect(() => {
     isMountedRef.current = true;
-    if (user?.date_of_birth && user?.time_of_birth) {
-      handleGenerate();
+    if (user) {
+      if (user.date_of_birth) setDob(user.date_of_birth);
+      if (user.time_of_birth) setTob(user.time_of_birth);
+      
+      const userLat = user.place_of_birth_latitude?.toString() || user.home_location?.latitude?.toString();
+      if (userLat) setLat(userLat);
+      
+      const userLon = user.place_of_birth_longitude?.toString() || user.home_location?.longitude?.toString();
+      if (userLon) setLon(userLon);
+      
+      if (user.date_of_birth && user.time_of_birth) {
+        const fetchDefault = async () => {
+          try {
+            setError('');
+            setLoading(true);
+            const params = {
+              dob: user.date_of_birth,
+              tob: user.time_of_birth,
+              lat: parseFloat(userLat || '28.6139'),
+              lon: parseFloat(userLon || '77.2090'),
+              tz: 5.5,
+            };
+            const response = await getNakshatraReport(params);
+            if (isMountedRef.current) {
+              setData(response.data || null);
+              if (response.data) {
+                setShowForm(false);
+              }
+            }
+          } catch (err: any) {
+            if (isMountedRef.current) {
+              setError(err?.response?.data?.detail || err?.message || 'Failed to load Kundli report');
+            }
+          } finally {
+            if (isMountedRef.current) {
+              setLoading(false);
+            }
+          }
+        };
+        fetchDefault();
+      }
     }
     return () => { isMountedRef.current = false; };
   }, [user]);
@@ -216,7 +262,7 @@ export default function AstrologyScreen() {
       >
         <ScrollView 
           style={styles.content}
-          contentContainerStyle={{ paddingBottom: 60 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -432,13 +478,13 @@ export default function AstrologyScreen() {
                     <View style={styles.chartContainer}>
                       {activeChartDiv === 'D1' ? (
                         data.chart_d1 ? (
-                          <SvgXml xml={data.chart_d1} width={SCREEN_WIDTH - 48} height={320} />
+                          <SvgXml xml={data.chart_d1} width={CHART_SIZE} height={CHART_SIZE} />
                         ) : (
                           <Text style={styles.noDataText}>Rasi Chart rendering not available</Text>
                         )
                       ) : (
                         data.chart_d9 ? (
-                          <SvgXml xml={data.chart_d9} width={SCREEN_WIDTH - 48} height={320} />
+                          <SvgXml xml={data.chart_d9} width={CHART_SIZE} height={CHART_SIZE} />
                         ) : (
                           <Text style={styles.noDataText}>Navamsha Chart rendering not available</Text>
                         )
