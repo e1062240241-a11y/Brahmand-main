@@ -40,6 +40,11 @@ import HomeJyotishSection from '../../src/components/HomeJyotishSection';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
+import {
+  rankPosts,
+  saveLastTopPostId,
+  getLastTopPostId,
+} from '../../src/utils/feedRanker';
 
 function KundliSirenIcon() {
   return (
@@ -407,7 +412,7 @@ export default function HomeScreen() {
   const currentUserId = (user as any)?.id;
   const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
   const [isEditingBio, setIsEditingBio] = useState(false);
-  const { activeTab, setActiveTab, tabFeeds, setTabFeed } = useFeedStore();
+  const { activeTab, setActiveTab, tabFeeds, setTabFeed, viewHistory, sessionShownIds, loadHistory, markViewed, addSessionShown } = useFeedStore();
   const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
   const feedPosts = currentFeed.posts;
   const feedOffset = currentFeed.offset;
@@ -700,8 +705,19 @@ export default function HomeScreen() {
           });
         }
       } else {
+        // ── Smart rotation: rank posts before setting feed ──
+        const userId = String((useAuthStore.getState().user as any)?.id || '');
+        const lastTopId = await getLastTopPostId(userId).catch(() => null);
+        const ranked = rankPosts(incomingItems, {
+          history: useFeedStore.getState().viewHistory,
+          lastTopPostId: lastTopId,
+          recentSessionIds: useFeedStore.getState().sessionShownIds,
+        });
+        if (ranked.length > 0 && ranked[0]?.id) {
+          saveLastTopPostId(userId, String(ranked[0].id)).catch(() => {});
+        }
         setTabFeed(tabToLoad, {
-          posts: incomingItems,
+          posts: ranked,
           offset: incomingItems.length,
           hasMore: true, // always keep scrolling possible
           lastFetched: Date.now(),
@@ -868,6 +884,12 @@ export default function HomeScreen() {
     }
   }, [setUnreadCount, setTabFeed, fetchLocalCommunities]);
 
+  // ── Load view history once user is known ──────────────────────────────────
+  useEffect(() => {
+    const uid = String((user as any)?.id || '');
+    if (uid) loadHistory(uid);
+  }, [(user as any)?.id]);
+
   useEffect(() => {
     if (!isFocused) return;
     let isMounted = true;
@@ -923,7 +945,9 @@ export default function HomeScreen() {
       const currentActiveTab = useFeedStore.getState().activeTab;
       const cached = useFeedStore.getState().tabFeeds[currentActiveTab];
       const nowTime = Date.now();
-      const isStale = !cached || (nowTime - (cached.lastFetched || 0) > 120000); // 2 minutes
+      // Rule 3: Refresh on every home visit — stale if older than 30s for for_you, 2 min others
+      const staleMs = currentActiveTab === 'for_you' ? 30_000 : 120_000;
+      const isStale = !cached || (nowTime - (cached.lastFetched || 0) > staleMs);
       if (!cached || cached.posts.length === 0 || isStale) {
         loadFeedPosts(0, false, currentActiveTab);
       }
@@ -1116,6 +1140,17 @@ export default function HomeScreen() {
   useEffect(() => {
     if (activePostKey && activePostKey.length > 10) {
       markPostAsSeen(activePostKey);
+      // ── Rule 1 & 5: Record view in rotation engine ──
+      // activePostKey format: "feed-{index}-{postId}" — extract postId
+      const parts = activePostKey.split('-');
+      const postId = parts.slice(2).join('-'); // handle UUIDs with hyphens
+      if (postId) {
+        const userId = String((useAuthStore.getState().user as any)?.id || '');
+        if (userId) {
+          useFeedStore.getState().markViewed(postId, userId);
+          useFeedStore.getState().addSessionShown(postId);
+        }
+      }
     }
   }, [activePostKey]);
 

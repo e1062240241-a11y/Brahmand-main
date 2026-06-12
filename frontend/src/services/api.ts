@@ -1161,15 +1161,21 @@ export const getDailyHoroscope = (zodiacName: string, timezone: number = 5.5) =>
 };
 
 export const getNakshatraReport = (params?: {
-  date_str?: string;
+  dob?: string;
+  tob?: string;
   lat?: number;
-  lng?: number;
+  lon?: number;
+  tz?: number;
 }) => {
-  const date = params?.date_str || new Date().toISOString().split('T')[0];
-  const latStr = params?.lat !== undefined ? params.lat.toFixed(2) : 'default';
-  const lngStr = params?.lng !== undefined ? params.lng.toFixed(2) : 'default';
-  const cacheKey = `v2_nakshatra_${date}_${latStr}_${lngStr}`;
-  return getWithCache(cacheKey, () => api.get('/astrology/nakshatra', { params }));
+  if (params && (params.dob || params.tob || params.lat !== undefined || params.lon !== undefined)) {
+    return api.get('/astrology/nakshatra', { params });
+  }
+  const cacheKey = `v2_nakshatra_default`;
+  return getWithCache(cacheKey, () => api.get('/astrology/nakshatra'));
+};
+
+export const searchBirthCity = (q: string) => {
+  return api.get('/astrology/city-search', { params: { q } });
 };
 
 export const askAstrologyAI = (data: {

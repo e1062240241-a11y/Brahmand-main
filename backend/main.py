@@ -60,6 +60,7 @@ from workers.background_tasks import task_queue
 from services.push_notification_service import push_service
 from services.notification_service import NotificationService
 from services.astrology_api_service import astrology_api_service
+from services.vedic_astro_api_service import vedic_astro_api_service
 from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
@@ -8366,49 +8367,71 @@ async def get_panchang(
 
 @api_router.get("/astrology/nakshatra")
 async def get_nakshatra_report(
+    dob: Optional[str] = None,
+    tob: Optional[str] = None,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    tz: Optional[float] = None,
     token_data: dict = Depends(verify_token),
 ):
-    """Get General Nakshatra Report for Kundli using user's birth details."""
+    """Get General Kundli and Vedic Astrology data using user's or custom birth details."""
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Use birth coordinates if available, fallback to home location
-    resolved_lat = user.get('place_of_birth_latitude') or (user.get('home_location') or {}).get('latitude')
-    resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
+    # Resolve birth coordinates
+    resolved_lat = lat
+    if resolved_lat is None:
+        resolved_lat = user.get('place_of_birth_latitude') or (user.get('home_location') or {}).get('latitude')
+    
+    resolved_lng = lon
+    if resolved_lng is None:
+        resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
 
     if resolved_lat is None or resolved_lng is None:
         resolved_lat, resolved_lng = 19.2056, 25.2056
 
-    # Use birth details
-    dob_str = user.get('date_of_birth')  # YYYY-MM-DD
-    tob_str = user.get('time_of_birth')  # HH:MM
+    # Resolve birth details
+    dob_str = dob or user.get('date_of_birth')  # YYYY-MM-DD
+    tob_str = tob or user.get('time_of_birth')  # HH:MM
+
+    if not dob_str:
+        dob_str = datetime.now().strftime("%Y-%m-%d")
+    if not tob_str:
+        tob_str = "12:00"
+
+    resolved_tz = tz if tz is not None else 5.5
 
     try:
-        if dob_str:
-            date_obj = datetime.strptime(dob_str, "%Y-%m-%d")
-            if tob_str:
-                time_parts = tob_str.split(':')
-                if len(time_parts) >= 2:
-                    date_obj = date_obj.replace(hour=int(time_parts[0]), minute=int(time_parts[1]))
-        else:
-            date_obj = datetime.now()
-
-        report = await astrology_api_service.get_nakshatra_report(
+        data = await vedic_astro_api_service.get_kundli_data(
             lat=float(resolved_lat),
             lon=float(resolved_lng),
-            date_obj=date_obj
+            dob_str=str(dob_str),
+            tob_str=str(tob_str),
+            tz=float(resolved_tz)
         )
-        details = await astrology_api_service.get_astro_details(
-            lat=float(resolved_lat),
-            lon=float(resolved_lng),
-            date_obj=date_obj
-        )
-        return {"report": report, "details": details}
+        return data
     except Exception as exc:
-        logger.error("Nakshatra report fetch failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"Astrology provider error: {exc}")
+        logger.error("Vedic Kundli fetch failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"VedicAstroAPI provider error: {exc}")
+
+
+@api_router.get("/astrology/city-search")
+async def search_birth_city(
+    q: str,
+    token_data: dict = Depends(verify_token),
+):
+    """Search for cities, coordinates and timezone offsets using VedicAstroAPI."""
+    if not q or len(q.strip()) < 2:
+        return {"status": 200, "response": []}
+    
+    try:
+        data = await vedic_astro_api_service.search_city(q.strip())
+        return data
+    except Exception as exc:
+        logger.error("Vedic city search failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"VedicAstroAPI geo-search error: {exc}")
 
 
 @api_router.get("/astrology/ask")
@@ -12622,11 +12645,8 @@ async def register_jaap_reminder(
     if not mantra_type:
         raise HTTPException(status_code=400, detail="mantra_type is required")
 
-    # Define the sessions for this mantra
-    if mantra_type == "hanuman":
-        sessions = ["Morning", "Afternoon", "Evening", "Night"]
-    else:
-        sessions = ["Morning", "Evening"]
+    # Define the sessions for all mantras (all live jaaps now share the same 4 daily sessions)
+    sessions = ["Morning", "Afternoon", "Evening", "Night"]
 
     # We want to check if ANY of these sessions are currently subscribed.
     # If yes, we toggle all of them OFF (delete).
@@ -12689,16 +12709,11 @@ async def _jaap_reminder_worker():
     logger.info("Starting Jaap reminder worker loop")
     
     # Session config (Sync with frontend/src/features/live-mantra/schedule.ts)
-    HAN_SESSIONS = [
+    JAAP_SESSIONS = [
         {'name': 'Morning', 'hour': 5, 'min': 30},
         {'name': 'Afternoon', 'hour': 12, 'min': 0},
         {'name': 'Evening', 'hour': 16, 'min': 0},
         {'name': 'Night', 'hour': 21, 'min': 0},
-    ]
-    
-    OTHER_SESSIONS = [
-        {'name': 'Morning', 'hour': 6, 'min': 0},
-        {'name': 'Evening', 'hour': 13, 'min': 0},
     ]
     
     # Local cache to prevent duplicate notifications: (user_id, mantra_type, session_name, date_str) -> sent_timestamp
@@ -12717,8 +12732,8 @@ async def _jaap_reminder_worker():
             tz = ZoneInfo("Asia/Kolkata")
             now_ist = datetime.now(tz)
             
-            # 1. Check Hanuman Chalisa sessions
-            for session in HAN_SESSIONS:
+            # Check all Live Jaap sessions
+            for session in JAAP_SESSIONS:
                 # Calculate session start time for today
                 start_time = now_ist.replace(hour=session['hour'], minute=session['min'], second=0, microsecond=0)
                 
@@ -12726,97 +12741,7 @@ async def _jaap_reminder_worker():
                 diff = (start_time - now_ist).total_seconds()
                 
                 if 240 <= diff < 300:  # 4 to 5 minutes before
-                    logger.info(f"Triggering reminders for {session['name']} Hanuman Chalisa (starts in {int(diff/60)}m)")
-                    
-                    db = await get_db()
-                    # Query active reminders for this session
-                    reminders = await db.query_documents(
-                        "jaap_reminders",
-                        filters=[
-                            ("session_name", "==", session['name']),
-                            ("mantra_type", "==", "hanuman"),
-                            ("active", "==", True)
-                        ]
-                    )
-                    
-                    if not reminders:
-                        continue
-                        
-                    date_str = now_ist.strftime("%Y-%m-%d")
-                    seen_uids = set()
-                    
-                    for r in reminders:
-                        uid = r.get("user_id")
-                        if not uid or uid in seen_uids:
-                            continue
-                        seen_uids.add(uid)
-                        
-                        cache_key = (uid, "hanuman", session['name'], date_str)
-                        if cache_key in sent_reminders_cache:
-                            logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (already sent today)")
-                            continue
-                            
-                        # Deterministic notification ID to prevent duplicates across multiple servers/workers
-                        notif_id = f"jaap_reminder:{uid}:hanuman:{session['name'].lower()}:{date_str}"
-                        try:
-                            existing_notif = await db.get_document("notifications", notif_id)
-                            if existing_notif:
-                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (Deterministic Doc Check)")
-                                sent_reminders_cache[cache_key] = now_ts
-                                continue
-                        except Exception as check_err:
-                            logger.warning(f"Error checking deterministic Hanuman Chalisa reminder: {check_err}")
-                            
-                        # Check Firestore notifications collection as secondary backup (without order_by to avoid index requirements)
-                        try:
-                            recent_notifs = await db.query_documents(
-                                "notifications",
-                                filters=[
-                                    ("user_id", "==", uid),
-                                    ("notification_type", "==", "jaap_reminder")
-                                ],
-                                limit=10
-                            )
-                            already_sent = False
-                            for n in recent_notifs:
-                                n_data = n.get("data", {}) or {}
-                                if n_data.get("session_name") == session['name'] and n_data.get("mantra_type") == "hanuman":
-                                    created_at_str = n.get("created_at")
-                                    if created_at_str:
-                                        try:
-                                            created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
-                                            now_utc = datetime.now(timezone.utc)
-                                            if (now_utc - created_at).total_seconds() < 600:
-                                                already_sent = True
-                                                break
-                                        except Exception:
-                                            pass
-                            if already_sent:
-                                logger.info(f"Skipping duplicate Hanuman Chalisa reminder for user {uid} (FCM backup)")
-                                sent_reminders_cache[cache_key] = now_ts
-                                continue
-                        except Exception as check_err:
-                            logger.warning(f"Error checking duplicate reminder backup: {check_err}")
-
-                        # Send notification via task queue
-                        await task_queue.enqueue(
-                            FirebaseNotificationService.notify_jaap_reminder,
-                            user_id=uid,
-                            title="🙏 Jaap Starting Soon",
-                            body=f"Your {session['name']} Hanuman Chalisa session starts in 5 minutes. Join now!",
-                            mantra_type="hanuman",
-                            session_name=session['name'],
-                            notification_id=notif_id
-                        )
-                        sent_reminders_cache[cache_key] = now_ts
-
-            # 2. Check other Live Jaap sessions (Gayatri, Shiva, Krishna, etc.)
-            for session in OTHER_SESSIONS:
-                start_time = now_ist.replace(hour=session['hour'], minute=session['min'], second=0, microsecond=0)
-                diff = (start_time - now_ist).total_seconds()
-                
-                if 240 <= diff < 300:  # 4 to 5 minutes before
-                    logger.info(f"Triggering reminders for {session['name']} Other Live Jaaps (starts in {int(diff/60)}m)")
+                    logger.info(f"Triggering reminders for {session['name']} Live Jaaps (starts in {int(diff/60)}m)")
                     
                     db = await get_db()
                     reminders = await db.query_documents(
@@ -12835,10 +12760,8 @@ async def _jaap_reminder_worker():
                     
                     for r in reminders:
                         mantra_type = r.get("mantra_type")
-                        if mantra_type == "hanuman":
-                            continue
                         uid = r.get("user_id")
-                        if not uid or (uid, mantra_type) in seen_uids_mantras:
+                        if not uid or not mantra_type or (uid, mantra_type) in seen_uids_mantras:
                             continue
                         seen_uids_mantras.add((uid, mantra_type))
                         
@@ -12857,8 +12780,8 @@ async def _jaap_reminder_worker():
                                 continue
                         except Exception as check_err:
                             logger.warning(f"Error checking deterministic {mantra_type} reminder: {check_err}")
-
-                        # Secondary backup check in Firestore
+                            
+                        # Check Firestore notifications collection as secondary backup
                         try:
                             recent_notifs = await db.query_documents(
                                 "notifications",
@@ -12889,11 +12812,34 @@ async def _jaap_reminder_worker():
                         except Exception as check_err:
                             logger.warning(f"Error checking duplicate reminder backup: {check_err}")
 
-                        mantra_title = mantra_type.capitalize() + " Mantra" if mantra_type != "shiva" else "Om Namah Shivaya"
+                        # Set proper titles
+                        if mantra_type == "hanuman":
+                            mantra_title = "Hanuman Chalisa"
+                            notif_title = "🙏 Jaap Starting Soon"
+                        elif mantra_type == "shiva":
+                            mantra_title = "Om Namah Shivaya"
+                            notif_title = "🙏 Live Jaap Starting Soon"
+                        elif mantra_type == "krishna":
+                            mantra_title = "Hare Krishna Jaap"
+                            notif_title = "🙏 Live Jaap Starting Soon"
+                        elif mantra_type == "gayatri":
+                            mantra_title = "Gayatri Mantra"
+                            notif_title = "🙏 Live Jaap Starting Soon"
+                        elif mantra_type == "ganesh":
+                            mantra_title = "Ganesh Mantra"
+                            notif_title = "🙏 Live Jaap Starting Soon"
+                        elif mantra_type == "laxmi":
+                            mantra_title = "Laxmi Mantra"
+                            notif_title = "🙏 Live Jaap Starting Soon"
+                        else:
+                            mantra_title = mantra_type.capitalize() + " Mantra"
+                            notif_title = "🙏 Live Jaap Starting Soon"
+
+                        # Send notification via task queue
                         await task_queue.enqueue(
                             FirebaseNotificationService.notify_jaap_reminder,
                             user_id=uid,
-                            title="🙏 Live Jaap Starting Soon",
+                            title=notif_title,
                             body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
                             mantra_type=mantra_type,
                             session_name=session['name'],

@@ -913,6 +913,11 @@ export default function NewPassportJourneyScreen() {
         />
         <ScrollView contentContainerStyle={styles.introScrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.introTopContainer}>
+            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'flex-start', marginBottom: 16 }}>
+              <TouchableOpacity onPress={handleBack} style={{ padding: 4, marginLeft: -4 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="arrow-back" size={24} color="#564337" />
+              </TouchableOpacity>
+            </View>
             
             {/* Hero Section */}
             <View style={styles.introHero}>
@@ -1044,7 +1049,12 @@ export default function NewPassportJourneyScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentWrapper}>
           <View style={styles.header}>
-            <Text style={styles.pageTitle}>{headerInfo.title}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              <TouchableOpacity onPress={handleBack} style={{ marginRight: 12, padding: 4 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="arrow-back" size={24} color="#000" />
+              </TouchableOpacity>
+              <Text style={[styles.pageTitle, { marginBottom: 0, flex: 1 }]}>{headerInfo.title}</Text>
+            </View>
             <Text style={styles.pageSubtitle}>{headerInfo.subtitle}</Text>
           </View>
 

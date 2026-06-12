@@ -313,51 +313,61 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
 };
 
 export type OtherJaapSession = {
-  readonly name: 'Morning' | 'Evening';
+  readonly name: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
   readonly startHour: number;
+  readonly startMin: number;
   readonly endHour: number;
+  readonly endMin: number;
 };
 
 export const OTHER_JAAP_SESSIONS: OtherJaapSession[] = [
-  { name: 'Morning', startHour: 6, endHour: 12 },
-  { name: 'Evening', startHour: 13, endHour: 20 },
+  { name: 'Morning', startHour: 5, startMin: 30, endHour: 9, endMin: 0 },
+  { name: 'Afternoon', startHour: 12, startMin: 0, endHour: 15, endMin: 30 },
+  { name: 'Evening', startHour: 16, startMin: 0, endHour: 19, endMin: 30 },
+  { name: 'Night', startHour: 21, startMin: 0, endHour: 0, endMin: 15 },
 ];
 
 export type OtherJaapStatus =
   | {
       isActive: true;
-      sessionName: 'Morning' | 'Evening';
+      sessionName: 'Morning' | 'Afternoon' | 'Evening' | 'Night';
       sessionEnd: Date;
       elapsedSeconds: number;
     }
   | {
       isActive: false;
-      nextSessionName: 'Morning' | 'Evening';
+      nextSessionName: 'Morning' | 'Afternoon' | 'Evening' | 'Night' | '';
       nextSessionStart: Date | null;
     };
 
 export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string): OtherJaapStatus => {
-  if (mantraType === 'krishna') {
-    const sessionStart = new Date(now);
-    sessionStart.setHours(0, 0, 0, 0);
-    const sessionEnd = new Date(now);
-    sessionEnd.setHours(24, 0, 0, 0);
-    const elapsedSeconds = (now.getTime() - sessionStart.getTime()) / 1000;
-    return {
-      isActive: true,
-      sessionName: 'Morning',
-      sessionEnd,
-      elapsedSeconds,
-    };
-  }
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
 
   for (const session of OTHER_JAAP_SESSIONS) {
-    const sessionStart = new Date(now);
-    sessionStart.setHours(session.startHour, 0, 0, 0);
-    const sessionEnd = new Date(now);
-    sessionEnd.setHours(session.endHour, 0, 0, 0);
+    let isMatch = false;
+    let sessionStart = new Date(now);
+    let sessionEnd = new Date(now);
 
-    if (now >= sessionStart && now < sessionEnd) {
+    if (session.name === 'Night') {
+      if (currentHour >= 21) {
+        sessionStart.setHours(21, 0, 0, 0);
+        sessionEnd.setDate(sessionEnd.getDate() + 1);
+        sessionEnd.setHours(0, 15, 0, 0);
+        isMatch = now >= sessionStart && now < sessionEnd;
+      } else if (currentHour === 0 && currentMin < 15) {
+        sessionStart.setDate(sessionStart.setDate() - 1);
+        sessionStart.setHours(21, 0, 0, 0);
+        sessionEnd.setHours(0, 15, 0, 0);
+        isMatch = now >= sessionStart && now < sessionEnd;
+      }
+    } else {
+      sessionStart.setHours(session.startHour, session.startMin, 0, 0);
+      sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
+      isMatch = now >= sessionStart && now < sessionEnd;
+    }
+
+    if (isMatch) {
       const elapsedSeconds = (now.getTime() - sessionStart.getTime()) / 1000;
       return {
         isActive: true,
@@ -374,7 +384,7 @@ export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string)
 
   for (const session of OTHER_JAAP_SESSIONS) {
     const startCandidate = new Date(now);
-    startCandidate.setHours(session.startHour, 0, 0, 0);
+    startCandidate.setHours(session.startHour, session.startMin, 0, 0);
     if (startCandidate < now) {
       startCandidate.setDate(startCandidate.getDate() + 1);
     }
