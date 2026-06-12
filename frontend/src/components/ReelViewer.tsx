@@ -15,7 +15,6 @@ import {
   PanResponder,
   Alert,
   AppState,
-  RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,9 +36,6 @@ import { MentionText } from './MentionText';
 import * as Clipboard from 'expo-clipboard';
 import { Share, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { useTranslation } from '../utils/i18n';
-import { rankPosts, saveLastTopPostId, getLastTopPostId } from '../utils/feedRanker';
-import { useFeedStore } from '../store/feedStore';
-
 let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
@@ -869,11 +865,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuthStore();
-  const { markViewed, addSessionShown } = useFeedStore();
   const [videos, setVideos] = useState<any[]>([initialPost]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [screenSize, setScreenSize] = useState({ width: SCREEN_WIDTH, height: SCREEN_HEIGHT });
   const flatListRef = useRef<FlatList<any>>(null);
@@ -1213,18 +1207,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const uniqueNew = newPosts.filter((p: any) => p?.id && !currentIds.has(p.id));
 
       if (uniqueNew.length > 0) {
-        // ── Smart rotation: rank new posts before appending ──
-        const userId = String((user as any)?.id || '');
-        const lastTopId = await getLastTopPostId(userId).catch(() => null);
-        const ranked = rankPosts(uniqueNew, {
-          history: useFeedStore.getState().viewHistory,
-          lastTopPostId: lastTopId,
-          recentSessionIds: useFeedStore.getState().sessionShownIds,
-        });
-        if (ranked.length > 0 && ranked[0]?.id) {
-          saveLastTopPostId(userId, String(ranked[0].id)).catch(() => {});
-        }
-        setVideos(prev => [...prev, ...ranked]);
+        // Great — append fresh unseen content
+        setVideos(prev => [...prev, ...uniqueNew]);
       } else {
         // All returned posts already queued — recycle from the full session pool
         const pool = allSessionPostsRef.current;
@@ -1252,50 +1236,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       setLoading(false);
       loadingRef.current = false;
     }
-  }, [user]);
-
-  // ── Rule 3: Pull-to-Refresh for ReelViewer ────────────────────────────────
-  const handleReelRefresh = useCallback(async () => {
-    if (isRefreshing) return;
-    setIsRefreshing(true);
-    try {
-      // Clear session seen IDs so we fetch truly fresh content
-      seenIdsRef.current.clear();
-      // Keep initialPost's ID marked only
-      if (initialPost?.id) seenIdsRef.current.add(initialPost.id);
-
-      const res = await getPostsFeed(20, 0, 'for_you', '');
-      const freshPosts: any[] = res.data?.items || (Array.isArray(res.data) ? res.data : []);
-
-      if (freshPosts.length > 0) {
-        const userId = String((user as any)?.id || '');
-        const lastTopId = await getLastTopPostId(userId).catch(() => null);
-        // Rule 5: top 3 must be completely new (not in current videos)
-        const currentIds = new Set(videosRef.current.map((p: any) => p.id).filter(Boolean));
-        const truelyNew = freshPosts.filter((p: any) => !currentIds.has(p.id));
-        const ranked = rankPosts(truelyNew.length >= 3 ? truelyNew : freshPosts, {
-          history: useFeedStore.getState().viewHistory,
-          lastTopPostId: lastTopId,
-          recentSessionIds: [],
-        });
-        if (ranked.length > 0 && ranked[0]?.id) {
-          saveLastTopPostId(userId, String(ranked[0].id)).catch(() => {});
-        }
-        // Replace entire list with fresh ranked content
-        allSessionPostsRef.current = [...ranked];
-        setVideos(ranked);
-        setActiveIndex(0);
-        activeIndexRef.current = 0;
-        watchStartRef.current = Date.now();
-        // Scroll back to top
-        setTimeout(() => flatListRef.current?.scrollToIndex({ index: 0, animated: false }), 100);
-      }
-    } catch (err) {
-      console.warn('[ReelViewer] Pull-to-refresh failed:', err);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [isRefreshing, user, initialPost]);
+  }, []);
 
   loadMoreRef.current = loadMoreReels;
 
@@ -1402,20 +1343,15 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     }
   }).current;
 
-  // ── Rule 1: Track views per reel in rotation engine ──────────────────────
   useEffect(() => {
     const activePost = videos[activeIndex];
     if (activePost?.id) {
       markPostAsSeen(activePost.id);
+      // Track in session seen set for smarter backend querying
       seenIdsRef.current.add(activePost.id);
+      // Add to global session pool if not already there
       if (!allSessionPostsRef.current.find((p: any) => p.id === activePost.id)) {
         allSessionPostsRef.current.push(activePost);
-      }
-      // Smart rotation engine tracking
-      const userId = String((user as any)?.id || '');
-      if (userId) {
-        markViewed(String(activePost.id), userId);
-        addSessionShown(String(activePost.id));
       }
     }
   }, [activeIndex, videos]);
@@ -1491,15 +1427,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             snapToAlignment="start"
             decelerationRate="fast"
             disableIntervalMomentum={true}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleReelRefresh}
-                tintColor="#FFFFFF"
-                colors={['#FFFFFF']}
-                progressBackgroundColor="rgba(0,0,0,0.6)"
-              />
-            }
             ListFooterComponent={
               loading ? (
                 <View style={{ height: 100, justifyContent: 'center', alignItems: 'center' }}>
