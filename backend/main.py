@@ -8380,6 +8380,8 @@ async def get_nakshatra_report(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    logger.info("get_nakshatra_report inputs - dob: %s, tob: %s, lat: %s, lon: %s, tz: %s", dob, tob, lat, lon, tz)
+
     # Resolve birth coordinates
     resolved_lat = lat
     if resolved_lat is None:
@@ -8402,6 +8404,8 @@ async def get_nakshatra_report(
         tob_str = "12:00"
 
     resolved_tz = tz if tz is not None else 5.5
+    
+    logger.info("get_nakshatra_report resolved - dob_str: %s, tob_str: %s, lat: %s, lon: %s, tz: %s", dob_str, tob_str, resolved_lat, resolved_lng, resolved_tz)
 
     try:
         data = await vedic_astro_api_service.get_kundli_data(
