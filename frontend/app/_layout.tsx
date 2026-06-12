@@ -417,6 +417,22 @@ function useNotificationResponseHandler() {
         }
         return;
       }
+      // Handle Jaap reminder notification tap - open app to specific live jaap welcome screen
+      if (data.type === 'jaap_reminder' && data.mantra_type) {
+        let titleVal = '';
+        if (data.mantra_type === 'hanuman') titleVal = 'Hanuman Chalisa';
+        else if (data.mantra_type === 'krishna') titleVal = 'Hare Krishna Jaap';
+        else if (data.mantra_type === 'shiva') titleVal = 'Om Namah Shivaya';
+        else if (data.mantra_type === 'gayatri') titleVal = 'Gayatri Mantra';
+        else if (data.mantra_type === 'ganesh') titleVal = 'Ganesh Mantra';
+        else if (data.mantra_type === 'laxmi') titleVal = 'Laxmi Mantra';
+        else if (data.mantra_type === 'mrityunjaya') titleVal = 'Maha Mrityunjaya';
+        else titleVal = data.mantra_type.charAt(0).toUpperCase() + data.mantra_type.slice(1);
+
+        console.log(`[Push] Routing jaap_reminder for ${data.mantra_type} to live-jaap-welcome`);
+        navigateOrQueue(`/live-jaap-welcome?mantraType=${data.mantra_type}&title=${encodeURIComponent(titleVal)}`);
+        return;
+      }
     };
 
     let subscription: any;
