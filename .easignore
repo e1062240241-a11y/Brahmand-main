@@ -1,0 +1,42 @@
+# Ignore backend directory (contains python code, large data, and long filenames)
+backend/
+
+# Ignore Python virtual environments and cache directories
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Ignore local node_modules
+node_modules/
+frontend/node_modules/
+
+# Ignore development / agent tools
+.agent/
+.emergent/
+scratch_*.py
+fix_*.py
+test_*.py
+
+# Ignore local tests and scripts
+tests/
+backend_test.py
+beta_launch_test.py
+help_request_test.py
+sanatan_lok_v1_test.py
+simple_test.py
+temp-check-frontend.sh
+temp-check-pdf.sh
+deploy-backend.sh
+deploy-gcp-full.sh
+patch_global_fab.py
+search_ocr.py
+
+# System files
+.DS_Store
+*.pem
+*.log
+*.patch
+*.txt
+tmp/
+Library/
