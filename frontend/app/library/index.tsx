@@ -179,7 +179,18 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
             });
           }
 
+          // Sort first by lastOpenedTime descending
           recentBooks = recentBooks.sort((a, b) => b.lastOpenedTime - a.lastOpenedTime);
+
+          // Deduplicate based on book ID (keeping the most recently opened record)
+          const seenIds = new Set<string>();
+          recentBooks = recentBooks.filter(b => {
+            if (seenIds.has(b.id)) {
+              return false;
+            }
+            seenIds.add(b.id);
+            return true;
+          });
 
           if (recentBooks.length > 0) {
             return (
@@ -192,14 +203,14 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
                 </View>
                 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: H_PADDING, gap: 16 }}>
-                  {recentBooks.map((book) => {
+                  {recentBooks.map((book, index) => {
                     const timeAgo = Math.round((Date.now() - book.lastOpenedTime) / 60000);
                     const timeString = timeAgo < 60 ? `${timeAgo}m ago` : timeAgo < 1440 ? `${Math.floor(timeAgo/60)}h ago` : `${Math.floor(timeAgo/1440)}d ago`;
                     const bookMeta = BOOKS.find(b => b.id === book.id);
                     const targetRoute = bookMeta ? bookMeta.route : `/library/${book.id}`;
                     return (
                       <TouchableOpacity
-                        key={book.id}
+                        key={`${book.id}-${index}`}
                         style={[styles.gitaProgressCard, { marginHorizontal: 0, width: SCREEN_WIDTH * 0.85 }]}
                         onPress={() => router.push(targetRoute as any)}
                         activeOpacity={0.9}
