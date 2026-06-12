@@ -815,11 +815,16 @@ export default function JaapLandingScreen() {
                 <ActivityIndicator size="large" color="#FF6600" />
               ) : filteredTemples.length > 0 ? (
                 filteredTemples.map((item, idx) => (
-                  <View key={item.id} style={styles.newTempleCard}>
+                  <TouchableOpacity 
+                    key={item.id} 
+                    style={styles.newTempleCard}
+                    activeOpacity={0.8}
+                    onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}
+                  >
 
                     <Image source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} style={styles.newTempleCardImg} resizeMode="cover" />
                     <View style={styles.newTempleCardInfo}>
-                      <View>
+                      <View style={{ marginTop: -10 }}>
                         <Text style={styles.newTempleCardDeity}>
                           {(() => {
                             let rawDeity = item.deity || 'LORD SHIVA';
@@ -841,11 +846,8 @@ export default function JaapLandingScreen() {
                         <Text style={styles.newTempleCardName}>{getTranslatedTempleName(item.name || '')}</Text>
                         <Text style={styles.newTempleCardLoc}>{getTranslatedTempleLocation(getTempleLocation(item), item.name)}</Text>
                       </View>
-                      <TouchableOpacity style={styles.newTempleOpenBtn} onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}>
-                        <Text style={styles.newTempleOpenBtnText}>{t('openInMaps')}</Text>
-                      </TouchableOpacity>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))
               ) : (
                 <View style={styles.noTemplesFound}>
@@ -1250,7 +1252,7 @@ const styles = StyleSheet.create({
   newTempleCard: { backgroundColor: '#FFF', height: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center', position: 'relative' },
   newTempleCardImg: { width: 80, height: 95, borderRadius: 12 },
   newTempleCardInfo: { flex: 1, marginLeft: 16, justifyContent: 'center' },
-  newTempleCardDeity: { color: '#FF6B35', fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 2, alignSelf: 'center' },
+  newTempleCardDeity: { color: '#FF6B35', fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 12, alignSelf: 'center' },
   newTempleCardName: { color: '#1C1C1E', fontSize: 16, fontWeight: '700', lineHeight: 27 },
   newTempleCardLoc: { color: 'rgba(0, 0, 0, 0.61)', fontSize: 14, fontWeight: '400', lineHeight: 21, marginBottom: 8 },
   newTempleOpenBtn: { width: 190, height: 32, justifyContent: 'center', alignItems: 'center', borderRadius: 12, borderWidth: 2, borderColor: '#FF7B00', alignSelf: 'center' },

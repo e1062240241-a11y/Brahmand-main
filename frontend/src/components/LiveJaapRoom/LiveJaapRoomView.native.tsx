@@ -14,9 +14,11 @@ import {
   Easing,
   ScrollView,
   Alert,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -247,6 +249,17 @@ export default function LiveJaapRoomView() {
   }>();
   const insets = useSafeAreaInsets();
   const streamIdRef = useRef<number | null>(null);
+
+  const handleShare = async () => {
+    try {
+      const shareMessage = `Join me in the Live Jaap Room for collective chanting of ${roomTitle || (mantraType === 'hanuman' ? 'Hanuman Chalisa' : 'Gayatri Mantra')}! Let's chant together.`;
+      await Share.share({
+        message: shareMessage,
+      });
+    } catch (error: any) {
+      console.log('Error sharing:', error.message);
+    }
+  };
 
   const [now, setNow] = useState(new Date());
   const [personalCount, setPersonalCount] = useState(0);
@@ -925,16 +938,11 @@ export default function LiveJaapRoomView() {
                 router.replace('/(tabs)/jaap');
               }
             }} style={styles.headerBtn}>
-              <Ionicons name="close" size={24} color="#FFF" />
+              <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
-            <View style={styles.headerTitleBox}>
-               <Text style={styles.participantLabel} numberOfLines={1}>{participantLabel}</Text>
-               <Text style={styles.micStatusText}>{micStatus}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.headerBtn}>
-                <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={22} color="#FFF" />
-              </TouchableOpacity>
+            <View style={styles.titleContainerNew}>
+              <Text style={styles.titleNew} numberOfLines={1}>{roomTitle || (t('language') === 'hi' ? 'हनुमान चालीसा' : 'Hanuman Chalisa')}</Text>
+              <Text style={styles.subtitleNew}>{t('language') === 'hi' ? 'लाइव सामूहिक जाप' : 'LIVE COLLECTIVE JAAP'}</Text>
             </View>
             <View style={styles.countPillNew}>
               <Text style={styles.countLabelNew}>{isHanuman ? t('yourCount') : t('malaCount')}</Text>
@@ -1153,14 +1161,36 @@ export default function LiveJaapRoomView() {
 
                 {/* Controls Bar */}
                 <View style={styles.controlsBarNew}>
-                  <TouchableOpacity onPress={toggleMic} style={styles.controlIconBtnNew}>
-                    <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={24} color={isMicEnabled ? "#FF8A00" : "#000"} />
+                  <TouchableOpacity onPress={toggleMic} style={isMicEnabled ? styles.volumeMuteBtnNew : styles.controlIconBtnNew}>
+                    {isMicEnabled ? (
+                      <Svg width={18} height={24} viewBox="0 0 18 24" fill="none">
+                        <Rect x="5.25" y="1" width="7.5" height="13.5" rx="3.75" fill="#FFF" />
+                        <Path d="M1.6 11.35C1.6 15.35 4.9 18.65 8.9 18.65C12.9 18.65 16.2 15.35 16.2 11.35" stroke="#FFF" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+                        <Path d="M8.9 18.65V22.7" stroke="#FFF" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+                      </Svg>
+                    ) : (
+                      <Svg width={18} height={24} viewBox="0 0 18 24" fill="none">
+                        <Path d="M17.6291 20.541L1.40498 2.69451C0.979499 2.23743 0.218764 2.41235 0.0356704 3.00937C-0.0472796 3.27983 0.0166581 3.57396 0.204392 3.78557L4.0495 8.01499V11.3521C4.04866 14.9532 7.82314 17.3082 11.0573 15.7245L12.1828 16.9616C11.1922 17.5412 10.0645 17.8451 8.91673 17.8417C5.33422 17.8378 2.43101 14.9346 2.42709 11.3521C2.42709 10.7276 1.75109 10.3373 1.21029 10.6496C0.959305 10.7945 0.804683 11.0623 0.804683 11.3521C0.809802 15.5162 3.96284 19.002 8.10552 19.4236V22.7089C8.10552 23.3334 8.78152 23.7237 9.32233 23.4115C9.57332 23.2666 9.72793 22.9988 9.72793 22.7089V19.4225C10.9982 19.3 12.2207 18.8752 13.2932 18.1834L16.4285 21.6311C16.8429 22.0982 17.6076 21.9415 17.8049 21.349C17.8987 21.0675 17.8313 20.7582 17.6291 20.541ZM8.91673 14.5969C7.12461 14.597 5.67191 13.1442 5.67191 11.3521V9.79964L9.89626 14.4458C9.57941 14.546 9.24905 14.597 8.91673 14.5969ZM14.7493 14.2004C15.1844 13.3141 15.4093 12.3394 15.4064 11.3521C15.4064 10.7276 16.0824 10.3373 16.6232 10.6496C16.8742 10.7945 17.0288 11.0623 17.0288 11.3521C17.0321 12.5866 16.7507 13.8052 16.2064 14.9133C16.0704 15.1919 15.7874 15.3686 15.4773 15.3686C15.3539 15.3687 15.232 15.3402 15.1214 15.2854C14.7191 15.0885 14.5525 14.6028 14.7493 14.2004ZM4.4551 2.92266C5.95251 -0.511902 10.6064 -1.03751 12.8321 1.97656C13.4493 2.81229 13.7828 3.82356 13.7839 4.86245V11.3521C13.7838 11.5214 13.775 11.6906 13.7576 11.8591C13.7143 12.2739 13.3635 12.5884 12.9464 12.5861C12.918 12.5876 12.8896 12.5876 12.8612 12.5861C12.4158 12.5393 12.0925 12.1403 12.1392 11.6948C12.1504 11.5833 12.1565 11.4677 12.1565 11.3541V4.86245C12.1493 2.3646 9.44081 0.81121 7.2812 2.06635C6.68582 2.41238 6.21596 2.93885 5.93961 3.56959C5.72577 4.1563 4.95698 4.2915 4.5558 3.81295C4.34652 3.56333 4.30687 3.21272 4.4551 2.92266Z" fill="#1A1A1A" />
+                      </Svg>
+                    )}
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={styles.volumeMuteBtnNew}>
-                    <Ionicons name={isMuted ? "volume-mute" : "volume-medium"} size={26} color="#FFF" />
+                  <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={isMuted ? styles.controlIconBtnNew : styles.volumeMuteBtnNew}>
+                    {isMuted ? (
+                      <Svg width={24} height={22} viewBox="0 0 24 22" fill="none">
+                        <Path d="M3.8443 1.08202C3.42997 0.614997 2.66542 0.771644 2.46814 1.36398C2.37439 1.64548 2.44182 1.9557 2.64397 2.17286L5.83438 5.68262H1.62207C0.726197 5.68258 0 6.40881 0 7.30469V13.793C0 14.6888 0.726197 15.4151 1.62207 15.415H6.20948L13.2898 20.9209C13.7827 21.3041 14.5056 21.01 14.591 20.3916C14.596 20.355 14.5986 20.3181 14.5986 20.2812V15.3228L18.8647 20.0156C19.279 20.4826 20.0435 20.326 20.2408 19.7337C20.3346 19.4522 20.2671 19.1419 20.065 18.9248L3.8443 1.08202ZM1.62207 7.30468H5.67724V13.793H1.62207V7.30468ZM12.9765 18.6227L7.29931 14.2076V7.29353L12.9765 13.5385V18.6227ZM17.2345 12.1577C18.0438 11.2386 18.0438 9.86112 17.2345 8.94196C16.8067 8.48723 17.6393 7.59679 17.6393 7.59679C17.9399 7.52599 18.2546 7.63206 18.451 7.87038C19.8007 9.40252 19.8007 11.6992 18.451 13.2313C18.0378 13.6996 17.2726 13.5449 17.0737 12.9529C16.9814 12.6781 17.0427 12.375 17.2345 12.1577ZM9.10791 4.45288C8.83259 4.09934 8.89614 3.58952 9.24984 3.3144L13.2898 0.171634C13.7827 -0.211559 14.5056 0.0825251 14.591 0.700994C14.5963 0.739234 14.5988 0.777803 14.5986 0.816409V8.40262C14.5986 9.02696 13.9228 9.41717 13.3821 9.105C13.1311 8.96012 12.9765 8.69238 12.9765 8.40262V2.47497L10.2454 4.60394C9.89069 4.87743 9.38144 4.81162 9.10791 4.45694V4.45288ZM23.52 10.5488C23.5212 12.5442 22.7858 14.4697 21.4549 15.9564C21.0312 16.4149 20.27 16.2428 20.0847 15.6466C20.0015 15.3786 20.0627 15.0867 20.2465 14.8747C22.4492 12.4118 22.4492 8.68688 20.2465 6.22398C19.8227 5.76545 20.0543 5.02018 20.6632 4.88248C20.9548 4.81653 21.2591 4.91637 21.4549 5.14226C22.7861 6.6283 23.52 8.5537 23.52 10.5488Z" fill="#1A1A1A" />
+                      </Svg>
+                    ) : (
+                      <Svg width={24} height={22} viewBox="0 0 24 22" fill="none">
+                        <Path d="M1.62207 5.68262H5.83438L12.9765 0V22L5.83438 16.3174H1.62207C0.726197 16.3174 0 15.5912 0 14.6953V7.30469C0 6.40881 0.726197 5.68262 1.62207 5.68262Z" fill="#FFF" />
+                        <Path d="M16.5 7.5C18 9 18 13 16.5 14.5" stroke="#FFF" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+                        <Path d="M19.5 4.5C22.5 7.5 22.5 14.5 19.5 17.5" stroke="#FFF" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+                      </Svg>
+                    )}
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.controlIconBtnNew}>
-                    <Ionicons name="share-social-outline" size={24} color="#000" />
+                  <TouchableOpacity onPress={handleShare} style={styles.controlIconBtnNew}>
+                    <Svg width={20} height={24} viewBox="0 0 20 24" fill="none">
+                      <Path d="M15.8304 15.4299C14.708 15.4295 13.6334 15.8966 12.8512 16.7247L8.0525 13.5514C8.42996 12.5555 8.42996 11.45 8.0525 10.4541L12.8512 7.28079C15.0902 9.64055 18.9724 8.62162 19.8392 5.44671C20.706 2.2718 17.9072 -0.677903 14.8014 0.137241C12.3801 0.772727 11.0444 3.44402 11.9498 5.84032L7.15105 9.01365C4.91459 6.65131 1.03126 7.66579 0.161055 10.8397C-0.709151 14.0136 2.08642 16.9665 5.19309 16.1549C5.93751 15.9605 6.61515 15.5579 7.15105 14.9919L11.9498 18.1652C10.7911 21.24 13.302 24.4522 16.4694 23.9473C19.6369 23.4423 21.0853 19.5989 19.0765 17.0291C18.2858 16.0175 17.092 15.4294 15.8304 15.4299ZM15.8304 1.72131C17.7535 1.72131 18.9555 3.86328 17.9939 5.57686C17.0323 7.29043 14.6284 7.29043 13.6668 5.57686C13.4475 5.18612 13.3321 4.74287 13.3321 4.29168C13.3321 2.8721 14.4506 1.72131 15.8304 1.72131ZM4.1719 14.5731C2.24876 14.5731 1.04679 12.4312 2.00836 10.7176C2.96994 9.004 5.37387 9.004 6.33544 10.7176C6.5547 11.1083 6.67013 11.5516 6.67013 12.0028C6.67013 13.4223 5.55164 14.5731 4.1719 14.5731ZM15.8304 22.2842C13.9072 22.2842 12.7052 20.1423 13.6668 18.4287C14.6284 16.7151 17.0323 16.7151 17.9939 18.4287C18.2132 18.8194 18.3286 19.2627 18.3286 19.7139C18.3286 21.1334 17.2101 22.2842 15.8304 22.2842Z" fill="#1A1A1A" />
+                    </Svg>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -1509,7 +1539,22 @@ const styles = StyleSheet.create({
   metricValueNew: { fontSize: 16, fontWeight: '800', color: '#000' },
   metricSlashNew: { fontSize: 12, fontWeight: '700', color: 'rgba(0,0,0,0.5)' },
 
-  controlsBarNew: { flexDirection: 'row', backgroundColor: '#FEE3D0', borderRadius: 40, padding: 10, justifyContent: 'space-around', alignItems: 'center' },
+  controlsBarNew: {
+    flexDirection: 'row',
+    backgroundColor: '#FEE3D0',
+    borderRadius: 9999,
+    paddingVertical: 12,
+    paddingHorizontal: 71,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 25 },
+    shadowOpacity: 0.25,
+    shadowRadius: 25,
+    elevation: 25,
+    gap: 24,
+  },
   controlIconBtnNew: { padding: 10 },
   volumeMuteBtnNew: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center', shadowColor: '#FF8A00', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   malaStatusContainer: {

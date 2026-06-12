@@ -677,7 +677,6 @@ export default function TempleDetailScreen() {
  const [posts, setPosts] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
  const [isFollowing, setIsFollowing] = useState(false);
-  const [isMapModalVisible, setIsMapModalVisible] = useState(false);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
@@ -855,7 +854,7 @@ if (!temple) {
  {temple.deity && <Text style={styles.templeDeity}>{temple.deity}</Text>}
  <TouchableOpacity
  style={styles.locationCard}
- onPress={hasSpecialMap ? () => setIsMapModalVisible(true) : openTempleLocation}
+ onPress={openTempleLocation}
  activeOpacity={0.8}
  >
  <View style={styles.locationRow}>
@@ -988,7 +987,7 @@ if (!temple) {
  {hasSpecialMap && (
  <View style={styles.mapSection}>
  <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'स्थान' : 'Location'}</Text>
- <TouchableOpacity style={styles.mapWrapper} onPress={() => setIsMapModalVisible(true)} activeOpacity={0.9}>
+ <TouchableOpacity style={styles.mapWrapper} onPress={openTempleLocation} activeOpacity={0.9}>
  {isWeb ? (
  <iframe
  title={displayName}
@@ -1058,51 +1057,6 @@ if (!temple) {
   </View>
   </View>
   </Modal>
-  <Modal
-  visible={isMapModalVisible}
-  transparent
-  animationType="fade"
-  onRequestClose={() => setIsMapModalVisible(false)}
-  >
-  <View style={styles.modalBackdrop}>
-  <View style={styles.modalCard}>
-  <View style={styles.modalHeader}>
-  <Text style={styles.modalTitle}>
-    {t('language') === 'hi' ? `${displayName} स्थान` : `${displayName} Location`}
-  </Text>
-  <TouchableOpacity onPress={() => setIsMapModalVisible(false)} style={styles.modalClose}>
-  <Ionicons name="close" size={20} color={COLORS.text} />
-  </TouchableOpacity>
-  </View>
-  <TouchableOpacity style={styles.modalMapWrapper} onPress={openTempleLocation} activeOpacity={0.9}>
-  {isWeb ? (
-  <iframe
-  title={`${displayName} map`}
-           src={resolvedCoords ? getMapEmbedUrl(resolvedCoords) : ''}
-           style={styles.modalMap}
-           frameBorder="0"
-           allowFullScreen
-           />
-           ) : (
-           <WebView
-           source={{ html: getMapHtml(resolvedCoords || { latitude: 0, longitude: 0 }) }}
-  style={styles.modalMap}
-  scrollEnabled={false}
- originWhitelist={["*"]}
- pointerEvents="none"
- />
- )}
- </TouchableOpacity>
- <View style={styles.modalActions}>
- <TouchableOpacity style={styles.primaryButton} onPress={openTempleLocation}>
- <Text style={styles.primaryButtonText}>
-   {t('language') === 'hi' ? 'मैप्स में खोलें' : 'Open in Maps'}
- </Text>
- </TouchableOpacity>
- </View>
- </View>
- </View>
- </Modal>
   </View>
  );
 }
