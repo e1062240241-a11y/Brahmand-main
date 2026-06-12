@@ -567,10 +567,6 @@ export default function RootLayout() {
         await (NavigationBar as any).setVisibilityAsync('visible');
         await (NavigationBar as any).setBehaviorAsync('inset-touch');
 
-        // Configure top status bar transparency
-        const { StatusBar: RNStatusBar } = require('react-native');
-        RNStatusBar.setBackgroundColor('transparent', true);
-        RNStatusBar.setTranslucent(true);
       } catch (error) {
         console.warn('[Bars] Error configuring system bars:', error);
       }
