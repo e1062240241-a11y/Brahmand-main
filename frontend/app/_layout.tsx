@@ -491,7 +491,8 @@ function useMutedNotificationFilter() {
           await Notifications.dismissNotificationAsync(notification.request.identifier);
         } else {
           try {
-            const { unreadCount, setUnreadCount } = useNotificationStore.getState();
+            const { unreadCount, setUnreadCount, addRecentNotification } = useNotificationStore.getState();
+            addRecentNotification(notification);
             setUnreadCount(unreadCount + 1);
           } catch (e) {
             console.warn('[Push] Failed to increment unreadCount on message receive:', e);
@@ -577,7 +578,10 @@ export default function RootLayout() {
     const configureAndroidBars = async () => {
       try {
         const NavigationBar = require('expo-navigation-bar');
-        // Keep bottom navigation bar consistently dark to avoid layout updates & flickering during page transitions
+        const SystemUI = require('expo-system-ui');
+        // Keep Android system surfaces stable; repeated transparent bar color changes can make
+        // low-end devices flicker between black and white during animations/modals.
+        await (SystemUI as any).setBackgroundColorAsync('#FFF4ED');
         await (NavigationBar as any).setBackgroundColorAsync('#000000');
         await (NavigationBar as any).setButtonStyleAsync('light');
         await (NavigationBar as any).setVisibilityAsync('visible');
@@ -653,7 +657,8 @@ export default function RootLayout() {
       const handleNewNotification = (notification: any) => {
         console.log('[Socket] Received real-time notification:', notification);
         try {
-          const { unreadCount, setUnreadCount } = useNotificationStore.getState();
+          const { unreadCount, setUnreadCount, addRecentNotification } = useNotificationStore.getState();
+          addRecentNotification(notification);
           setUnreadCount(unreadCount + 1);
           
           if (pathname !== '/notifications' && pathname !== '/(tabs)/notifications') {
@@ -697,7 +702,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <StatusBar style={isDarkScreen ? 'light' : 'dark'} translucent />
+        <StatusBar
+          style={Platform.OS === 'android' ? 'dark' : isDarkScreen ? 'light' : 'dark'}
+          backgroundColor={Platform.OS === 'android' ? '#FFF4ED' : 'transparent'}
+          translucent={Platform.OS !== 'android'}
+        />
         <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
           <MuteProvider>
             <Stack screenOptions={{

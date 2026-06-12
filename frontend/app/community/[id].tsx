@@ -42,7 +42,7 @@ import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -634,6 +634,47 @@ export default function CommunityDetailScreen() {
   const [showAttendeesModal, setShowAttendeesModal] = useState<any | null>(null);
   const [attendeesList, setAttendeesList] = useState<User[]>([]);
   const [attendeesLoading, setAttendeesLoading] = useState(false);
+
+  const openEventDatePicker = useCallback(() => {
+    if (Platform.OS === 'android') {
+      Keyboard.dismiss();
+      DateTimePickerAndroid.open({
+        value: eventDate || new Date(),
+        mode: 'date',
+        display: 'calendar',
+        onChange: (event, selectedDate) => {
+          if (event.type === 'set' && selectedDate) {
+            const currentDate = eventDate || new Date();
+            const nextDate = new Date(selectedDate);
+            nextDate.setHours(currentDate.getHours(), currentDate.getMinutes());
+            setEventDate(nextDate);
+          }
+        },
+      });
+      return;
+    }
+    setShowDatePicker(true);
+  }, [eventDate]);
+
+  const openEventTimePicker = useCallback(() => {
+    if (Platform.OS === 'android') {
+      Keyboard.dismiss();
+      DateTimePickerAndroid.open({
+        value: eventDate || new Date(),
+        mode: 'time',
+        display: 'clock',
+        onChange: (event, selectedDate) => {
+          if (event.type === 'set' && selectedDate) {
+            const newDate = new Date(eventDate || new Date());
+            newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+            setEventDate(newDate);
+          }
+        },
+      });
+      return;
+    }
+    setShowTimePicker(true);
+  }, [eventDate]);
 
   const isLocalUserCommunity = useMemo(() => {
     return !['city', 'state', 'country'].includes(community?.type);
@@ -3630,13 +3671,12 @@ export default function CommunityDetailScreen() {
       {/* Bottom footer input bar is removed to keep layout clean and centered on top-header Create button */}
 
       {/* Full Screen Create Post Modal */}
-      <Modal visible={showCreateModal} animationType="slide" transparent={true}>
+      <Modal visible={showCreateModal} animationType="slide" transparent={false} hardwareAccelerated>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
-            pointerEvents={(showDatePicker || showTimePicker) && Platform.OS === 'android' ? 'none' : 'auto'}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
               <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); }}>
@@ -3841,7 +3881,7 @@ export default function CommunityDetailScreen() {
                       <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F1419', marginBottom: 10 }}>Event Date & Time</Text>
                       <View style={{ flexDirection: 'row', gap: 10 }}>
                         <TouchableOpacity
-                          onPress={() => setShowDatePicker(true)}
+                          onPress={openEventDatePicker}
                           style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
                         >
                           <Ionicons name="calendar-outline" size={18} color="#FF6600" />
@@ -3855,7 +3895,7 @@ export default function CommunityDetailScreen() {
                         </TouchableOpacity>
                         
                         <TouchableOpacity
-                          onPress={() => setShowTimePicker(true)}
+                          onPress={openEventTimePicker}
                           style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
                         >
                           <Ionicons name="time-outline" size={18} color="#FF6600" />
@@ -3865,7 +3905,7 @@ export default function CommunityDetailScreen() {
                         </TouchableOpacity>
                       </View>
 
-                      {showDatePicker && (
+                      {showDatePicker && Platform.OS !== 'android' && (
                         <DateTimePicker
                           value={eventDate || new Date()}
                           mode="date"
@@ -3881,7 +3921,7 @@ export default function CommunityDetailScreen() {
                         />
                       )}
 
-                      {showTimePicker && (
+                      {showTimePicker && Platform.OS !== 'android' && (
                         <DateTimePicker
                           value={eventDate || new Date()}
                           mode="time"
