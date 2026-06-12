@@ -7,7 +7,7 @@ PROJECT_ID = os.environ.get("GCP_PROJECT_ID", "brahmand-260327-19251")
 class SpeechService:
     def __init__(self):
         self.client = speech_v2.SpeechClient()
-        self recognizer_name = f"projects/{PROJECT_ID}/locations/global/recognizers/_"
+        self.recognizer_name = f"projects/{PROJECT_ID}/locations/global/recognizers/_"
 
     async def transcribe_audio(self, audio_content: bytes, language_code: str = "en-IN") -> Optional[str]:
         """
