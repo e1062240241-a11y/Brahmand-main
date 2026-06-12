@@ -913,7 +913,7 @@ export default function LiveJaapRoomView() {
   };
 
   return (
-    <LinearGradient colors={['#FFDFAC', '#FFDEAD', '#FFFFFF']} locations={[0, 0.4471, 1]} style={styles.container}>
+    <ImageBackground source={require('../../../assets/images/live_jaap_room_bg.png')} style={styles.container} resizeMode="cover">
       <StatusBar barStyle="dark-content" />
       <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {/* NEW HEADER */}
@@ -1180,7 +1180,7 @@ export default function LiveJaapRoomView() {
           }]}>{r.emoji}</Animated.Text>
         ))}
       </View>
-    </LinearGradient>
+    </ImageBackground>
   );
 }
 
