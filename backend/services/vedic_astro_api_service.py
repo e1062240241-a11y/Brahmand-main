@@ -63,7 +63,22 @@ class VedicAstroApiService:
             if response.status_code >= 400:
                 logger.error("VedicAstroAPI SVG error: %s", response.status_code)
                 return ""
-            return response.text
+            svg_content = response.text
+            if svg_content and "viewBox=" not in svg_content:
+                import re
+                svg_match = re.search(r'<svg([^>]*)>', svg_content)
+                if svg_match:
+                    attrs = svg_match.group(1)
+                    w_match = re.search(r'width=["\'](\d+)(px)?["\']', attrs)
+                    h_match = re.search(r'height=["\'](\d+)(px)?["\']', attrs)
+                    w = w_match.group(1) if w_match else "500"
+                    h = h_match.group(1) if h_match else "500"
+                    new_attrs = attrs
+                    new_attrs = re.sub(r'width=["\']\d+(px)?["\']', 'width="100%"', new_attrs)
+                    new_attrs = re.sub(r'height=["\']\d+(px)?["\']', 'height="100%"', new_attrs)
+                    new_attrs += f' viewBox="0 0 {w} {h}"'
+                    svg_content = svg_content.replace(svg_match.group(0), f'<svg{new_attrs}>')
+            return svg_content
         except Exception as e:
             logger.error("VedicAstroAPI SVG request failed: %s", e)
             return ""
