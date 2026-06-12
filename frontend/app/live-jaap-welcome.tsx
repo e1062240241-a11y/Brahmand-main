@@ -175,8 +175,8 @@ export default function LiveJaapWelcomeScreen() {
                   <View style={styles.liveDotRing} />
                   <Text style={styles.statusTextActive}>
                     {t('language') === 'hi'
-                      ? `${otherStatus.sessionName === 'Morning' ? 'सुबह का' : 'शाम का'} सत्र • लाइव (सुबह 6 - दोपहर 12 और दोपहर 1 - रात 8)`
-                      : `${otherStatus.sessionName} Session • Live (6 AM - 12 PM & 1 PM - 8 PM)`}
+                      ? `${otherStatus.sessionName === 'Morning' ? 'सुबह का' : otherStatus.sessionName === 'Afternoon' ? 'दोपहर का' : otherStatus.sessionName === 'Evening' ? 'शाम का' : 'रात का'} सत्र • लाइव`
+                      : `${otherStatus.sessionName} Session • Live`}
                   </Text>
                 </View>
               ) : (
@@ -186,11 +186,13 @@ export default function LiveJaapWelcomeScreen() {
                     {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
                       const sName = otherStatus.nextSessionName;
                       if (t('language') === 'hi') {
-                        if (sName === 'Morning') return 'सुबह';
-                        if (sName === 'Evening') return 'शाम';
+                        if (sName === 'Morning') return 'सुबह का';
+                        if (sName === 'Afternoon') return 'दोपहर का';
+                        if (sName === 'Evening') return 'शाम का';
+                        if (sName === 'Night') return 'रात का';
                       }
-                      return sName;
-                    })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Session Starts in'} {(() => {
+                      return sName ? `${sName} Session` : '';
+                    })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Starts in'} {(() => {
                       if (!otherStatus.nextSessionStart) return '';
                       const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
                       const hrs = Math.floor(diffMs / 3600000);

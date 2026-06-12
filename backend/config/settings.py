@@ -72,6 +72,9 @@ class Settings:
     # Astrology API (astrologyapi.com)
     ASTROLOGY_API_USER_ID: str = os.environ.get('ASTROLOGY_API_USER_ID', '653183')
     ASTROLOGY_API_TOKEN: str = os.environ.get('ASTROLOGY_API_TOKEN', 'ak-6ace8303f3b0ecec5c3c31f6bc727b9ed9ca274c')
+
+    # VedicAstroAPI (api.vedicastroapi.com)
+    VEDIC_ASTRO_API_KEY: str = os.environ.get('VEDIC_ASTRO_API_KEY', 'fe3e8481-8e8b-57fe-81a9-5f2a8c97c771')
     
     # Prokerala Astrology API
     PROKERALA_BASE_URL: str = os.environ.get('PROKERALA_BASE_URL', 'https://api.prokerala.com')
