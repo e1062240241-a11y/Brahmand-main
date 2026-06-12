@@ -12,6 +12,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -83,6 +84,7 @@ export default function AstrologyScreen() {
   };
 
   const handleSelectCity = (city: any) => {
+    Keyboard.dismiss();
     if (city.coordinates && city.coordinates.length >= 2) {
       setLat(city.coordinates[0]);
       setLon(city.coordinates[1]);
@@ -96,6 +98,7 @@ export default function AstrologyScreen() {
 
   // Parse location and query backend
   const handleGenerate = async () => {
+    Keyboard.dismiss();
     if (!dob.trim()) {
       setError('Please enter your Date of Birth (YYYY-MM-DD)');
       return;
@@ -213,6 +216,8 @@ export default function AstrologyScreen() {
       >
         <ScrollView 
           style={styles.content}
+          contentContainerStyle={{ paddingBottom: 60 }}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Birth Details Input Form Card */}
