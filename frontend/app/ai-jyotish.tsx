@@ -295,8 +295,8 @@ export default function AIJyotishScreen() {
             </TouchableOpacity>
 
             <View style={styles.navTitleContainer}>
-              <View style={[styles.avatarImage, { backgroundColor: '#FFEAE0', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }]}>
-                <Ionicons name="sparkles" size={20} color="#FF8A00" />
+              <View style={[styles.avatarImage, { backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }]}>
+                <Image source={require('../assets/images/jyotish/ai_avatar.png')} style={{ width: '100%', height: '100%' }} />
               </View>
               <Text style={styles.navTitle}>AI Jyotish</Text>
             </View>
@@ -338,8 +338,8 @@ export default function AIJyotishScreen() {
                     </View>
                   ) : (
                     <View style={styles.aiMessageContainer}>
-                      <View style={[styles.aiAvatar, { overflow: 'hidden', backgroundColor: '#FFEAE0', justifyContent: 'center', alignItems: 'center' }]}>
-                        <Ionicons name="sparkles" size={16} color="#FF8A00" />
+                      <View style={[styles.aiAvatar, { overflow: 'hidden' }]}>
+                        <Image source={require('../assets/images/jyotish/ai_avatar.png')} style={{ width: '100%', height: '100%' }} />
                       </View>
                       <View style={styles.aiBubbleContainer}>
                         <View style={styles.aiBubble}>

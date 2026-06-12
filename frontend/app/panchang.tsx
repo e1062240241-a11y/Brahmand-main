@@ -248,7 +248,7 @@ export default function PanchangScreen() {
           <View style={styles.sunMoonGrid}>
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Ionicons name="sunny-outline" size={20} color="#FF8D57" />
+                <Image source={require('../assets/images/zodiac/su/sun.png')} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>SUNRISE</Text>
@@ -258,7 +258,7 @@ export default function PanchangScreen() {
 
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Ionicons name="sunny" size={20} color="#FF5722" />
+                <Image source={require('../assets/images/zodiac/su/sunset.png')} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>SUNSET</Text>
@@ -268,7 +268,7 @@ export default function PanchangScreen() {
 
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Ionicons name="moon-outline" size={20} color="#7E57C2" />
+                <Image source={require('../assets/images/zodiac/su/moonrise.png')} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>MOONRISE</Text>
@@ -278,7 +278,7 @@ export default function PanchangScreen() {
 
             <View style={styles.sunMoonItem}>
               <View style={styles.sunMoonIconBox}>
-                <Ionicons name="moon" size={20} color="#3F51B5" />
+                <Image source={require('../assets/images/zodiac/su/moonset.png')} style={{width: 20, height: 20}} resizeMode="contain" />
               </View>
               <View style={styles.sunMoonMeta}>
                 <Text style={styles.sunMoonLabel}>MOONSET</Text>
@@ -341,31 +341,17 @@ export default function PanchangScreen() {
     );
   };
 
-  const planetIcons: Record<string, { iconType: string; iconName: string; color: string }> = {
-    Sun: { iconType: 'Ionicons', iconName: 'sunny-outline', color: '#FF8D57' },
-    Venus: { iconType: 'Ionicons', iconName: 'female-outline', color: '#EC4899' },
-    Mercury: { iconType: 'Ionicons', iconName: 'planet-outline', color: '#10B981' },
-    Moon: { iconType: 'Ionicons', iconName: 'moon-outline', color: '#3B82F6' },
-    Saturn: { iconType: 'Ionicons', iconName: 'planet-outline', color: '#6B7280' },
-    Jupiter: { iconType: 'Ionicons', iconName: 'planet', color: '#F59E0B' },
-    Mars: { iconType: 'Ionicons', iconName: 'male-outline', color: '#EF4444' },
-    Rahu: { iconType: 'Ionicons', iconName: 'help-circle-outline', color: '#8B5CF6' },
-    Ketu: { iconType: 'Ionicons', iconName: 'eye-outline', color: '#6366F1' },
-  };
-
-  const renderPlanetIcon = (name: string, isActive = false) => {
-    const config = planetIcons[name] || { iconType: 'Ionicons', iconName: 'planet-outline', color: '#994700' };
-    const color = isActive ? '#FFF' : config.color;
-    const size = isActive ? 24 : 18;
-    
-    if (config.iconType === 'Ionicons') {
-      return <Ionicons name={config.iconName as any} size={size} color={color} />;
-    } else {
-      return <MaterialCommunityIcons name={config.iconName as any} size={size} color={color} />;
-    }
-  };
-
   const renderHoraTab = () => {
+    const planetIcons: any = {
+      Sun: require('../assets/images/zodiac/su/sun2.png'),
+      Venus: require('../assets/images/zodiac/su/venus.png'),
+      Mercury: require('../assets/images/zodiac/su/mercury.png'),
+      Moon: require('../assets/images/zodiac/su/mon.png'),
+      Saturn: require('../assets/images/zodiac/su/saturn.png'),
+      Jupiter: require('../assets/images/zodiac/su/jupiter2.png'),
+      Mars: require('../assets/images/zodiac/su/mars.png'),
+    };
+
     const staticHoraList = [
       { time: '05:45 AM - 06:45 AM', hora: 'Sun', nature: { text: 'BENEFIC', type: 'good' } },
       { time: '06:45 AM - 07:45 AM', hora: 'Venus', nature: { text: 'GOOD', type: 'good' } },
@@ -418,8 +404,8 @@ export default function PanchangScreen() {
                       <Text style={styles.horaActiveTime}>{h.time}</Text>
                       <View style={styles.horaPlanetRowMain}>
                         <View style={styles.horaPlanetLeft}>
-                          {renderPlanetIcon(h.hora, true)}
-                          <Text style={[styles.horaPlanetNameActive, { marginLeft: 8 }]}>{h.hora}</Text>
+                          {planetIcons[h.hora] && <Image source={planetIcons[h.hora]} style={styles.horaPlanetIconActive} resizeMode="contain" />}
+                          <Text style={styles.horaPlanetNameActive}>{h.hora}</Text>
                         </View>
                         <View style={[styles.natureBadge, (styles as any)[`natureBadge_${activeTypeStr}`]]}>
                           <View style={[styles.natureDot, (styles as any)[`natureDot_${activeTypeStr}`]]} />
@@ -432,8 +418,8 @@ export default function PanchangScreen() {
                       <View style={styles.horaInactiveInfo}>
                         <Text style={styles.horaInactiveTime}>{h.time}</Text>
                         <View style={styles.horaPlanetLeft}>
-                          {renderPlanetIcon(h.hora, false)}
-                          <Text style={[styles.horaPlanetNameInactive, { marginLeft: 8 }]}>{h.hora}</Text>
+                          {planetIcons[h.hora] && <Image source={planetIcons[h.hora]} style={styles.horaPlanetIcon} resizeMode="contain" />}
+                          <Text style={styles.horaPlanetNameInactive}>{h.hora}</Text>
                         </View>
                       </View>
                       <View style={[styles.natureBadge, (styles as any)[`natureBadge_${h.nature.type}`]]}>
@@ -453,15 +439,15 @@ export default function PanchangScreen() {
 
   const renderPlanetsTab = () => {
     const mainPlanets = [
-      { name: 'Sun', sanskrit: 'SURYA', sign: 'Aries', degree: "15° 42'", motion: 'DIRECT', desc: 'Auspicious for new beginnings and leadership roles.' },
-      { name: 'Moon', sanskrit: 'CHANDRA', sign: 'Cancer', degree: "22° 11'", motion: 'DIRECT', desc: 'Mental peace and emotional stability. Good for family.' },
-      { name: 'Jupiter', sanskrit: 'GURU', sign: 'Taurus', degree: "08° 15'", motion: 'RETRO', desc: 'Internal growth. Re-evaluate financial investments.' },
-      { name: 'Mars', sanskrit: 'MANGAL', sign: 'Leo', degree: "04° 29'", motion: 'DIRECT', desc: 'High courage and ambition. Avoid arguments today.' },
+      { name: 'Sun', sanskrit: 'SURYA', sign: 'Aries', degree: "15° 42'", motion: 'DIRECT', desc: 'Auspicious for new beginnings and leadership roles.', icon: require('../assets/images/zodiac/su/sun3.png') },
+      { name: 'Moon', sanskrit: 'CHANDRA', sign: 'Cancer', degree: "22° 11'", motion: 'DIRECT', desc: 'Mental peace and emotional stability. Good for family.', icon: require('../assets/images/zodiac/su/moon2.png') },
+      { name: 'Jupiter', sanskrit: 'GURU', sign: 'Taurus', degree: "08° 15'", motion: 'RETRO', desc: 'Internal growth. Re-evaluate financial investments.', icon: require('../assets/images/zodiac/su/jupiter2.png') },
+      { name: 'Mars', sanskrit: 'MANGAL', sign: 'Leo', degree: "04° 29'", motion: 'DIRECT', desc: 'High courage and ambition. Avoid arguments today.', icon: require('../assets/images/zodiac/su/mars2.png') },
     ];
 
     const shadowPlanets = [
-      { name: 'Rahu', signDegree: "Pisces • 12° 50'", meaning: 'TRANSFORMATION' },
-      { name: 'Ketu', signDegree: "Virgo • 12° 50'", meaning: 'WISDOM' },
+      { name: 'Rahu', signDegree: "Pisces • 12° 50'", meaning: 'TRANSFORMATION', icon: require('../assets/images/zodiac/su/rahu.png') },
+      { name: 'Ketu', signDegree: "Virgo • 12° 50'", meaning: 'WISDOM', icon: require('../assets/images/zodiac/su/ketu.png') },
     ];
 
     return (
@@ -471,8 +457,8 @@ export default function PanchangScreen() {
           <View key={idx} style={styles.planetCardNew}>
             <View style={styles.planetHeaderNew}>
               <View style={styles.planetHeaderLeft}>
-                {renderPlanetIcon(p.name, false)}
-                <View style={[styles.planetNameCol, { marginLeft: 8 }]}>
+                <Image source={p.icon} style={{ width: 18.333, height: 18.333, tintColor: '#994700' }} resizeMode="contain" />
+                <View style={styles.planetNameCol}>
                   <Text style={styles.planetNameNew}>{p.name}</Text>
                   <Text style={styles.planetSanskritNew}>{p.sanskrit}</Text>
                 </View>
@@ -495,8 +481,8 @@ export default function PanchangScreen() {
           {shadowPlanets.map((n, idx) => (
             <View key={idx} style={styles.nodeCard}>
               <View style={styles.nodeHeader}>
-                {renderPlanetIcon(n.name, false)}
-                <Text style={[styles.nodeName, { marginLeft: 8 }]}>{n.name}</Text>
+                <Image source={n.icon} style={{ width: 18.333, height: 18.333, tintColor: '#994700' }} resizeMode="contain" />
+                <Text style={styles.nodeName}>{n.name}</Text>
               </View>
               <Text style={styles.nodeSignDegree}>{n.signDegree}</Text>
               <Text style={styles.nodeMeaning}>{n.meaning}</Text>
@@ -508,8 +494,8 @@ export default function PanchangScreen() {
         <View style={styles.planetCardNew}>
           <View style={styles.planetHeaderNew}>
             <View style={styles.planetHeaderLeft}>
-              {renderPlanetIcon('Saturn', false)}
-              <View style={[styles.planetNameCol, { marginLeft: 8 }]}>
+              <Image source={require('../assets/images/zodiac/su/saturn2.png')} style={{ width: 18.333, height: 18.333, tintColor: '#994700' }} resizeMode="contain" />
+              <View style={styles.planetNameCol}>
                 <Text style={styles.planetNameNew}>Saturn</Text>
                 <Text style={styles.planetSanskritNew}>SHANI</Text>
               </View>
@@ -529,7 +515,7 @@ export default function PanchangScreen() {
         {/* Celestial Event */}
         <View style={styles.celestialCard}>
           <View style={styles.celestialIconBox}>
-            <Ionicons name="sparkles" size={20} color="#FFF" />
+            <Image source={require('../assets/images/zodiac/su/celestial.png')} style={{ width: 24, height: 24, tintColor: '#FFF' }} resizeMode="contain" />
           </View>
           <View style={styles.celestialTextCol}>
             <View style={styles.celestialTopRow}>

@@ -29,31 +29,31 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
   gayatri: {
     text: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्',
-    bg: require('../../../assets/images/ancient_new_1.jpg'),
+    bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
   },
-  hanuman: {
+hanuman: {
     text: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि बरनऊँ रघुबर बिमल जसु जो दायकु फल चारि बुद्धिहीन तनु जानिके सुमिरौं पवन-कुमार बल बुधि बिद्या देहु मोहिं हरहु कलेस बिकार जय हनुमान ज्ञान गुन सागर जय कपीस तिहुँ लोक उजागर',
-    bg: require('../../../assets/images/hanuman_gathering.jpg'),
+    bg: require('../../../assets/images/hanuman_jaap_card_v2.png'),
   },
   krishna: {
     text: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे',
-    bg: require('../../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
+    bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
   },
   shiva: {
     text: 'ॐ\u00A0नमः\u00A0शिवाय',
-    bg: require('../../../assets/images/image temple/SomnathTemple.jpg'),
+    bg: require('../../../assets/images/shiva_jaap_card_v2.png'),
   },
   mrityunjaya: {
     text: 'ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्',
-    bg: require('../../../assets/images/image temple/KedarnathTemple.jpg'),
+    bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
   },
   ganesh: {
     text: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः ॐ गं गणपतये नमः ॐ गं गणपतये नमः',
-    bg: require('../../../assets/images/image temple/Siddhivinayak-Temple.webp'),
+    bg: require('../../../assets/images/ganesh_jaap_card.png'),
   },
   laxmi: {
     text: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः',
-    bg: require('../../../assets/images/image temple/VaishnoDeviTemple.webp'),
+    bg: require('../../../assets/images/laxmi_jaap_card.png'),
   },
 };
 

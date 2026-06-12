@@ -34,9 +34,10 @@ import { getRamayanChapter } from '../../src/services/api';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Ramayan image provided by the user
-const geeta3DImage = require('../../assets/images/Ramayan-hardcover-front-scaled.jpg');
+const geeta3DImage = require('../../assets/images/tab bar/books/Ramayana.png');
 // Custom bookmark icons
-
+const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
+const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
 
 const BOOK_ID = 'ramayan';
 const TOTAL_CHAPTERS = 7;
@@ -267,7 +268,7 @@ export default function RamayanPage() {
         </View>
       ) : (
         <Animated.View style={[StyleSheet.absoluteFillObject, readingScreenStyle]}>
-          <View style={[styles.root, { backgroundColor: nightMode ? '#1C1510' : '#FFF3EB' }]}>
+          <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
             {/* Sticky Top Header Container */}
             <View style={[styles.stickyTopHeader, { 
               paddingTop: insets.top + 10,
@@ -302,11 +303,14 @@ export default function RamayanPage() {
                   style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
                   onPress={handleToggleBookmark}
                 >
-                  <Ionicons 
-                    name={isBookmarked ? "bookmark" : "bookmark-outline"} 
-                    size={24} 
-                    color={isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93')}
-                    style={{ opacity: isBookmarked ? 1 : 0.7 }}
+                  <Image 
+                    source={isBookmarked ? bookmarkIconFilledImage : bookmarkIconImage} 
+                    style={{
+                      width: 26, 
+                      height: 26, 
+                      tintColor: isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93'),
+                      opacity: isBookmarked ? 1 : 0.7
+                    }} 
                   />
                 </TouchableOpacity>
               </View>
@@ -457,7 +461,7 @@ export default function RamayanPage() {
               <View style={{ width: 36 }} />
             </View>
           </View>
-          </View>
+          </ImageBackground>
         </Animated.View>
       )}
 

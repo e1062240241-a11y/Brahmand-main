@@ -1040,11 +1040,10 @@ export default function VendorScreen() {
                   resizeMode="cover" 
                 />
                 <View style={styles.figmaServiceBadge}>
-                  <Ionicons 
-                    name="sparkles" 
-                    size={12} 
-                    color="#FF7B00" 
-                    style={{ marginRight: 2 }} 
+                  <Image 
+                    source={require('../../assets/images/tab bar/rashi/vendor/siren.png')} 
+                    style={{ width: 12, height: 12, marginRight: 2 }} 
+                    resizeMode="contain"
                   />
                   <Text 
                     numberOfLines={1}
@@ -1062,11 +1061,10 @@ export default function VendorScreen() {
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
                   <Image source={require('../../assets/images/tab bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons 
-                      name="flash" 
-                      size={12} 
-                      color="#FFCDD2" 
-                      style={{ marginRight: 2 }} 
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/lightning.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
                     />
                     <Text 
                       numberOfLines={1}
@@ -1081,11 +1079,10 @@ export default function VendorScreen() {
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
                   <Image source={require('../../assets/images/tab bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons 
-                      name="flower" 
-                      size={12} 
-                      color="#FFCDD2" 
-                      style={{ marginRight: 2 }} 
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/panditji_icon.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
                     />
                     <Text 
                       numberOfLines={1}
@@ -1098,14 +1095,13 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Carpenter */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
-                  <View style={{ position: 'absolute', width: 150, height: 102, left: 0, top: 0, borderRadius: 11, backgroundColor: '#D7CCC8' }} />
+                  <Image source={require('../../assets/images/tab bar/rashi/vendor/carpener.png')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons 
-                      name="hammer" 
-                      size={12} 
-                      color="#FFCDD2" 
-                      style={{ marginRight: 2 }} 
-                    />
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/hammer_custom.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
+                  />
                     <Text 
                       numberOfLines={1}
                       adjustsFontSizeToFit
@@ -1117,13 +1113,12 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Plumber */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
-                  <View style={{ position: 'absolute', width: 150, height: 102, left: 0, top: 0, borderRadius: 11, backgroundColor: '#B3E5FC' }} />
+                  <Image source={require('../../assets/images/tab bar/rashi/vendor/plumber.png')} style={{ position: 'absolute', width: 157, height: 102, left: -23, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons 
-                      name="water" 
-                      size={12} 
-                      color="#FFCDD2" 
-                      style={{ marginRight: 2 }} 
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/plumber_icon.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
                     />
                     <Text 
                       numberOfLines={1}
@@ -1153,8 +1148,10 @@ export default function VendorScreen() {
 
           {/* Colorful Background Container for the Business Section */}
           <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
-            <View 
-              style={{ position: 'absolute', width: '100%', height: 364, top: 0, backgroundColor: '#FFF3E0', borderRadius: 20 }} 
+            <Image 
+              source={require('../../assets/images/tab bar/rashi/vendor/background.png')} 
+              style={{ position: 'absolute', width: 487, height: 364, top: 0 }} 
+              resizeMode="stretch" 
             />
             
             {/* Business Header */}
@@ -1176,11 +1173,10 @@ export default function VendorScreen() {
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => router.push('/vendor/category/General Store' as any)}>
                   <Image source={require('../../assets/images/tab bar/rashi/vendor/generalstore.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons 
-                      name="basket" 
-                      size={12} 
-                      color="#FFCDD2" 
-                      style={{ marginRight: 2 }} 
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/general_store.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
                     />
                     <Text 
                       numberOfLines={1}
@@ -1194,11 +1190,10 @@ export default function VendorScreen() {
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => router.push('/vendor/category/Dairy' as any)}>
                   <Image source={require('../../assets/images/tab bar/rashi/vendor/dairy.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons 
-                      name="heart" 
-                      size={12} 
-                      color="#FFCDD2" 
-                      style={{ marginRight: 2 }} 
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/cow.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
                     />
                     <Text 
                       numberOfLines={1}
@@ -1212,13 +1207,12 @@ export default function VendorScreen() {
               </View>
               <View style={styles.figmaBusinessRightCol}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => router.push('/vendor/category/Salon' as any)}>
-                  <View style={{ position: 'absolute', width: 345, height: 197, left: 0, top: 0, borderRadius: 11, backgroundColor: '#F8BBD0' }} />
+                  <Image source={require('../../assets/images/tab bar/rashi/vendor/salon.png')} style={{ position: 'absolute', width: 345, height: 197, left: -119, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
-                    <Ionicons 
-                      name="cut" 
-                      size={12} 
-                      color="#FFCDD2" 
-                      style={{ marginRight: 2 }} 
+                    <Image 
+                      source={require('../../assets/images/tab bar/rashi/vendor/salon_icon.png')} 
+                      style={{ width: 12, height: 12, marginRight: 2 }} 
+                      resizeMode="contain"
                     />
                     <Text 
                       numberOfLines={1}

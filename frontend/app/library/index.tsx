@@ -26,7 +26,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ── Assets ────────────────────────────────────────────────────────────────
 const geetaCover = require('../../assets/images/featured_book_6.jpg');
 const ramcharitmanasCover = require('../../assets/images/featured_book_1.jpg');
-const atharvavedCover = require('../../assets/images/atharva_veda.jpg');
+const atharvavedCover = require('../../assets/images/user_upload_0.png');
 const mahabharataCover = require('../../assets/images/featured_book_4.jpg');
 const rigvedaCover = require('../../assets/images/featured_book_2.jpg');
 const ramayanCover = require('../../assets/images/featured_book_5.jpg');
@@ -62,7 +62,7 @@ const BOOK_COVERS: Record<string, any> = {
   'rigveda': rigvedaCover,
   'yajurveda': yajurvedaCover,
   'ramcharitmanas': ramcharitmanasCover,
-  'bhagvad-geeta': require('../../assets/images/Bhagvad-geeta.jpg'),
+  'bhagvad-geeta': require('../../assets/images/bhagavad_gita_3d_new.png'),
 };
 
 // ─────────────────────────────────────────────────────────────────────────

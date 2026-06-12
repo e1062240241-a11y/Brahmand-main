@@ -159,7 +159,7 @@ function BookPage({
 
   return (
     <View style={[{ width: layout.pageWidth, height: '100%', backgroundColor: nightMode ? '#1C1510' : '#DBC3A0' }]}> 
-      <ImageBackground source={require('../../assets/images/ancient_new_1.jpg')} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: nightMode ? 0.35 : 1, resizeMode: 'cover' }} />
+      <ImageBackground source={require('../../assets/images/ancient_parchment_new.png')} style={StyleSheet.absoluteFillObject} imageStyle={{ opacity: nightMode ? 0.35 : 1, resizeMode: 'cover' }} />
       <View style={[styles.pageInnerFrame, { borderColor: nightMode ? 'rgba(125, 102, 68, 0)' : 'rgba(185, 150, 97, 0)', paddingVertical: layout.pageInnerVerticalPadding, paddingHorizontal: layout.pageBodyHorizontalPadding }]}>
         <View style={[styles.pageHeader, { marginBottom: 2 }]}> 
           <Text style={[styles.pageHeaderTitle, { color: nightMode ? '#EBD7B6' : '#691F0A', fontSize: headerFontSize, textAlign: 'center' }]}>
@@ -799,11 +799,9 @@ export default function BookLayout({
             <Ionicons name="list" size={24} color="#5C250A" />
           </TouchableOpacity>
           <TouchableOpacity onPress={onToggleBookmarkInternal} style={styles.iconBtnWrapper}>
-            <Ionicons 
-              name={bookmarkActive ? "bookmark" : "bookmark-outline"} 
-              size={24} 
-              color={bookmarkActive ? '#8C3A00' : '#A09B93'} 
-              style={{ opacity: bookmarkActive ? 1 : 0.7 }} 
+            <Image 
+              source={bookmarkActive ? require('../../assets/images/bookmark_icon_filled.png') : require('../../assets/images/bookmark_icon.png')} 
+              style={{ width: 26, height: 26, tintColor: bookmarkActive ? '#8C3A00' : '#A09B93', opacity: bookmarkActive ? 1 : 0.7 }} 
             />
           </TouchableOpacity>
         </View>

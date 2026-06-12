@@ -65,8 +65,14 @@ export default function TabLayout() {
         name="jaap"
         options={{
           tabBarLabel: t('temple') as any,
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon IconComponent={MaterialCommunityIcons} name="hands-pray" color={color} />
+          tabBarIcon: ({ color }) => (
+            <View style={styles.iconContainer}>
+              <Image
+                source={require('../../assets/images/jaap_tab_icon.png')}
+                style={[styles.jaapTabIcon, { tintColor: color }]}
+                resizeMode="contain"
+              />
+            </View>
           ),
         }}
       />

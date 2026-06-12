@@ -26,11 +26,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', iconType: 'Ionicons', iconName: 'body-outline' },
-  { key: 'character', label: 'Character', iconType: 'MaterialCommunityIcons', iconName: 'brain' },
-  { key: 'education', label: 'Education', iconType: 'Ionicons', iconName: 'school-outline' },
-  { key: 'family', label: 'Family', iconType: 'Ionicons', iconName: 'people-outline' },
-  { key: 'health', label: 'Health', iconType: 'Ionicons', iconName: 'heart-outline' },
+  { key: 'physical', label: 'Physical', img: require('../assets/images/festival_image/cosmic/cos1.png') },
+  { key: 'character', label: 'Character', img: require('../assets/images/festival_image/cosmic/cos2.png') },
+  { key: 'education', label: 'Education', img: require('../assets/images/festival_image/cosmic/cos3.png') },
+  { key: 'family', label: 'Family', img: require('../assets/images/festival_image/cosmic/cos4.png') },
+  { key: 'health', label: 'Health', img: require('../assets/images/festival_image/cosmic/cos5.png') },
 ];
 
 export default function AstrologyScreen() {
@@ -96,14 +96,14 @@ export default function AstrologyScreen() {
 
   // Attribute grid items matching the Figma design
   const attributes = [
-    { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, iconType: 'Ionicons', iconName: 'planet-outline', color: '#F59E0B' },
-    { label: 'RASHI LORD', value: details.SignLord, iconType: 'Ionicons', iconName: 'compass-outline', color: '#C67C4E' },
-    { label: 'CHARAN', value: details.Charan, iconType: 'Ionicons', iconName: 'walk-outline', color: '#10B981' },
-    { label: 'GAN', value: details.Gan, iconType: 'Ionicons', iconName: 'sparkles-outline', color: '#14B8A6' },
-    { label: 'YONI', value: details.Yoni, iconType: 'Ionicons', iconName: 'paw-outline', color: '#EC4899' },
-    { label: 'NADI', value: details.Nadi, iconType: 'Ionicons', iconName: 'pulse', color: '#EF4444' },
-    { label: 'VARNA', value: details.Varna, iconType: 'Ionicons', iconName: 'ribbon-outline', color: '#3B82F6' },
-    { label: 'VASHYA', value: details.Vashya, iconType: 'Ionicons', iconName: 'magnet-outline', color: '#C67C4E' },
+    { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.png'), color: '#F59E0B' },
+    { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.png'), color: '#C67C4E' },
+    { label: 'CHARAN', value: details.Charan, img: require('../assets/images/iconattributes/Icon3.png'), color: '#10B981' },
+    { label: 'GAN', value: details.Gan, img: require('../assets/images/iconattributes/Icon4.png'), color: '#14B8A6' },
+    { label: 'YONI', value: details.Yoni, img: require('../assets/images/iconattributes/Icon5.png'), color: '#EC4899' },
+    { label: 'NADI', value: details.Nadi, img: require('../assets/images/iconattributes/Icon6.png'), color: '#EF4444' },
+    { label: 'VARNA', value: details.Varna, img: require('../assets/images/iconattributes/Icon7.png'), color: '#3B82F6' },
+    { label: 'VASHYA', value: details.Vashya, img: require('../assets/images/iconattributes/Icon8.png'), color: '#C67C4E' },
   ];
 
   return (
@@ -178,12 +178,8 @@ export default function AstrologyScreen() {
             <View style={styles.grid}>
               {attributes.map((attr, i) => (
                 <View key={i} style={styles.attrCard}>
-                  <View style={[styles.attrIconBg, { backgroundColor: attr.color + '15' }]}>  
-                    {attr.iconType === 'Ionicons' ? (
-                      <Ionicons name={attr.iconName as any} size={20} color={attr.color} />
-                    ) : (
-                      <MaterialCommunityIcons name={attr.iconName as any} size={20} color={attr.color} />
-                    )}
+                  <View style={styles.attrIconBg}>  
+                    <Image source={attr.img} style={{ width: 24, height: 24 }} resizeMode="contain" />
                   </View>
                   <View style={styles.attrTextCol}>
                     <Text style={styles.attrLabel}>{attr.label}</Text>
@@ -212,11 +208,7 @@ export default function AstrologyScreen() {
                     activeOpacity={0.8}
                   >
                     <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
-                      {tab.iconType === 'Ionicons' ? (
-                        <Ionicons name={tab.iconName as any} size={28} color={isActive ? '#FFF' : '#FFEAE0'} />
-                      ) : (
-                        <MaterialCommunityIcons name={tab.iconName as any} size={28} color={isActive ? '#FFF' : '#FFEAE0'} />
-                      )}
+                      <Image source={tab.img} style={{ width: 36, height: 36, aspectRatio: 1, tintColor: isActive ? '#FFF' : undefined }} resizeMode="contain" />
                     </View>
                     <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
                   </TouchableOpacity>
@@ -248,11 +240,7 @@ export default function AstrologyScreen() {
                     return (
                       <>
                         <View style={styles.modalIconWrap}>
-                          {activeTabObj.iconType === 'Ionicons' ? (
-                            <Ionicons name={activeTabObj.iconName as any} size={28} color="#FFF" />
-                          ) : (
-                            <MaterialCommunityIcons name={activeTabObj.iconName as any} size={28} color="#FFF" />
-                          )}
+                          <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
                         </View>
                         <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
                         <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>

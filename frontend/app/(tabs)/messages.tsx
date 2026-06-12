@@ -489,9 +489,11 @@ function MessagesScreen({
   };
 
   const renderMedalIcon = () => (
-    <View style={[styles.medalIconImage, { backgroundColor: '#FEF3C7', justifyContent: 'center', alignItems: 'center' }]}>
-      <Ionicons name="medal" size={24} color="#D97706" />
-    </View>
+    <Image
+      source={require('../../assets/images/community_medal_icon.png')}
+      style={styles.medalIconImage}
+      resizeMode="contain"
+    />
   );
 
   const renderVerifiedCommunityRow = (
@@ -574,7 +576,11 @@ function MessagesScreen({
             onPress={() => openCommunity(cityItem, false)}
           >
             <View style={styles.mumbaiIconSquare}>
-              <Ionicons name="location-sharp" size={28} color="#9F45FF" />
+              <Image
+                source={require('../../assets/images/mumbai_pin.png')}
+                style={styles.mumbaiIconImage}
+                resizeMode="contain"
+              />
             </View>
             <View style={styles.communityItemContent}>
               <Text style={[styles.communityItemLabel, { color: '#9F45FF' }]}>{cityFigma.label}</Text>

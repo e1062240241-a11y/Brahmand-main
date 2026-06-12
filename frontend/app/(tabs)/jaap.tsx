@@ -46,37 +46,37 @@ const LIVE_JAAPS = [
     id: '1', 
     title: 'Hanuman\nChalisa', 
     devotees: '9.6K', 
-    image: require('../../assets/images/hanuman_gathering.jpg'),
+    image: require('../../assets/images/hanuman_jaap_card_v2.png'),
     slok: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि...'
   },
   { 
     id: '2', 
     title: 'Hare Krishna\nJaap', 
     devotees: '6.4K', 
-    image: require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
+    image: require('../../assets/images/krishna_jaap_card_v2.png'),
     slok: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे...'
   },
   { 
     id: '3', 
     title: 'Om Namah\nShivaya', 
     devotees: '5.2K', 
-    image: require('../../assets/images/image temple/SomnathTemple.jpg'),
+    image: require('../../assets/images/shiva_jaap_card_v2.png'),
     slok: 'ॐ नमः शिवाय ॐ नमः शिवाय...'
   },
   { 
     id: '4', 
     title: 'Gayatri\nMantra', 
     devotees: '4.8K', 
-    image: require('../../assets/images/ancient_new_1.jpg'),
+    image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png'),
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...'
   },
 ];
 
 const UPCOMING_SESSIONS = [
-  { id: '1', category: 'YOGA CLASS', title: 'Morning Yoga Flow', desc: 'Start your day with energy and positivity.', date: 'Tomorrow', time: '6:00 AM', going: '2.4K going', image: require('../../assets/images/image temple/KedarnathTemple.jpg') },
-  { id: '2', category: 'GEETA PATH', title: 'Bhagavad Gita Chapter 2', desc: 'Dive deep into wisdom.', date: 'Tomorrow', time: '7:30 PM', going: '3.2K going', image: require('../../assets/images/ancient_new_1.jpg') },
-  { id: '3', category: 'SANSKRIT CLASS', title: 'Sanskrit Language Basics', desc: 'Learn. Chant. Connect.', date: '21 May', time: '6:30 PM', going: '1.9K going', image: require('../../assets/images/image temple/Siddhivinayak-Temple.webp') },
-  { id: '4', category: 'MEDITATION', title: 'Breathing & Meditation', desc: 'Find calm within.', date: '22 May', time: '6:00 AM', going: '2.1K going', image: require('../../assets/images/image temple/KedarnathTemple.jpg') },
+  { id: '1', category: 'YOGA CLASS', title: 'Morning Yoga Flow', desc: 'Start your day with energy and positivity.', date: 'Tomorrow', time: '6:00 AM', going: '2.4K going', image: require('../../assets/images/yoga_session_img.png') },
+  { id: '2', category: 'GEETA PATH', title: 'Bhagavad Gita Chapter 2', desc: 'Dive deep into wisdom.', date: 'Tomorrow', time: '7:30 PM', going: '3.2K going', image: require('../../assets/images/geeta_session_v3.png') },
+  { id: '3', category: 'SANSKRIT CLASS', title: 'Sanskrit Language Basics', desc: 'Learn. Chant. Connect.', date: '21 May', time: '6:30 PM', going: '1.9K going', image: require('../../assets/images/sanskrit_session_v2_exact.png') },
+  { id: '4', category: 'MEDITATION', title: 'Breathing & Meditation', desc: 'Find calm within.', date: '22 May', time: '6:00 AM', going: '2.1K going', image: require('../../assets/images/yoga_session_img.png') },
 ];
 
 const getMantraRoomName = (id: string) => {
@@ -410,7 +410,7 @@ export default function JaapLandingScreen() {
           <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
             <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
-                source={require('../../assets/images/image temple/KedarnathTemple.jpg')}
+                source={require('../../assets/images/jaap_hero_shiva_final.png')}
                 style={styles.heroBannerFill}
                 imageStyle={styles.heroBannerImageStyle}
                 resizeMode="cover"

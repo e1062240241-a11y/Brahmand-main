@@ -144,7 +144,6 @@ backend/test_urls.py
 # Added by Agent
 *.log
 *.patch
-*.png
 *.txt
 tmp/
 .pytest_cache/

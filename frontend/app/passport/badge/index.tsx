@@ -81,7 +81,7 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   
   // 1. Add all earned badges that match the filter (if any filter is present)
   const earnedMatches = badges.filter(b => {
-    if (!badgeTitle || typeof badgeTitle !== 'string') return true;
+    if (!badgeTitle) return true;
     const bt = badgeTitle.toLowerCase();
     const t = b.title?.toLowerCase() || '';
     if (bt.includes('yatra')) return t.includes('yatra') || t.includes('journey');
@@ -110,7 +110,7 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
     const isEarned = badges.some(b => preset.matcher(b.title));
     if (!isEarned) {
       let filterMatches = true;
-      if (badgeTitle && typeof badgeTitle === 'string') {
+      if (badgeTitle) {
         const bt = badgeTitle.toLowerCase();
         const t = preset.title.toLowerCase();
         if (bt.includes('yatra')) filterMatches = t.includes('yatra');
@@ -144,20 +144,20 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
   const getBadgeImage = (title: string) => {
     const cleanTitle = title.toLowerCase();
     if (cleanTitle.includes('gita')) {
-      return require('../../../assets/images/Bhagvad-geeta.jpg');
+      return require('../../../assets/images/bhagavad_gita_3d_new.png');
     } else if (cleanTitle.includes('mahabharat')) {
       return require('../../../assets/images/mahabharata.jpg');
     } else if (cleanTitle.includes('ramayan') || cleanTitle.includes('ramcharit')) {
       return require('../../../assets/images/Ramcharitmanas.jpg');
     }
-    return require('../../../assets/images/Rigveda.jpg');
+    return require('../../../assets/images/community_medal_icon.png');
   };
 
   const handleShare = async () => {
     setMenuVisible(false);
     
     // Determine what to share
-    const sharedText = typeof badgeTitle === 'string' && badgeTitle
+    const sharedText = badgeTitle 
       ? `Check out my completed reading badge for ${badgeTitle} from Brahmand!`
       : `Check out my completed reading badges from Brahmand!`;
       
@@ -244,11 +244,11 @@ function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
             </View>
           </View>
         ) : isGita ? (
-          <View style={[styles.gitaBadgeImage, { justifyContent: 'center', alignItems: 'center' }]}>
-            <View style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: '#FAF5EC', borderWidth: 4, borderColor: '#D4AF37', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 6, elevation: 5 }}>
-              <Ionicons name="book" size={72} color="#D4AF37" />
-            </View>
-          </View>
+          <Image 
+            source={require('../../../assets/images/PhotoshopPreview_Image 1.png')} 
+            style={styles.gitaBadgeImage} 
+            contentFit="contain"
+          />
         ) : (
           <View style={styles.medalOuter}>
             <LinearGradient

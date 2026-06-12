@@ -82,7 +82,7 @@ export default function CategoryScreen() {
           </TouchableOpacity>
           <View style={styles.titleContainer}>
             {category === 'Carpenter' && (
-               <Ionicons name="hammer" size={24} color="#000" style={{ marginRight: 8 }} />
+               <Image source={require('../../../assets/images/tab bar/rashi/vendor/hammer_custom.png')} style={{width: 24, height: 24, marginRight: 8}} resizeMode="contain" />
             )}
             <Text style={styles.headerTitle}>{category}</Text>
           </View>

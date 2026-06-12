@@ -833,7 +833,7 @@ if (!temple) {
  return (
   <View style={styles.container}>
     <ImageBackground 
-      source={require('../../assets/images/ancient_new_1.jpg')} 
+      source={require('../../assets/images/temple_detail_bg.png')} 
       style={StyleSheet.absoluteFill}
       resizeMode="cover"
     >
