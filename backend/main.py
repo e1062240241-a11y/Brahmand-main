@@ -8408,7 +8408,7 @@ async def get_nakshatra_report(
     logger.info("get_nakshatra_report resolved - dob_str: %s, tob_str: %s, lat: %s, lon: %s, tz: %s", dob_str, tob_str, resolved_lat, resolved_lng, resolved_tz)
 
     try:
-        data = await vedic_astro_api_service.get_kundli_data(
+        data = await astrology_api_service.get_kundli_data(
             lat=float(resolved_lat),
             lon=float(resolved_lng),
             dob_str=str(dob_str),
@@ -8417,8 +8417,8 @@ async def get_nakshatra_report(
         )
         return data
     except Exception as exc:
-        logger.error("Vedic Kundli fetch failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"VedicAstroAPI provider error: {exc}")
+        logger.error("AstrologyAPI Kundli fetch failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"AstrologyAPI provider error: {exc}")
 
 
 @api_router.get("/astrology/city-search")
@@ -8426,16 +8426,16 @@ async def search_birth_city(
     q: str,
     token_data: dict = Depends(verify_token),
 ):
-    """Search for cities, coordinates and timezone offsets using VedicAstroAPI."""
+    """Search for cities, coordinates and timezone offsets using AstrologyAPI.com."""
     if not q or len(q.strip()) < 2:
         return {"status": 200, "response": []}
     
     try:
-        data = await vedic_astro_api_service.search_city(q.strip())
+        data = await astrology_api_service.search_city(q.strip())
         return data
     except Exception as exc:
-        logger.error("Vedic city search failed: %s", exc)
-        raise HTTPException(status_code=502, detail=f"VedicAstroAPI geo-search error: {exc}")
+        logger.error("AstrologyAPI city search failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"AstrologyAPI geo-search error: {exc}")
 
 
 @api_router.get("/astrology/ask")
