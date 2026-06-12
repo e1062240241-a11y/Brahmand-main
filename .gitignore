@@ -165,3 +165,9 @@ replace_books.py
 get_color.py
 find_emoji.py
 test_result.md
+
+# Prevent corrupted mojibake duplicate Ramcharitmanas data files from being re-added.
+# Canonical Hindi-named JSON files are tracked and used by the backend routes.
+/backend/data/bhavykhatri DharmicData bhavykhatri-AddTransForGita Ramcharitmanas/*╬*
+/backend/data/bhavykhatri DharmicData bhavykhatri-AddTransForGita Ramcharitmanas/*Γ*
+/backend/data/bhavykhatri DharmicData bhavykhatri-AddTransForGita Ramcharitmanas/*┬*
