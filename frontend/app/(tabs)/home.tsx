@@ -358,7 +358,7 @@ try {
 }
 
 const baseQuickAccess = [
-  { label: 'My Krishna', subtitle: 'AI Dharma Guidance', color: '#FFF' },
+  { label: 'My Krishn', subtitle: 'AI Dharma Guidance', color: '#FFF' },
   { label: 'SOS', subtitle: 'Quick help\nfrom Sanatan', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Plan with\nVedic wisdom', color: '#FFF' },
   { label: 'Kundli', subtitle: 'Your birth chart insights', color: '#FFF' },
@@ -2129,7 +2129,7 @@ export default function HomeScreen() {
                             if (item.label === 'Panchang') {
                               cardBg = '#FFF9F0';
                               iconBg = '#FF9800';
-                            } else if (item.label === 'My Krishna') {
+                            } else if (item.label === 'My Krishn') {
                               cardBg = '#FFF8EB';
                               iconBg = '#FF6B00';
                             } else if (item.label === 'SOS') {
@@ -2143,7 +2143,7 @@ export default function HomeScreen() {
 
 
                             if (t('language') === 'hi') {
-                              if (item.label === 'My Krishna') {
+                              if (item.label === 'My Krishn') {
                                 displayLabel = 'मेरे कृष्ण';
                                 displaySubtitle = 'एआई धर्म मार्गदर्शन';
                               } else if (item.label === 'SOS') {
@@ -2177,7 +2177,7 @@ export default function HomeScreen() {
                                 activeOpacity={0.9}
                                 onPress={() => {
                                   if (item.label === 'Panchang') router.push('/panchang');
-                                  else if (item.label === 'My Krishna') router.push('/my-krishna');
+                                  else if (item.label === 'My Krishn') router.push('/my-krishna');
                                   else if (item.label === 'SOS') router.push('/sos');
                                   else if (item.label === 'Kundli') router.push('/astrology' as any);
                                   else if (item.label === 'Jyotish') router.push('/horoscope');
@@ -2194,7 +2194,7 @@ export default function HomeScreen() {
                                       </View>
                                     </View>
                                   </View>
-                                ) : item.label === 'My Krishna' ? (
+                                ) : item.label === 'My Krishn' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                                     <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
                                       <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 42, height: 42 }} contentFit="contain" />

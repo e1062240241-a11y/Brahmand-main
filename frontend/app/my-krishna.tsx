@@ -291,7 +291,7 @@ export default function MyKrishnaChat() {
               <Text style={{ fontSize: 22 }}>🪈</Text>
             </View>
             <View>
-              <Text style={styles.headerTitle}>My Krishna</Text>
+              <Text style={styles.headerTitle}>My Krishn</Text>
               <Text style={styles.headerSub}>Bhagavad Gita se guided</Text>
             </View>
           </View>

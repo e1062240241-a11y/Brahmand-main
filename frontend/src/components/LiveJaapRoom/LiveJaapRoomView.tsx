@@ -16,6 +16,7 @@ import {
   Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import Svg, { Defs, RadialGradient, Rect, Stop, Path } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -352,7 +353,8 @@ export default function LiveJaapRoomView() {
   const [isMicEnabled, setIsMicEnabled] = useState(false);
   const [activeTab, setActiveTab] = useState<'chant' | 'path'>('chant');
   const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
-  
+  const [showCompletion, setShowCompletion] = useState(false);
+  const joinTimeRef = useRef(Date.now());
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const upcomingFade = useRef(new Animated.Value(0)).current;
@@ -569,6 +571,7 @@ export default function LiveJaapRoomView() {
                   "Hanuman Chalisa Completed",
                   "Completed 1 full Hanuman Chalisa jaap session."
                 );
+                setShowCompletion(true);
               } else {
                 if (next % 108 === 0) {
                   const readableMantra = mantraType === 'shiva' 
@@ -582,6 +585,7 @@ export default function LiveJaapRoomView() {
                       ? `${readableMantra} की 1 पूरी माला (108 जाप) पूर्ण की।`
                       : `Completed 1 full Mala (108 chants) of ${readableMantra}.`
                   );
+                  setShowCompletion(true);
                 }
               }
               return next;
@@ -594,7 +598,7 @@ export default function LiveJaapRoomView() {
       
       const playAudio = async () => {
         try {
-          if (isSessionActive) {
+          if (isSessionActive && !showCompletion) {
             if (isHanuman) {
               const status = getCurrentHanumanStatus(new Date());
               if (status.isActive && !status.isCompleted && !status.isBreak) {
@@ -613,6 +617,8 @@ export default function LiveJaapRoomView() {
               }
               await audio.play();
             }
+          } else {
+            audio.pause();
           }
         } catch (e) {
           console.warn('Auto-play blocked');
@@ -626,7 +632,7 @@ export default function LiveJaapRoomView() {
         audioRef.current = null;
       };
     }
-  }, [mantraType, isSessionActive, WORDS]);
+  }, [mantraType, isSessionActive, WORDS, showCompletion]);
 
   // Handle dynamic volume changes on Web without reloading the audio
   useEffect(() => {
@@ -640,7 +646,7 @@ export default function LiveJaapRoomView() {
     if (Platform.OS === 'web' && audioRef.current && mantraType === 'hanuman') {
       const audio = audioRef.current;
       const status = getCurrentHanumanStatus(new Date());
-      if (status.isActive && !status.isCompleted && !status.isBreak) {
+      if (status.isActive && !status.isCompleted && !status.isBreak && !showCompletion) {
         audio.volume = isMuted ? 0 : (mantraType === 'hanuman' ? 0.3 : 0.9);
         if (audio.paused) {
           audio.play().catch(() => {});
@@ -652,7 +658,7 @@ export default function LiveJaapRoomView() {
         }
       }
     }
-  }, [hanumanStatus.isActive, hanumanStatus.isActive ? hanumanStatus.isCompleted : false, hanumanStatus.isActive ? hanumanStatus.isBreak : false, isMuted, mantraType]);
+  }, [hanumanStatus.isActive, hanumanStatus.isActive ? hanumanStatus.isCompleted : false, hanumanStatus.isActive ? hanumanStatus.isBreak : false, isMuted, mantraType, showCompletion]);
 
   // Periodic drift check for Web
   useEffect(() => {
@@ -841,6 +847,14 @@ export default function LiveJaapRoomView() {
     }).start(() => { setReactions(prev => prev.filter(r => r.id !== id)); });
   };
 
+  if (showCompletion) {
+    router.replace({
+      pathname: '/jaap-completed',
+      params: { mantraType, fromHome }
+    });
+    return null;
+  }
+
   return (
     <ImageBackground
       source={require('../../../assets/images/live_jaap_room_bg.png')}
@@ -852,10 +866,14 @@ export default function LiveJaapRoomView() {
         {/* NEW HEADER */}
         <View style={styles.headerNew}>
           <TouchableOpacity onPress={() => {
-              if (mantraType === 'kedarnath' || fromHome === 'true') {
-                router.replace('/(tabs)/home');
+              if (Date.now() - joinTimeRef.current > 5000) {
+                setShowCompletion(true);
               } else {
-                router.replace('/(tabs)/jaap');
+                if (mantraType === 'kedarnath' || fromHome === 'true') {
+                  router.replace('/(tabs)/home');
+                } else {
+                  router.replace('/(tabs)/jaap');
+                }
               }
             }} style={styles.backBtnNew}>
             <Ionicons name="chevron-back" size={24} color="#000" />
@@ -1559,5 +1577,122 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.3,
+  },
+  completionContainer: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  completionSafeArea: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+  },
+  completionLotusContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255, 255, 255, 0.90)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  completionLotusEmoji: {
+    fontSize: 28,
+  },
+  completionTitle: {
+    fontSize: 36,
+    fontFamily: 'Outfit_700Bold',
+    color: '#5A4136',
+    textAlign: 'center',
+    letterSpacing: -0.9,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  completionSubtitle: {
+    fontSize: 18,
+    fontFamily: 'Outfit_500Medium',
+    color: '#5A4136',
+    opacity: 0.9,
+    textAlign: 'center',
+    lineHeight: 29.25,
+    paddingHorizontal: 20,
+    marginBottom: 24,
+  },
+  completionCard: {
+    width: '100%',
+    maxWidth: 342,
+    borderRadius: 24,
+    padding: 32,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.30)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 8 },
+    overflow: 'hidden',
+  },
+  completionBlurView: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  completionCardText1: {
+    fontSize: 18,
+    fontFamily: 'Outfit_500Medium',
+    color: '#FFF',
+    textAlign: 'center',
+    lineHeight: 24.75,
+    marginBottom: 16,
+    zIndex: 1,
+  },
+  completionCardText2: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    fontStyle: 'italic',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    zIndex: 1,
+  },
+  completionButton: {
+    width: '100%',
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    zIndex: 1,
+  },
+  completionButtonText: {
+    fontSize: 16,
+    fontFamily: 'Outfit_500Medium',
+    color: '#FFF',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+  completionFooterContainer: {
+    marginBottom: 30,
+    alignItems: 'center',
+    width: '100%',
+  },
+  completionFooterMantra: {
+    fontSize: 14,
+    fontFamily: 'Outfit_700Bold',
+    color: 'rgba(255, 255, 255, 0.8)',
+    letterSpacing: 1.4,
+    textAlign: 'center',
   },
 });

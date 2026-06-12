@@ -827,6 +827,14 @@ export default function RootLayout() {
                   animation: 'slide_from_right',
                 }}
               />
+              <Stack.Screen
+                key="jaap-completed"
+                name="jaap-completed"
+                options={{
+                  animation: 'fade',
+                  gestureEnabled: false
+                }}
+              />
               {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>
             <GlobalFAB />

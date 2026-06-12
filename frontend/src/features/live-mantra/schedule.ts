@@ -356,7 +356,7 @@ export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string)
         sessionEnd.setHours(0, 15, 0, 0);
         isMatch = now >= sessionStart && now < sessionEnd;
       } else if (currentHour === 0 && currentMin < 15) {
-        sessionStart.setDate(sessionStart.setDate() - 1);
+        sessionStart.setDate(sessionStart.getDate() - 1);
         sessionStart.setHours(21, 0, 0, 0);
         sessionEnd.setHours(0, 15, 0, 0);
         isMatch = now >= sessionStart && now < sessionEnd;

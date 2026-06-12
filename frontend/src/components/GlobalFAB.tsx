@@ -341,7 +341,7 @@ export function GlobalFAB() {
                   { label: 'Festival', key: 'festival', icon: 'calendar-outline' as const, route: '/festivals' },
                   { label: 'Kundli', key: 'kundli', icon: 'planet-outline' as const, route: '/astrology' },
                   { label: 'Brahmand\nPassport', key: 'brahmandPassport', icon: 'compass-outline' as const, route: '/passport' },
-                  { label: 'My Krishna', key: 'myKrishna', icon: 'heart-outline' as const, route: '/my-krishna' },
+                  { label: 'My Krishn', key: 'myKrishna', icon: 'heart-outline' as const, route: '/my-krishna' },
                   { label: 'Panchang', key: 'panchang', icon: 'today-outline' as const, route: '/panchang' },
                   { label: 'Brahmand\nLibrary', key: 'brahmandLibrary', icon: 'library-outline' as const, route: '/library' },
                   { label: 'Jyotish', key: 'jyotish', icon: 'star-outline' as const, route: '/horoscope' },
