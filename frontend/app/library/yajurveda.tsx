@@ -122,14 +122,12 @@ export default function YajurvedaPage() {
   };
 
   useEffect(() => {
-    if (isOpened) {
-      fetchChapterData(currentChapter);
-    }
-  }, [currentChapter, isOpened]);
+    fetchChapterData(currentChapter);
+  }, [currentChapter]);
 
   // Restore scroll position after loaded
   useEffect(() => {
-    if (isOpened && !loading && verses.length > 0 && !initialScrollRestored) {
+    if (!loading && verses.length > 0 && !initialScrollRestored) {
       if (lastReadScrollY > 0) {
         setTimeout(() => {
           scrollViewRef.current?.scrollTo({ y: lastReadScrollY, animated: true });
@@ -137,7 +135,7 @@ export default function YajurvedaPage() {
       }
       setInitialScrollRestored(true);
     }
-  }, [isOpened, loading, verses, initialScrollRestored]);
+  }, [loading, verses, initialScrollRestored]);
 
   // Animation values
   const floatingY = useSharedValue(0);
@@ -225,7 +223,11 @@ export default function YajurvedaPage() {
       <StatusBar translucent backgroundColor="transparent" barStyle={nightMode ? "light-content" : "dark-content"} />
       
       {!isOpened ? (
-        <View style={styles.contentContainer}>
+        <LinearGradient
+          colors={['#FF8D57', '#EA9B76', '#FFEEE5', '#FFEEE5']}
+          locations={[0, 0.0913, 0.25, 1]}
+          style={styles.contentContainer}
+        >
           {/* Subtle Glow behind the book */}
           <Animated.View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }, glowAnimatedStyle]}>
             <LinearGradient
@@ -255,9 +257,9 @@ export default function YajurvedaPage() {
             <Ionicons name="sparkles" size={16} color="#B85D19" style={{ marginRight: 6 }} />
             <Text style={styles.instructionText}>यात्रा शुरू करने के लिए छुएं</Text>
           </View>
-        </View>
+        </LinearGradient>
       ) : (
-        <Animated.View style={[StyleSheet.absoluteFillObject, readingScreenStyle]}>
+        <View style={{ flex: 1 }}>
           <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
             {/* Sticky Top Header Container */}
             {/* Unified Sticky Header */}
@@ -458,7 +460,7 @@ export default function YajurvedaPage() {
             </View>
           </View>
           </ImageBackground>
-        </Animated.View>
+        </View>
       )}
 
       {/* Bookmarks Modal */}
@@ -507,7 +509,7 @@ export default function YajurvedaPage() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FFF3EB',
+    backgroundColor: '#FFEEE5',
   },
   header: {
     flexDirection: 'row',
@@ -748,7 +750,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF3EB',
+    backgroundColor: '#FFEEE5',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: '60%',

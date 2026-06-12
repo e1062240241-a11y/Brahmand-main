@@ -62,7 +62,7 @@ export default function RamayanPage() {
   const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
   
   const progress = getBookProgress(BOOK_ID);
-  const { lastReadChapter, lastReadScrollY, bookmarks } = progress;
+  const { lastReadChapter, lastReadScrollY, bookmarks, progressPercent } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
   const [showBookmarksMenu, setShowBookmarksMenu] = useState(false);
@@ -76,6 +76,7 @@ export default function RamayanPage() {
   const [loading, setLoading] = useState(false);
   const [verses, setVerses] = useState<any[]>([]);
   const [totalVerses, setTotalVerses] = useState(0);
+  const [visibleLimit, setVisibleLimit] = useState(50);
   const [initialScrollRestored, setInitialScrollRestored] = useState(false);
   
   const isBookmarked = bookmarks.some(b => b.chapter === currentChapter);
@@ -106,12 +107,18 @@ export default function RamayanPage() {
       progressPercent: clampedProgress,
       lastOpenedTime: Date.now(),
     });
+
+    // Lazy-load more verses when scrolling near the bottom
+    if (verses.length > 0 && scrollableHeight - scrollY < 1200) {
+      setVisibleLimit(prev => Math.min(prev + 50, verses.length));
+    }
   };
 
   const handleChapterChange = (chNum: number) => {
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);
+    setVisibleLimit(50);
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
@@ -121,8 +128,14 @@ export default function RamayanPage() {
     try {
       const response = await getRamayanChapter(chNum);
       if (response && response.data) {
-        setVerses(response.data.verses || []);
-        setTotalVerses(response.data.total_verses || 0);
+        const loadedVerses = response.data.verses || [];
+        setVerses(loadedVerses);
+        setTotalVerses(response.data.total_verses || loadedVerses.length || 0);
+        // Set initial visible limit based on saved reading progress
+        const isResuming = lastReadChapter === chNum;
+        const pct = isResuming ? (progressPercent || 0) : 0;
+        const initialLimit = Math.max(50, Math.ceil((pct / 100) * loadedVerses.length) + 50);
+        setVisibleLimit(initialLimit);
       }
     } catch (error) {
       console.error('Failed to fetch chapter:', error);
@@ -132,14 +145,12 @@ export default function RamayanPage() {
   };
 
   useEffect(() => {
-    if (isOpened) {
-      fetchChapterData(currentChapter);
-    }
-  }, [currentChapter, isOpened]);
+    fetchChapterData(currentChapter);
+  }, [currentChapter]);
 
   // Restore scroll position after loaded
   useEffect(() => {
-    if (isOpened && !loading && verses.length > 0 && !initialScrollRestored) {
+    if (!loading && verses.length > 0 && !initialScrollRestored) {
       if (lastReadScrollY > 0) {
         setTimeout(() => {
           scrollViewRef.current?.scrollTo({ y: lastReadScrollY, animated: true });
@@ -147,7 +158,7 @@ export default function RamayanPage() {
       }
       setInitialScrollRestored(true);
     }
-  }, [isOpened, loading, verses, initialScrollRestored]);
+  }, [loading, verses, initialScrollRestored]);
 
   // Animation values
   const floatingY = useSharedValue(0);
@@ -235,7 +246,11 @@ export default function RamayanPage() {
       <StatusBar translucent backgroundColor="transparent" barStyle={nightMode ? "light-content" : "dark-content"} />
       
       {!isOpened ? (
-        <View style={styles.contentContainer}>
+        <LinearGradient
+          colors={['#FF8D57', '#EA9B76', '#FFEEE5', '#FFEEE5']}
+          locations={[0, 0.0913, 0.25, 1]}
+          style={styles.contentContainer}
+        >
           {/* Subtle Glow behind the book */}
           <Animated.View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }, glowAnimatedStyle]}>
             <LinearGradient
@@ -265,9 +280,9 @@ export default function RamayanPage() {
             <Ionicons name="sparkles" size={16} color="#B85D19" style={{ marginRight: 6 }} />
             <Text style={styles.instructionText}>यात्रा शुरू करने के लिए छुएं</Text>
           </View>
-        </View>
+        </LinearGradient>
       ) : (
-        <Animated.View style={[StyleSheet.absoluteFillObject, readingScreenStyle]}>
+        <View style={{ flex: 1 }}>
           <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
             {/* Unified Sticky Header */}
             <View style={{
@@ -382,7 +397,7 @@ export default function RamayanPage() {
                   </Text>
                 </View>
               ) : (
-                verses.map((verse: any, index: number) => (
+                verses.slice(0, visibleLimit).map((verse: any, index: number) => (
                   <View key={`verse-${index}`} style={styles.verseContainer}>
                     {/* Sanskrit Text */}
                     <View style={styles.sanskritWrapper}>
@@ -467,7 +482,7 @@ export default function RamayanPage() {
             </View>
           </View>
           </ImageBackground>
-        </Animated.View>
+        </View>
       )}
 
       {/* Bookmarks Modal */}
@@ -516,7 +531,7 @@ export default function RamayanPage() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#FFF3EB',
+    backgroundColor: '#FFEEE5',
   },
   header: {
     flexDirection: 'row',
@@ -757,7 +772,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#FFF3EB',
+    backgroundColor: '#FFEEE5',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: '60%',
