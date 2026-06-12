@@ -60,7 +60,6 @@ from workers.background_tasks import task_queue
 from services.push_notification_service import push_service
 from services.notification_service import NotificationService
 from services.astrology_api_service import astrology_api_service
-from services.vedic_astro_api_service import vedic_astro_api_service
 from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
