@@ -62,7 +62,7 @@ const BOOK_COVERS: Record<string, any> = {
   'rigveda': rigvedaCover,
   'yajurveda': yajurvedaCover,
   'ramcharitmanas': ramcharitmanasCover,
-  'bhagvad-geeta': require('../../assets/images/bhagavad_gita_3d_new.png'),
+  'bhagvad-geeta': geetaCover,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -71,6 +71,7 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const gitaState = useGitaStore();
 
   const toggle = (id: string) =>
     setSaved(prev => {
@@ -155,8 +156,6 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
 
         {/* ── Dynamic Continue Reading (All Books) ── */}
         {(() => {
-          const gitaState = useGitaStore();
-          
           let recentBooks = observedProgress.map(p => ({
             id: p.bookId,
             chapterName: p.chapterName,

@@ -77,7 +77,7 @@ export default function SacredScriptures() {
             </View>
             
             <Text style={styles.quoteText}>
-              "The Song of God"—a timeless conversation on dharma, yoga, and the path to liberation.
+              {"\"The Song of God\"—a timeless conversation on dharma, yoga, and the path to liberation."}
             </Text>
             
             <TouchableOpacity 

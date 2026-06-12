@@ -226,7 +226,7 @@ export default function ContinueReadingPage() {
           <View style={s.verseContent}>
             <MaterialCommunityIcons name="format-quote-open" size={32} color={ORANGE} style={{ marginBottom: 10 }} />
             <Text style={s.verseTxt}>
-              "You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions."
+              {"\"You have a right to perform your prescribed duties, but you are not entitled to the fruits of your actions.\""}
             </Text>
             <Text style={s.verseRef}>— VERSE 2.47</Text>
           </View>

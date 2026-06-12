@@ -271,55 +271,61 @@ export default function RigvedaPage() {
               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(20, 10, 5, 0.85)' }]} />
             )}
             
-            <View style={[styles.stickyTopHeader, { 
-              paddingTop: insets.top + 10,
-              backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.9)',
-              borderBottomColor: nightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(140, 58, 0, 0.1)'
-            }]}>
-              <TouchableOpacity 
-                style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
-                onPress={() => router.back()}
-              >
-                <Ionicons name="chevron-back" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
-              </TouchableOpacity>
-
-              <View style={styles.stickyChapterTitle}>
-                <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* ऋग्वेद *</Text>
-                <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* {CHAPTER_TITLES[currentChapter]} *</Text>
-              </View>
-
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TouchableOpacity 
-                  style={[styles.iconBtnWrapper, { marginRight: 8 }, nightMode && styles.iconBtnWrapperNight]} 
-                  onPress={() => setShowBookmarksMenu(true)}
-                >
-                  <Ionicons name="list" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
-                </TouchableOpacity>
-
+            {/* Unified Sticky Header */}
+            <View style={{
+              backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.95)',
+              borderBottomWidth: 1,
+              borderBottomColor: nightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(140, 58, 0, 0.15)',
+              zIndex: 20,
+            }}>
+              {/* Sticky Top Header Container */}
+              <View style={[styles.stickyTopHeader, { 
+                paddingTop: insets.top + 4,
+                backgroundColor: 'transparent',
+              }]}>
                 <TouchableOpacity 
                   style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
-                  onPress={handleToggleBookmark}
+                  onPress={() => router.back()}
                 >
-                  <Image 
-                    source={isBookmarked ? bookmarkIconFilledImage : bookmarkIconImage} 
-                    style={{
-                      width: 26, 
-                      height: 26, 
-                      tintColor: isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93'),
-                      opacity: isBookmarked ? 1 : 0.7
-                    }} 
-                  />
+                  <Ionicons name="chevron-back" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
                 </TouchableOpacity>
+
+                <View style={styles.stickyChapterTitle}>
+                  <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* ऋग्वेद *</Text>
+                  <Text style={[styles.headerText, nightMode && styles.textNightLight]}>* {CHAPTER_TITLES[currentChapter]} *</Text>
+                </View>
+
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TouchableOpacity 
+                    style={[styles.iconBtnWrapper, { marginRight: 8 }, nightMode && styles.iconBtnWrapperNight]} 
+                    onPress={() => setShowBookmarksMenu(true)}
+                  >
+                    <Ionicons name="list" size={24} color={nightMode ? "#FFD5B8" : "#5C250A"} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.iconBtnWrapper, nightMode && styles.iconBtnWrapperNight]} 
+                    onPress={handleToggleBookmark}
+                  >
+                    <Image 
+                      source={isBookmarked ? bookmarkIconFilledImage : bookmarkIconImage} 
+                      style={{
+                        width: 26, 
+                        height: 26, 
+                        tintColor: isBookmarked ? (nightMode ? '#FFD5B8' : '#8C3A00') : (nightMode ? '#887766' : '#A09B93'),
+                        opacity: isBookmarked ? 1 : 0.7
+                      }} 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
               {/* Sticky Chapter Navigator */}
-              <View style={{ backgroundColor: nightMode ? '#1C1510' : '#FAF6ED', zIndex: 10 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.chapterNavContainer}
-                >
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={[styles.chapterNavContainer, { marginBottom: 0 }]}
+              >
                 {Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1).map((chNum) => (
                   <TouchableOpacity
                     key={chNum}
@@ -338,9 +344,9 @@ export default function RigvedaPage() {
                       मण्डल {convertToHindiNumerals(chNum)}
                     </Text>
                   </TouchableOpacity>
-                                  ))}
-                </ScrollView>
-              </View>
+                ))}
+              </ScrollView>
+            </View>
 
           <ScrollView
             ref={scrollViewRef}
