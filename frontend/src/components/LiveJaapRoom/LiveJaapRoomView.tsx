@@ -856,9 +856,9 @@ export default function LiveJaapRoomView() {
     let timer: any;
     const isHanuman = mantraType === 'hanuman';
     if (isHolding) {
-      timer = setTimeout(() => { 
-        setIsHolding(false); 
-        setCurrentIndex(0); 
+      timer = setTimeout(() => {
+        setIsHolding(false);
+        setCurrentIndex(0);
         if (mantraType === 'shani_chalisa') {
           setPersonalCount(prev => {
             const next = prev + 1;
@@ -867,7 +867,7 @@ export default function LiveJaapRoomView() {
             return next;
           });
         }
-      }, 4000); 
+      }, 4000);
       return () => clearTimeout(timer);
     }
     const currentWord = WORDS[currentIndex] || '';

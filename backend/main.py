@@ -102,6 +102,8 @@ from routes.video_upload_routes import (
     _generate_video_thumbnail,
     MAX_VIDEO_UPLOAD_BYTES,
     MAX_VIDEO_DURATION_SECONDS,
+    FFMPEG_BIN,
+    FFPROBE_BIN,
 )
 from utils.helpers import (
     WISDOM_QUOTES,
@@ -2443,41 +2445,50 @@ async def _upload_post_impl(
 
     try:
         if content_type.startswith('video/'):
-            _ensure_ffmpeg_tools_available()
+            has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
             temp_input_path, original_size_bytes = await _save_upload_to_temp_file(file)
-            metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
-            duration_seconds = metadata.get('duration') or 0.0
-            media_width = metadata.get('width') or 0
-            media_height = metadata.get('height') or 0
+            
+            if has_ffmpeg:
+                metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
+                duration_seconds = metadata.get('duration') or 0.0
+                media_width = metadata.get('width') or 0
+                media_height = metadata.get('height') or 0
 
-            if duration_seconds <= 0:
-                raise HTTPException(status_code=400, detail='Unable to determine video duration')
-            if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
+                if duration_seconds <= 0:
+                    raise HTTPException(status_code=400, detail='Unable to determine video duration')
+                if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
+                    )
+
+                target_width, target_height, _ = _pick_target_profile(media_width, media_height)
+                temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+                temp_output_file.close()
+
+                await asyncio.to_thread(
+                    _compress_video,
+                    temp_input_path,
+                    temp_output_file.name,
+                    target_width,
+                    target_height,
                 )
 
-            target_width, target_height, _ = _pick_target_profile(media_width, media_height)
-            temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
-            temp_output_file.close()
+                # Generate thumbnail
+                temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
+                temp_thumb_file.close()
+                await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
 
-            await asyncio.to_thread(
-                _compress_video,
-                temp_input_path,
-                temp_output_file.name,
-                target_width,
-                target_height,
-            )
-
-            # Generate thumbnail
-            temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
-            temp_thumb_file.close()
-            await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
-
-            compressed_size_bytes = os.path.getsize(temp_output_file.name)
-            if compressed_size_bytes <= 0:
-                raise HTTPException(status_code=500, detail='Compressed video is empty')
+                compressed_size_bytes = os.path.getsize(temp_output_file.name)
+                if compressed_size_bytes <= 0:
+                    raise HTTPException(status_code=500, detail='Compressed video is empty')
+            else:
+                logger.warning("ffmpeg is not installed on server; bypassing compression")
+                temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+                temp_output_file.close()
+                import shutil
+                shutil.copy2(temp_input_path, temp_output_file.name)
+                compressed_size_bytes = original_size_bytes
 
             content_type = 'video/mp4'
             base_url = str(request.base_url)
@@ -2635,7 +2646,7 @@ async def _upload_chat_media_impl(
 ):
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
-    
+
     header = await file.read(32)
     await file.seek(0)
 
@@ -12284,7 +12295,7 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
     async def _get_communities():
         try:
-            return await db.get_user_communities(user_id=user_id)
+            return await FirebaseCommunityService.get_user_communities(user_id=user_id)
         except Exception:
             return []
 

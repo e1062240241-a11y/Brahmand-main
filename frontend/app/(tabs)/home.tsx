@@ -443,8 +443,8 @@ export default function HomeScreen() {
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
 
-  const [hanumanChantCount, setHanumanChantCount] = useState(1248);
-  const [shivaChantCount, setShivaChantCount] = useState(1248);
+  const [hanumanChantCount, setHanumanChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
+  const [shivaChantCount, setShivaChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -458,8 +458,9 @@ export default function HomeScreen() {
         if (active && response && response.data) {
           const hanuman = response.data.jaap_hanuman || 0;
           const shiva = response.data.jaap_shiva || 0;
-          setHanumanChantCount(hanuman);
-          setShivaChantCount(shiva);
+          // If count is > 10, show count * 18, else show randomized count (2 to 18) directly
+          setHanumanChantCount(hanuman > 10 ? hanuman * 18 : Math.floor(Math.random() * 17) + 2);
+          setShivaChantCount(shiva > 10 ? shiva * 18 : Math.floor(Math.random() * 17) + 2);
         }
       } catch (error) {
         console.warn('Error fetching active jaap counts:', error);
@@ -2306,7 +2307,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>{(hanumanChantCount * 18).toLocaleString()} devotees are chanting</Text>
+                                  }]}>{hanumanChantCount.toLocaleString()} devotees are chanting</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2392,7 +2393,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>{(shivaChantCount * 18).toLocaleString()} {t('devoteesChanting')}</Text>
+                                  }]}>{shivaChantCount.toLocaleString()} {t('devoteesChanting')}</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2702,7 +2703,7 @@ export default function HomeScreen() {
                               <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                                 {cityName}
                               </Text>
-                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 {t('members')}</Text>
+                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityComm?.member_count || cityComm?.members_count || 0} {t('members')}</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                           </TouchableOpacity>
@@ -2721,7 +2722,7 @@ export default function HomeScreen() {
                             realGroupName = 'पुणे भोजन साझाकरण समूह';
                           }
                         }
-                        const localMembers = localComm ? (localComm.member_count || localComm.members_count || 12) : 236;
+                        const localMembers = localComm ? (localComm.member_count || localComm.members_count || 0) : 0;
                         const localSubgroup = localComm?.type || 'city';
                         return (
                           <TouchableOpacity

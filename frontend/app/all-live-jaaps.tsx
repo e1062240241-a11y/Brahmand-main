@@ -79,7 +79,13 @@ export default function AllLiveJaapsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const [now, setNow] = React.useState(new Date());
-  const [activeCounts, setActiveCounts] = React.useState<Record<string, number>>({});
+  const [activeCounts, setActiveCounts] = React.useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
+      initial[room] = Math.floor(Math.random() * 17) + 2;
+    });
+    return initial;
+  });
 
   React.useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 15_000);
@@ -94,7 +100,13 @@ export default function AllLiveJaapsScreen() {
           params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
         });
         if (active && response && response.data) {
-          setActiveCounts(response.data);
+          const sanitizedData: Record<string, number> = {};
+          Object.keys(response.data).forEach((key) => {
+            const realCount = response.data[key] || 0;
+            // If count is > 10, show count * 18, else show randomized count (2 to 18) directly
+            sanitizedData[key] = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+          });
+          setActiveCounts(sanitizedData);
         }
       } catch (error) {
         console.warn('Error fetching active jaap counts:', error);
