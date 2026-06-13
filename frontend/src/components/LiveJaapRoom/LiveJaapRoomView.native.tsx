@@ -952,15 +952,7 @@ export default function LiveJaapRoomView() {
         {/* NEW HEADER */}
         <View style={styles.headerNew}>
           <TouchableOpacity onPress={() => {
-              if (Date.now() - joinTimeRef.current > 5000) {
-                setShowCompletion(true);
-              } else {
-                if (mantraType === 'kedarnath' || fromHome === 'true') {
-                  router.replace('/(tabs)/home');
-                } else {
-                  router.replace('/(tabs)/jaap');
-                }
-              }
+              setShowCompletion(true);
             }} style={styles.headerBtn}>
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>

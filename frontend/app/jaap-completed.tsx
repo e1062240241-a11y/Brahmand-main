@@ -7,6 +7,7 @@ import {
   ImageBackground,
   StatusBar,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -36,17 +37,20 @@ export default function JaapCompleted() {
       resizeMode="cover"
     >
       <StatusBar barStyle="light-content" />
-      <View style={[styles.safeArea, { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 20 }]}>
-        {/* Header Lotus Icon */}
-        <View style={styles.lotusContainer}>
-          <Text style={styles.lotusEmoji}>🪷</Text>
-        </View>
+      <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]}>
+        {/* Header Section */}
+        <View style={styles.headerContainer}>
+          {/* Header Lotus Icon */}
+          <View style={styles.lotusContainer}>
+            <Text style={styles.lotusEmoji}>🪷</Text>
+          </View>
 
-        {/* Heading Section */}
-        <Text style={styles.title}>You Did It!</Text>
-        <Text style={styles.subtitle}>
-          Your effort, your time, your energy — all have meaning.
-        </Text>
+          {/* Heading Section */}
+          <Text style={styles.title}>You Did It!</Text>
+          <Text style={styles.subtitle}>
+            Your effort, your time, your energy — all have meaning.
+          </Text>
+        </View>
 
         {/* Spacer */}
         <View style={{ flex: 1 }} />
@@ -72,8 +76,8 @@ export default function JaapCompleted() {
           </TouchableOpacity>
         </View>
 
-        {/* Spacer */}
-        <View style={{ flex: 1 }} />
+        {/* Space after card to push it down */}
+        <View style={{ height: 32 }} />
 
         {/* Footer Mantra */}
         <View style={styles.footerContainer}>
@@ -96,6 +100,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 24,
   },
+  headerContainer: {
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 10,
+    gap: 16,
+  },
   lotusContainer: {
     width: 68,
     height: 68,
@@ -103,7 +113,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.90)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 40,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 10,
@@ -114,22 +123,29 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 36,
-    fontFamily: 'Outfit_700Bold',
     color: '#5A4136',
     textAlign: 'center',
+    fontWeight: '700',
+    lineHeight: 40,
     letterSpacing: -0.9,
-    marginTop: 24,
-    marginBottom: 8,
+    ...Platform.select({
+      ios: { fontFamily: 'System' },
+      android: { fontFamily: 'sans-serif' },
+      default: { fontFamily: 'System' },
+    }),
   },
   subtitle: {
     fontSize: 18,
-    fontFamily: 'Outfit_500Medium',
     color: '#5A4136',
-    opacity: 0.9,
     textAlign: 'center',
+    fontWeight: '600',
     lineHeight: 29.25,
     paddingHorizontal: 20,
-    marginBottom: 24,
+    ...Platform.select({
+      ios: { fontFamily: 'System' },
+      android: { fontFamily: 'sans-serif' },
+      default: { fontFamily: 'System' },
+    }),
   },
   card: {
     width: '100%',
@@ -153,42 +169,62 @@ const styles = StyleSheet.create({
   },
   cardText1: {
     fontSize: 18,
-    fontFamily: 'Outfit_500Medium',
     color: '#FFF',
     textAlign: 'center',
+    fontWeight: '500',
     lineHeight: 24.75,
     marginBottom: 16,
     zIndex: 1,
+    ...Platform.select({
+      ios: { fontFamily: 'System' },
+      android: { fontFamily: 'sans-serif' },
+      default: { fontFamily: 'System' },
+    }),
   },
   cardText2: {
     fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
     fontStyle: 'italic',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 255, 255, 0.80)',
     textAlign: 'center',
+    fontWeight: '400',
     lineHeight: 20,
     marginBottom: 24,
     zIndex: 1,
+    ...Platform.select({
+      ios: { fontFamily: 'System' },
+      android: { fontFamily: 'sans-serif' },
+      default: { fontFamily: 'System' },
+    }),
   },
   button: {
-    width: '100%',
     height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FF7B00',
+    paddingTop: 11.5,
+    paddingBottom: 12.5,
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'stretch',
+    borderRadius: 9999,
+    backgroundColor: '#FF7B00',
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
     zIndex: 1,
   },
   buttonText: {
     fontSize: 16,
-    fontFamily: 'Outfit_500Medium',
     color: '#FFF',
+    textAlign: 'center',
+    fontWeight: '500',
+    lineHeight: 20,
     letterSpacing: 0.7,
     textTransform: 'uppercase',
+    ...Platform.select({
+      ios: { fontFamily: 'System' },
+      android: { fontFamily: 'sans-serif' },
+      default: { fontFamily: 'System' },
+    }),
   },
   footerContainer: {
     marginBottom: 20,

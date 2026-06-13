@@ -29,6 +29,7 @@ import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurre
 import api from '../../src/services/api';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
+import { Svg, Path } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -36,6 +37,11 @@ const BANNER_WIDTH = SCREEN_WIDTH - BANNER_H_MARGIN * 2;
 const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
 const HERO_DOT_COUNT = 4;
+
+const UPCOMING_CARD_WIDTH = 115;
+const UPCOMING_CARD_HEIGHT = 180;
+const UPCOMING_GRID_PADDING = Math.max(10, (SCREEN_WIDTH - 361) / 2);
+
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -78,6 +84,52 @@ const UPCOMING_SESSIONS = [
   { id: '3', category: 'SANSKRIT CLASS', title: 'Sanskrit Language Basics', desc: 'Learn. Chant. Connect.', date: '21 May', time: '6:30 PM', going: '1.9K going', image: require('../../assets/images/sanskrit_session_v2_exact.png') },
   { id: '4', category: 'MEDITATION', title: 'Breathing & Meditation', desc: 'Find calm within.', date: '22 May', time: '6:00 AM', going: '2.1K going', image: require('../../assets/images/yoga_session_img.png') },
 ];
+
+const UPCOMING_JAAPS = [
+  {
+    id: 'uj1',
+    title: 'Ganesh Aarti',
+    titleHi: 'गणेश आरती',
+    mantraType: 'ganesh_aarti',
+    image: require('../../assets/images/upcoming_ganesh.jpg'),
+  },
+  {
+    id: 'uj2',
+    title: 'Shani Chalisa',
+    titleHi: 'शनि चालीसा',
+    mantraType: 'shani_chalisa',
+    image: require('../../assets/images/upcoming_shani.jpg'),
+  },
+  {
+    id: 'uj3',
+    title: 'Shiv Mantra',
+    titleHi: 'शिव मंत्र',
+    mantraType: 'shiva',
+    image: require('../../assets/images/upcoming_shiva.jpg'),
+  },
+  {
+    id: 'uj4',
+    title: 'Ganga Mantra',
+    titleHi: 'गंगा मंत्र',
+    mantraType: 'ganga',
+    image: require('../../assets/images/upcoming_ganga.jpg'),
+  },
+  {
+    id: 'uj5',
+    title: 'Gayatri Mantra',
+    titleHi: 'गायत्री मंत्र',
+    mantraType: 'gayatri',
+    image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png'),
+  },
+  {
+    id: 'uj6',
+    title: 'Durga Saptashati',
+    titleHi: 'दुर्गा सप्तशती',
+    mantraType: 'durga',
+    image: require('../../assets/images/upcoming_durga.png'),
+  },
+];
+
 
 const getMantraRoomName = (id: string) => {
   if (id === '1') return 'jaap_hanuman';
@@ -153,16 +205,28 @@ export default function JaapLandingScreen() {
       if (response.data && response.data.reminders) {
         const loadedReminders: Record<string, boolean> = {};
         response.data.reminders.forEach((r: any) => {
-          let jaapId = '';
-          if (r.mantra_type === 'hanuman') jaapId = '1';
-          else if (r.mantra_type === 'krishna') jaapId = '2';
-          else if (r.mantra_type === 'shiva') jaapId = '3';
-          else if (r.mantra_type === 'gayatri') jaapId = '4';
-          else if (r.mantra_type === 'ganesh') jaapId = '5';
-          else if (r.mantra_type === 'laxmi') jaapId = '6';
-          
-          if (jaapId) {
-            loadedReminders[jaapId] = true;
+          if (r.mantra_type === 'hanuman') {
+            loadedReminders['1'] = true;
+          } else if (r.mantra_type === 'krishna') {
+            loadedReminders['2'] = true;
+          } else if (r.mantra_type === 'shiva') {
+            loadedReminders['3'] = true;
+            loadedReminders['uj3'] = true;
+          } else if (r.mantra_type === 'gayatri') {
+            loadedReminders['4'] = true;
+            loadedReminders['uj5'] = true;
+          } else if (r.mantra_type === 'ganesh') {
+            loadedReminders['5'] = true;
+          } else if (r.mantra_type === 'laxmi') {
+            loadedReminders['6'] = true;
+          } else if (r.mantra_type === 'ganesh_aarti') {
+            loadedReminders['uj1'] = true;
+          } else if (r.mantra_type === 'shani_chalisa') {
+            loadedReminders['uj2'] = true;
+          } else if (r.mantra_type === 'ganga') {
+            loadedReminders['uj4'] = true;
+          } else if (r.mantra_type === 'durga') {
+            loadedReminders['uj6'] = true;
           }
         });
         setReminders(loadedReminders);
@@ -179,7 +243,18 @@ export default function JaapLandingScreen() {
         session_name: sessionName,
       });
       const active = response.data.active;
-      setReminders(prev => ({ ...prev, [jaapId]: active }));
+      
+      setReminders(prev => {
+        const updated = { ...prev, [jaapId]: active };
+        if (jaapId === '3' || jaapId === 'uj3') {
+          updated['3'] = active;
+          updated['uj3'] = active;
+        } else if (jaapId === '4' || jaapId === 'uj5') {
+          updated['4'] = active;
+          updated['uj5'] = active;
+        }
+        return updated;
+      });
       
       let readableMantra = '';
       if (t('language') === 'hi') {
@@ -189,9 +264,17 @@ export default function JaapLandingScreen() {
         else if (mantraType === 'gayatri') readableMantra = 'गायत्री मंत्र';
         else if (mantraType === 'ganesh') readableMantra = 'गणेश मंत्र';
         else if (mantraType === 'laxmi') readableMantra = 'लक्ष्मी मंत्र';
+        else if (mantraType === 'ganesh_aarti') readableMantra = 'गणेश आरती';
+        else if (mantraType === 'shani_chalisa') readableMantra = 'शनि चालीसा';
+        else if (mantraType === 'ganga') readableMantra = 'गंगा मंत्र';
+        else if (mantraType === 'durga') readableMantra = 'दुर्गा सप्तशती';
         else readableMantra = `${mantraType} जाप`;
       } else {
-        readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Jaap`;
+        if (mantraType === 'ganesh_aarti') readableMantra = 'Ganesh Aarti';
+        else if (mantraType === 'shani_chalisa') readableMantra = 'Shani Chalisa';
+        else if (mantraType === 'ganga') readableMantra = 'Ganga Mantra';
+        else if (mantraType === 'durga') readableMantra = 'Durga Saptashati';
+        else readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Chanting`;
       }
 
       if (active) {
@@ -215,6 +298,17 @@ export default function JaapLandingScreen() {
       );
     }
   };
+
+  const handleUpcomingCardPress = (jaap: any) => {
+    router.push({
+      pathname: '/live-jaap-welcome',
+      params: {
+        mantraType: jaap.mantraType,
+        title: jaap.title,
+      }
+    });
+  };
+
 
   // Auto-scroll ref for More Live Jaaps
   const jaapScrollRef = useRef<ScrollView>(null);
@@ -634,38 +728,23 @@ export default function JaapLandingScreen() {
                     <View style={styles.jaapCardBottomArea}>
                       <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
                       <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                         <TouchableOpacity
                           style={[styles.exactJoinBtn, { flex: 1 }]}
-                        onPress={() => router.push({
-                          pathname: '/live-jaap-welcome',
-                          params: {
-                            mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
-                            title: jaap.title.replace('\n', ' ')
-                          }
-                        })}
-                      >
-                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                          <Text style={styles.exactJoinText}>{t('join')}</Text>
-                        </View>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          testID={`jaap-bell-${jaap.id}`}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          style={[
-                            styles.jaapCardBellBtn,
-                            reminders[jaap.id] && styles.jaapCardBellBtnActive
-                          ]}
-                          onPress={() => {
-                            const mantraType = jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna';
-                            handleSetReminder(jaap.id, mantraType, 'All');
-                          }}
+                          onPress={() => router.push({
+                            pathname: '/live-jaap-welcome',
+                            params: {
+                              mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
+                              title: jaap.title.replace('\n', ' ')
+                            }
+                          })}
                         >
-                          <Ionicons
-                            name={reminders[jaap.id] ? 'notifications' : 'notifications-outline'}
-                            size={14}
-                            color={reminders[jaap.id] ? '#FFD700' : '#FFF'}
-                          />
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                            <Text style={styles.exactJoinText}>{t('join')}</Text>
+                            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+                              <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00"/>
+                            </Svg>
+                          </View>
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -675,6 +754,75 @@ export default function JaapLandingScreen() {
               })}
             </ScrollView>
 
+            {/* More Upcoming Jaaps Section */}
+            <View style={styles.sectionHeaderParity}>
+              <Text style={styles.sectionTitleText}>
+                {t('language') === 'hi' ? 'और आगामी जाप' : 'More Upcoming Jaaps'}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => router.push('/all-live-jaaps' as any)}
+              >
+                <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
+                <Ionicons name="chevron-forward" size={18} color="#FF6600" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={[styles.upcomingGridContainer, { paddingHorizontal: UPCOMING_GRID_PADDING }]}>
+              {UPCOMING_JAAPS.map((jaap) => {
+                const isReminderActive = !!reminders[jaap.id];
+                const displayName = t('language') === 'hi' ? jaap.titleHi : jaap.title;
+                return (
+                  <TouchableOpacity
+                    key={jaap.id}
+                    style={[styles.upcomingCard, { width: UPCOMING_CARD_WIDTH, height: UPCOMING_CARD_HEIGHT }]}
+                    activeOpacity={0.9}
+                    onPress={() => handleUpcomingCardPress(jaap)}
+                  >
+                    <View style={[StyleSheet.absoluteFillObject, { borderRadius: 16, overflow: 'hidden' }]}>
+                      <Image 
+                        source={jaap.image} 
+                        style={{ width: '100%', height: '100%', position: 'absolute' }} 
+                        resizeMode="cover" 
+                      />
+                      <LinearGradient
+                        colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
+                        locations={[0, 0.5, 1]}
+                        style={StyleSheet.absoluteFillObject}
+                      />
+                      
+                      <View style={styles.upcomingCardContent}>
+                        <Text style={styles.upcomingCardTitle} numberOfLines={2}>
+                          {displayName}
+                        </Text>
+                        
+                        <TouchableOpacity
+                          style={[
+                            styles.upcomingReminderBtn,
+                            isReminderActive && styles.upcomingReminderBtnActive
+                          ]}
+                          activeOpacity={0.8}
+                          onPress={() => handleSetReminder(jaap.id, jaap.mantraType, jaap.title)}
+                        >
+                          <Ionicons 
+                            name={isReminderActive ? "notifications" : "notifications-outline"} 
+                            size={13} 
+                            color={isReminderActive ? "#FFF" : "#FF7B00"} 
+                          />
+                          <Text style={[
+                            styles.upcomingReminderBtnText,
+                            isReminderActive && styles.upcomingReminderBtnTextActive
+                          ]} numberOfLines={1}>
+                            {t('reminder')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
         </ScrollView>
       ) : (
@@ -1107,7 +1255,17 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  sectionTitleText: { fontSize: 22, fontWeight: '900', color: '#2D1400' },
+  sectionTitleText: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1C1C1E',
+    lineHeight: 36,
+    ...Platform.select({
+      ios: { fontFamily: 'System' },
+      android: { fontFamily: 'sans-serif' },
+      default: { fontFamily: 'System' },
+    }),
+  },
   viewAllSaffronRefined: { color: '#FF6600', fontSize: 16, fontWeight: '800' },
   miniCardsRowPadding: { paddingLeft: 25 },
   jaapCardContainer: { width: 115, height: 180, marginRight: 16, borderRadius: 20, overflow: 'hidden' },
@@ -1259,4 +1417,60 @@ const styles = StyleSheet.create({
   newTempleOpenBtnText: { color: '#FF7B00', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   blueBadge: { position: 'absolute', top: -8, left: 12, backgroundColor: '#0084FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, zIndex: 10 },
   blueBadgeText: { color: '#FFF', fontSize: 9, fontFamily: 'Inter_700Bold' },
+  upcomingGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    columnGap: 8,
+    rowGap: 16,
+    marginBottom: 20,
+  },
+  upcomingCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#1A0A00',
+  },
+  upcomingCardContent: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    padding: 8,
+    paddingBottom: 10,
+  },
+  upcomingCardTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
+    marginBottom: 6,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    lineHeight: 16.25,
+  },
+  upcomingReminderBtn: {
+    backgroundColor: '#FFF',
+    height: 32,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  upcomingReminderBtnActive: {
+    backgroundColor: '#FF7B00',
+  },
+  upcomingReminderBtnText: {
+    color: '#FF7B00',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  upcomingReminderBtnTextActive: {
+    color: '#FFF',
+  },
 });

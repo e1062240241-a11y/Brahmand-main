@@ -64,7 +64,6 @@ const getIconPositions = (activeIndex: number): number[] => {
 
 const getBackgroundRects = (activeIndex: number) => {
   const GAP = 6;
-  const isFocused = true;
   
   const getTabWidthForBg = (index: number) => {
     if (index === 0 || index === 4) return 126;
@@ -79,28 +78,33 @@ const getBackgroundRects = (activeIndex: number) => {
   const L_active = centerX - tabWidth / 2;
   const R_active = centerX + tabWidth / 2;
 
-  const ACTIVE_BORDER_COLOR = '#CECECE';
-  const INACTIVE_BORDER_COLOR = '#FFFFFF';
+  const BORDER_COLOR_VAL = '#FFFFFF';
 
   const rects = [];
 
   // Left Inactive Group
   if (L_active > 20) {
+    const x = 0.75;
+    const w = L_active - GAP - x;
     rects.push(
-      <Rect key="left" x={0} y={0} width={L_active - GAP} height={69} rx={34.5} fill={CAPSULE_BG} stroke={INACTIVE_BORDER_COLOR} strokeWidth={1.5} />
+      <Rect key="left" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
     );
   }
 
   // Right Inactive Group
   if (R_active < 353) {
+    const x = R_active + GAP;
+    const w = 373 - 0.75 - x;
     rects.push(
-      <Rect key="right" x={R_active + GAP} y={0} width={373 - (R_active + GAP)} height={69} rx={34.5} fill={CAPSULE_BG} stroke={INACTIVE_BORDER_COLOR} strokeWidth={1.5} />
+      <Rect key="right" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
     );
   }
 
   // Active Tab Capsule
+  const activeX = Math.max(0.75, L_active);
+  const activeW = Math.min(373 - 0.75, R_active) - activeX;
   rects.push(
-    <Rect key="active" x={L_active} y={0} width={tabWidth} height={69} rx={34.5} fill={CAPSULE_BG} stroke={ACTIVE_BORDER_COLOR} strokeWidth={1.5} />
+    <Rect key="active" x={activeX} y={0.75} width={activeW} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
   );
 
   return rects;

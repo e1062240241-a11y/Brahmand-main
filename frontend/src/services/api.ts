@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 import * as FileSystem from 'expo-file-system/legacy';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { secureStorage } from '../utils/secureStorage';
@@ -116,9 +117,26 @@ const resolvedWebApiUrl =
       ? configuredWebApiUrl
       : configuredApiUrl;
 
-export const API_URL = (Platform.OS === 'web'
-  ? (resolvedWebApiUrl || 'http://127.0.0.1:8000')
-  : (configuredApiUrl || 'http://127.0.0.1:8000')).replace('localhost', '127.0.0.1');
+const getResolvedApiUrl = (): string => {
+  if (Platform.OS === 'web') {
+    return (resolvedWebApiUrl || 'http://127.0.0.1:8000').replace('localhost', '127.0.0.1');
+  }
+
+  const baseApiUrl = configuredApiUrl || 'http://127.0.0.1:8000';
+
+  if (!Device.isDevice) {
+    const isAndroid = Platform.OS === 'android';
+    const targetHost = isAndroid ? '10.0.2.2' : '127.0.0.1';
+    
+    const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
+    const port = portMatch ? portMatch[1] : '8000';
+    return `http://${targetHost}:${port}`;
+  }
+
+  return baseApiUrl.replace('localhost', '127.0.0.1');
+};
+
+export const API_URL = getResolvedApiUrl();
 const isTunnelApiUrl = /\.loca\.lt$/i.test((API_URL || '').replace(/^https?:\/\//i, '').split('/')[0] || '');
 
 const defaultHeaders: Record<string, string> = {
@@ -129,9 +147,7 @@ if (Platform.OS !== 'web' || isTunnelApiUrl) {
   defaultHeaders['Bypass-Tunnel-Reminder'] = 'true';
 }
 
-if (Platform.OS === 'web') {
-  console.info('[API] api.ts resolved API_URL:', API_URL);
-}
+console.info(`[API] Resolved API_URL: ${API_URL} (Platform: ${Platform.OS}, Device: ${Device.isDevice ? 'Physical' : 'Simulator'})`);
 
 export const api = axios.create({
   baseURL: `${API_URL}/api`,
