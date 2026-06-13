@@ -9,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 const ACTIVE_ORANGE = '#FF8A00';
 const INACTIVE_COLOR = '#444444';
 const CAPSULE_BG = 'transparent';
-const BORDER_COLOR = '#CECECE';
 
 const HIDDEN_ROUTES = new Set(['index', 'temple', 'circles', 'jobs', 'discover']);
 
