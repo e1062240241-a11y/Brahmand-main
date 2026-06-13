@@ -443,7 +443,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     if (status !== 'granted') return alert('Camera permission is required.');
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images', 'videos'] as any,
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 0.9,
       videoMaxDuration: 60,
     });
@@ -456,7 +456,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     if (status !== 'granted') return alert('Photo library permission is required.');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'videos'] as any,
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 0.9,
       videoMaxDuration: 60,
     });
@@ -473,7 +473,15 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     });
     if (result.canceled || !result.assets?.length) return;
     const file = result.assets[0];
-    const mimeType = file.mimeType || 'application/octet-stream';
+    let mimeType = file.mimeType || 'application/octet-stream';
+    if (mimeType === 'application/octet-stream' && file.name) {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (ext === 'mp4') mimeType = 'video/mp4';
+      else if (ext === 'mov') mimeType = 'video/quicktime';
+      else if (ext === 'png') mimeType = 'image/png';
+      else if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+      else if (ext === 'webp') mimeType = 'image/webp';
+    }
     if (!mimeType.startsWith('image/') && !ACCEPTED_VIDEO_MIME_TYPES.includes(mimeType)) {
       return alert('Only image files and mp4/mov videos are supported.');
     }

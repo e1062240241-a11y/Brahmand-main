@@ -46,6 +46,8 @@ const getTranslatedTitle = (title: string): string => {
     'Krishna\nJaap': 'कृष्ण जाप',
     'Maha Mrityunjaya': 'महामृत्युंजय मंत्र',
     'Kedarnath': 'केदारनाथ',
+    'Shani Chalisa': 'शनि चालीसा',
+    'Shani\nChalisa': 'शनि चालीसा',
   };
   return map[title] || title;
 };
@@ -59,6 +61,7 @@ const MANTRA_PREVIEW: Record<string, string> = {
   kedarnath: 'जय केदार उदार शंकर, मन हरत छवि आपकी । ध्यान धरत सुर-नर-मुनि सब, जय हो केदारनाथ की ॥ जय शिव ओंकारा, जय हर शिव ओंकारा, ब्रह्मा विष्णु सदाशिव अर्द्धांगी धारा ॥ ॐ जय केदारनाथ देवा...',
   ganesh: 'वक्रतुण्ड महाकाय सूर्यकोटि समप्रभ । निर्विघ्नं कुरु मे देव सर्वकार्येषु सर्वदा ॥',
   laxmi: 'ॐ श्रीं ह्रीं क्लीं महालक्ष्म्यै नमः । ॐ श्रीं ह्रीं क्लीं महालक्ष्म्यै नमः ।',
+  shani_chalisa: 'जय गणेश गिरिजा सुवन मंगल करन कृपाल । दीनन के दुख दूर करि कीजै नाथ निहाल ॥ जय जय श्री शनिदेव प्रभु सुनहु विनय महाराज...',
 };
 
 const MANTRA_PREVIEW_EN: Record<string, string> = {
@@ -70,6 +73,7 @@ const MANTRA_PREVIEW_EN: Record<string, string> = {
   kedarnath: 'Jai Kedarnath Udar Shankar, Man Harat Chhavi Aapki. Dhyan Dharat Sur-Nar-Muni Sab, Jai Ho Kedarnath Ki...',
   ganesh: 'Vakratunda Mahakaya Surya Koti Samaprabha | Nirvighnam Kuru Me Deva Sarva Karyeshu Sarvada ||',
   laxmi: 'Om Shreem Hreem Kleem Maha Lakshmyai Namah | Om Shreem Hreem Kleem Maha Lakshmyai Namah |',
+  shani_chalisa: 'Jai Ganesh Girija Suvan Mangal Karan Krupal | Deenan Ke Dukh Door Kari Keejai Nath Nihal || Jai Jai Shree Shanidev Prabhu Sunahu Vinay Maharaj...',
 };
 
 export default function LiveJaapWelcomeScreen() {
@@ -90,7 +94,7 @@ export default function LiveJaapWelcomeScreen() {
 
   const isHanuman = mantraType === 'hanuman';
   const isKedarnath = mantraType === 'kedarnath';
-  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya');
+  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa');
 
   const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
   

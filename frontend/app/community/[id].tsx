@@ -601,6 +601,7 @@ export default function CommunityDetailScreen() {
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTopCategoryDropdown, setShowTopCategoryDropdown] = useState(false);
@@ -2886,12 +2887,13 @@ export default function CommunityDetailScreen() {
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 0.8,
     });
 
-    if (!result.canceled) {
+    if (!result.canceled && result.assets?.length) {
       setSelectedImage(result.assets[0].uri);
+      setSelectedMediaType(result.assets[0].type === 'video' ? 'video' : 'image');
     }
   };
 
@@ -3217,14 +3219,14 @@ export default function CommunityDetailScreen() {
       if (localImageToUpload) {
         try {
           const { uploadChatMedia } = require('../../src/services/api');
-          const isVideoFile = typeof localImageToUpload === 'string' && (
+          const isVideoFile = selectedMediaType === 'video' || (typeof localImageToUpload === 'string' && (
             localImageToUpload.toLowerCase().endsWith('.mp4') || 
             localImageToUpload.toLowerCase().endsWith('.mov') || 
             localImageToUpload.toLowerCase().endsWith('.m4v') || 
             localImageToUpload.toLowerCase().endsWith('.webm') ||
             localImageToUpload.toLowerCase().includes('/video/') ||
             localImageToUpload.toLowerCase().includes('video=true')
-          );
+          ));
           const fileExtension = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4') : 'jpg';
           const fileMime = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4') : 'image/jpeg';
 
@@ -3288,6 +3290,7 @@ export default function CommunityDetailScreen() {
 
     setNewMessage('');
     setSelectedImage(null);
+    setSelectedMediaType(null);
     setContactNumber('');
     setSevaDetails('');
     setShowCreateModal(false);
@@ -3679,7 +3682,7 @@ export default function CommunityDetailScreen() {
             style={{ flex: 1 }}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
-              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); }}>
+              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); setSelectedMediaType(null); }}>
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
 
@@ -3869,7 +3872,7 @@ export default function CommunityDetailScreen() {
                       <CommunityMediaItem media={selectedImage} style={{ width: '100%', height: '100%' }} isActive={true} />
                       <TouchableOpacity
                         style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }}
-                        onPress={() => setSelectedImage(null)}
+                        onPress={() => { setSelectedImage(null); setSelectedMediaType(null); }}
                       >
                         <Ionicons name="close" size={16} color="#FFF" />
                       </TouchableOpacity>
