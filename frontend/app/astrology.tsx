@@ -597,9 +597,9 @@ export default function AstrologyScreen() {
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>DATE OF BIRTH</Text>
-                    <View style={styles.pickerInputWrapper}>
+                    {Platform.OS === 'web' ? (
                       <TextInput
-                        style={styles.pickerTextInput}
+                        style={styles.input}
                         placeholder="YYYY-MM-DD (e.g. 1995-05-15)"
                         placeholderTextColor="#A88876"
                         value={dob}
@@ -610,67 +610,77 @@ export default function AstrologyScreen() {
                             setDateVal(parsed);
                           }
                         }}
+                        {...Platform.select({
+                          web: { type: 'date' } as any,
+                          default: {}
+                        })}
                       />
-                      <TouchableOpacity 
-                        style={styles.pickerIconButton} 
-                        onPress={() => {
-                          if (!dateVal || isNaN(dateVal.getTime())) {
-                            setDateVal(new Date());
-                          }
-                          setShowDatePicker(true);
-                        }}
-                      >
-                        <Ionicons name="calendar-outline" size={20} color="#C67C4E" />
-                      </TouchableOpacity>
-                    </View>
-                    {showDatePicker && Platform.OS !== 'web' && (
-                      Platform.OS === 'ios' ? (
-                        <Modal visible={showDatePicker} transparent animationType="fade">
-                          <TouchableOpacity 
-                            style={styles.modalOverlay}
-                            activeOpacity={1}
-                            onPress={() => setShowDatePicker(false)}
-                          >
-                            <TouchableOpacity activeOpacity={1} style={styles.modalPickerContainer}>
-                              <DateTimePicker
-                                value={dateVal}
-                                mode="date"
-                                display="inline"
-                                onChange={(event, selectedDate) => {
-                                  if (selectedDate) {
-                                    setDateVal(selectedDate);
-                                    const y = selectedDate.getFullYear();
-                                    const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                                    const d = String(selectedDate.getDate()).padStart(2, '0');
-                                    setDob(`${y}-${m}-${d}`);
-                                  }
-                                }}
-                              />
+                    ) : (
+                      <>
+                        <TouchableOpacity 
+                          style={styles.pickerButton} 
+                          onPress={() => {
+                            if (!dateVal || isNaN(dateVal.getTime())) {
+                              setDateVal(new Date());
+                            }
+                            setShowDatePicker(true);
+                          }}
+                        >
+                          <Ionicons name="calendar-outline" size={20} color="#C67C4E" style={{ marginRight: 8 }} />
+                          <Text style={dob ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                            {dob ? dob : 'Select Date of Birth'}
+                          </Text>
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                          Platform.OS === 'ios' ? (
+                            <Modal visible={showDatePicker} transparent animationType="fade">
                               <TouchableOpacity 
-                                style={styles.modalDoneBtn} 
+                                style={styles.modalOverlay}
+                                activeOpacity={1}
                                 onPress={() => setShowDatePicker(false)}
                               >
-                                <Text style={styles.modalDoneText}>Done</Text>
+                                <TouchableOpacity activeOpacity={1} style={styles.modalPickerContainer}>
+                                  <DateTimePicker
+                                    value={dateVal}
+                                    mode="date"
+                                    display="inline"
+                                    onChange={(event, selectedDate) => {
+                                      if (selectedDate) {
+                                        setDateVal(selectedDate);
+                                        const y = selectedDate.getFullYear();
+                                        const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                        const d = String(selectedDate.getDate()).padStart(2, '0');
+                                        setDob(`${y}-${m}-${d}`);
+                                      }
+                                    }}
+                                  />
+                                  <TouchableOpacity 
+                                    style={styles.modalDoneBtn} 
+                                    onPress={() => setShowDatePicker(false)}
+                                  >
+                                    <Text style={styles.modalDoneText}>Done</Text>
+                                  </TouchableOpacity>
+                                </TouchableOpacity>
                               </TouchableOpacity>
-                            </TouchableOpacity>
-                          </TouchableOpacity>
-                        </Modal>
-                      ) : (
-                        <DateTimePicker
-                          value={dateVal}
-                          mode="date"
-                          display="default"
-                          onChange={onDateChange}
-                        />
-                      )
+                            </Modal>
+                          ) : (
+                            <DateTimePicker
+                              value={dateVal}
+                              mode="date"
+                              display="default"
+                              onChange={onDateChange}
+                            />
+                          )
+                        )}
+                      </>
                     )}
                   </View>
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>TIME OF BIRTH</Text>
-                    <View style={styles.pickerInputWrapper}>
+                    {Platform.OS === 'web' ? (
                       <TextInput
-                        style={styles.pickerTextInput}
+                        style={styles.input}
                         placeholder="HH:MM (24-hour, e.g. 14:30)"
                         placeholderTextColor="#A88876"
                         value={tob}
@@ -681,60 +691,70 @@ export default function AstrologyScreen() {
                             setDateVal(parsed);
                           }
                         }}
+                        {...Platform.select({
+                          web: { type: 'time' } as any,
+                          default: {}
+                        })}
                       />
-                      <TouchableOpacity 
-                        style={styles.pickerIconButton} 
-                        onPress={() => {
-                          if (!dateVal || isNaN(dateVal.getTime())) {
-                            setDateVal(new Date());
-                          }
-                          setShowTimePicker(true);
-                        }}
-                      >
-                        <Ionicons name="time-outline" size={20} color="#C67C4E" />
-                      </TouchableOpacity>
-                    </View>
-                    {showTimePicker && Platform.OS !== 'web' && (
-                      Platform.OS === 'ios' ? (
-                        <Modal visible={showTimePicker} transparent animationType="fade">
-                          <TouchableOpacity 
-                            style={styles.modalOverlay}
-                            activeOpacity={1}
-                            onPress={() => setShowTimePicker(false)}
-                          >
-                            <TouchableOpacity activeOpacity={1} style={styles.modalPickerContainer}>
-                              <DateTimePicker
-                                value={dateVal}
-                                mode="time"
-                                display="spinner"
-                                is24Hour={true}
-                                onChange={(event, selectedDate) => {
-                                  if (selectedDate) {
-                                    setDateVal(selectedDate);
-                                    const h = String(selectedDate.getHours()).padStart(2, '0');
-                                    const min = String(selectedDate.getMinutes()).padStart(2, '0');
-                                    setTob(`${h}:${min}`);
-                                  }
-                                }}
-                              />
+                    ) : (
+                      <>
+                        <TouchableOpacity 
+                          style={styles.pickerButton} 
+                          onPress={() => {
+                            if (!dateVal || isNaN(dateVal.getTime())) {
+                              setDateVal(new Date());
+                            }
+                            setShowTimePicker(true);
+                          }}
+                        >
+                          <Ionicons name="time-outline" size={20} color="#C67C4E" style={{ marginRight: 8 }} />
+                          <Text style={tob ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                            {tob ? tob : 'Select Time of Birth'}
+                          </Text>
+                        </TouchableOpacity>
+                        {showTimePicker && (
+                          Platform.OS === 'ios' ? (
+                            <Modal visible={showTimePicker} transparent animationType="fade">
                               <TouchableOpacity 
-                                style={styles.modalDoneBtn} 
+                                style={styles.modalOverlay}
+                                activeOpacity={1}
                                 onPress={() => setShowTimePicker(false)}
                               >
-                                <Text style={styles.modalDoneText}>Done</Text>
+                                <TouchableOpacity activeOpacity={1} style={styles.modalPickerContainer}>
+                                  <DateTimePicker
+                                    value={dateVal}
+                                    mode="time"
+                                    display="spinner"
+                                    is24Hour={true}
+                                    onChange={(event, selectedDate) => {
+                                      if (selectedDate) {
+                                        setDateVal(selectedDate);
+                                        const h = String(selectedDate.getHours()).padStart(2, '0');
+                                        const min = String(selectedDate.getMinutes()).padStart(2, '0');
+                                        setTob(`${h}:${min}`);
+                                      }
+                                    }}
+                                  />
+                                  <TouchableOpacity 
+                                    style={styles.modalDoneBtn} 
+                                    onPress={() => setShowTimePicker(false)}
+                                  >
+                                    <Text style={styles.modalDoneText}>Done</Text>
+                                  </TouchableOpacity>
+                                </TouchableOpacity>
                               </TouchableOpacity>
-                            </TouchableOpacity>
-                          </TouchableOpacity>
-                        </Modal>
-                      ) : (
-                        <DateTimePicker
-                          value={dateVal}
-                          mode="time"
-                          display="default"
-                          is24Hour={true}
-                          onChange={onTimeChange}
-                        />
-                      )
+                            </Modal>
+                          ) : (
+                            <DateTimePicker
+                              value={dateVal}
+                              mode="time"
+                              display="default"
+                              is24Hour={true}
+                              onChange={onTimeChange}
+                            />
+                          )
+                        )}
+                      </>
                     )}
                   </View>
 
