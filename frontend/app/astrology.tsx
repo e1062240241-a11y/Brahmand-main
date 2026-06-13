@@ -19,8 +19,9 @@ import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SvgXml } from 'react-native-svg';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-import { getNakshatraReport, searchBirthCity } from '../src/services/api';
+import { getNakshatraReport, searchBirthCity, updateExtendedProfile, saveKundliProfile, getSavedKundlis, deleteSavedKundli } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
@@ -45,25 +46,134 @@ export default function AstrologyScreen() {
   const [error, setError] = useState('');
   
   // Birth Details Input Fields
+  const [name, setName] = useState(user?.name || '');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [dob, setDob] = useState(user?.date_of_birth || '');
   const [tob, setTob] = useState(user?.time_of_birth || '');
   const [lat, setLat] = useState(user?.place_of_birth_latitude?.toString() || user?.home_location?.latitude?.toString() || '28.6139');
   const [lon, setLon] = useState(user?.place_of_birth_longitude?.toString() || user?.home_location?.longitude?.toString() || '77.2090');
   const [tz, setTz] = useState('5.5');
+
+  // Date/Time Picker helper and states
+  const parseDateTime = (dateStr: string, timeStr: string) => {
+    try {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      if (year && month && day) {
+        return new Date(year, month - 1, day, hours || 12, minutes || 0);
+      }
+    } catch (e) {}
+    return new Date();
+  };
+
+  const [dateVal, setDateVal] = useState<Date>(() => parseDateTime(user?.date_of_birth || '', user?.time_of_birth || ''));
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   
   // City Search State
   const [cityQuery, setCityQuery] = useState('');
+  const [selectedCityName, setSelectedCityName] = useState('');
   const [cityResults, setCityResults] = useState<any[]>([]);
   const [searchingCity, setSearchingCity] = useState(false);
   
   const [showForm, setShowForm] = useState(true);
+  const [saveToProfile, setSaveToProfile] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('charts');
   const [activeChartDiv, setActiveChartDiv] = useState<'D1' | 'D9'>('D1');
   const [selectedDosha, setSelectedDosha] = useState<any>(null);
 
+  // Tab mode: 'my_profile' | 'new_chart' | 'saved_profiles'
+  const [activeModeTab, setActiveModeTab] = useState<'my_profile' | 'new_chart' | 'saved_profiles'>('my_profile');
+  const [savedProfiles, setSavedProfiles] = useState<any[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+
+  // Freezed variables for result card
+  const [submittedName, setSubmittedName] = useState(user?.name || '');
+  const [submittedGender, setSubmittedGender] = useState(user?.gender || 'male');
+  const [submittedDob, setSubmittedDob] = useState(user?.date_of_birth || '');
+  const [submittedTob, setSubmittedTob] = useState(user?.time_of_birth || '');
+
   const isMountedRef = useRef(true);
 
-  const handleCitySearch = async () => {
+  const fetchSavedProfiles = useCallback(async () => {
+    setLoadingProfiles(true);
+    try {
+      const response = await getSavedKundlis();
+      setSavedProfiles(response.data || []);
+    } catch (err) {
+      console.log('Failed to fetch saved profiles:', err);
+    } finally {
+      if (isMountedRef.current) {
+        setLoadingProfiles(false);
+      }
+    }
+  }, []);
+
+  const handleDeleteProfile = async (id: string) => {
+    try {
+      await deleteSavedKundli(id);
+      fetchSavedProfiles();
+    } catch (err) {
+      console.log('Failed to delete saved profile:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (activeModeTab === 'saved_profiles') {
+      fetchSavedProfiles();
+    }
+  }, [activeModeTab, fetchSavedProfiles]);
+
+  useEffect(() => {
+    if (activeModeTab === 'my_profile' && user) {
+      setName(user.name || '');
+      setGender((user.gender as any) || 'male');
+      setDob(user.date_of_birth || '');
+      setTob(user.time_of_birth || '');
+      setLat(user.place_of_birth_latitude?.toString() || user.home_location?.latitude?.toString() || '28.6139');
+      setLon(user.place_of_birth_longitude?.toString() || user.home_location?.longitude?.toString() || '77.2090');
+      setCityQuery(user.place_of_birth || '');
+      setSelectedCityName(user.place_of_birth || '');
+      if (user.date_of_birth) {
+        setDateVal(parseDateTime(user.date_of_birth, user.time_of_birth || ''));
+      }
+    }
+  }, [activeModeTab, user]);
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS !== 'ios') {
+      setShowDatePicker(false);
+    }
+    if (selectedDate) {
+      setDateVal(prev => {
+        const newDate = new Date(prev);
+        newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+        return newDate;
+      });
+      const y = selectedDate.getFullYear();
+      const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const d = String(selectedDate.getDate()).padStart(2, '0');
+      setDob(`${y}-${m}-${d}`);
+    }
+  };
+
+  const onTimeChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS !== 'ios') {
+      setShowTimePicker(false);
+    }
+    if (selectedDate) {
+      setDateVal(prev => {
+        const newDate = new Date(prev);
+        newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
+        return newDate;
+      });
+      const h = String(selectedDate.getHours()).padStart(2, '0');
+      const min = String(selectedDate.getMinutes()).padStart(2, '0');
+      setTob(`${h}:${min}`);
+    }
+  };
+
+  const handleCitySearch = useCallback(async () => {
     if (!cityQuery.trim() || cityQuery.trim().length < 2) return;
     try {
       setSearchingCity(true);
@@ -82,10 +192,14 @@ export default function AstrologyScreen() {
         setSearchingCity(false);
       }
     }
-  };
+  }, [cityQuery]);
 
   const handleSelectCity = (city: any) => {
     Keyboard.dismiss();
+    const nameVal = city.full_name || city.name;
+    setSelectedCityName(nameVal);
+    setCityQuery(nameVal);
+    setCityResults([]);
     if (city.coordinates && city.coordinates.length >= 2) {
       setLat(city.coordinates[0].toString());
       setLon(city.coordinates[1].toString());
@@ -93,9 +207,23 @@ export default function AstrologyScreen() {
     if (city.tz !== undefined) {
       setTz(city.tz.toString());
     }
-    setCityQuery(city.full_name || city.name);
-    setCityResults([]);
   };
+
+  // Debounced Auto-Search for Birth City as User Types
+  useEffect(() => {
+    if (cityQuery === selectedCityName) {
+      return;
+    }
+    const delayDebounceFn = setTimeout(() => {
+      if (cityQuery.trim().length >= 2) {
+        handleCitySearch();
+      } else {
+        setCityResults([]);
+      }
+    }, 600); // 600ms debounce delay
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [cityQuery, selectedCityName, handleCitySearch]);
 
   // Parse location and query backend
   const handleGenerate = async () => {
@@ -106,20 +234,20 @@ export default function AstrologyScreen() {
     const lonStr = String(lon || '').trim();
     const tzStr = String(tz || '').trim();
 
+    if (!name.trim()) {
+      setError('Please enter your Name');
+      return;
+    }
     if (!dobStr) {
-      setError('Please enter your Date of Birth (YYYY-MM-DD)');
+      setError('Please select your Date of Birth');
       return;
     }
     if (!tobStr) {
-      setError('Please enter your Time of Birth (HH:MM)');
+      setError('Please select your Time of Birth');
       return;
     }
-    if (!latStr || isNaN(Number(latStr))) {
-      setError('Please enter a valid Latitude');
-      return;
-    }
-    if (!lonStr || isNaN(Number(lonStr))) {
-      setError('Please enter a valid Longitude');
+    if (!latStr || isNaN(Number(latStr)) || !lonStr || isNaN(Number(lonStr))) {
+      setError('Please search and select your birth place');
       return;
     }
     if (!tzStr || isNaN(Number(tzStr))) {
@@ -143,6 +271,49 @@ export default function AstrologyScreen() {
         setData(response.data || null);
         if (response.data) {
           setShowForm(false);
+          setSubmittedName(name);
+          setSubmittedGender(gender);
+          setSubmittedDob(dobStr);
+          setSubmittedTob(tobStr);
+        }
+      }
+
+      // Update user profile in background if requested
+      if (activeModeTab === 'my_profile') {
+        try {
+          await updateExtendedProfile({
+            name: name,
+            gender: gender,
+            date_of_birth: dobStr,
+            time_of_birth: tobStr,
+            place_of_birth: cityQuery,
+            place_of_birth_latitude: parseFloat(latStr),
+            place_of_birth_longitude: parseFloat(lonStr),
+          });
+          if (user) {
+            user.name = name;
+            user.gender = gender;
+            user.date_of_birth = dobStr;
+            user.time_of_birth = tobStr;
+            user.place_of_birth_latitude = parseFloat(latStr);
+            user.place_of_birth_longitude = parseFloat(lonStr);
+          }
+        } catch (profileErr) {
+          console.log('Failed to update user profile in background:', profileErr);
+        }
+      } else if (activeModeTab === 'new_chart' && saveToProfile) {
+        try {
+          await saveKundliProfile({
+            name: name,
+            gender: gender,
+            date_of_birth: dobStr,
+            time_of_birth: tobStr,
+            place_of_birth: cityQuery,
+            place_of_birth_latitude: parseFloat(latStr),
+            place_of_birth_longitude: parseFloat(lonStr),
+          });
+        } catch (saveErr) {
+          console.log('Failed to save Kundli profile:', saveErr);
         }
       }
     } catch (err: any) {
@@ -156,12 +327,43 @@ export default function AstrologyScreen() {
     }
   };
 
+  const handleCreateNew = () => {
+    setName('');
+    setGender('male');
+    setDob('');
+    setTob('');
+    setCityQuery('');
+    setSelectedCityName('');
+    setLat('28.6139');
+    setLon('77.2090');
+    setTz('5.5');
+    setActiveModeTab('new_chart');
+    setShowForm(true);
+    setData(null);
+  };
+
   // Pre-load on mount and synchronize state with loaded user profile details
   useEffect(() => {
     isMountedRef.current = true;
     if (user) {
-      if (user.date_of_birth) setDob(user.date_of_birth);
-      if (user.time_of_birth) setTob(user.time_of_birth);
+      if (user.name) {
+        setName(user.name);
+        setSubmittedName(user.name);
+      }
+      if (user.gender) {
+        const g = user.gender.toLowerCase() as any;
+        setGender(g);
+        setSubmittedGender(g);
+      }
+      if (user.date_of_birth) {
+        setDob(user.date_of_birth);
+        setSubmittedDob(user.date_of_birth);
+        setDateVal(parseDateTime(user.date_of_birth, user.time_of_birth || ''));
+      }
+      if (user.time_of_birth) {
+        setTob(user.time_of_birth);
+        setSubmittedTob(user.time_of_birth);
+      }
       
       const userLat = user.place_of_birth_latitude?.toString() || user.home_location?.latitude?.toString();
       if (userLat) setLat(userLat);
@@ -186,6 +388,10 @@ export default function AstrologyScreen() {
               setData(response.data || null);
               if (response.data) {
                 setShowForm(false);
+                setSubmittedName(user.name || '');
+                setSubmittedGender(user.gender?.toLowerCase() as any || 'male');
+                setSubmittedDob(user.date_of_birth || '');
+                setSubmittedTob(user.time_of_birth || '');
               }
             }
           } catch (err: any) {
@@ -247,9 +453,14 @@ export default function AstrologyScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Janam Kundli</Text>
           {data ? (
-            <TouchableOpacity onPress={() => setShowForm(!showForm)} style={styles.editBtn}>
-              <Ionicons name={showForm ? "chevron-up" : "create-outline"} size={20} color="#C67C4E" />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <TouchableOpacity onPress={() => setShowForm(!showForm)} style={styles.editBtn}>
+                <Ionicons name={showForm ? "chevron-up" : "create-outline"} size={20} color="#C67C4E" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleCreateNew} style={styles.editBtn}>
+                <Ionicons name="add" size={22} color="#C67C4E" />
+              </TouchableOpacity>
+            </View>
           ) : (
             <View style={{ width: 40 }} />
           )}
@@ -271,129 +482,304 @@ export default function AstrologyScreen() {
             <View style={styles.formCard}>
               <Text style={styles.formTitle}>Enter Birth Details</Text>
               
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>DATE OF BIRTH (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 1995-08-15"
-                  placeholderTextColor="#A88876"
-                  value={dob}
-                  onChangeText={setDob}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>TIME OF BIRTH (HH:MM - 24hr format)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 14:30"
-                  placeholderTextColor="#A88876"
-                  value={tob}
-                  onChangeText={setTob}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>SEARCH BIRTH CITY (AUTO-FILLS BELOW)</Text>
-                <View style={styles.searchRow}>
-                  <TextInput
-                    style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
-                    placeholder="e.g. Mumbai, Delhi, London"
-                    placeholderTextColor="#A88876"
-                    value={cityQuery}
-                    onChangeText={(val) => {
-                      setCityQuery(val);
-                      if (val.trim() === '') setCityResults([]);
-                    }}
-                    onSubmitEditing={handleCitySearch}
-                  />
-                  <TouchableOpacity 
-                    style={styles.searchBtn} 
-                    onPress={handleCitySearch}
-                    disabled={searchingCity}
-                  >
-                    <Ionicons name="search" size={20} color="#FFF" />
-                  </TouchableOpacity>
-                </View>
-
-                {cityResults.length > 0 && (
-                  <View style={styles.searchResultsContainer}>
-                    <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
-                      {cityResults.map((item, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={styles.searchResultItem}
-                          onPress={() => handleSelectCity(item)}
-                        >
-                          <Ionicons name="location-outline" size={16} color="#C67C4E" style={{ marginRight: 8 }} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.cityNameText}>{item.full_name || item.name}</Text>
-                            <Text style={styles.citySubText}>
-                              Lat: {item.coordinates?.[0]} | Lon: {item.coordinates?.[1]} | TZ: {item.tz}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-              </View>
-
-              <View style={styles.rowInputs}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                  <Text style={styles.inputLabel}>LATITUDE</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 28.6139"
-                    placeholderTextColor="#A88876"
-                    keyboardType="numeric"
-                    value={lat}
-                    onChangeText={setLat}
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                  <Text style={styles.inputLabel}>LONGITUDE</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="e.g. 77.2090"
-                    placeholderTextColor="#A88876"
-                    keyboardType="numeric"
-                    value={lon}
-                    onChangeText={setLon}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>TIMEZONE OFFSET (e.g. 5.5 for IST)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. 5.5"
-                  placeholderTextColor="#A88876"
-                  keyboardType="numeric"
-                  value={tz}
-                  onChangeText={setTz}
-                />
-              </View>
-
-              {error ? (
-                <View style={styles.errorBanner}>
-                  <Ionicons name="alert-circle" size={18} color="#EF4444" style={{ marginRight: 6 }} />
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              ) : null}
-
-              <TouchableOpacity style={styles.generateBtn} onPress={handleGenerate}>
-                <LinearGradient
-                  colors={['#FF8D57', '#C67C4E']}
-                  style={styles.gradientBtn}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+              <View style={styles.tabSelectorContainer}>
+                <TouchableOpacity
+                  style={[styles.tabSelectorBtn, activeModeTab === 'my_profile' && styles.tabSelectorBtnActive]}
+                  onPress={() => setActiveModeTab('my_profile')}
                 >
-                  <Text style={styles.generateBtnText}>Generate Kundli</Text>
-                  <Ionicons name="sparkles-outline" size={18} color="#FFF" style={{ marginLeft: 8 }} />
-                </LinearGradient>
-              </TouchableOpacity>
+                  <Text style={[styles.tabSelectorText, activeModeTab === 'my_profile' && styles.tabSelectorTextActive]}>
+                    My Profile
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabSelectorBtn, activeModeTab === 'new_chart' && styles.tabSelectorBtnActive]}
+                  onPress={() => setActiveModeTab('new_chart')}
+                >
+                  <Text style={[styles.tabSelectorText, activeModeTab === 'new_chart' && styles.tabSelectorTextActive]}>
+                    New Chart
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tabSelectorBtn, activeModeTab === 'saved_profiles' && styles.tabSelectorBtnActive]}
+                  onPress={() => setActiveModeTab('saved_profiles')}
+                >
+                  <Text style={[styles.tabSelectorText, activeModeTab === 'saved_profiles' && styles.tabSelectorTextActive]}>
+                    Saved
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {activeModeTab === 'saved_profiles' ? (
+                <View style={{ marginTop: 10 }}>
+                  {loadingProfiles ? (
+                    <BrandedLoading message="Loading saved profiles..." />
+                  ) : savedProfiles.length === 0 ? (
+                    <View style={styles.emptySavedContainer}>
+                      <Ionicons name="folder-open-outline" size={40} color="#A88876" style={{ marginBottom: 10 }} />
+                      <Text style={styles.emptySavedText}>No saved profiles yet.</Text>
+                      <Text style={styles.emptySavedSub}>Generate a new Kundli with "Save this profile" checked to save details here.</Text>
+                    </View>
+                  ) : (
+                    savedProfiles.map((item, idx) => (
+                      <View key={item.id || idx} style={styles.savedProfileItemCard}>
+                        <View style={{ flex: 1, marginRight: 8 }}>
+                          <Text style={styles.savedProfileName}>{item.name}</Text>
+                          <Text style={styles.savedProfileSub}>
+                            {item.gender?.toUpperCase()} | {item.date_of_birth} | {item.time_of_birth}
+                          </Text>
+                          <Text style={styles.savedProfileSub} numberOfLines={1}>
+                            {item.place_of_birth}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          <TouchableOpacity
+                            style={styles.savedProfileLoadBtn}
+                            onPress={() => {
+                              setName(item.name || '');
+                              setGender(item.gender?.toLowerCase() as any || 'male');
+                              setDob(item.date_of_birth || '');
+                              setTob(item.time_of_birth || '');
+                              setLat(item.place_of_birth_latitude?.toString() || '28.6139');
+                              setLon(item.place_of_birth_longitude?.toString() || '77.2090');
+                              setCityQuery(item.place_of_birth || '');
+                              setSelectedCityName(item.place_of_birth || '');
+                              if (item.date_of_birth) {
+                                setDateVal(parseDateTime(item.date_of_birth, item.time_of_birth || ''));
+                              }
+                              setActiveModeTab('new_chart');
+                            }}
+                          >
+                            <Text style={styles.savedProfileLoadText}>Load</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.savedProfileDeleteBtn}
+                            onPress={() => handleDeleteProfile(item.id)}
+                          >
+                            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))
+                  )}
+                </View>
+              ) : (
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>FIRST NAME</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter First Name"
+                      placeholderTextColor="#A88876"
+                      value={name}
+                      onChangeText={setName}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>GENDER</Text>
+                    <View style={styles.genderContainer}>
+                      {(['male', 'female', 'other'] as const).map((g) => {
+                        const isActive = gender === g;
+                        return (
+                          <TouchableOpacity
+                            key={g}
+                            onPress={() => setGender(g)}
+                            style={[styles.genderButton, isActive && styles.genderButtonActive]}
+                          >
+                            <Text style={[styles.genderButtonText, isActive && styles.genderButtonTextActive]}>
+                              {g.charAt(0).toUpperCase() + g.slice(1)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>DATE OF BIRTH</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowDatePicker(true)}>
+                      <Ionicons name="calendar-outline" size={20} color="#C67C4E" style={{ marginRight: 8 }} />
+                      <Text style={dob ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                        {dob ? dob : 'Select Date of Birth'}
+                      </Text>
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                      Platform.OS === 'ios' ? (
+                        <Modal visible={showDatePicker} transparent animationType="fade">
+                          <TouchableOpacity 
+                            style={styles.modalOverlay}
+                            activeOpacity={1}
+                            onPress={() => setShowDatePicker(false)}
+                          >
+                            <TouchableOpacity activeOpacity={1} style={styles.modalPickerContainer}>
+                              <DateTimePicker
+                                value={dateVal}
+                                mode="date"
+                                display="inline"
+                                onChange={(event, selectedDate) => {
+                                  if (selectedDate) {
+                                    setDateVal(selectedDate);
+                                    const y = selectedDate.getFullYear();
+                                    const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                                    const d = String(selectedDate.getDate()).padStart(2, '0');
+                                    setDob(`${y}-${m}-${d}`);
+                                  }
+                                }}
+                              />
+                              <TouchableOpacity 
+                                style={styles.modalDoneBtn} 
+                                onPress={() => setShowDatePicker(false)}
+                              >
+                                <Text style={styles.modalDoneText}>Done</Text>
+                              </TouchableOpacity>
+                            </TouchableOpacity>
+                          </TouchableOpacity>
+                        </Modal>
+                      ) : (
+                        <DateTimePicker
+                          value={dateVal}
+                          mode="date"
+                          display="default"
+                          onChange={onDateChange}
+                        />
+                      )
+                    )}
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>TIME OF BIRTH</Text>
+                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTimePicker(true)}>
+                      <Ionicons name="time-outline" size={20} color="#C67C4E" style={{ marginRight: 8 }} />
+                      <Text style={tob ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
+                        {tob ? tob : 'Select Time of Birth'}
+                      </Text>
+                    </TouchableOpacity>
+                    {showTimePicker && (
+                      Platform.OS === 'ios' ? (
+                        <Modal visible={showTimePicker} transparent animationType="fade">
+                          <TouchableOpacity 
+                            style={styles.modalOverlay}
+                            activeOpacity={1}
+                            onPress={() => setShowTimePicker(false)}
+                          >
+                            <TouchableOpacity activeOpacity={1} style={styles.modalPickerContainer}>
+                              <DateTimePicker
+                                value={dateVal}
+                                mode="time"
+                                display="spinner"
+                                is24Hour={true}
+                                onChange={(event, selectedDate) => {
+                                  if (selectedDate) {
+                                    setDateVal(selectedDate);
+                                    const h = String(selectedDate.getHours()).padStart(2, '0');
+                                    const min = String(selectedDate.getMinutes()).padStart(2, '0');
+                                    setTob(`${h}:${min}`);
+                                  }
+                                }}
+                              />
+                              <TouchableOpacity 
+                                style={styles.modalDoneBtn} 
+                                onPress={() => setShowTimePicker(false)}
+                              >
+                                <Text style={styles.modalDoneText}>Done</Text>
+                              </TouchableOpacity>
+                            </TouchableOpacity>
+                          </TouchableOpacity>
+                        </Modal>
+                      ) : (
+                        <DateTimePicker
+                          value={dateVal}
+                          mode="time"
+                          display="default"
+                          is24Hour={true}
+                          onChange={onTimeChange}
+                        />
+                      )
+                    )}
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>SEARCH BIRTH PLACE / CITY</Text>
+                    <View style={styles.searchRow}>
+                      <TextInput
+                        style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
+                        placeholder="e.g. Mumbai, Delhi"
+                        placeholderTextColor="#A88876"
+                        value={cityQuery}
+                        onChangeText={(val) => {
+                          setCityQuery(val);
+                          if (val.trim() === '') setCityResults([]);
+                        }}
+                        onSubmitEditing={handleCitySearch}
+                      />
+                      <TouchableOpacity 
+                        style={styles.searchBtn} 
+                        onPress={handleCitySearch}
+                        disabled={searchingCity}
+                      >
+                        <Ionicons name="search" size={20} color="#FFF" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {cityResults.length > 0 && (
+                      <View style={styles.searchResultsContainer}>
+                        <ScrollView style={{ maxHeight: 150 }} nestedScrollEnabled>
+                          {cityResults.map((item, idx) => (
+                            <TouchableOpacity
+                              key={idx}
+                              style={styles.searchResultItem}
+                              onPress={() => handleSelectCity(item)}
+                            >
+                              <Ionicons name="location-outline" size={16} color="#C67C4E" style={{ marginRight: 8 }} />
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.cityNameText}>{item.full_name || item.name}</Text>
+                                <Text style={styles.citySubText}>
+                                  Lat: {item.coordinates?.[0]} | Lon: {item.coordinates?.[1]}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    )}
+                  </View>
+
+                  {activeModeTab === 'new_chart' && (
+                    <TouchableOpacity
+                      style={styles.checkboxContainer}
+                      onPress={() => setSaveToProfile(!saveToProfile)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={saveToProfile ? "checkbox" : "square-outline"}
+                        size={20}
+                        color={saveToProfile ? "#C67C4E" : "#8A7163"}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={styles.checkboxLabel}>Save this profile to my saved list</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {error ? (
+                    <View style={styles.errorBanner}>
+                      <Ionicons name="alert-circle" size={18} color="#EF4444" style={{ marginRight: 6 }} />
+                      <Text style={styles.errorText}>{error}</Text>
+                    </View>
+                  ) : null}
+
+                  <TouchableOpacity style={styles.generateBtn} onPress={handleGenerate}>
+                    <LinearGradient
+                      colors={['#FF8D57', '#C67C4E']}
+                      style={styles.gradientBtn}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.generateBtnText}>Generate Kundli</Text>
+                      <Ionicons name="sparkles-outline" size={18} color="#FFF" style={{ marginLeft: 8 }} />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           )}
 
@@ -406,6 +792,19 @@ export default function AstrologyScreen() {
           {/* Render Kundli Dashboard if we have data and we're not loading */}
           {!loading && data && (
             <>
+              {/* Personalized Header Card */}
+              <View style={styles.personHeaderCard}>
+                <View style={styles.personInfoRow}>
+                  <Ionicons name="person-circle-outline" size={44} color="#C67C4E" style={{ marginRight: 12 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.personName}>{`${submittedName || 'Guest'}'s Janam Kundli`}</Text>
+                    <Text style={styles.personDetails}>
+                      {submittedGender ? submittedGender.toUpperCase() : 'MALE'} | {submittedDob} | {submittedTob}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
               {/* Basic Nakshatra/Rashi Info Card */}
               <View style={styles.insightsCard}>
                 <View style={styles.insightBox}>
@@ -476,15 +875,15 @@ export default function AstrologyScreen() {
                     </View>
 
                     <View style={styles.chartContainer}>
-                      {activeChartDiv === 'D1' ? (
+                       {activeChartDiv === 'D1' ? (
                         data.chart_d1 ? (
-                          <SvgXml xml={data.chart_d1} width={CHART_SIZE} height={CHART_SIZE} />
+                          <SvgXml xml={data.chart_d1.trim()} width={CHART_SIZE} height={CHART_SIZE} />
                         ) : (
                           <Text style={styles.noDataText}>Rasi Chart rendering not available</Text>
                         )
                       ) : (
                         data.chart_d9 ? (
-                          <SvgXml xml={data.chart_d9} width={CHART_SIZE} height={CHART_SIZE} />
+                          <SvgXml xml={data.chart_d9.trim()} width={CHART_SIZE} height={CHART_SIZE} />
                         ) : (
                           <Text style={styles.noDataText}>Navamsha Chart rendering not available</Text>
                         )
@@ -1307,5 +1706,195 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#8A7163',
     marginTop: 2,
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  genderButton: {
+    flex: 1,
+    backgroundColor: '#FAF7F5',
+    borderWidth: 1,
+    borderColor: '#EFEAE6',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  genderButtonActive: {
+    backgroundColor: '#C67C4E',
+    borderColor: '#C67C4E',
+  },
+  genderButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7A5C4A',
+  },
+  genderButtonTextActive: {
+    color: '#FFF',
+  },
+  pickerButton: {
+    backgroundColor: '#FAF7F5',
+    borderWidth: 1,
+    borderColor: '#EFEAE6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pickerButtonText: {
+    fontSize: 15,
+    color: '#3F2C20',
+    fontWeight: '600',
+  },
+  pickerButtonPlaceholder: {
+    fontSize: 15,
+    color: '#A88876',
+    fontWeight: '500',
+  },
+  personHeaderCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#C67C4E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  personInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  personName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#3F2C20',
+  },
+  personDetails: {
+    fontSize: 12,
+    color: '#8A7163',
+    marginTop: 2,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 15,
+    paddingVertical: 4,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: '#3F2C20',
+    fontWeight: '500',
+  },
+  modalPickerContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 20,
+    width: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  modalDoneBtn: {
+    marginTop: 15,
+    backgroundColor: '#C67C4E',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  modalDoneText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  tabSelectorContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FAF7F5',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#EFEAE6',
+  },
+  tabSelectorBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  tabSelectorBtnActive: {
+    backgroundColor: '#C67C4E',
+  },
+  tabSelectorText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8A7163',
+  },
+  tabSelectorTextActive: {
+    color: '#FFF',
+  },
+  emptySavedContainer: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 16,
+  },
+  emptySavedText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#3F2C20',
+    marginBottom: 4,
+  },
+  emptySavedSub: {
+    fontSize: 12,
+    color: '#8A7163',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  savedProfileItemCard: {
+    backgroundColor: '#FAF7F5',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#EFEAE6',
+  },
+  savedProfileName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#3F2C20',
+    marginBottom: 2,
+  },
+  savedProfileSub: {
+    fontSize: 12,
+    color: '#8A7163',
+    marginTop: 1,
+  },
+  savedProfileLoadBtn: {
+    backgroundColor: '#C67C4E',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  savedProfileLoadText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  savedProfileDeleteBtn: {
+    padding: 6,
+    backgroundColor: '#FCECEB',
+    borderRadius: 8,
   },
 });

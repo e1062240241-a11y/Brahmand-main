@@ -1261,8 +1261,26 @@ export const updateExtendedProfile = (data: {
   time_of_birth?: string;
   place_of_birth_latitude?: number;
   place_of_birth_longitude?: number;
+  gender?: string;
 }) =>
   api.put('/user/profile/extended', data);
+
+export const saveKundliProfile = (data: {
+  name: string;
+  gender: string;
+  date_of_birth: string;
+  place_of_birth: string;
+  time_of_birth: string;
+  place_of_birth_latitude: number;
+  place_of_birth_longitude: number;
+}) =>
+  api.post('/user/saved-kundlis', data);
+
+export const getSavedKundlis = () =>
+  api.get('/user/saved-kundlis');
+
+export const deleteSavedKundli = (profileId: string) =>
+  api.delete(`/user/saved-kundlis/${profileId}`);
 
 export const deleteUserProfile = () =>
   api.delete('/user/profile');

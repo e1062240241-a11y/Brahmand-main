@@ -72,7 +72,7 @@ except ImportError:
     vision = None
 
 from models.schemas import (
-    OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate,
+    OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
     CircleCreate, CircleJoin, CircleUpdate, CircleInvite, CirclePrivacy,
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
@@ -1648,6 +1648,39 @@ async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depe
     if update_data:
         await db.update_document('users', token_data["user_id"], update_data)
     return await db.get_document('users', token_data["user_id"])
+
+
+@api_router.post("/user/saved-kundlis")
+async def save_kundli_profile(req: SavedKundliRequest, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    data = req.dict()
+    data["user_id"] = token_data["user_id"]
+    data["created_at"] = datetime.utcnow()
+    doc_id = await db.create_document("saved_kundlis", data)
+    return {"id": doc_id, **data}
+
+
+@api_router.get("/user/saved-kundlis")
+async def get_saved_kundlis(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    results = await db.query_documents("saved_kundlis", filters=[("user_id", "==", token_data["user_id"])])
+    try:
+        results = sorted(results, key=lambda x: x.get("created_at", ""), reverse=True)
+    except Exception:
+        pass
+    return results
+
+
+@api_router.delete("/user/saved-kundlis/{profile_id}")
+async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    doc = await db.get_document("saved_kundlis", profile_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Saved profile not found")
+    if doc.get("user_id") != token_data["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this profile")
+    await db.delete_document("saved_kundlis", profile_id)
+    return {"status": "success", "message": "Saved profile deleted successfully"}
 
 
 @api_router.delete("/user/profile")

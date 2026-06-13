@@ -15,6 +15,7 @@ export interface User {
   place_of_birth?: string;
   place_of_birth_latitude?: number;
   place_of_birth_longitude?: number;
+  gender?: string;
   location?: Location;
   home_location?: {
     latitude?: number;
