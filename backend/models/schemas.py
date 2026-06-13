@@ -129,6 +129,17 @@ class ProfileUpdate(BaseModel):
     time_of_birth: Optional[str] = None
     place_of_birth_latitude: Optional[float] = None
     place_of_birth_longitude: Optional[float] = None
+    gender: Optional[str] = None
+
+
+class SavedKundliRequest(BaseModel):
+    name: str
+    gender: str
+    date_of_birth: str
+    place_of_birth: str
+    time_of_birth: str
+    place_of_birth_latitude: float
+    place_of_birth_longitude: float
 
 
 class UserResponse(BaseModel):

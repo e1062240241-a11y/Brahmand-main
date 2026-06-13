@@ -72,7 +72,7 @@ except ImportError:
     vision = None
 
 from models.schemas import (
-    OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate,
+    OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
     CircleCreate, CircleJoin, CircleUpdate, CircleInvite, CirclePrivacy,
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
@@ -1650,6 +1650,39 @@ async def update_extended_profile(update: ProfileUpdate, token_data: dict = Depe
     return await db.get_document('users', token_data["user_id"])
 
 
+@api_router.post("/user/saved-kundlis")
+async def save_kundli_profile(req: SavedKundliRequest, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    data = req.dict()
+    data["user_id"] = token_data["user_id"]
+    data["created_at"] = datetime.utcnow()
+    doc_id = await db.create_document("saved_kundlis", data)
+    return {"id": doc_id, **data}
+
+
+@api_router.get("/user/saved-kundlis")
+async def get_saved_kundlis(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    results = await db.query_documents("saved_kundlis", filters=[("user_id", "==", token_data["user_id"])])
+    try:
+        results = sorted(results, key=lambda x: x.get("created_at", ""), reverse=True)
+    except Exception:
+        pass
+    return results
+
+
+@api_router.delete("/user/saved-kundlis/{profile_id}")
+async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    doc = await db.get_document("saved_kundlis", profile_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Saved profile not found")
+    if doc.get("user_id") != token_data["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this profile")
+    await db.delete_document("saved_kundlis", profile_id)
+    return {"status": "success", "message": "Saved profile deleted successfully"}
+
+
 @api_router.delete("/user/profile")
 async def delete_user_profile(token_data: dict = Depends(verify_token)):
     """Delete user profile, including posts and comments."""
@@ -2602,22 +2635,37 @@ async def _upload_chat_media_impl(
 ):
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
-    if (not content_type or content_type == 'application/octet-stream') and file.filename:
-        filename_lower = file.filename.lower()
-        if filename_lower.endswith(('.jpg', '.jpeg')):
-            content_type = 'image/jpeg'
-        elif filename_lower.endswith('.png'):
+    
+    header = await file.read(32)
+    await file.seek(0)
+
+    is_actually_video = b'ftyp' in header or header.startswith(b'\x00\x00\x00')
+    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG')
+
+    if is_actually_video:
+        content_type = 'video/mp4'
+    elif is_actually_image:
+        if header.startswith(b'\x89PNG'):
             content_type = 'image/png'
-        elif filename_lower.endswith('.webp'):
-            content_type = 'image/webp'
-        elif filename_lower.endswith('.heic'):
-            content_type = 'image/heic'
-        elif filename_lower.endswith('.gif'):
-            content_type = 'image/gif'
-        elif filename_lower.endswith('.mp4'):
-            content_type = 'video/mp4'
-        elif filename_lower.endswith('.mov'):
-            content_type = 'video/quicktime'
+        else:
+            content_type = 'image/jpeg'
+    else:
+        if (not content_type or content_type == 'application/octet-stream') and file.filename:
+            filename_lower = file.filename.lower()
+            if filename_lower.endswith(('.jpg', '.jpeg')):
+                content_type = 'image/jpeg'
+            elif filename_lower.endswith('.png'):
+                content_type = 'image/png'
+            elif filename_lower.endswith('.webp'):
+                content_type = 'image/webp'
+            elif filename_lower.endswith('.heic'):
+                content_type = 'image/heic'
+            elif filename_lower.endswith('.gif'):
+                content_type = 'image/gif'
+            elif filename_lower.endswith('.mp4'):
+                content_type = 'video/mp4'
+            elif filename_lower.endswith('.mov'):
+                content_type = 'video/quicktime'
 
     # Broaden allowed types to support all common images and videos
     if not (content_type.startswith('image/') or content_type.startswith('video/')):

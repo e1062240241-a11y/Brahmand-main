@@ -593,23 +593,10 @@ class AstrologyApiService:
         return aggregated_data
 
     async def search_city(self, city_name: str) -> Any:
-        """Search geo coordinates and timezone details for a city using AstrologyAPI.com's geo_details."""
-        import zoneinfo
-        from datetime import datetime
-
-        def get_tz_offset(timezone_id: str) -> float:
-            if not timezone_id:
-                return 5.5
-            try:
-                tz = zoneinfo.ZoneInfo(timezone_id)
-                offset_sec = tz.utcoffset(datetime.now()).total_seconds()
-                return round(offset_sec / 3600.0, 2)
-            except Exception:
-                return 5.5
-
+        """Search geo coordinates and timezone details for a city using AstrologyAPI.com's geo_details (restricted to India only)."""
         payload = {
             "place": city_name,
-            "maxRows": 10
+            "maxRows": 30
         }
         raw = await self._fetch_endpoint("/geo_details", payload)
         geonames = raw.get("geonames", []) if isinstance(raw, dict) else []
@@ -618,8 +605,12 @@ class AstrologyApiService:
         for city in geonames:
             if not isinstance(city, dict):
                 continue
+            country = (city.get("country_code") or "").strip().upper()
+            # Restrict to India (IN) only
+            if country != "IN":
+                continue
+                
             name = city.get("place_name") or "Unknown"
-            country = city.get("country_code") or ""
             full_name = f"{name}, {country}" if country else name
             
             try:
@@ -628,8 +619,8 @@ class AstrologyApiService:
             except ValueError:
                 lat, lon = 0.0, 0.0
                 
-            tz_id = city.get("timezone_id") or ""
-            tz_offset = get_tz_offset(tz_id)
+            # Restrict timezone to IST (5.5)
+            tz_offset = 5.5
             
             mapped_cities.append({
                 "name": name,
