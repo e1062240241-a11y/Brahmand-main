@@ -195,7 +195,9 @@ export default function CommunityScreen() {
   };
 
 
-  const renderCommunity = ({ item }: { item: Community }) => (
+  // ⚡ Bolt: Wrapped in useCallback to prevent recreation on every render,
+  // reducing unnecessary FlatList re-renders.
+  const renderCommunity = useCallback(({ item }: { item: Community }) => (
     <View>
       {item.label && (
         <Text style={[styles.communityLabel, { color: getCommunityColor(item.type) }]}>
@@ -219,9 +221,11 @@ export default function CommunityScreen() {
         <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
       </TouchableOpacity>
     </View>
-  );
+  ), [router]);
 
-  const renderRequest = ({ item }: { item: CommunityRequest }) => (
+  // ⚡ Bolt: Wrapped in useCallback to keep render function stable across
+  // component re-renders, optimizing FlatList rendering performance.
+  const renderRequest = useCallback(({ item }: { item: CommunityRequest }) => (
     <View style={styles.requestCard}>
       <View style={styles.requestHeader}>
         <View style={styles.requestTypeContainer}>
@@ -282,7 +286,7 @@ export default function CommunityScreen() {
         )}
       </View>
     </View>
-  );
+  ), []);
 
   return (
     <LinearGradient
