@@ -802,6 +802,14 @@ export default function AstrologyScreen() {
                       {submittedGender ? submittedGender.toUpperCase() : 'MALE'} | {submittedDob} | {submittedTob}
                     </Text>
                   </View>
+                  <TouchableOpacity
+                    onPress={() => setShowForm(true)}
+                    style={styles.headerCardEditBtn}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="create-outline" size={16} color="#C67C4E" style={{ marginRight: 4 }} />
+                    <Text style={styles.headerCardEditText}>Edit</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -1896,5 +1904,20 @@ const styles = StyleSheet.create({
     padding: 6,
     backgroundColor: '#FCECEB',
     borderRadius: 8,
+  },
+  headerCardEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF7F5',
+    borderWidth: 1,
+    borderColor: '#EFEAE6',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  headerCardEditText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#C67C4E',
   },
 });
