@@ -12295,7 +12295,7 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
     async def _get_communities():
         try:
-            return await db.get_user_communities(user_id=user_id)
+            return await FirebaseCommunityService.get_user_communities(user_id=user_id)
         except Exception:
             return []
 
