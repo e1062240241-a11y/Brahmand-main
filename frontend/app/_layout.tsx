@@ -150,7 +150,8 @@ function isValidAppPath(path: string): boolean {
     '/festival-detail/',
     '/festival-section-detail/',
     '/hashtag/',
-    '/community-request/'
+    '/community-request/',
+    '/library/'
   ];
 
   for (const prefix of dynamicPrefixes) {

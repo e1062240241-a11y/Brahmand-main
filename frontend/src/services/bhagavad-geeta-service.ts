@@ -1,18 +1,43 @@
 import { getBhagavadGitaChapter } from '../../src/services/api';
 import { loadCachedBookContent } from './book-cache';
 
-const TEJOMAYANANDA_KEYS = ['swami tejomayananda', 'Swami Tejomayananda'] as const;
+const HINDI_KEYS = [
+  'swami tejomayananda', 'Swami Tejomayananda',
+  'swami ramsukhdas', 'Swami Ramsukhdas',
+  'sri harikrishnadas goenka', 'Sri Harikrishnadas Goenka',
+  'hindi', 'Hindi'
+] as const;
+
+const ENGLISH_KEYS = [
+  'swami adidevananda', 'Swami Adidevananda',
+  'swami gambirananda', 'Swami Gambirananda',
+  'swami sivananda', 'Swami Sivananda',
+  'dr. s. sankaranarayan', 'Dr. S. Sankaranarayan',
+  'shri purohit swami', 'Shri Purohit Swami',
+  'english', 'English'
+] as const;
 
 type TranslationRecord = Record<string, unknown> | undefined | null;
 
 const getTejomayanandaTranslation = (translations: TranslationRecord): string => {
   if (!translations || typeof translations !== 'object') return '';
-  for (const key of TEJOMAYANANDA_KEYS) {
+  
+  // Try Hindi keys first
+  for (const key of HINDI_KEYS) {
     const value = (translations as Record<string, unknown>)[key];
     if (typeof value === 'string' && value.trim().length > 0) {
       return value;
     }
   }
+
+  // Fallback to English keys
+  for (const key of ENGLISH_KEYS) {
+    const value = (translations as Record<string, unknown>)[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+
   return '';
 };
 
@@ -37,6 +62,22 @@ export const loadBhagavadGitaChapter = async (chapterNumber: number) => {
 
 export const getPreferredTranslation = (translations: Record<string, string>) => {
   if (!translations || typeof translations !== 'object') return '';
-  const preferred = translations['swami tejomayananda'] || translations['Swami Tejomayananda'];
-  return typeof preferred === 'string' ? preferred : '';
+  
+  // Try Hindi keys first
+  for (const key of HINDI_KEYS) {
+    const value = translations[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  // Fallback to English keys
+  for (const key of ENGLISH_KEYS) {
+    const value = translations[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value;
+    }
+  }
+
+  return '';
 };

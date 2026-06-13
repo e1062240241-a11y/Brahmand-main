@@ -39,8 +39,49 @@ const geeta3DImage = require('../../assets/images/bhagavad_gita_3d_new.png');
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
 
-const BOOK_ID = 'gita';
+const BOOK_ID = 'bhagvad-geeta';
 const TOTAL_CHAPTERS = 18;
+
+const getTranslations = (translations: any) => {
+  if (!translations || typeof translations !== 'object') {
+    return { hindi: '', english: '' };
+  }
+  
+  // Hindi Translation keys
+  const hindiKeys = [
+    'swami tejomayananda', 'Swami Tejomayananda',
+    'swami ramsukhdas', 'Swami Ramsukhdas',
+    'sri harikrishnadas goenka', 'Sri Harikrishnadas Goenka',
+    'hindi', 'Hindi'
+  ];
+  let hindi = '';
+  for (const key of hindiKeys) {
+    if (typeof translations[key] === 'string' && translations[key].trim().length > 0) {
+      hindi = translations[key];
+      break;
+    }
+  }
+
+  // English Translation keys
+  const englishKeys = [
+    'swami adidevananda', 'Swami Adidevananda',
+    'swami gambirananda', 'Swami Gambirananda',
+    'swami sivananda', 'Swami Sivananda',
+    'dr. s. sankaranarayan', 'Dr. S. Sankaranarayan',
+    'shri purohit swami', 'Shri Purohit Swami',
+    'english', 'English'
+  ];
+  let english = '';
+  for (const key of englishKeys) {
+    if (typeof translations[key] === 'string' && translations[key].trim().length > 0) {
+      english = translations[key];
+      break;
+    }
+  }
+
+  return { hindi, english };
+};
+
 
 const GITA_CHAPTER_NAMES = [
   'अर्जुनविषादयोग',
@@ -72,7 +113,9 @@ export default function BhagavadGita3DPage() {
   const { updateProgress } = useLibraryStore();
   const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
   
-  const progress = getBookProgress(BOOK_ID);
+  const progressGeeta = getBookProgress('bhagvad-geeta');
+  const progressGita = getBookProgress('gita');
+  const progress = (progressGeeta.lastReadChapter > 1 || progressGeeta.progressPercent > 0 || progressGeeta.bookmarks.length > 0) ? progressGeeta : progressGita;
   const { lastReadChapter, lastReadScrollY, bookmarks } = progress;
   
   const [currentChapter, setCurrentChapter] = useState(lastReadChapter || 1);
@@ -403,13 +446,16 @@ export default function BhagavadGita3DPage() {
                       <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
                     </View>
 
-                    {/* Hindi Translation */}
-                    {(verse.translations?.hindi || verse.translations?.english) ? (
-                      <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
-                        <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}. </Text>
-                        {verse.translations.hindi || verse.translations.english}
-                      </Text>
-                    ) : null}
+                    {(() => {
+                      const trans = getTranslations(verse.translations);
+                      const translationText = trans.hindi || trans.english;
+                      return translationText ? (
+                        <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
+                          <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}. </Text>
+                          {translationText}
+                        </Text>
+                      ) : null;
+                    })()}
 
                     {/* Divider */}
                     {index < verses.length - 1 && (

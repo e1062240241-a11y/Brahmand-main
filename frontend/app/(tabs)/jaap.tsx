@@ -116,10 +116,10 @@ const UPCOMING_JAAPS = [
   },
   {
     id: 'uj5',
-    title: 'Gayatri Mantra',
-    titleHi: 'गायत्री मंत्र',
-    mantraType: 'gayatri',
-    image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.png'),
+    title: 'Radha Rani Jaap',
+    titleHi: 'राधा रानी जाप',
+    mantraType: 'radha_rani',
+    image: require('../../assets/images/upcoming_radha_rani.png'),
   },
   {
     id: 'uj6',
@@ -214,6 +214,7 @@ export default function JaapLandingScreen() {
             loadedReminders['uj3'] = true;
           } else if (r.mantra_type === 'gayatri') {
             loadedReminders['4'] = true;
+          } else if (r.mantra_type === 'radha_rani') {
             loadedReminders['uj5'] = true;
           } else if (r.mantra_type === 'ganesh') {
             loadedReminders['5'] = true;
@@ -249,9 +250,6 @@ export default function JaapLandingScreen() {
         if (jaapId === '3' || jaapId === 'uj3') {
           updated['3'] = active;
           updated['uj3'] = active;
-        } else if (jaapId === '4' || jaapId === 'uj5') {
-          updated['4'] = active;
-          updated['uj5'] = active;
         }
         return updated;
       });
@@ -268,12 +266,14 @@ export default function JaapLandingScreen() {
         else if (mantraType === 'shani_chalisa') readableMantra = 'शनि चालीसा';
         else if (mantraType === 'ganga') readableMantra = 'गंगा मंत्र';
         else if (mantraType === 'durga') readableMantra = 'दुर्गा सप्तशती';
+        else if (mantraType === 'radha_rani') readableMantra = 'राधा रानी जाप';
         else readableMantra = `${mantraType} जाप`;
       } else {
         if (mantraType === 'ganesh_aarti') readableMantra = 'Ganesh Aarti';
         else if (mantraType === 'shani_chalisa') readableMantra = 'Shani Chalisa';
         else if (mantraType === 'ganga') readableMantra = 'Ganga Mantra';
         else if (mantraType === 'durga') readableMantra = 'Durga Saptashati';
+        else if (mantraType === 'radha_rani') readableMantra = 'Radha Rani Jaap';
         else readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : `${mantraType.charAt(0).toUpperCase() + mantraType.slice(1)} Chanting`;
       }
 
@@ -562,15 +562,6 @@ export default function JaapLandingScreen() {
                           {heroTimeLabel}
                         </Text>
                       </View>
-                    </View>
-
-                    <View style={[styles.mockupLiveBadge, !liveActive && styles.mockupScheduledBadge, { alignSelf: 'flex-start' }]}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.mockupLiveText}>
-                        {liveActive 
-                          ? (t('language') === 'hi' ? 'लाइव' : 'LIVE') 
-                          : (t('language') === 'hi' ? 'जल्द ही' : 'SOON')}
-                      </Text>
                     </View>
                   </View>
 

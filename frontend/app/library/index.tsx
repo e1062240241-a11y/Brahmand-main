@@ -63,6 +63,7 @@ const BOOK_COVERS: Record<string, any> = {
   'yajurveda': yajurvedaCover,
   'ramcharitmanas': ramcharitmanasCover,
   'bhagvad-geeta': geetaCover,
+  'gita': geetaCover,
 };
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -157,7 +158,7 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
         {/* ── Dynamic Continue Reading (All Books) ── */}
         {(() => {
           let recentBooks = observedProgress.map(p => ({
-            id: p.bookId,
+            id: p.bookId === 'gita' ? 'bhagvad-geeta' : p.bookId,
             chapterName: p.chapterName,
             chapterNum: p.chapterNum,
             lastReadPage: p.lastReadPage,
