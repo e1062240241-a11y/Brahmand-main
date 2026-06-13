@@ -17,6 +17,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../src/services/api';
+import { Svg, Path } from 'react-native-svg';
+
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../src/features/live-mantra/schedule';
 import { useTranslation } from '../src/utils/i18n';
 
@@ -32,7 +34,7 @@ const getMantraRoomName = (id: string) => {
 };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = (SCREEN_WIDTH - 52) / 2;
+const CARD_WIDTH = (SCREEN_WIDTH - 40) / 2;
 
 const LIVE_JAAPS = [
   {
@@ -223,16 +225,18 @@ export default function AllLiveJaapsScreen() {
               >
                 {/* Top badges */}
                 <View style={styles.cardTop}>
-                  <View style={[styles.liveBadge, (!showLive) && styles.mockupScheduledBadge]}>
-                    <Ionicons name="radio" size={10} color="#FFF" style={{ marginRight: 3 }} />
-                    <Text style={styles.liveBadgeText}>{liveLabel}</Text>
+                  <View style={[styles.liveBadge, (!showLive) && styles.mockupScheduledBadge, { maxWidth: showLive ? '65%' : '100%', paddingHorizontal: 10 }]}>
+                    <Ionicons name={showLive ? "radio" : "time-outline"} size={10} color="#FFF" style={{ marginRight: 4 }} />
+                    <Text style={[styles.liveBadgeText, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit>{liveLabel}</Text>
                   </View>
-                  <View style={styles.countBadge}>
-                    <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 3 }} />
-                    <Text style={styles.countBadgeText}>
-                      {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
-                    </Text>
-                  </View>
+                  {showLive && (
+                    <View style={styles.countBadge}>
+                      <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 3 }} />
+                      <Text style={styles.countBadgeText}>
+                        {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Bottom content */}
@@ -250,21 +254,19 @@ export default function AllLiveJaapsScreen() {
                     })() : jaap.title}
                   </Text>
                   <Text style={styles.cardSlok} numberOfLines={2}>{jaap.slok}</Text>
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    style={styles.joinBtnOuter}
-                    onPress={() => goToJaap(jaap)}
-                  >
-                    <LinearGradient
-                      colors={['#FF6B00', '#FF9000']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.joinBtnGradient}
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                      style={[styles.exactJoinBtn, { flex: 1 }]}
+                      onPress={() => goToJaap(jaap)}
                     >
-                      <Text style={styles.joinBtnText}>{t('language') === 'hi' ? 'जुड़ें ओम्' : 'Join ओम्'}</Text>
-                      <MaterialCommunityIcons name="waveform" size={16} color="#FFF" />
-                    </LinearGradient>
-                  </TouchableOpacity>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                        <Text style={styles.exactJoinText}>{t('join')}</Text>
+                        <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+                          <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00"/>
+                        </Svg>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
@@ -365,7 +367,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     paddingHorizontal: 16,
     paddingTop: 16,
-    gap: 16,
+    gap: 8,
     justifyContent: 'space-between',
   },
   card: {
@@ -448,25 +450,19 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
     marginBottom: 10,
   },
-  joinBtnOuter: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    // iOS shadow
-    shadowColor: '#FF6600',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    // Android
-    elevation: 5,
-  },
-  joinBtnGradient: {
+  exactJoinBtn: {
+    backgroundColor: '#FFF',
+    height: 32,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    elevation: 2,
     justifyContent: 'center',
-    height: 38,
-    borderRadius: 20,
-    gap: 8,
-    paddingHorizontal: 18,
+  },
+  exactJoinText: {
+    color: '#FF6600',
+    fontSize: 13,
+    fontWeight: '800',
   },
   joinBtn: {
     backgroundColor: '#FFF',
@@ -475,12 +471,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     elevation: 4,
-  },
-  joinBtnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontFamily: 'Inter_700Bold',
-    letterSpacing: 0.3,
   },
   joinWaveBox: {
     marginRight: 10,

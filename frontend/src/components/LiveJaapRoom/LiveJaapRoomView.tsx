@@ -56,6 +56,10 @@ hanuman: {
     text: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः',
     bg: require('../../../assets/images/laxmi_jaap_card.png'),
   },
+  shani_chalisa: {
+    text: 'जय गणेश गिरिजा सुवन मंगल करन कृपाल दीनन के दुख दूर करि कीजै नाथ निहाल जय जय श्री शनिदेव प्रभु सुनहु विनय महाराज करहु कृपा हे रवि तनय राखहु जन की लाज जयति जयति शनिदेव दयाला करत सदा भक्तन प्रतिपाला चारि भुजा तनु श्याम विराजै माथे मुकुट छविली छाजै परम विशाल रूप अति सुन्दर तेज प्रताप जगत् प्रकाशक लोह अस्त्र कालिका प्यारा चंवर ढुरै प्यारे सिर द्वारा खड्ग त्रिशूल कुठार हाथ मह पल मह शत्रु करहि सब दाह मह पिंगल मन्द सुनयन लाला अति मन्द रूप सोहै विकराला कंचन थार आरती कीजै जा पर कुंकुम अक्षत दीजै कंचन दीप जलै दिन राती आरती करत भक्त हरषाती जय जय शनिदेव रवि नन्दन विध्न हरण मंगल के बन्दन लोह मन्दिर अति सुन्दर साजे घण्टा शंख झांझ बहु बाजे कीजै कृपा भक्तन पर स्वामी घट घट वासी अन्तर्यामी भक्तन के हित अवतार लीन्हा असुर मारि सुरन सुख दीन्हा जबहिं राम बनवासहि गयऊ तबहिं शनि कोप कोप भयो लछिमन को लगि शक्ति बाना तबहिं शनि कोप भयो अपमाना रावन की लंका जल गई तबहिं शनि कोप भयो दुःखदाई कौरव पाण्डव युद्ध भयो जब तबहिं शनि कोप भयो दुःख तब विक्रम पर जब कोप दिखायो पल मह राज पाट सब गयो हरिश्चन्द्र राजा बलवन्ता पल मह भयो भिखारी अनन्ता कीजै कृपा दयालु विधाता तुम हो जग के भाग्य विधाता तुमको ध्यावै जो मन लाई ताके दुख सब जाहिं नसाई जो यह चालीसा नित गावै ताके सब संकट कट जावै मन्दिर मह आरती करै जो कोय ताके घर मह मंगल होय शनिदेव की आरती गावै सो नर मनवाञ्छित फल पावै',
+    bg: require('../../../assets/images/upcoming_shani.jpg'),
+  },
 };
 
 const HANUMAN_CHALISA_SEGMENTS = [
@@ -317,7 +321,7 @@ export default function LiveJaapRoomView() {
 
   const isHanuman = mantraType === 'hanuman';
   const isKedarnath = mantraType === 'kedarnath';
-  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya');
+  const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa');
 
   const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
 
@@ -531,6 +535,7 @@ export default function LiveJaapRoomView() {
       audioRef.current = audio;
       
       const handleTimeUpdate = () => {
+        if (mantraType === 'shani_chalisa') return;
         const newTime = audio.currentTime;
         const elapsed = mantraType === 'gayatri' ? (newTime - 2.0 + 29.276) % 29.276 : newTime;
         setCurrentTimeState(elapsed);
@@ -598,6 +603,10 @@ export default function LiveJaapRoomView() {
       
       const playAudio = async () => {
         try {
+          if (mantraType === 'shani_chalisa') {
+            audio.pause();
+            return;
+          }
           if (isSessionActive && !showCompletion) {
             if (isHanuman) {
               const status = getCurrentHanumanStatus(new Date());
@@ -637,6 +646,11 @@ export default function LiveJaapRoomView() {
   // Handle dynamic volume changes on Web without reloading the audio
   useEffect(() => {
     if (Platform.OS === 'web' && audioRef.current) {
+      if (mantraType === 'shani_chalisa') {
+        audioRef.current.volume = 0;
+        audioRef.current.pause();
+        return;
+      }
       audioRef.current.volume = isMuted ? 0 : (mantraType === 'hanuman' ? 0.3 : 0.9);
     }
   }, [isMuted, mantraType]);
@@ -667,7 +681,7 @@ export default function LiveJaapRoomView() {
     let initialSynced = false;
     const syncTimer = setInterval(() => {
       const audio = audioRef.current;
-      if (!audio) return;
+      if (!audio || mantraType === 'shani_chalisa') return;
       
       if (mantraType === 'hanuman') {
         const status = getCurrentHanumanStatus(new Date());
@@ -737,7 +751,7 @@ export default function LiveJaapRoomView() {
     
     const interval = setInterval(() => {
       const audio = audioRef.current;
-      if (audio && !audio.paused && isSessionActive) {
+      if (audio && !audio.paused && isSessionActive && mantraType !== 'shani_chalisa') {
         const rawTime = audio.currentTime;
         const elapsed = mantraType === 'gayatri' ? (rawTime - 2.0 + 29.276) % 29.276 : rawTime;
         setCurrentTimeState(elapsed);
@@ -811,7 +825,7 @@ export default function LiveJaapRoomView() {
 
   // Synchronized progress calculation for other live jaaps
   useEffect(() => {
-    if (mantraType === 'hanuman') return;
+    if (mantraType === 'hanuman' || mantraType === 'shani_chalisa') return;
     if (isSessionActive) {
       const time = currentTimeState || 0;
       const { currentIndex: syncIdx, isHolding: syncHold } = getSynchronizedIndex(WORDS, time, mantraType);
@@ -821,12 +835,23 @@ export default function LiveJaapRoomView() {
   }, [mantraType, isSessionActive, WORDS, currentTimeState]);
 
   useEffect(() => {
-    if (mantraType === 'hanuman' || isSessionActive) return;
+    if (mantraType === 'hanuman' || (isSessionActive && mantraType !== 'shani_chalisa')) return;
 
     let timer: any;
     const isHanuman = mantraType === 'hanuman';
     if (isHolding) {
-      timer = setTimeout(() => { setIsHolding(false); setCurrentIndex(0); }, 4000); 
+      timer = setTimeout(() => { 
+        setIsHolding(false); 
+        setCurrentIndex(0); 
+        if (mantraType === 'shani_chalisa') {
+          setPersonalCount(prev => {
+            const next = prev + 1;
+            AsyncStorage.setItem(countKeyRef.current, next.toString());
+            usePassportStore.getState().addJaap(1, mantraType);
+            return next;
+          });
+        }
+      }, 4000); 
       return () => clearTimeout(timer);
     }
     const currentWord = WORDS[currentIndex] || '';

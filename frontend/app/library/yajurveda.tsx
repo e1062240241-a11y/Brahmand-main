@@ -255,7 +255,7 @@ export default function YajurvedaPage() {
 
           <View style={styles.instructionBadge}>
             <Ionicons name="sparkles" size={16} color="#B85D19" style={{ marginRight: 6 }} />
-            <Text style={styles.instructionText}>यात्रा शुरू करने के लिए छुएं</Text>
+            <Text style={styles.instructionText}>Tap to start journey</Text>
           </View>
         </LinearGradient>
       ) : (
