@@ -597,13 +597,33 @@ export default function AstrologyScreen() {
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>DATE OF BIRTH</Text>
-                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowDatePicker(true)}>
-                      <Ionicons name="calendar-outline" size={20} color="#C67C4E" style={{ marginRight: 8 }} />
-                      <Text style={dob ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
-                        {dob ? dob : 'Select Date of Birth'}
-                      </Text>
-                    </TouchableOpacity>
-                    {showDatePicker && (
+                    <View style={styles.pickerInputWrapper}>
+                      <TextInput
+                        style={styles.pickerTextInput}
+                        placeholder="YYYY-MM-DD (e.g. 1995-05-15)"
+                        placeholderTextColor="#A88876"
+                        value={dob}
+                        onChangeText={(val) => {
+                          setDob(val);
+                          const parsed = parseDateTime(val, tob);
+                          if (parsed && !isNaN(parsed.getTime())) {
+                            setDateVal(parsed);
+                          }
+                        }}
+                      />
+                      <TouchableOpacity 
+                        style={styles.pickerIconButton} 
+                        onPress={() => {
+                          if (!dateVal || isNaN(dateVal.getTime())) {
+                            setDateVal(new Date());
+                          }
+                          setShowDatePicker(true);
+                        }}
+                      >
+                        <Ionicons name="calendar-outline" size={20} color="#C67C4E" />
+                      </TouchableOpacity>
+                    </View>
+                    {showDatePicker && Platform.OS !== 'web' && (
                       Platform.OS === 'ios' ? (
                         <Modal visible={showDatePicker} transparent animationType="fade">
                           <TouchableOpacity 
@@ -648,13 +668,33 @@ export default function AstrologyScreen() {
 
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>TIME OF BIRTH</Text>
-                    <TouchableOpacity style={styles.pickerButton} onPress={() => setShowTimePicker(true)}>
-                      <Ionicons name="time-outline" size={20} color="#C67C4E" style={{ marginRight: 8 }} />
-                      <Text style={tob ? styles.pickerButtonText : styles.pickerButtonPlaceholder}>
-                        {tob ? tob : 'Select Time of Birth'}
-                      </Text>
-                    </TouchableOpacity>
-                    {showTimePicker && (
+                    <View style={styles.pickerInputWrapper}>
+                      <TextInput
+                        style={styles.pickerTextInput}
+                        placeholder="HH:MM (24-hour, e.g. 14:30)"
+                        placeholderTextColor="#A88876"
+                        value={tob}
+                        onChangeText={(val) => {
+                          setTob(val);
+                          const parsed = parseDateTime(dob, val);
+                          if (parsed && !isNaN(parsed.getTime())) {
+                            setDateVal(parsed);
+                          }
+                        }}
+                      />
+                      <TouchableOpacity 
+                        style={styles.pickerIconButton} 
+                        onPress={() => {
+                          if (!dateVal || isNaN(dateVal.getTime())) {
+                            setDateVal(new Date());
+                          }
+                          setShowTimePicker(true);
+                        }}
+                      >
+                        <Ionicons name="time-outline" size={20} color="#C67C4E" />
+                      </TouchableOpacity>
+                    </View>
+                    {showTimePicker && Platform.OS !== 'web' && (
                       Platform.OS === 'ios' ? (
                         <Modal visible={showTimePicker} transparent animationType="fade">
                           <TouchableOpacity 
@@ -1919,5 +1959,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#C67C4E',
+  },
+  pickerInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAF7F5',
+    borderWidth: 1,
+    borderColor: '#EFEAE6',
+    borderRadius: 12,
+    paddingRight: 12,
+  },
+  pickerTextInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: '#3F2C20',
+    fontWeight: '600',
+  },
+  pickerIconButton: {
+    padding: 8,
   },
 });
