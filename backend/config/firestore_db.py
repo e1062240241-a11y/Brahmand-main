@@ -1,7 +1,7 @@
 """Firestore Database Operations Layer using Sync Client"""
 import logging
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, List
 import asyncio
 import time
@@ -321,7 +321,7 @@ class FirestoreDB:
         self, 
         chat_id: str, 
         limit: int = 50,
-        before_timestamp: datetime = None
+        before_timestamp: Any = None
     ) -> List[Dict[str, Any]]:
         """Get messages from a chat with pagination"""
         def _get():
@@ -332,7 +332,21 @@ class FirestoreDB:
             query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
             
             if before_timestamp:
-                query = query.where(filter=FieldFilter('created_at', '<', before_timestamp))
+                before_str = before_timestamp
+                if isinstance(before_timestamp, datetime):
+                    # Convert to UTC naive representation to match created_at format
+                    if before_timestamp.tzinfo is not None:
+                        # timezone is imported from datetime
+                        dt_utc = before_timestamp.astimezone(timezone.utc).replace(tzinfo=None)
+                    else:
+                        dt_utc = before_timestamp
+                    before_str = dt_utc.isoformat()
+                    if not before_str.endswith('Z'):
+                        before_str += 'Z'
+                else:
+                    before_str = str(before_timestamp)
+                
+                query = query.where(filter=FieldFilter('created_at', '<', before_str))
             
             query = query.limit(limit)
             

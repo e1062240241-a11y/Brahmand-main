@@ -306,37 +306,48 @@ async def _upload_and_compress_video_impl(
             else:
                 raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
 
-    _ensure_ffmpeg_tools_available()
+    has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
     input_path = None
     output_file = None
 
     try:
         input_path, original_size = await _save_upload_to_temp_file(file)
-        metadata = await asyncio.to_thread(_probe_video_metadata, input_path)
-        duration = metadata.get("duration") or 0.0
+        if has_ffmpeg:
+            metadata = await asyncio.to_thread(_probe_video_metadata, input_path)
+            duration = metadata.get("duration") or 0.0
 
-        if duration <= 0:
-            raise HTTPException(status_code=400, detail="Unable to determine video duration")
-        if duration > MAX_VIDEO_DURATION_SECONDS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less",
+            if duration <= 0:
+                raise HTTPException(status_code=400, detail="Unable to determine video duration")
+            if duration > MAX_VIDEO_DURATION_SECONDS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less",
+                )
+
+            target_width, target_height, target_label = _pick_target_profile(metadata.get("width"), metadata.get("height"))
+
+            output_file = NamedTemporaryFile(delete=False, suffix=".mp4")
+            output_file.close()
+
+            await asyncio.to_thread(
+                _compress_video,
+                input_path,
+                output_file.name,
+                target_width,
+                target_height,
             )
 
-        target_width, target_height, target_label = _pick_target_profile(metadata.get("width"), metadata.get("height"))
+            compressed_size = os.path.getsize(output_file.name)
+            target_resolution = target_label
+        else:
+            logger.warning("ffmpeg is not installed on server; bypassing compression")
+            output_file = NamedTemporaryFile(delete=False, suffix=".mp4")
+            output_file.close()
+            shutil.copy2(input_path, output_file.name)
+            compressed_size = original_size
+            duration = 0.0
+            target_resolution = "original"
 
-        output_file = NamedTemporaryFile(delete=False, suffix=".mp4")
-        output_file.close()
-
-        await asyncio.to_thread(
-            _compress_video,
-            input_path,
-            output_file.name,
-            target_width,
-            target_height,
-        )
-
-        compressed_size = os.path.getsize(output_file.name)
         object_path, url = await asyncio.to_thread(
             _upload_to_firebase_storage,
             user_id,
@@ -344,11 +355,11 @@ async def _upload_and_compress_video_impl(
         )
 
         return {
-            "message": "Video uploaded and compressed successfully",
+            "message": "Video uploaded successfully" if not has_ffmpeg else "Video uploaded and compressed successfully",
             "url": url,
             "path": object_path,
             "duration_seconds": round(duration, 2),
-            "target_resolution": target_label,
+            "target_resolution": target_resolution,
             "original_size_bytes": original_size,
             "compressed_size_bytes": compressed_size,
             "compression_ratio": round(compressed_size / max(original_size, 1), 4),

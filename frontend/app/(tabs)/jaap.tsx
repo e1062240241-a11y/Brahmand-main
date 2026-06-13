@@ -155,7 +155,13 @@ export default function JaapLandingScreen() {
   const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [sessionReminders, setSessionReminders] = useState<Record<string, boolean>>({});
-  const [activeCounts, setActiveCounts] = useState<Record<string, number>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
+      initial[room] = Math.floor(Math.random() * 17) + 2;
+    });
+    return initial;
+  });
 
   useEffect(() => {
     if (!isFocused || activeSection !== 'jaap') return;
@@ -167,7 +173,13 @@ export default function JaapLandingScreen() {
           params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
         });
         if (active && response && response.data) {
-          setActiveCounts(response.data);
+          const sanitizedData: Record<string, number> = {};
+          Object.keys(response.data).forEach((key) => {
+            const realCount = response.data[key] || 0;
+            // If count is > 10, show count * 18, else show randomized count (2 to 18) directly
+            sanitizedData[key] = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+          });
+          setActiveCounts(sanitizedData);
         }
       } catch (error) {
         console.warn('Error fetching active jaap counts:', error);
@@ -712,7 +724,7 @@ export default function JaapLandingScreen() {
                         <View style={styles.exactCountBadge}>
                           <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
                           <Text style={styles.exactCountText}>
-                            {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
+                            {(activeCounts[getMantraRoomName(jaap.id)]).toLocaleString()}
                           </Text>
                         </View>
                       </View>

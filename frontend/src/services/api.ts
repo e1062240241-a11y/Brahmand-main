@@ -56,12 +56,21 @@ const isWebRunningOnLocalhost =
 const normalizeMimeType = (type?: string, name?: string) => {
   const normalized = (type || '').toLowerCase();
   const allowedImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/gif', 'image/bmp'];
+  const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/3gpp'];
 
   if (allowedImageTypes.includes(normalized)) {
     return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
   }
 
+  if (allowedVideoTypes.includes(normalized)) {
+    return normalized;
+  }
+
   if (normalized.startsWith('image/')) {
+    return normalized;
+  }
+
+  if (normalized.startsWith('video/')) {
     return normalized;
   }
 
@@ -73,6 +82,10 @@ const normalizeMimeType = (type?: string, name?: string) => {
     if (lowerName.endsWith('.gif')) return 'image/gif';
     if (lowerName.endsWith('.bmp')) return 'image/bmp';
     if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+    if (lowerName.endsWith('.mp4')) return 'video/mp4';
+    if (lowerName.endsWith('.mov')) return 'video/quicktime';
+    if (lowerName.endsWith('.webm')) return 'video/webm';
+    if (lowerName.endsWith('.mkv')) return 'video/x-matroska';
   }
 
   return 'image/jpeg';
@@ -82,14 +95,18 @@ const normalizeNativeUploadFile = async (file: { uri: string; name: string; type
   const fileName = file.name || 'upload.jpg';
   const fileType = normalizeMimeType(file.type, fileName);
 
-  if (Platform.OS !== 'web' && file.uri?.startsWith('content://')) {
+  if (Platform.OS !== 'web' && (file.uri?.startsWith('content://') || file.uri?.startsWith('ph://') || file.uri?.startsWith('assets-library://'))) {
     try {
       const fileSystem = FileSystem as any;
       const cacheDir = fileSystem.cacheDirectory || fileSystem.documentDirectory || '';
       const localUri = `${cacheDir}upload-${Date.now()}-${fileName}`;
-      const downloadResult = await FileSystem.downloadAsync(file.uri, localUri);
+      if (typeof fileSystem.copyAsync === 'function') {
+        await fileSystem.copyAsync({ from: file.uri, to: localUri });
+      } else {
+        await FileSystem.downloadAsync(file.uri, localUri);
+      }
       return {
-        uri: downloadResult.uri,
+        uri: localUri,
         name: fileName,
         type: fileType,
       };
