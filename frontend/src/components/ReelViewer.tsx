@@ -1459,17 +1459,20 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             setReplyingToComment(null);
           }}
         >
-          <TouchableOpacity
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}
-            activeOpacity={1}
-            onPress={() => {
-              setIsCommentVisible(false);
-              setActiveCommentMenuId(null);
-              setReplyingToComment(null);
-            }}
           >
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            <TouchableOpacity
+              style={{ ...StyleSheet.absoluteFillObject }}
+              activeOpacity={1}
+              onPress={() => {
+                setIsCommentVisible(false);
+                setActiveCommentMenuId(null);
+                setReplyingToComment(null);
+              }}
+            />
+            <View
               style={{
                 backgroundColor: '#FFF',
                 borderTopLeftRadius: 24,
@@ -1494,38 +1497,37 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 return (
                   <FlatList
                     data={parentComments}
-                    keyExtractor={(item) => String(item.id)}
+                    keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
                     renderItem={({ item }) => {
                       const canDelete = item.user_id === user?.id || selectedPost?.user_id === user?.id;
                       const replies = repliesMap[item.id] || [];
                       return (
-                        <View style={{ marginBottom: 12, position: 'relative' }}>
+                        <View style={{ marginBottom: 12, position: 'relative', paddingHorizontal: 16 }}>
                           {replies.length > 0 && (
                             <View style={{
                               position: 'absolute',
-                              left: 33,
-                              top: 51,
+                              left: 31,
+                              top: 32,
                               bottom: 0,
                               width: 1.5,
                               backgroundColor: '#E6E1E8',
                               zIndex: 1,
                             }} />
                           )}
-                          <View style={{
-                            flexDirection: 'row',
-                            padding: 15,
-                            alignItems: 'flex-start',
-                          }}>
-                            <Avatar photo={item.user_photo} name={item.username} size={36} />
-                            <View style={{ marginLeft: 12, flex: 1 }}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                  <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#111' }}>{item.username}</Text>
-                                  <Text style={{ fontSize: 11, color: '#888', marginLeft: 8 }}>{formatTimeAgo(item.created_at)}</Text>
-                                </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                            <Avatar photo={item?.user_photo} name={item?.username || 'User'} size={32} />
+                            <View style={{
+                              flex: 1,
+                              marginLeft: 10,
+                              backgroundColor: '#F7EDE7',
+                              borderRadius: 16,
+                              padding: 12,
+                            }}>
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#3F2C20' }}>{item?.username || 'User'}</Text>
                                 {canDelete && (
                                   <TouchableOpacity
-                                    style={{ padding: 4, marginRight: -4 }}
+                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
                                     onPress={() => handleDeleteComment(item)}
                                   >
                                     <Ionicons name="trash-outline" size={16} color="#FF3B30" />
@@ -1533,14 +1535,15 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 )}
                               </View>
                               <MentionText
-                                text={item.text}
-                                style={{ fontSize: 14, color: '#333', marginTop: 4, lineHeight: 18 }}
+                                text={item?.text || ''}
+                                style={{ fontSize: 14, color: '#3F2C20', marginTop: 3, lineHeight: 18 }}
                               />
-                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                <Text style={{ fontSize: 11, color: '#A88876' }}>{formatTimeAgo(item?.created_at)}</Text>
                                 <TouchableOpacity
+                                  style={{ marginLeft: 16 }}
                                   onPress={() => {
                                     setReplyingToComment(item);
-                                    setNewCommentText(`@${item.username || 'User'} `);
                                   }}
                                 >
                                   <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>
@@ -1549,27 +1552,19 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                             </View>
                           </View>
 
-                          {/* Render replies */}
+                          {/* Render nested replies */}
                           {replies.map((reply: any, index: number) => {
                             const canDeleteReply = reply.user_id === user?.id || selectedPost?.user_id === user?.id;
                             const isLastReply = index === replies.length - 1;
                             return (
-                              <View key={reply.id} style={{
-                                flexDirection: 'row',
-                                paddingLeft: 60,
-                                paddingRight: 15,
-                                paddingVertical: 10,
-                                backgroundColor: '#FAFAFA',
-                                alignItems: 'flex-start',
-                                position: 'relative',
-                              }}>
+                              <View key={reply.id || `${reply.user_id}-${reply.created_at}`} style={{ flexDirection: 'row', alignItems: 'flex-start', marginLeft: 42, marginTop: 8, position: 'relative' }}>
                                 {/* Thread vertical line segment */}
                                 <View style={{
                                   position: 'absolute',
-                                  left: 33,
+                                  left: -26,
                                   top: 0,
                                   bottom: isLastReply ? undefined : 0,
-                                  height: isLastReply ? 24 : undefined,
+                                  height: isLastReply ? 12 : undefined,
                                   width: 1.5,
                                   backgroundColor: '#E6E1E8',
                                   zIndex: 1,
@@ -1577,16 +1572,22 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 {/* Thread horizontal branch line */}
                                 <View style={{
                                   position: 'absolute',
-                                  left: 33,
-                                  top: 24,
-                                  width: 27,
+                                  left: -26,
+                                  top: 12,
+                                  width: 26,
                                   height: 1.5,
                                   backgroundColor: '#E6E1E8',
                                   zIndex: 1,
                                 }} />
 
-                                <Avatar photo={reply.user_photo} name={reply.username} size={28} />
-                                <View style={{ marginLeft: 10, flex: 1 }}>
+                                <Avatar photo={reply?.user_photo} name={reply?.username || 'User'} size={24} />
+                                <View style={{
+                                  flex: 1,
+                                  marginLeft: 8,
+                                  backgroundColor: '#FAF7F5',
+                                  borderRadius: 16,
+                                  padding: 12,
+                                }}>
                                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                       <Text style={{ fontWeight: 'bold', fontSize: 12, color: '#222' }}>{reply.username}</Text>
@@ -1681,8 +1682,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   </TouchableOpacity>
                 </View>
               </View>
-            </KeyboardAvoidingView>
-          </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Options Settings Modal */}
@@ -1692,11 +1693,12 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           animationType="fade"
           onRequestClose={() => setIsOptionsVisible(false)}
         >
-          <TouchableOpacity
-            style={styles.sheetBackdrop}
-            activeOpacity={1}
-            onPress={() => setIsOptionsVisible(false)}
-          >
+          <View style={styles.sheetBackdrop}>
+            <TouchableOpacity
+              style={{ ...StyleSheet.absoluteFillObject }}
+              activeOpacity={1}
+              onPress={() => setIsOptionsVisible(false)}
+            />
             <View style={styles.sheetContainer}>
               <View style={styles.sheetHandle} />
               <Text style={styles.sheetTitle}>{t('reelSettings')}</Text>
@@ -1729,7 +1731,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 <Text style={styles.sheetCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       </View>
     </Modal>

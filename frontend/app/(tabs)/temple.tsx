@@ -19,6 +19,8 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getTemples } from '../../src/services/api';
+import { database } from '../../src/database';
+import { Q } from '@nozbe/watermelondb';
 import { FONTS } from '../../src/constants/theme';
 import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
@@ -47,15 +49,76 @@ export default function TempleScreen() {
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  const loadLocalTemples = async () => {
+    try {
+      const localTemples = await database.get('temples').query().fetch();
+      if (localTemples && localTemples.length > 0) {
+        // Map WatermelonDB models to plain objects that the UI expects
+        const formattedTemples = localTemples.map((t: any) => ({
+          id: t.templeId,
+          name: t.name,
+          location: t.location,
+          deity: t.deity,
+          category: t.category,
+          image_url: t.imageUrl,
+          is_verified: t.isVerified,
+        }));
+        setTemples(formattedTemples);
+        setLoading(false); // We have local data, so we can stop showing the main loader
+      }
+    } catch (error) {
+      console.error('Error loading local temples:', error);
+    }
+  };
+
   const fetchData = async () => {
     try {
       setRefreshing(true);
       const response = await getTemples();
       if (response.data) {
         setTemples(response.data);
+
+        // Sync with WatermelonDB
+        try {
+          await database.write(async () => {
+            const templeCollection = database.get('temples');
+            const localTemples = await templeCollection.query().fetch();
+            const localTemplesMap = new Map(localTemples.map((t: any) => [t.templeId, t]));
+
+            const recordsToCreateOrUpdate = response.data.map((temple: any) => {
+              const existingRecord = localTemplesMap.get(String(temple.id)) as any;
+              if (existingRecord) {
+                return existingRecord.prepareUpdate((record: any) => {
+                  record.name = temple.name || '';
+                  record.location = temple.location || '';
+                  record.deity = temple.deity || '';
+                  record.category = temple.category || '';
+                  record.imageUrl = temple.image_url || '';
+                  record.isVerified = temple.is_verified || false;
+                });
+              } else {
+                return templeCollection.prepareCreate((record: any) => {
+                  record.templeId = String(temple.id);
+                  record.name = temple.name || '';
+                  record.location = temple.location || '';
+                  record.deity = temple.deity || '';
+                  record.category = temple.category || '';
+                  record.imageUrl = temple.image_url || '';
+                  record.isVerified = temple.is_verified || false;
+                });
+              }
+            });
+
+            if (recordsToCreateOrUpdate.length > 0) {
+              await database.batch(...recordsToCreateOrUpdate);
+            }
+          });
+        } catch (dbError) {
+          console.error('Error syncing temples to WatermelonDB:', dbError);
+        }
       }
     } catch (error) {
-      console.error('Error fetching temples:', error);
+      console.error('Error fetching temples from API:', error);
     } finally {
       setRefreshing(false);
       setLoading(false);
@@ -63,6 +126,7 @@ export default function TempleScreen() {
   };
 
   useEffect(() => {
+    loadLocalTemples();
     fetchData();
   }, []);
 

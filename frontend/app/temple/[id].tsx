@@ -6,6 +6,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { getTemple, getTemplePosts, followTemple, unfollowTemple } from '../../src/services/api';
+import { database } from '../../src/database';
+import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { getTempleImageById } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
@@ -682,7 +684,36 @@ export default function TempleDetailScreen() {
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
   const isCurrentlyLive = temple ? checkIsAartiLive(getTempleAartiSessions(temple.aarti_timings || {}, temple.name || '')) : false;
 
+  const loadLocalTempleData = async () => {
+    try {
+      const localTemples = await database.get('temples').query(Q.where('temple_id', resolvedTempleId)).fetch();
+      if (localTemples && localTemples.length > 0) {
+        const t = localTemples[0] as any;
+        setTemple({
+          id: t.templeId,
+          name: t.name,
+          location: t.location,
+          deity: t.deity,
+          category: t.category,
+          description: t.description,
+          guidance: t.guidance,
+          image_url: t.imageUrl,
+          youtube_url: t.youtubeUrl,
+          coords: t.coords ? JSON.parse(t.coords) : null,
+          aarti_timings: t.aartiTimings ? JSON.parse(t.aartiTimings) : null,
+          is_following: t.isFollowing,
+          is_verified: t.isVerified,
+        });
+        setIsFollowing(t.isFollowing || false);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error('Error loading local temple details:', error);
+    }
+  };
+
   useEffect(() => {
+    loadLocalTempleData();
     fetchTempleData();
   }, [id]);
 
@@ -716,6 +747,50 @@ export default function TempleDetailScreen() {
  setTemple(templeRes.data);
  setPosts(postsRes.data || []);
  setIsFollowing(templeRes.data?.is_following || false);
+
+ // Sync fetched details into WatermelonDB
+ try {
+   await database.write(async () => {
+     const templeCollection = database.get('temples');
+     const localTemples = await templeCollection.query(Q.where('temple_id', resolvedTempleId)).fetch();
+     const tData = templeRes.data;
+
+     if (localTemples.length > 0) {
+       await localTemples[0].update((record: any) => {
+         record.name = tData.name || '';
+         record.location = tData.location || '';
+         record.deity = tData.deity || '';
+         record.category = tData.category || '';
+         record.description = tData.description || '';
+         record.guidance = tData.guidance || '';
+         record.imageUrl = tData.image_url || '';
+         record.youtubeUrl = tData.youtube_url || '';
+         record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
+         record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
+         record.isFollowing = tData.is_following || false;
+         record.isVerified = tData.is_verified || false;
+       });
+     } else {
+       await templeCollection.create((record: any) => {
+         record.templeId = resolvedTempleId;
+         record.name = tData.name || '';
+         record.location = tData.location || '';
+         record.deity = tData.deity || '';
+         record.category = tData.category || '';
+         record.description = tData.description || '';
+         record.guidance = tData.guidance || '';
+         record.imageUrl = tData.image_url || '';
+         record.youtubeUrl = tData.youtube_url || '';
+         record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
+         record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
+         record.isFollowing = tData.is_following || false;
+         record.isVerified = tData.is_verified || false;
+       });
+     }
+   });
+ } catch (dbError) {
+   console.error('Error syncing temple details to WatermelonDB:', dbError);
+ }
  } catch (error) {
  const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
  if (staticTemple) {

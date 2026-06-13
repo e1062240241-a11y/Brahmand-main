@@ -1,8 +1,28 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-  version: 7,
+  version: 8,
   tables: [
+    tableSchema({
+      name: 'temples',
+      columns: [
+        { name: 'temple_id', type: 'string', isIndexed: true },
+        { name: 'name', type: 'string' },
+        { name: 'location', type: 'string', isOptional: true },
+        { name: 'deity', type: 'string', isOptional: true },
+        { name: 'category', type: 'string', isOptional: true },
+        { name: 'description', type: 'string', isOptional: true },
+        { name: 'guidance', type: 'string', isOptional: true },
+        { name: 'image_url', type: 'string', isOptional: true },
+        { name: 'youtube_url', type: 'string', isOptional: true },
+        { name: 'coords', type: 'string', isOptional: true }, // stringified JSON {lat, lng}
+        { name: 'aarti_timings', type: 'string', isOptional: true }, // stringified JSON
+        { name: 'is_following', type: 'boolean', isOptional: true },
+        { name: 'is_verified', type: 'boolean', isOptional: true },
+        { name: 'created_at', type: 'number' },
+        { name: 'updated_at', type: 'number' },
+      ]
+    }),
     tableSchema({
       name: 'users',
       columns: [

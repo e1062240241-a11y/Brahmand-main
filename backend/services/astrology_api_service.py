@@ -380,4 +380,264 @@ class AstrologyApiService:
         # The frontend uses 'sign' and 'Naksahtra'
         return normalized
 
+    async def get_kundli_data(
+        self,
+        lat: float,
+        lon: float,
+        dob_str: str,  # YYYY-MM-DD
+        tob_str: str,  # HH:MM
+        tz: float = 5.5
+    ) -> Dict[str, Any]:
+        """Fetch general nakshatra report, planetary positions, D1/D9 charts, doshas and remedies using AstrologyAPI.com."""
+        import zoneinfo
+        import re
+
+        cache_key = f"astrology_api:kundli:{dob_str}:{tob_str}:{round(lat, 3)}:{round(lon, 3)}:{tz}"
+        cached = await cache_manager.get(cache_key)
+        if cached:
+            return cached
+
+        try:
+            dt_obj = datetime.strptime(f"{dob_str} {tob_str}", "%Y-%m-%d %H:%M")
+        except ValueError:
+            dt_obj = datetime.now()
+
+        payload = {
+            "day": dt_obj.day,
+            "month": dt_obj.month,
+            "year": dt_obj.year,
+            "hour": dt_obj.hour,
+            "min": dt_obj.minute,
+            "lat": lat,
+            "lon": lon,
+            "tzone": tz
+        }
+
+        # List of parallel tasks to fetch
+        tasks = {
+            "planets": self._fetch_endpoint("/planets", payload.copy()),
+            "chart_d1": self._fetch_endpoint("/horo_chart_image/D1", {**payload.copy(), "chartType": "north", "image_type": "svg"}),
+            "chart_d9": self._fetch_endpoint("/horo_chart_image/D9", {**payload.copy(), "chartType": "north", "image_type": "svg"}),
+            "manglik": self._fetch_endpoint("/manglik", payload.copy()),
+            "kalsarpa": self._fetch_endpoint("/kalsarpa_details", payload.copy()),
+            "pitra": self._fetch_endpoint("/pitra_dosha_report", payload.copy()),
+            "sade_sati": self._fetch_endpoint("/sadhesati_current_status", payload.copy()),
+            "gems": self._fetch_endpoint("/basic_gem_suggestion", payload.copy()),
+            "rudraksha": self._fetch_endpoint("/rudraksha_suggestion", payload.copy()),
+            "dasha": self._fetch_endpoint("/major_vdasha", payload.copy())
+        }
+
+        task_names = list(tasks.keys())
+        task_results = await asyncio.gather(*tasks.values())
+        raw_data = dict(zip(task_names, task_results))
+
+        # 1. Map planets
+        planets_raw = raw_data.get("planets")
+        planets_list = []
+        if isinstance(planets_raw, list):
+            for item in planets_raw:
+                if isinstance(item, dict) and "name" in item:
+                    planets_list.append({
+                        "name": item.get("name"),
+                        "norm_degree": item.get("normDegree") or 0.0,
+                        "sign": item.get("sign") or "-",
+                        "sign_lord": item.get("signLord") or "-",
+                        "nakshatra": item.get("nakshatra") or "-",
+                        "nakshatra_lord": item.get("nakshatra_lord") or "-",
+                        "house": item.get("house") or 1,
+                        "is_retro": "true" if str(item.get("isRetro")).lower() == "true" else "false"
+                    })
+        planets_data = {"response": planets_list}
+
+        # 2. Map charts D1 and D9
+        d1_raw = raw_data.get("chart_d1")
+        d1_svg = d1_raw.get("svg", "") if isinstance(d1_raw, dict) else ""
+        if d1_svg and "viewBox=" not in d1_svg:
+            d1_svg = re.sub(
+                r'<svg([^>]*)(width|height)="[^"]*"([^>]*)(width|height)="[^"]*"',
+                r'<svg\1 viewBox="0 0 350 350"',
+                d1_svg
+            )
+            if "viewBox=" not in d1_svg:
+                d1_svg = d1_svg.replace("<svg", '<svg viewBox="0 0 350 350"', 1)
+
+        d9_raw = raw_data.get("chart_d9")
+        d9_svg = d9_raw.get("svg", "") if isinstance(d9_raw, dict) else ""
+        if d9_svg and "viewBox=" not in d9_svg:
+            d9_svg = re.sub(
+                r'<svg([^>]*)(width|height)="[^"]*"([^>]*)(width|height)="[^"]*"',
+                r'<svg\1 viewBox="0 0 350 350"',
+                d9_svg
+            )
+            if "viewBox=" not in d9_svg:
+                d9_svg = d9_svg.replace("<svg", '<svg viewBox="0 0 350 350"', 1)
+
+        # 3. Map Manglik
+        manglik_raw = raw_data.get("manglik") or {}
+        is_manglik = manglik_raw.get("is_present") or False
+        manglik_data = {
+            "response": {
+                "is_present": is_manglik,
+                "is_mangal_dosha_present": is_manglik,
+                "mangal_dosha_type": manglik_raw.get("manglik_status") or "none",
+                "manglik_present_rule": manglik_raw.get("manglik_report") or "",
+                "manglik_cancel_rule": "Cancelled: " + str(manglik_raw.get("is_mars_manglik_cancelled", False)),
+                "description": manglik_raw.get("manglik_report") or "Mars alignment analysis for Manglik Dosha."
+            }
+        }
+
+        # 4. Map Kalsarp
+        kalsarpa_raw = raw_data.get("kalsarpa") or {}
+        is_kalsarpa = kalsarpa_raw.get("present") or False
+        kalsarpa_data = {
+            "response": {
+                "is_present": is_kalsarpa,
+                "type": kalsarpa_raw.get("type") if is_kalsarpa else "none",
+                "one_line": kalsarpa_raw.get("one_line") or kalsarpa_raw.get("type") or "No Kaalsarp Dosha details available.",
+                "description": kalsarpa_raw.get("one_line") or "Kaal Sarp Dosha status and details."
+            }
+        }
+
+        # 5. Map Pitra
+        pitra_raw = raw_data.get("pitra") or {}
+        is_pitra = pitra_raw.get("is_pitri_dosha_present") or False
+        pitra_data = {
+            "response": {
+                "is_present": is_pitra,
+                "is_pitra_dosha_present": is_pitra,
+                "one_line": pitra_raw.get("conclusion") or pitra_raw.get("description") or "Pitra Dosha analysis.",
+                "description": pitra_raw.get("conclusion") or pitra_raw.get("description") or "Pitra Dosha analysis."
+            }
+        }
+
+        # 6. Map Sade Sati
+        sade_raw = raw_data.get("sade_sati") or {}
+        is_sadhesati = False
+        status_val = sade_raw.get("sadhesati_status")
+        if isinstance(status_val, bool):
+            is_sadhesati = status_val
+        elif isinstance(status_val, str):
+            is_sadhesati = status_val.lower() not in ("no", "false", "none", "")
+        
+        undergoing = sade_raw.get("is_undergoing_sadhesati")
+        if isinstance(undergoing, str) and undergoing.lower().startswith("yes"):
+            is_sadhesati = True
+
+        sade_data = {
+            "response": {
+                "is_sadhesati": is_sadhesati,
+                "is_undergoing_sadhesati": is_sadhesati,
+                "sadhesati_status": "active" if is_sadhesati else "inactive",
+                "description": sade_raw.get("is_undergoing_sadhesati") or sade_raw.get("what_is_sadhesati") or "Sade Sati status details."
+            }
+        }
+
+        # 7. Map Gemstone Suggestions
+        gems_raw = raw_data.get("gems") or {}
+        def map_stone(stone):
+            if not isinstance(stone, dict):
+                return None
+            return {
+                "name": stone.get("name") or "Gemstone",
+                "metal": stone.get("wear_metal") or "Silver/Gold",
+                "finger": stone.get("wear_finger") or "Ring Finger"
+            }
+        
+        life_stone = map_stone(gems_raw.get("LIFE") or gems_raw.get("life_stone"))
+        lucky_stone = map_stone(gems_raw.get("LUCKY") or gems_raw.get("lucky_stone"))
+        gems_data = {
+            "response": {
+                "life_stone": life_stone,
+                "lucky_stone": lucky_stone
+            }
+        }
+
+        # 8. Map Rudraksha Suggestion
+        rudra_raw = raw_data.get("rudraksha") or {}
+        rudra_data = {
+            "response": {
+                "recommendation": rudra_raw.get("recommend") or rudra_raw.get("name") or "Rudraksha recommendation",
+                "detail": rudra_raw.get("detail") or "Detailed Rudraksha guidance is recommended based on birth charts."
+            }
+        }
+
+        # 9. Map Vimshottari Dasha
+        dasha_raw = raw_data.get("dasha") or []
+        dasha_list = []
+        if isinstance(dasha_raw, list):
+            for item in dasha_raw:
+                if isinstance(item, dict):
+                    dasha_list.append({
+                        "dasha": item.get("planet") or "Unknown",
+                        "start": item.get("start") or "-",
+                        "end": item.get("end") or "-"
+                    })
+        dasha_data = {
+            "response": dasha_list
+        }
+
+        aggregated_data = {
+            "planets": planets_data,
+            "chart_d1": d1_svg,
+            "chart_d9": d9_svg,
+            "mangal_dosha": manglik_data,
+            "kaalsarp_dosha": kalsarpa_data,
+            "pitra_dosha": pitra_data,
+            "sadhesati_status": sade_data,
+            "gem_suggestion": gems_data,
+            "rudraksha_suggestion": rudra_data,
+            "vimshottari_dasha": dasha_data
+        }
+
+        await cache_manager.set(cache_key, aggregated_data, ttl=86400)
+        return aggregated_data
+
+    async def search_city(self, city_name: str) -> Any:
+        """Search geo coordinates and timezone details for a city using AstrologyAPI.com's geo_details."""
+        import zoneinfo
+        from datetime import datetime
+
+        def get_tz_offset(timezone_id: str) -> float:
+            if not timezone_id:
+                return 5.5
+            try:
+                tz = zoneinfo.ZoneInfo(timezone_id)
+                offset_sec = tz.utcoffset(datetime.now()).total_seconds()
+                return round(offset_sec / 3600.0, 2)
+            except Exception:
+                return 5.5
+
+        payload = {
+            "place": city_name,
+            "maxRows": 10
+        }
+        raw = await self._fetch_endpoint("/geo_details", payload)
+        geonames = raw.get("geonames", []) if isinstance(raw, dict) else []
+        
+        mapped_cities = []
+        for city in geonames:
+            if not isinstance(city, dict):
+                continue
+            name = city.get("place_name") or "Unknown"
+            country = city.get("country_code") or ""
+            full_name = f"{name}, {country}" if country else name
+            
+            try:
+                lat = float(city.get("latitude") or 0.0)
+                lon = float(city.get("longitude") or 0.0)
+            except ValueError:
+                lat, lon = 0.0, 0.0
+                
+            tz_id = city.get("timezone_id") or ""
+            tz_offset = get_tz_offset(tz_id)
+            
+            mapped_cities.append({
+                "name": name,
+                "full_name": full_name,
+                "coordinates": [lat, lon],
+                "tz": tz_offset
+            })
+            
+        return {"response": mapped_cities}
+
 astrology_api_service = AstrologyApiService()

@@ -16,6 +16,7 @@ import LibraryProgress from './models/LibraryProgress'
 import PassportJourney from './models/PassportJourney'
 import PassportBadge from './models/PassportBadge'
 import PassportCertificate from './models/PassportCertificate'
+import Temple from './models/Temple'
 
 const adapter = new SQLiteAdapter({
   schema,
@@ -42,6 +43,7 @@ export const database = new Database({
     LibraryProgress,
     PassportJourney,
     PassportBadge,
-    PassportCertificate
+    PassportCertificate,
+    Temple
   ],
 })

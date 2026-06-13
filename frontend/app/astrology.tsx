@@ -26,7 +26,7 @@ import { useAuthStore } from '../src/store/authStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CHART_SIZE = SCREEN_WIDTH - 48;
+const CHART_SIZE = SCREEN_WIDTH - 80;
 
 const ASTRO_TABS = [
   { key: 'charts', label: 'Vedic Charts', icon: 'grid-outline' },

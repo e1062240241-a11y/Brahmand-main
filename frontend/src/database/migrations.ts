@@ -3,6 +3,31 @@ import { schemaMigrations, createTable } from '@nozbe/watermelondb/Schema/migrat
 export default schemaMigrations({
   migrations: [
     {
+      toVersion: 8,
+      steps: [
+        createTable({
+          name: 'temples',
+          columns: [
+            { name: 'temple_id', type: 'string', isIndexed: true },
+            { name: 'name', type: 'string' },
+            { name: 'location', type: 'string', isOptional: true },
+            { name: 'deity', type: 'string', isOptional: true },
+            { name: 'category', type: 'string', isOptional: true },
+            { name: 'description', type: 'string', isOptional: true },
+            { name: 'guidance', type: 'string', isOptional: true },
+            { name: 'image_url', type: 'string', isOptional: true },
+            { name: 'youtube_url', type: 'string', isOptional: true },
+            { name: 'coords', type: 'string', isOptional: true },
+            { name: 'aarti_timings', type: 'string', isOptional: true },
+            { name: 'is_following', type: 'boolean', isOptional: true },
+            { name: 'is_verified', type: 'boolean', isOptional: true },
+            { name: 'created_at', type: 'number' },
+            { name: 'updated_at', type: 'number' },
+          ]
+        }),
+      ]
+    },
+    {
       toVersion: 7,
       steps: [
         createTable({
