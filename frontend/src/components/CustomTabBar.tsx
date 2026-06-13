@@ -3,12 +3,12 @@ import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
-import { Svg, Rect } from 'react-native-svg';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 
 const ACTIVE_ORANGE = '#FF8A00';
-const INACTIVE_COLOR = '#FFFFFF';
-const CAPSULE_BG = '#1C1C1C';
+const INACTIVE_COLOR = '#444444';
+const CAPSULE_BG = 'transparent';
 const BORDER_COLOR = '#CECECE';
 
 const HIDDEN_ROUTES = new Set(['index', 'temple', 'circles', 'jobs', 'discover']);
@@ -62,7 +62,7 @@ const getIconPositions = (activeIndex: number): number[] => {
   return [38, 113.768, 186.5, 259.232, 335];
 };
 
-const getBackgroundRects = (activeIndex: number) => {
+const renderBackgroundCapsules = (activeIndex: number) => {
   const GAP = 6;
   
   const getTabWidthForBg = (index: number) => {
@@ -80,14 +80,30 @@ const getBackgroundRects = (activeIndex: number) => {
 
   const BORDER_COLOR_VAL = '#FFFFFF';
 
-  const rects = [];
+  const capsules = [];
 
   // Left Inactive Group
   if (L_active > 20) {
     const x = 0.75;
     const w = L_active - GAP - x;
-    rects.push(
-      <Rect key="left" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
+    capsules.push(
+      <View
+        key="left"
+        style={{
+          position: 'absolute',
+          left: x,
+          top: 0.75,
+          width: w,
+          height: 67.5,
+          borderRadius: 33.75,
+          borderWidth: 1.5,
+          borderColor: BORDER_COLOR_VAL,
+          overflow: 'hidden',
+          backgroundColor: CAPSULE_BG,
+        }}
+      >
+        <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
+      </View>
     );
   }
 
@@ -95,19 +111,51 @@ const getBackgroundRects = (activeIndex: number) => {
   if (R_active < 353) {
     const x = R_active + GAP;
     const w = 373 - 0.75 - x;
-    rects.push(
-      <Rect key="right" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
+    capsules.push(
+      <View
+        key="right"
+        style={{
+          position: 'absolute',
+          left: x,
+          top: 0.75,
+          width: w,
+          height: 67.5,
+          borderRadius: 33.75,
+          borderWidth: 1.5,
+          borderColor: BORDER_COLOR_VAL,
+          overflow: 'hidden',
+          backgroundColor: CAPSULE_BG,
+        }}
+      >
+        <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
+      </View>
     );
   }
 
   // Active Tab Capsule
   const activeX = Math.max(0.75, L_active);
   const activeW = Math.min(373 - 0.75, R_active) - activeX;
-  rects.push(
-    <Rect key="active" x={activeX} y={0.75} width={activeW} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
+  capsules.push(
+    <View
+      key="active"
+      style={{
+        position: 'absolute',
+        left: activeX,
+        top: 0.75,
+        width: activeW,
+        height: 67.5,
+        borderRadius: 33.75,
+        borderWidth: 1.5,
+        borderColor: BORDER_COLOR_VAL,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      }}
+    >
+      <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+    </View>
   );
 
-  return rects;
+  return capsules;
 };
 
 export default function CustomTabBar({ state, descriptors, navigation }: any) {
@@ -230,9 +278,9 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     <Animated.View style={[styles.outerContainer, { bottom: bottomPosition }, animatedStyle]}>
       <View style={styles.tabBarContainer}>
         {/* Dynamic Separate Background */}
-        <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>
-          {getBackgroundRects(activeIndex)}
-        </Svg>
+        <View style={styles.backgroundContainer}>
+          {renderBackgroundCapsules(activeIndex)}
+        </View>
 
         {/* Dynamic Slotted Tab Items */}
         {visibleRoutes.map((route: any, index: number) => {
@@ -292,10 +340,12 @@ const styles = StyleSheet.create({
     height: 69,
     position: 'relative',
   },
-  svgBackground: {
+  backgroundContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
+    width: 373,
+    height: 69,
     zIndex: 1,
   },
   slotContainer: {

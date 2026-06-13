@@ -261,10 +261,22 @@ class FirestoreDB:
     async def add_member_to_community(self, community_id: str, user_id: str):
         """Add a member to community and invalidate cache"""
         def _add():
-            from google.cloud import firestore
-            self.client.collection('communities').document(community_id).update({
-                'members': firestore.ArrayUnion([user_id])
-            })
+            doc_ref = self.client.collection('communities').document(community_id)
+            doc = doc_ref.get()
+            if doc.exists:
+                data = doc.to_dict()
+                members = data.get('members', [])
+                if user_id not in members:
+                    new_members = list(members) + [user_id]
+                    doc_ref.update({
+                        'members': new_members,
+                        'member_count': len(new_members)
+                    })
+            else:
+                doc_ref.set({
+                    'members': [user_id],
+                    'member_count': 1
+                })
         
         await self._run_sync(_add)
         await self._cache.delete(f"communities:{community_id}")

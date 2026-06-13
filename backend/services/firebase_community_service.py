@@ -317,8 +317,11 @@ class FirebaseCommunityService:
         from google.cloud import firestore
         
         # Add user to community
+        members = community.get('members', [])
+        new_members = list(members) + [user_id] if user_id not in members else members
         await db.client.collection('communities').document(community['id']).update({
-            'members': firestore.ArrayUnion([user_id])
+            'members': new_members,
+            'member_count': len(new_members)
         })
         
         # Add community to user
@@ -347,28 +350,15 @@ class FirebaseCommunityService:
     async def discover_communities(user_id: str = None) -> List[Dict[str, Any]]:
         """Discover popular communities"""
         db = await FirebaseCommunityService.get_db()
-        communities = await db.query_documents(
-            'communities',
-            order_by='member_count',
-            order_direction='DESCENDING',
-            limit=100
-        )
-
-        # Also fetch top user_group communities specifically to ensure they appear
-        # We don't order_by here to avoid requiring a composite index in Firestore
         try:
-            user_groups = await db.query_documents(
-                'communities',
-                filters=[('type', '==', 'user_group')],
-                limit=50
-            )
-            seen_ids = {c['id'] for c in communities}
-            for ug in user_groups:
-                if ug['id'] not in seen_ids:
-                    communities.append(ug)
-                    seen_ids.add(ug['id'])
+            # Query communities (up to 200) to sort them in Python
+            communities = await db.query_documents('communities', limit=200)
         except Exception as e:
-            logger.warning(f"Could not fetch specific user_group communities: {e}")
+            logger.warning(f"Could not fetch communities: {e}")
+            communities = []
+
+        # Sort by actual members count
+        communities.sort(key=lambda c: len(c.get('members', [])), reverse=True)
 
         # Fetch user's joined communities to mark is_member
         joined_set: set = set()

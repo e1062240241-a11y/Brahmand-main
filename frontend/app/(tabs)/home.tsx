@@ -2703,7 +2703,7 @@ export default function HomeScreen() {
                               <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                                 {cityName}
                               </Text>
-                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityComm?.member_count || cityComm?.members_count || 0} {t('members')}</Text>
+                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityComm?.member_count || cityComm?.members_count || (cityComm as any)?.memberCount || 0} {t('members')}</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                           </TouchableOpacity>
@@ -2722,7 +2722,7 @@ export default function HomeScreen() {
                             realGroupName = 'पुणे भोजन साझाकरण समूह';
                           }
                         }
-                        const localMembers = localComm ? (localComm.member_count || localComm.members_count || 0) : 0;
+                        const localMembers = localComm ? (localComm.member_count || localComm.members_count || (localComm as any).memberCount || 0) : 0;
                         const localSubgroup = localComm?.type || 'city';
                         return (
                           <TouchableOpacity

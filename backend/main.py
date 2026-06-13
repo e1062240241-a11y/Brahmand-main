@@ -5276,7 +5276,11 @@ async def join_community_direct(
         if user_id in members:
             return {"message": "You are already a member.", "community_id": community_id}
         # Add user to community members
-        await db.array_union_update('communities', community_id, 'members', [user_id])
+        new_members = list(members) + [user_id]
+        await db.update_document('communities', community_id, {
+            'members': new_members,
+            'member_count': len(new_members)
+        })
         # Add community to user's communities
         await db.array_union_update('users', user_id, 'communities', [community_id])
         # Invalidate user community cache so next discover call returns is_member=true
