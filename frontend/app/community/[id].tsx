@@ -373,11 +373,12 @@ try {
 const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media: string | any, style: any, onPress?: () => void, isActive?: boolean }) => {
   const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
   const isVideo = typeof mediaUrl === 'string' && (
+    /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
     mediaUrl.toLowerCase().startsWith('video') || 
-    mediaUrl.toLowerCase().includes('video') || 
-    mediaUrl.toLowerCase().includes('expopicker') ||
-    mediaUrl.toLowerCase().includes('imagepicker') ||
-    /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl)
+    mediaUrl.toLowerCase().includes('/video/') || 
+    mediaUrl.toLowerCase().includes('_video_') ||
+    ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
+     !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
   );
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const isFocused = useIsFocused();
@@ -540,11 +541,12 @@ export default function CommunityDetailScreen() {
       const url = item.image || item.image_url || item.media_url || '';
       const mediaUrl = typeof url === 'string' ? url : (url?.uri || '');
       return typeof mediaUrl === 'string' && (
+        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
         mediaUrl.toLowerCase().startsWith('video') || 
-        mediaUrl.toLowerCase().includes('video') || 
-        mediaUrl.toLowerCase().includes('expopicker') ||
-        mediaUrl.toLowerCase().includes('imagepicker') ||
-        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl)
+        mediaUrl.toLowerCase().includes('/video/') || 
+        mediaUrl.toLowerCase().includes('_video_') ||
+        ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
+         !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
       );
     };
 
@@ -1769,7 +1771,7 @@ export default function CommunityDetailScreen() {
         <TouchableOpacity
           style={styles.headerCreateBtn}
           onPress={() => {
-            setPostCategory(isLocalUserCommunity ? 'Others' : '');
+            setPostCategory('');
             setShowCreateModal(true);
           }}
         >
@@ -3099,11 +3101,6 @@ export default function CommunityDetailScreen() {
   const handlePostButtonPress = () => {
     if (!newMessage.trim() && !selectedImage) return;
 
-    if (isLocalUserCommunity) {
-      handleCategorySelectedAndPost('Others');
-      return;
-    }
-
     if (postCategory) {
       handleCategorySelectedAndPost(postCategory);
     } else {
@@ -3704,10 +3701,9 @@ export default function CommunityDetailScreen() {
               <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
                 <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  {!isLocalUserCommunity && (
-                    !postCategory ? (
-                      <TouchableOpacity
-                        onPress={() => setShowInlineCategories(!showInlineCategories)}
+                  {!postCategory ? (
+                    <TouchableOpacity
+                      onPress={() => setShowInlineCategories(!showInlineCategories)}
                       activeOpacity={0.7}
                       style={{
                         flexDirection: 'row',
@@ -3737,12 +3733,10 @@ export default function CommunityDetailScreen() {
                         <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     </View>
-                  )
-                )}
+                  )}
 
-                  {!isLocalUserCommunity && (
-                    showInlineCategories && (
-                      <View style={{ marginBottom: 16 }}>
+                  {showInlineCategories && (
+                    <View style={{ marginBottom: 16 }}>
                       <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>
                         {t('language') === 'hi' ? 'श्रेणी का चयन करें' : 'Select Category'}
                       </Text>
@@ -3811,7 +3805,6 @@ export default function CommunityDetailScreen() {
                         })}
                       </View>
                     </View>
-                    )
                   )}
                   <MentionInput
                     value={newMessage}
@@ -3841,7 +3834,7 @@ export default function CommunityDetailScreen() {
                   {!selectedImage ? (
                     <TouchableOpacity
                       onPress={() => {
-                        if (!isLocalUserCommunity && !postCategory) {
+                        if (!postCategory) {
                           Alert.alert('', t('language') === 'hi' ? 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...' : 'Select a category above to start writing...');
                           return;
                         }
@@ -3853,17 +3846,17 @@ export default function CommunityDetailScreen() {
                         alignItems: 'center',
                         alignSelf: 'flex-start',
                         gap: 6,
-                        backgroundColor: (!isLocalUserCommunity && !postCategory) ? '#F0F0F0' : 'rgba(255, 102, 0, 0.08)',
+                        backgroundColor: !postCategory ? '#F0F0F0' : 'rgba(255, 102, 0, 0.08)',
                         paddingHorizontal: 14,
                         paddingVertical: 8,
                         borderRadius: 20,
                         marginTop: 10,
                         borderWidth: 1,
-                        borderColor: (!isLocalUserCommunity && !postCategory) ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
+                        borderColor: !postCategory ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
                       }}
                     >
-                      <Ionicons name="images-outline" size={18} color={(!isLocalUserCommunity && !postCategory) ? "#A0A0A0" : "#FF6600"} />
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: (!isLocalUserCommunity && !postCategory) ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
+                      <Ionicons name="images-outline" size={18} color={!postCategory ? "#A0A0A0" : "#FF6600"} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: !postCategory ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
                         Add Media
                       </Text>
                     </TouchableOpacity>

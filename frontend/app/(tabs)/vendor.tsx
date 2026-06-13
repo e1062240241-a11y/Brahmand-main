@@ -1227,17 +1227,6 @@ export default function VendorScreen() {
             </View>
           </View>
 
-
-          {/* Create button */}
-          {activeSection === 'Services' && !myVendor && (
-            <TouchableOpacity 
-              style={[styles.registerButton, { marginHorizontal: 24, marginTop: 56 }]}
-              onPress={() => setShowRegistrationModal(true)}
-            >
-              <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-              <Text style={styles.registerText}>{localT('registerYourService')}</Text>
-            </TouchableOpacity>
-          )}
         </ScrollView>
       ) : (
         <View style={{ flex: 1 }}>

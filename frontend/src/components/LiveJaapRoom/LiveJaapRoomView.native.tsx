@@ -21,6 +21,7 @@ import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -765,6 +766,21 @@ export default function LiveJaapRoomView() {
     return () => { cleanupAgora(); };
   }, []);
 
+  const navigation = useNavigation();
+  const allowedToRemoveRef = useRef(false);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (allowedToRemoveRef.current || showCompletion) {
+        return;
+      }
+      e.preventDefault();
+      allowedToRemoveRef.current = true;
+      setShowCompletion(true);
+    });
+    return unsubscribe;
+  }, [navigation, showCompletion]);
+
   useEffect(() => {
     const rName = 'jaap_' + (mantraType || 'gayatri');
     socketService.connect().then(() => {
@@ -959,11 +975,16 @@ export default function LiveJaapRoomView() {
     });
   };
 
+  useEffect(() => {
+    if (showCompletion) {
+      router.replace({
+        pathname: '/jaap-completed',
+        params: { mantraType, fromHome }
+      });
+    }
+  }, [showCompletion, mantraType, fromHome]);
+
   if (showCompletion) {
-    router.replace({
-      pathname: '/jaap-completed',
-      params: { mantraType, fromHome }
-    });
     return null;
   }
 

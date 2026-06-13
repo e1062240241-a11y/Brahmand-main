@@ -19,12 +19,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useVendorStore, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { useAuthStore } from '../../src/store/authStore';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 
 export default function VendorDashboardScreen() {
   const router = useRouter();
-  const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor } = useVendorStore();
+  const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor, uploadBusinessImage } = useVendorStore();
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
@@ -57,6 +60,37 @@ export default function VendorDashboardScreen() {
   const [editValue, setEditValue] = useState('');
   const [editCategories, setEditCategories] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState('');
+
+  // Editable Form states matching the mockup
+  const [ownerName, setOwnerName] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [phoneVal, setPhoneVal] = useState('');
+  const [emailVal, setEmailVal] = useState('');
+  const [websiteVal, setWebsiteVal] = useState('');
+  const [instagramVal, setInstagramVal] = useState('');
+  const [whatsappVal, setWhatsappVal] = useState('');
+  const [descriptionVal, setDescriptionVal] = useState('');
+  const [addressVal, setAddressVal] = useState('');
+  const [categoriesVal, setCategoriesVal] = useState<string[]>([]);
+  const [businessHoursVal, setBusinessHoursVal] = useState('');
+  const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
+
+  // Sync data from store when myVendor is loaded
+  useEffect(() => {
+    if (myVendor) {
+      setOwnerName(myVendor.owner_name || '');
+      setBusinessName(myVendor.business_name || '');
+      setPhoneVal(myVendor.phone_number || '');
+      setEmailVal(myVendor.business_email || '');
+      setWebsiteVal(myVendor.website_link || '');
+      setInstagramVal(myVendor.social_media?.instagram || '');
+      setWhatsappVal(myVendor.social_media?.whatsapp || '');
+      setDescriptionVal(myVendor.business_description || '');
+      setAddressVal(myVendor.full_address || '');
+      setCategoriesVal(myVendor.categories || []);
+      setBusinessHoursVal(myVendor.business_hours || '');
+    }
+  }, [myVendor]);
 
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -187,27 +221,34 @@ export default function VendorDashboardScreen() {
     }
   };
 
+  const getParsedHours = () => {
+    const val = businessHoursVal || 'Mon-Sat: 6:00 AM - 11:00 PM, Sun: 10:00 AM - 6:00 PM';
+    const parts = val.split(',');
+    let weekday = '6:00 AM - 11:00 PM';
+    let sunday = '10:00 AM - 6:00 PM';
+    parts.forEach(p => {
+      const trimmed = p.trim();
+      if (trimmed.toLowerCase().includes('sun')) {
+        const colonIdx = trimmed.indexOf(':');
+        sunday = colonIdx !== -1 ? trimmed.substring(colonIdx + 1).trim() : trimmed;
+      } else if (trimmed.toLowerCase().includes('mon')) {
+        const colonIdx = trimmed.indexOf(':');
+        weekday = colonIdx !== -1 ? trimmed.substring(colonIdx + 1).trim() : trimmed;
+      }
+    });
+    return { weekday, sunday };
+  };
+
   const handleSaveEdit = async () => {
-    setLoading(true);
     try {
-      let updateData: any = {};
-      
       switch (editModal) {
-        case 'business_name':
-          updateData.business_name = editValue;
-          break;
-        case 'address':
-          updateData.full_address = editValue;
-          break;
         case 'phone':
           if (editValue !== myVendor.phone_number && phoneOtpStage !== 'verified') {
             Alert.alert('Verify phone', 'Please verify the new phone number with SMS before saving.');
             return;
           }
-          updateData.phone_number = editValue;
-          break;
-        case 'business_description':
-          updateData.business_description = editValue;
+          setPhoneVal(editValue);
+          setEditModal(null);
           break;
         case 'categories':
           if (editCategories.length === 0) {
@@ -218,18 +259,22 @@ export default function VendorDashboardScreen() {
             Alert.alert('Error', 'Maximum 5 categories allowed');
             return;
           }
-          updateData.categories = editCategories;
+          setCategoriesVal(editCategories);
+          setEditModal(null);
+          break;
+        case 'weekday_hours':
+          const { sunday: currentSunday } = getParsedHours();
+          setBusinessHoursVal(`Mon-Sat: ${editValue}, Sun: ${currentSunday}`);
+          setEditModal(null);
+          break;
+        case 'sunday_hours':
+          const { weekday: currentWeekday } = getParsedHours();
+          setBusinessHoursVal(`Mon-Sat: ${currentWeekday}, Sun: ${editValue}`);
+          setEditModal(null);
           break;
       }
-      
-      await updateVendor(myVendor.id, updateData);
-      await fetchMyVendor();
-      setEditModal(null);
-      Alert.alert('Success', 'Business details updated!');
     } catch (error: any) {
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to update');
-    } finally {
-      setLoading(false);
+      Alert.alert('Error', 'Failed to update field');
     }
   };
 
@@ -365,154 +410,342 @@ export default function VendorDashboardScreen() {
     );
   };
 
-  type MenuItem = {
-    icon: string;
-    label: string;
-    action: () => void | Promise<void>;
-    emphasis?: boolean;
+  const handleEditWeekdayHours = () => {
+    const { weekday } = getParsedHours();
+    setEditValue(weekday);
+    setEditModal('weekday_hours');
   };
 
-  const menuItems: MenuItem[] = [
-    { icon: 'create', label: 'Tell about your business', action: handleTellBusiness },
-    { icon: 'create', label: 'Edit Business Name', action: handleEditBusinessName },
-    { icon: 'document-text', label: 'Edit Business Description', action: handleEditDescription },
-    { icon: 'location', label: 'Update Address', action: handleEditAddress },
-    { icon: 'pricetags', label: 'Update Categories', action: handleEditCategories },
-    { icon: 'call', label: 'Manage Contact Number', action: handleEditPhone },
-    isVendorApproved
-      ? { icon: 'checkmark-circle', label: 'KYC Verified', action: handleOpenKyc }
-      : isReviewOrVerified
-      ? { icon: 'time', label: 'KYC Under Review', action: handleOpenKyc, emphasis: true }
-      : { icon: 'id-card', label: 'Complete KYC & Verification', action: handleOpenKyc }
-  ];
+  const handleEditSundayHours = () => {
+    const { sunday } = getParsedHours();
+    setEditValue(sunday);
+    setEditModal('sunday_hours');
+  };
+
+  const pickAndUploadImage = async (slot: number) => {
+    if (!myVendor) return;
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Alert.alert('Permission Denied', 'Media library access is required.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    const fileName = (asset as any).fileName || `business-${slot + 1}.jpg`;
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const localUri = asset.uri;
+
+    try {
+      setLoadingSlot(slot);
+      await uploadBusinessImage(myVendor.id, slot, { uri: localUri, name: fileName, type: mimeType });
+      await fetchMyVendor();
+      Alert.alert('Success', 'Photo uploaded successfully.');
+    } catch (error: any) {
+      Alert.alert('Upload failed', error?.response?.data?.detail || 'Could not upload image.');
+    } finally {
+      setLoadingSlot(null);
+    }
+  };
+
+  const handleSaveAll = async () => {
+    setLoading(true);
+    try {
+      const vendorUpdates: any = {
+        business_name: businessName,
+        owner_name: ownerName,
+        phone_number: phoneVal,
+        business_description: descriptionVal,
+        full_address: addressVal,
+        categories: categoriesVal,
+        business_email: emailVal,
+      };
+
+      await updateVendor(myVendor.id, vendorUpdates);
+
+      await updateBusinessProfile(myVendor.id, {
+        website_link: websiteVal,
+        social_media: {
+          instagram: instagramVal,
+          whatsapp: whatsappVal,
+        },
+        business_hours: businessHoursVal,
+      });
+
+      Alert.alert('Success', 'Business profile updated successfully!');
+      handleBack();
+    } catch (err: any) {
+      Alert.alert('Error', err?.response?.data?.detail || err?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parsedHours = getParsedHours();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      {/* Background Gradient */}
+      <LinearGradient 
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+        locations={[0, 0.0913, 0.25]}
+        style={StyleSheet.absoluteFillObject}
+      />
+
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+        <TouchableOpacity style={styles.headerLeft} onPress={handleBack}>
+          <Ionicons name="chevron-back" size={24} color="#5C3B24" />
+          <Text style={styles.headerTitle}>Edit Profile</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vendor Dashboard</Text>
-        <View style={{ width: 24 }} />
+        
+        <TouchableOpacity onPress={handleSaveAll} disabled={loading}>
+          {loading ? (
+            <ActivityIndicator size="small" color="#E06B2B" />
+          ) : (
+            <Text style={styles.saveHeaderText}>Save</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Business Card */}
-        <View style={styles.businessCard}>
-          <View style={styles.businessIconContainer}>
-            <Ionicons name="storefront" size={36} color={COLORS.primary} />
-          </View>
-          <View style={styles.businessNameRow}>
-            <Text style={styles.businessName}>{myVendor.business_name}</Text>
-            {effectiveKycStatus === 'verified' && (
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.info} style={styles.verifiedIcon} />
-            )}
-          </View>
-          <Text style={styles.businessOwner}>{myVendor.owner_name}</Text>
-          {myVendor.business_description ? (
-            <Text style={styles.businessDescription}>{myVendor.business_description}</Text>
-          ) : null}
-
-          {/* KYC Status Badge */}
-          <View style={[styles.kycChip, { backgroundColor: getKycChipColor(effectiveKycStatus) }]}> 
-            <Text style={styles.kycChipText}>{formatKycStatus(effectiveKycStatus)}</Text>
-          </View>
-          {myVendor.kyc_status === 'manual_review' && !isUserKycVerified && (
-            <Text style={styles.kycReviewText}>Your application is under review.</Text>
-          )}
-
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{myVendor.years_in_business || 0}</Text>
-              <Text style={styles.statLabel}>Years</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{myVendor.categories?.length || 0}</Text>
-              <Text style={styles.statLabel}>Categories</Text>
-            </View>
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>{myVendor.photos?.length || 0}</Text>
-              <Text style={styles.statLabel}>Photos</Text>
-            </View>
-          </View>
-
-          {/* Categories */}
-          <View style={styles.categoriesContainer}>
-            {(myVendor.categories || []).map((cat, idx) => (
-              <View key={idx} style={styles.categoryChip}>
-                <Text style={styles.categoryChipText}>{cat}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <Text style={styles.sectionTitle}>Manage Business</Text>
-
-        <View style={styles.menuContainer}>
-          {menuItems.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.menuItem,
-                item.emphasis && styles.menuItemEmphasis
-              ]}
-              onPress={item.action}
-            >
-              {item.emphasis ? (
-                <Text style={styles.menuLabelEmphasis}>{item.label}  →</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Profile Image Section */}
+        <View style={styles.profileSection}>
+          <View style={styles.profileImageContainer}>
+            <Image
+              source={myVendor.photos && myVendor.photos.length > 0 ? { uri: myVendor.photos[0] } : require('../../assets/images/favicon.png')}
+              style={styles.profileImage}
+            />
+            <TouchableOpacity style={styles.profileEditBadge} onPress={() => pickAndUploadImage(0)}>
+              {loadingSlot === 0 ? (
+                <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <>
-                  <View style={styles.menuIcon}>
-                    <Ionicons name={item.icon as any} size={22} color={COLORS.primary} />
-                  </View>
-                  <Text style={styles.menuLabel}>{item.label}</Text>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-                </>
+                <Ionicons name="pencil" size={16} color="#FFF" />
               )}
             </TouchableOpacity>
-          ))}
+          </View>
+          <TouchableOpacity onPress={() => pickAndUploadImage(0)}>
+            <Text style={styles.changePhotoText}>Change Profile Photo</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Contact Info */}
-        <Text style={styles.sectionTitle}>Contact Information</Text>
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <Ionicons name="call" size={18} color={COLORS.primary} />
-            <Text style={styles.infoText}>{myVendor.phone_number}</Text>
-            {isVendorApproved && (
-              <TouchableOpacity style={styles.editIconButton} onPress={handleEditPhone}>
-                <Ionicons name="pencil" size={18} color={COLORS.primary} />
-              </TouchableOpacity>
-            )}
+        {/* Section: Personal Information */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="person-outline" size={20} color="#C67A53" />
+            <Text style={styles.cardTitle}>Personal Information</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="location" size={18} color={COLORS.primary} />
-            <Text style={styles.infoText}>{myVendor.full_address}</Text>
+
+          <Text style={styles.inputLabel}>Full Name</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={ownerName}
+              onChangeText={setOwnerName}
+              placeholder="Full Name"
+              placeholderTextColor="#9A897E"
+            />
           </View>
-          {isVendorApproved && (
-            <View style={styles.deleteRow}>
-              <TouchableOpacity
-                style={[styles.deleteButton, deletingBusiness && styles.deleteButtonDisabled]}
-                onPress={handleDeleteBusiness}
-                disabled={deletingBusiness}
-              >
-                {deletingBusiness ? (
-                  <ActivityIndicator color="#FFFFFF" />
-                ) : (
-                  <>
-                    <Ionicons name="trash" size={18} color="#FFFFFF" />
-                    <Text style={styles.deleteButtonText}>Delete Business</Text>
-                  </>
-                )}
+
+          <Text style={styles.inputLabel}>Phone Number</Text>
+          <TouchableOpacity style={styles.inputContainer} onPress={handleEditPhone}>
+            <Text style={styles.pressableInputText}>{phoneVal || 'Add Phone Number'}</Text>
+            <Ionicons name="shield-checkmark" size={16} color="#5C3B24" style={{ opacity: 0.5 }} />
+          </TouchableOpacity>
+
+          <Text style={styles.inputLabel}>Email Address</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={emailVal}
+              onChangeText={setEmailVal}
+              placeholder="Email Address"
+              placeholderTextColor="#9A897E"
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+        </View>
+
+        {/* Section: Contact Information */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="link-outline" size={20} color="#C67A53" />
+            <Text style={styles.cardTitle}>Contact Information</Text>
+          </View>
+
+          <Text style={styles.inputLabel}>Website Link</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={websiteVal}
+              onChangeText={setWebsiteVal}
+              placeholder="Website Link"
+              placeholderTextColor="#9A897E"
+              keyboardType="url"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>Instagram</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={instagramVal}
+              onChangeText={setInstagramVal}
+              placeholder="Instagram handle (e.g. @username)"
+              placeholderTextColor="#9A897E"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>WhatsApp</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={whatsappVal}
+              onChangeText={setWhatsappVal}
+              placeholder="WhatsApp Number"
+              placeholderTextColor="#9A897E"
+              keyboardType="phone-pad"
+            />
+          </View>
+        </View>
+
+        {/* Section: Business Information */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="briefcase-outline" size={20} color="#C67A53" />
+            <Text style={styles.cardTitle}>Business Information</Text>
+          </View>
+
+          <Text style={styles.inputLabel}>Business Name</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              value={businessName}
+              onChangeText={setBusinessName}
+              placeholder="Business Name"
+              placeholderTextColor="#9A897E"
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>Categories</Text>
+          <View style={styles.categoriesRow}>
+            {categoriesVal.map((cat, idx) => (
+              <View key={idx} style={styles.categoryChip}>
+                <Text style={styles.categoryChipText}>{cat}</Text>
+                <TouchableOpacity onPress={() => setCategoriesVal(categoriesVal.filter(c => c !== cat))}>
+                  <Ionicons name="close" size={14} color="#8C7769" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.addCategoryChip} onPress={handleEditCategories}>
+              <Ionicons name="add" size={14} color="#8C7769" />
+              <Text style={styles.addCategoryChipText}>Add Category</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.inputLabel}>Description</Text>
+          <View style={[styles.inputContainer, styles.textAreaContainer]}>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput]}
+              value={descriptionVal}
+              onChangeText={setDescriptionVal}
+              placeholder="Description"
+              placeholderTextColor="#9A897E"
+              multiline
+              numberOfLines={4}
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>Address</Text>
+          <View style={[styles.inputContainer, styles.textAreaContainer]}>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput]}
+              value={addressVal}
+              onChangeText={setAddressVal}
+              placeholder="Address"
+              placeholderTextColor="#9A897E"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>Business Hours</Text>
+          <View style={styles.hoursBox}>
+            <View style={styles.hoursRow}>
+              <View>
+                <Text style={styles.hoursLabel}>Mon - Sat</Text>
+                <Text style={styles.hoursValue}>{parsedHours.weekday}</Text>
+              </View>
+              <TouchableOpacity onPress={handleEditWeekdayHours}>
+                <Ionicons name="pencil" size={18} color="#C67A53" />
               </TouchableOpacity>
             </View>
-          )}
+
+            <View style={styles.hoursDivider} />
+
+            <View style={styles.hoursRow}>
+              <View>
+                <Text style={styles.hoursLabel}>Sunday</Text>
+                <Text style={styles.hoursValue}>{parsedHours.sunday}</Text>
+              </View>
+              <TouchableOpacity onPress={handleEditSundayHours}>
+                <Ionicons name="pencil" size={18} color="#C67A53" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Section: Gallery */}
+        <View style={styles.card}>
+          <View style={[styles.cardHeader, { justifyContent: 'space-between' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="images-outline" size={20} color="#C67A53" />
+              <Text style={styles.cardTitle}>Gallery</Text>
+            </View>
+            <TouchableOpacity onPress={pickAndUploadImage.bind(null, (myVendor.photos || []).length)}>
+              <Text style={styles.addPhotoLink}>Add Photo</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
+            {(myVendor.photos || []).map((photoUrl, idx) => (
+              <View key={idx} style={styles.galleryImageContainer}>
+                <Image source={{ uri: photoUrl }} style={styles.galleryImage} />
+                {loadingSlot === idx && (
+                  <View style={styles.galleryImageLoader}>
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                )}
+              </View>
+            ))}
+            {!(myVendor.photos && myVendor.photos.length > 0) && (
+              <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Section: Delete Account */}
+        <View style={styles.deactivateCard}>
+          <Text style={styles.deactivateTitle}>Delete Account</Text>
+          <TouchableOpacity style={styles.deactivateButton} onPress={handleDeleteBusiness}>
+            <Ionicons name="trash-outline" size={18} color="#D34F40" style={{ marginRight: 8 }} />
+            <Text style={styles.deactivateButtonText}>Deactivate Business Profile</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* Edit Modal */}
+      {/* Edit Modal (used for Category/Phone verification/Hours popups) */}
       <Modal
         visible={editModal !== null}
         transparent
@@ -528,159 +761,151 @@ export default function VendorDashboardScreen() {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editModal === 'business_name' && 'Edit Business Name'}
-                {editModal === 'business_description' && 'Edit Business Description'}
-                {editModal === 'address' && 'Update Address'}
-                {editModal === 'phone' && 'Update Phone'}
-                {editModal === 'categories' && 'Update Categories'}
-              </Text>
-              <TouchableOpacity onPress={() => {
-                setEditModal(null);
-                resetPhoneVerification();
-              }}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {editModal === 'phone' && 'Update Phone'}
+                  {editModal === 'categories' && 'Update Categories'}
+                  {editModal === 'weekday_hours' && 'Mon - Sat Hours'}
+                  {editModal === 'sunday_hours' && 'Sunday Hours'}
+                </Text>
+                <TouchableOpacity onPress={() => {
+                  setEditModal(null);
+                  resetPhoneVerification();
+                }}>
+                  <Ionicons name="close" size={24} color="#5C3B24" />
+                </TouchableOpacity>
+              </View>
 
-            {editModal === 'categories' ? (
-              <View>
-                <Text style={styles.inputLabel}>Selected Categories ({editCategories.length}/5)</Text>
-                <View style={styles.selectedCats}>
-                  {editCategories.map((cat, idx) => (
-                    <TouchableOpacity 
-                      key={idx} 
-                      style={styles.selectedCatChip}
-                      onPress={() => removeCategory(cat)}
-                    >
-                      <Text style={styles.selectedCatText}>{cat}</Text>
-                      <Ionicons name="close" size={14} color={COLORS.error} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                
-                <TextInput
-                  style={styles.input}
-                  placeholder="Search or add category..."
-                  value={categorySearch}
-                  onChangeText={setCategorySearch}
-                />
-                
-                {filteredCategories.length > 0 && (
-                  <View style={styles.suggestions}>
-                    {filteredCategories.map((cat, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={styles.suggestionItem}
-                        onPress={() => addCategory(cat)}
+              {editModal === 'categories' ? (
+                <View>
+                  <Text style={styles.modalInputLabel}>Selected Categories ({editCategories.length}/5)</Text>
+                  <View style={styles.modalSelectedCats}>
+                    {editCategories.map((cat, idx) => (
+                      <TouchableOpacity 
+                        key={idx} 
+                        style={styles.modalSelectedCatChip}
+                        onPress={() => removeCategory(cat)}
                       >
-                        <Text style={styles.suggestionText}>{cat}</Text>
-                        <Ionicons name="add" size={18} color={COLORS.primary} />
+                        <Text style={styles.modalSelectedCatText}>{cat}</Text>
+                        <Ionicons name="close" size={14} color="#D34F40" />
                       </TouchableOpacity>
                     ))}
                   </View>
-                )}
-                
-                {categorySearch && !filteredCategories.includes(categorySearch) && (
-                  <TouchableOpacity
-                    style={styles.addCustomBtn}
-                    onPress={() => addCategory(categorySearch)}
-                  >
-                    <Ionicons name="add-circle" size={18} color={COLORS.primary} />
-                    <Text style={styles.addCustomText}>Add "{categorySearch}" as new category</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ) : (
-              <View>
-                <Text style={styles.inputLabel}>
-                  {editModal === 'business_name' && 'Business Name'}
-                  {editModal === 'business_description' && 'Business Description'}
-                  {editModal === 'address' && 'Full Address'}
-                  {editModal === 'phone' && 'Phone Number'}
-                </Text>
-                <TextInput
-                  style={[styles.input, (editModal === 'address' || editModal === 'business_description') && styles.textArea]}
-                  value={editValue}
-                  onChangeText={(text) => {
-                    setEditValue(text);
-                    if (editModal === 'phone') {
-                      resetPhoneVerification();
-                    }
-                  }}
-                  multiline={editModal === 'address' || editModal === 'business_description'}
-                  numberOfLines={editModal === 'address' || editModal === 'business_description' ? 3 : 1}
-                  keyboardType={editModal === 'phone' ? 'phone-pad' : 'default'}
-                />
-
-                {editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && (
-                  <View style={styles.phoneVerificationSection}>
-                    {phoneOtpMessage ? <Text style={styles.phoneVerificationMessage}>{phoneOtpMessage}</Text> : null}
-                    {phoneOtpError ? <Text style={styles.phoneVerificationError}>{phoneOtpError}</Text> : null}
-
-                    {phoneOtpStage === 'idle' && (
-                      <TouchableOpacity
-                        style={[styles.sendOtpBtn, phoneSending && styles.saveBtnDisabled]}
-                        onPress={handleSendPhoneOtp}
-                        disabled={phoneSending}
-                      >
-                        {phoneSending ? (
-                          <ActivityIndicator color="#FFFFFF" />
-                        ) : (
-                          <Text style={styles.sendOtpBtnText}>Send OTP</Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
-
-                    {phoneOtpStage === 'sent' && (
-                      <>
-                        <TextInput
-                          style={styles.input}
-                          value={phoneOtp}
-                          onChangeText={setPhoneOtp}
-                          placeholder="Enter OTP"
-                          keyboardType="phone-pad"
-                        />
+                  
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Search or add category..."
+                    placeholderTextColor="#9A897E"
+                    value={categorySearch}
+                    onChangeText={setCategorySearch}
+                  />
+                  
+                  {filteredCategories.length > 0 && (
+                    <View style={styles.modalSuggestions}>
+                      {filteredCategories.map((cat, idx) => (
                         <TouchableOpacity
-                          style={[styles.sendOtpBtn, phoneVerifying && styles.saveBtnDisabled]}
-                          onPress={handleVerifyPhoneOtp}
-                          disabled={phoneVerifying}
+                          key={idx}
+                          style={styles.modalSuggestionItem}
+                          onPress={() => addCategory(cat)}
                         >
-                          {phoneVerifying ? (
+                          <Text style={styles.modalSuggestionText}>{cat}</Text>
+                          <Ionicons name="add" size={18} color="#C67A53" />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  
+                  {categorySearch && !filteredCategories.includes(categorySearch) && (
+                    <TouchableOpacity
+                      style={styles.modalAddCustomBtn}
+                      onPress={() => addCategory(categorySearch)}
+                    >
+                      <Ionicons name="add-circle" size={18} color="#C67A53" />
+                      <Text style={styles.modalAddCustomText}>Add "{categorySearch}" as new category</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ) : (
+                <View>
+                  <Text style={styles.modalInputLabel}>
+                    {editModal === 'phone' && 'Phone Number'}
+                    {editModal === 'weekday_hours' && 'Weekday Hours (Mon - Sat)'}
+                    {editModal === 'sunday_hours' && 'Sunday Hours'}
+                  </Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    value={editValue}
+                    onChangeText={(text) => {
+                      setEditValue(text);
+                      if (editModal === 'phone') {
+                        resetPhoneVerification();
+                      }
+                    }}
+                    keyboardType={editModal === 'phone' ? 'phone-pad' : 'default'}
+                  />
+
+                  {editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && (
+                    <View style={styles.phoneVerificationSection}>
+                      {phoneOtpMessage ? <Text style={styles.phoneVerificationMessage}>{phoneOtpMessage}</Text> : null}
+                      {phoneOtpError ? <Text style={styles.phoneVerificationError}>{phoneOtpError}</Text> : null}
+
+                      {phoneOtpStage === 'idle' && (
+                        <TouchableOpacity
+                          style={[styles.modalVerifyBtn, phoneSending && styles.modalVerifyBtnDisabled]}
+                          onPress={handleSendPhoneOtp}
+                          disabled={phoneSending}
+                        >
+                          {phoneSending ? (
                             <ActivityIndicator color="#FFFFFF" />
                           ) : (
-                            <Text style={styles.sendOtpBtnText}>Verify OTP</Text>
+                            <Text style={styles.modalVerifyBtnText}>Send OTP</Text>
                           )}
                         </TouchableOpacity>
-                      </>
-                    )}
+                      )}
 
-                    {phoneOtpStage === 'verified' && (
-                      <Text style={styles.phoneVerificationSuccess}>Phone verified. Save to update.</Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            )}
+                      {phoneOtpStage === 'sent' && (
+                        <>
+                          <TextInput
+                            style={styles.modalInput}
+                            value={phoneOtp}
+                            onChangeText={setPhoneOtp}
+                            placeholder="Enter OTP"
+                            placeholderTextColor="#9A897E"
+                            keyboardType="phone-pad"
+                          />
+                          <TouchableOpacity
+                            style={[styles.modalVerifyBtn, phoneVerifying && styles.modalVerifyBtnDisabled]}
+                            onPress={handleVerifyPhoneOtp}
+                            disabled={phoneVerifying}
+                          >
+                            {phoneVerifying ? (
+                              <ActivityIndicator color="#FFFFFF" />
+                            ) : (
+                              <Text style={styles.modalVerifyBtnText}>Verify OTP</Text>
+                            )}
+                          </TouchableOpacity>
+                        </>
+                      )}
 
-            <TouchableOpacity
-              style={[styles.saveBtn, loading && styles.saveBtnDisabled]}
-              onPress={handleSaveEdit}
-              disabled={loading || (editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && phoneOtpStage !== 'verified')}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveBtnText}>Save Changes</Text>
+                      {phoneOtpStage === 'verified' && (
+                        <Text style={styles.phoneVerificationSuccess}>Phone verified. Press Save Changes below.</Text>
+                      )}
+                    </View>
+                  )}
+                </View>
               )}
-            </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, loading && styles.modalSaveBtnDisabled]}
+                onPress={handleSaveEdit}
+                disabled={loading || (editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && phoneOtpStage !== 'verified')}
+              >
+                <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
       </Modal>
-
-
     </SafeAreaView>
   );
 }
@@ -688,7 +913,6 @@ export default function VendorDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   centered: {
     flex: 1,
@@ -699,305 +923,262 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#000000',
+    marginLeft: 8,
+    lineHeight: 28.6,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: SPACING.xl,
-  },
-  errorText: {
+  saveHeaderText: {
     fontSize: 16,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.lg,
+    fontWeight: '700',
+    color: '#D46A43',
   },
-  registerBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
   },
-  registerBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  businessCard: {
-    backgroundColor: COLORS.surface,
-    margin: SPACING.sm,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+  profileSection: {
     alignItems: 'center',
-    minHeight: 160,
+    marginTop: 6,
+    marginBottom: 16,
   },
-  businessIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: `${COLORS.primary}15`,
+  profileImageContainer: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 3,
+    borderColor: '#FFF',
+  },
+  profileEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#E06B2B',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    borderWidth: 2,
+    borderColor: '#FFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
   },
-  businessName: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
+  changePhotoText: {
+    fontSize: 12,
+    color: '#5A4136',
+    fontWeight: '500',
+    marginTop: 8,
+    lineHeight: 14.4,
+    letterSpacing: 0.24,
   },
-  businessNameRow: {
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 32,
+    borderWidth: 1,
+    borderColor: '#E2BFB0',
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  verifiedIcon: {
-    marginLeft: 4,
-  },
-  businessOwner: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.md,
-  },
-  businessDescription: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: SPACING.md,
-  },
-  kycChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    marginBottom: SPACING.sm,
-  },
-  kycChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  kycReviewText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '100%',
-    paddingVertical: SPACING.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.divider,
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginTop: SPACING.sm,
-  },
-  categoryChip: {
-    backgroundColor: `${COLORS.primary}15`,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-    margin: 2,
-  },
-  categoryChipText: {
-    fontSize: 12,
-    color: COLORS.primary,
-  },
-  sectionTitle: {
+  cardTitle: {
     fontSize: 16,
+    fontWeight: '700',
+    color: '#3D281A',
+    marginLeft: 8,
+  },
+  inputLabel: {
+    fontSize: 12,
     fontWeight: '600',
-    color: COLORS.text,
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.sm,
+    color: '#8C7769',
+    marginTop: 14,
+    marginBottom: 6,
   },
-  section: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    overflow: 'hidden',
-  },
-  menuContainer: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    overflow: 'hidden',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: `${COLORS.primary}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  menuLabel: {
-    flex: 1,
-    fontSize: 15,
-    color: COLORS.text,
-  },
-  menuLabelEmphasis: {
-    flex: 1,
-    fontSize: 18,
-    color: COLORS.primary,
-    fontWeight: '800',
-    textDecorationLine: 'underline',
-  },
-  menuItemEmphasis: {
-    borderWidth: 0,
-    margin: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: 'transparent',
-    alignItems: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-  },
-  menuHeader: {
+  inputContainer: {
+    backgroundColor: '#FAF8F5',
+    borderWidth: 1,
+    borderColor: '#EFE8E2',
+    borderRadius: 14,
+    height: 48,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
   },
-  menuIconButton: {
-    padding: SPACING.xs,
+  textInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#3D281A',
+    height: '100%',
+    padding: 0,
   },
-  menuBox: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+  pressableInputText: {
+    fontSize: 15,
+    color: '#3D281A',
   },
-  menuBoxText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.sm,
+  textAreaContainer: {
+    height: 'auto',
+    minHeight: 80,
+    paddingVertical: 12,
+    alignItems: 'flex-start',
   },
-  menuUploadButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
+  textAreaInput: {
+    minHeight: 60,
+    textAlignVertical: 'top',
   },
-  menuUploadButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+  categoriesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 4,
   },
-  detectedItemsContainer: {
-    marginTop: SPACING.sm,
-  },
-  detectedItemsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-  },
-  detectedItemText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-  },
-  saveButton: {
-    backgroundColor: COLORS.success,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-  reviewNotice: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-    color: COLORS.text,
-    fontWeight: '700',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.xl,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-  },
-  infoRow: {
+  categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
+    backgroundColor: '#FAF0E8',
+    borderColor: '#EEDCD0',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  infoText: {
-    marginLeft: SPACING.sm,
+  categoryChipText: {
+    fontSize: 13,
+    color: '#8C7769',
+    fontWeight: '600',
+  },
+  addCategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderColor: '#D4BFA7',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  addCategoryChipText: {
+    fontSize: 13,
+    color: '#8C7769',
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  hoursBox: {
+    marginTop: 8,
+  },
+  hoursRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FAF8F5',
+    borderWidth: 1,
+    borderColor: '#EFE8E2',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  hoursLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8C7769',
+    marginBottom: 2,
+  },
+  hoursValue: {
     fontSize: 14,
-    color: COLORS.text,
-    flex: 1,
+    fontWeight: '600',
+    color: '#3D281A',
   },
-  editIconButton: {
-    padding: SPACING.xs,
-    borderRadius: 8,
-    backgroundColor: `${COLORS.primary}15`,
-    marginLeft: SPACING.sm,
+  hoursDivider: {
+    height: 8,
   },
-  deleteRow: {
-    marginTop: SPACING.sm,
-    alignItems: 'flex-end',
+  addPhotoLink: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D46A43',
   },
-  deleteButton: {
+  galleryScroll: {
+    marginTop: 8,
+  },
+  galleryImageContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  galleryImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 16,
+    backgroundColor: '#FAF8F5',
+  },
+  galleryImageLoader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyGalleryText: {
+    fontSize: 13,
+    color: '#8C7769',
+    fontStyle: 'italic',
+    paddingVertical: 12,
+  },
+  deactivateCard: {
+    backgroundColor: '#FFF5F2',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#FAD5C6',
+    padding: 20,
+    marginVertical: 16,
+    alignItems: 'center',
+  },
+  deactivateTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D34F40',
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  deactivateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.error,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.sm,
+    borderColor: '#D34F40',
+    borderWidth: 1,
+    borderRadius: 16,
+    width: '100%',
+    paddingVertical: 12,
   },
-  deleteButtonDisabled: {
-    opacity: 0.6,
-  },
-  deleteButtonText: {
-    color: '#FFFFFF',
-    marginLeft: SPACING.xs,
+  deactivateButtonText: {
+    fontSize: 14,
     fontWeight: '700',
+    color: '#D34F40',
   },
   modalOverlay: {
     flex: 1,
@@ -1005,132 +1186,165 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: SPACING.lg,
-    maxHeight: '70%',
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: SPACING.lg,
+    marginBottom: 20,
   },
   modalTitle: {
     fontSize: 18,
+    fontWeight: '700',
+    color: '#3D281A',
+  },
+  modalInputLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#8C7769',
+    marginBottom: 8,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
+  modalInput: {
+    backgroundColor: '#FAF8F5',
+    borderWidth: 1,
+    borderColor: '#EFE8E2',
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 15,
+    color: '#3D281A',
+    marginBottom: 16,
   },
-  input: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    fontSize: 16,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  selectedCats: {
+  modalSelectedCats: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: SPACING.md,
+    gap: 8,
+    marginBottom: 16,
   },
-  selectedCatChip: {
+  modalSelectedCatChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.primary}15`,
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: 4,
+    backgroundColor: '#FAF0E8',
+    borderColor: '#EEDCD0',
+    borderWidth: 1,
     borderRadius: 12,
-    margin: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  selectedCatText: {
+  modalSelectedCatText: {
     fontSize: 13,
-    color: COLORS.primary,
+    color: '#8C7769',
+    fontWeight: '600',
     marginRight: 4,
   },
-  suggestions: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.md,
+  modalSuggestions: {
+    backgroundColor: '#FAF8F5',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EFE8E2',
+    marginBottom: 16,
+    overflow: 'hidden',
   },
-  suggestionItem: {
+  modalSuggestionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SPACING.sm,
+    padding: 14,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    borderBottomColor: '#EFE8E2',
   },
-  suggestionText: {
+  modalSuggestionText: {
     fontSize: 14,
-    color: COLORS.text,
+    color: '#3D281A',
   },
-  addCustomBtn: {
+  modalAddCustomBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.sm,
-    backgroundColor: `${COLORS.primary}10`,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.md,
+    padding: 14,
+    backgroundColor: '#FAF0E8',
+    borderRadius: 14,
+    marginBottom: 16,
   },
-  addCustomText: {
-    marginLeft: SPACING.xs,
-    color: COLORS.primary,
+  modalAddCustomText: {
+    marginLeft: 8,
+    color: '#D46A43',
     fontSize: 14,
-  },
-  saveBtn: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-  },
-  sendOtpBtn: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-  },
-  sendOtpBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
     fontWeight: '600',
   },
-  phoneVerificationSection: {
-    marginBottom: SPACING.sm,
+  modalSaveBtn: {
+    backgroundColor: '#D46A43',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 8,
   },
-  phoneVerificationMessage: {
-    color: COLORS.primary,
-    fontSize: 13,
-    marginBottom: SPACING.xs,
-  },
-  phoneVerificationError: {
-    color: COLORS.error,
-    fontSize: 13,
-    marginBottom: SPACING.xs,
-  },
-  phoneVerificationSuccess: {
-    color: COLORS.success,
-    fontSize: 13,
-    marginTop: SPACING.xs,
-  },
-  saveBtnDisabled: {
+  modalSaveBtnDisabled: {
     opacity: 0.6,
   },
-  saveBtnText: {
-    color: '#FFFFFF',
+  modalSaveBtnText: {
+    color: '#FFF',
     fontSize: 16,
+    fontWeight: '700',
+  },
+  phoneVerificationSection: {
+    marginBottom: 16,
+  },
+  phoneVerificationMessage: {
+    color: '#D46A43',
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  phoneVerificationError: {
+    color: '#D34F40',
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  phoneVerificationSuccess: {
+    color: '#4CAF50',
+    fontSize: 13,
     fontWeight: '600',
+    marginVertical: 8,
+  },
+  modalVerifyBtn: {
+    backgroundColor: '#D46A43',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalVerifyBtnDisabled: {
+    opacity: 0.6,
+  },
+  modalVerifyBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#8C7769',
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  registerBtn: {
+    backgroundColor: '#D46A43',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  registerBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

@@ -133,7 +133,7 @@ export default function VendorProfileScreen() {
   const trustInfo = vendor.kyc_status === 'verified'
     ? { label: 'Approved Vendor', color: COLORS.success, icon: 'shield-checkmark' }
     : TRUST_LABELS.frequent;
-  const galleryImages = (vendor.business_gallery_images || vendor.photos || []).filter((photo) => !!photo);
+  const galleryImages = (vendor.business_gallery_images || vendor.photos || []).filter((photo: string) => !!photo);
   const vendorCategories = Array.isArray(vendor.categories) ? vendor.categories : [];
   const menuItems = Array.isArray(vendor.menu_items) ? vendor.menu_items : [];
 
@@ -260,7 +260,7 @@ export default function VendorProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Business Categories</Text>
           <View style={styles.categoriesContainer}>
-            {vendorCategories.map((cat, index) => (
+            {vendorCategories.map((cat: string, index: number) => (
               <View key={index} style={styles.categoryChip}>
                 <Text style={styles.categoryText}>{cat}</Text>
               </View>
@@ -273,7 +273,7 @@ export default function VendorProfileScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Gallery</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {galleryImages.map((photo, index) => (
+              {galleryImages.map((photo: string, index: number) => (
                 <Image key={index} source={{ uri: photo }} style={styles.galleryPhoto} />
               ))}
             </ScrollView>
@@ -290,7 +290,7 @@ export default function VendorProfileScreen() {
         {menuItems.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Menu</Text>
-            {menuItems.map((item, index) => (
+            {menuItems.map((item: string, index: number) => (
               <Text key={`${item}-${index}`} style={styles.hoursText}>• {item}</Text>
             ))}
             

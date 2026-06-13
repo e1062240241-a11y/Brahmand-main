@@ -6,14 +6,13 @@ import {
   TouchableOpacity,
   ImageBackground,
   StatusBar,
-  Dimensions,
+  ScrollView,
   Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function JaapCompleted() {
   const router = useRouter();
@@ -36,8 +35,17 @@ export default function JaapCompleted() {
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" />
-      <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <ScrollView
+        contentContainerStyle={[
+          styles.safeArea,
+          {
+            paddingTop: Math.max(insets.top, 20),
+            paddingBottom: Math.max(insets.bottom, 20),
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Header Section */}
         <View style={styles.headerContainer}>
           {/* Header Lotus Icon */}
@@ -53,11 +61,15 @@ export default function JaapCompleted() {
         </View>
 
         {/* Spacer */}
-        <View style={{ flex: 1 }} />
+        <View style={{ flex: 1, minHeight: 24 }} />
 
         {/* Glassmorphic Card */}
-        <View style={styles.card}>
-          <BlurView intensity={30} tint="light" style={styles.blurView} />
+        <View style={styles.cardWrapper}>
+          {Platform.OS === 'ios' ? (
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+          ) : (
+            <View style={[StyleSheet.absoluteFillObject, styles.cardAndroidBg]} />
+          )}
           <Text style={styles.cardText1}>
             Your journey and records are now stored in your{' '}
             <Text style={{ fontFamily: 'Outfit_700Bold' }}>Brahmand</Text> Passport.
@@ -76,14 +88,14 @@ export default function JaapCompleted() {
           </TouchableOpacity>
         </View>
 
-        {/* Space after card to push it down */}
-        <View style={{ height: 32 }} />
+        {/* Space after card */}
+        <View style={{ height: 24 }} />
 
         {/* Footer Mantra */}
         <View style={styles.footerContainer}>
           <Text style={styles.footerMantra}>PURPOSE • PROGRESS • PEACE</Text>
         </View>
-      </View>
+      </ScrollView>
     </ImageBackground>
   );
 }
@@ -95,7 +107,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   safeArea: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
@@ -117,6 +129,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   lotusEmoji: {
     fontSize: 42,
@@ -147,25 +160,26 @@ const styles = StyleSheet.create({
       default: { fontFamily: 'System' },
     }),
   },
-  card: {
+  cardWrapper: {
     width: '100%',
-    maxWidth: 320,
+    maxWidth: 340,
     borderRadius: 24,
     paddingHorizontal: 24,
     paddingVertical: 28,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.30)',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 32,
     shadowOffset: { width: 0, height: 8 },
-    overflow: 'hidden',
+    elevation: 8,
   },
-  blurView: {
-    ...StyleSheet.absoluteFillObject,
+  cardAndroidBg: {
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.30)',
   },
   cardText1: {
     fontSize: 18,
@@ -198,8 +212,8 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 48,
-    paddingTop: 11.5,
-    paddingBottom: 12.5,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'stretch',
@@ -209,15 +223,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    elevation: 2,
     zIndex: 1,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFF',
     textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: 20,
+    fontWeight: '600',
     letterSpacing: 0.7,
     textTransform: 'uppercase',
     ...Platform.select({
@@ -227,7 +240,6 @@ const styles = StyleSheet.create({
     }),
   },
   footerContainer: {
-    marginBottom: 20,
     alignItems: 'center',
     width: '100%',
   },

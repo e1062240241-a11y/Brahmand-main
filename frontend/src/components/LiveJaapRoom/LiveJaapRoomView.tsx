@@ -20,6 +20,7 @@ import { BlurView } from 'expo-blur';
 import Svg, { Defs, RadialGradient, Rect, Stop, Path } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedIndex } from '../../features/live-mantra/schedule';
 import { usePassportStore } from '../../store/passportStore';
@@ -778,6 +779,21 @@ export default function LiveJaapRoomView() {
     ).start();
   }, []);
 
+  const navigation = useNavigation();
+  const allowedToRemoveRef = useRef(false);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (allowedToRemoveRef.current || showCompletion) {
+        return;
+      }
+      e.preventDefault();
+      allowedToRemoveRef.current = true;
+      setShowCompletion(true);
+    });
+    return unsubscribe;
+  }, [navigation, showCompletion]);
+
   useEffect(() => {
     const rName = 'jaap_' + (mantraType || 'gayatri');
     socketService.connect().then(() => {
@@ -872,11 +888,16 @@ export default function LiveJaapRoomView() {
     }).start(() => { setReactions(prev => prev.filter(r => r.id !== id)); });
   };
 
+  useEffect(() => {
+    if (showCompletion) {
+      router.replace({
+        pathname: '/jaap-completed',
+        params: { mantraType, fromHome }
+      });
+    }
+  }, [showCompletion, mantraType, fromHome]);
+
   if (showCompletion) {
-    router.replace({
-      pathname: '/jaap-completed',
-      params: { mantraType, fromHome }
-    });
     return null;
   }
 
