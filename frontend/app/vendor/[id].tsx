@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   BackHandler,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
-import { getUserProfile, sendDirectMessage } from '../../src/services/api';
+import { getUserProfile, sendDirectMessage, getVendor } from '../../src/services/api';
 import { formatDistance } from '../../src/utils/formatDistance';
 
 const TRUST_LABELS = {
@@ -34,8 +35,13 @@ export default function VendorProfileScreen() {
   const { vendors, fetchMyVendor } = useVendorStore();
   const { user } = useAuthStore();
   const [isSendingRequest, setIsSendingRequest] = React.useState(false);
-  
-  const vendor = vendors.find(v => v.id === id);
+  const [fetchedVendor, setFetchedVendor] = React.useState<any>(null);
+  const [vendorLoading, setVendorLoading] = React.useState(false);
+  const [vendorError, setVendorError] = React.useState(false);
+
+  // First try from local store (fast), fall back to API fetch
+  const storeVendor = vendors.find(v => v.id === id);
+  const vendor = storeVendor || fetchedVendor;
 
   const formatExternalUrl = (url: string) => {
     const trimmed = url.trim();
@@ -76,12 +82,37 @@ export default function VendorProfileScreen() {
   }, [router]);
 
   React.useEffect(() => {
-    if (id && !vendor) {
-      fetchMyVendor().catch((e) => {
-        console.warn('Failed to refresh my vendor on profile load', e);
-      });
+    if (!id) return;
+    // Always try to fetch from API in case vendor is not in local nearby list
+    if (!storeVendor) {
+      setVendorLoading(true);
+      setVendorError(false);
+      getVendor(id)
+        .then((res) => {
+          const data = res?.data;
+          if (data && data.id) {
+            setFetchedVendor(data);
+          } else {
+            setVendorError(true);
+          }
+        })
+        .catch(() => {
+          setVendorError(true);
+        })
+        .finally(() => {
+          setVendorLoading(false);
+        });
     }
-  }, [id, vendor, fetchMyVendor]);
+  }, [id, storeVendor]);
+
+  if (vendorLoading) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={{ marginTop: SPACING.md, color: COLORS.textSecondary }}>Loading...</Text>
+      </View>
+    );
+  }
 
   if (!vendor) {
     return (

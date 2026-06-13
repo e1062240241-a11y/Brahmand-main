@@ -65,6 +65,11 @@ const normalizeMimeType = (type?: string, name?: string) => {
     return normalized;
   }
 
+  // Pass through video types as-is
+  if (normalized.startsWith('video/')) {
+    return normalized;
+  }
+
   if (typeof name === 'string') {
     const lowerName = name.toLowerCase();
     if (lowerName.endsWith('.png')) return 'image/png';
@@ -73,6 +78,10 @@ const normalizeMimeType = (type?: string, name?: string) => {
     if (lowerName.endsWith('.gif')) return 'image/gif';
     if (lowerName.endsWith('.bmp')) return 'image/bmp';
     if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+    if (lowerName.endsWith('.mp4')) return 'video/mp4';
+    if (lowerName.endsWith('.mov')) return 'video/quicktime';
+    if (lowerName.endsWith('.m4v')) return 'video/x-m4v';
+    if (lowerName.endsWith('.webm')) return 'video/webm';
   }
 
   return 'image/jpeg';

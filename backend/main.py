@@ -2635,22 +2635,37 @@ async def _upload_chat_media_impl(
 ):
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
-    if (not content_type or content_type == 'application/octet-stream') and file.filename:
-        filename_lower = file.filename.lower()
-        if filename_lower.endswith(('.jpg', '.jpeg')):
-            content_type = 'image/jpeg'
-        elif filename_lower.endswith('.png'):
+    
+    header = await file.read(32)
+    await file.seek(0)
+
+    is_actually_video = b'ftyp' in header or header.startswith(b'\x00\x00\x00')
+    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG')
+
+    if is_actually_video:
+        content_type = 'video/mp4'
+    elif is_actually_image:
+        if header.startswith(b'\x89PNG'):
             content_type = 'image/png'
-        elif filename_lower.endswith('.webp'):
-            content_type = 'image/webp'
-        elif filename_lower.endswith('.heic'):
-            content_type = 'image/heic'
-        elif filename_lower.endswith('.gif'):
-            content_type = 'image/gif'
-        elif filename_lower.endswith('.mp4'):
-            content_type = 'video/mp4'
-        elif filename_lower.endswith('.mov'):
-            content_type = 'video/quicktime'
+        else:
+            content_type = 'image/jpeg'
+    else:
+        if (not content_type or content_type == 'application/octet-stream') and file.filename:
+            filename_lower = file.filename.lower()
+            if filename_lower.endswith(('.jpg', '.jpeg')):
+                content_type = 'image/jpeg'
+            elif filename_lower.endswith('.png'):
+                content_type = 'image/png'
+            elif filename_lower.endswith('.webp'):
+                content_type = 'image/webp'
+            elif filename_lower.endswith('.heic'):
+                content_type = 'image/heic'
+            elif filename_lower.endswith('.gif'):
+                content_type = 'image/gif'
+            elif filename_lower.endswith('.mp4'):
+                content_type = 'video/mp4'
+            elif filename_lower.endswith('.mov'):
+                content_type = 'video/quicktime'
 
     # Broaden allowed types to support all common images and videos
     if not (content_type.startswith('image/') or content_type.startswith('video/')):
