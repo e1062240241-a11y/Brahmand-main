@@ -1380,7 +1380,7 @@ export default function CommunityDetailScreen() {
             id: 'food_pune',
             name: 'Pune Food Sharing Group',
             type: 'city',
-            members_count: 236,
+            members_count: 0,
             description: 'A community group for sharing food in Pune.'
           };
         } else if (id === 'mumbai-fallback' || id === 'city_default') {
@@ -1388,7 +1388,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
             type: 'city',
-            members_count: 13000,
+            members_count: 0,
             description: 'My Community Group'
           };
         } else if (id === 'maharashtra-fallback') {
@@ -1396,7 +1396,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
             type: 'state',
-            members_count: 14000,
+            members_count: 0,
             description: 'Maharashtra State Community Group'
           };
         } else if (id === 'bharat-fallback') {
@@ -1404,7 +1404,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
             type: 'country',
-            members_count: 15000,
+            members_count: 0,
             description: 'Bharat National Community Group'
           };
         } else {
@@ -1788,7 +1788,7 @@ export default function CommunityDetailScreen() {
 
       {/* Centered Member Count */}
       <Text style={styles.headerMembersText}>
-        {community?.members_count || community?.member_count || '1.8K'} {t('language') === 'hi' ? 'सदस्य' : 'Members'}
+        {community?.members_count ?? community?.member_count ?? 0} {t('language') === 'hi' ? 'सदस्य' : 'Members'}
       </Text>
 
       {/* Centered Description/Tagline */}
@@ -4251,7 +4251,7 @@ export default function CommunityDetailScreen() {
               <Text style={{ fontSize: 14, color: '#536471', marginBottom: 20, lineHeight: 20 }}>
                 {community?.description || 'Connect with your local community. Share updates, requests, and engage with devotees.'}
               </Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 10 }}>Members ({community?.members_count || community?.member_count || (community?.members?.length) || '1'})</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 10 }}>Members ({community?.members_count || community?.member_count || (community?.members?.length) || 0})</Text>
               
               <View style={{ gap: 15 }}>
                 {community?.members_details ? (
