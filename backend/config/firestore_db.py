@@ -332,7 +332,16 @@ class FirestoreDB:
             query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
             
             if before_timestamp:
-                query = query.where(filter=FieldFilter('created_at', '<', before_timestamp))
+                # Format to ISO string properly to match stored 'Z' format
+                # Ensure the created_at in db matches this format
+                iso_str = before_timestamp.isoformat()
+                if iso_str.endswith('+00:00'):
+                    iso_str = iso_str[:-6] + 'Z'
+                elif not iso_str.endswith('Z'):
+                    iso_str = iso_str + 'Z'
+
+                # We need to query by the string because created_at is stored as string in add_message_to_chat/send_community_message
+                query = query.where(filter=FieldFilter('created_at', '<', iso_str))
             
             query = query.limit(limit)
             
