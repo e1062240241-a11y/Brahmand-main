@@ -2570,12 +2570,19 @@ export default function CommunityDetailScreen() {
     
     return (
       <View style={styles.festEventCard}>
-        <View style={styles.requestOwnerRow}>
-          <Avatar name={ownerName} photo={item.user?.photo} size={32} />
-          <View style={styles.requestOwnerMeta}>
+        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
+          <View style={{ marginLeft: 10, flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={styles.feedPostUserName} numberOfLines={1}>{ownerName}</Text>
+              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              <Text style={styles.postHandle} numberOfLines={1}>
+                {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
+              </Text>
+              <Text style={styles.postHandle} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
+            </View>
             <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
           </View>
-          <Text style={styles.requestOwnerTime}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
         </View>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (

@@ -38,7 +38,7 @@ class MSG91Service:
 
         try:
             import os
-            use_mock = os.getenv("USE_MOCK_OTP", "true").lower() == "true" or mobile.endswith("1234567890") or any(mobile.endswith(x) for x in ["1234567895", "1234567891", "1234567892", "1234567893", "1234567894", "1234567896", "1234567897", "1234567898", "1234567899"])
+            use_mock = os.getenv("USE_MOCK_OTP", "false").lower() == "true"
             if use_mock:
                 logger.info(f"Mock MSG91 send_otp bypassed for mobile={mobile}")
                 return {"type": "success", "message": "OTP sent successfully (mocked)"}
@@ -50,8 +50,9 @@ class MSG91Service:
                 logger.info(f"MSG91 OTP sent successfully to {mobile}")
                 return result
             else:
-                logger.warning(f"MSG91 OTP send returned error: {result}. Gracefully falling back to mock OTP sandbox.")
-                return {"type": "success", "message": "OTP sent successfully (mocked fallback)"}
+                msg = result.get("message") or result.get("error") or "Failed to send OTP via MSG91"
+                logger.warning(f"MSG91 OTP send returned error: {result}")
+                raise HTTPException(status_code=400, detail=msg)
 
         except HTTPException:
             raise
@@ -77,8 +78,8 @@ class MSG91Service:
 
         try:
             import os
-            use_mock = os.getenv("USE_MOCK_OTP", "true").lower() == "true" or mobile.endswith("1234567890") or any(mobile.endswith(x) for x in ["1234567895", "1234567891", "1234567892", "1234567893", "1234567894", "1234567896", "1234567897", "1234567898", "1234567899"])
-            if use_mock or otp in ["1234", "123456", "0000"] or len(otp) == 4:
+            use_mock = os.getenv("USE_MOCK_OTP", "false").lower() == "true"
+            if use_mock:
                 logger.info(f"Mock MSG91 verify_otp bypassed for mobile={mobile}")
                 return {"type": "success", "message": "OTP verified successfully (mocked)"}
 
@@ -89,10 +90,9 @@ class MSG91Service:
                 logger.info(f"MSG91 OTP verified for {mobile}")
                 return result
             else:
-                logger.warning(f"MSG91 OTP verification failed: {result}. Falling back to mock sandbox code check.")
-                if otp in ["1234", "123456", "0000"] or len(otp) == 4:
-                    return {"type": "success", "message": "OTP verified successfully (mocked fallback)"}
-                raise HTTPException(status_code=400, detail=result.get("message", "Invalid OTP"))
+                msg = result.get("message") or result.get("error") or "Invalid OTP. Please try again later."
+                logger.warning(f"MSG91 OTP verification failed: {result}")
+                raise HTTPException(status_code=400, detail=msg)
 
         except HTTPException:
             raise
