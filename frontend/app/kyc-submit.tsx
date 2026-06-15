@@ -10,35 +10,100 @@ import {
   TouchableOpacity,
   View,
   Image,
+  TextInput,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { Input } from '../src/components/Input';
-import { Button } from '../src/components/Button';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { generateUserAadhaarOtp, getKYCStatus, submitKYC, verifyUserAadhaarOtp } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Rect, Circle } from 'react-native-svg';
 
 type KycStatus = 'pending' | 'manual_review' | 'verified' | 'rejected' | null;
 
+const { width } = Dimensions.get('window');
+
+// Custom Icons
+const PadlockIllustration = () => (
+  <View style={styles.illustCard}>
+    <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
+      <Rect x={7} y={12} width={18} height={15} rx={3} stroke="#F26522" strokeWidth={2.5} />
+      <Path d="M11 12V9C11 6.23858 13.2386 4 16 4C18.7614 4 21 6.23858 21 9V12" stroke="#F26522" strokeWidth={2.5} strokeLinecap="round" />
+      <Circle cx={16} cy={19} r={2.5} fill="#F26522" />
+    </Svg>
+  </View>
+);
+
+const ShieldIllustration = () => (
+  <View style={styles.illustCardCircle}>
+    <Svg width={36} height={36} viewBox="0 0 40 40" fill="none">
+      <Path d="M20 5L32 9V20C32 27.5 27 33.5 20 36C13 33.5 8 27.5 8 20V9L20 5Z" stroke="#F26522" strokeWidth={2.5} fill="none" />
+      <Path d="M15 20L18 23L25 16" stroke="#2E7D32" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  </View>
+);
+
+const UserCardIllustration = () => (
+  <View style={styles.illustCard}>
+    <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
+      <Rect x={4} y={5} width={24} height={22} rx={3} stroke="#CCCCCC" strokeWidth={2.5} />
+      <Circle cx={12} cy={13} r={3.5} stroke="#CCCCCC" strokeWidth={2.5} />
+      <Path d="M6 23C6 19.5 9.5 17.5 12 17.5C14.5 17.5 18 19.5 18 23" stroke="#CCCCCC" strokeWidth={2.5} strokeLinecap="round" />
+      <Line x1={20} y1={11} x2={25} y2={11} stroke="#CCCCCC" strokeWidth={2} />
+      <Line x1={20} y1={15} x2={25} y2={15} stroke="#CCCCCC" strokeWidth={2} />
+    </Svg>
+  </View>
+);
+
+const Line = ({ x1, y1, x2, y2, stroke, strokeWidth }: any) => (
+  <Path d={`M${x1} ${y1} L${x2} ${y2}`} stroke={stroke} strokeWidth={strokeWidth} />
+);
+
+const LockIcon = () => (
+  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+    <Rect x={3} y={11} width={18} height={11} rx={2} stroke="#666666" strokeWidth={2} />
+    <Path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="#666666" strokeWidth={2} strokeLinecap="round" />
+  </Svg>
+);
+
 export default function KycSubmitScreen() {
   const router = useRouter();
-  const { updateUser } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
 
   const [statusLoading, setStatusLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [kycStatus, setKycStatus] = useState<KycStatus>(null);
+  
+  // Form States
+  const [fullName, setFullName] = useState('');
+  const [dob, setDob] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  
   const [idType, setIdType] = useState<'aadhaar' | 'pan'>('aadhaar');
   const [idNumber, setIdNumber] = useState('');
   const [idPhotoBase64, setIdPhotoBase64] = useState<string | undefined>(undefined);
+  const [idPhotoUri, setIdPhotoUri] = useState<string | undefined>(undefined);
+  
   const [selfieBase64, setSelfieBase64] = useState<string | undefined>(undefined);
+  const [selfieUri, setSelfieUri] = useState<string | undefined>(undefined);
+
+  // OTP States
   const [otpFlowActive, setOtpFlowActive] = useState(false);
   const [otpReferenceId, setOtpReferenceId] = useState('');
   const [otpValue, setOtpValue] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFullName(user.name || '');
+      setPhoneNumber(user.phone || '');
+    }
+  }, [user]);
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -60,14 +125,6 @@ export default function KycSubmitScreen() {
     loadStatus();
   }, [updateUser]);
 
-  const statusText = useMemo(() => {
-    if (kycStatus === 'verified') return 'Your KYC is verified. You can now view CVs.';
-    if (kycStatus === 'pending' || kycStatus === 'manual_review' || kycStatus === 'rejected') {
-      return 'Your KYC request is submitted and pending admin approval.';
-    }
-    return 'Submit KYC to view candidate CVs.';
-  }, [kycStatus]);
-
   const pickImageAsBase64 = async (forSelfie: boolean) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -84,6 +141,7 @@ export default function KycSubmitScreen() {
 
     if (result.canceled || !result.assets?.length) return;
     const base64 = result.assets[0]?.base64;
+    const uri = result.assets[0]?.uri;
     if (!base64) {
       Alert.alert('Upload Error', 'Unable to read selected image.');
       return;
@@ -91,8 +149,10 @@ export default function KycSubmitScreen() {
 
     if (forSelfie) {
       setSelfieBase64(base64);
+      setSelfieUri(uri);
     } else {
       setIdPhotoBase64(base64);
+      setIdPhotoUri(uri);
     }
   };
 
@@ -176,6 +236,11 @@ export default function KycSubmitScreen() {
   };
 
   const submit = async () => {
+    if (!fullName.trim()) {
+      Alert.alert('Missing Details', 'Please enter your Full Name.');
+      return;
+    }
+
     if (!idNumber.trim()) {
       Alert.alert('Missing Details', 'Please enter your ID number.');
       return;
@@ -199,11 +264,11 @@ export default function KycSubmitScreen() {
     setSubmitLoading(true);
     try {
       const response = await submitKYC({
-        kyc_role: 'organizer',
+        kyc_role: 'vendor',
         id_type: idType,
         id_number: idNumber.trim(),
         id_photo: idPhotoBase64,
-        selfie_photo: idType === 'pan' ? selfieBase64 : undefined,
+        selfie_photo: selfieBase64,
       });
 
       const newStatus = (response?.data?.status || 'pending') as KycStatus;
@@ -213,9 +278,9 @@ export default function KycSubmitScreen() {
       Alert.alert(
         'KYC Submitted',
         newStatus === 'verified'
-          ? 'Your KYC is verified. You can now view CVs.'
-          : 'Your KYC request is sent for admin approval. CV access unlocks after approval.',
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)/profile') }]
+          ? 'Your KYC is verified successfully.'
+          : 'Your KYC request is submitted and pending admin approval.',
+        [{ text: 'OK', onPress: () => router.replace('/kyc') }]
       );
     } catch (error: any) {
       const message = error?.response?.data?.detail || error?.message || 'Failed to submit KYC.';
@@ -226,235 +291,715 @@ export default function KycSubmitScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/profile')}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>KYC Verification</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      {statusLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color="#000000" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Complete Your KYC</Text>
+          <View style={{ width: 40 }} />
         </View>
-      ) : (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.flex}>
-          <ScrollView contentContainerStyle={styles.content}>
-            <View style={styles.statusCard}>
-              <Ionicons name="shield-checkmark" size={24} color={COLORS.primary} />
-              <Text style={styles.statusText}>{statusText}</Text>
-            </View>
 
-            {kycStatus === 'verified' || kycStatus === 'pending' || kycStatus === 'manual_review' || kycStatus === 'rejected' ? (
-              <Button title="Back" onPress={() => router.replace('/(tabs)/profile')} style={styles.submitButton} />
-            ) : (
-              <>
-                <Text style={styles.label}>ID Type</Text>
-                <View style={styles.segmentRow}>
-                  <TouchableOpacity
-                    style={[styles.segmentButton, idType === 'aadhaar' && styles.segmentActive]}
-                    onPress={() => setIdType('aadhaar')}
+        {statusLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color="#F26522" />
+          </View>
+        ) : (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ flex: 1 }}
+          >
+            <ScrollView
+              style={styles.scrollContainer}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Illustration Header */}
+              <View style={styles.illustrationContainer}>
+                <PadlockIllustration />
+                <ShieldIllustration />
+                <UserCardIllustration />
+              </View>
+
+              <Text style={styles.introParagraph}>
+                KYC helps us maintain trust and safety{"\n"}in the community.
+              </Text>
+
+              {kycStatus === 'verified' || kycStatus === 'pending' || kycStatus === 'manual_review' ? (
+                <View style={[styles.whiteCard, { alignItems: 'center', gap: 20 }]}>
+                  <View style={styles.statusBox}>
+                    <Ionicons 
+                      name={kycStatus === 'verified' ? 'checkmark-circle' : 'time'} 
+                      size={48} 
+                      color={kycStatus === 'verified' ? '#2E7D32' : '#F26522'} 
+                    />
+                    <Text style={styles.statusTitle}>
+                      {kycStatus === 'verified' ? 'KYC Verified' : 'KYC Under Review'}
+                    </Text>
+                    <Text style={styles.statusDescription}>
+                      {kycStatus === 'verified' 
+                        ? 'Your KYC documents have been successfully verified.' 
+                        : 'Your documents have been submitted and are under review. It usually takes 24 hours.'}
+                    </Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.primaryBtn} 
+                    onPress={() => router.replace('/kyc')}
                   >
-                    <Text style={[styles.segmentText, idType === 'aadhaar' && styles.segmentTextActive]}>Aadhaar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.segmentButton, idType === 'pan' && styles.segmentActive]}
-                    onPress={() => setIdType('pan')}
-                  >
-                    <Text style={[styles.segmentText, idType === 'pan' && styles.segmentTextActive]}>PAN</Text>
+                    <Text style={styles.primaryBtnText}>Go Back</Text>
                   </TouchableOpacity>
                 </View>
+              ) : (
+                <>
+                  {/* Card 1: Personal Information */}
+                  <View style={styles.whiteCard}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.badgeCircle}>
+                        <Text style={styles.badgeText}>1</Text>
+                      </View>
+                      <View style={styles.cardHeaderTexts}>
+                        <Text style={styles.cardTitle}>Personal Information</Text>
+                        <Text style={styles.cardDescription}>Please provide your basic details.</Text>
+                      </View>
+                    </View>
 
-                <Input
-                  label={idType === 'aadhaar' ? 'Aadhaar Number' : 'PAN Number'}
-                  placeholder={idType === 'aadhaar' ? 'Enter 12-digit Aadhaar' : 'Enter PAN'}
-                  value={idNumber}
-                  onChangeText={setIdNumber}
-                  autoCapitalize={idType === 'pan' ? 'characters' : 'none'}
-                />
-
-                {idType === 'aadhaar' && (
-                  <View style={styles.otpSection}>
-                    {!otpFlowActive ? (
-                      <Button
-                        title="Send Aadhaar OTP"
-                        onPress={handleGenerateOtp}
-                        loading={otpLoading}
-                        style={styles.otpActionBtn}
-                      />
-                    ) : (
-                      <>
-                        <Input
-                          label="Aadhaar OTP"
-                          placeholder="Enter OTP"
-                          value={otpValue}
-                          onChangeText={setOtpValue}
-                          keyboardType="number-pad"
-                        />
-                        <View style={styles.otpRow}>
-                          <Button
-                            title={otpVerified ? 'OTP Verified' : 'Verify OTP'}
-                            onPress={handleVerifyOtp}
-                            loading={otpLoading}
-                            disabled={otpVerified}
-                            style={styles.otpActionBtn}
-                          />
-                          <Button
-                            title="Resend OTP"
-                            onPress={handleGenerateOtp}
-                            variant="outline"
-                            loading={otpLoading}
-                            style={styles.otpActionBtn}
+                    <View style={styles.fieldsContainer}>
+                      {/* Name input */}
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Full Name (as per ID)</Text>
+                        <View style={styles.inputWrapper}>
+                          <Ionicons name="person-outline" size={18} color="#666666" style={styles.inputIcon} />
+                          <TextInput
+                            style={styles.textInput}
+                            placeholder="Enter your full name"
+                            placeholderTextColor="#999999"
+                            value={fullName}
+                            onChangeText={setFullName}
                           />
                         </View>
-                      </>
-                    )}
+                      </View>
+
+                      {/* DOB input */}
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Date of Birth</Text>
+                        <View style={styles.inputWrapper}>
+                          <Ionicons name="calendar-outline" size={18} color="#666666" style={styles.inputIcon} />
+                          <TextInput
+                            style={styles.textInput}
+                            placeholder="DD/MM/YYYY"
+                            placeholderTextColor="#999999"
+                            value={dob}
+                            onChangeText={setDob}
+                          />
+                        </View>
+                      </View>
+
+                      {/* Phone input */}
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Mobile Number</Text>
+                        <View style={styles.inputWrapper}>
+                          <Ionicons name="call-outline" size={18} color="#666666" style={styles.inputIcon} />
+                          <View style={styles.countrySelector}>
+                            <Text style={styles.countryText}>+91</Text>
+                            <Ionicons name="chevron-down" size={12} color="#666666" style={{ marginLeft: 2 }} />
+                          </View>
+                          <View style={styles.dividerLine} />
+                          <TextInput
+                            style={styles.textInput}
+                            placeholder="Mobile number"
+                            placeholderTextColor="#999999"
+                            value={phoneNumber}
+                            onChangeText={setPhoneNumber}
+                            keyboardType="phone-pad"
+                            maxLength={10}
+                          />
+                        </View>
+                      </View>
+                    </View>
                   </View>
-                )}
 
-                <Text style={styles.label}>ID Document (optional)</Text>
-                <TouchableOpacity style={styles.uploadRow} onPress={() => pickImageAsBase64(false)}>
-                  <Ionicons name="document-attach" size={18} color={COLORS.primary} />
-                  <Text style={styles.uploadText}>{idPhotoBase64 ? 'ID document selected' : 'Upload ID document'}</Text>
-                </TouchableOpacity>
+                  {/* Card 2: Identity Verification */}
+                  <View style={styles.whiteCard}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.badgeCircle}>
+                        <Text style={styles.badgeText}>2</Text>
+                      </View>
+                      <View style={styles.cardHeaderTexts}>
+                        <Text style={styles.cardTitle}>Identity Verification</Text>
+                        <Text style={styles.cardDescription}>Upload a valid government issued ID.</Text>
+                      </View>
+                    </View>
 
-                {idPhotoBase64 ? <Image source={{ uri: `data:image/jpeg;base64,${idPhotoBase64}` }} style={styles.preview} /> : null}
+                    {/* Segment switcher */}
+                    <View style={styles.segmentRow}>
+                      <TouchableOpacity
+                        style={[styles.segmentButton, idType === 'aadhaar' && styles.segmentActive]}
+                        onPress={() => setIdType('aadhaar')}
+                      >
+                        <Text style={[styles.segmentText, idType === 'aadhaar' && styles.segmentTextActive]}>Aadhaar Card</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.segmentButton, idType === 'pan' && styles.segmentActive]}
+                        onPress={() => setIdType('pan')}
+                      >
+                        <Text style={[styles.segmentText, idType === 'pan' && styles.segmentTextActive]}>PAN Card</Text>
+                      </TouchableOpacity>
+                    </View>
 
-                {idType === 'pan' && (
-                  <>
-                    <Text style={styles.label}>Selfie (optional)</Text>
-                    <TouchableOpacity style={styles.uploadRow} onPress={() => pickImageAsBase64(true)}>
-                      <Ionicons name="camera" size={18} color={COLORS.primary} />
-                      <Text style={styles.uploadText}>{selfieBase64 ? 'Selfie selected' : 'Upload selfie'}</Text>
-                    </TouchableOpacity>
-                    {selfieBase64 ? <Image source={{ uri: `data:image/jpeg;base64,${selfieBase64}` }} style={styles.preview} /> : null}
-                  </>
-                )}
+                    <View style={styles.fieldsContainer}>
+                      {/* ID Number input */}
+                      <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>
+                          {idType === 'aadhaar' ? 'Aadhaar Number' : 'PAN Card Number'}
+                        </Text>
+                        <View style={styles.inputWrapper}>
+                          <Ionicons name="id-card-outline" size={18} color="#666666" style={styles.inputIcon} />
+                          <TextInput
+                            style={styles.textInput}
+                            placeholder={idType === 'aadhaar' ? 'Enter 12-digit Aadhaar' : 'Enter 10-char PAN'}
+                            placeholderTextColor="#999999"
+                            value={idNumber}
+                            onChangeText={setIdNumber}
+                            maxLength={idType === 'aadhaar' ? 12 : 10}
+                            autoCapitalize={idType === 'pan' ? 'characters' : 'none'}
+                            keyboardType={idType === 'aadhaar' ? 'numeric' : 'default'}
+                          />
+                        </View>
+                      </View>
 
-                <Button title="Submit KYC" onPress={submit} loading={submitLoading} style={styles.submitButton} />
-              </>
-            )}
-          </ScrollView>
-        </KeyboardAvoidingView>
-      )}
-    </SafeAreaView>
+                      {/* Dashed Upload Card */}
+                      <Text style={styles.inputLabel}>Upload ID Proof</Text>
+                      <TouchableOpacity 
+                        style={styles.dashedCard} 
+                        onPress={() => pickImageAsBase64(false)}
+                      >
+                        {idPhotoUri ? (
+                          <View style={styles.previewContainer}>
+                            <Image source={{ uri: idPhotoUri }} style={styles.previewImage} />
+                            <View style={styles.changeOverlay}>
+                              <Ionicons name="camera" size={24} color="#FFF" />
+                              <Text style={styles.changeText}>Change Image</Text>
+                            </View>
+                          </View>
+                        ) : (
+                          <View style={styles.dashedCardInner}>
+                            <View style={styles.cloudCircle}>
+                              <Ionicons name="cloud-upload-outline" size={24} color="#F26522" />
+                            </View>
+                            <Text style={styles.uploadMainText}>Upload ID Proof</Text>
+                            <Text style={styles.uploadSubText}>
+                              Aadhaar Card, PAN Card, Passport or Driving License (JPEG, PNG up to 5MB)
+                            </Text>
+                            <View style={styles.tagLabel}>
+                              <Text style={styles.tagLabelText}>brahmand team</Text>
+                            </View>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+
+                      {/* Aadhaar OTP Flow */}
+                      {idType === 'aadhaar' && idNumber.trim().length === 12 && (
+                        <View style={styles.otpVerifyBlock}>
+                          {!otpFlowActive ? (
+                            <TouchableOpacity 
+                              style={styles.outlineBtn}
+                              onPress={handleGenerateOtp}
+                              disabled={otpLoading}
+                            >
+                              {otpLoading ? (
+                                <ActivityIndicator color="#F26522" />
+                              ) : (
+                                <Text style={styles.outlineBtnText}>Send OTP to Aadhaar Registered Mobile</Text>
+                              )}
+                            </TouchableOpacity>
+                          ) : (
+                            <View style={{ gap: 12 }}>
+                              <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Enter Aadhaar OTP</Text>
+                                <View style={styles.inputWrapper}>
+                                  <Ionicons name="lock-closed-outline" size={18} color="#666666" style={styles.inputIcon} />
+                                  <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Enter 6-digit OTP"
+                                    placeholderTextColor="#999999"
+                                    value={otpValue}
+                                    onChangeText={setOtpValue}
+                                    keyboardType="numeric"
+                                    maxLength={6}
+                                  />
+                                </View>
+                              </View>
+                              <View style={styles.otpActionRow}>
+                                <TouchableOpacity 
+                                  style={[styles.outlineBtn, { flex: 1 }]}
+                                  onPress={handleVerifyOtp}
+                                  disabled={otpLoading || otpVerified}
+                                >
+                                  <Text style={styles.outlineBtnText}>
+                                    {otpVerified ? 'Verified ✓' : 'Verify OTP'}
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                  style={[styles.outlineBtn, { flex: 1 }]}
+                                  onPress={handleGenerateOtp}
+                                  disabled={otpLoading}
+                                >
+                                  <Text style={styles.outlineBtnText}>Resend</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Card 3: Selfie Verification */}
+                  <View style={styles.whiteCard}>
+                    <View style={styles.cardHeader}>
+                      <View style={styles.badgeCircle}>
+                        <Text style={styles.badgeText}>3</Text>
+                      </View>
+                      <View style={styles.cardHeaderTexts}>
+                        <Text style={styles.cardTitle}>Selfie Verification</Text>
+                        <Text style={styles.cardDescription}>Take a clear selfie for verification.</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.fieldsContainer}>
+                      <TouchableOpacity 
+                        style={styles.dashedCard} 
+                        onPress={() => pickImageAsBase64(true)}
+                      >
+                        {selfieUri ? (
+                          <View style={styles.previewContainer}>
+                            <Image source={{ uri: selfieUri }} style={styles.previewImage} />
+                            <View style={styles.changeOverlay}>
+                              <Ionicons name="camera" size={24} color="#FFF" />
+                              <Text style={styles.changeText}>Retake Selfie</Text>
+                            </View>
+                          </View>
+                        ) : (
+                          <View style={styles.dashedCardInner}>
+                            <View style={styles.cloudCircle}>
+                              <Ionicons name="camera-outline" size={24} color="#F26522" />
+                            </View>
+                            <Text style={styles.uploadMainText}>Take a Selfie</Text>
+                            <Text style={styles.uploadSubText}>
+                              Please ensure your face is clearly visible, well-lit, and not covered.
+                            </Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Submit Button */}
+                  <TouchableOpacity 
+                    style={[
+                      styles.primaryBtn, 
+                      styles.submitBtnPosition,
+                      (submitLoading || (idType === 'aadhaar' && !otpVerified)) && styles.disabledBtn
+                    ]} 
+                    onPress={submit}
+                    disabled={submitLoading || (idType === 'aadhaar' && !otpVerified)}
+                  >
+                    {submitLoading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.primaryBtnText}>Submit KYC</Text>
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {/* Disclaimer Footer */}
+              <View style={styles.disclaimerContainer}>
+                <LockIcon />
+                <Text style={styles.disclaimerText}>
+                  Your information is secure and never shared with anyone.
+                </Text>
+              </View>
+
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </KeyboardAvoidingView>
+        )}
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
-  flex: {
-    flex: 1,
+  header: {
+    height: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  backBtn: {
+    padding: 8,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    lineHeight: 32.5,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
+  scrollContainer: {
+    flex: 1,
   },
-  title: {
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 40,
+    alignItems: 'center',
+  },
+  illustrationContainer: {
+    flexDirection: 'row',
+    height: 80,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  illustCard: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E5E5',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  illustCardCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 3,
+    borderColor: '#F26522',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  introParagraph: {
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 15,
+    fontWeight: '400',
+    color: '#666666',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  whiteCard: {
+    width: 361,
+    alignSelf: 'center',
+    padding: 24,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 16,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    shadowColor: 'rgba(0, 0, 0, 0.05)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+    elevation: 1,
+    marginBottom: 24,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  badgeCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F26522',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  cardHeaderTexts: {
+    flex: 1,
+    gap: 4,
+  },
+  cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
-  content: {
-    paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xl,
-  },
-  statusCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  statusText: {
-    flex: 1,
-    color: COLORS.text,
+  cardDescription: {
     fontSize: 14,
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
     lineHeight: 20,
   },
-  label: {
-    color: COLORS.text,
+  fieldsContainer: {
+    width: '100%',
+    gap: 14,
+    marginTop: 8,
+  },
+  inputContainer: {
+    width: '100%',
+    gap: 6,
+  },
+  inputLabel: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.sm,
+    color: '#333333',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  inputWrapper: {
+    width: '100%',
+    height: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  inputIcon: {
+    paddingHorizontal: 12,
+  },
+  textInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  countrySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 8,
+  },
+  countryText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  dividerLine: {
+    width: 1,
+    height: 20,
+    backgroundColor: '#E5E5E5',
+    marginRight: 12,
   },
   segmentRow: {
     flexDirection: 'row',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
+    width: '100%',
+    gap: 8,
+    marginTop: 8,
   },
   segmentButton: {
     flex: 1,
+    height: 40,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    paddingVertical: SPACING.sm,
+    borderColor: '#E5E5E5',
+    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
   segmentActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+    backgroundColor: '#F26522',
+    borderColor: '#F26522',
   },
   segmentText: {
-    color: COLORS.text,
-    fontWeight: '600',
     fontSize: 13,
+    fontWeight: '600',
+    color: '#666666',
   },
   segmentTextActive: {
-    color: COLORS.textWhite,
+    color: '#FFFFFF',
   },
-  uploadRow: {
+  dashedCard: {
+    width: '100%',
+    height: 120,
+    borderWidth: 1.5,
+    borderColor: '#F26522',
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    backgroundColor: '#FFF8F5',
+    overflow: 'hidden',
+  },
+  dashedCardInner: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  cloudCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFEFE7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadMainText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  uploadSubText: {
+    fontSize: 10,
+    color: '#888888',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  tagLabel: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: '#FFEFE7',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  tagLabelText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#F26522',
+  },
+  previewContainer: {
+    width: '100%',
+    height: '100%',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  changeOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  changeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  otpVerifyBlock: {
+    width: '100%',
+    marginTop: 10,
+  },
+  outlineBtn: {
+    width: '100%',
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F26522',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  outlineBtnText: {
+    color: '#F26522',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  otpActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
+  primaryBtn: {
+    width: 361,
+    height: 56,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#F26522',
+  },
+  submitBtnPosition: {
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  disabledBtn: {
+    backgroundColor: '#CCCCCC',
+  },
+  primaryBtnText: {
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 24,
+  },
+  disclaimerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+    width: '100%',
   },
-  uploadText: {
-    color: COLORS.text,
+  disclaimerText: {
+    color: '#666666',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 11,
+    fontWeight: '400',
+  },
+  statusBox: {
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+    paddingVertical: 20,
+  },
+  statusTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#000000',
+    marginTop: 8,
+  },
+  statusDescription: {
     fontSize: 14,
-    fontWeight: '500',
-  },
-  preview: {
-    marginTop: SPACING.sm,
-    width: 88,
-    height: 88,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.surface,
-  },
-  otpSection: {
-    marginBottom: SPACING.md,
-  },
-  otpRow: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    marginTop: SPACING.sm,
-  },
-  otpActionBtn: {
-    flex: 1,
-  },
-  submitButton: {
-    marginTop: SPACING.lg,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

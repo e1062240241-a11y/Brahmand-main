@@ -2113,20 +2113,25 @@ export default function HomeScreen() {
                         >
                           <Avatar name={firstName} photo={avatarUri} size={55} />
                         </TouchableOpacity>
-
-                        <View style={styles.greetingBlock}>
-                          <View style={styles.nameRow}>
-                            <Text style={styles.greeting}>{t('namaste')} {firstName} 🙏</Text>
-                          </View>
-                          <TouchableOpacity
-                            activeOpacity={0.8}
-                            style={styles.bioRow}
-                            onPress={() => setIsEditingBio(true)}
-                          >
-                            <Text style={styles.subGreeting} numberOfLines={1}>{bioText}</Text>
-                            <Ionicons name="pencil" size={12} color="#000" style={{ marginLeft: 6 }} />
-                          </TouchableOpacity>
-
+                        <View style={{
+                          position: 'absolute',
+                          left: 0,
+                          width: SCREEN_WIDTH - 2 * PAGE_PADDING,
+                          height: '100%',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          zIndex: -1,
+                        }} pointerEvents="none">
+                          <Text style={{
+                            color: '#E6C87A',
+                            textAlign: 'center',
+                            fontFamily: 'Cinzel',
+                            fontSize: 22,
+                            fontStyle: 'normal',
+                            fontWeight: '500',
+                            lineHeight: 26,
+                            letterSpacing: 14,
+                          }}>BRAHMAND</Text>
                         </View>
                       </View>
 
@@ -3673,7 +3678,7 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 15,
+    gap: 0,
   },
   headerIconButton: {
     width: 40,
