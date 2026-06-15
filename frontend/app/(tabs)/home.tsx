@@ -2500,7 +2500,13 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>{(hanumanChantCount * 18).toLocaleString()} {t('devoteesChanting') || 'devotees are chanting'}</Text>
+                                  }]}>
+                                    {hanumanStatus.isActive
+                                      ? `${(hanumanChantCount * 18).toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                      : (t('language') === 'hi'
+                                        ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                                        : '2300+ devotees already completed jaap')}
+                                  </Text>
 
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                   <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2621,7 +2627,13 @@ export default function HomeScreen() {
                                 marginTop: 0,
                                 marginBottom: 2,
                                 fontSize: 13
-                              }]}>{shivaChantCount.toLocaleString()} {t('devoteesChanting')}</Text>
+                              }]}>
+                                {shivaStatus.isActive
+                                  ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                  : (t('language') === 'hi'
+                                    ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                                    : '2300+ devotees already completed jaap')}
+                              </Text>
 
                               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                 <Ionicons name="time-outline" size={13} color="#FFF" />
