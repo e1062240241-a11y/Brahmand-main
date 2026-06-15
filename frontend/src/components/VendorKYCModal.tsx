@@ -790,7 +790,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
 
   if (showCamera) {
     return (
-      <Modal visible={visible} animationType="slide">
+      <Modal visible={visible} animationType="fade">
         <View style={styles.cameraContainer}>
           <CameraViewAny
             ref={cameraRef}
@@ -862,7 +862,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="fade" transparent>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

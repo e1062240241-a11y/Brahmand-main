@@ -3671,7 +3671,7 @@ export default function CommunityDetailScreen() {
       {/* Bottom footer input bar is removed to keep layout clean and centered on top-header Create button */}
 
       {/* Full Screen Create Post Modal */}
-      <Modal visible={showCreateModal} animationType="slide" transparent={false} hardwareAccelerated>
+      <Modal visible={showCreateModal} animationType="fade" transparent={false} hardwareAccelerated>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
@@ -3965,7 +3965,7 @@ export default function CommunityDetailScreen() {
       <Modal
         visible={showCategorySelector}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowCategorySelector(false)}
       >
         <TouchableOpacity
@@ -4116,7 +4116,7 @@ export default function CommunityDetailScreen() {
       <Modal
         visible={!!showCommentModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
@@ -4199,7 +4199,7 @@ export default function CommunityDetailScreen() {
       </Modal>
 
       {/* Attendees Modal */}
-      <Modal visible={!!showAttendeesModal} animationType="slide" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
+      <Modal visible={!!showAttendeesModal} animationType="fade" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={styles.modalDismiss} activeOpacity={1} onPress={() => setShowAttendeesModal(null)} />
           <View style={[styles.bottomSheet, { height: '60%' }]}>
