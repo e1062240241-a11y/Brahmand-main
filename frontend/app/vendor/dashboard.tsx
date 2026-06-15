@@ -98,6 +98,7 @@ export default function VendorDashboardScreen() {
   const [addressVal, setAddressVal] = useState('');
   const [categoriesVal, setCategoriesVal] = useState<string[]>([]);
   const [businessHoursVal, setBusinessHoursVal] = useState('');
+  const [offersVal, setOffersVal] = useState('');
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
 
   // Sync data from store when myVendor is loaded
@@ -114,6 +115,7 @@ export default function VendorDashboardScreen() {
       setAddressVal(myVendor.full_address || '');
       setCategoriesVal(myVendor.categories || []);
       setBusinessHoursVal(myVendor.business_hours || '');
+      setOffersVal(myVendor.offers || '');
     }
   }, [myVendor]);
 
@@ -488,8 +490,8 @@ export default function VendorDashboardScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 0.7,
     });
 
     if (result.canceled || !result.assets?.length) return;
@@ -533,6 +535,7 @@ export default function VendorDashboardScreen() {
           whatsapp: whatsappVal,
         },
         business_hours: businessHoursVal,
+        offers: offersVal,
       });
 
       Alert.alert('Success', 'Business profile updated successfully!');
@@ -796,6 +799,27 @@ export default function VendorDashboardScreen() {
               <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
             )}
           </ScrollView>
+        </View>
+
+        {/* Section: Offers & Deals */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="pricetag-outline" size={20} color="#5C3B24" style={{ marginRight: 8 }} />
+            <Text style={styles.cardTitle}>Offers & Deals</Text>
+          </View>
+
+          <Text style={styles.inputLabel}>Current Offers</Text>
+          <View style={[styles.inputContainer, styles.descriptionContainer]}>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
+              value={offersVal}
+              onChangeText={setOffersVal}
+              placeholder="e.g. 10% off on first order, Buy 1 Get 1 free, etc."
+              placeholderTextColor="#9A897E"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
         </View>
 
         {/* Section: Delete Account */}

@@ -1570,7 +1570,7 @@ export const parseApiError = (error: any): string => {
 
 export const updateVendorBusinessProfile = (
   vendorId: string,
-  data: { menu_items?: string[]; offers_home_delivery?: boolean }
+  data: any
 ) => api.put(`/vendors/${vendorId}/business/profile`, data);
 
 const appendMultipartFile = async (

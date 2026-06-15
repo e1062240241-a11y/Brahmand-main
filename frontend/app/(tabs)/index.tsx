@@ -614,29 +614,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
   },
-  requestOwnerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  requestOwnerMeta: {
-    flex: 1,
-    marginLeft: SPACING.sm,
-  },
-  requestOwnerName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.text,
-  },
-  requestOwnerSubtext: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  requestOwnerTime: {
-    fontSize: 12,
-    color: COLORS.textLight,
-  },
+
   contactButton: {
     flexDirection: 'row',
     alignItems: 'center',
