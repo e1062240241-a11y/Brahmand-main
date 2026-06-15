@@ -2286,7 +2286,7 @@ export default function HomeScreen() {
                         ) : null}
                       </View>
                     ) : (
-                      <View style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 15, marginBottom: 15 }]}>
+                      <View style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}>
                         <ScrollView
                           ref={topFeaturesScrollRef}
                           horizontal
@@ -2447,7 +2447,7 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    <View style={{ position: 'relative', marginTop: 15 }}>
+                    <View style={{ position: 'relative' }}>
                       <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -2732,7 +2732,7 @@ export default function HomeScreen() {
                 snapToInterval={Platform.OS === 'ios' ? 130 : 120}
                 decelerationRate="fast"
                 contentContainerStyle={styles.actionCardsScroll}
-                style={[styles.actionCardsScrollView, { marginBottom: 2 }]}
+                style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
               >
                 {/* Urgent Blood Request */}
                 {bloodRequests.length > 0 ? (
@@ -3589,7 +3589,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFECD9',
-    marginTop: 15,
+    marginTop: 14,
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
@@ -3651,8 +3651,6 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: 'transparent',
     paddingHorizontal: PAGE_PADDING,
-    marginTop: 15,
-    marginBottom: 15,
   },
   cardTextureContent: {
     flex: 1,
@@ -3731,8 +3729,8 @@ const styles = StyleSheet.create({
   },
   topFeatureRow: {
     flexDirection: 'row',
-    marginTop: 15,
-    marginBottom: 15,
+    marginTop: 12,
+    marginBottom: 8,
     gap: 8,
     marginHorizontal: -PAGE_PADDING,
   },
@@ -4110,7 +4108,7 @@ const styles = StyleSheet.create({
   twoButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    marginBottom: 10,
     gap: 6,
     paddingHorizontal: 10,
   },
