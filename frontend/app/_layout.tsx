@@ -183,7 +183,8 @@ function useDeepLinkHandler() {
         } else {
           // Custom scheme: sanatanlok://some/path
           const parsed = ExpoLinking.parse(raw);
-          let pathWithQuery = parsed.path ? `/${parsed.path}` : '';
+          const parsedPath = parsed.path ? String(parsed.path).replace(/^\/+/, '') : '';
+          let pathWithQuery = parsedPath ? `/${parsedPath}` : '';
           const queryParams = parsed.queryParams;
           if (queryParams && Object.keys(queryParams).length > 0) {
             const searchParams = new URLSearchParams();
@@ -197,7 +198,7 @@ function useDeepLinkHandler() {
               pathWithQuery += `?${searchStr}`;
             }
           }
-          path = pathWithQuery || null;
+          path = pathWithQuery ? pathWithQuery.replace(/\/\/+/, '/') : null;
         }
 
         if (!path || path === '/') return;

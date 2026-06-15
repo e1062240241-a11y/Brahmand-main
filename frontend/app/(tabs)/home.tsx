@@ -491,7 +491,7 @@ export default function HomeScreen() {
   const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
-  const likeDebounceRefs = useRef<{ [postId: string]: NodeJS.Timeout }>({});
+  const likeDebounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const originalLikeStateRefs = useRef<{ [postId: string]: boolean }>({});
 
   useEffect(() => {
@@ -885,11 +885,48 @@ export default function HomeScreen() {
     }
   }, [setUnreadCount, setTabFeed, fetchLocalCommunities]);
 
+  const loadHomeCache = useCallback(async () => {
+    try {
+      const [cachedCommunities, cachedRequests] = await Promise.all([
+        AsyncStorage.getItem('home_communities'),
+        AsyncStorage.getItem('home_community_requests'),
+      ]);
+
+      if (cachedCommunities) {
+        const parsed = JSON.parse(cachedCommunities);
+        const comms = Array.isArray(parsed) ? parsed : parsed?.data;
+        if (Array.isArray(comms) && comms.length > 0) {
+          setCommunities(comms);
+        }
+      }
+
+      if (cachedRequests) {
+        const parsedReqs = JSON.parse(cachedRequests);
+        const reqs = Array.isArray(parsedReqs) ? parsedReqs : parsedReqs?.data;
+        if (Array.isArray(reqs)) {
+          setCommunityRequests(reqs);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load cached home data:', err);
+    }
+  }, []);
+
+  const isCommunityFallbackId = (id?: string) => {
+    if (!id) return true;
+    const normalized = String(id).toLowerCase();
+    return normalized === 'city_default' || normalized === 'food_pune' || normalized.includes('fallback');
+  };
+
   // ── Load view history once user is known ──────────────────────────────────
   useEffect(() => {
     const uid = String((user as any)?.id || '');
     if (uid) loadHistory(uid);
   }, [(user as any)?.id]);
+
+  useEffect(() => {
+    loadHomeCache();
+  }, [loadHomeCache]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -940,6 +977,75 @@ export default function HomeScreen() {
   const [now, setNow] = useState(new Date());
 
   const { myVendor, vendors } = useVendorStore();
+
+  const findCityCommunity = useCallback(() => {
+    return (
+      communities.find((c) => c.type === 'city' && (c.name || '').toLowerCase().includes('mumbai')) ||
+      communities.find((c) => (c.name || '').toLowerCase().includes('mumbai')) ||
+      communities.find((c) => c.type === 'city') ||
+      localCommunities.find((c) => c.type === 'city' && (c.name || '').toLowerCase().includes('mumbai')) ||
+      localCommunities.find((c) => (c.name || '').toLowerCase().includes('mumbai')) ||
+      localCommunities.find((c) => c.type === 'city') ||
+      null
+    );
+  }, [communities, localCommunities]);
+
+  const findLocalCommunity = useCallback(() => {
+    return (
+      localCommunities.find((c) => c.type === 'user_group' || c.type === 'local') ||
+      communities.find((c) => c.type === 'user_group' || c.type === 'local') ||
+      communities.find((c) => c.is_default) ||
+      null
+    );
+  }, [communities, localCommunities]);
+
+  const findStateCommunity = useCallback(() => {
+    return (
+      communities.find((c) => c.type === 'state' || (c.name || '').toLowerCase().includes('maharashtra')) ||
+      null
+    );
+  }, [communities]);
+
+  const findNationalCommunity = useCallback(() => {
+    return (
+      communities.find(
+        (c) =>
+          c.type === 'country' ||
+          (c.name || '').toLowerCase().includes('bharat') ||
+          (c.name || '').toLowerCase().includes('india')
+      ) ||
+      null
+    );
+  }, [communities]);
+
+  const resolveHomeCommunityItem = useCallback(
+    (item: any) => {
+      if (!item) return null;
+      const id = String(item.id || '');
+      const nameLower = (item.name || '').toLowerCase();
+
+      if (id !== 'city_default' && id !== 'food_pune' && !id.includes('fallback')) {
+        return item;
+      }
+
+      const resolved =
+        item.type === 'city' || nameLower.includes('mumbai')
+          ? findCityCommunity()
+          : item.type === 'state' || nameLower.includes('maharashtra')
+          ? findStateCommunity()
+          : item.type === 'country' || nameLower.includes('bharat') || nameLower.includes('india')
+          ? findNationalCommunity()
+          : item.type === 'user_group' || item.type === 'local' || nameLower.includes('food')
+          ? findLocalCommunity()
+          : null;
+
+      if (!resolved) return null;
+      const resolvedId = String(resolved.id || '');
+      if (isCommunityFallbackId(resolvedId)) return null;
+      return resolved;
+    },
+    [findCityCommunity, findLocalCommunity, findNationalCommunity, findStateCommunity]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -2680,12 +2786,14 @@ export default function HomeScreen() {
                   <View style={styles.twoButtonsRow}>
                       {/* Mumbai Community Card */}
                       {(() => {
-                        const cityComm = communities.find(c => c.type === 'city');
-                        let cityName = cityComm?.name || 'City Community';
+                        const resolvedCityComm = resolveHomeCommunityItem(findCityCommunity());
+                        if (!resolvedCityComm) return null;
+                        let cityName = resolvedCityComm.name || 'City Community';
                         if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
                           cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
                         }
-                        const cityId = cityComm?.id || 'city_default';
+                        const cityId = resolvedCityComm.id;
+                        const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 0;
                         return (
                           <TouchableOpacity
                             style={styles.communityCardMini}
@@ -2703,7 +2811,7 @@ export default function HomeScreen() {
                               <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                                 {cityName}
                               </Text>
-                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityComm?.member_count || cityComm?.members_count || (cityComm as any)?.memberCount || 0} {t('members')}</Text>
+                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityMembers} {t('members')}</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                           </TouchableOpacity>
@@ -2712,18 +2820,15 @@ export default function HomeScreen() {
 
                       {/* Local Community Card */}
                       {(() => {
-                        const localComm =
-                          communities.find(c => c.is_default || c.type === 'user_group' || c.type === 'local') ||
-                          localCommunities.find(c => c.type === 'user_group' || c.type === 'local');
-                        const localId = localComm?.id || 'food_pune';
-                        let realGroupName = localComm?.name || 'Pune Food Sharing Group';
-                        if (t('language') === 'hi') {
-                          if (realGroupName === 'Pune Food Sharing Group') {
-                            realGroupName = 'पुणे भोजन साझाकरण समूह';
-                          }
+                        const resolvedLocalComm = resolveHomeCommunityItem(findLocalCommunity());
+                        if (!resolvedLocalComm) return null;
+                        const localId = resolvedLocalComm.id;
+                        let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
+                        if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
+                          realGroupName = 'पुणे भोजन साझाकरण समूह';
                         }
-                        const localMembers = localComm ? (localComm.member_count || localComm.members_count || (localComm as any).memberCount || 0) : 0;
-                        const localSubgroup = localComm?.type || 'city';
+                        const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 0;
+                        const localSubgroup = resolvedLocalComm.type || 'city';
                         return (
                           <TouchableOpacity
                             style={styles.communityCardMini}
