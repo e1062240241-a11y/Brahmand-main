@@ -27,41 +27,7 @@ type KycStatus = 'pending' | 'manual_review' | 'verified' | 'rejected' | null;
 
 const { width } = Dimensions.get('window');
 
-// Custom Icons
-const PadlockIllustration = () => (
-  <View style={styles.illustCard}>
-    <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
-      <Rect x={7} y={12} width={18} height={15} rx={3} stroke="#F26522" strokeWidth={2.5} />
-      <Path d="M11 12V9C11 6.23858 13.2386 4 16 4C18.7614 4 21 6.23858 21 9V12" stroke="#F26522" strokeWidth={2.5} strokeLinecap="round" />
-      <Circle cx={16} cy={19} r={2.5} fill="#F26522" />
-    </Svg>
-  </View>
-);
 
-const ShieldIllustration = () => (
-  <View style={styles.illustCardCircle}>
-    <Svg width={36} height={36} viewBox="0 0 40 40" fill="none">
-      <Path d="M20 5L32 9V20C32 27.5 27 33.5 20 36C13 33.5 8 27.5 8 20V9L20 5Z" stroke="#F26522" strokeWidth={2.5} fill="none" />
-      <Path d="M15 20L18 23L25 16" stroke="#2E7D32" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  </View>
-);
-
-const UserCardIllustration = () => (
-  <View style={styles.illustCard}>
-    <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
-      <Rect x={4} y={5} width={24} height={22} rx={3} stroke="#CCCCCC" strokeWidth={2.5} />
-      <Circle cx={12} cy={13} r={3.5} stroke="#CCCCCC" strokeWidth={2.5} />
-      <Path d="M6 23C6 19.5 9.5 17.5 12 17.5C14.5 17.5 18 19.5 18 23" stroke="#CCCCCC" strokeWidth={2.5} strokeLinecap="round" />
-      <Line x1={20} y1={11} x2={25} y2={11} stroke="#CCCCCC" strokeWidth={2} />
-      <Line x1={20} y1={15} x2={25} y2={15} stroke="#CCCCCC" strokeWidth={2} />
-    </Svg>
-  </View>
-);
-
-const Line = ({ x1, y1, x2, y2, stroke, strokeWidth }: any) => (
-  <Path d={`M${x1} ${y1} L${x2} ${y2}`} stroke={stroke} strokeWidth={strokeWidth} />
-);
 
 const LockIcon = () => (
   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
@@ -322,11 +288,10 @@ export default function KycSubmitScreen() {
               keyboardShouldPersistTaps="handled"
             >
               {/* Illustration Header */}
-              <View style={styles.illustrationContainer}>
-                <PadlockIllustration />
-                <ShieldIllustration />
-                <UserCardIllustration />
-              </View>
+              <Image 
+                source={require('../assets/images/kyc_steps_header.png')} 
+                style={styles.illustrationHeaderImage} 
+              />
 
               <Text style={styles.introParagraph}>
                 KYC helps us maintain trust and safety{"\n"}in the community.
@@ -672,53 +637,22 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     alignItems: 'center',
   },
-  illustrationContainer: {
-    flexDirection: 'row',
-    height: 80,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  illustCard: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E5E5E5',
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  illustCardCircle: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    borderWidth: 3,
-    borderColor: '#F26522',
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  illustrationHeaderImage: {
+    width: 393,
+    height: 210,
+    aspectRatio: 131 / 70,
+    resizeMode: 'contain',
+    marginTop: 16,
+    marginBottom: 8,
   },
   introParagraph: {
+    color: '#4B5563',
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    fontSize: 15,
+    fontSize: 14,
+    fontStyle: 'normal',
     fontWeight: '400',
-    color: '#666666',
-    lineHeight: 22,
+    lineHeight: 22.75,
     marginBottom: 24,
   },
   whiteCard: {

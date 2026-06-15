@@ -2148,26 +2148,28 @@ export default function HomeScreen() {
                         >
                           <Avatar name={firstName} photo={avatarUri} size={55} />
                         </TouchableOpacity>
-                        <View style={{
-                          position: 'absolute',
-                          left: 0,
-                          width: SCREEN_WIDTH - 2 * PAGE_PADDING,
-                          height: '100%',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          zIndex: -1,
-                        }} pointerEvents="none">
-                          <Text style={{
-                            color: '#E6C87A',
-                            textAlign: 'center',
-                            fontFamily: 'Cinzel',
-                            fontSize: 22,
-                            fontStyle: 'normal',
-                            fontWeight: '500',
-                            lineHeight: 26,
-                            letterSpacing: 14,
-                          }}>BRAHMAND</Text>
-                        </View>
+                      </View>
+
+                      <View style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        zIndex: -1,
+                      }} pointerEvents="none">
+                        <Text style={{
+                          color: '#FFFFFF',
+                          textAlign: 'center',
+                          fontFamily: 'Cinzel',
+                          fontSize: 22,
+                          fontStyle: 'normal',
+                          fontWeight: '500',
+                          lineHeight: 26,
+                          letterSpacing: 8,
+                        }}>BRAHMAND</Text>
                       </View>
 
                       <View style={styles.headerRight}>
