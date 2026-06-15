@@ -102,8 +102,6 @@ from routes.video_upload_routes import (
     _generate_video_thumbnail,
     MAX_VIDEO_UPLOAD_BYTES,
     MAX_VIDEO_DURATION_SECONDS,
-    FFMPEG_BIN,
-    FFPROBE_BIN,
 )
 from utils.helpers import (
     WISDOM_QUOTES,
@@ -2457,50 +2455,41 @@ async def _upload_post_impl(
 
     try:
         if content_type.startswith('video/'):
-            has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
+            _ensure_ffmpeg_tools_available()
             temp_input_path, original_size_bytes = await _save_upload_to_temp_file(file)
-            
-            if has_ffmpeg:
-                metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
-                duration_seconds = metadata.get('duration') or 0.0
-                media_width = metadata.get('width') or 0
-                media_height = metadata.get('height') or 0
+            metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
+            duration_seconds = metadata.get('duration') or 0.0
+            media_width = metadata.get('width') or 0
+            media_height = metadata.get('height') or 0
 
-                if duration_seconds <= 0:
-                    raise HTTPException(status_code=400, detail='Unable to determine video duration')
-                if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
-                    )
-
-                target_width, target_height, _ = _pick_target_profile(media_width, media_height)
-                temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
-                temp_output_file.close()
-
-                await asyncio.to_thread(
-                    _compress_video,
-                    temp_input_path,
-                    temp_output_file.name,
-                    target_width,
-                    target_height,
+            if duration_seconds <= 0:
+                raise HTTPException(status_code=400, detail='Unable to determine video duration')
+            if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
                 )
 
-                # Generate thumbnail
-                temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
-                temp_thumb_file.close()
-                await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
+            target_width, target_height, _ = _pick_target_profile(media_width, media_height)
+            temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+            temp_output_file.close()
 
-                compressed_size_bytes = os.path.getsize(temp_output_file.name)
-                if compressed_size_bytes <= 0:
-                    raise HTTPException(status_code=500, detail='Compressed video is empty')
-            else:
-                logger.warning("ffmpeg is not installed on server; bypassing compression")
-                temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
-                temp_output_file.close()
-                import shutil
-                shutil.copy2(temp_input_path, temp_output_file.name)
-                compressed_size_bytes = original_size_bytes
+            await asyncio.to_thread(
+                _compress_video,
+                temp_input_path,
+                temp_output_file.name,
+                target_width,
+                target_height,
+            )
+
+            # Generate thumbnail
+            temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
+            temp_thumb_file.close()
+            await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
+
+            compressed_size_bytes = os.path.getsize(temp_output_file.name)
+            if compressed_size_bytes <= 0:
+                raise HTTPException(status_code=500, detail='Compressed video is empty')
 
             content_type = 'video/mp4'
             base_url = str(request.base_url)
@@ -2658,7 +2647,7 @@ async def _upload_chat_media_impl(
 ):
     user_id = token_data['user_id']
     content_type = (file.content_type or '').lower()
-
+    
     header = await file.read(32)
     await file.seek(0)
 
@@ -3206,6 +3195,20 @@ async def get_posts_feed(
         _random.shuffle(seen_pool)
         extra_posts = _rank_and_filter(seen_pool, needed)
         paged_posts += extra_posts
+
+    # ── Sort: Unseen first, and within unseen, the latest (last 48 hours) at the absolute top ──
+    unseen_returned = [p for p in paged_posts if p.get('id') not in seen_set]
+    seen_returned = [p for p in paged_posts if p.get('id') in seen_set]
+
+    cutoff_ts = now_ts - 172800  # 48 hours
+    recent_unseen = [p for p in unseen_returned if _get_ts(p) >= cutoff_ts]
+    older_unseen = [p for p in unseen_returned if _get_ts(p) < cutoff_ts]
+
+    # Sort recent_unseen by created_at descending (newest first)
+    recent_unseen.sort(key=_get_ts, reverse=True)
+
+    # Reassemble: recent unseen first, then older unseen, then seen posts
+    paged_posts = recent_unseen + older_unseen + seen_returned
 
     # ── Enrich posts with author info and like status ─────────────
     post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})
@@ -5288,11 +5291,7 @@ async def join_community_direct(
         if user_id in members:
             return {"message": "You are already a member.", "community_id": community_id}
         # Add user to community members
-        new_members = list(members) + [user_id]
-        await db.update_document('communities', community_id, {
-            'members': new_members,
-            'member_count': len(new_members)
-        })
+        await db.array_union_update('communities', community_id, 'members', [user_id])
         # Add community to user's communities
         await db.array_union_update('users', user_id, 'communities', [community_id])
         # Invalidate user community cache so next discover call returns is_member=true
@@ -7418,7 +7417,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     
     # Store KYC documents (for admin review)
     kyc_data = {
-        'kyc_status': 'manual_review',
+        'kyc_status': 'pending',
         'kyc_role': kyc_role,
         'kyc_id_type': id_type,
         'kyc_id_number': id_number,
@@ -7430,7 +7429,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'is_verified': False,
     }
 
-    match_result = {'status': 'manual_review', 'distance': None, 'reason': 'awaiting_admin_review'}
+    match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
         match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
         if match_result['status'] == 'verified':
@@ -12304,7 +12303,7 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
     async def _get_requests():
         try:
-            return await get_community_requests(status="active", limit=10, token_data=token_data)
+            return await get_community_requests(status="active", limit=50, token_data=token_data)
         except Exception as e:
             import logging
             logging.error(f"Error in init requests: {e}")
@@ -12324,7 +12323,7 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
     async def _get_communities():
         try:
-            return await FirebaseCommunityService.get_user_communities(user_id=user_id)
+            return await get_communities(token_data=token_data)
         except Exception:
             return []
 
