@@ -536,7 +536,7 @@ export default function VendorDashboardScreen() {
       });
 
       Alert.alert('Success', 'Business profile updated successfully!');
-      handleBack();
+      router.replace(`/vendor/${myVendor.id}`);
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.detail || err?.message || 'Failed to update profile');
     } finally {
