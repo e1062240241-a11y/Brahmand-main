@@ -2470,7 +2470,7 @@ export default function HomeScreen() {
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
                                 {/* Top Left Content */}
-                                <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                                <View style={{ paddingTop: 0, paddingLeft: 0, flex: 1, marginRight: 8 }}>
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                                     <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
                                     <Text style={[
@@ -2531,6 +2531,7 @@ export default function HomeScreen() {
                                 alignSelf: 'flex-start',
                                 backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
                                 paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
+                                flexShrink: 0,
                               }]}>
                                 {hanumanStatus.isActive && <View style={styles.liveDot} />}
                                 <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
@@ -2597,7 +2598,7 @@ export default function HomeScreen() {
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
                             {/* Top Left Content */}
-                            <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                            <View style={{ paddingTop: 0, paddingLeft: 0, flex: 1, marginRight: 8 }}>
                               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                                 <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
                                 <Text style={[
@@ -2658,6 +2659,7 @@ export default function HomeScreen() {
                               alignSelf: 'flex-start',
                               backgroundColor: shivaStatus.isActive ? '#FF0000' : '#FF7A00',
                               paddingHorizontal: shivaStatus.isActive ? 8 : 10,
+                              flexShrink: 0,
                             }]}>
                               {shivaStatus.isActive && <View style={styles.liveDot} />}
                               <Text style={[styles.liveBadgeText, { marginLeft: shivaStatus.isActive ? 4 : 0 }]}>
@@ -3826,6 +3828,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
+    flexShrink: 0,
   },
   liveDot: {
     width: 6,
