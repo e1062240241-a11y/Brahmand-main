@@ -230,6 +230,15 @@ const getCommunityFestivalImage = (name: string) => {
   return key ? FESTIVAL_IMAGE_MAP[key] : null;
 };
 
+const getCommunityMemberCount = (community?: any) => {
+  if (!community) return 0;
+  if (Array.isArray(community.members)) return community.members.length;
+  if (Array.isArray(community.members_details)) return community.members_details.length;
+  if (typeof community.members_count === 'number') return community.members_count;
+  if (typeof community.member_count === 'number') return community.member_count;
+  return 0;
+};
+
 const MOCK_FESTIVALS = [
   { id: '1', name: 'Diwali', events: 12, color: '#FFF5F0', date: '2026-11-01' },
   { id: '2', name: 'Navratri', events: 18, color: '#FFF9EB', date: '2026-10-12' },
@@ -1791,7 +1800,7 @@ export default function CommunityDetailScreen() {
 
       {/* Centered Member Count */}
       <Text style={styles.headerMembersText}>
-        {community?.members_count ?? community?.member_count ?? 0} {t('language') === 'hi' ? 'सदस्य' : 'Members'}
+        {getCommunityMemberCount(community)} {t('language') === 'hi' ? 'सदस्य' : 'Members'}
       </Text>
 
       {/* Centered Description/Tagline */}
@@ -2556,9 +2565,18 @@ export default function CommunityDetailScreen() {
     const iconDetails = getRequestIconDetails(item);
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact_number || item.contact || item.user_phone;
+    const ownerName = item.user_name || item.user?.name || 'Requester';
+    const requestTypeLabel = item.request_type ? String(item.request_type).toUpperCase() : 'REQUEST';
     
     return (
       <View style={styles.festEventCard}>
+        <View style={styles.requestOwnerRow}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={32} />
+          <View style={styles.requestOwnerMeta}>
+            <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
+          </View>
+          <Text style={styles.requestOwnerTime}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
+        </View>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
             <CommunityMediaItem
@@ -4247,7 +4265,7 @@ export default function CommunityDetailScreen() {
               <Text style={{ fontSize: 14, color: '#536471', marginBottom: 20, lineHeight: 20 }}>
                 {community?.description || 'Connect with your local community. Share updates, requests, and engage with devotees.'}
               </Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 10 }}>Members ({community?.members_count || community?.member_count || (community?.members?.length) || 0})</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 10 }}>Members ({getCommunityMemberCount(community)})</Text>
               
               <View style={{ gap: 15 }}>
                 {community?.members_details ? (
@@ -4754,6 +4772,11 @@ const styles = StyleSheet.create({
   festivalEventCountNum: { fontSize: 18, fontWeight: '900', color: '#111' },
   festivalEventCountText: { fontSize: 10, fontWeight: '600', color: '#666' },
 
+  requestOwnerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  requestOwnerMeta: { flex: 1, marginLeft: 12 },
+  requestOwnerName: { fontSize: 15, fontWeight: '700', color: '#111' },
+  requestOwnerSubtext: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  requestOwnerTime: { fontSize: 12, color: '#64748B' },
   festEventCard: { marginHorizontal: 20, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 15, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F5F5F5' },
   festEventMain: { flexDirection: 'row', marginBottom: 12 },
   festEventImage: { width: 90, height: 90, borderRadius: 16 },
