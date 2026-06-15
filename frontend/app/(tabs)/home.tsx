@@ -442,6 +442,7 @@ export default function HomeScreen() {
   const { unreadCount, setUnreadCount } = useNotificationStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState<any[]>([]);
+  const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
 
   const [hanumanChantCount, setHanumanChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
   const [shivaChantCount, setShivaChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
@@ -514,7 +515,7 @@ export default function HomeScreen() {
         x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
         animated: true,
       });
-    }, 7000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [isFocused]);
 
@@ -1957,7 +1958,7 @@ export default function HomeScreen() {
             contentContainerStyle={[
               styles.content,
               {
-                paddingTop: 10,
+                paddingTop: 0,
                 paddingBottom: 90
               }
             ]}
@@ -2221,7 +2222,7 @@ export default function HomeScreen() {
                         ) : null}
                       </View>
                     ) : (
-                      <View style={styles.topFeatureRow}>
+                      <View style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}>
                         <ScrollView
                           ref={topFeaturesScrollRef}
                           horizontal
@@ -2229,6 +2230,15 @@ export default function HomeScreen() {
                           snapToInterval={185}
                           decelerationRate="fast"
                           contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
+                          style={{ width: '100%' }}
+                          onScroll={(e) => {
+                            const x = e.nativeEvent.contentOffset.x;
+                            const idx = Math.round(x / 185);
+                            const clampedIdx = Math.max(0, Math.min(idx, baseQuickAccess.length - 1));
+                            setActiveFeatureIndex(clampedIdx);
+                            topFeaturesAutoScrollIndex.current = clampedIdx;
+                          }}
+                          scrollEventThrottle={16}
                         >
                           {baseQuickAccess.map((item, idx) => {
                             let cardBg = '#FFFFFF';
@@ -2357,6 +2367,19 @@ export default function HomeScreen() {
                             );
                           })}
                         </ScrollView>
+                        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                          {baseQuickAccess.map((_, idx) => (
+                            <View
+                              key={idx}
+                              style={{
+                                width: activeFeatureIndex === idx ? 8 : 6,
+                                height: activeFeatureIndex === idx ? 8 : 6,
+                                borderRadius: 4,
+                                backgroundColor: activeFeatureIndex === idx ? '#FFF' : 'rgba(255, 255, 255, 0.45)',
+                              }}
+                            />
+                          ))}
+                        </View>
                       </View>
                     )}
 
@@ -2563,7 +2586,7 @@ export default function HomeScreen() {
                       snapToInterval={Platform.OS === 'ios' ? 130 : 120}
                       decelerationRate="fast"
                       contentContainerStyle={styles.actionCardsScroll}
-                      style={[styles.actionCardsScrollView, { marginBottom: 8 }]}
+                      style={[styles.actionCardsScrollView, { marginBottom: 2 }]}
                     >
                       {/* Urgent Blood Request */}
                       <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
@@ -3450,8 +3473,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
-    marginTop: 5,
+    marginBottom: 2,
+    marginTop: 0,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -3519,7 +3542,7 @@ const styles = StyleSheet.create({
   topFeatureRow: {
     flexDirection: 'row',
     marginTop: 12,
-    marginBottom: 20,
+    marginBottom: 8,
     gap: 8,
     marginHorizontal: -PAGE_PADDING,
   },
@@ -3682,8 +3705,8 @@ const styles = StyleSheet.create({
   },
   actionCardsScroll: {
     paddingHorizontal: PAGE_PADDING,
-    paddingTop: 30,
-    paddingBottom: 15,
+    paddingTop: 24,
+    paddingBottom: 4,
     gap: Platform.OS === 'ios' ? 8 : 10,
   },
   actionCard: {
@@ -3897,7 +3920,7 @@ const styles = StyleSheet.create({
   twoButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 2,
     gap: 6,
     paddingHorizontal: 10,
   },

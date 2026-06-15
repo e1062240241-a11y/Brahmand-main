@@ -1442,7 +1442,7 @@ const styles = StyleSheet.create({
   templeSearchSection: { paddingHorizontal: 20, marginBottom: 15 },
   templeSearchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF8F0', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: '#F5E0C3' },
   templeSearchInputField: { flex: 1, fontSize: 14, color: '#2D1400', fontWeight: '600' },
-  templeCatPillsRow: { marginBottom: 6 },
+  templeCatPillsRow: { marginBottom: 12 },
   templeCatPill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#FFF', marginRight: 10, borderWidth: 1, borderColor: '#F5E0C3' },
   templeCatPillActive: { backgroundColor: '#FF6600', borderColor: '#FF6600' },
   templeCatPillText: { fontSize: 13, fontWeight: '700', color: '#8B4513' },
@@ -1460,7 +1460,7 @@ const styles = StyleSheet.create({
   noTemplesFound: { alignItems: 'center', marginTop: 60, gap: 15 },
   noTemplesText: { fontSize: 16, color: '#8B4513', fontWeight: '700', opacity: 0.5 },
 
-  newTempleSearchSection: { paddingHorizontal: 16, marginTop: 4, marginBottom: 6, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  newTempleSearchSection: { paddingHorizontal: 16, marginTop: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   newTempleSearchBarWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 25, paddingHorizontal: 16, height: 46, borderWidth: 1, borderColor: '#CCC' },
   newTempleSearchInput: { flex: 1, fontSize: 14, color: '#333', fontFamily: 'Inter_500Medium' },
   filterIconBtn: { padding: 4 },

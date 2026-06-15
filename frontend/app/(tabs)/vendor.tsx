@@ -190,7 +190,8 @@ export default function VendorScreen() {
     fetchVendors, 
     fetchMyVendor,
     fetchCategories,
-    createVendor 
+    createVendor,
+    uploadBusinessImage
   } = useVendorStore();
   const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
   
@@ -658,6 +659,18 @@ export default function VendorScreen() {
       });
       
       console.log('Vendor registration response:', JSON.stringify(newVendor, null, 2));
+
+      // Upload selected photos if present!
+      if (data.photos && data.photos.length > 0) {
+        for (let i = 0; i < data.photos.length; i++) {
+          const photo = data.photos[i];
+          try {
+            await uploadBusinessImage(newVendor.id, i, photo);
+          } catch (uploadErr) {
+            console.warn(`Failed to upload photo at slot ${i}:`, uploadErr);
+          }
+        }
+      }
       
       // Close modal immediately so UI feels fast
       setShowRegistrationModal(false);

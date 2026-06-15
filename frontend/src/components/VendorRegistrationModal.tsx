@@ -12,19 +12,149 @@ import {
   ActivityIndicator,
   Alert,
   Keyboard,
+  Image,
+  FlatList,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import * as Location from 'expo-location';
 import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplete';
 import { DEFAULT_CATEGORIES } from '../store/vendorStore';
+import * as ImagePicker from 'expo-image-picker';
+import Svg, { Path } from 'react-native-svg';
+
+const AddressIcon = ({ width = 24, height = 24, color = '#94A3B8' }) => (
+  <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M23.2 11.2H20.763C20.5734 9.15211 19.6735 7.23501 18.2193 5.78074C16.765 4.32646 14.8479 3.4266 12.8 3.237V0.8C12.8 0.587827 12.7157 0.384344 12.5657 0.234315C12.4157 0.0842854 12.2122 0 12 0C11.7878 0 11.5843 0.0842854 11.4343 0.234315C11.2843 0.384344 11.2 0.587827 11.2 0.8V3.237C9.15211 3.4266 7.23501 4.32646 5.78074 5.78074C4.32646 7.23501 3.4266 9.15211 3.237 11.2H0.8C0.587827 11.2 0.384344 11.2843 0.234315 11.4343C0.0842854 11.5843 0 11.7878 0 12C0 12.2122 0.0842854 12.4157 0.234315 12.5657C0.384344 12.7157 0.587827 12.8 0.8 12.8H3.237C3.4266 14.8479 4.32646 16.765 5.78074 18.2193C7.23501 19.6735 9.15211 20.5734 11.2 20.763V23.2C11.2 23.4122 11.2843 23.6157 11.4343 23.7657C11.5843 23.9157 11.7878 24 12 24C12.2122 24 12.4157 23.9157 12.5657 23.7657C12.7157 23.6157 12.8 23.4122 12.8 23.2V20.763C14.8479 20.5734 16.765 19.6735 18.2193 18.2193C19.6735 16.765 20.5734 14.8479 20.763 12.8H23.2C23.4122 12.8 23.6157 12.7157 23.7657 12.5657C23.9157 12.4157 24 12.2122 24 12C24 11.7878 23.9157 11.5843 23.7657 11.4343C23.6157 11.2843 23.4122 11.2 23.2 11.2ZM12 19.2C10.576 19.2 9.18393 18.7777 7.99989 17.9866C6.81586 17.1954 5.89302 16.0709 5.34807 14.7553C4.80312 13.4397 4.66053 11.992 4.93835 10.5954C5.21616 9.19869 5.90189 7.91577 6.90883 6.90883C7.91577 5.90189 9.19869 5.21616 10.5954 4.93835C11.992 4.66053 13.4397 4.80312 14.7553 5.34807C16.0709 5.89302 17.1954 6.81586 17.9866 7.99989C18.7777 9.18393 19.2 10.576 19.2 12C19.1979 13.9089 18.4386 15.739 17.0888 17.0888C15.739 18.4386 13.9089 19.1979 12 19.2ZM12 8C11.2089 8 10.4355 8.2346 9.77772 8.67412C9.11992 9.11365 8.60723 9.73836 8.30448 10.4693C8.00173 11.2002 7.92252 12.0044 8.07686 12.7804C8.2312 13.5563 8.61216 14.269 9.17157 14.8284C9.73098 15.3878 10.4437 15.7688 11.2196 15.9231C11.9956 16.0775 12.7998 15.9983 13.5307 15.6955C14.2616 15.3928 14.8864 14.8801 15.3259 14.2223C15.7654 13.5645 16 12.7911 16 12C16 10.9391 15.5786 9.92172 14.8284 9.17157C14.0783 8.42143 13.0609 8 12 8ZM12 14.4C11.5253 14.4 11.0613 14.2592 10.6666 13.9955C10.272 13.7318 9.96434 13.357 9.78269 12.9184C9.60104 12.4799 9.55351 11.9973 9.64612 11.5318C9.73872 11.0662 9.9673 10.6386 10.3029 10.3029C10.6386 9.9673 11.0662 9.73872 11.5318 9.64612C11.9973 9.55351 12.4799 9.60104 12.9184 9.78269C13.357 9.96434 13.7318 10.272 13.9955 10.6666C14.2592 11.0613 14.4 11.5253 14.4 12C14.4 12.6365 14.1471 13.247 13.6971 13.6971C13.247 14.1471 12.6365 14.4 12 14.4Z" 
+      fill={color}
+    />
+  </Svg>
+);
+
+const RegisterBusinessIcon = ({ width = 24, height = 24, strokeColor = '#F97316' }) => (
+  <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M19 21V5C19 3.89617 18.1038 3 17 3H7C5.89617 3 5 3.89617 5 5V21M19 21H21M19 21H14M5 21H3M5 21H10M9 7H10M9 11H10M14 7H15M14 11H15M10 21V16C10 15.4481 10.4481 15 11 15H13C13.5519 15 14 15.4481 14 16V21M10 21H14" 
+      stroke={strokeColor} 
+      strokeWidth={2} 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+const CategorySelectorIcon = () => (
+  <Svg width={40} height={40} viewBox="0 0 40 40" fill="none">
+    <Path 
+      d="M30.7778 34V8.22222C30.7778 6.44383 29.3339 5 27.5556 5H11.4444C9.66605 5 8.22222 6.44383 8.22222 8.22222V34M30.7778 34H34M30.7778 34H22.7222M8.22222 34H5M8.22222 34H16.2778M22.7222 34V25.9444C22.7222 25.0552 22.0003 24.3333 21.1111 24.3333H17.8889C16.9997 24.3333 16.2778 25.0552 16.2778 25.9444V34M22.7222 34H16.2778M14.6667 11.4444H16.2778M14.6667 17.8889H16.2778M22.7222 11.4444H24.3333M22.7222 17.8889H24.3333" 
+      stroke="white" 
+      strokeWidth={2} 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
 
 const DEFAULT_SUBCATEGORIES = [
   'Pooja', 'Havan', 'Marriage', 'Astrology', 'Home Delivery', 
   'Cash on Delivery', 'Personal Training', 'Therapy', 'Consultation',
   'Cardio', 'Strength Training', 'Spa', 'Facial', 'Hair Styling',
   'Catering', 'Desserts', 'Plumbing', 'Wiring', 'Repairs'
+];
+
+const COUNTRY_CODES = [
+  { code: '+91', label: '🇮🇳 +91' },
+  { code: '+1', label: '🇺🇸 +1' },
+  { code: '+44', label: '🇬🇧 +44' },
+  { code: '+971', label: '🇦🇪 +971' },
+  { code: '+61', label: '🇦🇺 +61' },
+  { code: '+65', label: '🇸🇬 +65' },
+  { code: '+977', label: '🇳🇵 +977' },
+  { code: '+880', label: '🇧🇩 +880' },
+  { code: '+92', label: '🇵🇰 +92' },
+  { code: '+94', label: '🇱🇰 +94' },
+  { code: '+62', label: '🇮🇩 +62' },
+  { code: '+60', label: '🇲🇾 +60' },
+  { code: '+86', label: '🇨🇳 +86' },
+  { code: '+81', label: '🇯🇵 +81' },
+];
+
+const ALL_FIGMA_CATEGORIES = [
+  'Kirana Stores',
+  'Grocery Stores',
+  'Dairy Shops',
+  'Fruits & Vegetable Vendors',
+  'Bakeries',
+  'Sweet Shops',
+  'Stationery Stores',
+  'General Stores',
+  'Electricians',
+  'Plumbers',
+  'Carpenters',
+  'Painters',
+  'House Cleaners',
+  'Pest Control',
+  'AC Repair',
+  'Appliance Repair',
+  'Maid Services',
+  'Packers & Movers',
+  'Mechanics',
+  'Car Wash',
+  'Bike Repair',
+  'Tyre Shops',
+  'Auto Electricians',
+  'Towing Services',
+  'Medical Stores',
+  'Clinics',
+  'Doctors',
+  'Dentists',
+  'Physiotherapists',
+  'Fitness Trainers',
+  'Yoga Instructors',
+  'Salons',
+  'Barbers',
+  'Beauticians',
+  'Makeup Artists',
+  'Spa Services',
+  'Pandits',
+  'Astrologers',
+  'Vastu Consultants',
+  'Pooja Samagri Stores',
+  'Temple Services',
+  'Bhajan/Kirtan Groups',
+  'Yagya & Ritual Services',
+  'Restaurants',
+  'Tiffin Services',
+  'Home Chefs',
+  'Caterers',
+  'Street Food Vendors',
+  'Juice Centers',
+  'Tea Stalls',
+  'Tutors',
+  'Coaching Classes',
+  'Music Teachers',
+  'Dance Teachers',
+  'Language Trainers',
+  'Cow Seva & Animal Care',
+  'Gaushalas',
+  'Veterinary Doctors',
+  'Animal Rescue Volunteers',
+  'Professional Services',
+  'Chartered Accountants',
+  'Lawyers',
+  'Insurance Agents',
+  'Financial Advisors',
+  'Digital Marketing Agencies',
+  'IT Services',
+  'Packaging Suppliers',
+  'Plastic Manufacturers',
+  'Industrial Suppliers',
+  'Courier Services',
+  'BPO Services',
+  'Wholesale Traders'
 ];
 
 let MapView: any = null;
@@ -184,9 +314,46 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [yearsInBusiness, setYearsInBusiness] = useState('');
   const [address, setAddress] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
+  const [selectedPhotos, setSelectedPhotos] = useState<{ uri: string; name: string; type: string }[]>([]);
+  const [showCategorySelector, setShowCategorySelector] = useState(false);
+  const [selectedTempCategories, setSelectedTempCategories] = useState<string[]>([]);
+
+  const pickBusinessPhotos = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Alert.alert('Permission Denied', 'Media library access is required to upload photos.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const newPhotos = result.assets.map(asset => {
+      const fileName = (asset as any).fileName || `business-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
+      const mimeType = asset.mimeType || 'image/jpeg';
+      return {
+        uri: asset.uri,
+        name: fileName,
+        type: mimeType,
+      };
+    });
+
+    setSelectedPhotos(prev => [...prev, ...newPhotos]);
+  };
+
+  const removePhoto = (index: number) => {
+    setSelectedPhotos(prev => prev.filter((_, i) => i !== index));
+  };
   const [categoryInput, setCategoryInput] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
 
@@ -361,12 +528,15 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     setBusinessName('');
     setOwnerName('');
     setPhoneNumber('');
+    setCountryCode('+91');
+    setShowCountryDropdown(false);
     setYearsInBusiness('');
     setAddress('');
     setCategories([]);
     setCategoryInput('');
     setSubCategories([]);
     setSubCategoryInput('');
+    setSelectedPhotos([]);
   };
 
   const handleSubmit = async () => {
@@ -412,10 +582,20 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       Alert.alert('Error', 'Phone number is required');
       return;
     }
-    if (trimmedPhone.length !== 10) {
-      Alert.alert('Error', 'Phone number must be a 10-digit number');
+    if (countryCode === '+91' && trimmedPhone.length !== 10) {
+      Alert.alert('Error', 'Indian phone numbers must be exactly 10 digits');
       return;
     }
+    if (trimmedPhone.length < 7 || trimmedPhone.length > 15) {
+      Alert.alert('Error', 'Phone number must be between 7 and 15 digits');
+      return;
+    }
+
+    let cleanedPhone = trimmedPhone;
+    if (cleanedPhone.startsWith('0')) {
+      cleanedPhone = cleanedPhone.substring(1);
+    }
+    const fullPhone = countryCode + cleanedPhone;
 
     if (!yearsInBusiness) {
       Alert.alert('Error', 'Years in business is required');
@@ -436,6 +616,11 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       return;
     }
 
+    if (selectedPhotos.length < 2) {
+      Alert.alert('Error', 'Please upload at least 2 business photos');
+      return;
+    }
+
     console.log('Validation passed');
 
     const mergedCategories = [...categories, ...subCategories].filter(Boolean).slice(0, 5);
@@ -447,10 +632,11 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     const payload = {
       businessName: trimmedBusinessName,
       ownerName: trimmedOwnerName,
-      phoneNumber: trimmedPhone,
+      phoneNumber: fullPhone,
       yearsInBusiness: parseInt(yearsInBusiness, 10),
       address: trimmedAddress,
       categories: mergedCategories,
+      photos: selectedPhotos,
     };
 
     if (!onSubmit) {
@@ -490,7 +676,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <View style={styles.iconBg}>
-                <Ionicons name="storefront" size={20} color={COLORS.primary} />
+                <RegisterBusinessIcon />
               </View>
               <Text style={styles.headerTitle}>Register Your Business</Text>
             </View>
@@ -539,11 +725,15 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             />
 
             {/* Phone Number */}
-            <Text style={styles.label}>Phone Number *</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={[styles.input, { justifyContent: 'center', alignItems: 'center', width: 60, paddingHorizontal: 0 }]}>
-                <Text style={{ fontSize: 15, color: COLORS.text, fontWeight: '500' }}>+91</Text>
-              </View>
+            <Text style={styles.label}>Mobile Number *</Text>
+            <View style={{ flexDirection: 'row', gap: 8, zIndex: 30, position: 'relative' }}>
+              <TouchableOpacity 
+                style={[styles.input, { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: 90, paddingHorizontal: 8 }]}
+                onPress={() => setShowCountryDropdown(!showCountryDropdown)}
+              >
+                <Text style={{ fontSize: 15, color: COLORS.text, fontWeight: '500', marginRight: 4 }}>{countryCode}</Text>
+                <Ionicons name={showCountryDropdown ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
+              </TouchableOpacity>
               <TextInput
                 style={[styles.input, { flex: 1 }]}
                 placeholder="Enter mobile number"
@@ -551,11 +741,30 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 value={phoneNumber}
                 onChangeText={(text) => {
                   const numericText = text.replace(/\D/g, '');
-                  setPhoneNumber(numericText.slice(0, 10));
+                  setPhoneNumber(numericText.slice(0, 15));
                 }}
                 keyboardType="phone-pad"
-                maxLength={10}
+                maxLength={15}
               />
+              
+              {showCountryDropdown && (
+                <View style={[styles.dropdownListContainer, { position: 'absolute', top: 52, left: 0, width: 140, zIndex: 100, maxHeight: 200 }]}>
+                  <ScrollView nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                    {COUNTRY_CODES.map((item) => (
+                      <TouchableOpacity
+                        key={item.code}
+                        style={[styles.dropdownListItem, { paddingVertical: 10, paddingHorizontal: 12 }]}
+                        onPress={() => {
+                          setCountryCode(item.code);
+                          setShowCountryDropdown(false);
+                        }}
+                      >
+                        <Text style={{ fontSize: 14, color: COLORS.text }}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
 
             {/* Years in Business */}
@@ -574,105 +783,32 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             />
 
             {/* Categories */}
-            <Text style={styles.label}>Categories (e.g. Plumber, Electrician) *</Text>
+            <Text style={styles.label}>Categories *</Text>
             <View style={{ marginBottom: SPACING.md }}>
-              <View style={styles.dropdownInputContainer}>
+              <TouchableOpacity 
+                style={styles.dropdownInputContainer}
+                onPress={() => {
+                  setSelectedTempCategories(categories);
+                  setShowCategorySelector(true);
+                }}
+              >
                 <TextInput
-                  style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
-                  placeholder="Select or search a category"
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="Select categories"
                   placeholderTextColor={COLORS.textLight}
-                  value={categoryInput}
-                  onChangeText={(text) => {
-                    const filtered = text.replace(/[^a-zA-Z\s]/g, '');
-                    setCategoryInput(filtered.slice(0, 30));
-                    setShowCategoryDropdown(true);
-                  }}
-                  onFocus={() => setShowCategoryDropdown(true)}
-                  onSubmitEditing={() => {
-                    const cat = categoryInput.trim();
-                    if (cat && !categories.includes(cat)) {
-                      if (categories.length >= 5) {
-                        Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                        return;
-                      }
-                      setCategories([...categories, cat]);
-                    }
-                    setCategoryInput('');
-                    setShowCategoryDropdown(false);
-                  }}
+                  editable={false}
+                  pointerEvents="none"
+                  value={categories.length > 0 ? `${categories.length} selected` : ""}
                 />
-                <TouchableOpacity 
-                  style={styles.dropdownToggleButton}
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    setShowCategoryDropdown(!showCategoryDropdown);
-                  }}
-                >
-                  <Ionicons name={showCategoryDropdown ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Category Dropdown List */}
-              {showCategoryDropdown && (
-                <View style={styles.dropdownListContainer}>
-                  <ScrollView 
-                    style={{ maxHeight: 200 }}
-                    nestedScrollEnabled={true}
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {filteredCategories.length > 0 ? (
-                      filteredCategories.map((cat) => (
-                        <TouchableOpacity
-                          key={cat}
-                          style={styles.dropdownListItem}
-                          onPress={() => {
-                            if (categories.length >= 5) {
-                              Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                              return;
-                            }
-                            setCategories([...categories, cat]);
-                            setCategoryInput('');
-                            setShowCategoryDropdown(false);
-                          }}
-                        >
-                          <Text style={styles.dropdownListItemText}>{cat}</Text>
-                          <Ionicons name="add" size={16} color={COLORS.primary} />
-                        </TouchableOpacity>
-                      ))
-                    ) : (
-                      <View style={styles.dropdownListEmpty}>
-                        <Text style={styles.dropdownListEmptyText}>No matching categories</Text>
-                      </View>
-                    )}
-                    
-                    {/* Add Custom Category Option */}
-                    {categoryInput.trim() && !filteredCategories.includes(categoryInput.trim()) && (
-                      <TouchableOpacity
-                        style={[styles.dropdownListItem, { borderTopWidth: 1, borderTopColor: COLORS.divider }]}
-                        onPress={() => {
-                          if (categories.length >= 5) {
-                            Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                            return;
-                          }
-                          setCategories([...categories, categoryInput.trim()]);
-                          setCategoryInput('');
-                          setShowCategoryDropdown(false);
-                        }}
-                      >
-                        <Text style={[styles.dropdownListItemText, { color: COLORS.primary, fontWeight: '600' }]}>
-                          Add "{categoryInput.trim()}"
-                        </Text>
-                        <Ionicons name="add-circle" size={18} color={COLORS.primary} />
-                      </TouchableOpacity>
-                    )}
-                  </ScrollView>
+                <View style={styles.dropdownToggleButton}>
+                  <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
                 </View>
-              )}
+              </TouchableOpacity>
             </View>
 
             {/* Selected Categories */}
             {categories.length > 0 && (
-              <View style={styles.selectedCategories}>
+              <View style={[styles.selectedCategories, { marginBottom: SPACING.md }]}>
                 {categories.map((cat, idx) => (
                   <View key={idx} style={styles.categoryTag}>
                     <Text style={styles.categoryTagText}>{cat}</Text>
@@ -712,21 +848,21 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     setShowSubCategoryDropdown(false);
                   }}
                 />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.dropdownToggleButton}
                   onPress={() => {
                     Keyboard.dismiss();
                     setShowSubCategoryDropdown(!showSubCategoryDropdown);
                   }}
                 >
-                  <Ionicons name={showSubCategoryDropdown ? "chevron-up" : "chevron-down"} size={20} color={COLORS.textSecondary} />
+                  <Ionicons name={showSubCategoryDropdown ? 'chevron-up' : 'chevron-down'} size={20} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>
 
               {/* Sub Category Dropdown List */}
               {showSubCategoryDropdown && (
                 <View style={styles.dropdownListContainer}>
-                  <ScrollView 
+                  <ScrollView
                     style={{ maxHeight: 200 }}
                     nestedScrollEnabled={true}
                     keyboardShouldPersistTaps="handled"
@@ -755,7 +891,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                         <Text style={styles.dropdownListEmptyText}>No matching subcategories</Text>
                       </View>
                     )}
-                    
+
                     {/* Add Custom Sub Category Option */}
                     {subCategoryInput.trim() && !filteredSubCategories.includes(subCategoryInput.trim()) && (
                       <TouchableOpacity
@@ -783,7 +919,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Selected Sub Categories */}
             {subCategories.length > 0 && (
-              <View style={styles.selectedCategories}>
+              <View style={[styles.selectedCategories, { marginBottom: SPACING.md }]}>
                 {subCategories.map((subCat, idx) => (
                   <View key={idx} style={styles.categoryTag}>
                     <Text style={styles.categoryTagText}>{subCat}</Text>
@@ -797,9 +933,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Address */}
             <Text style={styles.label}>Full Address *</Text>
-            <View style={{ position: 'relative' }}>
+            <View style={{ position: 'relative', marginBottom: 16 }}>
               <TextInput
-                style={[styles.input, styles.textArea, { paddingRight: 40 }]}
+                style={styles.addressInput}
                 placeholder="Enter complete business address"
                 placeholderTextColor={COLORS.textLight}
                 value={address}
@@ -807,18 +943,44 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   const filtered = text.replace(/[^a-zA-Z0-9\s.,'#\-\/()]/g, '');
                   setAddress(filtered.slice(0, 150));
                 }}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
               />
               <TouchableOpacity 
-                style={{ position: 'absolute', right: 12, top: 12, zIndex: 10 }}
+                style={{ position: 'absolute', right: 20, top: 16.5, zIndex: 10 }}
                 onPress={detectLocation}
                 disabled={loading}
               >
-                <Ionicons name="locate" size={20} color={COLORS.primary} />
+                <AddressIcon width={24} height={24} color="#94A3B8" />
               </TouchableOpacity>
             </View>
+
+            {/* Business Photos */}
+            <Text style={styles.label}>Business Photos *</Text>
+            <Text style={styles.photoSublabel}>Minimum 2 photos</Text>
+            
+            <TouchableOpacity 
+              style={styles.uploadArea} 
+              onPress={pickBusinessPhotos}
+            >
+              <View style={styles.cloudIconContainer}>
+                <Ionicons name="cloud-upload" size={26} color="#FF6600" />
+              </View>
+              <Text style={styles.uploadTitle}>Upload Photos</Text>
+              <Text style={styles.uploadSubtext}>(JPEG, PNG or PDF up to 5MB)</Text>
+            </TouchableOpacity>
+
+            {/* Selected Photos Previews */}
+            {selectedPhotos.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewScroll}>
+                {selectedPhotos.map((photo, index) => (
+                  <View key={index} style={styles.previewWrapper}>
+                    <Image source={{ uri: photo.uri }} style={styles.previewImage} />
+                    <TouchableOpacity style={styles.removeBadge} onPress={() => removePhoto(index)}>
+                      <Ionicons name="close" size={12} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
 
             {/* Submit Button */}
             <TouchableOpacity
@@ -929,6 +1091,94 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           )}
         </SafeAreaView>
       </Modal>
+
+      {/* Full-Screen Category Selector Modal */}
+      <Modal
+        visible={showCategorySelector}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowCategorySelector(false)}
+      >
+        <SafeAreaView style={styles.selectorSafeArea}>
+          <LinearGradient
+            colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+            locations={[0, 0.0913, 0.25]}
+            style={styles.selectorGradient}
+          >
+            {/* Header */}
+            <View style={styles.selectorHeader}>
+              <TouchableOpacity style={styles.selectorBackButton} onPress={() => setShowCategorySelector(false)}>
+                <Ionicons name="chevron-back" size={24} color="#231917" />
+              </TouchableOpacity>
+              <View style={styles.selectorIconBg}>
+                <CategorySelectorIcon />
+              </View>
+              <Text style={styles.selectorHeaderTitle}>Register Your Business</Text>
+            </View>
+
+            {/* Label */}
+            <View style={styles.selectorLabelContainer}>
+              <Text style={styles.selectorLabel}>
+                Type of Service <Text style={{ color: '#BA1A1A' }}>*</Text>
+              </Text>
+            </View>
+
+            {/* Categories FlatList */}
+            <FlatList
+              data={ALL_FIGMA_CATEGORIES}
+              keyExtractor={(item) => item}
+              contentContainerStyle={styles.selectorListContent}
+              renderItem={({ item }) => {
+                const isSelected = selectedTempCategories.includes(item);
+                return (
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorItemRow,
+                      isSelected && styles.selectorItemRowSelected
+                    ]}
+                    onPress={() => {
+                      if (isSelected) {
+                        setSelectedTempCategories(prev => prev.filter(c => c !== item));
+                      } else {
+                        if (selectedTempCategories.length >= 5) {
+                          Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                          return;
+                        }
+                        setSelectedTempCategories(prev => [...prev, item]);
+                      }
+                    }}
+                  >
+                    <Text style={[
+                      styles.selectorItemText,
+                      isSelected && styles.selectorItemTextSelected
+                    ]}>
+                      {item}
+                    </Text>
+                    {isSelected && (
+                      <Ionicons name="checkmark-circle" size={20} color="#F97316" />
+                    )}
+                  </TouchableOpacity>
+                );
+              }}
+              style={styles.selectorFlatList}
+              showsVerticalScrollIndicator={false}
+            />
+
+            {/* Done Button */}
+            <View style={styles.selectorBottomBar}>
+              <TouchableOpacity
+                style={styles.selectorDoneButton}
+                onPress={() => {
+                  setCategories(selectedTempCategories);
+                  setShowCategorySelector(false);
+                }}
+              >
+                <Text style={styles.selectorDoneButtonText}>Done</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </SafeAreaView>
+      </Modal>
     </Modal>
   );
 };
@@ -958,18 +1208,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   iconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: `${COLORS.primary}15`,
+    display: 'flex',
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: '#FFF7ED',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.sm,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    color: '#000000',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 20,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 28,
+    letterSpacing: -0.5,
   },
   form: {
     padding: SPACING.md,
@@ -994,6 +1253,21 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.00)',
+  },
+  addressInput: {
+    display: 'flex',
+    height: 57,
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingLeft: 20,
+    paddingRight: 52,
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.00)',
+    backgroundColor: '#F8FAFC',
+    fontSize: 15,
+    color: COLORS.text,
   },
   textArea: {
     height: 80,
@@ -1120,5 +1394,182 @@ const styles = StyleSheet.create({
   dropdownListEmptyText: {
     fontSize: 13,
     color: COLORS.textLight,
+  },
+  photoSublabel: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginTop: -6,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  uploadArea: {
+    display: 'flex',
+    alignSelf: 'center',
+    width: 361,
+    maxWidth: '100%',
+    padding: 32,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    backgroundColor: '#FFFAF5',
+    marginBottom: SPACING.md,
+  },
+  cloudIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: '#FF6600',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  uploadTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  uploadSubtext: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  previewScroll: {
+    flexDirection: 'row',
+    marginBottom: SPACING.md,
+  },
+  previewWrapper: {
+    position: 'relative',
+    marginRight: 12,
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  previewImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  removeBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#EF4444',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
+  },
+  selectorSafeArea: {
+    flex: 1,
+    backgroundColor: '#FF8D57',
+  },
+  selectorGradient: {
+    flex: 1,
+  },
+  selectorHeader: {
+    height: Platform.OS === 'ios' ? 110 : 88,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 40 : 0,
+    gap: 12,
+  },
+  selectorBackButton: {
+    padding: 8,
+  },
+  selectorHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#231917',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    flexShrink: 1,
+  },
+  selectorIconBg: {
+    width: 64,
+    height: 64,
+    backgroundColor: '#FF7B00',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectorLabelContainer: {
+    paddingHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  selectorLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#231917',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  selectorFlatList: {
+    flex: 1,
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  selectorListContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    overflow: 'hidden',
+    paddingVertical: 8,
+  },
+  selectorItemRow: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  selectorItemRowSelected: {
+    backgroundColor: '#FFF7ED',
+  },
+  selectorItemText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#85736E',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  selectorItemTextSelected: {
+    color: '#F97316',
+    fontWeight: '600',
+  },
+  selectorBottomBar: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    paddingTop: 8,
+  },
+  selectorDoneButton: {
+    height: 53,
+    backgroundColor: '#F97316',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectorDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 });
