@@ -135,7 +135,7 @@ export default function EntryAnimationScreen() {
             <Text style={styles.termsText}>
               I agree to the{' '}
               <Text style={styles.termsLink} onPress={handleOpenPrivacyPolicy}>
-                Terms of Service and Community Guidelines
+                Terms of Service and Privacy Policy
               </Text>
             </Text>
           </View>
