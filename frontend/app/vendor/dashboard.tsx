@@ -160,11 +160,64 @@ export default function VendorDashboardScreen() {
     };
   }, [router]);
 
+  // KYC Guard: Redirect to KYC if not verified
+  const isUserVerifiedForGuard = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+  const isVendorVerifiedForGuard = myVendor?.kyc_status === 'verified';
+  const isKycVerifiedForGuard = isUserVerifiedForGuard || isVendorVerifiedForGuard;
+
+  useEffect(() => {
+    if (!isInitializing && !authLoading && myVendor && !isKycVerifiedForGuard) {
+      Alert.alert(
+        'KYC Required',
+        'You must complete KYC verification before you can edit your service profile.',
+        [{ text: 'Complete KYC', onPress: () => router.replace('/kyc') }],
+        { cancelable: false }
+      );
+    }
+  }, [isInitializing, authLoading, myVendor, isKycVerifiedForGuard, router]);
+
   if (authLoading || isInitializing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Block access if KYC is not verified
+  if (myVendor && !isKycVerifiedForGuard) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient 
+          colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+          locations={[0, 0.0913, 0.25]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerLeft} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#5C3B24" />
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF3EB', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+              <Ionicons name="lock-closed" size={36} color="#F26522" />
+            </View>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#5C3B24', marginBottom: 8, textAlign: 'center' }}>KYC Verification Required</Text>
+            <Text style={{ fontSize: 15, color: '#8B6F5E', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              Complete your KYC verification to unlock access to your Edit Profile page and manage your service.
+            </Text>
+            <TouchableOpacity 
+              style={{ backgroundColor: '#F26522', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              onPress={() => router.replace('/kyc')}
+            >
+              <Ionicons name="shield-checkmark" size={18} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>Complete KYC Now</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );

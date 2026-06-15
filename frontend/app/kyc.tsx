@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -10,7 +10,8 @@ import {
   Alert,
   TextInput,
   ScrollView,
-  Platform
+  Platform,
+  KeyboardAvoidingView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { useVendorStore } from '../src/store/vendorStore';
 import { useAuthStore } from '../src/store/authStore';
 import { VendorKYCModal } from '../src/components/VendorKYCModal';
-import { getKYCStatus, sendOTP, verifyOTP } from '../src/services/api';
+import { getKYCStatus, sendMsg91OTP, verifyMsg91OTP } from '../src/services/api';
 import { useTranslation } from '../src/utils/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -71,6 +72,18 @@ const LockIcon = () => (
   </Svg>
 );
 
+const CustomBackIcon = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+    <Path 
+      d="M15.375 5.25L8.625 12L15.375 18.75" 
+      stroke="black" 
+      strokeWidth={2.25} 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 export default function KYCStatusScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -93,6 +106,11 @@ export default function KYCStatusScreen() {
   const [otpSent, setOtpSent] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
+
+  // Custom OTP state matching the design
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [resendTimer, setResendTimer] = useState(30);
+  const inputRefs = useRef<TextInput[]>([]);
 
   const refreshKycStatus = useCallback(async () => {
     try {
@@ -127,8 +145,14 @@ export default function KYCStatusScreen() {
   const isRejected = isUserRejected || isVendorRejected;
 
   const handleBack = useCallback(() => {
-    router.replace('/(tabs)/profile');
-  }, [router]);
+    if (otpSent && !phoneVerified) {
+      setOtpSent(false);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/vendor' as any);
+    }
+  }, [otpSent, phoneVerified, router]);
 
   useEffect(() => {
     const backAction = () => {
@@ -139,6 +163,13 @@ export default function KYCStatusScreen() {
     return () => subscription.remove();
   }, [handleBack]);
 
+  useEffect(() => {
+    if (otpSent && resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [otpSent, resendTimer]);
+
   const handleSendOTP = async () => {
     if (!phoneNumber || phoneNumber.length < 10) {
       Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
@@ -147,8 +178,10 @@ export default function KYCStatusScreen() {
     setOtpLoading(true);
     try {
       const fullPhone = `${countryCode}${phoneNumber}`;
-      await sendOTP(fullPhone);
+      await sendMsg91OTP(fullPhone);
       setOtpSent(true);
+      setResendTimer(30);
+      setOtp(['', '', '', '', '', '']);
       Alert.alert('Success', `OTP sent successfully to ${fullPhone}`);
     } catch (error: any) {
       console.warn('Failed to send OTP:', error);
@@ -158,23 +191,57 @@ export default function KYCStatusScreen() {
     }
   };
 
-  const handleVerifyOTP = async () => {
-    if (!otpCode || otpCode.length < 4) {
-      Alert.alert('Error', 'Please enter a valid OTP');
-      return;
+  const handleResend = async () => {
+    if (resendTimer > 0 || otpLoading) return;
+    await handleSendOTP();
+  };
+
+  const handleOtpChange = (value: string, index: number) => {
+    const newOtp = [...otp];
+    newOtp[index] = value.replace(/[^0-9]/g, '');
+    setOtp(newOtp);
+    
+    if (newOtp[index] && index < 5) {
+      inputRefs.current[index + 1]?.focus();
     }
+    
+    if (newOtp.every((digit) => digit !== '')) {
+      verifyCode(newOtp.join(''));
+    }
+  };
+
+  const handleKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const verifyCode = async (code: string) => {
+    if (otpLoading) return;
     setOtpLoading(true);
     try {
       const fullPhone = `${countryCode}${phoneNumber}`;
-      await verifyOTP(fullPhone, otpCode.trim());
+      await verifyMsg91OTP(fullPhone, code.trim());
       setPhoneVerified(true);
+      setOtpSent(false);
       Alert.alert('Success', 'Phone number verified successfully!');
     } catch (error: any) {
       console.warn('Failed to verify OTP:', error);
       Alert.alert('Error', error?.response?.data?.detail || error?.message || 'Invalid OTP. Please try again.');
+      setOtp(['', '', '', '', '', '']);
+      inputRefs.current[0]?.focus();
     } finally {
       setOtpLoading(false);
     }
+  };
+
+  const handleVerifyOTP = async () => {
+    const code = otp.join('');
+    if (code.length < 6) {
+      Alert.alert('Error', 'Please enter the 6-digit OTP');
+      return;
+    }
+    await verifyCode(code);
   };
 
   const getKYCAlertBg = () => {
@@ -194,6 +261,95 @@ export default function KYCStatusScreen() {
     if (isReview) return 'KYC Under Review. Process takes 24-48 hours.';
     return 'Not KYC Verified? Complete KYC to continue.';
   };
+
+  if (otpSent && !phoneVerified) {
+    return (
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.0913, 0.25]}
+        style={styles.otpFullScreenContainer}
+      >
+        <View style={styles.otpMandalaContainer}>
+          <View style={styles.otpMandalaCircle} />
+          <View style={[styles.otpMandalaCircle, styles.otpMandalaCircle2]} />
+        </View>
+
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+          {/* Header */}
+          <View style={styles.otpHeader}>
+            <TouchableOpacity style={styles.otpHeaderBackButton} onPress={() => setOtpSent(false)}>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                <Path d="M15.375 5.25L8.625 12L15.375 18.75" stroke="black" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round"/>
+              </Svg>
+            </TouchableOpacity>
+            <Text style={styles.otpTitle}>Enter OTP</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.otpScrollContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.otpSubtitle}>We have sent a 6 digit OTP to{"\n"}+91 {phoneNumber}</Text>
+
+              <View style={styles.otpInputsRow}>
+                {otp.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => { inputRefs.current[index] = ref!; }}
+                    style={[styles.otpDigitInput, otp[index] && styles.otpDigitInputFilled]}
+                    value={digit}
+                    onChangeText={(value) => handleOtpChange(value, index)}
+                    onKeyPress={(e) => handleKeyPress(e, index)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    selectTextOnFocus
+                  />
+                ))}
+              </View>
+
+              {otpLoading ? (
+                <ActivityIndicator color="#F26522" style={{ marginTop: 16 }} />
+              ) : null}
+
+              <View style={styles.otpResendContainer}>
+                <Text style={styles.otpDidNotReceiveText}>Didn't receive OTP?</Text>
+                <TouchableOpacity 
+                  onPress={handleResend} 
+                  disabled={resendTimer > 0}
+                  style={{ marginTop: 4 }}
+                >
+                  <Text style={[styles.otpResendText, resendTimer > 0 && styles.otpResendTextDisabled]}>
+                    {resendTimer > 0 ? `Resend OTP in 00:${String(resendTimer).padStart(2, '0')}` : 'Resend OTP'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.otpNoteCard}>
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" style={{ marginRight: 12, flexShrink: 0 }}>
+                  <Path d="M12 1L20.2169 2.82598C20.6745 2.92766 21 3.33347 21 3.80217V13.7889C21 15.795 19.9974 17.6684 18.3282 18.7812L12 23L5.6718 18.7812C4.00261 17.6684 3 15.795 3 13.7889V3.80217C3 3.33347 3.32553 2.92766 3.78307 2.82598L12 1ZM12 3.04879L5 4.60434V13.7889C5 15.1263 5.6684 16.3752 6.7812 17.1171L12 20.5963L17.2188 17.1171C18.3316 16.3752 19 15.1263 19 13.7889V4.60434L12 3.04879ZM16.4524 8.22183L17.8666 9.63604L11.5026 16L7.25999 11.7574L8.67421 10.3431L11.5019 13.1709L16.4524 8.22183Z" fill="#F26522"/>
+                </Svg>
+                <Text style={styles.otpNoteText}>This number will be used for all future communications regarding your request.</Text>
+              </View>
+            </ScrollView>
+
+            <View style={styles.otpBottomButtonContainer}>
+              <TouchableOpacity 
+                style={styles.otpPrimaryBtn} 
+                onPress={handleVerifyOTP} 
+                disabled={otpLoading || otp.some((digit) => !digit)} 
+                activeOpacity={0.8}
+              >
+                {otpLoading ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.otpPrimaryBtnText}>Verify & Continue</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -278,24 +434,9 @@ export default function KYCStatusScreen() {
                   }}
                   keyboardType="phone-pad"
                   maxLength={10}
-                  editable={!phoneVerified && !otpSent}
+                  editable={!phoneVerified}
                 />
               </View>
-
-              {otpSent && !phoneVerified && (
-                <TextInput
-                  style={styles.otpFieldInput}
-                  placeholder="Enter 6-digit OTP"
-                  placeholderTextColor="#999999"
-                  value={otpCode}
-                  onChangeText={(text) => {
-                    const cleanText = text.replace(/\D/g, '');
-                    setOtpCode(cleanText.slice(0, 6));
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-              )}
 
               {phoneVerified ? (
                 <View style={styles.verifiedSuccessBox}>
@@ -305,26 +446,16 @@ export default function KYCStatusScreen() {
               ) : (
                 <TouchableOpacity 
                   style={[styles.primaryBtn, otpLoading && { opacity: 0.7 }]} 
-                  onPress={otpSent ? handleVerifyOTP : handleSendOTP}
+                  onPress={handleSendOTP}
                   disabled={otpLoading}
                 >
                   {otpLoading ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <Text style={styles.primaryBtnText}>
-                      {otpSent ? 'Verify OTP' : 'Send OTP'}
+                      Send OTP
                     </Text>
                   )}
-                </TouchableOpacity>
-              )}
-
-              {otpSent && !phoneVerified && (
-                <TouchableOpacity 
-                  style={styles.resendLink} 
-                  onPress={handleSendOTP}
-                  disabled={otpLoading}
-                >
-                  <Text style={styles.resendLinkText}>Resend OTP</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -669,5 +800,154 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 21,
     flexShrink: 1,
+  },
+  otpFullScreenContainer: {
+    flex: 1,
+  },
+  otpMandalaContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0.08,
+  },
+  otpMandalaCircle: {
+    position: 'absolute',
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    borderWidth: 1,
+    borderColor: '#FFFFFF',
+  },
+  otpMandalaCircle2: {
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+  },
+  otpHeader: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  otpHeaderBackButton: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  otpScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 24,
+    paddingTop: 24,
+  },
+  otpTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontStyle: 'normal',
+    lineHeight: 39,
+  },
+  otpSubtitle: {
+    fontSize: 16,
+    color: '#4A4A4A',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontStyle: 'normal',
+    fontWeight: '400',
+  },
+  otpInputsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 24,
+  },
+  otpDigitInput: {
+    width: 48,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    color: '#000000',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  otpDigitInputFilled: {
+    borderWidth: 2,
+    borderColor: '#F26522',
+  },
+  otpResendContainer: {
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  otpDidNotReceiveText: {
+    color: '#4A4A4A',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 15,
+    fontStyle: 'normal',
+    fontWeight: '500',
+    lineHeight: 22.5,
+  },
+  otpResendText: {
+    color: '#F26522',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 15,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 22.5,
+  },
+  otpResendTextDisabled: {
+    color: '#999999',
+  },
+  otpNoteCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+  },
+  otpNoteText: {
+    flex: 1,
+    color: '#4A4A4A',
+    fontSize: 14,
+    fontStyle: 'normal',
+    fontWeight: '400',
+    lineHeight: 22.75,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  otpPrimaryBtn: {
+    backgroundColor: '#F26522',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 56,
+  },
+  otpPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  otpBottomButtonContainer: {
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 24,
+    paddingTop: 12,
+    backgroundColor: 'transparent',
   },
 });

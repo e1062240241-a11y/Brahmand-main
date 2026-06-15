@@ -390,9 +390,10 @@ export default function VendorScreen() {
 
   useEffect(() => {
     if (!userId) return;
+    // Always load KYC status so the Manage My Service button can enforce KYC
+    loadKycStatus();
     if (activeSection === 'Jobs') {
       loadJobsData();
-      loadKycStatus();
     }
   }, [activeSection, userId, loadJobsData, loadKycStatus]);
 
@@ -966,15 +967,37 @@ export default function VendorScreen() {
             style={[styles.figmaRegisterBtn, { zIndex: 10 }]}
             onPress={() => {
               if (myVendor) {
-                router.push('/vendor/dashboard');
+                // KYC is mandatory to access Edit Profile / Dashboard
+                if (hasVerifiedKyc) {
+                  router.push('/vendor/dashboard');
+                } else {
+                  // Navigate directly to KYC page
+                  router.push('/kyc');
+                }
               } else {
                 setShowRegistrationModal(true);
               }
             }}
           >
-            <Text style={styles.figmaRegisterBtnText}>
-              {myVendor ? 'Manage My Service' : 'Register Your Business/Service'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+              <Text style={styles.figmaRegisterBtnText}>
+                {myVendor 
+                  ? (hasVerifiedKyc ? 'Manage My Service' : 'Manage My Service')
+                  : 'Register Your Business/Service'}
+              </Text>
+              {myVendor && hasVerifiedKyc && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                  <Ionicons name="checkmark-circle" size={14} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700', marginLeft: 3 }}>KYC Complete</Text>
+                </View>
+              )}
+              {myVendor && !hasVerifiedKyc && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                  <Ionicons name="lock-closed" size={12} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>KYC Pending</Text>
+                </View>
+              )}
+            </View>
             <Ionicons name="arrow-forward" size={20} color="#FFF" />
           </TouchableOpacity>
 

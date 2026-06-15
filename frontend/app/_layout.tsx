@@ -576,7 +576,7 @@ export default function RootLayout() {
   // Configure Android status bar and bottom navigation bar globally once to prevent flickering/glitching
   useEffect(() => {
     if (Platform.OS !== 'android') return;
-
+  }, []);
 
   useEffect(() => {
     initSyncQueueListener();

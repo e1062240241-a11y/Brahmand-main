@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getCommunityRequests, resolveCommunityRequest } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { socketService } from '../../src/services/socket';
+import { Avatar } from '../../src/components/Avatar';
 
 const { width } = Dimensions.get('window');
 
@@ -703,7 +704,7 @@ export default function ActiveRequestsList() {
               <View style={styles.requesterCard}>
                 <Ionicons name="person-circle" size={40} color="#E2E8F0" />
                 <View style={{ marginLeft: 10 }}>
-                  <Text style={styles.requesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
+                  <Text style={styles.sheetRequesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
                   <Text style={styles.requesterLabel}>Community Member</Text>
                 </View>
               </View>
@@ -1161,7 +1162,7 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
     marginBottom: 24,
   },
-  requesterName: {
+  sheetRequesterName: {
     fontSize: 14,
     fontFamily: FONTS.bold,
     color: '#1E293B',
