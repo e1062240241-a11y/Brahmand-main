@@ -42,7 +42,7 @@ import requests
 import aiohttp
 import jwt
 from google.api_core.exceptions import FailedPrecondition
-from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form
+from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, Response
 import socketio
@@ -1703,7 +1703,7 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     
     from services.msg91_service import MSG91Service
     otp_res = await MSG91Service.verify_otp(phone, otp)
-    if otp_res.get("status") != "success":
+    if otp_res.get("type") != "success":
         raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
         
     # 2. Delete user's posts
@@ -9731,7 +9731,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         
     from services.msg91_service import MSG91Service
     otp_res = await MSG91Service.verify_otp(phone, otp)
-    if otp_res.get("status") != "success":
+    if otp_res.get("type") != "success":
         raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
     
     await db.delete_document('vendors', vendor_id)
