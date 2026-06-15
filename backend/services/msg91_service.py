@@ -1,5 +1,6 @@
 import logging
 import requests
+import os
 from typing import Dict, Any, Optional
 from fastapi import HTTPException
 
@@ -8,8 +9,8 @@ logger = logging.getLogger(__name__)
 class MSG91Service:
     """Service to handle MSG91 OTP via HTTP API (Custom UI)"""
     
-    # In a real app, these would be in settings.py / .env
-    AUTH_KEY = "515712AEt9SoQa6a01c84cP1"
+    # Read from .env, fallback to default for backwards compatibility
+    AUTH_KEY = os.getenv("MSG91_KEY_AUTHORIZATION", "515712AEt9SoQa6a01c84cP1")
     SEND_OTP_URL = "https://api.msg91.com/api/v5/otp"
     VERIFY_OTP_URL = "https://api.msg91.com/api/v5/otp/verify"
     RETRY_OTP_URL = "https://api.msg91.com/api/v5/otp/retry"

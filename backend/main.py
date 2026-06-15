@@ -344,21 +344,24 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     extension = _get_extension_from_content_type(content_type)
     filename = f"{uuid4().hex}.{extension}"
     object_path = f"posts/{user_id}/{filename}"
-    
+
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
         "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
         "Content-Type": content_type
     }
-    
-    logger.info(f"Uploading file of size {len(file_bytes)} to Bunny.net: {bunny_url}")
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=60) as resp:
+
+    logger.info(f"Uploading {len(file_bytes)} bytes to Bunny.net: {bunny_url}")
+    # FIX 1: Use aiohttp.ClientTimeout (plain int is silently ignored by aiohttp)
+    # FIX 2: Remove ssl=False — Bunny requires valid HTTPS
+    timeout = aiohttp.ClientTimeout(total=180, connect=30)
+    async with aiohttp.ClientSession() as session:
+        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
             if resp.status not in (200, 201):
                 resp_text = await resp.text()
                 raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
-                
+
     pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     if pull_zone:
         media_url = f"{pull_zone.rstrip('/')}/{object_path}"
@@ -369,9 +372,39 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
 
 
 async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content_type: str, base_url: str) -> tuple[str, str]:
-    with open(file_path, 'rb') as f:
-        file_bytes = f.read()
-    return await _upload_post_media_to_bunny(user_id, file_bytes, content_type, base_url)
+    """Stream a file to Bunny.net without loading it fully into RAM."""
+    extension = _get_extension_from_content_type(content_type)
+    filename = f"{uuid4().hex}.{extension}"
+    object_path = f"posts/{user_id}/{filename}"
+
+    bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
+    bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+    headers = {
+        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
+        "Content-Type": content_type
+    }
+
+    file_size = os.path.getsize(file_path)
+    logger.info(f"Streaming {file_size} bytes from disk to Bunny.net: {bunny_url}")
+
+    # FIX 3: Stream from disk in chunks — avoids OOM for large videos
+    # FIX 1+2: Correct timeout type, SSL enabled
+    timeout = aiohttp.ClientTimeout(total=300, connect=30)
+    async with aiohttp.ClientSession() as session:
+        with open(file_path, 'rb') as f:
+            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
+                if resp.status not in (200, 201):
+                    resp_text = await resp.text()
+                    raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
+
+    pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
+    if pull_zone:
+        media_url = f"{pull_zone.rstrip('/')}/{object_path}"
+    else:
+        clean_base = _get_public_base_url(base_url)
+        media_url = f"{clean_base}/api/bunny-media/{object_path}"
+    return media_url, object_path
+
 
 
 async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
@@ -512,8 +545,18 @@ async def _find_user_by_mention_key(db: FirestoreDB, key: str) -> Optional[Dict[
     if not key:
         return None
     if re.fullmatch(r'\+?\d+', key):
-        return await db.get_user_by_phone(key)
-    return await db.get_user_by_sl_id(key)
+        user = await db.get_user_by_phone(key)
+        if user:
+            return user
+    user = await db.get_user_by_sl_id(key)
+    if user:
+        return user
+    # Fallback to check name field with various casings
+    for name_candidate in [key, key.capitalize(), key.lower(), key.upper()]:
+        user = await db.find_one('users', [('name', '==', name_candidate)])
+        if user:
+            return user
+    return None
 
 async def _notify_mentioned_users(
     db: FirestoreDB,
@@ -594,15 +637,13 @@ async def _notify_mentioned_users(
             }
 
         try:
-            await db.create_document('notifications', {
-                'user_id': target_user_id,
-                'title': title,
-                'body': body,
-                'notification_type': 'social',
-                'data': notification_data,
-                'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z',
-            })
+            await FirebaseNotificationService.create_notification(
+                user_id=target_user_id,
+                title=title,
+                body=body,
+                notification_type='social',
+                data=notification_data,
+            )
             logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
 
             try:
@@ -2205,19 +2246,17 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
 
     try:
         follower_name = current_user.get('name') or current_user.get('sl_id') or 'Someone'
-        await db.create_document('notifications', {
-            'user_id': user_id,
-            'title': 'New follower',
-            'body': f'{follower_name} started following you.',
-            'notification_type': 'social',
-            'data': {
+        await FirebaseNotificationService.create_notification(
+            user_id=user_id,
+            title='New follower',
+            body=f'{follower_name} started following you.',
+            notification_type='social',
+            data={
                 'actor_user_id': current_user_id,
                 'actor_name': follower_name,
                 'action': 'follow',
             },
-            'is_read': False,
-            'created_at': datetime.utcnow().isoformat() + 'Z',
-        })
+        )
         logger.info(f"Follow notification created for user {user_id} by {current_user_id}")
 
         try:
@@ -2305,8 +2344,9 @@ async def get_bunny_media(filepath: str):
     
     async def file_sender():
         try:
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.get(bunny_url, headers=headers) as resp:
+            timeout = aiohttp.ClientTimeout(total=60, connect=10)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
                     if resp.status == 200:
                         async for chunk in resp.content.iter_chunked(65536):
                             yield chunk
@@ -3564,20 +3604,18 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                     or 'Someone'
                 )
 
-                await db.create_document('notifications', {
-                    'user_id': post_owner_id,
-                    'title': 'New like on your post',
-                    'body': f'{actor_name} liked your post.',
-                    'notification_type': 'social',
-                    'data': {
+                await FirebaseNotificationService.create_notification(
+                    user_id=post_owner_id,
+                    title='New like on your post',
+                    body=f'{actor_name} liked your post.',
+                    notification_type='social',
+                    data={
                         'post_id': post_id,
                         'actor_user_id': user_id,
                         'actor_name': actor_name,
                         'action': 'like',
                     },
-                    'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z',
-                })
+                )
 
                 await task_queue.enqueue(
                     FirebaseNotificationService.send_push_notification,
@@ -3687,12 +3725,12 @@ async def _send_comment_notifications_background(
                 actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
                 preview_text = text if len(text) <= 80 else f"{text[:77]}..."
 
-                await db.create_document('notifications', {
-                    'user_id': parent_owner_id,
-                    'title': 'New reply to your comment',
-                    'body': f'{actor_name} replied: "{preview_text}"',
-                    'notification_type': 'social',
-                    'data': {
+                await FirebaseNotificationService.create_notification(
+                    user_id=parent_owner_id,
+                    title='New reply to your comment',
+                    body=f'{actor_name} replied: "{preview_text}"',
+                    notification_type='social',
+                    data={
                         'post_id': str(post_id),
                         'comment_id': str(comment_id),
                         'parent_id': str(parent_id),
@@ -3700,9 +3738,7 @@ async def _send_comment_notifications_background(
                         'actor_name': actor_name,
                         'action': 'reply',
                     },
-                    'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z',
-                })
+                )
                 logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
 
                 try:
@@ -3728,21 +3764,19 @@ async def _send_comment_notifications_background(
             actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
             preview_text = text if len(text) <= 80 else f"{text[:77]}..."
 
-            await db.create_document('notifications', {
-                'user_id': post_owner_id,
-                'title': 'New comment on your post',
-                'body': f'{actor_name} commented: "{preview_text}"',
-                'notification_type': 'social',
-                'data': {
+            await FirebaseNotificationService.create_notification(
+                user_id=post_owner_id,
+                title='New comment on your post',
+                body=f'{actor_name} commented: "{preview_text}"',
+                notification_type='social',
+                data={
                     'post_id': str(post_id),
                     'comment_id': str(comment_id),
                     'actor_user_id': str(user_id),
                     'actor_name': actor_name,
                     'action': 'comment',
                 },
-                'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z',
-            })
+            )
             logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
             try:

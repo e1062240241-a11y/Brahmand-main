@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { HospitalSearchInput } from './HospitalSearchInput';
-import { sendOTP, verifyOTP } from '../services/api';
+import { sendMsg91OTP, verifyMsg91OTP } from '../services/api';
 
 interface CommunityOption {
   id: string;
@@ -275,7 +275,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
     setPhoneSending(true);
 
     try {
-      await sendOTP(trimmedPhone);
+      await sendMsg91OTP(`+91${trimmedPhone}`);
       setPhoneOtpStage('sent');
       setPhoneOtpMessage(`OTP sent to +91${trimmedPhone}.`);
     } catch (error: any) {
@@ -296,10 +296,14 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
     try {
       const trimmedPhone = normalizePhoneDigits(contactNumber);
-      await verifyOTP(trimmedPhone, phoneOtp.trim());
-      setPhoneOtpStage('verified');
-      setVerifiedPhone(trimmedPhone);
-      setPhoneOtpMessage('Phone verified successfully.');
+      const res = await verifyMsg91OTP(`+91${trimmedPhone}`, phoneOtp.trim());
+      if (res.data?.type === 'success') {
+        setPhoneOtpStage('verified');
+        setVerifiedPhone(trimmedPhone);
+        setPhoneOtpMessage('Phone verified successfully.');
+      } else {
+        setPhoneOtpError('Invalid OTP. Please try again.');
+      }
     } catch (error: any) {
       setPhoneOtpError(error?.response?.data?.detail || error?.message || 'OTP verification failed. Please try again.');
     } finally {

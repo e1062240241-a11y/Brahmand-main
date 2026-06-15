@@ -25,7 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 
-import { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
+import { sendMsg91OTP, verifyMsg91OTP, getKYCStatus } from '../../src/services/api';
 
 const PersonalInfoIcon = () => (
   <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
@@ -402,7 +402,7 @@ export default function VendorDashboardScreen() {
     setPhoneSending(true);
 
     try {
-      await sendOTP(phone);
+      await sendMsg91OTP(`+91${phone}`);
       setPhoneOtpStage('sent');
       setPhoneOtpMessage(`OTP sent to +91${phone}.`);
     } catch (error: any) {
@@ -422,9 +422,13 @@ export default function VendorDashboardScreen() {
     setPhoneVerifying(true);
 
     try {
-      await verifyOTP(editValue.replace(/[^0-9]/g, ''), phoneOtp.trim());
-      setPhoneOtpStage('verified');
-      setPhoneOtpMessage('Phone verified successfully. You can now save the number.');
+      const res = await verifyMsg91OTP(`+91${editValue.replace(/[^0-9]/g, '')}`, phoneOtp.trim());
+      if (res.data?.type === 'success') {
+        setPhoneOtpStage('verified');
+        setPhoneOtpMessage('Phone verified successfully. You can now save the number.');
+      } else {
+        setPhoneOtpError('Invalid OTP. Please try again.');
+      }
     } catch (error: any) {
       setPhoneOtpError(error?.response?.data?.detail || error?.message || 'OTP verification failed. Please try again.');
     } finally {

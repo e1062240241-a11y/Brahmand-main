@@ -778,7 +778,7 @@ export const uploadUserPost = (
         appendPostUploadFields(formData, postFields);
 
         return api.post('/posts/upload-from-storage', formData, {
-          timeout: 30 * 60 * 1000,
+          timeout: 20 * 60 * 1000, // 20 min
         });
       }
     }
@@ -789,7 +789,7 @@ export const uploadUserPost = (
 
     try {
       return await api.post('/posts/upload', formData, {
-        timeout: 10 * 60 * 1000,
+        timeout: 20 * 60 * 1000, // 20 min — large videos need time to compress + upload
         onUploadProgress: onProgress,
       });
     } catch (error: any) {
