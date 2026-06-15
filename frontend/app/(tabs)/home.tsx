@@ -2286,7 +2286,7 @@ export default function HomeScreen() {
                         ) : null}
                       </View>
                     ) : (
-                      <View style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}>
+                      <View style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 15, marginBottom: 15 }]}>
                         <ScrollView
                           ref={topFeaturesScrollRef}
                           horizontal
@@ -2447,7 +2447,7 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    <View style={{ position: 'relative' }}>
+                    <View style={{ position: 'relative', marginTop: 15 }}>
                       <ScrollView
                         horizontal
                         showsHorizontalScrollIndicator={false}
@@ -3589,7 +3589,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFECD9',
-    marginTop: 14,
+    marginTop: 15,
     borderRadius: 18,
     padding: 14,
     borderWidth: 1,
@@ -3651,6 +3651,8 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: 'transparent',
     paddingHorizontal: PAGE_PADDING,
+    marginTop: 15,
+    marginBottom: 15,
   },
   cardTextureContent: {
     flex: 1,
@@ -3729,8 +3731,8 @@ const styles = StyleSheet.create({
   },
   topFeatureRow: {
     flexDirection: 'row',
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 15,
+    marginBottom: 15,
     gap: 8,
     marginHorizontal: -PAGE_PADDING,
   },
@@ -4108,7 +4110,7 @@ const styles = StyleSheet.create({
   twoButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 2,
+    marginBottom: 15,
     gap: 6,
     paddingHorizontal: 10,
   },
