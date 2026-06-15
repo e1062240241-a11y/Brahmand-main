@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 
 import { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 
@@ -56,6 +57,7 @@ export default function VendorDashboardScreen() {
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
+  const [deleteOtpModalVisible, setDeleteOtpModalVisible] = useState(false);
   const [phoneOtpStage, setPhoneOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [phoneOtpError, setPhoneOtpError] = useState<string | null>(null);
@@ -98,6 +100,7 @@ export default function VendorDashboardScreen() {
   const [addressVal, setAddressVal] = useState('');
   const [categoriesVal, setCategoriesVal] = useState<string[]>([]);
   const [businessHoursVal, setBusinessHoursVal] = useState('');
+  const [offersVal, setOffersVal] = useState('');
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
 
   // Sync data from store when myVendor is loaded
@@ -114,6 +117,7 @@ export default function VendorDashboardScreen() {
       setAddressVal(myVendor.full_address || '');
       setCategoriesVal(myVendor.categories || []);
       setBusinessHoursVal(myVendor.business_hours || '');
+      setOffersVal(myVendor.offers || '');
     }
   }, [myVendor]);
 
@@ -473,33 +477,20 @@ export default function VendorDashboardScreen() {
   };
 
   const handleDeleteBusiness = () => {
-    const confirmDelete = async () => {
-      if (!myVendor) return;
-      setDeletingBusiness(true);
-      try {
-        await deleteVendor(myVendor.id);
-        if (Platform.OS === 'web') {
-          window.alert('Your business has been deleted.');
-        } else {
-          Alert.alert('Deleted', 'Your business has been deleted.');
-        }
-        router.back();
-      } catch (error: any) {
-        const message = error?.response?.data?.detail || error?.message || 'Failed to delete business.';
-        if (Platform.OS === 'web') {
-          window.alert(`Error: ${message}`);
-        } else {
-          Alert.alert('Error', message);
-        }
-      } finally {
-        setDeletingBusiness(false);
-      }
-    };
+    if (!myVendor) return;
+    const vendorPhone = myVendor.phone_number || (user as any)?.phone_number;
+    if (!vendorPhone) {
+      Alert.alert(
+        'Phone Number Required',
+        'A registered mobile number is required to delete your business. Please update your phone number first.'
+      );
+      return;
+    }
 
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Are you sure you want to delete your business? This action cannot be undone.');
       if (confirmed) {
-        confirmDelete();
+        setDeleteOtpModalVisible(true);
       }
       return;
     }
@@ -512,10 +503,26 @@ export default function VendorDashboardScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: confirmDelete,
+          onPress: () => setDeleteOtpModalVisible(true),
         }
       ]
     );
+  };
+
+  const handleVerifyOTPAndDeleteBusiness = async (otp: string) => {
+    if (!myVendor) return;
+    try {
+      await deleteVendor(myVendor.id, otp);
+      setDeleteOtpModalVisible(false);
+      if (Platform.OS === 'web') {
+        window.alert('Your business has been deleted.');
+      } else {
+        Alert.alert('Deleted', 'Your business has been deleted.');
+      }
+      router.replace('/(tabs)/vendor');
+    } catch (error: any) {
+      throw error; // Let modal handle error display
+    }
   };
 
   const handleEditWeekdayHours = () => {
@@ -541,8 +548,8 @@ export default function VendorDashboardScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 0.7,
     });
 
     if (result.canceled || !result.assets?.length) return;
@@ -586,6 +593,7 @@ export default function VendorDashboardScreen() {
           whatsapp: whatsappVal,
         },
         business_hours: businessHoursVal,
+        offers: offersVal,
       });
 
       Alert.alert('Success', 'Business profile updated successfully!');
@@ -851,6 +859,27 @@ export default function VendorDashboardScreen() {
           </ScrollView>
         </View>
 
+        {/* Section: Offers & Deals */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="pricetag-outline" size={20} color="#5C3B24" style={{ marginRight: 8 }} />
+            <Text style={styles.cardTitle}>Offers & Deals</Text>
+          </View>
+
+          <Text style={styles.inputLabel}>Current Offers</Text>
+          <View style={[styles.inputContainer, styles.descriptionContainer]}>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
+              value={offersVal}
+              onChangeText={setOffersVal}
+              placeholder="e.g. 10% off on first order, Buy 1 Get 1 free, etc."
+              placeholderTextColor="#9A897E"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
+        </View>
+
         {/* Section: Delete Account */}
         <View style={styles.deactivateCard}>
           <Text style={styles.deactivateTitle}>Delete Account</Text>
@@ -860,6 +889,15 @@ export default function VendorDashboardScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <DeleteOTPModal
+        visible={deleteOtpModalVisible}
+        phoneNumber={myVendor?.phone_number || (user as any)?.phone_number || ''}
+        onClose={() => setDeleteOtpModalVisible(false)}
+        onVerify={handleVerifyOTPAndDeleteBusiness}
+        title="Delete Business"
+        description="Verify OTP to delete your business profile"
+      />
 
       {/* Edit Modal (used for Category/Phone verification/Hours popups) */}
       <Modal

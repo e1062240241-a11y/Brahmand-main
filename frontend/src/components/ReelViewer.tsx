@@ -180,6 +180,32 @@ const ReelVideoItem = React.memo(({
   });
 
   useEffect(() => {
+    if (player && Platform.OS !== 'web') {
+      try {
+        if (isActive) {
+          player.bufferOptions = {
+            preferredForwardBufferDuration: 8, // Fully buffer active video
+            waitsToMinimizeStalling: true,
+            minBufferForPlayback: 0.1,        // Start almost instantly
+            maxBufferBytes: 25 * 1024 * 1024,  // 25MB limit for full quality
+            prioritizeTimeOverSizeThreshold: true,
+          };
+        } else {
+          player.bufferOptions = {
+            preferredForwardBufferDuration: 1, // Only pre-buffer 1 second of next videos
+            waitsToMinimizeStalling: false,
+            minBufferForPlayback: 0.8,
+            maxBufferBytes: 1.5 * 1024 * 1024,  // Minimal background buffer
+            prioritizeTimeOverSizeThreshold: true,
+          };
+        }
+      } catch (err) {
+        console.warn('Failed to set bufferOptions dynamically:', err);
+      }
+    }
+  }, [player, isActive]);
+
+  useEffect(() => {
     setIsVideoLoading(isVideo);
   }, [mediaUrl, isVideo]);
 

@@ -705,7 +705,7 @@ export default function ActiveRequestsList() {
                 <Ionicons name="person-circle" size={40} color="#E2E8F0" />
                 <View style={{ marginLeft: 10 }}>
                   <Text style={styles.sheetRequesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
-                  <Text style={styles.requesterLabel}>Community Member</Text>
+                  <Text style={styles.sheetRequesterLabel}>Community Member</Text>
                 </View>
               </View>
 
@@ -1168,7 +1168,7 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     fontWeight: '700',
   },
-  requesterLabel: {
+  sheetRequesterLabel: {
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,

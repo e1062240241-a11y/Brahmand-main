@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -46,6 +47,28 @@ export default function JaapCompleted() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        {/* Top Navigation Row */}
+        <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 10, marginBottom: 15, paddingHorizontal: 4 }}>
+          <TouchableOpacity
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255, 255, 255, 0.75)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              shadowColor: '#000',
+              shadowOpacity: 0.1,
+              shadowRadius: 5,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
+            }}
+            activeOpacity={0.85}
+            onPress={handlePressContinue}
+          >
+            <Ionicons name="arrow-back" size={22} color="#5A4136" />
+          </TouchableOpacity>
+        </View>
         {/* Header Section */}
         <View style={styles.headerContainer}>
           {/* Header Lotus Icon */}
@@ -115,7 +138,7 @@ const styles = StyleSheet.create({
   headerContainer: {
     alignItems: 'center',
     width: '100%',
-    marginTop: 10,
+    marginTop: 0,
     gap: 16,
   },
   lotusContainer: {

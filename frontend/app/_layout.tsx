@@ -251,7 +251,7 @@ function useDeepLinkHandler() {
       
       setTimeout(() => {
         router.push(path as any);
-      }, 600);
+      }, 100);
     }
   }, [token, isAuthenticated, pendingDeepLink, router, setPendingDeepLink]);
 }

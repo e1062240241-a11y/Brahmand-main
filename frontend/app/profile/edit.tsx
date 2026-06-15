@@ -21,6 +21,7 @@ import { BORDER_RADIUS, COLORS, SPACING } from '../../src/constants/theme';
 import { getUserProfile, updateExtendedProfile, deleteUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useTranslation } from '../../src/utils/i18n';
+import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 
 export default function EditProfileScreen() {
   const { t } = useTranslation();
@@ -34,6 +35,7 @@ export default function EditProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [otpModalVisible, setOtpModalVisible] = useState(false);
 
   const [name, setName] = useState('');
   const [language, setLanguage] = useState('');
@@ -110,29 +112,17 @@ export default function EditProfileScreen() {
   };
 
   const handleDeleteAccount = () => {
-    const performDeletion = async () => {
-      setDeleting(true);
-      try {
-        await deleteUserProfile();
-        Alert.alert(
-          t('language') === 'hi' ? 'खाता हटा दिया गया' : 'Account Deleted',
-          t('language') === 'hi' ? 'आपका खाता सफलतापूर्वक हटा दिया गया है।' : 'Your account has been deleted successfully.',
-          [
-            {
-              text: 'OK',
-              onPress: async () => {
-                await logout();
-                router.replace('/');
-              },
-            },
-          ]
-        );
-      } catch (err: any) {
-        Alert.alert(t('language') === 'hi' ? 'त्रुटि' : 'Error', err?.response?.data?.detail || err?.message || 'Failed to delete account');
-      } finally {
-        setDeleting(false);
-      }
-    };
+    // Check for phone number requirement
+    const userPhone = useAuthStore.getState().user?.phone;
+    if (!userPhone) {
+      Alert.alert(
+        t('language') === 'hi' ? 'फ़ोन नंबर आवश्यक है' : 'Phone Number Required',
+        t('language') === 'hi'
+          ? 'खाता हटाने के लिए एक पंजीकृत मोबाइल नंबर की आवश्यकता होती है। कृपया पहले अपनी प्रोफ़ाइल में फ़ोन नंबर अपडेट करें।'
+          : 'A registered mobile number is required to delete your account. Please update your phone number first.'
+      );
+      return;
+    }
 
     if (Platform.OS === 'web') {
       if (
@@ -142,7 +132,7 @@ export default function EditProfileScreen() {
             : 'WARNING: Are you sure you want to permanently delete your account? This action cannot be undone and all your data (posts, comments, profile information) will be completely removed.'
         )
       ) {
-        performDeletion();
+        setOtpModalVisible(true);
       }
       return;
     }
@@ -157,10 +147,32 @@ export default function EditProfileScreen() {
         {
           text: t('language') === 'hi' ? 'स्थायी रूप से हटाएं' : 'Delete Permanently',
           style: 'destructive',
-          onPress: performDeletion,
+          onPress: () => setOtpModalVisible(true),
         },
       ]
     );
+  };
+
+  const handleVerifyOTPAndDelete = async (otp: string) => {
+    try {
+      await deleteUserProfile(otp);
+      setOtpModalVisible(false);
+      Alert.alert(
+        t('language') === 'hi' ? 'खाता हटा दिया गया' : 'Account Deleted',
+        t('language') === 'hi' ? 'आपका खाता सफलतापूर्वक हटा दिया गया है।' : 'Your account has been deleted successfully.',
+        [
+          {
+            text: 'OK',
+            onPress: async () => {
+              await logout();
+              router.replace('/');
+            },
+          },
+        ]
+      );
+    } catch (err: any) {
+      throw err; // Propagate error to modal to display it
+    }
   };
 
   const handleSave = async () => {
@@ -398,6 +410,15 @@ export default function EditProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <DeleteOTPModal
+        visible={otpModalVisible}
+        phoneNumber={useAuthStore.getState().user?.phone || ''}
+        onClose={() => setOtpModalVisible(false)}
+        onVerify={handleVerifyOTPAndDelete}
+        title={t('language') === 'hi' ? 'खाता हटाएं' : 'Delete Account'}
+        description={t('language') === 'hi' ? 'खाता हटाने के लिए OTP सत्यापित करें' : 'Verify OTP to delete your account'}
+      />
     </SafeAreaView>
   );
 }
