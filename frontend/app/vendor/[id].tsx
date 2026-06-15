@@ -133,7 +133,7 @@ export default function VendorProfileScreen() {
   const trustInfo = vendor.kyc_status === 'verified'
     ? { label: 'Approved Vendor', color: COLORS.success, icon: 'shield-checkmark' }
     : TRUST_LABELS.frequent;
-  const galleryImages = (vendor.business_gallery_images || vendor.photos || []).filter((photo) => !!photo);
+  const galleryImages = (vendor.business_gallery_images || vendor.photos || []).filter((photo: any) => !!photo);
   const vendorCategories = Array.isArray(vendor.categories) ? vendor.categories : [];
   const menuItems = Array.isArray(vendor.menu_items) ? vendor.menu_items : [];
 
@@ -194,7 +194,6 @@ export default function VendorProfileScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
@@ -212,9 +211,7 @@ export default function VendorProfileScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Cover Photo */}
         <View style={styles.coverPhoto}>
           {galleryImages.length > 0 ? (
             <Image source={{ uri: galleryImages[0] }} style={styles.coverImage} />
@@ -225,7 +222,6 @@ export default function VendorProfileScreen() {
           )}
         </View>
 
-        {/* Business Info */}
         <View style={styles.infoSection}>
           <View style={styles.headerNameRow}>
             <Text style={styles.businessName}>{vendor.business_name}</Text>
@@ -235,13 +231,11 @@ export default function VendorProfileScreen() {
           </View>
           <Text style={styles.ownerName}>by {vendor.owner_name}</Text>
           
-          {/* Trust Badge */}
           <View style={[styles.trustBadge, { backgroundColor: `${trustInfo.color ?? COLORS.text}15` }]}>
             <Ionicons name={trustInfo.icon as any} size={16} color={trustInfo.color} />
             <Text style={[styles.trustText, { color: trustInfo.color }]}>{trustInfo.label}</Text>
           </View>
 
-          {/* Years in Business */}
           {vendor.years_in_business !== undefined && (
             <View style={styles.metaRow}>
               <Ionicons name="time" size={16} color={COLORS.textSecondary} />
@@ -249,18 +243,16 @@ export default function VendorProfileScreen() {
             </View>
           )}
 
-          {/* Distance */}
           <View style={styles.metaRow}>
             <Ionicons name="location" size={16} color={COLORS.textSecondary} />
             <Text style={styles.metaText}>{formatDistance(vendor.distance)}</Text>
           </View>
         </View>
 
-        {/* Categories */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Business Categories</Text>
           <View style={styles.categoriesContainer}>
-            {vendorCategories.map((cat, index) => (
+            {vendorCategories.map((cat: any, index: number) => (
               <View key={index} style={styles.categoryChip}>
                 <Text style={styles.categoryText}>{cat}</Text>
               </View>
@@ -268,37 +260,32 @@ export default function VendorProfileScreen() {
           </View>
         </View>
 
-        {/* Gallery Photos */}
         {galleryImages.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Gallery</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {galleryImages.map((photo, index) => (
+              {galleryImages.map((photo: any, index: number) => (
                 <Image key={index} source={{ uri: photo }} style={styles.galleryPhoto} />
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Address */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Address</Text>
           <Text style={styles.addressText}>{vendor.full_address}</Text>
         </View>
 
-        {/* Menu */}
         {menuItems.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Menu</Text>
-            {menuItems.map((item, index) => (
+            {menuItems.map((item: any, index: number) => (
               <Text key={`${item}-${index}`} style={styles.hoursText}>• {item}</Text>
             ))}
-            
           </View>
         )}
 
-        {/* Business Hours */}
-        {vendor.business_hours && (
+        {!!vendor.business_hours && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="time" size={18} color={COLORS.primary} />
@@ -308,8 +295,7 @@ export default function VendorProfileScreen() {
           </View>
         )}
 
-        {/* Offers & Deals */}
-        {vendor.offers && (
+        {!!vendor.offers && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="pricetag" size={18} color={COLORS.warning} />
@@ -319,18 +305,17 @@ export default function VendorProfileScreen() {
           </View>
         )}
 
-        {/* Delivery Options */}
         <View style={styles.deliverySection}>
-          {(vendor.offers_home_delivery || vendor.offers_cash_on_delivery) && (
+          {!!(vendor.offers_home_delivery || vendor.offers_cash_on_delivery) && (
             <Text style={styles.sectionTitle}>Delivery Options</Text>
           )}
-          {vendor.offers_home_delivery && (
+          {!!vendor.offers_home_delivery && (
             <View style={styles.deliveryBadge}>
               <Ionicons name="bicycle" size={16} color={COLORS.success} />
               <Text style={styles.deliveryText}>Home Delivery</Text>
             </View>
           )}
-          {vendor.offers_cash_on_delivery && (
+          {!!vendor.offers_cash_on_delivery && (
             <View style={styles.deliveryBadge}>
               <Ionicons name="cash" size={16} color={COLORS.success} />
               <Text style={styles.deliveryText}>Cash on Delivery</Text>
@@ -338,26 +323,25 @@ export default function VendorProfileScreen() {
           )}
         </View>
 
-        {/* Website & Social Media */}
-        {(vendor.website_link || vendor.social_media?.facebook || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
+        {!!(vendor.website_link || vendor.social_media?.facebook || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Connect</Text>
             
-            {vendor.website_link && (
+            {!!vendor.website_link && (
               <TouchableOpacity style={styles.socialRow} onPress={() => vendor.website_link && openExternalUrl(vendor.website_link)}>
                 <Ionicons name="globe" size={18} color={COLORS.primary} />
                 <Text style={styles.linkText}>{vendor.website_link}</Text>
               </TouchableOpacity>
             )}
             
-            {vendor.social_media?.facebook && (
+            {!!vendor.social_media?.facebook && (
               <TouchableOpacity style={styles.socialRow} onPress={() => vendor.social_media?.facebook && Linking.openURL(vendor.social_media.facebook)}>
                 <Ionicons name="logo-facebook" size={18} color="#1877F2" />
                 <Text style={styles.linkText}>Facebook</Text>
               </TouchableOpacity>
             )}
             
-            {vendor.social_media?.instagram && (
+            {!!vendor.social_media?.instagram && (
               <TouchableOpacity style={styles.socialRow} onPress={() => {
                 const handle = vendor.social_media?.instagram?.replace('@', '');
                 Linking.openURL(`https://instagram.com/${handle}`);
@@ -367,7 +351,7 @@ export default function VendorProfileScreen() {
               </TouchableOpacity>
             )}
             
-            {vendor.social_media?.whatsapp && (
+            {!!vendor.social_media?.whatsapp && (
               <TouchableOpacity style={styles.socialRow} onPress={() => vendor.social_media?.whatsapp && Linking.openURL(`https://wa.me/${vendor.social_media.whatsapp}`)}>
                 <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
                 <Text style={styles.linkText}>WhatsApp</Text>
@@ -376,8 +360,7 @@ export default function VendorProfileScreen() {
           </View>
         )}
 
-        {/* Notes */}
-        {vendor.notes && (
+        {!!vendor.notes && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="document-text" size={18} color={COLORS.textSecondary} />
@@ -389,8 +372,6 @@ export default function VendorProfileScreen() {
 
         <View style={{ height: actionBarHeight + SPACING.lg }} />
       </ScrollView>
-
-      {/* Fixed Action Row */}
       <View style={[styles.callButtonContainer, { paddingBottom: actionBarBottomInset }]}>
         <TouchableOpacity style={styles.callActionButton} onPress={handleCall}>
           <Ionicons name="call" size={20} color="#FFFFFF" />

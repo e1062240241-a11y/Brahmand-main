@@ -3184,6 +3184,20 @@ async def get_posts_feed(
         extra_posts = _rank_and_filter(seen_pool, needed)
         paged_posts += extra_posts
 
+    # ── Sort: Unseen first, and within unseen, the latest (last 48 hours) at the absolute top ──
+    unseen_returned = [p for p in paged_posts if p.get('id') not in seen_set]
+    seen_returned = [p for p in paged_posts if p.get('id') in seen_set]
+
+    cutoff_ts = now_ts - 172800  # 48 hours
+    recent_unseen = [p for p in unseen_returned if _get_ts(p) >= cutoff_ts]
+    older_unseen = [p for p in unseen_returned if _get_ts(p) < cutoff_ts]
+
+    # Sort recent_unseen by created_at descending (newest first)
+    recent_unseen.sort(key=_get_ts, reverse=True)
+
+    # Reassemble: recent unseen first, then older unseen, then seen posts
+    paged_posts = recent_unseen + older_unseen + seen_returned
+
     # ── Enrich posts with author info and like status ─────────────
     post_author_ids = list({p.get('user_id') for p in paged_posts if p.get('user_id')})
     try:
@@ -8973,12 +8987,9 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
 
-    user = await db.get_document('users', user_id)
-    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
-    vendor_verified = vendor.get('kyc_status') == 'verified'
+    # Allow any registered vendor owner to update their business profile
+    # before/during KYC so they can fully build their profile.
 
-    if not (vendor_verified or user_verified):
-        raise HTTPException(status_code=403, detail="Business profile updates are allowed only for approved vendors")
 
     menu_items = data.get('menu_items')
     offers_home_delivery = data.get('offers_home_delivery')
@@ -9069,12 +9080,9 @@ async def upload_vendor_business_image(
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can upload business images")
 
-    user = await db.get_document('users', user_id)
-    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
-    vendor_verified = vendor.get('kyc_status') == 'verified'
+    # Allow any registered vendor owner to upload business images
+    # before/during KYC so they can showcase their store.
 
-    if not (vendor_verified or user_verified):
-        raise HTTPException(status_code=403, detail="Business images can be uploaded only for approved vendors")
 
     if slot < 0 or slot > 4:
         raise HTTPException(status_code=400, detail="slot must be between 0 and 4")
@@ -12264,7 +12272,7 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
     async def _get_requests():
         try:
-            return await get_community_requests(status="active", limit=10, token_data=token_data)
+            return await get_community_requests(status="active", limit=50, token_data=token_data)
         except Exception as e:
             import logging
             logging.error(f"Error in init requests: {e}")
@@ -12284,7 +12292,7 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
     async def _get_communities():
         try:
-            return await db.get_user_communities(user_id=user_id)
+            return await get_communities(token_data=token_data)
         except Exception:
             return []
 

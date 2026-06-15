@@ -97,19 +97,6 @@ export default function VendorBusinessDetailsScreen() {
       router.replace('/vendor');
       return false;
     }
-    // Allow if vendor KYC is verified OR user KYC is verified (either is enough)
-    const isVendorVerified =
-      (myVendor as any).kyc_status === 'verified' ||
-      (myVendor as any).kyc_status === 'approved' ||
-      Boolean((myVendor as any).is_verified);
-    const isUserKycVerified =
-      (user as any)?.kyc_status === 'verified' ||
-      Boolean((user as any)?.is_verified);
-    if (!isVendorVerified && !isUserKycVerified) {
-      Alert.alert('Not available', 'This section is available only for KYC-approved businesses.');
-      router.replace('/vendor/dashboard');
-      return false;
-    }
     return true;
   };
 

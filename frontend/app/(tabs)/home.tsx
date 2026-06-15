@@ -292,7 +292,7 @@ import {
   markPostAsSeen,
 } from '../../src/services/api';
 import * as Location from 'expo-location';
-import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime } from '../../src/features/live-mantra/schedule';
+import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
@@ -937,6 +937,62 @@ export default function HomeScreen() {
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [nextFestival, setNextFestival] = useState<any | null>(null);
   const [now, setNow] = useState(new Date());
+  const [reminders, setReminders] = useState<Record<string, boolean>>({});
+
+  const fetchReminders = async () => {
+    try {
+      const response = await api.get('/jaap/reminders');
+      if (response.data && response.data.reminders) {
+        const loadedReminders: Record<string, boolean> = {};
+        response.data.reminders.forEach((r: any) => {
+          loadedReminders[r.mantra_type] = true;
+        });
+        setReminders(loadedReminders);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch reminders on home:', err);
+    }
+  };
+
+  const handleSetReminder = async (mantraType: string, sessionName: string) => {
+    try {
+      const response = await api.post('/jaap/reminder', {
+        mantra_type: mantraType,
+        session_name: sessionName,
+      });
+      const active = response.data.active;
+      
+      setReminders(prev => ({ ...prev, [mantraType]: active }));
+      
+      let readableMantra = '';
+      if (t('language') === 'hi') {
+        if (mantraType === 'shiva') readableMantra = 'ॐ नमः शिवाय';
+        else if (mantraType === 'hanuman') readableMantra = 'हनुमान चालीसा';
+      } else {
+        readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : 'Hanuman Chalisa';
+      }
+
+      if (active) {
+        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर सक्रिय' : '🔔 Reminder Set!';
+        const msgText = t('language') === 'hi' 
+          ? `${readableMantra} के लिए आपका रिमाइंडर सफलतापूर्वक सक्रिय हो गया है।`
+          : `Your reminder for ${readableMantra} has been successfully scheduled.`;
+        Alert.alert(titleText, msgText);
+      } else {
+        const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर हटाया गया' : '🔔 Reminders Removed';
+        const msgText = t('language') === 'hi'
+          ? `आपने ${readableMantra} की सूचनाओं को बंद कर दिया है।`
+          : `You have unsubscribed from notifications for ${readableMantra}.`;
+        Alert.alert(titleText, msgText);
+      }
+    } catch (err: any) {
+      console.error('Failed to toggle reminder on home:', err);
+      Alert.alert(
+        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
+      );
+    }
+  };
 
   const { myVendor, vendors } = useVendorStore();
 
@@ -945,8 +1001,8 @@ export default function HomeScreen() {
       const currentActiveTab = useFeedStore.getState().activeTab;
       const cached = useFeedStore.getState().tabFeeds[currentActiveTab];
       const nowTime = Date.now();
-      // Rule 3: Refresh on every home visit — stale if older than 30s for for_you, 2 min others
-      const staleMs = currentActiveTab === 'for_you' ? 30_000 : 120_000;
+      // Refresh on home visit only if stale (older than 15 minutes) to prevent scroll jumping
+      const staleMs = 900_000;
       const isStale = !cached || (nowTime - (cached.lastFetched || 0) > staleMs);
       if (!cached || cached.posts.length === 0 || isStale) {
         loadFeedPosts(0, false, currentActiveTab);
@@ -956,6 +1012,9 @@ export default function HomeScreen() {
       const store = useVendorStore.getState();
       store.fetchMyVendor().catch((e) => console.warn('Home focus myVendor load error:', e));
       store.fetchVendors().catch((e) => console.warn('Home focus vendors load error:', e));
+
+      // Fetch jaap reminders
+      fetchReminders();
     }, [loadFeedPosts])
   );
   const feedTabsYRef = useRef(0);
@@ -1106,7 +1165,7 @@ export default function HomeScreen() {
   useEffect(() => {
     const cached = tabFeeds[activeTab];
     const nowTime = Date.now();
-    const isStale = !cached || (nowTime - cached.lastFetched > 120000); // 2 minutes stale
+    const isStale = !cached || (nowTime - cached.lastFetched > 900000); // 15 minutes stale
     if (!cached || cached.posts.length === 0 || isStale) {
       loadFeedPosts(0, false, activeTab);
     }
@@ -1120,6 +1179,8 @@ export default function HomeScreen() {
 
   const liveActive = isWithinGayatriMantraWindow(now);
   const liveEnd = getCurrentGayatriEnd(now);
+  const hanumanStatus = getCurrentHanumanStatus(now);
+  const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
   const feedPostKeys = useMemo(
     () => feedPosts.map((post, index) => `feed-${index}-${post.id || post.media_url || index}`),
     [feedPosts],
@@ -1261,7 +1322,10 @@ export default function HomeScreen() {
 
 
   const safeCommunityRequests = Array.isArray(communityRequests) ? communityRequests : [];
-  const bloodRequest = safeCommunityRequests.find((item) => item?.request_type === 'blood');
+  const bloodRequests = safeCommunityRequests
+    .filter((item) => item?.request_type === 'blood' && item?.status !== 'resolved')
+    .slice(0, 5);
+  const bloodRequest = bloodRequests[0];
   const cowRequest = safeCommunityRequests.find((item) => {
     const text = normalizeRequestText(item);
     return item?.request_type === 'help' && (text.includes('cow') || text.includes('gau') || text.includes('गौ'));
@@ -2306,7 +2370,7 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>{(hanumanChantCount * 18).toLocaleString()} devotees are chanting</Text>
+                                  }]}>{(hanumanChantCount * 18).toLocaleString()} {t('devoteesChanting') || 'devotees are chanting'}</Text>
 
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                     <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2316,19 +2380,33 @@ export default function HomeScreen() {
                                       color: '#FFF',
                                       fontWeight: '600',
                                       fontSize: 12
-                                    }]}>Live until 5:00 PM</Text>
+                                    }]}>
+                                      {hanumanStatus.isActive 
+                                        ? `${t('liveUntil')} ${hanumanStatus.sessionEnd ? formatTime(hanumanStatus.sessionEnd) : '5:00 PM'}`
+                                        : (hanumanStatus.nextSessionStart 
+                                            ? (t('language') === 'hi' ? `${formatTime(hanumanStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(hanumanStatus.nextSessionStart)}`)
+                                            : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                    </Text>
                                   </View>
                                 </View>
 
                                 {/* Top Right LIVE Badge */}
-                                <View style={[styles.liveBadge, { alignSelf: 'flex-start' }]}>
-                                  <View style={styles.liveDot} />
-                                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                                <View style={[styles.liveBadge, { 
+                                  alignSelf: 'flex-start',
+                                  backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
+                                  paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
+                                }]}>
+                                  {hanumanStatus.isActive && <View style={styles.liveDot} />}
+                                  <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
+                                    {hanumanStatus.isActive 
+                                      ? 'LIVE' 
+                                      : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                                  </Text>
                                 </View>
                               </View>
 
-                              {/* Bottom Button */}
-                              <View style={{ alignItems: 'center', paddingBottom: 0 }}>
+                              {/* Bottom Button Row */}
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
                                 <TouchableOpacity
                                   style={[
                                     styles.joinJaapButton,
@@ -2347,6 +2425,27 @@ export default function HomeScreen() {
                                   onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}
                                 >
                                   <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                  style={{
+                                    backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 18,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    borderWidth: 1,
+                                    borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                  }}
+                                  activeOpacity={0.8}
+                                  onPress={() => handleSetReminder('hanuman', 'Hanuman Chalisa')}
+                                >
+                                  <Ionicons 
+                                    name={reminders['hanuman'] ? "notifications" : "notifications-outline"} 
+                                    size={18} 
+                                    color={reminders['hanuman'] ? '#FF5100' : '#FFF'} 
+                                  />
                                 </TouchableOpacity>
                               </View>
                             </LinearGradient>
@@ -2402,19 +2501,33 @@ export default function HomeScreen() {
                                       color: '#FFF',
                                       fontWeight: '600',
                                       fontSize: 12
-                                    }]}>{t('liveUntil')} 5:00 PM</Text>
+                                    }]}>
+                                      {shivaStatus.isActive 
+                                        ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
+                                        : (shivaStatus.nextSessionStart 
+                                            ? (t('language') === 'hi' ? `${formatTime(shivaStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(shivaStatus.nextSessionStart)}`)
+                                            : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                    </Text>
                                   </View>
                                 </View>
 
                                 {/* Top Right LIVE Badge */}
-                                <View style={[styles.liveBadge, { alignSelf: 'flex-start' }]}>
-                                  <View style={styles.liveDot} />
-                                  <Text style={styles.liveBadgeText}>LIVE</Text>
+                                <View style={[styles.liveBadge, { 
+                                  alignSelf: 'flex-start',
+                                  backgroundColor: shivaStatus.isActive ? '#FF0000' : '#FF7A00',
+                                  paddingHorizontal: shivaStatus.isActive ? 8 : 10,
+                                }]}>
+                                  {shivaStatus.isActive && <View style={styles.liveDot} />}
+                                  <Text style={[styles.liveBadgeText, { marginLeft: shivaStatus.isActive ? 4 : 0 }]}>
+                                    {shivaStatus.isActive 
+                                      ? 'LIVE' 
+                                      : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                                  </Text>
                                 </View>
                               </View>
 
-                              {/* Bottom Button */}
-                              <View style={{ alignItems: 'center', paddingBottom: 0 }}>
+                              {/* Bottom Button Row */}
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
                                 <TouchableOpacity
                                   style={[
                                     styles.joinJaapButton,
@@ -2433,6 +2546,27 @@ export default function HomeScreen() {
                                   onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}
                                 >
                                   <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                  style={{
+                                    backgroundColor: reminders['shiva'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 18,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    borderWidth: 1,
+                                    borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                  }}
+                                  activeOpacity={0.8}
+                                  onPress={() => handleSetReminder('shiva', 'Mahamrityunjaya Mantra')}
+                                >
+                                  <Ionicons 
+                                    name={reminders['shiva'] ? "notifications" : "notifications-outline"} 
+                                    size={18} 
+                                    color={reminders['shiva'] ? '#FF5100' : '#FFF'} 
+                                  />
                                 </TouchableOpacity>
                               </View>
                             </LinearGradient>
@@ -2459,57 +2593,99 @@ export default function HomeScreen() {
                       style={[styles.actionCardsScrollView, { marginBottom: 8 }]}
                     >
                       {/* Urgent Blood Request */}
-                      <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                        <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                          <HomeCardTextureBg texture="rose">
-                            <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                              <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                                <BloodDropIcon />
-                              </View>
-                              <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{bloodRequest ? `${bloodRequest.blood_group || 'Blood'} ${t('bloodRequired')}` : t('needBlood')}</Text>
-                              <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{bloodRequest ? `${bloodRequest.hospital_name || t('emergency')}\n${bloodRequest.location || t('nearby')}` : t('createUrgentRequest')}</Text>
+                      {bloodRequests.length > 0 ? (
+                        bloodRequests.map((req, idx) => (
+                          <View key={req.id || idx} style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                              <HomeCardTextureBg texture="rose">
+                                <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                                  <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                    <BloodDropIcon />
+                                  </View>
+                                  <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{`${req.blood_group || 'Blood'} ${t('bloodRequired')}`}</Text>
+                                  <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{`${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`}</Text>
+                                </View>
+                                <TouchableOpacity
+                                  style={{
+                                    width: '85%',
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: '#FF0022',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    alignSelf: 'center',
+                                    shadowColor: '#FF0022',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 3,
+                                    elevation: 4,
+                                    marginBottom: 6,
+                                  }}
+                                  onPress={() => {
+                                    router.push({
+                                      pathname: '/community-request/list',
+                                      params: {
+                                        requestId: req.id,
+                                        community_id: req.community_id
+                                      }
+                                    });
+                                  }}
+                                >
+                                  <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                                </TouchableOpacity>
+                              </HomeCardTextureBg>
                             </View>
-                            <TouchableOpacity
-                              style={{
-                                width: '85%',
-                                height: 28,
-                                borderRadius: 14,
-                                backgroundColor: '#FF0022',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                alignSelf: 'center',
-                                shadowColor: '#FF0022',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 3,
-                                elevation: 4,
-                                marginBottom: 6,
-                              }}
-                              onPress={() => {
-                                if (bloodRequest) {
-                                  router.push({
-                                    pathname: '/community-request/list',
-                                    params: {
-                                      requestId: bloodRequest.id,
-                                      community_id: bloodRequest.community_id
-                                    }
-                                  });
-                                } else {
+                            {/* Badge rendered as sibling outside to prevent any iOS clipping */}
+                            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                              <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                                <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        ))
+                      ) : (
+                        <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                          <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                            <HomeCardTextureBg texture="rose">
+                              <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                                <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                  <BloodDropIcon />
+                                </View>
+                                <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
+                                <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
+                              </View>
+                              <TouchableOpacity
+                                style={{
+                                  width: '85%',
+                                  height: 28,
+                                  borderRadius: 14,
+                                  backgroundColor: '#FF0022',
+                                  justifyContent: 'center',
+                                  alignItems: 'center',
+                                  alignSelf: 'center',
+                                  shadowColor: '#FF0022',
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.3,
+                                  shadowRadius: 3,
+                                  elevation: 4,
+                                  marginBottom: 6,
+                                }}
+                                onPress={() => {
                                   router.push('/community-request/list');
-                                }
-                              }}
-                            >
-                              <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
-                            </TouchableOpacity>
-                          </HomeCardTextureBg>
-                        </View>
-                        {/* Badge rendered as sibling outside to prevent any iOS clipping */}
-                        <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                          <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                            <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+                                }}
+                              >
+                                <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                              </TouchableOpacity>
+                            </HomeCardTextureBg>
+                          </View>
+                          {/* Badge rendered as sibling outside to prevent any iOS clipping */}
+                          <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                            <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                              <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+                            </View>
                           </View>
                         </View>
-                      </View>
+                      )}
 
                       {/* Register Business */}
                       <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
@@ -2685,6 +2861,7 @@ export default function HomeScreen() {
                           cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
                         }
                         const cityId = cityComm?.id || 'city_default';
+                        const cityMembers = cityComm ? (cityComm.member_count || cityComm.members_count || 13) : 13;
                         return (
                           <TouchableOpacity
                             style={styles.communityCardMini}
@@ -2702,7 +2879,7 @@ export default function HomeScreen() {
                               <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
                                 {cityName}
                               </Text>
-                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>13 {t('members')}</Text>
+                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityMembers} {t('members')}</Text>
                             </View>
                             <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
                           </TouchableOpacity>

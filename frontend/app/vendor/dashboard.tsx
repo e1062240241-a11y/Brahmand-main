@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   BackHandler,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -400,9 +401,27 @@ export default function VendorDashboardScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Business Card */}
         <View style={styles.businessCard}>
-          <View style={styles.businessIconContainer}>
-            <Ionicons name="storefront" size={36} color={COLORS.primary} />
-          </View>
+          <TouchableOpacity 
+            style={styles.businessIconContainer}
+            onPress={handleTellBusiness}
+            activeOpacity={0.7}
+          >
+            {myVendor.business_gallery_images && myVendor.business_gallery_images.filter(Boolean).length > 0 ? (
+              <Image 
+                source={{ uri: myVendor.business_gallery_images.filter(Boolean)[0] }} 
+                style={{ width: '100%', height: '100%', borderRadius: 36 }}
+                resizeMode="cover"
+              />
+            ) : myVendor.photos && myVendor.photos.length > 0 ? (
+              <Image 
+                source={{ uri: myVendor.photos[0] }} 
+                style={{ width: '100%', height: '100%', borderRadius: 36 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Ionicons name="storefront" size={36} color={COLORS.primary} />
+            )}
+          </TouchableOpacity>
           <View style={styles.businessNameRow}>
             <Text style={styles.businessName}>{myVendor.business_name}</Text>
             {effectiveKycStatus === 'verified' && (
