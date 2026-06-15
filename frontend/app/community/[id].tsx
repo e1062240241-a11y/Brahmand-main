@@ -2570,12 +2570,19 @@ export default function CommunityDetailScreen() {
     
     return (
       <View style={styles.festEventCard}>
-        <View style={styles.requestOwnerRow}>
-          <Avatar name={ownerName} photo={item.user?.photo} size={32} />
-          <View style={styles.requestOwnerMeta}>
+        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
+          <View style={{ marginLeft: 10, flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={styles.feedPostUserName} numberOfLines={1}>{ownerName}</Text>
+              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              <Text style={styles.postHandle} numberOfLines={1}>
+                {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
+              </Text>
+              <Text style={styles.postHandle} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
+            </View>
             <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
           </View>
-          <Text style={styles.requestOwnerTime}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
         </View>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
@@ -3689,7 +3696,7 @@ export default function CommunityDetailScreen() {
       {/* Bottom footer input bar is removed to keep layout clean and centered on top-header Create button */}
 
       {/* Full Screen Create Post Modal */}
-      <Modal visible={showCreateModal} animationType="slide" transparent={false} hardwareAccelerated>
+      <Modal visible={showCreateModal} animationType="fade" transparent={false} hardwareAccelerated>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
@@ -3983,7 +3990,7 @@ export default function CommunityDetailScreen() {
       <Modal
         visible={showCategorySelector}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowCategorySelector(false)}
       >
         <TouchableOpacity
@@ -4134,7 +4141,7 @@ export default function CommunityDetailScreen() {
       <Modal
         visible={!!showCommentModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
@@ -4217,7 +4224,7 @@ export default function CommunityDetailScreen() {
       </Modal>
 
       {/* Attendees Modal */}
-      <Modal visible={!!showAttendeesModal} animationType="slide" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
+      <Modal visible={!!showAttendeesModal} animationType="fade" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={styles.modalDismiss} activeOpacity={1} onPress={() => setShowAttendeesModal(null)} />
           <View style={[styles.bottomSheet, { height: '60%' }]}>

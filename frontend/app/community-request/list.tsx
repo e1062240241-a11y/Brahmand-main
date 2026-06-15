@@ -427,12 +427,19 @@ export default function ActiveRequestsList() {
         activeOpacity={0.9}
         onPress={() => setSelectedRequest(item)}
       >
-        <View style={styles.requesterHeader}>
-          <Avatar name={ownerName} photo={item.user?.photo} size={34} />
-          <View style={styles.requesterMeta}>
+        <View style={[styles.requesterHeader, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
+          <View style={{ marginLeft: 10, flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#111' }} numberOfLines={1}>{ownerName}</Text>
+              {item.user?.is_verified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}>
+                @{ownerName.replace(/\s+/g, '').toLowerCase()}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}> · {getTimeAgo(item.created_at)}</Text>
+            </View>
             <Text style={styles.requesterRole} numberOfLines={1}>{requestTypeLabel}</Text>
           </View>
-          <Text style={styles.requesterTime}>{getTimeAgo(item.created_at)}</Text>
         </View>
 
         <View style={styles.cardHeader}>

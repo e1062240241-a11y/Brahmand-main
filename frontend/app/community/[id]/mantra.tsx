@@ -242,7 +242,7 @@ export default function MantraJaapRoom() {
       {/* YouTube Full Player Modal */}
       <Modal
         visible={showYouTube}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowYouTube(false)}
       >
         <SafeAreaView style={styles.youtubeModalContainer}>
