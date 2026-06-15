@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, FlatList, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, TextInput, FlatList, Platform, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVendorStore } from '../../../src/store/vendorStore';
+import formatDistance from '../../../src/utils/formatDistance';
 
 export default function CategoryScreen() {
   const router = useRouter();
@@ -32,13 +33,24 @@ export default function CategoryScreen() {
     setDisplayVendors(filtered);
   }, [vendors, category, searchTerm]);
 
+  const handleCall = (phone: string) => {
+    if (phone) {
+      Linking.openURL(`tel:${phone}`);
+    }
+  };
+
   const renderVendorCard = ({ item, index }: { item: any, index: number }) => {
     const photo = (item.business_gallery_images || []).find((url: string) => !!url) || (item.photos && item.photos[0]);
     const displayName = item.business_name && item.business_name.length > 0 ? item.business_name : 'Unnamed Business';
     const displayTag = (item.categories && item.categories.length > 0) ? item.categories[0] : category;
+    const distanceStr = item.distance !== undefined && item.distance !== null ? formatDistance(item.distance) : '762m away';
 
     return (
-      <View style={styles.cardContainer}>
+      <TouchableOpacity 
+        style={styles.cardContainer}
+        activeOpacity={0.85}
+        onPress={() => router.push(`/vendor/${item.id}`)}
+      >
         {photo ? (
           <Image source={{ uri: photo }} style={styles.cardImage} />
         ) : (
@@ -53,17 +65,17 @@ export default function CategoryScreen() {
           </View>
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={14} color="#666" />
-            <Text style={styles.locationText}>762m away</Text>
+            <Text style={styles.locationText}>{distanceStr}</Text>
           </View>
-          <TouchableOpacity style={styles.requestButton}>
+          <TouchableOpacity style={styles.requestButton} onPress={() => handleCall(item.phone_number)}>
             <Text style={styles.requestButtonText}>Request Call</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.callCircle}>
+          <TouchableOpacity style={styles.callCircle} onPress={() => handleCall(item.phone_number)}>
             <Ionicons name="call" size={16} color="#FD6500" />
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

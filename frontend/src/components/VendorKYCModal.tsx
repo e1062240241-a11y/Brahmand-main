@@ -462,10 +462,6 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
       return;
     }
 
-    if (!faceScanUri) {
-      Alert.alert('Face Scan Required', 'Please complete live face scan before submitting KYC.');
-      return;
-    }
 
     if (idType === 'aadhaar' && !idDocumentUri) {
       Alert.alert('Incomplete', 'Please upload your Aadhaar document image.');
@@ -583,17 +579,24 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         type: 'image/jpeg',
       });
 
-      const faceUpload = await uploadVendorKycFile(vendorId, 'face_scan', {
-        uri: faceScanUri as string,
-        name: 'face_scan.jpg',
-        type: 'image/jpeg',
-      });
+      let faceScanUrl = null;
+      if (faceScanUri) {
+        try {
+          const faceUpload = await uploadVendorKycFile(vendorId, 'face_scan', {
+            uri: faceScanUri,
+            name: 'face_scan.jpg',
+            type: 'image/jpeg',
+          });
+          faceScanUrl = faceUpload?.data?.storage_uri;
+        } catch (faceErr) {
+          console.warn('Failed to upload optional face scan:', faceErr);
+        }
+      }
 
       const idDocumentUrl = idUpload?.data?.storage_uri;
-      const faceScanUrl = faceUpload?.data?.storage_uri;
 
-      if (!idDocumentUrl || !faceScanUrl) {
-        throw new Error('Some uploads did not return valid URLs');
+      if (!idDocumentUrl) {
+        throw new Error('Upload did not return valid URL');
       }
 
       await updateVendor(vendorId, {
@@ -603,7 +606,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         kyc_status: 'pending',
       });
 
-      Alert.alert('Success', 'Your PAN and face scan were uploaded and submitted for review.');
+      Alert.alert('Success', 'Your KYC documents were uploaded and submitted for review.');
       await fetchMyVendor();
       if (onKycUpdated) {
         onKycUpdated();
@@ -703,17 +706,24 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         type: 'image/jpeg',
       });
 
-      const faceUpload = await uploadVendorKycFile(vendorId, 'face_scan', {
-        uri: faceScanUri as string,
-        name: 'face_scan.jpg',
-        type: 'image/jpeg',
-      });
+      let faceScanUrl = null;
+      if (faceScanUri) {
+        try {
+          const faceUpload = await uploadVendorKycFile(vendorId, 'face_scan', {
+            uri: faceScanUri,
+            name: 'face_scan.jpg',
+            type: 'image/jpeg',
+          });
+          faceScanUrl = faceUpload?.data?.storage_uri;
+        } catch (faceErr) {
+          console.warn('Failed to upload optional face scan:', faceErr);
+        }
+      }
 
       const idDocumentUrl = idUpload?.data?.storage_uri;
-      const faceScanUrl = faceUpload?.data?.storage_uri;
 
-      if (!idDocumentUrl || !faceScanUrl) {
-        throw new Error('Some uploads did not return valid URLs');
+      if (!idDocumentUrl) {
+        throw new Error('Upload did not return valid URL');
       }
 
       // 3. Update Vendor profile with URLs and kyc_status
@@ -955,26 +965,6 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                   </View>
                 </View>
 
-                {/* Live face scan section */}
-                <View style={styles.docRow}>
-                  <View style={styles.docInfo}>
-                    <Text style={styles.docTitle}>Live Face Scan</Text>
-                    <Text style={styles.docStatus}>{faceScanUri ? 'Face scan captured' : 'Scan a live face using camera'}</Text>
-                    {faceScanUri && <Text style={styles.faceScanHint}>Tap again to re-scan</Text>}
-                  </View>
-                  {faceScanUri ? (
-                    <Image source={{ uri: faceScanUri }} style={styles.previewThumb} />
-                  ) : (
-                    <Pressable
-                      style={({ pressed }) => [styles.uploadBtn, pressed && { opacity: 0.8 }]}
-                      onPress={startFaceScan}
-                      android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
-                    >
-                      <Ionicons name="camera" size={18} color="#FFF" />
-                      <Text style={styles.uploadBtnText}>Scan Face</Text>
-                    </Pressable>
-                  )}
-                </View>
 
                 {aadhaarExtracting && (
                   <Text style={styles.ocrInfo}>Please wait, extracting Aadhaar details...</Text>
@@ -1042,11 +1032,11 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
                   <Pressable
                     style={({ pressed }) => [
                       styles.submitBtn,
-                      (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || !faceScanUri) && styles.submitBtnDisabled,
-                      pressed && !(loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || !faceScanUri) && { opacity: 0.85 }
+                      (loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false)) && styles.submitBtnDisabled,
+                      pressed && !(loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false)) && { opacity: 0.85 }
                     ]}
                     onPress={handleSubmit}
-                    disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false) || !faceScanUri}
+                    disabled={loading || documentPicking || aadhaarExtracting || ocrInProgress || !/^\d{12}$/.test(idNumber.trim()) || (idDocumentUri ? !hasAutoExtracted : false)}
                     android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
                   >
                     {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Submit KYC Documents</Text>}

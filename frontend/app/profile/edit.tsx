@@ -113,7 +113,7 @@ export default function EditProfileScreen() {
 
   const handleDeleteAccount = () => {
     // Check for phone number requirement
-    const userPhone = useAuthStore.getState().user?.phone_number;
+    const userPhone = useAuthStore.getState().user?.phone;
     if (!userPhone) {
       Alert.alert(
         t('language') === 'hi' ? 'फ़ोन नंबर आवश्यक है' : 'Phone Number Required',
@@ -413,7 +413,7 @@ export default function EditProfileScreen() {
 
       <DeleteOTPModal
         visible={otpModalVisible}
-        phoneNumber={useAuthStore.getState().user?.phone_number || ''}
+        phoneNumber={useAuthStore.getState().user?.phone || ''}
         onClose={() => setOtpModalVisible(false)}
         onVerify={handleVerifyOTPAndDelete}
         title={t('language') === 'hi' ? 'खाता हटाएं' : 'Delete Account'}

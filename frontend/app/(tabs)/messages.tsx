@@ -20,6 +20,7 @@ import {
   Animated,
   Dimensions,
   Linking,
+  InteractionManager,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -748,34 +749,44 @@ function MessagesScreen({
 
         // Persist to WatermelonDB (non-blocking - failure here should not break the UI)
         if (Platform.OS !== 'web') {
-          try {
-            await database.write(async () => {
-              const communitiesCollection = database.get('communities');
-              for (const comm of allComms) {
-                try {
-                  const existing = await communitiesCollection.find(comm.id);
-                  await existing.update((record: any) => {
-                    record.name = comm.name;
-                    record.description = comm.description;
-                    record.photo = comm.photo;
-                    record.type = comm.type;
-                    record.memberCount = comm.member_count || 0;
-                  });
-                } catch {
-                  await communitiesCollection.create((record: any) => {
-                    record._raw.id = comm.id;
-                    record.name = comm.name;
-                    record.description = comm.description;
-                    record.photo = comm.photo;
-                    record.type = comm.type;
-                    record.memberCount = comm.member_count || 0;
-                  });
+          InteractionManager.runAfterInteractions(async () => {
+            try {
+              await database.write(async () => {
+                const communitiesCollection = database.get('communities');
+                const batchOps: any[] = [];
+                for (const comm of allComms) {
+                  try {
+                    const existing = await communitiesCollection.find(comm.id);
+                    batchOps.push(
+                      existing.prepareUpdate((record: any) => {
+                        record.name = comm.name;
+                        record.description = comm.description;
+                        record.photo = comm.photo;
+                        record.type = comm.type;
+                        record.memberCount = comm.member_count || 0;
+                      })
+                    );
+                  } catch {
+                    batchOps.push(
+                      communitiesCollection.prepareCreate((record: any) => {
+                        record._raw.id = comm.id;
+                        record.name = comm.name;
+                        record.description = comm.description;
+                        record.photo = comm.photo;
+                        record.type = comm.type;
+                        record.memberCount = comm.member_count || 0;
+                      })
+                    );
+                  }
                 }
-              }
-            });
-          } catch (dbErr) {
-            console.warn('[DEBUG] WatermelonDB write failed (non-fatal):', dbErr);
-          }
+                if (batchOps.length > 0) {
+                  await database.batch(...batchOps);
+                }
+              });
+            } catch (dbErr) {
+              console.warn('[DEBUG] WatermelonDB write failed (non-fatal):', dbErr);
+            }
+          });
         }
 
         // Fetch ALL user_group communities — load from cache first, then refresh
@@ -842,67 +853,86 @@ function MessagesScreen({
 
         // Persist to WatermelonDB
         if (Platform.OS !== 'web') {
-          await database.write(async () => {
-            const conversationsCollection = database.get('conversations');
+          InteractionManager.runAfterInteractions(async () => {
+            try {
+              await database.write(async () => {
+                const conversationsCollection = database.get('conversations');
+                const batchOps: any[] = [];
 
-            // Upsert Circles
-            for (const circle of allCircles) {
-              try {
-                const existing = await conversationsCollection.find(circle.id);
-                await existing.update((record: any) => {
-                  record.name = circle.name;
-                  record.photo = circle.photo;
-                  record.lastMessage = circle.last_message;
-                  record.lastMessageAt = circle.last_message_time ? new Date(circle.last_message_time) : undefined;
-                  record.memberCount = circle.member_count;
-                  record.type = 'circle';
-                  record.updatedAt = new Date();
-                });
-              } catch {
-                await conversationsCollection.create((record: any) => {
-                  record._raw.id = circle.id;
-                  record.name = circle.name;
-                  record.photo = circle.photo;
-                  record.lastMessage = circle.last_message;
-                  record.lastMessageAt = circle.last_message_time ? new Date(circle.last_message_time) : undefined;
-                  record.memberCount = circle.member_count;
-                  record.type = 'circle';
-                  record.unreadCount = 0;
-                  record.updatedAt = new Date();
-                });
-              }
-            }
+                // Upsert Circles
+                for (const circle of allCircles) {
+                  try {
+                    const existing = await conversationsCollection.find(circle.id);
+                    batchOps.push(
+                      existing.prepareUpdate((record: any) => {
+                        record.name = circle.name;
+                        record.photo = circle.photo;
+                        record.lastMessage = circle.last_message;
+                        record.lastMessageAt = circle.last_message_time ? new Date(circle.last_message_time) : undefined;
+                        record.memberCount = circle.member_count;
+                        record.type = 'circle';
+                        record.updatedAt = new Date();
+                      })
+                    );
+                  } catch {
+                    batchOps.push(
+                      conversationsCollection.prepareCreate((record: any) => {
+                        record._raw.id = circle.id;
+                        record.name = circle.name;
+                        record.photo = circle.photo;
+                        record.lastMessage = circle.last_message;
+                        record.lastMessageAt = circle.last_message_time ? new Date(circle.last_message_time) : undefined;
+                        record.memberCount = circle.member_count;
+                        record.type = 'circle';
+                        record.unreadCount = 0;
+                        record.updatedAt = new Date();
+                      })
+                    );
+                  }
+                }
 
-            // Upsert DMs
-            for (const dm of allDMs) {
-              const dmId = dm.conversation_id || dm.id;
-              try {
-                const existing = await conversationsCollection.find(dmId);
-                await existing.update((record: any) => {
-                  record.name = dm.user?.name;
-                  record.photo = dm.user?.photo;
-                  record.lastMessage = dm.last_message;
-                  record.lastMessageAt = dm.last_message_at ? new Date(dm.last_message_at) : undefined;
-                  record.unreadCount = dm.unread_count || 0;
-                  record.type = 'dm';
-                  record.slId = dm.user?.sl_id;
-                  record.otherUserId = dm.user?.id;
-                  record.updatedAt = new Date();
-                });
-              } catch {
-                await conversationsCollection.create((record: any) => {
-                  record._raw.id = dmId;
-                  record.name = dm.user?.name;
-                  record.photo = dm.user?.photo;
-                  record.lastMessage = dm.last_message;
-                  record.lastMessageAt = dm.last_message_at ? new Date(dm.last_message_at) : undefined;
-                  record.unreadCount = dm.unread_count || 0;
-                  record.type = 'dm';
-                  record.slId = dm.user?.sl_id;
-                  record.otherUserId = dm.user?.id;
-                  record.updatedAt = new Date();
-                });
-              }
+                // Upsert DMs
+                for (const dm of allDMs) {
+                  const dmId = dm.conversation_id || dm.id;
+                  try {
+                    const existing = await conversationsCollection.find(dmId);
+                    batchOps.push(
+                      existing.prepareUpdate((record: any) => {
+                        record.name = dm.user?.name;
+                        record.photo = dm.user?.photo;
+                        record.lastMessage = dm.last_message;
+                        record.lastMessageAt = dm.last_message_at ? new Date(dm.last_message_at) : undefined;
+                        record.unreadCount = dm.unread_count || 0;
+                        record.type = 'dm';
+                        record.slId = dm.user?.sl_id;
+                        record.otherUserId = dm.user?.id;
+                        record.updatedAt = new Date();
+                      })
+                    );
+                  } catch {
+                    batchOps.push(
+                      conversationsCollection.prepareCreate((record: any) => {
+                        record._raw.id = dmId;
+                        record.name = dm.user?.name;
+                        record.photo = dm.user?.photo;
+                        record.lastMessage = dm.last_message;
+                        record.lastMessageAt = dm.last_message_at ? new Date(dm.last_message_at) : undefined;
+                        record.unreadCount = dm.unread_count || 0;
+                        record.type = 'dm';
+                        record.slId = dm.user?.sl_id;
+                        record.otherUserId = dm.user?.id;
+                        record.updatedAt = new Date();
+                      })
+                    );
+                  }
+                }
+
+                if (batchOps.length > 0) {
+                  await database.batch(...batchOps);
+                }
+              });
+            } catch (dbErr) {
+              console.warn('[DEBUG] WatermelonDB write failed (non-fatal):', dbErr);
             }
           });
         }
@@ -927,9 +957,7 @@ function MessagesScreen({
     // and observers update the UI automatically.
   };
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+
 
   useEffect(() => {
     if (!isFocused) return;

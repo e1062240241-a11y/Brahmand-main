@@ -100,6 +100,7 @@ export default function VendorDashboardScreen() {
   const [addressVal, setAddressVal] = useState('');
   const [categoriesVal, setCategoriesVal] = useState<string[]>([]);
   const [businessHoursVal, setBusinessHoursVal] = useState('');
+  const [offersVal, setOffersVal] = useState('');
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
 
   // Sync data from store when myVendor is loaded
@@ -116,6 +117,7 @@ export default function VendorDashboardScreen() {
       setAddressVal(myVendor.full_address || '');
       setCategoriesVal(myVendor.categories || []);
       setBusinessHoursVal(myVendor.business_hours || '');
+      setOffersVal(myVendor.offers || '');
     }
   }, [myVendor]);
 
@@ -162,11 +164,64 @@ export default function VendorDashboardScreen() {
     };
   }, [router]);
 
+  // KYC Guard: Redirect to KYC if not verified
+  const isUserVerifiedForGuard = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+  const isVendorVerifiedForGuard = myVendor?.kyc_status === 'verified';
+  const isKycVerifiedForGuard = isUserVerifiedForGuard || isVendorVerifiedForGuard;
+
+  useEffect(() => {
+    if (!isInitializing && !authLoading && myVendor && !isKycVerifiedForGuard) {
+      Alert.alert(
+        'KYC Required',
+        'You must complete KYC verification before you can edit your service profile.',
+        [{ text: 'Complete KYC', onPress: () => router.replace('/kyc') }],
+        { cancelable: false }
+      );
+    }
+  }, [isInitializing, authLoading, myVendor, isKycVerifiedForGuard, router]);
+
   if (authLoading || isInitializing) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={COLORS.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Block access if KYC is not verified
+  if (myVendor && !isKycVerifiedForGuard) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient 
+          colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+          locations={[0, 0.0913, 0.25]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerLeft} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#5C3B24" />
+            <Text style={styles.headerTitle}>Edit Profile</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.centered}>
+          <View style={{ alignItems: 'center', paddingHorizontal: 32 }}>
+            <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: '#FFF3EB', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}>
+              <Ionicons name="lock-closed" size={36} color="#F26522" />
+            </View>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: '#5C3B24', marginBottom: 8, textAlign: 'center' }}>KYC Verification Required</Text>
+            <Text style={{ fontSize: 15, color: '#8B6F5E', textAlign: 'center', lineHeight: 22, marginBottom: 24 }}>
+              Complete your KYC verification to unlock access to your Edit Profile page and manage your service.
+            </Text>
+            <TouchableOpacity 
+              style={{ backgroundColor: '#F26522', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+              onPress={() => router.replace('/kyc')}
+            >
+              <Ionicons name="shield-checkmark" size={18} color="#FFF" />
+              <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '700' }}>Complete KYC Now</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -493,8 +548,8 @@ export default function VendorDashboardScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 0.7,
     });
 
     if (result.canceled || !result.assets?.length) return;
@@ -538,6 +593,7 @@ export default function VendorDashboardScreen() {
           whatsapp: whatsappVal,
         },
         business_hours: businessHoursVal,
+        offers: offersVal,
       });
 
       Alert.alert('Success', 'Business profile updated successfully!');
@@ -801,6 +857,27 @@ export default function VendorDashboardScreen() {
               <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
             )}
           </ScrollView>
+        </View>
+
+        {/* Section: Offers & Deals */}
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="pricetag-outline" size={20} color="#5C3B24" style={{ marginRight: 8 }} />
+            <Text style={styles.cardTitle}>Offers & Deals</Text>
+          </View>
+
+          <Text style={styles.inputLabel}>Current Offers</Text>
+          <View style={[styles.inputContainer, styles.descriptionContainer]}>
+            <TextInput
+              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
+              value={offersVal}
+              onChangeText={setOffersVal}
+              placeholder="e.g. 10% off on first order, Buy 1 Get 1 free, etc."
+              placeholderTextColor="#9A897E"
+              multiline
+              numberOfLines={3}
+            />
+          </View>
         </View>
 
         {/* Section: Delete Account */}

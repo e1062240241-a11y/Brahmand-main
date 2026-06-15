@@ -102,7 +102,7 @@ interface VendorStore {
     };
   }) => Promise<void>;
   uploadBusinessImage: (vendorId: string, slot: number, file: { uri: string; name: string; type: string }) => Promise<string[]>;
-  deleteVendor: (vendorId: string) => Promise<void>;
+  deleteVendor: (vendorId: string, otp?: string) => Promise<void>;
   getFilteredVendors: (category?: string, searchTerm?: string) => Vendor[];
 }
 
@@ -377,8 +377,8 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
     return images;
   },
   
-  deleteVendor: async (vendorId) => {
-    await deleteVendorAPI(vendorId);
+  deleteVendor: async (vendorId, otp) => {
+    await deleteVendorAPI(vendorId, otp);
     set({ myVendor: null });
   },
   

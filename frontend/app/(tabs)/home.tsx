@@ -2505,7 +2505,7 @@ export default function HomeScreen() {
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
                                 {/* Top Left Content */}
-                                <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                                <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                                     <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
                                     <Text style={[
@@ -2535,7 +2535,13 @@ export default function HomeScreen() {
                                     marginTop: 0,
                                     marginBottom: 2,
                                     fontSize: 13
-                                  }]}>{(hanumanChantCount * 18).toLocaleString()} {t('devoteesChanting') || 'devotees are chanting'}</Text>
+                                  }]}>
+                                    {hanumanStatus.isActive
+                                      ? `${(hanumanChantCount * 18).toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                      : (t('language') === 'hi'
+                                        ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                                        : '2300+ devotees already completed jaap')}
+                                  </Text>
 
                                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                   <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2626,7 +2632,7 @@ export default function HomeScreen() {
                           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
 
                             {/* Top Left Content */}
-                            <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                            <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
                               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
                                 <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
                                 <Text style={[
@@ -2656,7 +2662,13 @@ export default function HomeScreen() {
                                 marginTop: 0,
                                 marginBottom: 2,
                                 fontSize: 13
-                              }]}>{shivaChantCount.toLocaleString()} {t('devoteesChanting')}</Text>
+                              }]}>
+                                {shivaStatus.isActive
+                                  ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                  : (t('language') === 'hi'
+                                    ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                                    : '2300+ devotees already completed jaap')}
+                              </Text>
 
                               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
                                 <Ionicons name="time-outline" size={13} color="#FFF" />
@@ -2755,7 +2767,7 @@ export default function HomeScreen() {
                 snapToInterval={Platform.OS === 'ios' ? 130 : 120}
                 decelerationRate="fast"
                 contentContainerStyle={styles.actionCardsScroll}
-                style={[styles.actionCardsScrollView, { marginBottom: 2 }]}
+                style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
               >
                 {/* Urgent Blood Request */}
                 {bloodRequests.length > 0 ? (
@@ -4121,7 +4133,7 @@ const styles = StyleSheet.create({
   twoButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 2,
+    marginBottom: 10,
     gap: 6,
     paddingHorizontal: 10,
   },
