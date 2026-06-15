@@ -344,21 +344,24 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     extension = _get_extension_from_content_type(content_type)
     filename = f"{uuid4().hex}.{extension}"
     object_path = f"posts/{user_id}/{filename}"
-    
+
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
         "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
         "Content-Type": content_type
     }
-    
-    logger.info(f"Uploading file of size {len(file_bytes)} to Bunny.net: {bunny_url}")
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=60) as resp:
+
+    logger.info(f"Uploading {len(file_bytes)} bytes to Bunny.net: {bunny_url}")
+    # FIX 1: Use aiohttp.ClientTimeout (plain int is silently ignored by aiohttp)
+    # FIX 2: Remove ssl=False — Bunny requires valid HTTPS
+    timeout = aiohttp.ClientTimeout(total=180, connect=30)
+    async with aiohttp.ClientSession() as session:
+        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
             if resp.status not in (200, 201):
                 resp_text = await resp.text()
                 raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
-                
+
     pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     if pull_zone:
         media_url = f"{pull_zone.rstrip('/')}/{object_path}"
@@ -369,9 +372,39 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
 
 
 async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content_type: str, base_url: str) -> tuple[str, str]:
-    with open(file_path, 'rb') as f:
-        file_bytes = f.read()
-    return await _upload_post_media_to_bunny(user_id, file_bytes, content_type, base_url)
+    """Stream a file to Bunny.net without loading it fully into RAM."""
+    extension = _get_extension_from_content_type(content_type)
+    filename = f"{uuid4().hex}.{extension}"
+    object_path = f"posts/{user_id}/{filename}"
+
+    bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
+    bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+    headers = {
+        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
+        "Content-Type": content_type
+    }
+
+    file_size = os.path.getsize(file_path)
+    logger.info(f"Streaming {file_size} bytes from disk to Bunny.net: {bunny_url}")
+
+    # FIX 3: Stream from disk in chunks — avoids OOM for large videos
+    # FIX 1+2: Correct timeout type, SSL enabled
+    timeout = aiohttp.ClientTimeout(total=300, connect=30)
+    async with aiohttp.ClientSession() as session:
+        with open(file_path, 'rb') as f:
+            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
+                if resp.status not in (200, 201):
+                    resp_text = await resp.text()
+                    raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
+
+    pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
+    if pull_zone:
+        media_url = f"{pull_zone.rstrip('/')}/{object_path}"
+    else:
+        clean_base = _get_public_base_url(base_url)
+        media_url = f"{clean_base}/api/bunny-media/{object_path}"
+    return media_url, object_path
+
 
 
 async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
@@ -2305,8 +2338,9 @@ async def get_bunny_media(filepath: str):
     
     async def file_sender():
         try:
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.get(bunny_url, headers=headers) as resp:
+            timeout = aiohttp.ClientTimeout(total=60, connect=10)
+            async with aiohttp.ClientSession() as session:
+                async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
                     if resp.status == 200:
                         async for chunk in resp.content.iter_chunked(65536):
                             yield chunk

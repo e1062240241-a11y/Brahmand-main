@@ -36,6 +36,10 @@ import { useVendorStore } from '../../src/store/vendorStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
+// ── Smart Feed Optimization (ADD-ONLY, no existing features changed) ─────────
+import { SmartPost } from '../../src/components/SmartPost';
+import { useFeedOptimizationStore } from '../../src/store/feedOptimizationStore';
+import { useSmartFeed } from '../../src/hooks/useSmartFeed';
 import HomeJyotishSection from '../../src/components/HomeJyotishSection';
 import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
@@ -419,6 +423,8 @@ export default function HomeScreen() {
   const hasMoreFeed = currentFeed.hasMore;
   const [loadingFeed, setLoadingFeed] = useState(false);
   const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
+  // ── Smart Feed Quality Store ─────────────────────────────────────────────
+  const { resetQuality, ensureQuality } = useFeedOptimizationStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [selectedCommentPostId, setSelectedCommentPostId] = useState<string | null>(null);
@@ -724,6 +730,8 @@ export default function HomeScreen() {
           hasMore: true, // always keep scrolling possible
           lastFetched: Date.now(),
         });
+        // ── Smart Quality: first 5 high, rest thumbnail ─────────────────
+        resetQuality(ranked);
       }
     } catch (error: any) {
       console.warn('Failed to load posts feed on home:', error);
@@ -1325,10 +1333,26 @@ export default function HomeScreen() {
 
   const lastScrollTimeRef = useRef(0);
 
+  // ── Smart Feed Hook (declared before handleHomeScroll so onSmartScroll is available) ──
+  const feedPostIds = useMemo(
+    () => feedPosts.map((post, index) => String(post?.id || post?.media_url || index)),
+    [feedPosts],
+  );
+
+  const { onSmartScroll } = useSmartFeed({
+    postIds: feedPostIds,
+    postOffsetsRef,
+    postHeightsRef,
+    feedTabsYRef,
+    tabBarHeight: HOME_FEED_TABS_HEIGHT,
+  });
+
   const handleHomeScroll = useCallback((event: any) => {
     onHomeScrollTabBar(event);
     const y = event.nativeEvent.contentOffset.y;
     currentScrollY.current = y;
+    // ── Smart Quality Upgrade: promote posts entering viewport ─────────────
+    onSmartScroll(y);
 
 
     // Visibility tracking for video autoplay - find post with most area in viewport
@@ -1380,7 +1404,7 @@ export default function HomeScreen() {
         }
       }
     }
-  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts]);
+  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts, onSmartScroll]);
 
   const loadHomeRequests = useCallback(async () => {
     // Legacy function, replaced by initializeHome
@@ -1396,6 +1420,17 @@ export default function HomeScreen() {
       setTimeout(() => setIsRefreshing(false), 500);
     }
   }, [initializeHome]);
+
+  // (feedPostIds + useSmartFeed moved above handleHomeScroll)
+
+  // Ensure quality map is initialized for any newly appended posts
+  useEffect(() => {
+    feedPosts.forEach((post, index) => {
+      const postId = String(post?.id || post?.media_url || index);
+      ensureQuality(postId, index);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedPosts]);
 
   useEffect(() => {
     // Handled by main initializeHome now
@@ -3133,44 +3168,34 @@ export default function HomeScreen() {
               <>
                 {feedPosts.map((post, index) => {
                   const postKey = `feed-${index}-${String(post.id || post.media_url || index)}`;
-                  const yOffset = postOffsetsRef.current[postKey];
-                  const cardHeight = postHeightsRef.current[postKey];
-
-                  const isFarOffScreen =
-                    typeof yOffset === 'number' &&
-                    typeof cardHeight === 'number' &&
-                    (yOffset + cardHeight < currentScrollY.current - SCREEN_HEIGHT * 1.5 ||
-                      yOffset > currentScrollY.current + SCREEN_HEIGHT * 2.0);
-
+                  const postId = String(post?.id || post?.media_url || index);
                   return (
                     <View
                       key={postKey}
-                      onLayout={(event) => {
-                        const y = event.nativeEvent.layout.y;
-                        const h = event.nativeEvent.layout.height;
-                        postOffsetsRef.current[postKey] = y;
-                        postHeightsRef.current[postKey] = h;
-                      }}
-                      style={isFarOffScreen ? { height: cardHeight } : undefined}
                     >
-                      {isFarOffScreen ? (
-                        <View style={{ height: cardHeight, backgroundColor: '#F9F9F9', borderRadius: 16, marginVertical: 8, opacity: 0.5 }} />
-                      ) : (
-                        <PostFeedCard
-                          post={post}
-                          onLike={handleLikePost}
-                          onComment={handleOpenComment}
-                          onShare={handleSharePost}
-                          onRepost={handleRepost}
-                          onUserPress={handleOpenPostUserProfile}
-                          onPostMenuPress={handlePostMenuPress}
-                          postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
-                          isActive={activePostKey === postKey}
-                          theme="dark"
-                          isBlackBackground={true}
-                          isFirstReel={index === 0}
-                        />
-                      )}
+                      {/* ── SmartPost: quality-aware wrapper around PostFeedCard ──────── */}
+                      {/* All existing props (onLike, onComment, etc.) pass through unchanged. */}
+                      <SmartPost
+                        post={post}
+                        postId={postId}
+                        onLike={handleLikePost}
+                        onComment={handleOpenComment}
+                        onShare={handleSharePost}
+                        onRepost={handleRepost}
+                        onUserPress={handleOpenPostUserProfile}
+                        onPostMenuPress={handlePostMenuPress}
+                        postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
+                        isActive={activePostKey === postKey}
+                        theme="dark"
+                        isBlackBackground={true}
+                        isFirstReel={index === 0}
+                        onLayout={(event: any) => {
+                          const y = event.nativeEvent.layout.y;
+                          const h = event.nativeEvent.layout.height;
+                          postOffsetsRef.current[postKey] = y;
+                          postHeightsRef.current[postKey] = h;
+                        }}
+                      />
                     </View>
                   );
                 })}

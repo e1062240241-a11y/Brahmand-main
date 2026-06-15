@@ -113,5 +113,23 @@ async def messaging_rate_limit(request: Request):
     return await rate_limit_dependency(request, settings.RATE_LIMIT_MESSAGING, key_prefix="messaging")
 
 async def upload_rate_limit(request: Request):
-    """Rate limit for file uploads (stricter to save bandwidth and server resources): 3 uploads per 10 minutes"""
-    return await rate_limit_dependency(request, limit=3, window=600, key_prefix="upload")
+    """Rate limit for file uploads keyed by user_id (not IP).
+    Allows 10 uploads per 10 minutes per user — generous enough for normal use,
+    strict enough to prevent abuse. Fallback to IP if token not parsed yet.
+    """
+    # Prefer user_id from JWT so shared IPs (offices, mobile towers) don't block each other
+    user_id = None
+    try:
+        auth_header = request.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            import jwt as _jwt
+            from config.settings import settings
+            token = auth_header[7:]
+            # Decode without verification just to extract user_id for rate-limit keying
+            payload = _jwt.decode(token, options={"verify_signature": False})
+            user_id = payload.get("user_id") or payload.get("sub")
+    except Exception:
+        pass
+
+    key_prefix = f"upload:uid:{user_id}" if user_id else "upload:ip"
+    return await rate_limit_dependency(request, limit=10, window=600, key_prefix=key_prefix)

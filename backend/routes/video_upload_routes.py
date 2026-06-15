@@ -282,29 +282,35 @@ async def _upload_and_compress_video_impl(
 
     user_id = token_data["user_id"]
 
-    # Check if user is blocked
-    from config.database import get_database
-    db = await get_database()
-    user_doc = db.collection('users').document(user_id).get()
-    if user_doc.exists:
-        user = user_doc.to_dict()
-        if user.get('is_blocked'):
-            from datetime import datetime, timezone
-            blocked_until_str = user.get('blocked_until')
-            if blocked_until_str:
-                try:
-                    blocked_until = datetime.fromisoformat(blocked_until_str)
-                    if blocked_until.tzinfo is None:
-                        blocked_until = blocked_until.replace(tzinfo=timezone.utc)
-                    now = datetime.now(timezone.utc)
-                    if now < blocked_until:
-                        raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
-                except HTTPException:
-                    raise
-                except Exception:
-                    raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
-            else:
-                raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
+    # FIX: Use the app's standard Firestore client (config.database does not exist in this project)
+    try:
+        from config.firebase_config import get_firestore
+        from config.firestore_db import FirestoreDB
+        firestore_client = await get_firestore()
+        if firestore_client:
+            db = FirestoreDB(firestore_client)
+            user_doc = await db.get_document('users', user_id)
+            if user_doc and user_doc.get('is_blocked'):
+                from datetime import datetime, timezone
+                blocked_until_str = user_doc.get('blocked_until')
+                if blocked_until_str:
+                    try:
+                        blocked_until = datetime.fromisoformat(blocked_until_str)
+                        if blocked_until.tzinfo is None:
+                            blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+                        if datetime.now(timezone.utc) < blocked_until:
+                            raise HTTPException(status_code=403, detail="User account is temporarily blocked")
+                    except HTTPException:
+                        raise
+                    except Exception:
+                        pass
+                else:
+                    raise HTTPException(status_code=403, detail="User account is blocked")
+    except HTTPException:
+        raise
+    except Exception as db_err:
+        # Non-fatal: if we can't check block status, proceed with upload
+        logger.warning(f"[VideoUpload] Could not verify user block status: {db_err}")
 
     has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
     input_path = None
