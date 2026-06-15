@@ -7406,7 +7406,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     
     # Store KYC documents (for admin review)
     kyc_data = {
-        'kyc_status': 'pending',
+        'kyc_status': 'manual_review',
         'kyc_role': kyc_role,
         'kyc_id_type': id_type,
         'kyc_id_number': id_number,
@@ -7418,7 +7418,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'is_verified': False,
     }
 
-    match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
+    match_result = {'status': 'manual_review', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
         match_result = try_face_match(kyc_data['kyc_id_photo'], kyc_data['kyc_selfie_photo'])
         if match_result['status'] == 'verified':
