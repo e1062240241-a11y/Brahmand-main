@@ -24,7 +24,7 @@ function CertificateDetailScreen({ observedCertificates }: { observedCertificate
   // Find current certificate or use dummy data from mockup as fallback
   const certificate = certificates.find((c) => c.id === id) || {
     id: 'dummy',
-    bookName: 'BHAGAWAD GITA',
+    bookName: 'BHAGAVAD GITA',
     completionDays: 12,
     date: new Date().toISOString()
   };

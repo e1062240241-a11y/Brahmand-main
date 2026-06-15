@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getCommunities, createCommunityRequest, getCommunityRequests, parseApiError } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
 
@@ -40,6 +41,7 @@ interface CommunityRequest {
   id: string;
   user_id: string;
   user_name?: string;
+  user?: { name?: string; photo?: string; is_verified?: boolean };
   request_type: string;
   title: string;
   description: string;
@@ -195,7 +197,9 @@ export default function CommunityScreen() {
   };
 
 
-  const renderCommunity = ({ item }: { item: Community }) => (
+  // ⚡ Bolt: Wrapped in useCallback to prevent recreation on every render,
+  // reducing unnecessary FlatList re-renders.
+  const renderCommunity = useCallback(({ item }: { item: Community }) => (
     <View>
       {item.label && (
         <Text style={[styles.communityLabel, { color: getCommunityColor(item.type) }]}>
@@ -211,7 +215,7 @@ export default function CommunityScreen() {
         </View>
         <View style={styles.communityInfo}>
           <Text style={styles.communityName}>{item.name}</Text>
-          <Text style={styles.communityStats}>{item.member_count} members</Text>
+          <Text style={styles.communityStats}>{(item.member_count || (item as any).members_count || 0)} members</Text>
         </View>
         {item.is_default && (
           <Ionicons name="lock-closed" size={14} color={COLORS.textLight} style={{ marginRight: 8 }} />
@@ -219,12 +223,26 @@ export default function CommunityScreen() {
         <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
       </TouchableOpacity>
     </View>
-  );
+  ), [router]);
 
-  const renderRequest = ({ item }: { item: CommunityRequest }) => (
-    <View style={styles.requestCard}>
-      <View style={styles.requestHeader}>
-        <View style={styles.requestTypeContainer}>
+  // ⚡ Bolt: Wrapped in useCallback to keep render function stable across
+  // component re-renders, optimizing FlatList rendering performance.
+  const renderRequest = useCallback(({ item }: { item: CommunityRequest }) => {
+    const ownerName = item.user_name || item.user?.name || 'Requester';
+    const requestTypeLabel = item.request_type ? String(item.request_type).toUpperCase() : 'REQUEST';
+
+    return (
+      <View style={styles.requestCard}>
+        <View style={styles.requestOwnerRow}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={34} />
+          <View style={styles.requestOwnerMeta}>
+            <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
+          </View>
+          <Text style={styles.requestOwnerTime}>{formatDate(item.created_at)}</Text>
+        </View>
+
+        <View style={styles.requestHeader}>
+          <View style={styles.requestTypeContainer}>
           <View style={[
             styles.urgencyBadge,
             { backgroundColor: `${getUrgencyColor(item.urgency_level)}20` }
@@ -283,6 +301,7 @@ export default function CommunityScreen() {
       </View>
     </View>
   );
+}, []);
 
   return (
     <LinearGradient
@@ -500,6 +519,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: SPACING.sm,
   },
+  requestOwnerTime: {
+    fontSize: 12,
+    color: COLORS.textLight,
+  },
   requestTypeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -540,6 +563,26 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textLight,
   },
+  requestOwnerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm,
+  },
+  requestOwnerMeta: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  requestOwnerName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  requestOwnerSubtext: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
   requestTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -570,6 +613,29 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.sm,
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
+  },
+  requestOwnerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.sm,
+  },
+  requestOwnerMeta: {
+    flex: 1,
+    marginLeft: SPACING.sm,
+  },
+  requestOwnerName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  requestOwnerSubtext: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
+  requestOwnerTime: {
+    fontSize: 12,
+    color: COLORS.textLight,
   },
   contactButton: {
     flexDirection: 'row',

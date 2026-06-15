@@ -29,7 +29,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useScriptureStore } from '../../src/store/scriptureStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
-import { getUpanishadsChapter } from '../../src/services/api';
+import { loadUpanishadChapter } from '../../src/services/upanishads-service';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -132,10 +132,10 @@ export default function UpanishadsPage() {
   const fetchChapterData = async (chNum: number) => {
     setLoading(true);
     try {
-      const response = await getUpanishadsChapter(chNum);
-      if (response && response.data) {
-        setVerses(response.data.verses || []);
-        setTotalVerses(response.data.total_verses || 0);
+      const loadedVerses = await loadUpanishadChapter(chNum);
+      if (loadedVerses) {
+        setVerses(loadedVerses);
+        setTotalVerses(loadedVerses.length);
       }
     } catch (error) {
       console.error('Failed to fetch chapter:', error);
@@ -251,13 +251,7 @@ export default function UpanishadsPage() {
           locations={[0, 0.0913, 0.25, 1]}
           style={styles.contentContainer}
         >
-          {/* Subtle Glow behind the book */}
-          <Animated.View style={[StyleSheet.absoluteFillObject, { justifyContent: 'center', alignItems: 'center' }, glowAnimatedStyle]}>
-            <LinearGradient
-              colors={['rgba(255, 107, 0, 0.25)', 'transparent']}
-              style={{ width: SCREEN_WIDTH * 0.9, height: SCREEN_WIDTH * 0.9, borderRadius: SCREEN_WIDTH * 0.45 }}
-            />
-          </Animated.View>
+          {/* Subtle Glow behind the book removed */}
 
           {/* Opening Header */}
           <View style={[styles.header, { position: 'absolute', top: insets.top + 10, left: 0, right: 0 }]}>
@@ -278,7 +272,7 @@ export default function UpanishadsPage() {
 
           <View style={styles.instructionBadge}>
             <Ionicons name="sparkles" size={16} color="#B85D19" style={{ marginRight: 6 }} />
-            <Text style={styles.instructionText}>यात्रा शुरू करने के लिए छुएं</Text>
+            <Text style={styles.instructionText}>Tap to start journey</Text>
           </View>
         </LinearGradient>
       ) : (
@@ -385,8 +379,7 @@ export default function UpanishadsPage() {
               {/* Verses */}
               {loading ? (
                 <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
-                  <ActivityIndicator size="large" color={nightMode ? "#FFD5B8" : "#8C3A00"} />
-                  <Text style={[{ marginTop: 16, fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
+                  <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
                     पाठ्य सामग्री लोड हो रही है...
                   </Text>
                 </View>

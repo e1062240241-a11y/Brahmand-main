@@ -56,9 +56,14 @@ const isWebRunningOnLocalhost =
 const normalizeMimeType = (type?: string, name?: string) => {
   const normalized = (type || '').toLowerCase();
   const allowedImageTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/heic', 'image/gif', 'image/bmp'];
+  const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/3gpp'];
 
   if (allowedImageTypes.includes(normalized)) {
     return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
+  }
+
+  if (allowedVideoTypes.includes(normalized)) {
+    return normalized;
   }
 
   if (normalized.startsWith('image/')) {
@@ -82,6 +87,7 @@ const normalizeMimeType = (type?: string, name?: string) => {
     if (lowerName.endsWith('.mov')) return 'video/quicktime';
     if (lowerName.endsWith('.m4v')) return 'video/x-m4v';
     if (lowerName.endsWith('.webm')) return 'video/webm';
+    if (lowerName.endsWith('.mkv')) return 'video/x-matroska';
   }
 
   return 'image/jpeg';
@@ -91,14 +97,18 @@ const normalizeNativeUploadFile = async (file: { uri: string; name: string; type
   const fileName = file.name || 'upload.jpg';
   const fileType = normalizeMimeType(file.type, fileName);
 
-  if (Platform.OS !== 'web' && file.uri?.startsWith('content://')) {
+  if (Platform.OS !== 'web' && (file.uri?.startsWith('content://') || file.uri?.startsWith('ph://') || file.uri?.startsWith('assets-library://'))) {
     try {
       const fileSystem = FileSystem as any;
       const cacheDir = fileSystem.cacheDirectory || fileSystem.documentDirectory || '';
       const localUri = `${cacheDir}upload-${Date.now()}-${fileName}`;
-      const downloadResult = await FileSystem.downloadAsync(file.uri, localUri);
+      if (typeof fileSystem.copyAsync === 'function') {
+        await fileSystem.copyAsync({ from: file.uri, to: localUri });
+      } else {
+        await FileSystem.downloadAsync(file.uri, localUri);
+      }
       return {
-        uri: downloadResult.uri,
+        uri: localUri,
         name: fileName,
         type: fileType,
       };
@@ -179,6 +189,69 @@ const ENABLE_WEB_DIRECT_VIDEO_UPLOAD = process.env.EXPO_PUBLIC_ENABLE_WEB_DIRECT
 const isVideoMimeType = (value?: string) => (value || '').toLowerCase().startsWith('video/');
 
 const makeUploadId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+type PostUploadFields = {
+  caption: string;
+  filterName?: string;
+  community_level: string;
+  category: string;
+  mediaWidth?: number;
+  mediaHeight?: number;
+  cropOffsetX?: number;
+  cropOffsetY?: number;
+  originalWidth?: number;
+  originalHeight?: number;
+};
+
+const appendPostUploadFields = (formData: FormData, fields: PostUploadFields) => {
+  formData.append('caption', fields.caption || '');
+  formData.append('source', 'camera_roll');
+  formData.append('community_level', fields.community_level);
+  formData.append('category', fields.category);
+  if (fields.filterName) {
+    formData.append('filter_name', fields.filterName);
+  }
+  if (fields.mediaWidth) {
+    formData.append('media_width', String(fields.mediaWidth));
+  }
+  if (fields.mediaHeight) {
+    formData.append('media_height', String(fields.mediaHeight));
+  }
+  if (fields.cropOffsetX !== undefined) {
+    formData.append('crop_offset_x', String(fields.cropOffsetX));
+  }
+  if (fields.cropOffsetY !== undefined) {
+    formData.append('crop_offset_y', String(fields.cropOffsetY));
+  }
+  if (fields.originalWidth) {
+    formData.append('original_width', String(fields.originalWidth));
+  }
+  if (fields.originalHeight) {
+    formData.append('original_height', String(fields.originalHeight));
+  }
+};
+
+const getLocalUploadFileSize = async (file: { uri: string; name: string; type: string }) => {
+  if (Platform.OS === 'web') {
+    const response = await fetch(file.uri);
+    const blob = await response.blob();
+    return blob.size;
+  }
+
+  try {
+    const fileSystem = FileSystem as any;
+    if (typeof fileSystem.getInfoAsync === 'function') {
+      const info = await fileSystem.getInfoAsync(file.uri, { size: true });
+      if (info?.exists && typeof info.size === 'number') {
+        return info.size;
+      }
+    }
+  } catch (error) {
+    console.warn('[API] Could not inspect local video size:', error);
+  }
+
+  return undefined;
+};
 
 const uploadLargeVideoViaFirebase = async (
   file: { uri: string; name: string; type: string },
@@ -674,39 +747,35 @@ export const uploadUserPost = (
   originalHeight?: number
 ) => {
   return (async () => {
-    if (Platform.OS === 'web' && isVideoMimeType(file.type)) {
-      const localResponse = await fetch(file.uri);
-      const localBlob = await localResponse.blob();
-      if (localBlob.size > CLOUD_RUN_SAFE_UPLOAD_BYTES && ENABLE_WEB_DIRECT_VIDEO_UPLOAD) {
-        const { objectPath } = await uploadLargeVideoViaFirebase(file, onProgress);
+    const postFields: PostUploadFields = {
+      caption,
+      filterName,
+      community_level,
+      category,
+      mediaWidth,
+      mediaHeight,
+      cropOffsetX,
+      cropOffsetY,
+      originalWidth,
+      originalHeight,
+    };
+    const preparedVideoFile = isVideoMimeType(file.type)
+      ? await normalizeNativeUploadFile(file)
+      : file;
+
+    if (isVideoMimeType(preparedVideoFile.type)) {
+      const fileSize = await getLocalUploadFileSize(preparedVideoFile);
+      const shouldUseDirectVideoUpload =
+        fileSize !== undefined &&
+        fileSize > CLOUD_RUN_SAFE_UPLOAD_BYTES &&
+        (Platform.OS !== 'web' || ENABLE_WEB_DIRECT_VIDEO_UPLOAD);
+
+      if (shouldUseDirectVideoUpload) {
+        const { objectPath } = await uploadLargeVideoViaFirebase(preparedVideoFile, onProgress);
 
         const formData = new FormData();
         formData.append('storage_path', objectPath);
-        formData.append('caption', caption || '');
-        formData.append('source', 'camera_roll');
-        formData.append('community_level', community_level);
-        formData.append('category', category);
-        if (filterName) {
-          formData.append('filter_name', filterName);
-        }
-        if (mediaWidth) {
-          formData.append('media_width', String(mediaWidth));
-        }
-        if (mediaHeight) {
-          formData.append('media_height', String(mediaHeight));
-        }
-        if (cropOffsetX !== undefined) {
-          formData.append('crop_offset_x', String(cropOffsetX));
-        }
-        if (cropOffsetY !== undefined) {
-          formData.append('crop_offset_y', String(cropOffsetY));
-        }
-        if (originalWidth) {
-          formData.append('original_width', String(originalWidth));
-        }
-        if (originalHeight) {
-          formData.append('original_height', String(originalHeight));
-        }
+        appendPostUploadFields(formData, postFields);
 
         return api.post('/posts/upload-from-storage', formData, {
           timeout: 30 * 60 * 1000,
@@ -715,31 +784,8 @@ export const uploadUserPost = (
     }
 
     const formData = new FormData();
-    formData.append('caption', caption || '');
-    formData.append('community_level', community_level);
-    formData.append('category', category);
-    if (filterName) {
-      formData.append('filter_name', filterName);
-    }
-    if (mediaWidth) {
-      formData.append('media_width', String(mediaWidth));
-    }
-    if (mediaHeight) {
-      formData.append('media_height', String(mediaHeight));
-    }
-    if (cropOffsetX !== undefined) {
-      formData.append('crop_offset_x', String(cropOffsetX));
-    }
-    if (cropOffsetY !== undefined) {
-      formData.append('crop_offset_y', String(cropOffsetY));
-    }
-    if (originalWidth) {
-      formData.append('original_width', String(originalWidth));
-    }
-    if (originalHeight) {
-      formData.append('original_height', String(originalHeight));
-    }
-    await appendMultipartFile(formData, 'file', file);
+    appendPostUploadFields(formData, postFields);
+    await appendMultipartFile(formData, 'file', preparedVideoFile);
 
     try {
       return await api.post('/posts/upload', formData, {

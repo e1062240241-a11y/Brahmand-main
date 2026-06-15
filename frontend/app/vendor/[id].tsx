@@ -10,29 +10,29 @@ import {
   Image,
   BackHandler,
   ActivityIndicator,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, G } from 'react-native-svg';
+import { COLORS, SPACING } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { getUserProfile, sendDirectMessage, getVendor } from '../../src/services/api';
 import { formatDistance } from '../../src/utils/formatDistance';
 
-const TRUST_LABELS = {
-  trusted: { label: 'Trusted Vendor', color: COLORS.success, icon: 'shield-checkmark' },
-  frequent: { label: 'Frequently Used by Community', color: COLORS.info, icon: 'trending-up' },
-  verified_local: { label: 'Verified Local Business', color: COLORS.primary, icon: 'location' },
-};
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function VendorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const actionBarBottomInset = Math.max(insets.bottom, SPACING.sm);
-  const actionBarHeight = 64 + actionBarBottomInset;
-  const { vendors, fetchMyVendor } = useVendorStore();
+  
+  const { vendors } = useVendorStore();
   const { user } = useAuthStore();
   const [isSendingRequest, setIsSendingRequest] = React.useState(false);
   const [fetchedVendor, setFetchedVendor] = React.useState<any>(null);
@@ -107,38 +107,38 @@ export default function VendorProfileScreen() {
 
   if (vendorLoading) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top, justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={{ marginTop: SPACING.md, color: COLORS.textSecondary }}>Loading...</Text>
+      <View style={[styles.loadingContainer, { paddingTop: insets.top }]}>
+        <ActivityIndicator size="large" color="#FF6600" />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   if (!vendor) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.header}>
+      <View style={[styles.errorContainer, { paddingTop: insets.top }]}>
+        <View style={styles.errorHeader}>
           <TouchableOpacity onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+            <Ionicons name="arrow-back" size={24} color="#000" />
           </TouchableOpacity>
         </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="storefront-outline" size={48} color={COLORS.textLight} />
+        <View style={styles.errorContent}>
+          <Ionicons name="storefront-outline" size={48} color="#999" />
           <Text style={styles.errorText}>Vendor not found</Text>
         </View>
       </View>
     );
   }
 
-  const trustInfo = vendor.kyc_status === 'verified'
-    ? { label: 'Approved Vendor', color: COLORS.success, icon: 'shield-checkmark' }
-    : TRUST_LABELS.frequent;
-  const galleryImages = (vendor.business_gallery_images || vendor.photos || []).filter((photo: any) => !!photo);
+  const galleryImages = (vendor.business_gallery_images || vendor.photos || []).filter((photo: string) => !!photo);
   const vendorCategories = Array.isArray(vendor.categories) ? vendor.categories : [];
-  const menuItems = Array.isArray(vendor.menu_items) ? vendor.menu_items : [];
 
   const handleCall = () => {
-    Linking.openURL(`tel:${vendor.phone_number}`);
+    if (vendor.phone_number) {
+      Linking.openURL(`tel:${vendor.phone_number}`);
+    } else {
+      Alert.alert('No Phone', 'Phone number not available for this vendor.');
+    }
   };
 
   const notifyVendorOwner = async () => {
@@ -193,526 +193,513 @@ export default function VendorProfileScreen() {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {vendor.business_name}
-        </Text>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFFFFF', '#FFF8F0', '#FFF8F0']}
+      locations={[0, 0.0481, 0.2404, 0.6202, 1.0]}
+      style={styles.container}
+    >
+      <StatusBar style="light" backgroundColor="transparent" translucent={true} />
+      {/* Solid Header Screen */}
+      <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 10) }]}>
+        <View style={styles.headerLeftCol}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={26} color="#FFF" />
+          </TouchableOpacity>
+          <View style={styles.kycRow}>
+            <Text style={styles.kycVerifiedText}>KYC Verified</Text>
+            {vendor.kyc_status === 'verified' && (
+              <Ionicons name="shield-checkmark" size={16} color="#FF4005" style={{ marginLeft: 6 }} />
+            )}
+          </View>
+        </View>
+        
         <TouchableOpacity
-          style={styles.topCallButton}
+          style={styles.requestCallBtn}
           onPress={handleGetCall}
           disabled={isSendingRequest}
         >
-          <Text style={styles.topCallButtonText}>
-            {isSendingRequest ? 'Sending...' : 'Get call'}
+          <Text style={styles.requestCallBtnText}>
+            {isSendingRequest ? 'Sending...' : 'Request a Call Back'}
           </Text>
         </TouchableOpacity>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.coverPhoto}>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Banner Cover Photo */}
+        <View style={styles.bannerContainer}>
           {galleryImages.length > 0 ? (
-            <Image source={{ uri: galleryImages[0] }} style={styles.coverImage} />
+            <Image source={{ uri: galleryImages[0] }} style={styles.bannerImage} resizeMode="cover" />
           ) : (
-            <View style={styles.coverPlaceholder}>
-              <Ionicons name="storefront" size={60} color={COLORS.primary} />
+            <View style={styles.bannerPlaceholder}>
+              <Ionicons name="storefront" size={60} color="#FF6600" />
             </View>
           )}
         </View>
 
-        <View style={styles.infoSection}>
-          <View style={styles.headerNameRow}>
-            <Text style={styles.businessName}>{vendor.business_name}</Text>
-            {vendor.kyc_status === 'verified' && (
-              <Ionicons name="checkmark-circle" size={18} color={COLORS.info} style={styles.verifiedIcon} />
-            )}
-          </View>
+        {/* Business Title & Details */}
+        <View style={styles.titleSection}>
+          <Text style={styles.businessName}>{vendor.business_name}</Text>
           <Text style={styles.ownerName}>by {vendor.owner_name}</Text>
           
-          <View style={[styles.trustBadge, { backgroundColor: `${trustInfo.color ?? COLORS.text}15` }]}>
-            <Ionicons name={trustInfo.icon as any} size={16} color={trustInfo.color} />
-            <Text style={[styles.trustText, { color: trustInfo.color }]}>{trustInfo.label}</Text>
+          {/* Trust Badge */}
+          <View style={styles.communityBadge}>
+            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none" style={{ marginRight: 8 }}>
+              <Path
+                d="M8.66667 4.66602H14M14 4.66602V9.99935M14 4.66602L8.66667 9.99935L6 7.33268L2 11.3327"
+                stroke="#00E100"
+                strokeWidth={1.33333}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+            <Text style={styles.communityBadgeText}>Frequently Used by Community</Text>
           </View>
 
-          {vendor.years_in_business !== undefined && (
-            <View style={styles.metaRow}>
-              <Ionicons name="time" size={16} color={COLORS.textSecondary} />
-              <Text style={styles.metaText}>{vendor.years_in_business} years in business</Text>
-            </View>
-          )}
-
+          {/* Meta Info Row */}
           <View style={styles.metaRow}>
-            <Ionicons name="location" size={16} color={COLORS.textSecondary} />
-            <Text style={styles.metaText}>{formatDistance(vendor.distance)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Business Categories</Text>
-          <View style={styles.categoriesContainer}>
-            {vendorCategories.map((cat: any, index: number) => (
-              <View key={index} style={styles.categoryChip}>
-                <Text style={styles.categoryText}>{cat}</Text>
+            {vendor.years_in_business !== undefined && (
+              <View style={styles.metaItem}>
+                <Svg width={20} height={20} viewBox="0 0 20 20" fill="none" style={{ marginRight: 6 }}>
+                  <G opacity={0.7}>
+                    <Path
+                      d="M10.006 2.16016C3.97076 2.16016 0.198737 8.69349 3.21636 13.9202C6.23397 19.1468 13.778 19.1468 16.7956 13.9202C17.4837 12.7283 17.846 11.3764 17.846 10.0002C17.8414 5.67214 14.334 2.16473 10.006 2.16016ZM14.2275 10.6032H11.4617L13.4481 12.5889C13.7765 12.9173 13.6262 13.4782 13.1776 13.5984C12.9693 13.6542 12.7471 13.5947 12.5947 13.4422L9.57932 10.4268C9.25086 10.0987 9.40074 9.53812 9.84911 9.41771C9.90027 9.40398 9.95302 9.39704 10.006 9.39708H14.2275C14.6918 9.39708 14.9819 9.89964 14.7498 10.3017C14.6421 10.4883 14.443 10.6032 14.2275 10.6032Z"
+                      fill="black"
+                    />
+                  </G>
+                </Svg>
+                <Text style={styles.metaText}>{vendor.years_in_business} years in business</Text>
               </View>
-            ))}
+            )}
+            <View style={[styles.metaItem, vendor.years_in_business !== undefined && { marginTop: 8 }]}>
+              <Svg width={20} height={20} viewBox="0 0 20 20" fill="none" style={{ marginRight: 6 }}>
+                <G opacity={0.7}>
+                  <Path
+                    d="M9.99991 2.36328C6.5994 2.36714 3.8437 5.12284 3.83984 8.52334C3.83984 13.7944 9.4399 17.7753 9.67861 17.9419C9.87149 18.0771 10.1283 18.0771 10.3212 17.9419C10.5599 17.7753 16.16 13.7944 16.16 8.52334C16.1561 5.12284 13.4004 2.36714 9.99991 2.36328ZM9.99991 6.28332C11.7243 6.28332 12.802 8.15001 11.9398 9.64336C11.0776 11.1367 8.92218 11.1367 8.05999 9.64336C7.86339 9.30282 7.75988 8.91655 7.75988 8.52334C7.75988 7.28618 8.76274 6.28326 9.99991 6.28332Z"
+                    fill="black"
+                  />
+                </G>
+              </Svg>
+              <Text style={styles.metaText}>{formatDistance(vendor.distance)}</Text>
+            </View>
           </View>
         </View>
 
-        {galleryImages.length > 0 && (
+        {/* Business Categories Section */}
+        {vendorCategories.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Gallery</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {galleryImages.map((photo: any, index: number) => (
-                <Image key={index} source={{ uri: photo }} style={styles.galleryPhoto} />
+            <Text style={styles.categoriesTitle}>Business Categories</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsContainer}>
+              {vendorCategories.map((cat: string, index: number) => (
+                <View key={index} style={styles.categoryPill}>
+                  <Text style={styles.categoryPillText}>{cat}</Text>
+                </View>
               ))}
             </ScrollView>
           </View>
         )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Address</Text>
-          <Text style={styles.addressText}>{vendor.full_address}</Text>
-        </View>
-
-        {menuItems.length > 0 && (
+        {/* Gallery Section */}
+        {galleryImages.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Menu</Text>
-            {menuItems.map((item: any, index: number) => (
-              <Text key={`${item}-${index}`} style={styles.hoursText}>• {item}</Text>
-            ))}
+            <Text style={styles.sectionTitle}>Gallery</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryContainer}>
+              {galleryImages.map((photo: string, index: number) => (
+                <Image key={index} source={{ uri: photo }} style={styles.galleryPhoto} resizeMode="cover" />
+              ))}
+            </ScrollView>
           </View>
         )}
 
-        {!!vendor.business_hours && (
+        {/* Address Section */}
+        {vendor.full_address && (
           <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="time" size={18} color={COLORS.primary} />
-              <Text style={styles.sectionTitle}>Business Hours</Text>
-            </View>
-            <Text style={styles.descriptionText}>{vendor.business_hours}</Text>
+            <Text style={styles.sectionTitle}>Address</Text>
+            <Text style={styles.addressText}>{vendor.full_address}</Text>
           </View>
         )}
 
-        {!!vendor.offers && (
+        {/* Business Hours Section */}
+        {vendor.business_hours && (
           <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="pricetag" size={18} color={COLORS.warning} />
-              <Text style={styles.sectionTitle}>Offers & Deals</Text>
+            <View style={styles.sectionHeaderInline}>
+              <Ionicons name="time-outline" size={18} color="#FF6600" style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitleNoMargin}>Business Hours</Text>
             </View>
-            <Text style={styles.descriptionText}>{vendor.offers}</Text>
+            <View style={styles.scheduleStack}>
+              {vendor.business_hours.split(',').map((line: string, index: number) => (
+                <Text key={index} style={styles.scheduleLineText}>
+                  {line.trim()}
+                </Text>
+              ))}
+            </View>
           </View>
         )}
 
-        <View style={styles.deliverySection}>
-          {!!(vendor.offers_home_delivery || vendor.offers_cash_on_delivery) && (
-            <Text style={styles.sectionTitle}>Delivery Options</Text>
-          )}
-          {!!vendor.offers_home_delivery && (
-            <View style={styles.deliveryBadge}>
-              <Ionicons name="bicycle" size={16} color={COLORS.success} />
-              <Text style={styles.deliveryText}>Home Delivery</Text>
+        {/* Offers & Deals Section */}
+        {vendor.offers && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderInline}>
+              <Ionicons name="pricetag-outline" size={18} color="#FF6600" style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitleNoMargin}>Offers & Deals</Text>
             </View>
-          )}
-          {!!vendor.offers_cash_on_delivery && (
-            <View style={styles.deliveryBadge}>
-              <Ionicons name="cash" size={16} color={COLORS.success} />
-              <Text style={styles.deliveryText}>Cash on Delivery</Text>
-            </View>
-          )}
-        </View>
+            <Text style={styles.offerText}>{vendor.offers}</Text>
+          </View>
+        )}
 
-        {!!(vendor.website_link || vendor.social_media?.facebook || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
+        {/* Connect Section */}
+        {(vendor.website_link || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Connect</Text>
             
-            {!!vendor.website_link && (
-              <TouchableOpacity style={styles.socialRow} onPress={() => vendor.website_link && openExternalUrl(vendor.website_link)}>
-                <Ionicons name="globe" size={18} color={COLORS.primary} />
-                <Text style={styles.linkText}>{vendor.website_link}</Text>
+            {vendor.website_link && (
+              <TouchableOpacity style={styles.connectRow} onPress={() => vendor.website_link && openExternalUrl(vendor.website_link)}>
+                <Ionicons name="globe-outline" size={18} color="#FF6600" />
+                <Text style={styles.connectLinkText}>{vendor.website_link}</Text>
               </TouchableOpacity>
             )}
             
-            {!!vendor.social_media?.facebook && (
-              <TouchableOpacity style={styles.socialRow} onPress={() => vendor.social_media?.facebook && Linking.openURL(vendor.social_media.facebook)}>
-                <Ionicons name="logo-facebook" size={18} color="#1877F2" />
-                <Text style={styles.linkText}>Facebook</Text>
-              </TouchableOpacity>
-            )}
-            
-            {!!vendor.social_media?.instagram && (
-              <TouchableOpacity style={styles.socialRow} onPress={() => {
+            {vendor.social_media?.instagram && (
+              <TouchableOpacity style={styles.connectRow} onPress={() => {
                 const handle = vendor.social_media?.instagram?.replace('@', '');
                 Linking.openURL(`https://instagram.com/${handle}`);
               }}>
-                <Ionicons name="logo-instagram" size={18} color="#E4405F" />
-                <Text style={styles.linkText}>{vendor.social_media.instagram}</Text>
+                <Ionicons name="logo-instagram" size={18} color="#FF6600" />
+                <Text style={styles.connectLinkText}>{vendor.social_media.instagram}</Text>
               </TouchableOpacity>
             )}
             
-            {!!vendor.social_media?.whatsapp && (
-              <TouchableOpacity style={styles.socialRow} onPress={() => vendor.social_media?.whatsapp && Linking.openURL(`https://wa.me/${vendor.social_media.whatsapp}`)}>
-                <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
-                <Text style={styles.linkText}>WhatsApp</Text>
+            {vendor.social_media?.whatsapp && (
+              <TouchableOpacity style={styles.connectRow} onPress={() => vendor.social_media?.whatsapp && Linking.openURL(`https://wa.me/${vendor.social_media.whatsapp}`)}>
+                <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+                <Text style={styles.connectLinkText}>{vendor.social_media.whatsapp}</Text>
               </TouchableOpacity>
             )}
           </View>
         )}
 
-        {!!vendor.notes && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="document-text" size={18} color={COLORS.textSecondary} />
-              <Text style={styles.sectionTitle}>Additional Notes</Text>
-            </View>
-            <Text style={styles.descriptionText}>{vendor.notes}</Text>
-          </View>
-        )}
-
-        <View style={{ height: actionBarHeight + SPACING.lg }} />
+        {/* Spacing for floating bottom buttons */}
+        <View style={{ height: 80 }} />
       </ScrollView>
-      <View style={[styles.callButtonContainer, { paddingBottom: actionBarBottomInset }]}>
-        <TouchableOpacity style={styles.callActionButton} onPress={handleCall}>
-          <Ionicons name="call" size={20} color="#FFFFFF" />
+
+      {/* Floating Bottom Action Buttons */}
+      <View style={[styles.bottomButtonsWrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <TouchableOpacity style={styles.bottomButton} onPress={handleCall}>
+          <Ionicons name="call" size={18} color="#F26522" style={{ marginRight: 6 }} />
+          <Text style={styles.bottomButtonText}>Call</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={[styles.directionsActionButton, styles.flexAction]} onPress={handleDirections}>
-          <Ionicons name="navigate" size={20} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>Get Directions</Text>
+        <TouchableOpacity style={[styles.bottomButton, { marginLeft: 13 }]} onPress={handleDirections}>
+          <Ionicons name="navigate" size={18} color="#F26522" style={{ marginRight: 6 }} />
+          <Text style={styles.bottomButtonText}>Get Directions</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  topCallButton: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: BORDER_RADIUS.md,
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  topCallButtonText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
+  loadingText: {
+    marginTop: SPACING.md,
+    color: '#6B7280',
+    fontSize: 16,
   },
   errorContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  errorHeader: {
+    padding: 16,
+  },
+  errorContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   errorText: {
     fontSize: 16,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.md,
+    color: '#6B7280',
+    marginTop: 16,
   },
-  coverPhoto: {
-    height: 180,
-    backgroundColor: COLORS.surface,
-    overflow: 'hidden',
-  },
-  coverImage: {
-    width: '100%',
-    height: '100%',
-  },
-  coverPlaceholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: `${COLORS.primary}10`,
-  },
-  infoSection: {
-    backgroundColor: COLORS.surface,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  businessName: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: 4,
-  },
-  headerNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  verifiedIcon: {
-    marginLeft: 4,
-  },
-  ownerName: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.md,
-  },
-  trustBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: SPACING.md,
-  },
-  trustText: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-  },
-  metaText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginLeft: SPACING.sm,
-  },
-  section: {
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-  categoriesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  categoryChip: {
-    backgroundColor: `${COLORS.primary}15`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: 16,
-  },
-  categoryText: {
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: '500',
-  },
-  addressText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
-  },
-  galleryPhoto: {
-    width: 100,
-    height: 100,
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: COLORS.background,
-    marginRight: SPACING.sm,
-  },
-  hoursText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  offerSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF8E1',
-    padding: SPACING.md,
-    marginHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    gap: SPACING.sm,
-  },
-  menuHeader: {
+  headerContainer: {
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 14,
   },
-  menuIconButton: {
-    borderRadius: BORDER_RADIUS.md,
-    backgroundColor: `${COLORS.primary}20`,
-    padding: 8,
+  headerLeftCol: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  menuBox: {
-    backgroundColor: `${COLORS.secondary}10`,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.sm,
-  },
-  menuBoxText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-  },
-  menuUploadButton: {
-    marginTop: SPACING.sm,
-    backgroundColor: COLORS.primary,
-    alignSelf: 'stretch',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.sm,
+  backButton: {
+    marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  menuUploadButtonText: {
+  kycRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  kycVerifiedText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
-  detectedItemsContainer: {
-    marginTop: SPACING.sm,
+  requestCallBtn: {
+    backgroundColor: '#FF6600',
+    width: 152,
+    height: 35,
+    borderRadius: 17.5,
+    paddingTop: 10,
+    paddingRight: 16,
+    paddingBottom: 9,
+    paddingLeft: 17,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+    shadowColor: '#FF6600',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
-  detectedItemsTitle: {
+  requestCallBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 16,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  bannerContainer: {
+    width: 393,
+    height: 219,
+    flexShrink: 0,
+    backgroundColor: '#F3F4F6',
+  },
+  bannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerPlaceholder: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFEFE5',
+  },
+  titleSection: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    backgroundColor: 'transparent',
+  },
+  businessName: {
+    fontSize: 30,
+    fontWeight: '700',
+    color: '#000000',
+    lineHeight: 36,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  ownerName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#6B7280',
+    lineHeight: 24,
+    marginTop: 4,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  communityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E6FFEB',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 9999,
+    marginTop: 12,
+  },
+  communityBadgeText: {
     fontSize: 14,
     fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
+    color: '#00E100',
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
-  detectedItemText: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
+  metaRow: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    marginTop: 12,
   },
-  saveButton: {
-    marginTop: SPACING.sm,
-    backgroundColor: COLORS.success,
-    alignSelf: 'stretch',
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.sm,
-    justifyContent: 'center',
+  metaItem: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
+  metaText: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '500',
+    lineHeight: 20,
+    marginLeft: 6,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
-  disabledButton: {
-    opacity: 0.6,
+  section: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  categoriesTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    lineHeight: 28,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+    lineHeight: 28,
+    marginBottom: 12,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  sectionTitleNoMargin: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+    lineHeight: 28,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  sectionHeaderInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pillsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  categoryPill: {
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 9999,
+  },
+  categoryPillText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF6B00',
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  galleryContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  galleryPhoto: {
+    width: 128,
+    height: 176,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  addressText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#4B5563',
+    lineHeight: 26,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  scheduleStack: {
+    flexDirection: 'column',
+    gap: 4,
+  },
+  scheduleLineText: {
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#4B5563',
+    lineHeight: 24,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
   offerText: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.warning,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#4B5563',
+    lineHeight: 24,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
-  callButtonContainer: {
+  connectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 45,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    paddingVertical: 12,
+  },
+  connectLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FF6600',
+    lineHeight: 20,
+    marginLeft: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  bottomButtonsWrapper: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    minHeight: 64,
-    paddingHorizontal: SPACING.md,
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFF8F0',
     borderTopWidth: 1,
-    borderColor: COLORS.divider,
+    borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  bottomButton: {
+    width: 174,
+    height: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: SPACING.sm,
-    shadowColor: '#000000',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
   },
-  flexAction: {
-    flex: 1,
-  },
-  callActionButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.success,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  directionsActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.info,
-    minHeight: 48,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    gap: SPACING.sm,
-  },
-  callButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.success,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    gap: SPACING.sm,
-  },
-  callButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
-  },
-  deliverySection: {
-    marginHorizontal: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  deliveryBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: `${COLORS.success}15`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.sm,
-  },
-  deliveryText: {
-    fontSize: 14,
-    color: COLORS.success,
-    fontWeight: '500',
-  },
-  socialRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
-  },
-  linkText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    flex: 1,
+  bottomButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#F26522',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 });

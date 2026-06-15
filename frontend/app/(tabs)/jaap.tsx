@@ -29,7 +29,7 @@ import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurre
 import api from '../../src/services/api';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { Svg, Path } from 'react-native-svg';
+import { Svg, Path, G, Defs, ClipPath, Rect } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -88,10 +88,11 @@ const UPCOMING_SESSIONS = [
 const UPCOMING_JAAPS = [
   {
     id: 'uj1',
-    title: 'Ganesh Aarti',
-    titleHi: 'गणेश आरती',
+    title: 'Ganesh Jaap',
+    titleHi: 'गणेश जाप',
     mantraType: 'ganesh_aarti',
     image: require('../../assets/images/upcoming_ganesh.jpg'),
+    allowedDays: [3], // Wednesday
   },
   {
     id: 'uj2',
@@ -99,6 +100,7 @@ const UPCOMING_JAAPS = [
     titleHi: 'शनि चालीसा',
     mantraType: 'shani_chalisa',
     image: require('../../assets/images/upcoming_shani.jpg'),
+    allowedDays: [6], // Saturday
   },
   {
     id: 'uj3',
@@ -106,6 +108,7 @@ const UPCOMING_JAAPS = [
     titleHi: 'शिव मंत्र',
     mantraType: 'shiva',
     image: require('../../assets/images/upcoming_shiva.jpg'),
+    allowedDays: [1], // Monday
   },
   {
     id: 'uj4',
@@ -113,6 +116,7 @@ const UPCOMING_JAAPS = [
     titleHi: 'गंगा मंत्र',
     mantraType: 'ganga',
     image: require('../../assets/images/upcoming_ganga.jpg'),
+    allowedDays: [0], // Sunday
   },
   {
     id: 'uj5',
@@ -120,6 +124,7 @@ const UPCOMING_JAAPS = [
     titleHi: 'राधा रानी जाप',
     mantraType: 'radha_rani',
     image: require('../../assets/images/upcoming_radha_rani.png'),
+    allowedDays: [5], // Friday
   },
   {
     id: 'uj6',
@@ -127,6 +132,7 @@ const UPCOMING_JAAPS = [
     titleHi: 'दुर्गा सप्तशती',
     mantraType: 'durga',
     image: require('../../assets/images/upcoming_durga.png'),
+    allowedDays: [2], // Tuesday
   },
 ];
 
@@ -142,6 +148,34 @@ const getMantraRoomName = (id: string) => {
   return 'jaap_gayatri';
 };
 
+const getDayName = (day: number, lang: string) => {
+  const daysEn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const daysHi = ['रविवार', 'सोमवार', 'मंगलवार', 'बुधवार', 'गुरुवार', 'शुक्रवार', 'शनिवार'];
+  return lang === 'hi' ? daysHi[day] : daysEn[day];
+};
+
+const getDayNameShort = (day: number, lang: string) => {
+  const daysEn = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysHi = ['रवि', 'सोम', 'मंगल', 'बुध', 'गुरु', 'शुक्र', 'शनि'];
+  return lang === 'hi' ? daysHi[day] : daysEn[day];
+};
+
+const BellIconSvg = ({ active, size = 13 }: { active: boolean; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <G clipPath="url(#bellClip)">
+      <Path
+        d="M14.7199 4.48486C14.6031 4.54595 14.4732 4.57778 14.3413 4.57762C14.0331 4.57814 13.7503 4.40665 13.6082 4.13307C13.107 3.13993 12.3475 2.30018 11.4095 1.70213C10.8632 1.37905 10.8715 0.585705 11.4244 0.274111C11.6959 0.121148 12.0303 0.134267 12.289 0.308017C13.473 1.0647 14.4344 2.12285 15.0745 3.37383C15.2834 3.77853 15.1247 4.27602 14.7199 4.48486ZM2.39069 4.13307C2.89187 3.13993 3.65139 2.30018 4.5894 1.70213C5.1417 1.38936 5.14831 0.596005 4.60129 0.27408C4.32368 0.110698 3.97634 0.123955 3.71198 0.308017C2.52791 1.0647 1.56653 2.12285 0.9265 3.37383C0.717213 3.77799 0.874982 4.27527 1.27898 4.48486C1.39581 4.54595 1.52573 4.57778 1.65757 4.57762C1.96583 4.57814 2.24864 4.40665 2.39069 4.13307ZM14.3125 10.8906C14.9535 11.7321 14.4433 12.952 13.394 13.0864C13.3367 13.0938 13.2791 13.0975 13.2214 13.0976H11.0096C10.7936 15.4148 8.15007 16.6292 6.25132 15.2835C5.53205 14.7737 5.07113 13.9754 4.98929 13.0976H2.77753C1.71968 13.0976 1.05848 11.9525 1.58737 11.0364C1.61657 10.9858 1.64897 10.9371 1.68436 10.8906C2.17701 10.2496 2.76516 9.0616 2.77547 7.04704C2.77706 3.02641 7.1305 0.515236 10.6117 2.52692C12.2273 3.46055 13.2221 5.18518 13.2214 7.05116C13.2317 9.0616 13.8198 10.2496 14.3125 10.8906ZM9.34615 13.0976H6.65274C6.86325 14.1343 8.11707 14.5543 8.90963 13.8537C9.13345 13.6558 9.2867 13.3904 9.34615 13.0976ZM12.6951 11.4486C12.1344 10.5553 11.5826 9.14199 11.5723 7.05528C11.5739 4.30487 8.59751 2.58414 6.21479 3.95797C5.10896 4.59557 4.42729 5.77469 4.42656 7.05116C4.41625 9.1413 3.86451 10.5553 3.30384 11.4486H12.6951Z"
+        fill={active ? "#FFF" : "#FF7B00"}
+      />
+    </G>
+    <Defs>
+      <ClipPath id="bellClip">
+        <Rect width={16} height={16} fill="white" />
+      </ClipPath>
+    </Defs>
+  </Svg>
+);
+
 export default function JaapLandingScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -155,7 +189,13 @@ export default function JaapLandingScreen() {
   const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
   const [sessionReminders, setSessionReminders] = useState<Record<string, boolean>>({});
-  const [activeCounts, setActiveCounts] = useState<Record<string, number>>({});
+  const [activeCounts, setActiveCounts] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach(room => {
+      initial[room] = Math.floor(Math.random() * 17) + 2;
+    });
+    return initial;
+  });
 
   useEffect(() => {
     if (!isFocused || activeSection !== 'jaap') return;
@@ -167,7 +207,13 @@ export default function JaapLandingScreen() {
           params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }
         });
         if (active && response && response.data) {
-          setActiveCounts(response.data);
+          const sanitizedData: Record<string, number> = {};
+          Object.keys(response.data).forEach((key) => {
+            const realCount = response.data[key] || 0;
+            // If count is > 10, show count * 18, else show randomized count (2 to 18) directly
+            sanitizedData[key] = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+          });
+          setActiveCounts(sanitizedData);
         }
       } catch (error) {
         console.warn('Error fetching active jaap counts:', error);
@@ -262,14 +308,14 @@ export default function JaapLandingScreen() {
         else if (mantraType === 'gayatri') readableMantra = 'गायत्री मंत्र';
         else if (mantraType === 'ganesh') readableMantra = 'गणेश मंत्र';
         else if (mantraType === 'laxmi') readableMantra = 'लक्ष्मी मंत्र';
-        else if (mantraType === 'ganesh_aarti') readableMantra = 'गणेश आरती';
+        else if (mantraType === 'ganesh_aarti') readableMantra = 'गणेश जाप';
         else if (mantraType === 'shani_chalisa') readableMantra = 'शनि चालीसा';
         else if (mantraType === 'ganga') readableMantra = 'गंगा मंत्र';
         else if (mantraType === 'durga') readableMantra = 'दुर्गा सप्तशती';
         else if (mantraType === 'radha_rani') readableMantra = 'राधा रानी जाप';
         else readableMantra = `${mantraType} जाप`;
       } else {
-        if (mantraType === 'ganesh_aarti') readableMantra = 'Ganesh Aarti';
+        if (mantraType === 'ganesh_aarti') readableMantra = 'Ganesh Jaap';
         else if (mantraType === 'shani_chalisa') readableMantra = 'Shani Chalisa';
         else if (mantraType === 'ganga') readableMantra = 'Ganga Mantra';
         else if (mantraType === 'durga') readableMantra = 'Durga Saptashati';
@@ -300,6 +346,20 @@ export default function JaapLandingScreen() {
   };
 
   const handleUpcomingCardPress = (jaap: any) => {
+    const currentDay = now.getDay();
+    if (jaap.allowedDays && !jaap.allowedDays.includes(currentDay)) {
+      const dayName = getDayName(jaap.allowedDays[0], t('language'));
+      const title = t('language') === 'hi' ? jaap.titleHi : jaap.title;
+      const msg = t('language') === 'hi'
+        ? `${title} केवल ${dayName} को ही उपलब्ध है।`
+        : `${title} is only accessible on ${dayName}.`;
+      Alert.alert(
+        t('language') === 'hi' ? 'आगामी जाप' : 'Upcoming Jaap',
+        msg
+      );
+      return;
+    }
+
     router.push({
       pathname: '/live-jaap-welcome',
       params: {
@@ -705,16 +765,18 @@ export default function JaapLandingScreen() {
                     />
                     <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.jaapCardOverlayExact}>
                       <View style={styles.jaapCardTopRow}>
-                        <View style={[styles.exactLiveBadge, (!showLive) && styles.mockupScheduledBadge]}>
-                          <Ionicons name="radio" size={12} color="#FFF" style={{ marginRight: 4 }} />
-                          <Text style={styles.exactLiveText}>{liveLabel}</Text>
+                        <View style={[styles.exactLiveBadge, (!showLive) && styles.mockupScheduledBadge, { maxWidth: showLive ? '65%' : '100%', paddingHorizontal: 8 }]}>
+                          <Ionicons name={showLive ? "radio" : "time-outline"} size={10} color="#FFF" style={{ marginRight: 3 }} />
+                          <Text style={[styles.exactLiveText, { flexShrink: 1 }]} numberOfLines={1} adjustsFontSizeToFit>{liveLabel}</Text>
                         </View>
-                        <View style={styles.exactCountBadge}>
-                          <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
-                          <Text style={styles.exactCountText}>
-                            {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
-                          </Text>
-                        </View>
+                        {showLive && (
+                          <View style={styles.exactCountBadge}>
+                            <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
+                            <Text style={styles.exactCountText}>
+                              {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     <View style={styles.jaapCardBottomArea}>
                       <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
@@ -783,11 +845,20 @@ export default function JaapLandingScreen() {
                         style={StyleSheet.absoluteFillObject}
                       />
                       
+                      {/* Day Badge */}
+                      {jaap.allowedDays && jaap.allowedDays.includes(now.getDay()) && (
+                        <View style={[styles.upcomingDayBadge, styles.upcomingDayBadgeActive]}>
+                          <Text style={styles.upcomingDayBadgeText}>
+                            {t('language') === 'hi' ? 'आज' : 'TODAY'}
+                          </Text>
+                        </View>
+                      )}
+
                       <View style={styles.upcomingCardContent}>
                         <Text style={styles.upcomingCardTitle} numberOfLines={2}>
                           {displayName}
                         </Text>
-                        
+
                         <TouchableOpacity
                           style={[
                             styles.upcomingReminderBtn,
@@ -796,17 +867,13 @@ export default function JaapLandingScreen() {
                           activeOpacity={0.8}
                           onPress={() => handleSetReminder(jaap.id, jaap.mantraType, jaap.title)}
                         >
-                          <Ionicons 
-                            name={isReminderActive ? "notifications" : "notifications-outline"} 
-                            size={13} 
-                            color={isReminderActive ? "#FFF" : "#FF7B00"} 
-                          />
                           <Text style={[
                             styles.upcomingReminderBtnText,
                             isReminderActive && styles.upcomingReminderBtnTextActive
                           ]} numberOfLines={1}>
                             {t('reminder')}
                           </Text>
+                          <BellIconSvg active={isReminderActive} />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -1221,7 +1288,7 @@ const styles = StyleSheet.create({
   mockupOmCircle: { backgroundColor: 'rgba(255,255,255,0.2)', width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
   mockupOmIcon: { color: '#FFF', fontSize: 18, fontWeight: '900' },
   mockupWaveformBox: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row' },
-  sectionHeaderParity: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginTop: 24, marginBottom: 16 },
+  sectionHeaderParity: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 25, marginTop: 4, marginBottom: 6 },
   viewAllBtnRefined: { paddingHorizontal: 10, paddingVertical: 5 },
   viewAllPillBtn: {
     borderRadius: 20,
@@ -1375,7 +1442,7 @@ const styles = StyleSheet.create({
   templeSearchSection: { paddingHorizontal: 20, marginBottom: 15 },
   templeSearchBarWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF8F0', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: '#F5E0C3' },
   templeSearchInputField: { flex: 1, fontSize: 14, color: '#2D1400', fontWeight: '600' },
-  templeCatPillsRow: { marginBottom: 15 },
+  templeCatPillsRow: { marginBottom: 12 },
   templeCatPill: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 20, backgroundColor: '#FFF', marginRight: 10, borderWidth: 1, borderColor: '#F5E0C3' },
   templeCatPillActive: { backgroundColor: '#FF6600', borderColor: '#FF6600' },
   templeCatPillText: { fontSize: 13, fontWeight: '700', color: '#8B4513' },
@@ -1393,7 +1460,7 @@ const styles = StyleSheet.create({
   noTemplesFound: { alignItems: 'center', marginTop: 60, gap: 15 },
   noTemplesText: { fontSize: 16, color: '#8B4513', fontWeight: '700', opacity: 0.5 },
 
-  newTempleSearchSection: { paddingHorizontal: 16, marginTop: 20, marginBottom: 15, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  newTempleSearchSection: { paddingHorizontal: 16, marginTop: 12, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
   newTempleSearchBarWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 25, paddingHorizontal: 16, height: 46, borderWidth: 1, borderColor: '#CCC' },
   newTempleSearchInput: { flex: 1, fontSize: 14, color: '#333', fontFamily: 'Inter_500Medium' },
   filterIconBtn: { padding: 4 },
@@ -1430,7 +1497,9 @@ const styles = StyleSheet.create({
   },
   upcomingCardTitle: {
     color: '#FFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
     fontSize: 13,
+    fontStyle: 'normal',
     fontWeight: '700',
     marginBottom: 6,
     textShadowColor: 'rgba(0,0,0,0.5)',
@@ -1463,5 +1532,24 @@ const styles = StyleSheet.create({
   },
   upcomingReminderBtnTextActive: {
     color: '#FFF',
+  },
+  upcomingDayBadge: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    zIndex: 10,
+  },
+  upcomingDayBadgeActive: {
+    backgroundColor: '#FF6600',
+  },
+  upcomingDayBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
 });

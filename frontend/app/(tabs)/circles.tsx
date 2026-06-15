@@ -59,7 +59,7 @@ export default function CirclesScreen() {
         <View style={styles.circleMeta}>
           <View style={styles.memberCount}>
             <Ionicons name="people" size={14} color={COLORS.textSecondary} />
-            <Text style={styles.memberText}>{item.member_count} members</Text>
+            <Text style={styles.memberText}>{(item.member_count || (item as any).members_count || 0)} members</Text>
           </View>
           <View style={styles.privacyIndicator}>
             <Ionicons 

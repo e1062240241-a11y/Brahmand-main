@@ -190,7 +190,8 @@ export default function VendorScreen() {
     fetchVendors, 
     fetchMyVendor,
     fetchCategories,
-    createVendor 
+    createVendor,
+    uploadBusinessImage
   } = useVendorStore();
   const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
   
@@ -658,6 +659,18 @@ export default function VendorScreen() {
       });
       
       console.log('Vendor registration response:', JSON.stringify(newVendor, null, 2));
+
+      // Upload selected photos if present!
+      if (data.photos && data.photos.length > 0) {
+        for (let i = 0; i < data.photos.length; i++) {
+          const photo = data.photos[i];
+          try {
+            await uploadBusinessImage(newVendor.id, i, photo);
+          } catch (uploadErr) {
+            console.warn(`Failed to upload photo at slot ${i}:`, uploadErr);
+          }
+        }
+      }
       
       // Close modal immediately so UI feels fast
       setShowRegistrationModal(false);
@@ -668,52 +681,7 @@ export default function VendorScreen() {
         userLocation ? fetchVendors(userLocation) : fetchVendors()
       ]).catch(err => console.warn('Background fetch error:', err));
       
-      const targetCategory = data.categories && data.categories[0];
-      const kycStatus = newVendor?.kyc_status;
-
-      if (kycStatus === 'verified' || hasVerifiedKyc) {
-        Alert.alert(
-          localT('approvedTitle'), 
-          localT('approvedMsg'),
-          [
-            {
-              text: localT('goDashboard'),
-              onPress: () => {
-                if (targetCategory) {
-                  router.push(`/vendor/category/${targetCategory}` as any);
-                } else {
-                  router.push('/vendor/dashboard');
-                }
-              }
-            }
-          ]
-        );
-      } else {
-        // Show KYC modal for verification
-        Alert.alert(
-          localT('regCompleteTitle'), 
-          localT('regCompleteMsg'),
-          [
-            { 
-              text: localT('later'), 
-              style: 'cancel',
-              onPress: () => {
-                if (targetCategory) {
-                  router.push(`/vendor/category/${targetCategory}` as any);
-                } else {
-                  router.push('/vendor/dashboard');
-                }
-              }
-            },
-            { 
-              text: localT('completeKyc'), 
-              onPress: () => {
-                router.push('/kyc');
-              }
-            }
-          ]
-        );
-      }
+      router.push('/kyc');
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);
       throw error;
@@ -1227,17 +1195,6 @@ export default function VendorScreen() {
             </View>
           </View>
 
-
-          {/* Create button */}
-          {activeSection === 'Services' && !myVendor && (
-            <TouchableOpacity 
-              style={[styles.registerButton, { marginHorizontal: 24, marginTop: 56 }]}
-              onPress={() => setShowRegistrationModal(true)}
-            >
-              <Ionicons name="add-circle" size={20} color={COLORS.primary} />
-              <Text style={styles.registerText}>{localT('registerYourService')}</Text>
-            </TouchableOpacity>
-          )}
         </ScrollView>
       ) : (
         <View style={{ flex: 1 }}>

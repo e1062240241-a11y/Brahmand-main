@@ -8987,9 +8987,12 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
 
-    # Allow any registered vendor owner to update their business profile
-    # before/during KYC so they can fully build their profile.
+    user = await db.get_document('users', user_id)
+    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
+    vendor_verified = vendor.get('kyc_status') == 'verified'
 
+    if not (vendor_verified or user_verified):
+        raise HTTPException(status_code=403, detail="Business profile updates are allowed only for approved vendors")
 
     menu_items = data.get('menu_items')
     offers_home_delivery = data.get('offers_home_delivery')
@@ -9080,9 +9083,12 @@ async def upload_vendor_business_image(
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can upload business images")
 
-    # Allow any registered vendor owner to upload business images
-    # before/during KYC so they can showcase their store.
+    user = await db.get_document('users', user_id)
+    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
+    vendor_verified = vendor.get('kyc_status') == 'verified'
 
+    if not (vendor_verified or user_verified):
+        raise HTTPException(status_code=403, detail="Business images can be uploaded only for approved vendors")
 
     if slot < 0 or slot > 4:
         raise HTTPException(status_code=400, detail="slot must be between 0 and 4")

@@ -39,6 +39,7 @@ interface CommunityRequest {
   created_at: string;
   location: string;
   user_name?: string;
+  user?: { name?: string; photo?: string; is_verified?: boolean };
   support_needed?: string;
   user_id?: string;
 }
@@ -413,6 +414,8 @@ export default function ActiveRequestsList() {
     const theme = getRequestTheme(item);
     const urgency = getUrgencyBadgeStyle(item.urgency_level);
     const isResolved = item.status === 'resolved';
+    const ownerName = item.user_name || item.user?.name || 'Requester';
+    const requestTypeLabel = item.request_type ? String(item.request_type).toUpperCase() : 'REQUEST';
 
     return (
       <TouchableOpacity
@@ -424,6 +427,21 @@ export default function ActiveRequestsList() {
         activeOpacity={0.9}
         onPress={() => setSelectedRequest(item)}
       >
+        <View style={[styles.requesterHeader, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
+          <View style={{ marginLeft: 10, flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={{ fontSize: 15, fontWeight: 'bold', color: '#111' }} numberOfLines={1}>{ownerName}</Text>
+              {item.user?.is_verified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}>
+                @{ownerName.replace(/\s+/g, '').toLowerCase()}
+              </Text>
+              <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}> · {getTimeAgo(item.created_at)}</Text>
+            </View>
+            <Text style={styles.requesterRole} numberOfLines={1}>{requestTypeLabel}</Text>
+          </View>
+        </View>
+
         <View style={styles.cardHeader}>
           <View style={[styles.iconWrapper, { backgroundColor: isResolved ? '#10B98115' : theme.iconColor + '15' }]}>
             <MaterialCommunityIcons 
@@ -925,6 +943,31 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 4,
     flex: 1,
+  },
+  requesterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  requesterMeta: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  requesterName: {
+    fontSize: 15,
+    fontFamily: FONTS.bold,
+    color: '#0F172A',
+  },
+  requesterRole: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  requesterTime: {
+    fontSize: 12,
+    color: '#64748B',
+    marginLeft: 12,
   },
   viewBtn: {
     borderWidth: 1.5,

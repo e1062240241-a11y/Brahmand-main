@@ -9,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 const ACTIVE_ORANGE = '#FF8A00';
 const INACTIVE_COLOR = '#FFFFFF';
 const CAPSULE_BG = '#1C1C1C';
-const BORDER_COLOR = '#CECECE';
 
 const HIDDEN_ROUTES = new Set(['index', 'temple', 'circles', 'jobs', 'discover']);
 
@@ -78,8 +77,6 @@ const getBackgroundRects = (activeIndex: number) => {
   const L_active = centerX - tabWidth / 2;
   const R_active = centerX + tabWidth / 2;
 
-  const BORDER_COLOR_VAL = '#FFFFFF';
-
   const rects = [];
 
   // Left Inactive Group
@@ -87,7 +84,7 @@ const getBackgroundRects = (activeIndex: number) => {
     const x = 0.75;
     const w = L_active - GAP - x;
     rects.push(
-      <Rect key="left" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
+      <Rect key="left" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} />
     );
   }
 
@@ -96,7 +93,7 @@ const getBackgroundRects = (activeIndex: number) => {
     const x = R_active + GAP;
     const w = 373 - 0.75 - x;
     rects.push(
-      <Rect key="right" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
+      <Rect key="right" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} />
     );
   }
 
@@ -104,7 +101,7 @@ const getBackgroundRects = (activeIndex: number) => {
   const activeX = Math.max(0.75, L_active);
   const activeW = Math.min(373 - 0.75, R_active) - activeX;
   rects.push(
-    <Rect key="active" x={activeX} y={0.75} width={activeW} height={67.5} rx={33.75} fill={CAPSULE_BG} stroke={BORDER_COLOR_VAL} strokeWidth={1.5} />
+    <Rect key="active" x={activeX} y={0.75} width={activeW} height={67.5} rx={33.75} fill={CAPSULE_BG} />
   );
 
   return rects;

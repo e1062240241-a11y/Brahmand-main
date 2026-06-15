@@ -319,12 +319,13 @@ function MessagesScreen({
 
   const getCommunityFigmaDetails = (item: Community) => {
     const nameLower = (item.name || '').toLowerCase();
+    const count = item.member_count || (item as any).members_count || (item as any).memberCount || 0;
 
     if (nameLower.includes('mumbai') || item.type === 'city') {
       return {
         label: t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY',
         name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
-        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '13K सदस्य' : '13K members'),
+        memberCount: count ? `${formatMemberCount(count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '0 सदस्य' : '0 members'),
         avatarBadge: '+8',
         iconBg: '#FFFFFF',
         iconColor: '#9F45FF',
@@ -336,7 +337,7 @@ function MessagesScreen({
       return {
         label: t('language') === 'hi' ? 'राज्य समुदाय' : 'STATE COMMUNITY',
         name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
-        memberCount: t('language') === 'hi' ? '14K सदस्य' : '14K members',
+        memberCount: count ? `${formatMemberCount(count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '0 सदस्य' : '0 members'),
         avatarBadge: '+9',
         iconBg: 'transparent',
         iconColor: '#FF9500',
@@ -348,7 +349,7 @@ function MessagesScreen({
       return {
         label: t('language') === 'hi' ? 'राष्ट्रीय समुदाय' : 'NATIONAL COMMUNITY',
         name: t('language') === 'hi' ? 'भारत समुदाय' : (item.name || 'Bharat Community'),
-        memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '14K सदस्य' : '14K members'),
+        memberCount: count ? `${formatMemberCount(count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '0 सदस्य' : '0 members'),
         avatarBadge: '+2',
         iconBg: 'transparent',
         iconColor: '#FF9500',
@@ -359,7 +360,7 @@ function MessagesScreen({
     return {
       label: item.type === 'city' ? (t('language') === 'hi' ? 'शहर समुदाय' : 'CITY COMMUNITY') : item.type === 'state' ? (t('language') === 'hi' ? 'राज्य समुदाय' : 'STATE COMMUNITY') : (t('language') === 'hi' ? 'राष्ट्रीय समुदाय' : 'NATIONAL COMMUNITY'),
       name: item.name,
-      memberCount: item.member_count ? `${formatMemberCount(item.member_count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '1.2K सदस्य' : '1.2K members'),
+      memberCount: count ? `${formatMemberCount(count)} ${t('language') === 'hi' ? 'सदस्य' : 'members'}` : (t('language') === 'hi' ? '0 सदस्य' : '0 members'),
       avatarBadge: '+5',
       iconBg: 'transparent',
       iconColor: item.type === 'city' ? '#9F45FF' : '#FF9500',
@@ -686,19 +687,19 @@ function MessagesScreen({
       id: 'mumbai-fallback',
       name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
       type: 'city',
-      member_count: 13000,
+      member_count: 0,
     };
     const fallbackState: Community = {
       id: 'maharashtra-fallback',
       name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
       type: 'state',
-      member_count: 14000,
+      member_count: 0,
     };
     const fallbackNational: Community = {
       id: 'bharat-fallback',
       name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
       type: 'country',
-      member_count: 14000,
+      member_count: 0,
     };
     const cityItem = city || fallbackCity;
     const stateItem = state || fallbackState;
@@ -1048,7 +1049,7 @@ function MessagesScreen({
 
         <View style={styles.localCommContent}>
           <Text style={styles.localCommName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.localCommMembers}>{item.member_count} members</Text>
+          <Text style={styles.localCommMembers}>{(item.member_count || (item as any).members_count || (item as any).memberCount || 0)} members</Text>
         </View>
 
         <View style={{ alignItems: 'flex-end', gap: 4 }}>

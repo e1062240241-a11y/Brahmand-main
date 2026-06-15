@@ -183,7 +183,8 @@ function useDeepLinkHandler() {
         } else {
           // Custom scheme: sanatanlok://some/path
           const parsed = ExpoLinking.parse(raw);
-          let pathWithQuery = parsed.path ? `/${parsed.path}` : '';
+          const parsedPath = parsed.path ? String(parsed.path).replace(/^\/+/, '') : '';
+          let pathWithQuery = parsedPath ? `/${parsedPath}` : '';
           const queryParams = parsed.queryParams;
           if (queryParams && Object.keys(queryParams).length > 0) {
             const searchParams = new URLSearchParams();
@@ -197,7 +198,7 @@ function useDeepLinkHandler() {
               pathWithQuery += `?${searchStr}`;
             }
           }
-          path = pathWithQuery || null;
+          path = pathWithQuery ? pathWithQuery.replace(/\/\/+/, '/') : null;
         }
 
         if (!path || path === '/') return;
@@ -576,25 +577,6 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS !== 'android') return;
 
-    const configureAndroidBars = async () => {
-      try {
-        const NavigationBar = require('expo-navigation-bar');
-        const SystemUI = require('expo-system-ui');
-        // Keep Android system surfaces stable; repeated transparent bar color changes can make
-        // low-end devices flicker between black and white during animations/modals.
-        await (SystemUI as any).setBackgroundColorAsync('#FFF4ED');
-        await (NavigationBar as any).setBackgroundColorAsync('#000000');
-        await (NavigationBar as any).setButtonStyleAsync('light');
-        await (NavigationBar as any).setVisibilityAsync('visible');
-        await (NavigationBar as any).setBehaviorAsync('inset-touch');
-
-      } catch (error) {
-        console.warn('[Bars] Error configuring system bars:', error);
-      }
-    };
-
-    configureAndroidBars();
-  }, []);
 
   useEffect(() => {
     initSyncQueueListener();
@@ -738,7 +720,7 @@ export default function RootLayout() {
                 key="community-request/blood"
                 name="community-request/blood"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -746,7 +728,7 @@ export default function RootLayout() {
                 key="community-request/food"
                 name="community-request/food"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -754,7 +736,7 @@ export default function RootLayout() {
                 key="community-request/gau-seva"
                 name="community-request/gau-seva"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -762,7 +744,7 @@ export default function RootLayout() {
                 key="community-request/animal-care"
                 name="community-request/animal-care"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -770,7 +752,7 @@ export default function RootLayout() {
                 key="community-request/temple-help"
                 name="community-request/temple-help"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -778,7 +760,7 @@ export default function RootLayout() {
                 key="community-request/emergency"
                 name="community-request/emergency"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -786,7 +768,7 @@ export default function RootLayout() {
                 key="community-request/other"
                 name="community-request/other"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -794,7 +776,7 @@ export default function RootLayout() {
                 key="sos"
                 name="sos"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -802,7 +784,7 @@ export default function RootLayout() {
                 key="kyc-submit"
                 name="kyc-submit"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -810,7 +792,7 @@ export default function RootLayout() {
                 key="live-jaap-welcome"
                 name="live-jaap-welcome"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -818,7 +800,7 @@ export default function RootLayout() {
                 key="circle/create"
                 name="circle/create"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />
@@ -826,7 +808,7 @@ export default function RootLayout() {
                 key="community/create"
                 name="community/create"
                 options={{
-                  animation: 'slide_from_bottom',
+                  animation: 'slide_from_right',
                   gestureDirection: 'vertical'
                 }}
               />

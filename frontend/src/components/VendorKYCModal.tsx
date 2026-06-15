@@ -18,6 +18,7 @@ import {
 } from '../services/api';
 import { useVendorStore } from '../store/vendorStore';
 import { useAuthStore } from '../store/authStore';
+import { uploadFileToFirebase } from '../services/firebase/storageService';
 
 let TextRecognition: typeof import('expo-text-recognition') | null = null;
 try {
@@ -539,25 +540,28 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
 
       // PAN Flow (direct upload & submission, no OTP)
       if (isUserFlow) {
-        let idPhotoBase64: string | undefined = undefined;
-        let selfieBase64: string | undefined = undefined;
+        let idPhotoUrl: string | undefined = undefined;
+        let selfieUrl: string | undefined = undefined;
         try {
           if (idDocumentUri) {
-            idPhotoBase64 = await getBase64FromUri(idDocumentUri);
+            idPhotoUrl = await uploadFileToFirebase(idDocumentUri, `kyc/id_photos/${user?.id}_${Date.now()}.jpg`);
           }
           if (faceScanUri) {
-            selfieBase64 = await getBase64FromUri(faceScanUri);
+            selfieUrl = await uploadFileToFirebase(faceScanUri, `kyc/selfie_photos/${user?.id}_${Date.now()}.jpg`);
           }
         } catch (fileErr) {
-          console.warn('Failed to read photos as base64', fileErr);
+          console.warn('Failed to upload photos to Firebase', fileErr);
+          Alert.alert('Upload Error', 'Failed to upload documents. Please try again.');
+          setLoading(false);
+          return;
         }
 
         await submitKYC({
           kyc_role: 'organizer',
           id_type: 'pan',
           id_number: idNumber.trim().toUpperCase(),
-          id_photo: idPhotoBase64,
-          selfie_photo: selfieBase64,
+          id_photo: idPhotoUrl,
+          selfie_photo: selfieUrl,
         });
 
         if (onKycUpdated) {
@@ -645,26 +649,29 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
           setOtpVerified(true);
         }
 
-        // 2. Read documents as Base64 and submit KYC
-        let idPhotoBase64: string | undefined = undefined;
-        let selfieBase64: string | undefined = undefined;
+        // 2. Upload documents to Firebase Storage and submit KYC
+        let idPhotoUrl: string | undefined = undefined;
+        let selfieUrl: string | undefined = undefined;
         try {
           if (idDocumentUri) {
-            idPhotoBase64 = await getBase64FromUri(idDocumentUri);
+            idPhotoUrl = await uploadFileToFirebase(idDocumentUri, `kyc/id_photos/${user?.id}_${Date.now()}.jpg`);
           }
           if (faceScanUri) {
-            selfieBase64 = await getBase64FromUri(faceScanUri);
+            selfieUrl = await uploadFileToFirebase(faceScanUri, `kyc/selfie_photos/${user?.id}_${Date.now()}.jpg`);
           }
         } catch (fileErr) {
-          console.warn('Failed to read photos as base64', fileErr);
+          console.warn('Failed to upload photos to Firebase', fileErr);
+          Alert.alert('Upload Error', 'Failed to upload documents. Please try again.');
+          setOtpLoading(false);
+          return;
         }
 
         await submitKYC({
           kyc_role: 'organizer',
           id_type: 'aadhaar',
           id_number: idNumber.trim(),
-          id_photo: idPhotoBase64,
-          selfie_photo: selfieBase64,
+          id_photo: idPhotoUrl,
+          selfie_photo: selfieUrl,
         });
 
         if (onKycUpdated) {
@@ -790,7 +797,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
 
   if (showCamera) {
     return (
-      <Modal visible={visible} animationType="slide">
+      <Modal visible={visible} animationType="fade">
         <View style={styles.cameraContainer}>
           <CameraViewAny
             ref={cameraRef}
@@ -862,7 +869,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   }
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="fade" transparent>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

@@ -230,6 +230,15 @@ const getCommunityFestivalImage = (name: string) => {
   return key ? FESTIVAL_IMAGE_MAP[key] : null;
 };
 
+const getCommunityMemberCount = (community?: any) => {
+  if (!community) return 0;
+  if (Array.isArray(community.members)) return community.members.length;
+  if (Array.isArray(community.members_details)) return community.members_details.length;
+  if (typeof community.members_count === 'number') return community.members_count;
+  if (typeof community.member_count === 'number') return community.member_count;
+  return 0;
+};
+
 const MOCK_FESTIVALS = [
   { id: '1', name: 'Diwali', events: 12, color: '#FFF5F0', date: '2026-11-01' },
   { id: '2', name: 'Navratri', events: 18, color: '#FFF9EB', date: '2026-10-12' },
@@ -373,11 +382,12 @@ try {
 const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media: string | any, style: any, onPress?: () => void, isActive?: boolean }) => {
   const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
   const isVideo = typeof mediaUrl === 'string' && (
+    /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
     mediaUrl.toLowerCase().startsWith('video') || 
-    mediaUrl.toLowerCase().includes('video') || 
-    mediaUrl.toLowerCase().includes('expopicker') ||
-    mediaUrl.toLowerCase().includes('imagepicker') ||
-    /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl)
+    mediaUrl.toLowerCase().includes('/video/') || 
+    mediaUrl.toLowerCase().includes('_video_') ||
+    ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
+     !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
   );
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const isFocused = useIsFocused();
@@ -540,11 +550,12 @@ export default function CommunityDetailScreen() {
       const url = item.image || item.image_url || item.media_url || '';
       const mediaUrl = typeof url === 'string' ? url : (url?.uri || '');
       return typeof mediaUrl === 'string' && (
+        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
         mediaUrl.toLowerCase().startsWith('video') || 
-        mediaUrl.toLowerCase().includes('video') || 
-        mediaUrl.toLowerCase().includes('expopicker') ||
-        mediaUrl.toLowerCase().includes('imagepicker') ||
-        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl)
+        mediaUrl.toLowerCase().includes('/video/') || 
+        mediaUrl.toLowerCase().includes('_video_') ||
+        ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
+         !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
       );
     };
 
@@ -1381,7 +1392,7 @@ export default function CommunityDetailScreen() {
             id: 'food_pune',
             name: 'Pune Food Sharing Group',
             type: 'city',
-            members_count: 236,
+            members_count: 0,
             description: 'A community group for sharing food in Pune.'
           };
         } else if (id === 'mumbai-fallback' || id === 'city_default') {
@@ -1389,7 +1400,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
             type: 'city',
-            members_count: 13000,
+            members_count: 0,
             description: 'My Community Group'
           };
         } else if (id === 'maharashtra-fallback') {
@@ -1397,7 +1408,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
             type: 'state',
-            members_count: 14000,
+            members_count: 0,
             description: 'Maharashtra State Community Group'
           };
         } else if (id === 'bharat-fallback') {
@@ -1405,7 +1416,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
             type: 'country',
-            members_count: 15000,
+            members_count: 0,
             description: 'Bharat National Community Group'
           };
         } else {
@@ -1766,7 +1777,7 @@ export default function CommunityDetailScreen() {
         <TouchableOpacity
           style={styles.headerCreateBtn}
           onPress={() => {
-            setPostCategory(isLocalUserCommunity ? 'Others' : '');
+            setPostCategory('');
             setShowCreateModal(true);
           }}
         >
@@ -1786,7 +1797,7 @@ export default function CommunityDetailScreen() {
 
       {/* Centered Member Count */}
       <Text style={styles.headerMembersText}>
-        {community?.members_count || community?.member_count || '1.8K'} {t('language') === 'hi' ? 'सदस्य' : 'Members'}
+        {getCommunityMemberCount(community)} {t('language') === 'hi' ? 'सदस्य' : 'Members'}
       </Text>
 
       {/* Centered Description/Tagline */}
@@ -2551,9 +2562,25 @@ export default function CommunityDetailScreen() {
     const iconDetails = getRequestIconDetails(item);
     const isFulfilled = item.status === 'fulfilled' || item.status === 'resolved' || item.status === 'done';
     const phone = item.contact_number || item.contact || item.user_phone;
+    const ownerName = item.user_name || item.user?.name || 'Requester';
+    const requestTypeLabel = item.request_type ? String(item.request_type).toUpperCase() : 'REQUEST';
     
     return (
       <View style={styles.festEventCard}>
+        <View style={[styles.requestOwnerRow, { alignItems: 'flex-start', justifyContent: 'flex-start', marginBottom: 8 }]}>
+          <Avatar name={ownerName} photo={item.user?.photo} size={40} />
+          <View style={{ marginLeft: 10, flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+              <Text style={styles.feedPostUserName} numberOfLines={1}>{ownerName}</Text>
+              {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 2 }} />}
+              <Text style={styles.postHandle} numberOfLines={1}>
+                {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
+              </Text>
+              <Text style={styles.postHandle} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
+            </View>
+            <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
+          </View>
+        </View>
         <View style={styles.festEventMain}>
           {(item.image || item.image_url || item.media_url) && (
             <CommunityMediaItem
@@ -3095,11 +3122,6 @@ export default function CommunityDetailScreen() {
 
   const handlePostButtonPress = () => {
     if (!newMessage.trim() && !selectedImage) return;
-
-    if (isLocalUserCommunity) {
-      handleCategorySelectedAndPost('Others');
-      return;
-    }
 
     if (postCategory) {
       handleCategorySelectedAndPost(postCategory);
@@ -3671,7 +3693,7 @@ export default function CommunityDetailScreen() {
       {/* Bottom footer input bar is removed to keep layout clean and centered on top-header Create button */}
 
       {/* Full Screen Create Post Modal */}
-      <Modal visible={showCreateModal} animationType="slide" transparent={false} hardwareAccelerated>
+      <Modal visible={showCreateModal} animationType="fade" transparent={false} hardwareAccelerated>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
           <KeyboardAvoidingView
@@ -3701,10 +3723,9 @@ export default function CommunityDetailScreen() {
               <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
                 <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
-                  {!isLocalUserCommunity && (
-                    !postCategory ? (
-                      <TouchableOpacity
-                        onPress={() => setShowInlineCategories(!showInlineCategories)}
+                  {!postCategory ? (
+                    <TouchableOpacity
+                      onPress={() => setShowInlineCategories(!showInlineCategories)}
                       activeOpacity={0.7}
                       style={{
                         flexDirection: 'row',
@@ -3734,12 +3755,10 @@ export default function CommunityDetailScreen() {
                         <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
                       </TouchableOpacity>
                     </View>
-                  )
-                )}
+                  )}
 
-                  {!isLocalUserCommunity && (
-                    showInlineCategories && (
-                      <View style={{ marginBottom: 16 }}>
+                  {showInlineCategories && (
+                    <View style={{ marginBottom: 16 }}>
                       <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>
                         {t('language') === 'hi' ? 'श्रेणी का चयन करें' : 'Select Category'}
                       </Text>
@@ -3808,7 +3827,6 @@ export default function CommunityDetailScreen() {
                         })}
                       </View>
                     </View>
-                    )
                   )}
                   <MentionInput
                     value={newMessage}
@@ -3838,7 +3856,7 @@ export default function CommunityDetailScreen() {
                   {!selectedImage ? (
                     <TouchableOpacity
                       onPress={() => {
-                        if (!isLocalUserCommunity && !postCategory) {
+                        if (!postCategory) {
                           Alert.alert('', t('language') === 'hi' ? 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...' : 'Select a category above to start writing...');
                           return;
                         }
@@ -3850,17 +3868,17 @@ export default function CommunityDetailScreen() {
                         alignItems: 'center',
                         alignSelf: 'flex-start',
                         gap: 6,
-                        backgroundColor: (!isLocalUserCommunity && !postCategory) ? '#F0F0F0' : 'rgba(255, 102, 0, 0.08)',
+                        backgroundColor: !postCategory ? '#F0F0F0' : 'rgba(255, 102, 0, 0.08)',
                         paddingHorizontal: 14,
                         paddingVertical: 8,
                         borderRadius: 20,
                         marginTop: 10,
                         borderWidth: 1,
-                        borderColor: (!isLocalUserCommunity && !postCategory) ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
+                        borderColor: !postCategory ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
                       }}
                     >
-                      <Ionicons name="images-outline" size={18} color={(!isLocalUserCommunity && !postCategory) ? "#A0A0A0" : "#FF6600"} />
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: (!isLocalUserCommunity && !postCategory) ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
+                      <Ionicons name="images-outline" size={18} color={!postCategory ? "#A0A0A0" : "#FF6600"} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: !postCategory ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
                         Add Media
                       </Text>
                     </TouchableOpacity>
@@ -3969,7 +3987,7 @@ export default function CommunityDetailScreen() {
       <Modal
         visible={showCategorySelector}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowCategorySelector(false)}
       >
         <TouchableOpacity
@@ -4120,7 +4138,7 @@ export default function CommunityDetailScreen() {
       <Modal
         visible={!!showCommentModal}
         transparent
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setShowCommentModal(null)}
       >
         <KeyboardAvoidingView
@@ -4203,7 +4221,7 @@ export default function CommunityDetailScreen() {
       </Modal>
 
       {/* Attendees Modal */}
-      <Modal visible={!!showAttendeesModal} animationType="slide" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
+      <Modal visible={!!showAttendeesModal} animationType="fade" transparent={true} onRequestClose={() => setShowAttendeesModal(null)}>
         <View style={styles.modalOverlay}>
           <TouchableOpacity style={styles.modalDismiss} activeOpacity={1} onPress={() => setShowAttendeesModal(null)} />
           <View style={[styles.bottomSheet, { height: '60%' }]}>
@@ -4251,7 +4269,7 @@ export default function CommunityDetailScreen() {
               <Text style={{ fontSize: 14, color: '#536471', marginBottom: 20, lineHeight: 20 }}>
                 {community?.description || 'Connect with your local community. Share updates, requests, and engage with devotees.'}
               </Text>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 10 }}>Members ({community?.members_count || community?.member_count || (community?.members?.length) || '1'})</Text>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: '#000', marginBottom: 10 }}>Members ({getCommunityMemberCount(community)})</Text>
               
               <View style={{ gap: 15 }}>
                 {community?.members_details ? (
@@ -4758,6 +4776,11 @@ const styles = StyleSheet.create({
   festivalEventCountNum: { fontSize: 18, fontWeight: '900', color: '#111' },
   festivalEventCountText: { fontSize: 10, fontWeight: '600', color: '#666' },
 
+  requestOwnerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  requestOwnerMeta: { flex: 1, marginLeft: 12 },
+  requestOwnerName: { fontSize: 15, fontWeight: '700', color: '#111' },
+  requestOwnerSubtext: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  requestOwnerTime: { fontSize: 12, color: '#64748B' },
   festEventCard: { marginHorizontal: 20, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 15, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F5F5F5' },
   festEventMain: { flexDirection: 'row', marginBottom: 12 },
   festEventImage: { width: 90, height: 90, borderRadius: 16 },
