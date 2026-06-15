@@ -22,8 +22,33 @@ import { useAuthStore } from '../../src/store/authStore';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 
 import { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
+
+const PersonalInfoIcon = () => (
+  <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+    <Path d="M8 8C6.9 8 5.95833 7.60833 5.175 6.825C4.39167 6.04167 4 5.1 4 4C4 2.9 4.39167 1.95833 5.175 1.175C5.95833 0.391667 6.9 0 8 0C9.1 0 10.0417 0.391667 10.825 1.175C11.6083 1.95833 12 2.9 12 4C12 5.1 11.6083 6.04167 10.825 6.825C10.0417 7.60833 9.1 8 8 8ZM0 16V13.2C0 12.6333 0.145833 12.1125 0.4375 11.6375C0.729167 11.1625 1.11667 10.8 1.6 10.55C2.63333 10.0333 3.68333 9.64583 4.75 9.3875C5.81667 9.12917 6.9 9 8 9C9.1 9 10.1833 9.12917 11.25 9.3875C12.3167 9.64583 13.3667 10.0333 14.4 10.55C14.8833 10.8 15.2708 11.1625 15.5625 11.6375C15.8542 12.1125 16 12.6333 16 13.2V16H0ZM2 14H14V13.2C14 13.0167 13.9542 12.85 13.8625 12.7C13.7708 12.55 13.65 12.4333 13.5 12.35C12.6 11.9 11.6917 11.5625 10.775 11.3375C9.85833 11.1125 8.93333 11 8 11C7.06667 11 6.14167 11.1125 5.225 11.3375C4.30833 11.5625 3.4 11.9 2.5 12.35C2.35 12.4333 2.22917 12.55 2.1375 12.7C2.04583 12.85 2 13.0167 2 13.2V14ZM8 6C8.55 6 9.02083 5.80417 9.4125 5.4125C9.80417 5.02083 10 4.55 10 4C10 3.45 9.80417 2.97917 9.4125 2.5875C9.02083 2.19583 8.55 2 8 2C7.45 2 6.97917 2.19583 6.5875 2.5875C6.19583 2.97917 6 3.45 6 4C6 4.55 6.19583 5.02083 6.5875 5.4125C6.97917 5.80417 7.45 6 8 6Z" fill="#A04100" />
+  </Svg>
+);
+
+const ContactInfoIcon = () => (
+  <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+    <Path d="M7.32374 11.7963C7.39366 11.866 7.44913 11.9488 7.48699 12.04C7.52484 12.1311 7.54433 12.2289 7.54433 12.3276C7.54433 12.4263 7.52484 12.524 7.48699 12.6152C7.44913 12.7064 7.39366 12.7892 7.32374 12.8588L7.00374 13.1788C6.66405 13.5198 6.26014 13.79 5.81536 13.9739C5.37058 14.1578 4.89377 14.2516 4.41249 14.2501C3.68769 14.2503 2.97912 14.0356 2.3764 13.633C1.77368 13.2304 1.30391 12.6582 1.02651 11.9886C0.749115 11.3189 0.676559 10.5821 0.818022 9.87125C0.959486 9.1604 1.30861 8.50747 1.82124 7.99509L3.99311 5.82321C4.45507 5.36132 5.03209 5.0313 5.66443 4.86731C6.29677 4.70332 6.96146 4.71132 7.58967 4.89049C8.21788 5.06966 8.78678 5.41348 9.23748 5.88637C9.68818 6.35925 10.0043 6.944 10.1531 7.58009C10.1778 7.6768 10.1829 7.77746 10.1681 7.87617C10.1533 7.97488 10.119 8.06965 10.0672 8.15493C10.0153 8.24021 9.94698 8.31428 9.86614 8.37281C9.78529 8.43133 9.69358 8.47313 9.59637 8.49576C9.49917 8.51839 9.39842 8.52139 9.30004 8.50458C9.20166 8.48777 9.10763 8.4515 9.02345 8.39789C8.93926 8.34427 8.86663 8.27439 8.8098 8.19235C8.75297 8.1103 8.71309 8.01774 8.69249 7.92009C8.60418 7.54461 8.4172 7.19952 8.15086 6.92051C7.88452 6.6415 7.54849 6.43869 7.17752 6.33304C6.80654 6.2274 6.41409 6.22275 6.04071 6.31958C5.66734 6.41641 5.32661 6.61121 5.05374 6.88384L2.88186 9.05571C2.57912 9.35821 2.37288 9.74369 2.28923 10.1634C2.20557 10.5831 2.24827 11.0182 2.41191 11.4137C2.57555 11.8091 2.85278 12.1472 3.20855 12.385C3.56432 12.6229 3.98264 12.75 4.41061 12.7501C4.69497 12.7509 4.97666 12.6953 5.23939 12.5865C5.50212 12.4777 5.74067 12.3179 5.94124 12.1163L6.26061 11.7963C6.3303 11.7263 6.41313 11.6708 6.50435 11.6329C6.59558 11.5949 6.69339 11.5754 6.79217 11.5754C6.89096 11.5754 6.98877 11.5949 7.07999 11.6329C7.17121 11.6708 7.25405 11.7263 7.32374 11.7963ZM14.1769 2.82321C13.4895 2.13603 12.5573 1.75 11.5853 1.75C10.6133 1.75 9.68114 2.13603 8.99374 2.82321L8.67436 3.14259C8.53346 3.28348 8.45431 3.47458 8.45431 3.67384C8.45431 3.87309 8.53346 4.06419 8.67436 4.20509C8.81526 4.34598 9.00635 4.42514 9.20561 4.42514C9.40487 4.42514 9.59596 4.34598 9.73686 4.20509L10.0569 3.88509C10.463 3.47897 11.0138 3.25082 11.5881 3.25082C12.1624 3.25082 12.7132 3.47897 13.1194 3.88509C13.5255 4.2912 13.7536 4.84201 13.7536 5.41634C13.7536 5.99067 13.5255 6.54147 13.1194 6.94759L10.9437 9.11634C10.7432 9.31797 10.5047 9.47781 10.2419 9.5866C9.97919 9.69539 9.69748 9.75096 9.41311 9.75009C8.9253 9.74974 8.4519 9.58461 8.0697 9.28149C7.6875 8.97836 7.41891 8.55501 7.30749 8.08009C7.2624 7.88631 7.14218 7.71839 6.97328 7.61325C6.80438 7.50811 6.60063 7.47437 6.40686 7.51946C6.21309 7.56455 6.04516 7.68476 5.94002 7.85366C5.83489 8.02256 5.80115 8.22631 5.84624 8.42009C6.03443 9.22438 6.4888 9.94152 7.13567 10.4552C7.78254 10.9689 8.58397 11.249 9.40999 11.2501H9.41311C9.89462 11.2514 10.3716 11.1572 10.8165 10.973C11.2614 10.7888 11.6653 10.5183 12.005 10.177L14.1769 8.00509C14.5172 7.66487 14.7871 7.26094 14.9713 6.81638C15.1554 6.37183 15.2502 5.89534 15.2502 5.41415C15.2502 4.93295 15.1554 4.45647 14.9713 4.01191C14.7871 3.56736 14.5172 3.16343 14.1769 2.82321Z" fill="#A04100" />
+  </Svg>
+);
+
+const BusinessInfoIcon = () => (
+  <Svg width={20} height={19} viewBox="0 0 20 19" fill="none">
+    <Path d="M2 19C1.45 19 0.979167 18.8042 0.5875 18.4125C0.195833 18.0208 0 17.55 0 17V6C0 5.45 0.195833 4.97917 0.5875 4.5875C0.979167 4.19583 1.45 4 2 4H6V2C6 1.45 6.19583 0.979167 6.5875 0.5875C6.97917 0.195833 7.45 0 8 0H12C12.55 0 13.0208 0.195833 13.4125 0.5875C13.8042 0.979167 14 1.45 14 2V4H18C18.55 4 19.0208 4.19583 19.4125 4.5875C19.8042 4.97917 20 5.45 20 6V17C20 17.55 19.8042 18.0208 19.4125 18.4125C19.0208 18.8042 18.55 19 18 19H2ZM8 4H12V2H8V4ZM18 13H13V15H7V13H2V17H18V13ZM9 13H11V11H9V13ZM2 11H7V9H13V11H18V6H2V11Z" fill="#A04100" />
+  </Svg>
+);
+
+const GalleryIcon = () => (
+  <Svg width={20} height={20} viewBox="0 0 20 20" fill="none">
+    <Path d="M7 12H17L13.55 7.5L11.25 10.5L9.7 8.5L7 12ZM6 16C5.45 16 4.97917 15.8042 4.5875 15.4125C4.19583 15.0208 4 14.55 4 14V2C4 1.45 4.19583 0.979167 4.5875 0.5875C4.97917 0.195833 5.45 0 6 0H18C18.55 0 19.0208 0.195833 19.4125 0.5875C19.8042 0.979167 20 1.45 20 2V14C20 14.55 19.8042 15.0208 19.4125 15.4125C19.0208 15.8042 18.55 16 18 16H6ZM6 14H18V2H6V14ZM2 20C1.45 20 0.979167 19.8042 0.5875 19.4125C0.195833 19.0208 0 18.55 0 18V4H2V18H16V20H2ZM6 2V14V2Z" fill="#A04100" />
+  </Svg>
+);
 
 export default function VendorDashboardScreen() {
   const router = useRouter();
@@ -168,6 +193,36 @@ export default function VendorDashboardScreen() {
       </SafeAreaView>
     );
   }
+
+  const profileUri = (myVendor.business_gallery_images && myVendor.business_gallery_images[0]) || (myVendor.photos && myVendor.photos[0]);
+
+  const getGalleryPhotos = () => {
+    const list: Array<{ url: string | null; slot: number; isLoading?: boolean }> = [];
+    const images = myVendor.business_gallery_images || [];
+    for (let i = 1; i < 5; i++) {
+      if (images[i]) {
+        list.push({ url: images[i], slot: i });
+      } else if (loadingSlot === i) {
+        list.push({ url: null, slot: i, isLoading: true });
+      }
+    }
+    if (list.length === 0 && myVendor.photos && myVendor.photos.length > 1) {
+      for (let i = 1; i < myVendor.photos.length; i++) {
+        list.push({ url: myVendor.photos[i], slot: i });
+      }
+    }
+    return list;
+  };
+
+  const galleryPhotos = getGalleryPhotos();
+
+  const getNextGallerySlot = () => {
+    const images = myVendor.business_gallery_images || [];
+    for (let i = 1; i < 5; i++) {
+      if (!images[i]) return i;
+    }
+    return 5;
+  };
 
   const handleEditBusinessName = () => {
     setEditValue(myVendor.business_name);
@@ -521,7 +576,7 @@ export default function VendorDashboardScreen() {
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
             <Image
-              source={myVendor.photos && myVendor.photos.length > 0 ? { uri: myVendor.photos[0] } : require('../../assets/images/favicon.png')}
+              source={profileUri ? { uri: profileUri } : require('../../assets/images/favicon.png')}
               style={styles.profileImage}
             />
             <TouchableOpacity style={styles.profileEditBadge} onPress={() => pickAndUploadImage(0)}>
@@ -540,7 +595,7 @@ export default function VendorDashboardScreen() {
         {/* Section: Personal Information */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="person-outline" size={20} color="#C67A53" />
+            <PersonalInfoIcon />
             <Text style={styles.cardTitle}>Personal Information</Text>
           </View>
 
@@ -578,7 +633,7 @@ export default function VendorDashboardScreen() {
         {/* Section: Contact Information */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="link-outline" size={20} color="#C67A53" />
+            <ContactInfoIcon />
             <Text style={styles.cardTitle}>Contact Information</Text>
           </View>
 
@@ -623,7 +678,7 @@ export default function VendorDashboardScreen() {
         {/* Section: Business Information */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Ionicons name="briefcase-outline" size={20} color="#C67A53" />
+            <BusinessInfoIcon />
             <Text style={styles.cardTitle}>Business Information</Text>
           </View>
 
@@ -644,20 +699,20 @@ export default function VendorDashboardScreen() {
               <View key={idx} style={styles.categoryChip}>
                 <Text style={styles.categoryChipText}>{cat}</Text>
                 <TouchableOpacity onPress={() => setCategoriesVal(categoriesVal.filter(c => c !== cat))}>
-                  <Ionicons name="close" size={14} color="#8C7769" style={{ marginLeft: 4 }} />
+                  <Ionicons name="close" size={14} color="#A04100" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
               </View>
             ))}
-            <TouchableOpacity style={styles.addCategoryChip} onPress={handleEditCategories}>
-              <Ionicons name="add" size={14} color="#8C7769" />
+             <TouchableOpacity style={styles.addCategoryChip} onPress={handleEditCategories}>
+              <Ionicons name="add" size={14} color="#A04100" />
               <Text style={styles.addCategoryChipText}>Add Category</Text>
-            </TouchableOpacity>
+             </TouchableOpacity>
           </View>
 
-          <Text style={styles.inputLabel}>Description</Text>
-          <View style={[styles.inputContainer, styles.textAreaContainer]}>
+          <Text style={[styles.inputLabel, { marginTop: 14 }]}>Description</Text>
+          <View style={[styles.inputContainer, styles.descriptionContainer]}>
             <TextInput
-              style={[styles.textInput, styles.textAreaInput]}
+              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
               value={descriptionVal}
               onChangeText={setDescriptionVal}
               placeholder="Description"
@@ -668,9 +723,9 @@ export default function VendorDashboardScreen() {
           </View>
 
           <Text style={styles.inputLabel}>Address</Text>
-          <View style={[styles.inputContainer, styles.textAreaContainer]}>
+          <View style={[styles.inputContainer, styles.addressContainer]}>
             <TextInput
-              style={[styles.textInput, styles.textAreaInput]}
+              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
               value={addressVal}
               onChangeText={setAddressVal}
               placeholder="Address"
@@ -710,26 +765,34 @@ export default function VendorDashboardScreen() {
         <View style={styles.card}>
           <View style={[styles.cardHeader, { justifyContent: 'space-between' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="images-outline" size={20} color="#C67A53" />
+              <GalleryIcon />
               <Text style={styles.cardTitle}>Gallery</Text>
             </View>
-            <TouchableOpacity onPress={pickAndUploadImage.bind(null, (myVendor.photos || []).length)}>
-              <Text style={styles.addPhotoLink}>Add Photo</Text>
-            </TouchableOpacity>
+            {getNextGallerySlot() < 5 && (
+              <TouchableOpacity onPress={() => pickAndUploadImage(getNextGallerySlot())}>
+                <Text style={styles.addPhotoLink}>Add Photo</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-            {(myVendor.photos || []).map((photoUrl, idx) => (
+            {galleryPhotos.map((item, idx) => (
               <View key={idx} style={styles.galleryImageContainer}>
-                <Image source={{ uri: photoUrl }} style={styles.galleryImage} />
-                {loadingSlot === idx && (
+                {item.url ? (
+                  <Image source={{ uri: item.url }} style={styles.galleryImage} />
+                ) : (
+                  <View style={[styles.galleryImage, { backgroundColor: '#FAF8F5', justifyContent: 'center', alignItems: 'center' }]}>
+                    <ActivityIndicator size="small" color="#A04100" />
+                  </View>
+                )}
+                {loadingSlot === item.slot && item.url && (
                   <View style={styles.galleryImageLoader}>
                     <ActivityIndicator size="small" color="#fff" />
                   </View>
                 )}
               </View>
             ))}
-            {!(myVendor.photos && myVendor.photos.length > 0) && (
+            {galleryPhotos.length === 0 && (
               <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
             )}
           </ScrollView>
@@ -787,7 +850,7 @@ export default function VendorDashboardScreen() {
                         onPress={() => removeCategory(cat)}
                       >
                         <Text style={styles.modalSelectedCatText}>{cat}</Text>
-                        <Ionicons name="close" size={14} color="#D34F40" />
+                        <Ionicons name="close" size={14} color="#A04100" />
                       </TouchableOpacity>
                     ))}
                   </View>
@@ -1022,20 +1085,21 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 14.4,
     letterSpacing: 0.24,
-    marginTop: 14,
+    marginTop: 0,
     marginBottom: 6,
   },
   inputContainer: {
-    backgroundColor: '#F9F9FF',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2BFB0',
-    borderRadius: 9999,
-    paddingHorizontal: 16,
+    borderRadius: 12,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     alignSelf: 'stretch',
+    marginBottom: 16,
   },
   textInput: {
     flex: 1,
@@ -1048,10 +1112,21 @@ const styles = StyleSheet.create({
     color: '#3D281A',
   },
   textAreaContainer: {
-    borderRadius: 20,
     height: 'auto',
     minHeight: 80,
     paddingVertical: 12,
+    alignItems: 'flex-start',
+  },
+  descriptionContainer: {
+    height: 123,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'flex-start',
+  },
+  addressContainer: {
+    height: 99,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'flex-start',
   },
   textAreaInput: {
@@ -1061,38 +1136,38 @@ const styles = StyleSheet.create({
   categoriesRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 14,
     marginTop: 4,
   },
   categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF0E8',
-    borderColor: '#EEDCD0',
+    backgroundColor: '#FFDBCC',
+    borderColor: '#A04100',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 9999,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   categoryChipText: {
     fontSize: 13,
-    color: '#8C7769',
+    color: '#A04100',
     fontWeight: '600',
   },
   addCategoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderColor: '#D4BFA7',
+    borderColor: '#A04100',
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderRadius: 12,
+    borderRadius: 9999,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   addCategoryChipText: {
     fontSize: 13,
-    color: '#8C7769',
+    color: '#A04100',
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -1103,10 +1178,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FAF8F5',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EFE8E2',
-    borderRadius: 16,
+    borderColor: '#E2BFB0',
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
@@ -1122,7 +1197,7 @@ const styles = StyleSheet.create({
     color: '#3D281A',
   },
   hoursDivider: {
-    height: 8,
+    height: 14,
   },
   addPhotoLink: {
     fontSize: 13,
@@ -1137,14 +1212,14 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   galleryImage: {
-    width: 90,
-    height: 90,
+    width: 97.33,
+    height: 97.33,
     borderRadius: 16,
     backgroundColor: '#FAF8F5',
   },
   galleryImageLoader: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(0, 0, 0, 0.40)',
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1216,15 +1291,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalInput: {
-    backgroundColor: '#F9F9FF',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2BFB0',
-    borderRadius: 9999,
-    paddingHorizontal: 16,
+    borderRadius: 12,
     paddingVertical: 12,
+    paddingHorizontal: 16,
     fontSize: 15,
     color: '#3D281A',
     marginBottom: 16,
+    alignSelf: 'stretch',
   },
   modalSelectedCats: {
     flexDirection: 'row',
@@ -1235,16 +1311,16 @@ const styles = StyleSheet.create({
   modalSelectedCatChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAF0E8',
-    borderColor: '#EEDCD0',
+    backgroundColor: '#FFDBCC',
+    borderColor: '#A04100',
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 9999,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   modalSelectedCatText: {
     fontSize: 13,
-    color: '#8C7769',
+    color: '#A04100',
     fontWeight: '600',
     marginRight: 4,
   },
