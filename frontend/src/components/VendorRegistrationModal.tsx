@@ -24,6 +24,7 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { DEFAULT_CATEGORIES } from '../store/vendorStore';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
+import { sendMsg91OTP, verifyMsg91OTP } from '../services/api';
 
 const AddressIcon = ({ width = 24, height = 24, color = '#94A3B8' }) => (
   <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
@@ -323,6 +324,52 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [selectedTempCategories, setSelectedTempCategories] = useState<string[]>([]);
 
+  const [otpStage, setOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
+  const [otp, setOtp] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+
+  const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      Alert.alert('Error', 'Please enter the OTP.');
+      return;
+    }
+    const trimmedPhone = phoneNumber.replace(/\D/g, '');
+    let cleanedPhone = trimmedPhone;
+    if (cleanedPhone.startsWith('0')) {
+      cleanedPhone = cleanedPhone.substring(1);
+    }
+    
+    setOtpVerifying(true);
+    try {
+      await verifyMsg91OTP(cleanedPhone, otp.trim());
+      setOtpStage('verified');
+      Alert.alert('Success', 'OTP Verified successfully!');
+    } catch (e: any) {
+      Alert.alert('Error', 'Try your business again. OTP is incorrect.');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
+  const handleSendOtp = async () => {
+    const trimmedPhone = phoneNumber.replace(/\D/g, '');
+    if (trimmedPhone.length !== 10) {
+      Alert.alert('Error', 'Please enter a valid 10 digit number.');
+      return;
+    }
+    setOtpSending(true);
+    try {
+      await sendMsg91OTP(trimmedPhone);
+      setOtpStage('sent');
+      Alert.alert('Success', 'OTP sent successfully!');
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.detail || e?.message || 'Failed to send OTP.');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
   const pickBusinessPhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== 'granted') {
@@ -537,6 +584,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     setSubCategories([]);
     setSubCategoryInput('');
     setSelectedPhotos([]);
+    setOtpStage('idle');
+    setOtp('');
   };
 
   const handleSubmit = async () => {
@@ -622,6 +671,12 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     }
 
     console.log('Validation passed');
+
+    // Ensure OTP is verified before creating business
+    if (otpStage !== 'verified') {
+      Alert.alert('Error', 'Please send and verify OTP for your mobile number before submitting.');
+      return;
+    }
 
     const mergedCategories = [...categories, ...subCategories].filter(Boolean).slice(0, 5);
     if (mergedCategories.length === 0) {
@@ -742,6 +797,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 onChangeText={(text) => {
                   const numericText = text.replace(/\D/g, '');
                   setPhoneNumber(numericText.slice(0, 15));
+                  setOtpStage('idle');
+                  setOtp('');
                 }}
                 keyboardType="phone-pad"
                 maxLength={15}
@@ -766,6 +823,40 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 </View>
               )}
             </View>
+            
+            {phoneNumber.replace(/\D/g, '').length === 10 && otpStage === 'idle' && (
+              <TouchableOpacity onPress={handleSendOtp} disabled={otpSending} style={{ alignSelf: 'flex-start', marginTop: 4, marginBottom: 8 }}>
+                {otpSending ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Send OTP</Text>}
+              </TouchableOpacity>
+            )}
+
+            {otpStage === 'sent' && (
+              <>
+                <Text style={[styles.label, { marginTop: 8 }]}>Enter OTP *</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                  <TextInput
+                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                    placeholder="Enter 4-digit OTP"
+                    placeholderTextColor={COLORS.textLight}
+                    value={otp}
+                    onChangeText={setOtp}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                  />
+                  <TouchableOpacity 
+                    onPress={handleVerifyOtp} 
+                    disabled={otpVerifying || !otp.trim()} 
+                    style={{ marginLeft: 8, padding: 12, backgroundColor: COLORS.primary, borderRadius: BORDER_RADIUS.md, opacity: (otpVerifying || !otp.trim()) ? 0.6 : 1 }}
+                  >
+                    {otpVerifying ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Verify</Text>}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {otpStage === 'verified' && (
+              <Text style={{ color: 'green', marginTop: 4, marginBottom: 8, fontWeight: '500' }}>✓ Number Verified</Text>
+            )}
 
             {/* Years in Business */}
             <Text style={styles.label}>Years in Business *</Text>
@@ -984,9 +1075,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Submit Button */}
             <TouchableOpacity
-              style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+              style={[styles.submitBtn, (loading || otpStage !== 'verified') && styles.submitBtnDisabled]}
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={loading || otpStage !== 'verified'}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
