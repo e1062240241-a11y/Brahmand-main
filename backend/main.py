@@ -512,8 +512,18 @@ async def _find_user_by_mention_key(db: FirestoreDB, key: str) -> Optional[Dict[
     if not key:
         return None
     if re.fullmatch(r'\+?\d+', key):
-        return await db.get_user_by_phone(key)
-    return await db.get_user_by_sl_id(key)
+        user = await db.get_user_by_phone(key)
+        if user:
+            return user
+    user = await db.get_user_by_sl_id(key)
+    if user:
+        return user
+    # Fallback to check name field with various casings
+    for name_candidate in [key, key.capitalize(), key.lower(), key.upper()]:
+        user = await db.find_one('users', [('name', '==', name_candidate)])
+        if user:
+            return user
+    return None
 
 async def _notify_mentioned_users(
     db: FirestoreDB,
@@ -594,15 +604,13 @@ async def _notify_mentioned_users(
             }
 
         try:
-            await db.create_document('notifications', {
-                'user_id': target_user_id,
-                'title': title,
-                'body': body,
-                'notification_type': 'social',
-                'data': notification_data,
-                'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z',
-            })
+            await FirebaseNotificationService.create_notification(
+                user_id=target_user_id,
+                title=title,
+                body=body,
+                notification_type='social',
+                data=notification_data,
+            )
             logger.info('Mention notification created for %s by %s', target_user_id, actor_id)
 
             try:
@@ -2205,19 +2213,17 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
 
     try:
         follower_name = current_user.get('name') or current_user.get('sl_id') or 'Someone'
-        await db.create_document('notifications', {
-            'user_id': user_id,
-            'title': 'New follower',
-            'body': f'{follower_name} started following you.',
-            'notification_type': 'social',
-            'data': {
+        await FirebaseNotificationService.create_notification(
+            user_id=user_id,
+            title='New follower',
+            body=f'{follower_name} started following you.',
+            notification_type='social',
+            data={
                 'actor_user_id': current_user_id,
                 'actor_name': follower_name,
                 'action': 'follow',
             },
-            'is_read': False,
-            'created_at': datetime.utcnow().isoformat() + 'Z',
-        })
+        )
         logger.info(f"Follow notification created for user {user_id} by {current_user_id}")
 
         try:
@@ -3564,20 +3570,18 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
                     or 'Someone'
                 )
 
-                await db.create_document('notifications', {
-                    'user_id': post_owner_id,
-                    'title': 'New like on your post',
-                    'body': f'{actor_name} liked your post.',
-                    'notification_type': 'social',
-                    'data': {
+                await FirebaseNotificationService.create_notification(
+                    user_id=post_owner_id,
+                    title='New like on your post',
+                    body=f'{actor_name} liked your post.',
+                    notification_type='social',
+                    data={
                         'post_id': post_id,
                         'actor_user_id': user_id,
                         'actor_name': actor_name,
                         'action': 'like',
                     },
-                    'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z',
-                })
+                )
 
                 await task_queue.enqueue(
                     FirebaseNotificationService.send_push_notification,
@@ -3687,12 +3691,12 @@ async def _send_comment_notifications_background(
                 actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
                 preview_text = text if len(text) <= 80 else f"{text[:77]}..."
 
-                await db.create_document('notifications', {
-                    'user_id': parent_owner_id,
-                    'title': 'New reply to your comment',
-                    'body': f'{actor_name} replied: "{preview_text}"',
-                    'notification_type': 'social',
-                    'data': {
+                await FirebaseNotificationService.create_notification(
+                    user_id=parent_owner_id,
+                    title='New reply to your comment',
+                    body=f'{actor_name} replied: "{preview_text}"',
+                    notification_type='social',
+                    data={
                         'post_id': str(post_id),
                         'comment_id': str(comment_id),
                         'parent_id': str(parent_id),
@@ -3700,9 +3704,7 @@ async def _send_comment_notifications_background(
                         'actor_name': actor_name,
                         'action': 'reply',
                     },
-                    'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z',
-                })
+                )
                 logger.info(f"Reply notification created for comment {parent_id} owner {parent_owner_id} by {user_id}")
 
                 try:
@@ -3728,21 +3730,19 @@ async def _send_comment_notifications_background(
             actor_name = comment_doc.get('username') or user.get('name') or user.get('sl_id') or 'Someone'
             preview_text = text if len(text) <= 80 else f"{text[:77]}..."
 
-            await db.create_document('notifications', {
-                'user_id': post_owner_id,
-                'title': 'New comment on your post',
-                'body': f'{actor_name} commented: "{preview_text}"',
-                'notification_type': 'social',
-                'data': {
+            await FirebaseNotificationService.create_notification(
+                user_id=post_owner_id,
+                title='New comment on your post',
+                body=f'{actor_name} commented: "{preview_text}"',
+                notification_type='social',
+                data={
                     'post_id': str(post_id),
                     'comment_id': str(comment_id),
                     'actor_user_id': str(user_id),
                     'actor_name': actor_name,
                     'action': 'comment',
                 },
-                'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z',
-            })
+            )
             logger.info(f"Comment notification created for post {post_id} owner {post_owner_id} by {user_id}")
 
             try:
