@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 
 import { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 
@@ -56,6 +57,7 @@ export default function VendorDashboardScreen() {
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
+  const [deleteOtpModalVisible, setDeleteOtpModalVisible] = useState(false);
   const [phoneOtpStage, setPhoneOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [phoneOtpError, setPhoneOtpError] = useState<string | null>(null);
@@ -420,33 +422,20 @@ export default function VendorDashboardScreen() {
   };
 
   const handleDeleteBusiness = () => {
-    const confirmDelete = async () => {
-      if (!myVendor) return;
-      setDeletingBusiness(true);
-      try {
-        await deleteVendor(myVendor.id);
-        if (Platform.OS === 'web') {
-          window.alert('Your business has been deleted.');
-        } else {
-          Alert.alert('Deleted', 'Your business has been deleted.');
-        }
-        router.back();
-      } catch (error: any) {
-        const message = error?.response?.data?.detail || error?.message || 'Failed to delete business.';
-        if (Platform.OS === 'web') {
-          window.alert(`Error: ${message}`);
-        } else {
-          Alert.alert('Error', message);
-        }
-      } finally {
-        setDeletingBusiness(false);
-      }
-    };
+    if (!myVendor) return;
+    const vendorPhone = myVendor.phone_number || (user as any)?.phone_number;
+    if (!vendorPhone) {
+      Alert.alert(
+        'Phone Number Required',
+        'A registered mobile number is required to delete your business. Please update your phone number first.'
+      );
+      return;
+    }
 
     if (Platform.OS === 'web') {
       const confirmed = window.confirm('Are you sure you want to delete your business? This action cannot be undone.');
       if (confirmed) {
-        confirmDelete();
+        setDeleteOtpModalVisible(true);
       }
       return;
     }
@@ -459,10 +448,26 @@ export default function VendorDashboardScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: confirmDelete,
+          onPress: () => setDeleteOtpModalVisible(true),
         }
       ]
     );
+  };
+
+  const handleVerifyOTPAndDeleteBusiness = async (otp: string) => {
+    if (!myVendor) return;
+    try {
+      await deleteVendor(myVendor.id, otp);
+      setDeleteOtpModalVisible(false);
+      if (Platform.OS === 'web') {
+        window.alert('Your business has been deleted.');
+      } else {
+        Alert.alert('Deleted', 'Your business has been deleted.');
+      }
+      router.replace('/(tabs)/vendor');
+    } catch (error: any) {
+      throw error; // Let modal handle error display
+    }
   };
 
   const handleEditWeekdayHours = () => {
@@ -807,6 +812,15 @@ export default function VendorDashboardScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <DeleteOTPModal
+        visible={deleteOtpModalVisible}
+        phoneNumber={myVendor?.phone_number || (user as any)?.phone_number || ''}
+        onClose={() => setDeleteOtpModalVisible(false)}
+        onVerify={handleVerifyOTPAndDeleteBusiness}
+        title="Delete Business"
+        description="Verify OTP to delete your business profile"
+      />
 
       {/* Edit Modal (used for Category/Phone verification/Hours popups) */}
       <Modal

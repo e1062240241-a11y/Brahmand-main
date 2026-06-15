@@ -1686,7 +1686,7 @@ async def delete_saved_kundli(profile_id: str, token_data: dict = Depends(verify
 
 
 @api_router.delete("/user/profile")
-async def delete_user_profile(token_data: dict = Depends(verify_token)):
+async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends(verify_token)):
     """Delete user profile, including posts and comments."""
     db = await get_db()
     user_id = token_data["user_id"]
@@ -1695,6 +1695,18 @@ async def delete_user_profile(token_data: dict = Depends(verify_token)):
     user = await db.get_document('users', user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+        
+    # 2. Verify OTP
+    phone = user.get('phone_number')
+    if not phone:
+        raise HTTPException(status_code=400, detail="A registered mobile number is required to delete your account.")
+    if not otp:
+        raise HTTPException(status_code=400, detail="OTP is required for deletion.")
+    
+    from services.msg91_service import MSG91Service
+    otp_res = await MSG91Service.verify_otp(phone, otp)
+    if otp_res.get("status") != "success":
+        raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
         
     # 2. Delete user's posts
     try:
@@ -9698,7 +9710,7 @@ async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: d
 
 
 @api_router.delete("/vendors/{vendor_id}")
-async def delete_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
+async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict = Depends(verify_token)):
     """Delete a vendor (owner only)"""
     db = await get_db()
     user_id = token_data["user_id"]
@@ -9709,6 +9721,19 @@ async def delete_vendor(vendor_id: str, token_data: dict = Depends(verify_token)
     
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can delete the vendor")
+        
+    # Verify OTP
+    user = await db.get_document('users', user_id)
+    phone = vendor.get('phone_number') or (user and user.get('phone_number'))
+    if not phone:
+        raise HTTPException(status_code=400, detail="A registered mobile number is required to delete your business.")
+    if not otp:
+        raise HTTPException(status_code=400, detail="OTP is required for deletion.")
+        
+    from services.msg91_service import MSG91Service
+    otp_res = await MSG91Service.verify_otp(phone, otp)
+    if otp_res.get("status") != "success":
+        raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
     
     await db.delete_document('vendors', vendor_id)
     await db.update_document('users', user_id, {'is_vendor': False, 'vendor_id': None})

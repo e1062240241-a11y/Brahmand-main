@@ -1337,8 +1337,8 @@ export const getSavedKundlis = () =>
 export const deleteSavedKundli = (profileId: string) =>
   api.delete(`/user/saved-kundlis/${profileId}`);
 
-export const deleteUserProfile = () =>
-  api.delete('/user/profile');
+export const deleteUserProfile = (otp?: string) =>
+  api.delete('/user/profile', { params: { otp } });
 
 export const getProfileCompletion = () =>
   api.get('/user/profile-completion');
@@ -1869,8 +1869,8 @@ export const addVendorPhoto = (vendorId: string, photo: string) =>
     headers: { 'Content-Type': 'application/json' }
   });
 
-export const deleteVendor = (vendorId: string) =>
-  api.delete(`/vendors/${vendorId}`);
+export const deleteVendor = (vendorId: string, otp?: string) =>
+  api.delete(`/vendors/${vendorId}`, { params: { otp } });
 
 export interface JobProfilePayload {
   name: string;
