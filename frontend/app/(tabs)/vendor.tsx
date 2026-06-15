@@ -681,52 +681,7 @@ export default function VendorScreen() {
         userLocation ? fetchVendors(userLocation) : fetchVendors()
       ]).catch(err => console.warn('Background fetch error:', err));
       
-      const targetCategory = data.categories && data.categories[0];
-      const kycStatus = newVendor?.kyc_status;
-
-      if (kycStatus === 'verified' || hasVerifiedKyc) {
-        Alert.alert(
-          localT('approvedTitle'), 
-          localT('approvedMsg'),
-          [
-            {
-              text: localT('goDashboard'),
-              onPress: () => {
-                if (targetCategory) {
-                  router.push(`/vendor/category/${targetCategory}` as any);
-                } else {
-                  router.push('/vendor/dashboard');
-                }
-              }
-            }
-          ]
-        );
-      } else {
-        // Show KYC modal for verification
-        Alert.alert(
-          localT('regCompleteTitle'), 
-          localT('regCompleteMsg'),
-          [
-            { 
-              text: localT('later'), 
-              style: 'cancel',
-              onPress: () => {
-                if (targetCategory) {
-                  router.push(`/vendor/category/${targetCategory}` as any);
-                } else {
-                  router.push('/vendor/dashboard');
-                }
-              }
-            },
-            { 
-              text: localT('completeKyc'), 
-              onPress: () => {
-                router.push('/kyc');
-              }
-            }
-          ]
-        );
-      }
+      router.push('/kyc');
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);
       throw error;
