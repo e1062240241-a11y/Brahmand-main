@@ -476,7 +476,7 @@ export default function HomeScreen() {
     };
 
     fetchActiveCounts();
-    const interval = setInterval(fetchActiveCounts, 5000);
+    const interval = setInterval(fetchActiveCounts, 10000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -2497,7 +2497,7 @@ export default function HomeScreen() {
                                     fontSize: 13
                                   }]}>
                                     {hanumanStatus.isActive
-                                      ? `${(hanumanChantCount * 18).toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                      ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
                                       : (t('language') === 'hi'
                                         ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
                                         : '2300+ devotees already completed jaap')}
