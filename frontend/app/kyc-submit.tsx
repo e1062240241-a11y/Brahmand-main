@@ -646,13 +646,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   introParagraph: {
-    color: '#4B5563',
     textAlign: 'center',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    fontSize: 14,
-    fontStyle: 'normal',
+    fontSize: 15,
     fontWeight: '400',
-    lineHeight: 22.75,
+    color: '#666666',
+    lineHeight: 22,
     marginBottom: 24,
   },
   whiteCard: {
