@@ -696,7 +696,7 @@ const DirectMessageScreen = () => {
           await fetchMessagesViaAPI();
           await fetchConversation();
         }
-      }, 5000);
+      }, 30000);
       setTimeout(() => markMessagesAsRead(), 1000);
 
       return () => {
@@ -763,7 +763,7 @@ const DirectMessageScreen = () => {
         await fetchMessagesViaAPI();
         await fetchConversation();
       }
-    }, 5000);
+    }, 30000);
 
     setTimeout(() => markMessagesAsRead(), 1000);
 

@@ -175,6 +175,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const [selectedFilter, setSelectedFilter] = useState('Normal');
   const [communityLevel, setCommunityLevel] = useState('city');
   const [category, setCategory] = useState('feed');
+  const [agreedToCopyright, setAgreedToCopyright] = useState(false);
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -236,6 +237,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   }, [previewPlayer, previewVideoSource, visible]);
 
   useEffect(() => {
+    setAgreedToCopyright(false);
     if (selectedMedia?.width && selectedMedia?.height) {
       setDynamicRatio(selectedMedia.width / selectedMedia.height);
       const closestMode = getClosestAspectRatio(selectedMedia.width, selectedMedia.height);
@@ -413,7 +415,11 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     tooltipText = "↑ Drag up / down to adjust fit ↓";
   }
 
-  const canUpload = useMemo(() => !!selectedMedia && !uploading, [selectedMedia, uploading]);
+  const canUpload = useMemo(() => {
+    if (!selectedMedia || uploading) return false;
+    if (selectedMedia.mediaType === 'video' && !agreedToCopyright) return false;
+    return true;
+  }, [selectedMedia, uploading, agreedToCopyright]);
 
   const resetAndClose = () => {
     setSelectedMedia(null);
@@ -426,6 +432,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     setOffsetXPercent(0.5);
     setOffsetYPercent(0.5);
     setScrollEnabled(true);
+    setAgreedToCopyright(false);
     onClose();
   };
 
@@ -793,6 +800,22 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'पोस्ट विवरण' : 'Post Details'}</Text>
               <M3OutlinedInput label={t('language') === 'hi' ? 'कैप्शन / विवरण' : 'Caption / Description'} value={caption} onChangeText={setCaption} multiline />
+              {selectedMedia?.mediaType === 'video' && (
+                <TouchableOpacity
+                  style={styles.checkboxContainer}
+                  activeOpacity={0.8}
+                  onPress={() => setAgreedToCopyright(!agreedToCopyright)}
+                >
+                  <View style={[styles.checkbox, agreedToCopyright && styles.checkboxChecked]}>
+                    {agreedToCopyright && <Ionicons name="checkmark" size={12} color="#FFF" />}
+                  </View>
+                  <Text style={styles.checkboxLabel}>
+                    {t('language') === 'hi'
+                      ? 'सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।'
+                      : 'By uploading content, you confirm you own or have rights to use the audio and video.'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
 
@@ -1217,6 +1240,33 @@ const styles = StyleSheet.create({
   mentionSL: {
     fontSize: 12,
     color: '#888',
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: 12,
+    paddingHorizontal: 4,
+    gap: 10,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 1.5,
+    borderColor: '#79747E',
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  checkboxLabel: {
+    fontSize: 13,
+    color: '#49454F',
+    flex: 1,
+    lineHeight: 18,
   },
 });
 export default UploadPostModal;
