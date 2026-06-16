@@ -3,10 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import * as FileSystem from 'expo-file-system/legacy';
-import { ref, uploadBytesResumable } from 'firebase/storage';
 import { secureStorage } from '../utils/secureStorage';
-
-import { getFirebaseStorage } from './firebase/config';
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
 const configuredWebApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL_WEB;
@@ -253,7 +250,7 @@ const getLocalUploadFileSize = async (file: { uri: string; name: string; type: s
   return undefined;
 };
 
-const uploadLargeVideoViaFirebase = async (
+const uploadLargeVideoViaBunny = async (
   file: { uri: string; name: string; type: string },
   onProgress?: (progressEvent: any) => void,
 ) => {
@@ -267,26 +264,25 @@ const uploadLargeVideoViaFirebase = async (
   const safeName = (file.name || `video-${uploadId}.mp4`).replace(/[^a-zA-Z0-9._-]/g, '_');
   const objectPath = `raw-post-videos/direct/${uploadId}-${safeName}`;
 
-  const storage = getFirebaseStorage();
-  const uploadRef = ref(storage, objectPath);
-  const task = uploadBytesResumable(uploadRef, blob, {
-    contentType: file.type || 'video/mp4',
-  });
+  const credsResponse = await api.get('/posts/bunny-upload-credentials');
+  const { bunnyUrl, headers } = credsResponse.data;
+  const fullUploadUrl = `${bunnyUrl}/${objectPath}`;
 
-  await new Promise<void>((resolve, reject) => {
-    task.on(
-      'state_changed',
-      (snapshot) => {
-        if (!onProgress) {
-          return;
-        }
-        const total = snapshot.totalBytes || blob.size;
-        const loaded = snapshot.bytesTransferred || 0;
-        onProgress({ loaded, total });
-      },
-      (error) => reject(error),
-      () => resolve(),
-    );
+  const uploadHeaders = {
+    ...headers,
+    'Content-Type': file.type || 'video/mp4',
+  };
+
+  await axios.put(fullUploadUrl, blob, {
+    headers: uploadHeaders,
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        onProgress({
+          loaded: progressEvent.loaded,
+          total: progressEvent.total,
+        });
+      }
+    },
   });
 
   return {
@@ -771,7 +767,7 @@ export const uploadUserPost = (
         (Platform.OS !== 'web' || ENABLE_WEB_DIRECT_VIDEO_UPLOAD);
 
       if (shouldUseDirectVideoUpload) {
-        const { objectPath } = await uploadLargeVideoViaFirebase(preparedVideoFile, onProgress);
+        const { objectPath } = await uploadLargeVideoViaBunny(preparedVideoFile, onProgress);
 
         const formData = new FormData();
         formData.append('storage_path', objectPath);

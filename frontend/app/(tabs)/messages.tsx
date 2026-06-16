@@ -56,6 +56,9 @@ const COMMUNITIES_CACHE_KEY = 'communities_cache';
 const USER_GROUPS_CACHE_KEY = 'user_groups_discover_cache';
 const USER_GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+let initialCommunityFetchDone = false;
+let initialChatFetchDone = false;
+
 // Cache helpers
 const getCachedData = async (key: string) => {
   try {
@@ -123,11 +126,11 @@ interface DMConversation {
 }
 
 function MessagesScreen({
-  observedCommunities,
-  observedConversations,
+  observedCommunities = [],
+  observedConversations = [],
 }: {
-  observedCommunities: any[];
-  observedConversations: any[];
+  observedCommunities?: any[];
+  observedConversations?: any[];
 }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
@@ -941,6 +944,7 @@ function MessagesScreen({
       console.warn('Error fetching data:', error.message || error);
       if (error.response?.status === 401) {
         logout();
+        router.replace('/');
       }
     } finally {
       setLoading(false);
@@ -950,7 +954,30 @@ function MessagesScreen({
 
   useEffect(() => {
     getAllMutedConversations().then(setMutedConversations);
+
+    // Load cached user groups on initial mount to display immediately
+    const loadCachedUserGroups = async () => {
+      try {
+        const cached = await AsyncStorage.getItem(USER_GROUPS_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          const data = Array.isArray(parsed) ? parsed : parsed?.data;
+          if (Array.isArray(data) && data.length > 0) {
+            setUserGroups(data);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load cached user groups:', err);
+      }
+    };
+    loadCachedUserGroups();
   }, []);
+
+  useEffect(() => {
+    // Reset fetch flags when user changes or logs out to ensure fresh data for new user
+    initialCommunityFetchDone = false;
+    initialChatFetchDone = false;
+  }, [user?.id]);
 
   const fetchConversations = async () => {
     // No-op: fetchData now handles both circles and conversations,
@@ -978,7 +1005,18 @@ function MessagesScreen({
   useFocusEffect(
     useCallback(() => {
       getAllMutedConversations().then(setMutedConversations);
-      fetchData();
+      
+      const isCommunity = activeTopTab === 'Community';
+      const shouldFetch = isCommunity ? !initialCommunityFetchDone : !initialChatFetchDone;
+      
+      if (shouldFetch) {
+        if (isCommunity) {
+          initialCommunityFetchDone = true;
+        } else {
+          initialChatFetchDone = true;
+        }
+        fetchData();
+      }
     }, [activeTopTab])
   );
 

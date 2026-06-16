@@ -27,6 +27,7 @@ import { uploadUserPost, getAllUsers } from '../services/api';
 import { MentionInput } from './MentionInput';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
+import { useUploadStore } from '../store/uploadStore';
 
 let ExpoVideoModule: any = null;
 try {
@@ -175,6 +176,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const [selectedFilter, setSelectedFilter] = useState('Normal');
   const [communityLevel, setCommunityLevel] = useState('city');
   const [category, setCategory] = useState('feed');
+
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
@@ -413,7 +415,10 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     tooltipText = "↑ Drag up / down to adjust fit ↓";
   }
 
-  const canUpload = useMemo(() => !!selectedMedia && !uploading, [selectedMedia, uploading]);
+  const canUpload = useMemo(() => {
+    if (!selectedMedia || uploading) return false;
+    return true;
+  }, [selectedMedia, uploading]);
 
   const resetAndClose = () => {
     setSelectedMedia(null);
@@ -793,6 +798,15 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'पोस्ट विवरण' : 'Post Details'}</Text>
               <M3OutlinedInput label={t('language') === 'hi' ? 'कैप्शन / विवरण' : 'Caption / Description'} value={caption} onChangeText={setCaption} multiline />
+              {selectedMedia?.mediaType === 'video' && (
+                <View style={styles.disclaimerContainer}>
+                  <Text style={styles.disclaimerText}>
+                    {t('language') === 'hi'
+                      ? 'सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।'
+                      : 'By uploading content, you confirm you own or have rights to use the audio and video.'}
+                  </Text>
+                </View>
+              )}
             </View>
 
 
@@ -1217,6 +1231,16 @@ const styles = StyleSheet.create({
   mentionSL: {
     fontSize: 12,
     color: '#888',
+  },
+  disclaimerContainer: {
+    marginTop: 12,
+    paddingHorizontal: 4,
+  },
+  disclaimerText: {
+    fontSize: 12,
+    color: '#666666',
+    lineHeight: 18,
+    fontStyle: 'italic',
   },
 });
 export default UploadPostModal;

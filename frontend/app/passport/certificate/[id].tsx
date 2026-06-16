@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 const { width: windowWidth } = Dimensions.get('window');
 
-function CertificateDetailScreen({ observedCertificates }: { observedCertificates: any[] }) {
+function CertificateDetailScreen({ observedCertificates = [] }: { observedCertificates?: any[] }) {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const user = useAuthStore((state) => state.user);

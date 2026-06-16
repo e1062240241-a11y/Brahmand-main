@@ -185,10 +185,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   appNameLetter: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#000000',
-    letterSpacing: 2,
+    fontFamily: 'Cinzel',
+    fontSize: 28,
+    fontWeight: '500',
+    color: '#E6C87A',
+    lineHeight: 36,
+    letterSpacing: 14,
   },
   dotContainer: {
     marginLeft: 4,

@@ -357,7 +357,7 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     # FIX 2: Remove ssl=False — Bunny requires valid HTTPS
     timeout = aiohttp.ClientTimeout(total=180, connect=30)
     async with aiohttp.ClientSession() as session:
-        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
+        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout, ssl=False) as resp:
             if resp.status not in (200, 201):
                 resp_text = await resp.text()
                 raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
@@ -392,7 +392,7 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     timeout = aiohttp.ClientTimeout(total=300, connect=30)
     async with aiohttp.ClientSession() as session:
         with open(file_path, 'rb') as f:
-            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
+            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout, ssl=False) as resp:
                 if resp.status not in (200, 201):
                     resp_text = await resp.text()
                     raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
@@ -405,6 +405,46 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
         media_url = f"{clean_base}/api/bunny-media/{object_path}"
     return media_url, object_path
 
+
+async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
+    """Download a file from Bunny.net storage to a local file path."""
+    bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
+    bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+    headers = {
+        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+    }
+    logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
+    timeout = aiohttp.ClientTimeout(total=600, connect=30)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
+            if resp.status != 200:
+                resp_text = await resp.text()
+                raise Exception(f"Failed to download from Bunny.net: {resp.status} - {resp_text}")
+            
+            size = 0
+            with open(local_path, 'wb') as f:
+                async for chunk in resp.content.iter_chunked(65536):
+                    f.write(chunk)
+                    size += len(chunk)
+            return size
+
+
+async def _delete_file_from_bunny(object_path: str):
+    """Delete a file from Bunny.net storage."""
+    bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
+    bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+    headers = {
+        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+    }
+    logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
+    timeout = aiohttp.ClientTimeout(total=60, connect=10)
+    async with aiohttp.ClientSession() as session:
+        async with session.delete(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
+            if resp.status not in (200, 204):
+                resp_text = await resp.text()
+                logger.warning(f"Failed to delete {object_path} from Bunny.net: status {resp.status} - {resp_text}")
+            else:
+                logger.info(f"Successfully deleted {object_path} from Bunny.net")
 
 
 async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
@@ -2348,7 +2388,7 @@ async def get_bunny_media(filepath: str):
         try:
             timeout = aiohttp.ClientTimeout(total=60, connect=10)
             async with aiohttp.ClientSession() as session:
-                async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
+                async with session.get(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
                     if resp.status == 200:
                         async for chunk in resp.content.iter_chunked(65536):
                             yield chunk
@@ -2368,6 +2408,21 @@ async def get_bunny_media(filepath: str):
 
 
 # =================== SOCIAL POSTS ===================
+
+@api_router.get('/posts/bunny-upload-credentials')
+async def get_bunny_upload_credentials(token_data: dict = Depends(verify_token)):
+    bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
+    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+    pull_zone_url = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
+    
+    return {
+        "bunnyUrl": f"https://sg.storage.bunnycdn.com/{bunny_zone}",
+        "pullZoneUrl": pull_zone_url,
+        "headers": {
+            "AccessKey": bunny_access_key
+        }
+    }
+
 
 @api_router.post('/posts/upload')
 async def upload_post(
@@ -2536,44 +2591,26 @@ async def _upload_post_impl(
             content_type = 'video/mp4'
             base_url = str(request.base_url)
             try:
-                # Try Bunny.net upload first
-                try:
-                    media_url, object_path = await _upload_post_media_file_to_bunny(
-                        user_id,
-                        temp_output_file.name,
-                        content_type,
-                        base_url
-                    )
-                    logger.info("Uploaded video to Bunny.net successfully")
-                except Exception as bunny_exc:
-                    logger.warning(f"Bunny.net video upload failed ({bunny_exc}), falling back to Firebase...")
-                    media_url, object_path = await asyncio.to_thread(
-                        _upload_post_media_file_to_storage,
-                        user_id,
-                        temp_output_file.name,
-                        content_type,
-                    )
+                # Try Bunny.net upload
+                media_url, object_path = await _upload_post_media_file_to_bunny(
+                    user_id,
+                    temp_output_file.name,
+                    content_type,
+                    base_url
+                )
+                logger.info("Uploaded video to Bunny.net successfully")
                 
                 # Upload thumbnail
                 if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
                     try:
-                        try:
-                            thumbnail_url, _ = await _upload_post_media_file_to_bunny(
-                                user_id,
-                                temp_thumb_file.name,
-                                'image/jpeg',
-                                base_url
-                            )
-                        except Exception as bunny_exc:
-                            logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc}), falling back to Firebase...")
-                            thumbnail_url, _ = await asyncio.to_thread(
-                                _upload_post_media_file_to_storage,
-                                user_id,
-                                temp_thumb_file.name,
-                                'image/jpeg',
-                            )
-                    except Exception:
-                        logger.warning("Failed to upload video thumbnail")
+                        thumbnail_url, _ = await _upload_post_media_file_to_bunny(
+                            user_id,
+                            temp_thumb_file.name,
+                            'image/jpeg',
+                            base_url
+                        )
+                    except Exception as bunny_exc:
+                        logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
             except Exception as exc:
                 logger.exception('Post video upload failed for user_id=%s', user_id)
                 raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
@@ -2602,12 +2639,8 @@ async def _upload_post_impl(
     if media_url is None or object_path is None:
         base_url = str(request.base_url)
         try:
-            try:
-                media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, base_url)
-                logger.info("Uploaded image to Bunny.net successfully")
-            except Exception as bunny_exc:
-                logger.warning(f"Bunny.net media upload failed ({bunny_exc}), falling back to Firebase...")
-                media_url, object_path = await _upload_post_media_to_storage(user_id, file_bytes, content_type)
+            media_url, object_path = await _upload_post_media_to_bunny(user_id, file_bytes, content_type, base_url)
+            logger.info("Uploaded image to Bunny.net successfully")
         except Exception as exc:
             logger.exception('Post media upload failed for user_id=%s', user_id)
             raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
@@ -2808,20 +2841,13 @@ async def _upload_post_from_storage_impl(
     if not storage_path.startswith('raw-post-videos/'):
         raise HTTPException(status_code=400, detail='Invalid storage path')
 
-    bucket = _get_post_storage_bucket()
-    raw_blob = bucket.blob(storage_path)
-    if not raw_blob.exists():
-        raise HTTPException(status_code=404, detail='Uploaded raw video not found in storage')
-
-    content_type = (raw_blob.content_type or 'video/mp4').lower()
-    if not content_type.startswith('video/'):
-        raise HTTPException(status_code=400, detail='Stored media is not a video')
-
-    original_size_bytes = int(raw_blob.size or 0)
-    if original_size_bytes <= 0:
-        raise HTTPException(status_code=400, detail='Stored video is empty')
-    if original_size_bytes > MAX_VIDEO_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail='Video upload exceeds maximum allowed size')
+    content_type = 'video/mp4'
+    if storage_path.lower().endswith('.mov'):
+        content_type = 'video/quicktime'
+    elif storage_path.lower().endswith('.webm'):
+        content_type = 'video/webm'
+    elif storage_path.lower().endswith('.mkv'):
+        content_type = 'video/x-matroska'
 
     _ensure_ffmpeg_tools_available()
 
@@ -2831,7 +2857,16 @@ async def _upload_post_from_storage_impl(
     temp_output_file.close()
 
     try:
-        raw_blob.download_to_filename(temp_input_file.name)
+        try:
+            original_size_bytes = await _download_file_from_bunny(storage_path, temp_input_file.name)
+        except Exception as download_err:
+            logger.error(f"Failed to download raw video from Bunny: {download_err}")
+            raise HTTPException(status_code=404, detail='Uploaded raw video not found in storage')
+
+        if original_size_bytes <= 0:
+            raise HTTPException(status_code=400, detail='Stored video is empty')
+        if original_size_bytes > MAX_VIDEO_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail='Video upload exceeds maximum allowed size')
 
         metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_file.name)
         duration_seconds = metadata.get('duration') or 0.0
@@ -2864,14 +2899,9 @@ async def _upload_post_from_storage_impl(
                 base_url
             )
             logger.info("Uploaded processed video from storage to Bunny.net successfully")
-        except Exception as bunny_exc:
-            logger.warning(f"Bunny.net video upload failed ({bunny_exc}), falling back to Firebase...")
-            media_url, object_path = await asyncio.to_thread(
-                _upload_post_media_file_to_storage,
-                user_id,
-                temp_output_file.name,
-                'video/mp4',
-            )
+        except Exception as exc:
+            logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
+            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
 
         post_doc = await _create_post_document(
             db=db,
@@ -2909,7 +2939,7 @@ async def _upload_post_from_storage_impl(
             logger.warning('Post mention notification failed for %s: %s', post_doc.get('id'), mention_err)
 
         try:
-            raw_blob.delete()
+            await _delete_file_from_bunny(storage_path)
         except Exception as cleanup_err:
             logger.warning('Raw video cleanup failed for %s: %s', storage_path, cleanup_err)
 
@@ -10580,9 +10610,19 @@ async def get_community_requests(
     
     # Filter requests based on visibility level
     visible_requests = []
+    user_comms = user.get('communities', []) or []
+    if not isinstance(user_comms, list):
+        user_comms = []
+
     for req in requests:
         # If user is the creator, always visible
         if req.get('user_id') == user_id:
+            visible_requests.append(req)
+            continue
+
+        # If user is a member of the community the request belongs to, always visible
+        req_comm_id = req.get('community_id')
+        if req_comm_id and req_comm_id in user_comms:
             visible_requests.append(req)
             continue
 

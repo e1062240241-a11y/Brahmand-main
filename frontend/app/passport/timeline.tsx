@@ -17,13 +17,13 @@ const monthNames = [
 ];
 
 function PassportTimelineScreen({
-  observedJourneys,
-  observedBadges,
-  observedCertificates,
+  observedJourneys = [],
+  observedBadges = [],
+  observedCertificates = [],
 }: {
-  observedJourneys: any[];
-  observedBadges: any[];
-  observedCertificates: any[];
+  observedJourneys?: any[];
+  observedBadges?: any[];
+  observedCertificates?: any[];
 }) {
   const router = useRouter();
   // Determine if badges are earned

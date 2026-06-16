@@ -148,7 +148,7 @@ const CommunityTweetsList: React.FC<TweetListProps> = ({
   webFallbackTweets = [],
 }) => {
   // Use either WatermelonDB records or the web fallback memory state
-  const displayData = Platform.OS === 'web' ? webFallbackTweets : messages;
+  const displayData = Platform.OS === 'web' ? webFallbackTweets : (messages || []);
 
   if (displayData.length === 0) {
     return <SkeletonLoader />;
