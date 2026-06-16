@@ -60,7 +60,7 @@ const PRESET_BADGES = [
   }
 ];
 
-function PassportBadgeScreen({ observedBadges }: { observedBadges: any[] }) {
+function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }) {
   const router = useRouter();
   const { badgeTitle } = useLocalSearchParams<{ badgeTitle?: string }>();
   const loadPassport = usePassportStore((state) => state.loadPassport);

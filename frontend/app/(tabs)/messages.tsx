@@ -126,11 +126,11 @@ interface DMConversation {
 }
 
 function MessagesScreen({
-  observedCommunities,
-  observedConversations,
+  observedCommunities = [],
+  observedConversations = [],
 }: {
-  observedCommunities: any[];
-  observedConversations: any[];
+  observedCommunities?: any[];
+  observedConversations?: any[];
 }) {
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
