@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Mask } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
 
 const LotusOrnament = () => (
@@ -11,37 +11,54 @@ const LotusOrnament = () => (
 );
 
 const DharmaIcon = () => (
-  <Svg width={31} height={31} viewBox="0 0 24 24" fill="none" stroke="#FFA652" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ aspectRatio: 1 }}>
-    <Circle cx={12} cy={12} r={10} />
-    <Circle cx={12} cy={12} r={3} />
-    <Path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19" />
+  <Svg width={31} height={31} viewBox="0 0 31 31" fill="none" style={{ aspectRatio: 1 }}>
+    <Path d="M30.42 15.707C30.1591 15.2484 29.7248 14.9141 29.2148 14.7789C28.2989 14.5433 27.3524 14.4485 26.4079 14.4979C26.9144 11.9848 26.5345 9.99709 26.1547 8.8184C25.8337 7.81538 24.8041 7.21954 23.7746 7.44093C22.4863 7.72786 21.2613 8.24789 20.16 8.97538C19.3535 7.32781 18.1792 5.88755 16.7277 4.76578C16.0053 4.22391 15.0118 4.22391 14.2893 4.76578C12.8356 5.88684 11.6591 7.32715 10.8508 8.97538C9.74948 8.24789 8.52448 7.72786 7.23619 7.44093C6.20672 7.21839 5.17675 7.81477 4.85728 8.8184C4.47747 9.99709 4.09766 11.9835 4.59648 14.4979C3.65202 14.4485 2.70555 14.5433 1.78964 14.7789C1.27965 14.9141 0.845344 15.2484 0.584375 15.707C0.311587 16.1763 0.238616 16.7355 0.381797 17.2591C0.81099 18.8518 2.12895 21.8789 6.12079 24.2642C10.1126 26.6494 13.6196 26.6418 15.5085 26.6418C17.3975 26.6418 20.9108 26.6418 24.8773 24.2642C28.8691 21.8789 30.1871 18.8518 30.6163 17.2591C30.7614 16.7363 30.6907 16.1772 30.42 15.707ZM7.15895 22.5259C3.78747 20.5103 2.69234 18.039 2.33532 16.7287C3.2668 16.4987 4.2336 16.4484 5.18392 16.5805C5.50119 17.4304 5.88867 18.2524 6.34236 19.0379C7.4563 20.9584 8.91567 22.6565 10.6469 24.0464C9.42272 23.6944 8.25003 23.1832 7.15895 22.5259ZM15.5022 24.4136C14.321 23.5349 11.4509 20.8395 11.4509 15.3955C11.4509 10.0186 14.2843 7.30167 15.5022 6.38506C16.7201 7.30421 19.5536 10.0211 19.5536 15.398C19.5536 20.8395 16.6834 23.5349 15.5022 24.4136ZM28.6691 16.7312C28.3184 18.0276 27.2258 20.5053 23.8467 22.5259C22.7556 23.1828 21.5829 23.6936 20.3588 24.0451C22.09 22.6552 23.5494 20.9572 24.6633 19.0367C25.117 18.2511 25.5045 17.4291 25.8218 16.5793C26.7718 16.4484 27.7381 16.5008 28.6691 16.7312Z" fill="#FFA652"/>
   </Svg>
 );
 
 const SafetyIcon = () => (
-  <Svg width={31} height={31} viewBox="0 0 24 24" fill="none" stroke="#FFA652" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ aspectRatio: 1 }}>
-    <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  <Svg width={22.5} height={22.5} viewBox="0 0 23 23" fill="none">
+    <Path d="M20.625 0H1.875C0.839466 0 0 0.805885 0 1.79999V8.09998C0 14.031 2.99062 17.6253 5.49961 19.5963C8.20195 21.7181 10.8902 22.4392 11.0074 22.4684C11.1686 22.5105 11.3385 22.5105 11.4996 22.4684C11.6168 22.4392 14.3016 21.7181 17.0074 19.5963C19.5094 17.6253 22.5 14.031 22.5 8.09998V1.79999C22.5 0.805885 21.6605 0 20.625 0ZM15 10.8H12.1875V13.5C12.1875 14.1928 11.4062 14.6258 10.7812 14.2794C10.4912 14.1186 10.3125 13.8215 10.3125 13.5V10.8H7.5C6.77831 10.8 6.32726 10.05 6.68808 9.45001C6.85554 9.17153 7.16505 8.99997 7.5 8.99997H10.3125V6.29998C10.3125 5.60716 11.0938 5.17415 11.7188 5.52056C12.0088 5.68133 12.1875 5.97845 12.1875 6.29998V8.99997H15C15.7217 8.99997 16.1727 9.74998 15.8119 10.35C15.6444 10.6284 15.3349 10.8 15 10.8Z" fill="#FFA652"/>
   </Svg>
 );
 
 const TrustedIcon = () => (
-  <Svg width={31} height={31} viewBox="0 0 24 24" fill="none" stroke="#FFA652" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ aspectRatio: 1 }}>
-    <Path d="M22 11.08V12a10 10 0 11-5.93-9.14" />
-    <Path d="M22 4L12 14.01l-3-3" />
+  <Svg width={23} height={23} viewBox="0 0 23 23" fill="none">
+    <Path d="M5.8869 20.4444V10.7678H8.15952C8.25081 10.7678 8.34664 10.7774 8.44702 10.7965C8.5474 10.8156 8.64324 10.8443 8.73452 10.8826L15.4429 13.5243C15.9175 13.7158 16.319 14.0125 16.6476 14.4145C16.9762 14.8165 17.1405 15.2759 17.1405 15.7928C17.1405 15.9459 17.0949 16.0703 17.0036 16.166C16.9123 16.2618 16.7937 16.3096 16.6476 16.3096H14.6488C14.2289 16.3096 13.8137 16.2761 13.403 16.2091C12.9923 16.1421 12.5861 16.0416 12.1845 15.9076L10.1857 15.2185L9.91191 16.0225L11.9655 16.769C12.4401 16.9413 12.933 17.0514 13.444 17.0993C13.9551 17.1471 14.4663 17.171 14.9774 17.171H20.3167C21.0833 17.171 21.7222 17.4725 22.2333 18.0755C22.7444 18.6785 23 19.4011 23 20.2434L14.4298 23L5.8869 20.4444ZM0 22.0812V10.7678H4.21667V22.0812H0ZM13.4167 9.13109L8.92619 4.42197L10.1036 3.18727L13.4167 6.69039L19.8238 0L20.9738 1.17728L13.4167 9.13109Z" fill="#FFA652"/>
   </Svg>
 );
 
 const CommunityIcon = () => (
-  <Svg width={31} height={31} viewBox="0 0 24 24" fill="none" stroke="#FFA652" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{ aspectRatio: 1 }}>
-    <Path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-    <Circle cx={9} cy={7} r={4} />
-    <Path d="M23 21v-2a4 4 0 00-3-3.87" />
-    <Path d="M16 3.13a4 4 0 010 7.75" />
+  <Svg width={22} height={23} viewBox="0 0 22 23" fill="none">
+    <Path d="M21.829 21.5841C22.2206 22.128 21.902 22.911 21.2555 22.9935C21.2212 22.9979 21.1867 23 21.1522 23H0.847304C0.196029 23 -0.211019 22.2632 0.114596 21.6736C0.131513 21.643 0.150174 21.6135 0.170475 21.5852C0.919625 20.5354 1.91862 19.7089 3.06815 19.1878C0.662919 16.8934 1.53604 12.738 4.63977 11.7081C7.7435 10.6782 10.75 13.5462 10.0515 16.8705C9.8641 17.7626 9.41693 18.5721 8.77149 19.1878C9.60084 19.5624 10.3545 20.0984 10.9923 20.7673C11.6302 20.0984 12.3838 19.5624 13.2132 19.1878C10.808 16.8934 11.6811 12.738 14.7848 11.7081C17.8885 10.6782 20.8951 13.5462 20.1966 16.8705C20.0091 17.7626 19.562 18.5721 18.9165 19.1878C20.0714 19.7061 21.0757 20.5325 21.829 21.5841ZM0.33968 11.3278C0.713484 11.6208 1.24379 11.5417 1.52413 11.151C3.72383 8.08557 8.12321 8.08557 10.3229 11.151C10.6613 11.6226 11.3382 11.6226 11.6766 11.151C13.8763 8.08557 18.2757 8.08557 20.4753 11.151C20.8665 11.6955 21.675 11.5933 21.9307 10.967C22.0493 10.6763 22.0105 10.3415 21.829 10.0888C21.0798 9.0393 20.0808 8.21313 18.9313 7.69244C21.3366 5.39805 20.4634 1.24271 17.3597 0.212812C14.256 -0.817081 11.2494 2.05089 11.9479 5.37517C12.1354 6.26724 12.5825 7.07674 13.228 7.69244C12.3986 8.06712 11.645 8.60312 11.0071 9.27194C10.3693 8.60312 9.61565 8.06712 8.7863 7.69244C11.1915 5.39805 10.3184 1.24271 7.21468 0.212812C4.11094 -0.817081 1.1044 2.05089 1.8029 5.37517C1.99035 6.26724 2.43752 7.07674 3.08295 7.69244C1.92803 8.21127 0.923712 9.03798 0.170475 10.0899C-0.109873 10.4806 -0.0341235 11.0348 0.33968 11.3278Z" fill="#FFA652"/>
   </Svg>
 );
 
-const IconItem = ({ icon: Icon, label, isWide }: any) => (
-  <View style={[styles.iconItemContainer, isWide && styles.iconItemContainerWide]}>
+const CheckedCheckboxIcon = () => (
+  <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+    <Mask id="path-1-inside-1_1642_26367" fill="white">
+      <Path d="M0 4C0 1.79086 1.79086 0 4 0H12C14.2091 0 16 1.79086 16 4V12C16 14.2091 14.2091 16 12 16H4C1.79086 16 0 14.2091 0 12V4Z"/>
+    </Mask>
+    <Path d="M4 0V2H12V0V-2H4V0ZM16 4H14V12H16H18V4H16ZM12 16V14H4V16V18H12V16ZM0 12H2V4H0H-2V12H0ZM4 16V14C2.89543 14 2 13.1046 2 12H0H-2C-2 15.3137 0.686292 18 4 18V16ZM16 12H14C14 13.1046 13.1046 14 12 14V16V18C15.3137 18 18 15.3137 18 12H16ZM12 0V2C13.1046 2 14 2.89543 14 4H16H18C18 0.686292 15.3137 -2 12 -2V0ZM4 0V-2C0.686292 -2 -2 0.686292 -2 4H0H2C2 2.89543 2.89543 2 4 2V0Z" fill="#F5EEDC" mask="url(#path-1-inside-1_1642_26367)"/>
+    <Path d="M11.1362 5.02246C11.475 4.68366 12.0394 4.80768 12.2173 5.23145L12.2476 5.32031L12.2642 5.40625C12.2905 5.60871 12.2223 5.81421 12.0757 5.96094L7.05811 10.9785C6.79901 11.2378 6.37882 11.2376 6.11963 10.9785L3.92432 8.7832C3.56302 8.4219 3.72861 7.8051 4.22217 7.67285L4.30811 7.65527C4.48156 7.63275 4.65737 7.68 4.79639 7.78613L4.86279 7.84473L6.58838 9.57031L11.1362 5.02246Z" fill="#F5EEDC" stroke="#F5EEDC" strokeWidth={0.7}/>
+  </Svg>
+);
+
+const UncheckedCheckboxIcon = () => (
+  <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+    <Mask id="path-1-inside-1_1642_26367" fill="white">
+      <Path d="M0 4C0 1.79086 1.79086 0 4 0H12C14.2091 0 16 1.79086 16 4V12C16 14.2091 14.2091 16 12 16H4C1.79086 16 0 14.2091 0 12V4Z"/>
+    </Mask>
+    <Path d="M4 0V2H12V0V-2H4V0ZM16 4H14V12H16H18V4H16ZM12 16V14H4V16V18H12V16ZM0 12H2V4H0H-2V12H0ZM4 16V14C2.89543 14 2 13.1046 2 12H0H-2C-2 15.3137 0.686292 18 4 18V16ZM16 12H14C14 13.1046 13.1046 14 12 14V16V18C15.3137 18 18 15.3137 18 12H16ZM12 0V2C13.1046 2 14 2.89543 14 4H16H18C18 0.686292 15.3137 -2 12 -2V0ZM4 0V-2C0.686292 -2 -2 0.686292 -2 4H0H2C2 2.89543 2.89543 2 4 2V0Z" fill="#F5EEDC" mask="url(#path-1-inside-1_1642_26367)"/>
+  </Svg>
+);
+
+const IconItem = ({ icon: Icon, label, isWide, customWidth }: any) => (
+  <View style={[
+    styles.iconItemContainer,
+    isWide && styles.iconItemContainerWide,
+    customWidth !== undefined && { width: customWidth }
+  ]}>
     <View style={styles.iconEllipse}>
       <Icon />
     </View>
@@ -117,18 +134,18 @@ export default function EntryAnimationScreen() {
         <View style={styles.iconsRow}>
           <IconItem icon={DharmaIcon} label="Dharma" />
           <IconItem icon={SafetyIcon} label="Safety" />
-          <IconItem icon={TrustedIcon} label="Trusted" />
+          <IconItem icon={TrustedIcon} label="Trusted" customWidth={44} />
           <IconItem icon={CommunityIcon} label="Community" isWide={true} />
         </View>
 
         {/* Checkbox and Terms Section */}
         <View style={styles.checkboxContainer}>
           <TouchableOpacity
-            style={[styles.checkbox, agreed && styles.checkboxChecked]}
+            style={styles.checkbox}
             onPress={() => setAgreed(!agreed)}
             activeOpacity={0.8}
           >
-            {agreed && <Text style={styles.checkmark}>✓</Text>}
+            {agreed ? <CheckedCheckboxIcon /> : <UncheckedCheckboxIcon />}
           </TouchableOpacity>
           <Text style={styles.termsText}>
             I agree to the{' '}
@@ -266,7 +283,7 @@ const styles = StyleSheet.create({
     width: 45,
     height: 46,
     borderRadius: 23,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#FFA652',
     justifyContent: 'center',
     alignItems: 'center',
@@ -274,9 +291,10 @@ const styles = StyleSheet.create({
   },
   iconLabel: {
     color: '#FFA652',
-    fontFamily: 'Poppins',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontSize: 12,
-    fontWeight: '400',
+    fontStyle: 'normal',
+    fontWeight: '500',
     lineHeight: 20,
     letterSpacing: -0.15,
     textAlign: 'center',
@@ -291,9 +309,6 @@ const styles = StyleSheet.create({
   checkbox: {
     width: 16,
     height: 16,
-    borderWidth: 2,
-    borderColor: '#F5EEDC',
-    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'transparent',
@@ -309,13 +324,21 @@ const styles = StyleSheet.create({
   },
   termsText: {
     color: '#F5EEDC',
-    fontFamily: 'Poppins',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontSize: 12,
+    fontStyle: 'normal',
+    fontWeight: '500',
     lineHeight: 16,
   },
   termsLink: {
-    textDecorationLine: 'underline',
+    color: '#F5EEDC',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 12,
+    fontStyle: 'normal',
     fontWeight: '700',
+    lineHeight: 16,
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'solid',
   },
   continueButton: {
     width: 359,
