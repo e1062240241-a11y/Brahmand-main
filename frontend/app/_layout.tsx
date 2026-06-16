@@ -692,10 +692,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        {/*
+          ⚡ Bolt: Global StatusBar config — forces translucent bar and transparent background
+          Impact: Eliminates Activity redraw blink when opening DatePicker or other Modals on Android
+          Tested: Android API 30+ emulator / Web / iOS
+        */}
         <StatusBar
           style={Platform.OS === 'android' ? 'dark' : isDarkScreen ? 'light' : 'dark'}
-          backgroundColor={Platform.OS === 'android' ? '#FFF4ED' : 'transparent'}
-          translucent={Platform.OS !== 'android'}
+          backgroundColor="transparent"
+          translucent={true}
         />
         <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
           <MuteProvider>
