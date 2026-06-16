@@ -143,12 +143,28 @@ function MessagesScreen({
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
   const activeRequestScrollRef = useRef<ScrollView>(null);
-  const communities = useMemo(() =>
-    observedCommunities.filter(c => c.type !== 'user_group')
-  , [observedCommunities]);
 
-  const circles = useMemo(() =>
-    observedConversations
+  const [apiCommunities, setApiCommunities] = useState<any[]>([]);
+  const [apiCircles, setApiCircles] = useState<any[]>([]);
+  const [apiDMs, setApiDMs] = useState<any[]>([]);
+
+  const communities = useMemo(() => {
+    const source = Platform.OS === 'web' ? apiCommunities : observedCommunities;
+    return source.filter((c: any) => c.type !== 'user_group');
+  }, [observedCommunities, apiCommunities]);
+
+  const circles = useMemo(() => {
+    if (Platform.OS === 'web') {
+      return apiCircles.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        photo: c.photo,
+        member_count: c.member_count || 0,
+        last_message: c.last_message,
+        last_message_time: c.last_message_time || c.updated_at ? formatTimeIST(c.last_message_time || c.updated_at) : '',
+      }));
+    }
+    return observedConversations
       .filter(c => c.type === 'circle')
       .map(c => ({
         id: c.id,
@@ -157,11 +173,26 @@ function MessagesScreen({
         member_count: c.memberCount || 0,
         last_message: c.lastMessage,
         last_message_time: c.lastMessageAt ? formatTimeIST(c.lastMessageAt) : '',
-      }))
-  , [observedConversations]);
+      }));
+  }, [observedConversations, apiCircles]);
 
-  const conversations = useMemo(() =>
-    observedConversations
+  const conversations = useMemo(() => {
+    if (Platform.OS === 'web') {
+      return apiDMs.map((c: any) => ({
+        id: c.id,
+        conversation_id: c.id,
+        user: {
+          id: c.user?.id || '',
+          name: c.user?.name || '',
+          sl_id: c.user?.sl_id || '',
+          photo: c.user?.photo || '',
+          is_verified: false,
+        },
+        last_message: c.last_message,
+        last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
+      }));
+    }
+    return observedConversations
       .filter(c => c.type === 'dm')
       .map(c => ({
         id: c.id,
@@ -175,8 +206,8 @@ function MessagesScreen({
         },
         last_message: c.lastMessage,
         last_message_at: c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : undefined,
-      }))
-  , [observedConversations]);
+      }));
+  }, [observedConversations, apiDMs]);
 
   const [userGroups, setUserGroups] = useState<Community[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
@@ -691,19 +722,19 @@ function MessagesScreen({
       id: 'mumbai-fallback',
       name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
       type: 'city',
-      member_count: 1250,
+      member_count: 0,
     };
     const fallbackState: Community = {
       id: 'maharashtra-fallback',
       name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
       type: 'state',
-      member_count: 45200,
+      member_count: 0,
     };
     const fallbackNational: Community = {
       id: 'bharat-fallback',
       name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
       type: 'country',
-      member_count: 185000,
+      member_count: 0,
     };
     const cityItem = city || fallbackCity;
     const stateItem = state || fallbackState;
@@ -749,6 +780,11 @@ function MessagesScreen({
         console.log('[DEBUG] communityRes:', communityRes?.data?.length, 'requestRes:', requestRes?.data?.length);
 
         const allComms = communityRes.data || [];
+
+        if (Platform.OS === 'web') {
+          setApiCommunities(allComms);
+          AsyncStorage.setItem('web_communities_cache', JSON.stringify(allComms)).catch(() => {});
+        }
 
         // Persist to WatermelonDB (non-blocking - failure here should not break the UI)
         if (Platform.OS !== 'web') {
@@ -853,6 +889,13 @@ function MessagesScreen({
         
         const allCircles = circlesRes.data || [];
         const allDMs = convRes.data || [];
+
+        if (Platform.OS === 'web') {
+          setApiCircles(allCircles);
+          setApiDMs(allDMs);
+          AsyncStorage.setItem('web_circles_cache', JSON.stringify(allCircles)).catch(() => {});
+          AsyncStorage.setItem('web_dms_cache', JSON.stringify(allDMs)).catch(() => {});
+        }
 
         // Persist to WatermelonDB
         if (Platform.OS !== 'web') {
@@ -968,6 +1011,30 @@ function MessagesScreen({
         }
       } catch (err) {
         console.warn('Failed to load cached user groups:', err);
+      }
+
+      if (Platform.OS === 'web') {
+        try {
+          const [commCached, circlesCached, dmsCached] = await Promise.all([
+            AsyncStorage.getItem('web_communities_cache'),
+            AsyncStorage.getItem('web_circles_cache'),
+            AsyncStorage.getItem('web_dms_cache')
+          ]);
+          if (commCached) {
+            const parsed = JSON.parse(commCached);
+            if (Array.isArray(parsed)) setApiCommunities(parsed);
+          }
+          if (circlesCached) {
+            const parsed = JSON.parse(circlesCached);
+            if (Array.isArray(parsed)) setApiCircles(parsed);
+          }
+          if (dmsCached) {
+            const parsed = JSON.parse(dmsCached);
+            if (Array.isArray(parsed)) setApiDMs(parsed);
+          }
+        } catch (err) {
+          console.warn('Failed to load cached web data:', err);
+        }
       }
     };
     loadCachedUserGroups();
