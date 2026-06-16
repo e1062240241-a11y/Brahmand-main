@@ -941,6 +941,7 @@ function MessagesScreen({
       console.warn('Error fetching data:', error.message || error);
       if (error.response?.status === 401) {
         logout();
+        router.replace('/');
       }
     } finally {
       setLoading(false);

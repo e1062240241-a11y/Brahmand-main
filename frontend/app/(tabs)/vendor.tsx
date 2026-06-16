@@ -366,7 +366,7 @@ export default function VendorScreen() {
   useEffect(() => {
     // Redirect to auth if not authenticated after auth is loaded
     if (!authLoading && !isAuthenticated) {
-      router.replace('/auth' as any);
+      router.replace('/');
       return;
     }
     

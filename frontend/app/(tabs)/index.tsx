@@ -103,7 +103,7 @@ export default function CommunityScreen() {
 
   useEffect(() => {
     if (!userId) {
-      router.replace('/auth/phone');
+      router.replace('/');
       return;
     }
     fetchData();

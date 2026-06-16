@@ -203,7 +203,7 @@ export default function VendorProfileScreen() {
       <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 10) }]}>
         <View style={styles.headerLeftCol}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={26} color="#FFF" />
+            <Ionicons name="chevron-back" size={26} color="#000" />
           </TouchableOpacity>
           <View style={styles.kycRow}>
             <Text style={styles.kycVerifiedText}>KYC Verified</Text>
@@ -212,16 +212,6 @@ export default function VendorProfileScreen() {
             )}
           </View>
         </View>
-        
-        <TouchableOpacity
-          style={styles.requestCallBtn}
-          onPress={handleGetCall}
-          disabled={isSendingRequest}
-        >
-          <Text style={styles.requestCallBtnText}>
-            {isSendingRequest ? 'Sending...' : 'Request a Call Back'}
-          </Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -238,8 +228,21 @@ export default function VendorProfileScreen() {
 
         {/* Business Title & Details */}
         <View style={styles.titleSection}>
-          <Text style={styles.businessName}>{vendor.business_name}</Text>
-          <Text style={styles.ownerName}>by {vendor.owner_name}</Text>
+          <View style={styles.businessHeaderRow}>
+            <View style={styles.businessNameCol}>
+              <Text style={styles.businessName}>{vendor.business_name}</Text>
+              <Text style={styles.ownerName}>by {vendor.owner_name}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.requestCallBtn}
+              onPress={handleGetCall}
+              disabled={isSendingRequest}
+            >
+              <Text style={styles.requestCallBtnText}>
+                {isSendingRequest ? 'Sending...' : 'Request a Call Back'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           
           {/* Trust Badge */}
           <View style={styles.communityBadge}>
@@ -254,6 +257,10 @@ export default function VendorProfileScreen() {
             </Svg>
             <Text style={styles.communityBadgeText}>Frequently Used by Community</Text>
           </View>
+
+          {vendor.business_description ? (
+            <Text style={styles.businessDescriptionText}>{vendor.business_description}</Text>
+          ) : null}
 
           {/* Meta Info Row */}
           <View style={styles.metaRow}>
@@ -339,7 +346,12 @@ export default function VendorProfileScreen() {
         {vendor.offers && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderInline}>
-              <Ionicons name="pricetag-outline" size={18} color="#FF6600" style={{ marginRight: 8 }} />
+              <Svg width={15.363} height={15.398} viewBox="0 0 24 24" fill="none" style={{ marginRight: 8 }}>
+                <Path
+                  d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z M5 5a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"
+                  fill="#FF6600"
+                />
+              </Svg>
               <Text style={styles.sectionTitleNoMargin}>Offers & Deals</Text>
             </View>
             <Text style={styles.offerText}>{vendor.offers}</Text>
@@ -384,12 +396,22 @@ export default function VendorProfileScreen() {
       {/* Floating Bottom Action Buttons */}
       <View style={[styles.bottomButtonsWrapper, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <TouchableOpacity style={styles.bottomButton} onPress={handleCall}>
-          <Ionicons name="call" size={18} color="#F26522" style={{ marginRight: 6 }} />
+          <Svg width={18} height={18} viewBox="0 0 18 18" fill="none" style={{ marginRight: 6 }}>
+            <Path
+              d="M10.8244 1.25358C10.9271 0.869279 11.3221 0.641165 11.7064 0.74418C14.4242 1.4533 16.5467 3.57577 17.2558 6.29361C17.3588 6.67786 17.1307 7.07283 16.7464 7.17562C16.6856 7.19159 16.623 7.19977 16.5601 7.19992C16.2341 7.20002 15.9487 6.98109 15.8644 6.66622C15.2863 4.44716 13.5536 2.7141 11.3347 2.13559C10.95 2.0332 10.7214 1.6381 10.8244 1.25358ZM10.6146 5.01561C11.8558 5.34681 12.6532 6.14511 12.9844 7.38622C13.0687 7.7011 13.3541 7.92003 13.6801 7.91993C13.7429 7.91977 13.8055 7.9116 13.8664 7.89562C14.2507 7.79284 14.4788 7.39786 14.3758 7.01362C13.915 5.28921 12.7108 4.085 10.9864 3.6242C10.4508 3.48113 9.96121 3.97147 10.1051 4.5068C10.1719 4.75525 10.3661 4.94921 10.6146 5.01561ZM17.1334 12.1014L12.8935 10.2014L12.8818 10.196C12.4346 10.0048 11.9211 10.0522 11.5165 10.322C11.493 10.3375 11.4705 10.3544 11.449 10.3724L9.25835 12.24C7.87054 11.5659 6.43773 10.1438 5.76363 8.77403L7.63384 6.55012C7.65184 6.52762 7.66894 6.50512 7.68514 6.48082C7.94914 6.07739 7.99374 5.56861 7.80394 5.12541V5.11461L5.89863 0.867478C5.64492 0.282025 5.03619 -0.0666615 4.40283 0.0106753C1.88001 0.342652 -0.00455487 2.49535 8.26879e-06 5.03991C8.26879e-06 12.186 5.81403 18 12.9601 18C15.5046 18.0046 17.6573 16.12 17.9893 13.5972C18.0668 12.964 17.7185 12.3554 17.1334 12.1014Z"
+              fill="#F26522"
+            />
+          </Svg>
           <Text style={styles.bottomButtonText}>Call</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={[styles.bottomButton, { marginLeft: 13 }]} onPress={handleDirections}>
-          <Ionicons name="navigate" size={18} color="#F26522" style={{ marginRight: 6 }} />
+          <Svg width={19} height={19} viewBox="0 0 19 19" fill="none" style={{ marginRight: 6 }}>
+            <Path
+              d="M18.616 8.57296L10.427 0.384006C10.3053 0.262261 10.1608 0.165688 10.0017 0.0998001C9.84265 0.0339121 9.67217 0 9.5 0C9.32783 0 9.15735 0.0339121 8.99829 0.0998001C8.83923 0.165688 8.6947 0.262261 8.57296 0.384006L0.384006 8.57296C0.262261 8.6947 0.165688 8.83923 0.0998001 8.99829C0.0339121 9.15735 0 9.32783 0 9.5C0 9.67217 0.0339121 9.84265 0.0998001 10.0017C0.165688 10.1608 0.262261 10.3053 0.384006 10.427L8.57296 18.616C8.6947 18.7377 8.83923 18.8343 8.99829 18.9002C9.15735 18.9661 9.32783 19 9.5 19C9.67217 19 9.84265 18.9661 10.0017 18.9002C10.1608 18.8343 10.3053 18.7377 10.427 18.616L18.616 10.427C18.7377 10.3053 18.8343 10.1608 18.9002 10.0017C18.9661 9.84265 19 9.67217 19 9.5C19 9.32783 18.9661 9.15735 18.9002 8.99829C18.8343 8.83923 18.7377 8.6947 18.616 8.57296ZM13.1147 9.31475L11.2147 11.2147C11.0959 11.3336 10.9347 11.4003 10.7667 11.4003C10.5986 11.4003 10.4374 11.3336 10.3186 11.2147C10.1997 11.0959 10.133 10.9347 10.133 10.7667C10.133 10.5986 10.1997 10.4374 10.3186 10.3186L11.1379 9.5H8.23334C7.8974 9.5 7.57522 9.63345 7.33768 9.871C7.10013 10.1085 6.96668 10.4307 6.96668 10.7667V11.4C6.96668 11.568 6.89995 11.7291 6.78118 11.8478C6.66241 11.9666 6.50132 12.0333 6.33335 12.0333C6.16538 12.0333 6.00429 11.9666 5.88552 11.8478C5.76675 11.7291 5.70002 11.568 5.70002 11.4V10.7667C5.70002 10.0948 5.96692 9.45042 6.44201 8.97533C6.9171 8.50024 7.56146 8.23334 8.23334 8.23334H11.1379L10.3186 7.41476C10.1997 7.29592 10.133 7.13474 10.133 6.96668C10.133 6.79862 10.1997 6.63744 10.3186 6.5186C10.4374 6.39976 10.5986 6.333 10.7667 6.333C10.9347 6.333 11.0959 6.39976 11.2147 6.5186L13.1147 8.41859C13.1736 8.47741 13.2203 8.54726 13.2522 8.62414C13.2841 8.70103 13.3005 8.78344 13.3005 8.86667C13.3005 8.9499 13.2841 9.03231 13.2522 9.1092C13.2203 9.18608 13.1736 9.25593 13.1147 9.31475Z"
+              fill="#F26522"
+            />
+          </Svg>
           <Text style={styles.bottomButtonText}>Get Directions</Text>
         </TouchableOpacity>
       </View>
@@ -452,12 +474,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   kycVerifiedText: {
-    color: '#FFFFFF',
-    fontSize: 13,
+    color: '#000000',
+    fontSize: 24,
     fontWeight: '700',
+    fontStyle: 'normal',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
   requestCallBtn: {
+    display: 'flex',
     backgroundColor: '#FF6600',
     width: 152,
     height: 35,
@@ -468,12 +492,8 @@ const styles = StyleSheet.create({
     paddingLeft: 17,
     justifyContent: 'center',
     alignItems: 'center',
-    flexShrink: 0,
-    shadowColor: '#FF6600',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 3,
+    gap: 10,
+    marginTop: 0,
   },
   requestCallBtnText: {
     color: '#FFFFFF',
@@ -486,7 +506,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   bannerContainer: {
-    width: 393,
+    width: '100%',
     height: 219,
     flexShrink: 0,
     backgroundColor: '#F3F4F6',
@@ -506,6 +526,16 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
     backgroundColor: 'transparent',
+  },
+  businessHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  businessNameCol: {
+    flex: 1,
+    paddingRight: 12,
   },
   businessName: {
     fontSize: 30,
@@ -537,6 +567,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#00E100',
     lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  businessDescriptionText: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '400',
+    lineHeight: 20,
+    marginTop: 12,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
   metaRow: {

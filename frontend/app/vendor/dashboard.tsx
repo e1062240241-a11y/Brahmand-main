@@ -77,7 +77,7 @@ export default function VendorDashboardScreen() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.replace('/auth' as any);
+      router.replace('/');
     }
   }, [authLoading, isAuthenticated, router]);
 

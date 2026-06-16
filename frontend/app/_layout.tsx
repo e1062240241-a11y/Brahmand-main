@@ -13,6 +13,7 @@ import { COLORS } from '../src/constants/theme';
 import { useAdminStore } from '../src/store/adminStore';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
+import { Cinzel_500Medium } from '@expo-google-fonts/cinzel';
 import { MuteProvider } from '../src/contexts/MuteContext';
 import { useNotificationStore } from '../src/store/notificationStore';
 import { ToastContainer } from '../src/components/ToastContainer';
@@ -114,6 +115,7 @@ function isValidAppPath(path: string): boolean {
     '/vendor',
     '/sos',
     '/kyc-submit',
+    '/kyc-success',
     '/kyc',
     '/live-jaap-welcome',
     '/circle/create',
@@ -547,6 +549,7 @@ export default function RootLayout() {
     Outfit_500Medium,
     Outfit_600SemiBold,
     Outfit_700Bold,
+    'Cinzel': Cinzel_500Medium,
   });
 
   useDeepLinkHandler();
@@ -784,6 +787,14 @@ export default function RootLayout() {
               <Stack.Screen
                 key="kyc-submit"
                 name="kyc-submit"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="kyc-success"
+                name="kyc-success"
                 options={{
                   animation: 'slide_from_right',
                   gestureDirection: 'vertical'
