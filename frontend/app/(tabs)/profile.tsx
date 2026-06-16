@@ -30,6 +30,7 @@ import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
+import { useUploadStore } from '../../src/store/uploadStore';
 import api, {
   getUserPosts,
   getUserProfile,
@@ -182,14 +183,6 @@ export default function ProfileScreen() {
   const [locationDraft, setLocationDraft] = useState('');
   const [savingProfileField, setSavingProfileField] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
-  const [backgroundUpload, setBackgroundUpload] = useState<{
-    uploading: boolean;
-    progress: number;
-    isCompressing: boolean;
-    mediaUri?: string;
-    mediaType?: string;
-  }>({ uploading: false, progress: 0, isCompressing: false });
-
   const handleUploadStart = async (
     media: any,
     caption: string,
@@ -203,53 +196,22 @@ export default function ProfileScreen() {
     originalWidth?: number,
     originalHeight?: number
   ) => {
-    setBackgroundUpload({ 
-      uploading: true, 
-      progress: 0, 
-      isCompressing: false, 
-      mediaUri: media.uri,
-      mediaType: media.mediaType
+    useUploadStore.getState().startBackgroundUpload({
+      uri: media.uri,
+      type: media.mimeType,
+      name: media.name,
+      mediaType: media.mediaType,
+      caption,
+      selectedFilter: filterName || 'Normal',
+      communityLevel,
+      uploadCategory: category,
+      mediaWidth,
+      mediaHeight,
+      offsetXPercent: cropOffsetX,
+      offsetYPercent: cropOffsetY,
+      originalWidth,
+      originalHeight
     });
-
-    try {
-      const response = await uploadUserPost(
-        {
-          uri: media.uri,
-          type: media.mimeType,
-          name: media.name,
-        },
-        caption,
-        filterName,
-        (progressEvent) => {
-          if (progressEvent.total) {
-            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setBackgroundUpload(prev => ({ ...prev, progress: percent }));
-            if (percent >= 100 && media.mediaType === 'video') {
-              setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
-            }
-          }
-        },
-        communityLevel,
-        category,
-        mediaWidth,
-        mediaHeight,
-        cropOffsetX,
-        cropOffsetY,
-        originalWidth,
-        originalHeight
-      );
-      
-      if (response.data) {
-        setOffset(0);
-        loadPosts(true);
-        showToast('Post uploaded successfully!');
-      }
-    } catch (error: any) {
-      console.warn('[Profile] Background upload failed:', error.message || error);
-      Alert.alert('Upload Failed', error?.message || 'Could not upload post. Ensure your connection is stable.');
-    } finally {
-      setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
-    }
   };
 
   const showToast = useCallback((message: string) => {
@@ -551,6 +513,15 @@ export default function ProfileScreen() {
       loadPosts(true);
     });
   }, [userId]);
+
+  const uploadStatus = useUploadStore(state => state.status);
+  
+  useEffect(() => {
+    if (uploadStatus === 'success') {
+      setOffset(0);
+      loadPosts(true);
+    }
+  }, [uploadStatus]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -1178,30 +1149,7 @@ export default function ProfileScreen() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={styles.container}>
       {/* Background Upload Status */}
-      {backgroundUpload.uploading && (
-        <View style={[styles.uploadingStatusBar, { top: insets.top + NAV_BAR_HEIGHT + 10, bottom: undefined }]}>
-          <View style={styles.uploadingStatusContent}>
-            {backgroundUpload.mediaUri && (
-              <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
-            )}
-            <View style={styles.uploadingTextContainer}>
-              <Text style={styles.uploadingTitle}>
-                {backgroundUpload.isCompressing 
-                  ? 'Finalizing post...' 
-                  : `Posting new ${backgroundUpload.mediaType === 'video' ? 'Video' : 'Image'}... ${backgroundUpload.progress}%`}
-              </Text>
-              <View style={styles.progressBarBg}>
-                <LinearGradient
-                  colors={['#FF6B00', '#FF9E00']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
+
       <Animated.View
         pointerEvents="box-none"
         style={[styles.stickyNav, { paddingTop: insets.top, height: insets.top + NAV_BAR_HEIGHT }]}

@@ -27,6 +27,7 @@ import { uploadUserPost, getAllUsers } from '../services/api';
 import { MentionInput } from './MentionInput';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
+import { useUploadStore } from '../store/uploadStore';
 
 let ExpoVideoModule: any = null;
 try {

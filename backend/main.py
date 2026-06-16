@@ -357,7 +357,7 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     # FIX 2: Remove ssl=False — Bunny requires valid HTTPS
     timeout = aiohttp.ClientTimeout(total=180, connect=30)
     async with aiohttp.ClientSession() as session:
-        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
+        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout, ssl=False) as resp:
             if resp.status not in (200, 201):
                 resp_text = await resp.text()
                 raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
@@ -392,7 +392,7 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     timeout = aiohttp.ClientTimeout(total=300, connect=30)
     async with aiohttp.ClientSession() as session:
         with open(file_path, 'rb') as f:
-            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
+            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout, ssl=False) as resp:
                 if resp.status not in (200, 201):
                     resp_text = await resp.text()
                     raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
@@ -416,7 +416,7 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
     async with aiohttp.ClientSession() as session:
-        async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
+        async with session.get(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
             if resp.status != 200:
                 resp_text = await resp.text()
                 raise Exception(f"Failed to download from Bunny.net: {resp.status} - {resp_text}")
@@ -439,7 +439,7 @@ async def _delete_file_from_bunny(object_path: str):
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
     async with aiohttp.ClientSession() as session:
-        async with session.delete(bunny_url, headers=headers, timeout=timeout) as resp:
+        async with session.delete(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
             if resp.status not in (200, 204):
                 resp_text = await resp.text()
                 logger.warning(f"Failed to delete {object_path} from Bunny.net: status {resp.status} - {resp_text}")
@@ -2386,7 +2386,7 @@ async def get_bunny_media(filepath: str):
         try:
             timeout = aiohttp.ClientTimeout(total=60, connect=10)
             async with aiohttp.ClientSession() as session:
-                async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
+                async with session.get(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
                     if resp.status == 200:
                         async for chunk in resp.content.iter_chunked(65536):
                             yield chunk

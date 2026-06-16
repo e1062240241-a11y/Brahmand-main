@@ -32,6 +32,7 @@ import { useAudioPlayer } from 'expo-audio';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
+import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
@@ -1139,14 +1140,6 @@ export default function HomeScreen() {
   const postHeightsRef = useRef<Record<string, number>>({});
 
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
-  const [backgroundUpload, setBackgroundUpload] = useState<{
-    uploading: boolean;
-    progress: number;
-    isCompressing: boolean;
-    mediaUri?: string;
-    mediaType?: string;
-  }>({ uploading: false, progress: 0, isCompressing: false });
-
   const handleUploadStart = async (
     media: any,
     caption: string,
@@ -1160,63 +1153,22 @@ export default function HomeScreen() {
     originalWidth?: number,
     originalHeight?: number
   ) => {
-    setBackgroundUpload({
-      uploading: true,
-      progress: 0,
-      isCompressing: false,
-      mediaUri: media.uri,
-      mediaType: media.mediaType
+    useUploadStore.getState().startBackgroundUpload({
+      uri: media.uri,
+      type: media.mimeType,
+      name: media.name,
+      mediaType: media.mediaType,
+      caption,
+      selectedFilter: filterName || 'Normal',
+      communityLevel,
+      uploadCategory: category,
+      mediaWidth,
+      mediaHeight,
+      offsetXPercent: cropOffsetX,
+      offsetYPercent: cropOffsetY,
+      originalWidth,
+      originalHeight
     });
-
-    try {
-      const response = await uploadUserPost(
-        {
-          uri: media.uri,
-          type: media.mimeType,
-          name: media.name,
-        },
-        caption,
-        filterName,
-        (progressEvent) => {
-          if (progressEvent.total) {
-            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setBackgroundUpload(prev => ({ ...prev, progress: percent }));
-            if (percent >= 100 && media.mediaType === 'video') {
-              setBackgroundUpload(prev => ({ ...prev, isCompressing: true }));
-            }
-          }
-        },
-        communityLevel,
-        category,
-        mediaWidth,
-        mediaHeight,
-        cropOffsetX,
-        cropOffsetY,
-        originalWidth,
-        originalHeight
-      );
-
-      if (response.data) {
-        // Optimistically add to current active tab if it matches the category
-        // or if we are in 'for_you'
-        if (activeTab === 'for_you' || activeTab === category) {
-          const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
-          setTabFeed(activeTab, {
-            posts: [response.data, ...currentPosts]
-          });
-        }
-
-        // Also clear cache for 'festivals' if we uploaded a festival post so it refreshes next time
-        if (category === 'festivals' && activeTab !== 'festivals') {
-          setTabFeed('festivals', { lastFetched: 0 }); // Mark as stale
-        }
-      }
-    } catch (error: any) {
-      console.warn('[Home] Background upload failed:', error.message || error);
-      Alert.alert('Upload Failed', error?.message || 'Could not upload post. Ensure your connection is stable.');
-    } finally {
-      setBackgroundUpload({ uploading: false, progress: 0, isCompressing: false });
-    }
   };
 
   useEffect(() => {
@@ -3208,32 +3160,7 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {backgroundUpload.uploading && (
-        <View style={styles.uploadingStatusBar}>
-          <View style={styles.uploadingStatusContent}>
-            {backgroundUpload.mediaUri ? (
-              <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
-            ) : (
-              <View style={[styles.uploadingThumbnail, { backgroundColor: '#F0F0F0' }]} />
-            )}
-            <View style={styles.uploadingTextContainer}>
-              <Text style={styles.uploadingTitle}>
-                {backgroundUpload.isCompressing
-                  ? 'Processing Video...'
-                  : `Posting new ${backgroundUpload.mediaType === 'video' ? 'Video' : 'Image'}... ${backgroundUpload.progress}%`}
-              </Text>
-              <View style={styles.progressBarBg}>
-                <LinearGradient
-                  colors={['#FFD26C', '#FF7F50', '#FF4500']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
+
 
 
       <Modal visible={isEditingBio} transparent animationType="fade">

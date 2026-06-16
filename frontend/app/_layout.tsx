@@ -17,6 +17,7 @@ import { Cinzel_500Medium } from '@expo-google-fonts/cinzel';
 import { MuteProvider } from '../src/contexts/MuteContext';
 import { useNotificationStore } from '../src/store/notificationStore';
 import { ToastContainer } from '../src/components/ToastContainer';
+import { UploadProgressBanner } from '../src/components/UploadProgressBanner';
 import { toast } from '../src/store/toastStore';
 import { Alert as RNAlert, Animated } from 'react-native';
 import { BrandedLoading } from '../src/components/BrandedLoading';
@@ -842,6 +843,7 @@ export default function RootLayout() {
               {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>
             <GlobalFAB />
+            <UploadProgressBanner />
             <ToastContainer />
           </MuteProvider>
         </Animated.View>
