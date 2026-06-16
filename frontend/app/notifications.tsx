@@ -1,10 +1,11 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Dimensions, Alert, Image, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { COLORS } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
@@ -111,12 +112,18 @@ export default function NotificationsScreen() {
   const [actorsMap, setActorsMap] = useState<Record<string, { name?: string; photo?: string; isVerified?: boolean }>>({});
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
   const [followLoadingMap, setFollowLoadingMap] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const { unreadCount, setUnreadCount } = useNotificationStore();
 
   const loadNotifications = async (isInitial = false) => {
-    if (isInitial) setLoading(true);
+    if (isInitial) {
+      setLoading((prev) => {
+        if (notifications.length > 0) return false;
+        return true;
+      });
+    }
     try {
       const [countRes, notificationsRes] = await Promise.all([
         getUnreadNotificationCount().catch(() => ({ data: 0 })),
@@ -153,6 +160,7 @@ export default function NotificationsScreen() {
 
       // Show all notifications for all functionalities without deduplication filter
       setNotifications(notificationsList);
+      AsyncStorage.setItem('notifications_cache_data', JSON.stringify(notificationsList)).catch(e => console.warn(e));
 
       // Batch fetch actor details
       const actorIds = new Set<string>();
@@ -180,7 +188,11 @@ export default function NotificationsScreen() {
                 };
               }
             });
-            setActorsMap(newActorsMap);
+            setActorsMap(prev => {
+              const merged = { ...prev, ...newActorsMap };
+              AsyncStorage.setItem('notifications_actors_map_data', JSON.stringify(merged)).catch(e => console.warn(e));
+              return merged;
+            });
           }
         } catch (err) {
           console.warn('Failed to fetch batch actor users:', err);
@@ -190,6 +202,7 @@ export default function NotificationsScreen() {
       console.warn('Failed to load notifications:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -201,12 +214,17 @@ export default function NotificationsScreen() {
     loadNotifsRef.current(false);
   }, []);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadNotifsRef.current(false);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       if (!user?.id) return;
       dismissBadge();
       loadNotifsRef.current(true);
-      notifRefreshRef.current = setInterval(refreshNotifications, 5000);
+      notifRefreshRef.current = setInterval(refreshNotifications, 30000);
 
       socketService.onEvent('new_notification', refreshNotifications);
 
@@ -218,14 +236,66 @@ export default function NotificationsScreen() {
   );
 
   useEffect(() => {
-    if (user?.following && Array.isArray(user.following)) {
-      const initialMap: Record<string, boolean> = {};
-      user.following.forEach((id: string) => {
-        initialMap[id] = true;
-      });
-      setFollowingMap(initialMap);
+    const resetUserNotifs = async () => {
+      setNotifications([]);
+      setActorsMap({});
+      setFollowingMap({});
+      try {
+        await Promise.all([
+          AsyncStorage.removeItem('notifications_cache_data'),
+          AsyncStorage.removeItem('notifications_actors_map_data'),
+          AsyncStorage.removeItem('notifications_following_map_data'),
+        ]);
+      } catch (e) {
+        console.warn('Failed to clear notification cache:', e);
+      }
+    };
+    if (user?.id) {
+      const loadCachedData = async () => {
+        try {
+          const [cachedNotifs, cachedActors, cachedFollowing] = await Promise.all([
+            AsyncStorage.getItem('notifications_cache_data'),
+            AsyncStorage.getItem('notifications_actors_map_data'),
+            AsyncStorage.getItem('notifications_following_map_data'),
+          ]);
+
+          let hasData = false;
+          if (cachedNotifs) {
+            const parsed = JSON.parse(cachedNotifs);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setNotifications(parsed);
+              hasData = true;
+            }
+          }
+          if (cachedActors) {
+            const parsed = JSON.parse(cachedActors);
+            setActorsMap(parsed);
+          }
+          if (cachedFollowing) {
+            const parsed = JSON.parse(cachedFollowing);
+            setFollowingMap(parsed);
+          }
+
+          setLoading(!hasData);
+        } catch (err) {
+          console.warn('Failed to load cached notifications:', err);
+          setLoading(true);
+        }
+      };
+      loadCachedData();
+
+      if (user.following && Array.isArray(user.following)) {
+        const initialMap: Record<string, boolean> = {};
+        user.following.forEach((id: string) => {
+          initialMap[id] = true;
+        });
+        setFollowingMap(initialMap);
+        AsyncStorage.setItem('notifications_following_map_data', JSON.stringify(initialMap)).catch(e => console.warn(e));
+      }
+    } else {
+      resetUserNotifs();
     }
-  }, [user?.following]);
+  }, [user?.id, user?.following]);
 
   const getNotificationLink = (item: any) => {
     if (!item) return undefined;
@@ -520,7 +590,18 @@ export default function NotificationsScreen() {
       </SafeAreaView>
 
       {loading ? (
-        <ScrollView contentContainerStyle={styles.listWrapper} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.listWrapper} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              tintColor="#FF6600" 
+              colors={['#FF6600']} 
+            />
+          }
+        >
           {[1, 2, 3, 4, 5, 6].map((key) => (
             <View key={key} style={styles.notificationItem}>
               <View style={[styles.avatarImage, { backgroundColor: 'rgba(0,0,0,0.06)' }]} />
@@ -533,7 +614,18 @@ export default function NotificationsScreen() {
           ))}
         </ScrollView>
       ) : (
-        <ScrollView contentContainerStyle={styles.listWrapper} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          contentContainerStyle={styles.listWrapper} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh} 
+              tintColor="#FF6600" 
+              colors={['#FF6600']} 
+            />
+          }
+        >
           {notifications.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconCircle}>

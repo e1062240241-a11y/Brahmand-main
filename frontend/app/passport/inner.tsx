@@ -24,11 +24,11 @@ const { width: windowWidth } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(windowWidth - 32, 361);
 
 function PassportInnerScreen({
-  observedJourneys,
-  observedBadges,
+  observedJourneys = [],
+  observedBadges = [],
 }: {
-  observedJourneys: any[];
-  observedBadges: any[];
+  observedJourneys?: any[];
+  observedBadges?: any[];
 }) {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);

@@ -10,11 +10,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 function PassportProgressScreen({
-  observedBadges,
-  observedCertificates,
+  observedBadges = [],
+  observedCertificates = [],
 }: {
-  observedBadges: any[];
-  observedCertificates: any[];
+  observedBadges?: any[];
+  observedCertificates?: any[];
 }) {
   const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);

@@ -1364,7 +1364,7 @@ export default function CommunityDetailScreen() {
   const fetchCommunity = async (force = false) => {
     try {
       const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-      if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 30000) {
+      if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 900000) {
         console.log('[Community] Using fresh cache, skipping fetchCommunity');
         setCommunity(cachedData.community);
         setRequests(cachedData.requests || []);
@@ -1464,7 +1464,7 @@ export default function CommunityDetailScreen() {
         getFestivalList().catch(() => ({ data: [] }))
       ];
 
-      const isLocalCommunity = nextCommunity.type === 'city' || nextCommunity.type === 'user_group';
+      const isLocalCommunity = nextCommunity.type === 'city';
       if (isLocalCommunity) {
         promises.push(getCommunityRequests({ status: 'active', limit: 50 }).catch(() => ({ data: [] })));
       }
@@ -3839,7 +3839,6 @@ export default function CommunityDetailScreen() {
                     placeholderTextColor="#536471"
                     multiline
                     editable={!!postCategory}
-                    disableMentions={true}
                     inputStyle={{
                       fontSize: 18,
                       color: '#0F1419',

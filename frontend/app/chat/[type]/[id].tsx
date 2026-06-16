@@ -216,13 +216,13 @@ const getChatContacts = async () => {
 };
 
 const ChatScreen = ({
-  observedMessages,
+  observedMessages = [],
   type,
   id,
   subgroup,
   name: rawName
 }: {
-  observedMessages: any[];
+  observedMessages?: any[];
   type: string;
   id: string;
   subgroup?: string;

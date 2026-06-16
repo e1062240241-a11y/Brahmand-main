@@ -67,7 +67,7 @@ const BOOK_COVERS: Record<string, any> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────
-function LibraryPage({ observedProgress }: { observedMessages: any[], observedProgress: any[] }) {
+function LibraryPage({ observedProgress = [] }: { observedProgress?: any[] }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
@@ -157,7 +157,7 @@ function LibraryPage({ observedProgress }: { observedMessages: any[], observedPr
 
         {/* ── Dynamic Continue Reading (All Books) ── */}
         {(() => {
-          let recentBooks = observedProgress.map(p => ({
+          let recentBooks = (observedProgress || []).map(p => ({
             id: p.bookId === 'gita' ? 'bhagvad-geeta' : p.bookId,
             chapterName: p.chapterName,
             chapterNum: p.chapterNum,

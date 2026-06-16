@@ -12,7 +12,7 @@ import { Image } from 'expo-image';
 
 const { width } = Dimensions.get('window');
 
-function PassportJourneyDetailScreen({ observedJourneys }: { observedJourneys: any[] }) {
+function PassportJourneyDetailScreen({ observedJourneys = [] }: { observedJourneys?: any[] }) {
   const { id, justRecorded } = useLocalSearchParams<{ id: string; justRecorded?: string }>();
   const router = useRouter();
   const loadPassport = usePassportStore((state) => state.loadPassport);
