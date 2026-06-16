@@ -201,7 +201,7 @@ export default function CommunityScreen() {
   // reducing unnecessary FlatList re-renders.
   const renderCommunity = useCallback(({ item }: { item: Community }) => (
     <View>
-      {item.label && (
+      {!!item.label && (
         <Text style={[styles.communityLabel, { color: getCommunityColor(item.type) }]}>
           {item.label}
         </Text>
@@ -217,7 +217,7 @@ export default function CommunityScreen() {
           <Text style={styles.communityName}>{item.name}</Text>
           <Text style={styles.communityStats}>{(item.member_count || (item as any).members_count || 0)} members</Text>
         </View>
-        {item.is_default && (
+        {!!item.is_default && (
           <Ionicons name="lock-closed" size={14} color={COLORS.textLight} style={{ marginRight: 8 }} />
         )}
         <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
@@ -252,7 +252,7 @@ export default function CommunityScreen() {
               {item.urgency_level.toUpperCase()}
             </Text>
           </View>
-          {item.request_type === 'blood' && item.blood_group && (
+          {item.request_type === 'blood' && !!item.blood_group && (
             <View style={styles.bloodBadge}>
               <Ionicons name="water" size={14} color="#E74C3C" />
               <Text style={styles.bloodText}>{item.blood_group}</Text>
@@ -265,21 +265,21 @@ export default function CommunityScreen() {
       <Text style={styles.requestTitle}>{item.title}</Text>
       <Text style={styles.requestDescription} numberOfLines={3}>{item.description}</Text>
       
-      {item.hospital_name && (
+      {!!item.hospital_name && (
         <View style={styles.requestDetail}>
           <Ionicons name="medical" size={14} color={COLORS.textSecondary} />
           <Text style={styles.requestDetailText}>{item.hospital_name}</Text>
         </View>
       )}
       
-      {item.location && (
+      {!!item.location && (
         <View style={styles.requestDetail}>
           <Ionicons name="location" size={14} color={COLORS.textSecondary} />
           <Text style={styles.requestDetailText}>{item.location}</Text>
         </View>
       )}
       
-      {item.amount && (
+      {!!item.amount && (
         <View style={styles.requestDetail}>
           <Ionicons name="cash" size={14} color={COLORS.textSecondary} />
           <Text style={styles.requestDetailText}>Rs {item.amount.toLocaleString()}</Text>
