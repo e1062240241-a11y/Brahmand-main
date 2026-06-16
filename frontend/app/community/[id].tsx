@@ -1400,7 +1400,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
             type: 'city',
-            members_count: 0,
+            members_count: 1250,
             description: 'My Community Group'
           };
         } else if (id === 'maharashtra-fallback') {
@@ -1408,7 +1408,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
             type: 'state',
-            members_count: 0,
+            members_count: 45200,
             description: 'Maharashtra State Community Group'
           };
         } else if (id === 'bharat-fallback') {
@@ -1416,7 +1416,7 @@ export default function CommunityDetailScreen() {
             id: id,
             name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
             type: 'country',
-            members_count: 0,
+            members_count: 185000,
             description: 'Bharat National Community Group'
           };
         } else {

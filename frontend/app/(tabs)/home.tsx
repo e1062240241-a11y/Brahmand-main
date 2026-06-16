@@ -3024,47 +3024,7 @@ export default function HomeScreen() {
                 );
               })()}
 
-              {/* Local Community Card */}
-              {(() => {
-                const resolvedLocalComm = resolveHomeCommunityItem(findLocalCommunity());
-                if (!resolvedLocalComm) return null;
-                const localId = resolvedLocalComm.id;
-                let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
-                if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
-                  realGroupName = 'पुणे भोजन साझाकरण समूह';
-                }
-                const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 0;
-                const localSubgroup = resolvedLocalComm.type || 'city';
-                return (
-                  <TouchableOpacity
-                    style={styles.communityCardMini}
-                    activeOpacity={0.9}
-                    onPress={() => {
-                      router.push({
-                        pathname: '/community/[id]',
-                        params: { id: localId, subgroup: localSubgroup, name: realGroupName }
-                      });
-                    }}
-                  >
-                    <View style={styles.communityCardIconBox}>
-                      <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
-                    </View>
-                    <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
-                      <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>
-                      <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                        {realGroupName}
-                      </Text>
-                      <View style={styles.miniCardBottomRow}>
-                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
-                        <View style={styles.sevaBadgeMini}>
-                          <Text style={styles.sevaBadgeTextMini}>Seva</Text>
-                        </View>
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
-                  </TouchableOpacity>
-                );
-              })()}
+
             </View>
           </View>
         )}

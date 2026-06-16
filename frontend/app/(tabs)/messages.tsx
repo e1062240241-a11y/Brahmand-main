@@ -406,13 +406,13 @@ function MessagesScreen({
         communities.find((c) => c.type === 'city' && (c.name || '').toLowerCase().includes('mumbai')) ||
         communities.find((c) => (c.name || '').toLowerCase().includes('mumbai')) ||
         communities.find((c) => c.type === 'city') ||
-        null
+        item
       );
     }
     if (item.type === 'state' || nameLower.includes('maharashtra')) {
       return (
         communities.find((c) => c.type === 'state' || (c.name || '').toLowerCase().includes('maharashtra')) ||
-        null
+        item
       );
     }
     if (item.type === 'country' || nameLower.includes('bharat') || nameLower.includes('india')) {
@@ -422,10 +422,10 @@ function MessagesScreen({
             c.type === 'country' ||
             (c.name || '').toLowerCase().includes('bharat') ||
             (c.name || '').toLowerCase().includes('india')
-        ) || null
+        ) || item
       );
     }
-    return null;
+    return item;
   };
 
   const openCommunity = (item: Community, isLocked: boolean, lockedLabel?: string) => {
@@ -691,19 +691,19 @@ function MessagesScreen({
       id: 'mumbai-fallback',
       name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
       type: 'city',
-      member_count: 0,
+      member_count: 1250,
     };
     const fallbackState: Community = {
       id: 'maharashtra-fallback',
       name: t('language') === 'hi' ? 'महाराष्ट्र समुदाय' : 'Maharashtra Community',
       type: 'state',
-      member_count: 0,
+      member_count: 45200,
     };
     const fallbackNational: Community = {
       id: 'bharat-fallback',
       name: t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community',
       type: 'country',
-      member_count: 0,
+      member_count: 185000,
     };
     const cityItem = city || fallbackCity;
     const stateItem = state || fallbackState;
