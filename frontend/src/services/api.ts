@@ -619,6 +619,9 @@ export const register = (data: { phone: string; name: string; photo?: string; la
 export const registerUser = (data: { phone: string; name: string; photo?: string | null; language: string }) =>
   api.post('/auth/register', data);
 
+export const logoutUser = (fcmToken?: string | null) =>
+  api.post('/auth/logout', { fcm_token: fcmToken || '' });
+
 // User APIs
 export const getProfile = () =>
   api.get('/user/profile');
