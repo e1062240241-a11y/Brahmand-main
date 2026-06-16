@@ -2161,14 +2161,15 @@ export default function HomeScreen() {
                         zIndex: -1,
                       }} pointerEvents="none">
                         <Text style={{
-                          color: '#FFFFFF',
+                          color: '#E6C87A',
                           textAlign: 'center',
                           fontFamily: 'Cinzel',
-                          fontSize: 22,
+                          fontSize: 28,
                           fontStyle: 'normal',
                           fontWeight: '500',
-                          lineHeight: 26,
-                          letterSpacing: 8,
+                          lineHeight: 36,
+                          letterSpacing: 14,
+                          paddingLeft: 14,
                         }}>BRAHMAND</Text>
                       </View>
 

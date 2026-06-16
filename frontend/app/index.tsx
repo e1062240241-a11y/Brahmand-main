@@ -43,7 +43,7 @@ export default function IndexRoute() {
           <Image
             source={require('../assets/images/icon.png')}
             style={styles.lotusImage}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
         
