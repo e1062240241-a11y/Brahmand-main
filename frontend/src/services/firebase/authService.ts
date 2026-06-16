@@ -300,7 +300,24 @@ export async function getCurrentUserToken(): Promise<string | null> {
 
 export async function signOutFirebase(): Promise<void> {
   const auth = initializeFirebaseAuth();
-  await auth.signOut();
+  if (auth && auth.currentUser) {
+    if (Platform.OS === 'web') {
+      const { signOut } = require('firebase/auth');
+      await signOut(auth);
+    } else {
+      try {
+        const authModule = getNativeAuthModule();
+        const signOutFn = authModule.signOut || (authModule.default && authModule.default.signOut);
+        if (typeof signOutFn === 'function') {
+          await signOutFn(auth);
+        } else {
+          await auth.signOut();
+        }
+      } catch {
+        await auth.signOut();
+      }
+    }
+  }
   confirmationResult = null;
 }
 
