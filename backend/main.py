@@ -1426,12 +1426,14 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
 
 
+@app.post("/auth/msg91/send")
 @api_router.post("/auth/msg91/send")
 async def send_msg91_otp(request: OTPRequest):
     """Send MSG91 OTP for custom UI flows"""
     return await MSG91Service.send_otp(request.phone)
 
 
+@app.post("/auth/msg91/verify")
 @api_router.post("/auth/msg91/verify")
 async def verify_msg91_otp(request: OTPVerify):
     """Verify MSG91 OTP for custom UI flows"""
@@ -8593,6 +8595,191 @@ async def ask_astrology_question(
         raise HTTPException(status_code=502, detail=f"Astrology AI error: {exc}")
 
 
+# =================== BLOOD REQUEST OTP ===================
+
+@api_router.post("/blood-request/send-otp")
+async def send_blood_request_otp(request: OTPRequest):
+    """
+    Send OTP for Blood Request creation.
+    Enforces 30 seconds resend cooldown and rate limits.
+    """
+    db = await get_db()
+    phone = request.phone.strip()
+    
+    # Normalize phone
+    from services.msg91_service import _normalize_phone
+    try:
+        mobile = _normalize_phone(phone)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+        
+    now = datetime.utcnow()
+    
+    # Retrieve current status from database (bypass cache)
+    record = await db.find_one("blood_request_otp_verifications", [("phone", "==", mobile)])
+    
+    otp_requests_count = 0
+    if record:
+        # Check 30 seconds cooldown
+        last_sent_str = record.get("last_sent_at")
+        if last_sent_str:
+            try:
+                if isinstance(last_sent_str, str):
+                    last_sent = datetime.fromisoformat(last_sent_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                elif isinstance(last_sent_str, datetime):
+                    last_sent = last_sent_str.replace(tzinfo=None)
+                else:
+                    last_sent = now
+                    
+                time_passed = (now - last_sent).total_seconds()
+                if time_passed < 30:
+                    cooldown_remaining = int(30 - time_passed)
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Please wait {cooldown_remaining} seconds before requesting a new OTP."
+                    )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"Error parsing last_sent_at for {mobile}: {e}")
+
+        # Check rate limit: max 5 requests per 10 minutes
+        otp_requests_count = record.get("otp_requests_count", 0)
+        if last_sent_str:
+            try:
+                if isinstance(last_sent_str, str):
+                    last_sent = datetime.fromisoformat(last_sent_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                elif isinstance(last_sent_str, datetime):
+                    last_sent = last_sent_str.replace(tzinfo=None)
+                else:
+                    last_sent = now
+                    
+                if (now - last_sent).total_seconds() < 600:
+                    if otp_requests_count >= 5:
+                        raise HTTPException(
+                            status_code=429,
+                            detail="Too many OTP requests. Please wait 10 minutes and try again."
+                        )
+                else:
+                    otp_requests_count = 0
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning(f"Error checking rate limits for {mobile}: {e}")
+                
+        otp_requests_count += 1
+    else:
+        otp_requests_count = 1
+
+    # Call MSG91 to send OTP
+    from services.msg91_service import MSG91Service
+    try:
+        res = await MSG91Service.send_blood_otp(mobile)
+    except HTTPException as exc:
+        raise exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+    # Save verification state
+    record_data = {
+        "phone": mobile,
+        "attempts": 0,
+        "last_sent_at": now.isoformat() + 'Z',
+        "otp_requests_count": otp_requests_count,
+        "verified": False,
+        "verified_at": None,
+        "expires_at": None
+    }
+    
+    await db.set_document("blood_request_otp_verifications", mobile, record_data)
+    
+    return {"status": "success", "message": "OTP sent successfully"}
+
+
+@api_router.post("/blood-request/verify-otp")
+async def verify_blood_request_otp(request: OTPVerify):
+    """
+    Verify OTP for Blood Request creation.
+    Enforces maximum 5 attempts and 5 minutes expiry.
+    """
+    db = await get_db()
+    phone = request.phone.strip()
+    otp = request.otp.strip()
+    
+    # Normalize phone
+    from services.msg91_service import _normalize_phone
+    try:
+        mobile = _normalize_phone(phone)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+        
+    now = datetime.utcnow()
+    
+    # Retrieve current status from database (bypass cache)
+    record = await db.find_one("blood_request_otp_verifications", [("phone", "==", mobile)])
+    if not record:
+        raise HTTPException(status_code=400, detail="OTP not requested for this mobile number.")
+        
+    # Check expiry (5 minutes)
+    last_sent_str = record.get("last_sent_at")
+    if not last_sent_str:
+        raise HTTPException(status_code=400, detail="Invalid OTP verification session.")
+        
+    try:
+        if isinstance(last_sent_str, str):
+            last_sent = datetime.fromisoformat(last_sent_str.replace('Z', '+00:00')).replace(tzinfo=None)
+        elif isinstance(last_sent_str, datetime):
+            last_sent = last_sent_str.replace(tzinfo=None)
+        else:
+            last_sent = now
+            
+        if (now - last_sent).total_seconds() > 300:
+            raise HTTPException(status_code=400, detail="OTP has expired. Please request a new OTP.")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"Error checking OTP expiry for {mobile}: {e}")
+        
+    # Check attempts (max 5)
+    attempts = record.get("attempts", 0)
+    if attempts >= 5:
+        raise HTTPException(
+            status_code=400, 
+            detail="Maximum verification attempts exceeded. Please request a new OTP."
+        )
+        
+    # Increment attempts count
+    attempts += 1
+    await db.update_document("blood_request_otp_verifications", mobile, {"attempts": attempts})
+    
+    # Call MSG91 to verify OTP
+    from services.msg91_service import MSG91Service
+    try:
+        res = await MSG91Service.verify_blood_otp(mobile, otp)
+    except HTTPException as exc:
+        if attempts >= 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid OTP. Maximum verification attempts exceeded. Please request a new OTP."
+            )
+        raise exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Verification failed: {str(exc)}")
+        
+    # If success, update record to verified
+    expires_at = now + timedelta(minutes=5)
+    update_data = {
+        "verified": True,
+        "verified_at": now.isoformat() + 'Z',
+        "expires_at": expires_at.isoformat() + 'Z',
+        "attempts": attempts
+    }
+    
+    await db.update_document("blood_request_otp_verifications", mobile, update_data)
+    
+    return {"status": "success", "message": "OTP verified successfully"}
+
+
 # =================== HELP REQUESTS ===================
 
 @api_router.post("/help-requests")
@@ -8610,6 +8797,47 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     if existing:
         raise HTTPException(status_code=400, detail="You already have an active help request. Mark it as fulfilled before creating a new one.")
     
+    # Server-side validation for Blood Request OTP verification
+    if data.type.value == "blood":
+        contact_number = data.contact_number
+        if not contact_number:
+            raise HTTPException(status_code=400, detail="Contact number is required for blood request.")
+            
+        # Normalize contact number
+        from services.msg91_service import _normalize_phone
+        try:
+            contact_mobile = _normalize_phone(contact_number)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid contact number: {str(exc)}")
+            
+        # Retrieve verification record (bypass cache)
+        record = await db.find_one("blood_request_otp_verifications", [("phone", "==", contact_mobile)])
+        
+        now = datetime.utcnow()
+        verified = False
+        if record and record.get("verified", False):
+            # Check if verified status has expired
+            expires_at_str = record.get("expires_at")
+            if expires_at_str:
+                try:
+                    if isinstance(expires_at_str, str):
+                        expires_at = datetime.fromisoformat(expires_at_str.replace('Z', '+00:00')).replace(tzinfo=None)
+                    elif isinstance(expires_at_str, datetime):
+                        expires_at = expires_at_str.replace(tzinfo=None)
+                    else:
+                        expires_at = now
+                        
+                    if now <= expires_at:
+                        verified = True
+                except Exception as e:
+                    logger.warning(f"Error parsing expires_at for {contact_mobile}: {e}")
+                    
+        if not verified:
+            raise HTTPException(
+                status_code=400,
+                detail="Phone number has not been verified via OTP. Please verify before creating a blood request."
+            )
+
     # Get user's location based on community level
     location = data.location
     if not location:
@@ -8645,8 +8873,22 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     request_id = await db.create_document('help_requests', request_data)
     request_data['id'] = request_id
     
+    # Invalidate/consume verification state so it cannot be reused
+    if data.type.value == "blood":
+        try:
+            from services.msg91_service import _normalize_phone
+            contact_mobile = _normalize_phone(data.contact_number)
+            await db.update_document("blood_request_otp_verifications", contact_mobile, {
+                "verified": False,
+                "verified_at": None,
+                "expires_at": None
+            })
+        except Exception as e:
+            logger.warning(f"Failed to invalidate OTP record for {data.contact_number}: {e}")
+            
     logger.info(f"Help request created by {user_id}: {data.type.value} - {data.title}")
     return request_data
+
 
 
 @api_router.get("/help-requests")
