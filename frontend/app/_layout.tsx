@@ -14,6 +14,7 @@ import { useAdminStore } from '../src/store/adminStore';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
 import { Cinzel_500Medium } from '@expo-google-fonts/cinzel';
+import { Poppins_400Regular } from '@expo-google-fonts/poppins';
 import { MuteProvider } from '../src/contexts/MuteContext';
 import { useNotificationStore } from '../src/store/notificationStore';
 import { ToastContainer } from '../src/components/ToastContainer';
@@ -551,6 +552,7 @@ export default function RootLayout() {
     Outfit_600SemiBold,
     Outfit_700Bold,
     'Cinzel': Cinzel_500Medium,
+    'Poppins': Poppins_400Regular,
   });
 
   useDeepLinkHandler();
