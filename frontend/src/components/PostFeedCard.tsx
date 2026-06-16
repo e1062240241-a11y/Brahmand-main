@@ -20,6 +20,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 
+import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
@@ -136,6 +137,45 @@ export const PostFeedCard = memo(({
   if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
     mediaUrl = mediaUrl.replace('http://', 'https://');
   }
+
+  const [imageUri, setImageUri] = useState(mediaUrl);
+  const [videoPosterUrl, setVideoPosterUrl] = useState(posterUrl);
+
+  useEffect(() => {
+    setImageUri(mediaUrl);
+  }, [mediaUrl]);
+
+  useEffect(() => {
+    setVideoPosterUrl(posterUrl);
+  }, [posterUrl]);
+
+  const handleImageError = (e: any) => {
+    console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', imageUri);
+    if (imageUri && imageUri.includes('b-cdn.net')) {
+      const urlParts = imageUri.split('b-cdn.net/');
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
+        const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
+        console.info('[PostFeedCard] Falling back to proxy URL:', fallbackUrl);
+        setImageUri(fallbackUrl);
+        return;
+      }
+    }
+    setMediaLoading(false);
+    setMediaError(t('language') === 'hi' ? 'छवि लोड करने में विफल' : 'Failed to load image');
+  };
+
+  const handlePosterError = () => {
+    if (videoPosterUrl && videoPosterUrl.includes('b-cdn.net')) {
+      const urlParts = videoPosterUrl.split('b-cdn.net/');
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
+        const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
+        console.info('[PostFeedCard] Poster falling back to proxy URL:', fallbackUrl);
+        setVideoPosterUrl(fallbackUrl);
+      }
+    }
+  };
 
   const rawMediaType =
     post?.media_type ||
@@ -440,10 +480,11 @@ export const PostFeedCard = memo(({
         {/* Blurred Poster Background for smooth transition */}
         {(post?.thumbnail_url || post?.metadata?.thumbnail_url) && mediaLoading && (
           <Image
-            source={{ uri: post?.thumbnail_url || post?.metadata?.thumbnail_url }}
+            source={{ uri: videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url }}
             style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
             contentFit="cover"
             blurRadius={20}
+            onError={handlePosterError}
           />
         )}
 
@@ -510,19 +551,25 @@ export const PostFeedCard = memo(({
                   {(Platform.OS as string) !== 'web' && filterName !== 'Normal' && (
                     <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
                   )}
-                  {mediaLoading && posterUrl ? (
+                  {mediaLoading && videoPosterUrl ? (
                     <Image
-                      source={{ uri: posterUrl }}
+                      source={{ uri: videoPosterUrl }}
                       style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
                       contentFit="cover"
                       pointerEvents="none"
+                      onError={handlePosterError}
                     />
                   ) : null}
                 </>
               ) : (
                 <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
-                  {posterUrl ? (
-                    <Image source={{ uri: posterUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                  {videoPosterUrl ? (
+                    <Image
+                      source={{ uri: videoPosterUrl }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                      onError={handlePosterError}
+                    />
                   ) : (
                     <Ionicons name="videocam-outline" size={32} color="#444" />
                   )}
@@ -555,7 +602,7 @@ export const PostFeedCard = memo(({
               onPress={handleMediaPress}
             >
               <Image
-                source={{ uri: mediaUrl }}
+                source={{ uri: imageUri }}
                 style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
                 contentFit="cover"
                 transition={300}
@@ -569,11 +616,7 @@ export const PostFeedCard = memo(({
                     }
                   }
                 }}
-                onError={(e) => {
-                  setMediaLoading(false);
-                  setMediaError(t('language') === 'hi' ? 'छवि लोड करने में विफल' : 'Failed to load image');
-                  console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', mediaUrl);
-                }}
+                onError={handleImageError}
               />
               {((Platform.OS as string) !== 'web') && filterName !== 'Normal' && (
                 <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />

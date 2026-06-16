@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api, { getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
+import api, { API_URL, getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { formatTimeAgo, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
@@ -153,6 +153,42 @@ const ReelVideoItem = React.memo(({
   const posterUrl = String(
     localPost?.thumbnail_url || localPost?.thumbnailUrl || localPost?.metadata?.thumbnail_url || localPost?.metadata?.thumbnailUrl || ''
   );
+
+  const [imageUri, setImageUri] = useState(mediaUrl);
+  const [videoPosterUrl, setVideoPosterUrl] = useState(posterUrl);
+
+  useEffect(() => {
+    setImageUri(mediaUrl);
+  }, [mediaUrl]);
+
+  useEffect(() => {
+    setVideoPosterUrl(posterUrl);
+  }, [posterUrl]);
+
+  const handleImageError = (e: any) => {
+    console.warn('[ReelViewer] Image Load Error:', e, 'URL:', imageUri);
+    if (imageUri && imageUri.includes('b-cdn.net')) {
+      const urlParts = imageUri.split('b-cdn.net/');
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
+        const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
+        console.info('[ReelViewer] Falling back to proxy URL:', fallbackUrl);
+        setImageUri(fallbackUrl);
+      }
+    }
+  };
+
+  const handlePosterError = () => {
+    if (videoPosterUrl && videoPosterUrl.includes('b-cdn.net')) {
+      const urlParts = videoPosterUrl.split('b-cdn.net/');
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
+        const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
+        console.info('[ReelViewer] Poster falling back to proxy URL:', fallbackUrl);
+        setVideoPosterUrl(fallbackUrl);
+      }
+    }
+  };
   const mediaType = String(localPost?.media_type || localPost?.mediaType || '').toLowerCase();
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
   const mediaWidth = Number(localPost?.media_width || localPost?.mediaWidth || 0);
@@ -412,7 +448,7 @@ const ReelVideoItem = React.memo(({
         <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]} pointerEvents="none">
           {!isVideo ? (
             <Image
-              source={{ uri: mediaUrl }}
+              source={{ uri: imageUri }}
               style={[{ width: '100%', height: '100%' }, getFilterStyle(filterName)]}
               contentFit={contentFitMode}
               transition={300}
@@ -424,6 +460,7 @@ const ReelVideoItem = React.memo(({
                   }
                 }
               }}
+              onError={handleImageError}
             />
           ) : Platform.OS === 'web' ? (
             <>
@@ -444,12 +481,13 @@ const ReelVideoItem = React.memo(({
                 onEnded={onVideoEnded}
                 style={{ width: '100%', height: '100%', objectFit: contentFitMode, ...getFilterStyle(filterName) }}
               />
-              {isVideoLoading && posterUrl && (
+              {isVideoLoading && videoPosterUrl && (
                 <Image
-                  source={{ uri: posterUrl }}
+                  source={{ uri: videoPosterUrl }}
                   style={StyleSheet.absoluteFill}
                   contentFit={contentFitMode}
                   pointerEvents="none"
+                  onError={handlePosterError}
                 />
               )}
             </>
@@ -465,12 +503,13 @@ const ReelVideoItem = React.memo(({
                 playsInline={true}
                 onFirstFrameRender={() => setIsVideoLoading(false)}
               />
-              {isVideoLoading && posterUrl && (
+              {isVideoLoading && videoPosterUrl && (
                 <Image
-                  source={{ uri: posterUrl }}
+                  source={{ uri: videoPosterUrl }}
                   style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
                   contentFit={contentFitMode}
                   pointerEvents="none"
+                  onError={handlePosterError}
                 />
               )}
             </>
