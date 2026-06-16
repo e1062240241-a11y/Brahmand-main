@@ -3136,32 +3136,6 @@ export default function HomeScreen() {
 
         {!(loadingFeed && feedPosts.length === 0) && (
           <View style={styles.feedPanel}>
-            {backgroundUpload.uploading && (
-              <View style={styles.uploadingStatusBar}>
-                <View style={styles.uploadingStatusContent}>
-                  {backgroundUpload.mediaUri ? (
-                    <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
-                  ) : (
-                    <View style={[styles.uploadingThumbnail, { backgroundColor: '#F0F0F0' }]} />
-                  )}
-                  <View style={styles.uploadingTextContainer}>
-                    <Text style={styles.uploadingTitle}>
-                      {backgroundUpload.isCompressing
-                        ? 'Processing Video...'
-                        : `Posting new ${backgroundUpload.mediaType === 'video' ? 'Video' : 'Image'}...`}
-                    </Text>
-                    <View style={styles.progressBarBg}>
-                      <LinearGradient
-                        colors={['#FFD26C', '#FF7F50', '#FF4500']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            )}
             {loadingFeed && feedPosts.length === 0 ? (
               <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
                 {[1, 2, 3].map((key) => (
@@ -3233,6 +3207,33 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      {backgroundUpload.uploading && (
+        <View style={styles.uploadingStatusBar}>
+          <View style={styles.uploadingStatusContent}>
+            {backgroundUpload.mediaUri ? (
+              <Image source={{ uri: backgroundUpload.mediaUri }} style={styles.uploadingThumbnail} />
+            ) : (
+              <View style={[styles.uploadingThumbnail, { backgroundColor: '#F0F0F0' }]} />
+            )}
+            <View style={styles.uploadingTextContainer}>
+              <Text style={styles.uploadingTitle}>
+                {backgroundUpload.isCompressing
+                  ? 'Processing Video...'
+                  : `Posting new ${backgroundUpload.mediaType === 'video' ? 'Video' : 'Image'}... ${backgroundUpload.progress}%`}
+              </Text>
+              <View style={styles.progressBarBg}>
+                <LinearGradient
+                  colors={['#FFD26C', '#FF7F50', '#FF4500']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.progressBarFill, { width: `${backgroundUpload.progress}%` }]}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+      )}
 
 
       <Modal visible={isEditingBio} transparent animationType="fade">
