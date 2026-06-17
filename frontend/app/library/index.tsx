@@ -18,8 +18,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
 import { useGitaStore } from '../../src/store/gitaStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
-import withObservables from '@nozbe/with-observables';
-import { database } from '../../src/database';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -67,12 +65,14 @@ const BOOK_COVERS: Record<string, any> = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────
-function LibraryPage({ observedProgress = [] }: { observedProgress?: any[] }) {
+function LibraryPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState<Set<string>>(new Set());
   const gitaState = useGitaStore();
+  const libraryStore = useLibraryStore();
+  const observedProgress = libraryStore.getRecentBooks();
 
   const toggle = (id: string) =>
     setSaved(prev => {
@@ -157,15 +157,18 @@ function LibraryPage({ observedProgress = [] }: { observedProgress?: any[] }) {
 
         {/* ── Dynamic Continue Reading (All Books) ── */}
         {(() => {
-          let recentBooks = (observedProgress || []).map(p => ({
-            id: p.bookId === 'gita' ? 'bhagvad-geeta' : p.bookId,
-            chapterName: p.chapterName,
-            chapterNum: p.chapterNum,
-            lastReadPage: p.lastReadPage,
-            totalPages: p.totalPages,
-            progressPercent: p.progressPercent,
-            lastOpenedTime: p.lastOpenedTime
-          }));
+          let recentBooks = (observedProgress || []).map((p: any) => {
+            const bookId = p.bookId || p.id;
+            return {
+              id: bookId === 'gita' ? 'bhagvad-geeta' : bookId,
+              chapterName: p.chapterName,
+              chapterNum: p.chapterNum,
+              lastReadPage: p.lastReadPage,
+              totalPages: p.totalPages,
+              progressPercent: p.progressPercent,
+              lastOpenedTime: p.lastOpenedTime
+            };
+          });
           
           // Fallback migration for Bhagavad Gita if not in libraryStore yet
           if (!recentBooks.find(b => b.id === 'bhagvad-geeta') && (gitaState.progressPercent > 0 || gitaState.lastReadChapter > 1)) {
@@ -700,8 +703,4 @@ const styles = StyleSheet.create({
   },
 });
 
-const enhance = withObservables([], () => ({
-  observedProgress: database.get('library_progress').query().observe(),
-}));
-
-export default enhance(LibraryPage);
+export default LibraryPage;

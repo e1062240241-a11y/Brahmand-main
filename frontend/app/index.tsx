@@ -23,11 +23,19 @@ export default function IndexRoute() {
     return () => clearTimeout(timer);
   }, []);
 
+  // Pre-screen invalid/corrupted token
+  useEffect(() => {
+    if (!isLoading && token && (token === '>' || token.length < 10)) {
+      console.warn('[IndexRoute] Invalid/corrupted token detected, clearing session...');
+      useAuthStore.getState().logout();
+    }
+  }, [token, isLoading]);
+
   useEffect(() => {
     if (timePassed && !isLoading) {
-      if (token) {
+      if (token && token !== '>' && token.length >= 10) {
         router.replace('/home');
-      } else {
+      } else if (!token || token === '>' || token.length < 10) {
         router.replace('/auth/entry-animation');
       }
     }

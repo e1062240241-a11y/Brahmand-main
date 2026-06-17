@@ -333,6 +333,20 @@ api.interceptors.response.use(
       return api(config);
     }
 
+    // Handle 401 Unauthorized globally by logging out and redirecting to splash
+    if (status === 401) {
+      const isAuthUrl = /auth\/|login|register|otp/i.test(config?.url || '');
+      if (!isAuthUrl) {
+        console.warn('[API] 401 Unauthorized received. Triggering automatic logout...');
+        try {
+          const { useAuthStore } = require('../store/authStore');
+          useAuthStore.getState().logout();
+        } catch (logoutErr) {
+          console.error('[API] Failed to trigger automatic logout on 401:', logoutErr);
+        }
+      }
+    }
+
     // Intercept mutating request failures due to offline/network or 5xx status and queue them
     const isOffline = error.code === 'ERR_NETWORK' || !error.response || error.response.status >= 500;
     const mutatingMethods = new Set(['post', 'put', 'delete']);
