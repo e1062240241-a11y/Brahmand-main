@@ -12,12 +12,9 @@ import {
   Alert
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { initializeFirebase, firebaseConfig, isAnonymousPhone } from '../../src/services/firebase/config';
 import { loginAnonymous } from '../../src/services/api';
-
-import { COLORS, SPACING } from '../../src/constants/theme';
 
 // Debug: Log Firebase config on web
 if (typeof window !== 'undefined' && Platform.OS === 'web') {
@@ -28,16 +25,6 @@ if (typeof window !== 'undefined' && Platform.OS === 'web') {
     appId: firebaseConfig.appId ? 'SET' : 'MISSING',
   });
 }
-
-const { width } = Dimensions.get('window');
-
-// Subtle mandala pattern
-const MandalaPattern = () => (
-  <View style={styles.mandalaContainer}>
-    <View style={styles.mandalaCircle} />
-    <View style={[styles.mandalaCircle, styles.mandalaCircle2]} />
-  </View>
-);
 
 export default function PhoneScreen() {
   const router = useRouter();
@@ -110,14 +97,7 @@ export default function PhoneScreen() {
   };
 
   return (
-    <LinearGradient
-      colors={['#FF6600', '#FF9933']}
-      style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-    >
-      <MandalaPattern />
-      
+    <View style={styles.container}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
@@ -126,75 +106,61 @@ export default function PhoneScreen() {
 
         {/* Back Button */}
         <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={28} color="#F5EEDC" />
         </TouchableOpacity>
 
         <View style={styles.content}>
-          <Text style={styles.title}>Enter your phone</Text>
-          <Text style={styles.subtitle}>We'll send you a verification code</Text>
+          <View style={styles.inputsStack}>
+            <Text style={styles.title}>Enter your phone</Text>
+            <Text style={styles.subtitle}>We'll send you a verification code</Text>
 
-          {/* Phone Input */}
-          <View style={styles.phoneContainer}>
-            <View style={styles.prefixBox}>
-              <Text style={styles.prefixText}>+91</Text>
+            {/* Phone Input */}
+            <View style={styles.phoneContainer}>
+              <View style={styles.prefixBox}>
+                <Text style={styles.prefixText}>+91</Text>
+              </View>
+              <TextInput
+                style={styles.phoneInput}
+                placeholder="Phone number"
+                placeholderTextColor="rgba(245,238,220,0.5)"
+                value={phone}
+                onChangeText={(text) => {
+                  setPhone(text.replace(/[^0-9]/g, ''));
+                  setError('');
+                }}
+                keyboardType="phone-pad"
+                maxLength={10}
+                autoFocus
+              />
             </View>
-            <TextInput
-              style={styles.phoneInput}
-              placeholder="Phone number"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={phone}
-              onChangeText={(text) => {
-                setPhone(text.replace(/[^0-9]/g, ''));
-                setError('');
-              }}
-              keyboardType="phone-pad"
-              maxLength={10}
-              autoFocus
-            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
           </View>
+        </View>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {/* Send OTP Button */}
+        {/* Action Button at the bottom */}
+        <View style={styles.bottomContainer}>
           <TouchableOpacity
             style={[styles.sendButton, phone.length !== 10 && styles.sendButtonDisabled]}
             onPress={handleSendOTP}
             disabled={phone.length !== 10 || loading}
           >
             {loading ? (
-              <ActivityIndicator color={COLORS.primary} />
+              <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.sendButtonText}>Send OTP</Text>
+              <Text style={styles.sendButtonText}>Enter Phone Number</Text>
             )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  mandalaContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.08,
-  },
-  mandalaCircle: {
-    position: 'absolute',
-    width: width * 1.2,
-    height: width * 1.2,
-    borderRadius: width * 0.6,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  mandalaCircle2: {
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: width * 0.4,
+    backgroundColor: '#000000',
   },
   keyboardView: {
     flex: 1,
@@ -209,63 +175,101 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: 16,
+  },
+  inputsStack: {
+    width: '100%',
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: SPACING.xs,
+    color: '#FFB065',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 30,
+    fontWeight: '600',
+    lineHeight: 32,
+    letterSpacing: 0.07,
+    marginBottom: 16,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: SPACING.xl,
+    color: '#F5EEDC',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 16,
+    marginBottom: 36,
   },
   phoneContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    gap: 8,
   },
   prefixBox: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md + 2,
+    height: 48,
+    paddingLeft: 8,
+    paddingRight: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 12,
-    marginRight: SPACING.sm,
+    borderWidth: 1,
+    borderColor: '#FF7B00',
+    backgroundColor: '#000000',
   },
   prefixText: {
-    fontSize: 18,
-    color: '#FFFFFF',
+    color: '#F5EEDC',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 20,
+    fontStyle: 'normal',
     fontWeight: '600',
   },
   phoneInput: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md + 2,
+    height: 48,
+    paddingLeft: 16,
+    paddingRight: 147,
     borderRadius: 12,
-    fontSize: 18,
-    color: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#FF7B00',
+    backgroundColor: '#000000',
+    fontSize: 15,
+    fontStyle: 'normal',
+    fontWeight: '400',
+    color: '#F5EEDC',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    lineHeight: 16,
   },
   error: {
     color: '#FFCCCC',
     fontSize: 14,
-    marginBottom: SPACING.md,
+    marginTop: 8,
+  },
+  bottomContainer: {
+    paddingHorizontal: 16,
+    paddingBottom: Platform.OS === 'ios' ? 48 : 24,
+    alignItems: 'center',
+    width: '100%',
   },
   sendButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: SPACING.md + 2,
-    borderRadius: 30,
+    width: 359,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: SPACING.md,
+    shadowColor: 'rgba(143, 76, 56, 0.30)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
+    alignSelf: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'rgba(255, 123, 0, 0.4)',
   },
   sendButtonText: {
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 20,
     fontWeight: '600',
-    color: COLORS.primary,
+    lineHeight: 24,
+    textAlign: 'center',
   },
 });

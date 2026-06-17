@@ -10,7 +10,7 @@ const ACTIVE_ORANGE = '#FF8A00';
 const INACTIVE_COLOR = '#FFFFFF';
 const CAPSULE_BG = '#1C1C1C';
 
-const HIDDEN_ROUTES = new Set(['index', 'temple', 'circles', 'jobs', 'discover']);
+const HIDDEN_ROUTES = new Set(['index', 'legacy_index', 'temple', 'circles', 'jobs', 'discover']);
 
 const TAB_META: Record<string, { label: string; activeIcon: string; inactiveIcon: string }> = {
   home: {
