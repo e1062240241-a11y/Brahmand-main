@@ -75,8 +75,8 @@ class OTPVerify(BaseModel):
 
     @validator('otp')
     def validate_otp(cls, v):
-        if len(v) != 4:
-            raise ValueError('OTP must be 4 digits')
+        if len(v) not in (4, 6):
+            raise ValueError('OTP must be 4 or 6 digits')
         return v
 
 
@@ -301,8 +301,19 @@ class MessageCreate(BaseModel):
 
 class DirectMessageCreate(BaseModel):
     recipient_sl_id: str
-    content: str = Field(..., min_length=1, max_length=5000)
+    content: Optional[str] = None
+    text: Optional[str] = None
     message_type: MessageType = MessageType.TEXT
+
+    @model_validator(mode='after')
+    def validate_content_or_text(cls, values):
+        content = values.content
+        text = values.text
+        if not content and not text:
+            raise ValueError("Either 'content' or 'text' must be provided")
+        if not content and text:
+            values.content = text
+        return values
 
 
 class MessageResponse(BaseModel):

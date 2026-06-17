@@ -1,9 +1,11 @@
-"""Temple Service"""
+"""Temple Service using Firestore"""
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
+from uuid import uuid4
 
-from config.database import get_database
+from config.firebase_config import get_firestore
+from config.firestore_db import FirestoreDB
 from utils.helpers import serialize_doc, generate_temple_id
 from utils.cache import cache_manager
 
@@ -11,8 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class TempleService:
-    """Handles temple-related operations"""
+    """Handles temple-related operations using Firestore"""
     
+    @staticmethod
+    async def get_db() -> FirestoreDB:
+        client = await get_firestore()
+        return FirestoreDB(client)
+        
     @staticmethod
     async def create_temple(
         admin_id: str,
@@ -31,12 +38,12 @@ class TempleService:
         images: Optional[List[str]] = None,
     ) -> Dict[str, Any]:
         """Create a new temple"""
-        db = await get_database()
+        db = await TempleService.get_db()
         
         # Use provided temple_id or generate one
         if not temple_id:
             temple_id = generate_temple_id()
-            while await db.temples.find_one({"temple_id": temple_id}):
+            while await db.find_one("temples", [("temple_id", "==", temple_id)]):
                 temple_id = generate_temple_id()
         
         temple = {
@@ -58,12 +65,10 @@ class TempleService:
             "followers": [],
             "follower_count": 0,
             "posts": [],
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
         }
         
-        result = await db.temples.insert_one(temple)
-        temple["_id"] = result.inserted_id
+        doc_id = await db.create_document("temples", temple)
+        temple["id"] = doc_id
         
         # Invalidate temples cache
         await cache_manager.invalidate_temples()
@@ -80,14 +85,15 @@ class TempleService:
             if cached:
                 return cached
         
-        db = await get_database()
-        temples = await db.temples.find().sort("follower_count", -1).limit(50).to_list(50)
+        db = await TempleService.get_db()
+        temples = await db.query_documents("temples", limit=50)
+        temples.sort(key=lambda t: t.get("follower_count", 0), reverse=True)
         
         result = []
         for t in temples:
             temple_data = serialize_doc(t)
-            if user_id:
-                temple_data["is_following"] = user_id in t.get("followers", [])
+            temple_data["is_following"] = user_id in t.get("followers", []) if user_id else False
+            temple_data["follower_count"] = t.get("follower_count", 0)
             result.append(temple_data)
         
         # Cache if no user-specific data
@@ -103,15 +109,15 @@ class TempleService:
         user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get temples near user's location"""
-        db = await get_database()
+        db = await TempleService.get_db()
         # For demo, return all temples - in production use geo queries
-        temples = await db.temples.find().limit(20).to_list(20)
+        temples = await db.query_documents("temples", limit=20)
         
         result = []
         for t in temples:
             temple_data = serialize_doc(t)
-            if user_id:
-                temple_data["is_following"] = user_id in t.get("followers", [])
+            temple_data["is_following"] = user_id in t.get("followers", []) if user_id else False
+            temple_data["follower_count"] = t.get("follower_count", 0)
             temple_data["distance"] = "2.5 km"  # Placeholder
             result.append(temple_data)
         
@@ -120,45 +126,51 @@ class TempleService:
     @staticmethod
     async def get_temple(temple_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get temple details"""
-        db = await get_database()
+        db = await TempleService.get_db()
         
-        temple = await db.temples.find_one({"temple_id": temple_id})
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         if not temple:
-            temple = await db.temples.find_one({"_id": ObjectId(temple_id)})
+            temple = await db.get_document("temples", temple_id)
         if not temple:
             raise ValueError("Temple not found")
         
         temple_data = serialize_doc(temple)
-        if user_id:
-            temple_data["is_following"] = user_id in temple.get("followers", [])
+        temple_data["is_following"] = user_id in temple.get("followers", []) if user_id else False
+        temple_data["follower_count"] = temple.get("follower_count", 0)
         
         return temple_data
     
     @staticmethod
     async def follow_temple(user_id: str, temple_id: str) -> Dict[str, Any]:
         """Follow a temple"""
-        db = await get_database()
+        db = await TempleService.get_db()
         
-        temple = await db.temples.find_one({"temple_id": temple_id})
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         if not temple:
-            temple = await db.temples.find_one({"_id": ObjectId(temple_id)})
+            temple = await db.get_document("temples", temple_id)
         if not temple:
             raise ValueError("Temple not found")
         
         # Add user to followers
-        await db.temples.update_one(
-            {"_id": temple["_id"]},
-            {
-                "$addToSet": {"followers": user_id},
-                "$inc": {"follower_count": 1}
-            }
-        )
+        followers = temple.get("followers", [])
+        if user_id not in followers:
+            new_followers = list(followers) + [user_id]
+            await db.update_document("temples", temple["id"], {
+                "followers": new_followers,
+                "follower_count": len(new_followers)
+            })
         
         # Add temple to user's followed temples
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$addToSet": {"temple_passbook.temples_followed": str(temple["_id"])}}
-        )
+        user = await db.get_document("users", user_id)
+        if user:
+            temple_passbook = user.get("temple_passbook", {})
+            temples_followed = temple_passbook.get("temples_followed", [])
+            if temple["id"] not in temples_followed:
+                temples_followed = list(temples_followed) + [temple["id"]]
+                temple_passbook["temples_followed"] = temples_followed
+                await db.update_document("users", user_id, {
+                    "temple_passbook": temple_passbook
+                })
         
         # Invalidate caches
         await cache_manager.invalidate_temples()
@@ -169,26 +181,32 @@ class TempleService:
     @staticmethod
     async def unfollow_temple(user_id: str, temple_id: str) -> Dict[str, Any]:
         """Unfollow a temple"""
-        db = await get_database()
+        db = await TempleService.get_db()
         
-        temple = await db.temples.find_one({"temple_id": temple_id})
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         if not temple:
-            temple = await db.temples.find_one({"_id": ObjectId(temple_id)})
+            temple = await db.get_document("temples", temple_id)
         if not temple:
             raise ValueError("Temple not found")
         
-        await db.temples.update_one(
-            {"_id": temple["_id"]},
-            {
-                "$pull": {"followers": user_id},
-                "$inc": {"follower_count": -1}
-            }
-        )
+        followers = temple.get("followers", [])
+        if user_id in followers:
+            new_followers = [f for f in followers if f != user_id]
+            await db.update_document("temples", temple["id"], {
+                "followers": new_followers,
+                "follower_count": len(new_followers)
+            })
         
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$pull": {"temple_passbook.temples_followed": str(temple["_id"])}}
-        )
+        user = await db.get_document("users", user_id)
+        if user:
+            temple_passbook = user.get("temple_passbook", {})
+            temples_followed = temple_passbook.get("temples_followed", [])
+            if temple["id"] in temples_followed:
+                temples_followed = [t for t in temples_followed if t != temple["id"]]
+                temple_passbook["temples_followed"] = temples_followed
+                await db.update_document("users", user_id, {
+                    "temple_passbook": temple_passbook
+                })
         
         # Invalidate caches
         await cache_manager.invalidate_temples()
@@ -205,45 +223,46 @@ class TempleService:
         post_type: str = "announcement"
     ) -> Dict[str, Any]:
         """Create a temple post (admin only)"""
-        db = await get_database()
+        db = await TempleService.get_db()
         
-        temple = await db.temples.find_one({"temple_id": temple_id})
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         if not temple:
-            temple = await db.temples.find_one({"_id": ObjectId(temple_id)})
+            temple = await db.get_document("temples", temple_id)
         if not temple:
             raise ValueError("Temple not found")
         
         if user_id not in temple.get("admins", []):
             raise ValueError("Only temple admins can post")
         
-        user = await db.users.find_one({"_id": ObjectId(user_id)})
+        user = await db.get_document("users", user_id)
+        if not user:
+            raise ValueError("User not found")
         
         new_post = {
-            "id": str(ObjectId()),
+            "id": str(uuid4()),
             "title": title,
             "content": content,
             "post_type": post_type,
             "author_id": user_id,
             "author_name": user["name"],
             "reactions": [],
-            "created_at": datetime.utcnow()
+            "created_at": datetime.utcnow().isoformat() + 'Z'
         }
         
-        await db.temples.update_one(
-            {"_id": temple["_id"]},
-            {"$push": {"posts": {"$each": [new_post], "$position": 0}}}
-        )
+        posts = temple.get("posts", [])
+        posts = [new_post] + posts
+        await db.update_document("temples", temple["id"], {"posts": posts})
         
         return new_post
     
     @staticmethod
     async def get_posts(temple_id: str) -> List[Dict[str, Any]]:
         """Get temple posts"""
-        db = await get_database()
+        db = await TempleService.get_db()
         
-        temple = await db.temples.find_one({"temple_id": temple_id})
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
         if not temple:
-            temple = await db.temples.find_one({"_id": ObjectId(temple_id)})
+            temple = await db.get_document("temples", temple_id)
         if not temple:
             raise ValueError("Temple not found")
         
@@ -257,11 +276,27 @@ class TempleService:
         reaction: str = "namaste"
     ) -> Dict[str, Any]:
         """React to a temple post"""
-        db = await get_database()
+        db = await TempleService.get_db()
         
-        await db.temples.update_one(
-            {"temple_id": temple_id, "posts.id": post_id},
-            {"$addToSet": {"posts.$.reactions": {"user_id": user_id, "reaction": reaction}}}
-        )
+        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+        if not temple:
+            temple = await db.get_document("temples", temple_id)
+        if not temple:
+            raise ValueError("Temple not found")
+        
+        posts = temple.get("posts", [])
+        updated = False
+        for post in posts:
+            if post.get("id") == post_id:
+                reactions = post.get("reactions", [])
+                existing_reaction = next((r for r in reactions if r.get("user_id") == user_id and r.get("reaction") == reaction), None)
+                if not existing_reaction:
+                    reactions.append({"user_id": user_id, "reaction": reaction})
+                    post["reactions"] = reactions
+                    updated = True
+                break
+                
+        if updated:
+            await db.update_document("temples", temple["id"], {"posts": posts})
         
         return {"message": "Reaction added"}
