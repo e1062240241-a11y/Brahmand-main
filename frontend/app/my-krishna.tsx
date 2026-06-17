@@ -8,7 +8,7 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  ImageBackground,
+  Image,
   Animated,
   ScrollView,
   Alert,
@@ -24,6 +24,7 @@ import { aiChat, getChatHistory, clearChatHistory } from '../src/services/api';
 import { FONTS } from '../src/constants/theme';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 import { useAuthStore } from '../src/store/authStore';
+import Svg, { Path } from 'react-native-svg';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -44,6 +45,24 @@ const SUGGESTIONS = [
   'Main khud pe trust nahi kar pa raha',
   'Ek bada decision lena hai',
 ];
+
+const getMessageDateLabel = (timestampInput: any) => {
+  if (!timestampInput) return '';
+  const date = new Date(timestampInput);
+  if (isNaN(date.getTime())) return '';
+  
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  
+  if (date.toDateString() === today.toDateString()) {
+    return 'Today';
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return 'Yesterday';
+  } else {
+    return formatDateIST(timestampInput);
+  }
+};
 
 // ─── Typing Dots ─────────────────────────────────────────────────────────────
 
@@ -70,9 +89,10 @@ function TypingDots() {
 
   return (
     <View style={styles.typingRow}>
-      <View style={styles.assistantAvatar}>
-        <Text style={{ fontSize: 18 }}>🪈</Text>
-      </View>
+      <Image
+        source={require('../assets/images/my_krishna_avatar.png')}
+        style={styles.assistantAvatarImage}
+      />
       <View style={styles.typingBubble}>
         {[dot1, dot2, dot3].map((dot, i) => (
           <Animated.View
@@ -234,65 +254,87 @@ export default function MyKrishnaChat() {
     );
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
+  const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isUser = item.role === 'user';
+
+    let showDateDivider = false;
+    let dateLabel = '';
+
+    if (index === 0) {
+      showDateDivider = true;
+      dateLabel = getMessageDateLabel(item.timestamp);
+    } else {
+      const prevMessage = messages[index - 1];
+      if (prevMessage) {
+        const currentDateStr = new Date(item.timestamp).toDateString();
+        const prevDateStr = new Date(prevMessage.timestamp).toDateString();
+        if (currentDateStr !== prevDateStr) {
+          showDateDivider = true;
+          dateLabel = getMessageDateLabel(item.timestamp);
+        }
+      }
+    }
+
     return (
-      <Animated.View
-        style={[
-          styles.messageRow,
-          isUser ? styles.userRow : styles.assistantRow,
-          { opacity: fadeAnim },
-        ]}
-      >
-        {!isUser && (
-          <View style={styles.assistantAvatar}>
-            <Text style={{ fontSize: 18 }}>🪈</Text>
+      <View style={{ width: '100%' }}>
+        {showDateDivider && (
+          <View style={styles.dateDivider}>
+            <Text style={styles.dateDividerText}>{dateLabel}</Text>
           </View>
         )}
-        <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
-          <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
-            {item.content}
-          </Text>
-          <Text style={styles.timestamp}>
-            {formatTimeIST(item.timestamp)}
-          </Text>
-        </View>
-      </Animated.View>
+        <Animated.View
+          style={[
+            styles.messageRow,
+            isUser ? styles.userRow : styles.assistantRow,
+            { opacity: fadeAnim },
+          ]}
+        >
+          {!isUser && (
+            <Image
+              source={require('../assets/images/my_krishna_avatar.png')}
+              style={styles.assistantAvatarImage}
+            />
+          )}
+          <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+            <Text style={[styles.messageText, isUser ? styles.userText : styles.assistantText]}>
+              {item.content}
+            </Text>
+            <Text style={styles.timestamp}>
+              {formatTimeIST(item.timestamp)}
+            </Text>
+          </View>
+        </Animated.View>
+      </View>
     );
   };
 
   return (
     <View style={{ flex: 1 }}>
-      <ImageBackground
-        source={require('../assets/images/image temple/MahakalTemple.webp')}
+      <LinearGradient
+        colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+        locations={[0, 0.1058, 0.2212]}
         style={styles.container}
       >
-        {/* Dark overlay */}
-        <LinearGradient
-          colors={['rgba(10, 15, 60, 0.92)', 'rgba(0,0,0,0.88)']}
-          style={StyleSheet.absoluteFill}
-        />
-
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar style="light" translucent />
+        <StatusBar style="dark" translucent />
 
         {/* ── Header ── */}
-        <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-          <Pressable
-            onPress={() => router.back()}
-            style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
-            android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: true, radius: 20 }}
-          >
-            <Ionicons name="chevron-back" size={26} color="#FFF" />
-          </Pressable>
+        <View style={[styles.header, { height: insets.top + 60, paddingTop: insets.top }]}>
+          <View style={styles.headerLeft}>
+            <Pressable
+              onPress={() => router.back()}
+              style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
+              android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: true, radius: 20 }}
+            >
+              <Ionicons name="chevron-back" size={26} color="#000" />
+            </Pressable>
 
-          <View style={styles.headerCenter}>
-            <View style={styles.headerAvatarGlow}>
-              <Text style={{ fontSize: 22 }}>🪈</Text>
-            </View>
-            <View>
+            <View style={styles.headerCenter}>
+              <Image
+                source={require('../assets/images/my_krishna_avatar.png')}
+                style={styles.headerAvatarImage}
+              />
               <Text style={styles.headerTitle}>My Krishn</Text>
-              <Text style={styles.headerSub}>Bhagavad Gita se guided</Text>
             </View>
           </View>
 
@@ -300,15 +342,18 @@ export default function MyKrishnaChat() {
             onPress={handleClearChat}
             style={({ pressed }) => [styles.clearBtn, pressed && { opacity: 0.7 }]}
             disabled={isLoading || historyLoading}
-            android_ripple={{ color: 'rgba(255, 215, 0, 0.25)', borderless: true, radius: 20 }}
+            android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: true, radius: 20 }}
           >
-            <Ionicons name="trash-outline" size={22} color="#FFD700" />
+            <Ionicons name="ellipsis-vertical" size={22} color="#000" />
           </Pressable>
         </View>
 
-        {Platform.OS === 'ios' ? (
-          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-            {/* ── Loading indicator while history loads ── */}
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        >
+          {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
             <BrandedLoading message="Krishna ke vichar sun rahe hain..." />
           ) : (
@@ -317,10 +362,7 @@ export default function MyKrishnaChat() {
               data={messages}
               renderItem={renderMessage}
               keyExtractor={(item) => item.id}
-              contentContainerStyle={[
-                styles.listContent,
-                { paddingTop: insets.top + 80 },
-              ]}
+              contentContainerStyle={styles.listContent}
               onContentSizeChange={scrollToBottom}
               showsVerticalScrollIndicator={false}
               ListFooterComponent={isLoading ? <TypingDots /> : null}
@@ -340,7 +382,7 @@ export default function MyKrishnaChat() {
                   key={i}
                   style={({ pressed }) => [styles.chip, pressed && { opacity: 0.8 }]}
                   onPress={() => handleSuggestion(s)}
-                  android_ripple={{ color: 'rgba(255, 215, 0, 0.25)', borderless: false }}
+                  android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
                 >
                   <Text style={styles.chipText}>{s}</Text>
                 </Pressable>
@@ -348,93 +390,27 @@ export default function MyKrishnaChat() {
             </ScrollView>
           )}
 
-          {/* ── Input Bar ── */}
-          <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-            <View style={styles.inputContainer}>
-              <TextInput
-                ref={inputRef}
-                style={styles.input}
-                placeholder="Apna mann kholo..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={500}
-                returnKeyType="send"
-                onSubmitEditing={handleSend}
-                editable={!historyLoading}
-                disableFullscreenUI={true}
-                textAlignVertical="top"
-              />
-              <Pressable
-                style={({ pressed }) => [
-                  styles.sendBtn,
-                  (!inputText.trim() || isLoading) && styles.sendBtnDisabled,
-                  pressed && inputText.trim() && !isLoading && { opacity: 0.8 }
-                ]}
-                onPress={handleSend}
-                disabled={!inputText.trim() || isLoading || historyLoading}
-                android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: true, radius: 18 }}
-              >
-                <Ionicons
-                  name="send"
-                  size={18}
-                  color={inputText.trim() && !isLoading ? '#FFF' : 'rgba(255,255,255,0.25)'}
-                />
-              </Pressable>
+          {/* ── Info Banner ── */}
+          {!historyLoading && messages.length < 3 && (
+            <View style={styles.infoBanner}>
+              <Svg width={15.692} height={15.68} viewBox="0 0 16 16" fill="none">
+                <Path d="M7.8517 0C1.81646 0 -1.95556 6.53333 1.06206 11.76C4.07967 16.9867 11.6237 16.9867 14.6413 11.76C15.3294 10.5682 15.6917 9.21621 15.6917 7.84C15.6871 3.51198 12.1797 0.004575 7.8517 0ZM7.8517 14.4738C2.74496 14.4741 -0.446704 8.94601 2.10647 4.52333C4.65964 0.100656 11.0431 0.100369 13.5966 4.52282C14.179 5.53135 14.4855 6.67542 14.4855 7.84C14.4814 11.5021 11.5137 14.4697 7.8517 14.4738ZM9.05785 11.4585C9.05785 11.7915 8.78783 12.0615 8.45477 12.0615C7.78861 12.0616 7.24862 11.5215 7.24862 10.8554V7.84C6.78437 7.84 6.49422 7.33744 6.72634 6.93539C6.83406 6.7488 7.03317 6.63386 7.24862 6.63384C7.91478 6.63382 8.45477 7.17384 8.45477 7.84V10.8554C8.78783 10.8554 9.05785 11.1254 9.05785 11.4585ZM6.64554 4.52308C6.64554 3.82671 7.39939 3.39147 8.00246 3.73966C8.60554 4.08784 8.60554 4.95831 8.00246 5.3065C7.86496 5.38589 7.70894 5.42769 7.55016 5.42769C7.05053 5.42771 6.64554 5.0227 6.64554 4.52308Z" fill="black"/>
+              </Svg>
+              <Text style={styles.infoText}>
+                Ask your complete question in one message, then press Enter. Please avoid splitting your question across multiple messages.
+              </Text>
             </View>
-          </View>
-          </KeyboardAvoidingView>
-        ) : (
-          <View style={{ flex: 1 }}>
-            {/* ── Loading indicator while history loads ── */}
-            {historyLoading ? (
-              <BrandedLoading message="Krishna ke vichar sun rahe hain..." />
-            ) : (
-              <FlatList
-                ref={flatListRef}
-                data={messages}
-                renderItem={renderMessage}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={[
-                  styles.listContent,
-                  { paddingTop: insets.top + 80 },
-                ]}
-                onContentSizeChange={scrollToBottom}
-                showsVerticalScrollIndicator={false}
-                ListFooterComponent={isLoading ? <TypingDots /> : null}
-              />
-            )}
+          )}
 
-            {/* ── Suggestions chips (only shown before first user message) ── */}
-            {showSuggestions && !historyLoading && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.suggestionsScroll}
-                contentContainerStyle={styles.suggestionsContent}
-              >
-                {SUGGESTIONS.map((s, i) => (
-                  <Pressable
-                    key={i}
-                    style={({ pressed }) => [styles.chip, pressed && { opacity: 0.8 }]}
-                    onPress={() => handleSuggestion(s)}
-                    android_ripple={{ color: 'rgba(255, 215, 0, 0.25)', borderless: false }}
-                  >
-                    <Text style={styles.chipText}>{s}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            )}
-
-            {/* ── Input Bar ── */}
-            <View style={[styles.inputWrapper, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+          {/* ── Input Bar ── */}
+          <View style={[styles.inputWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 25 }]}>
+            <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
                 <TextInput
                   ref={inputRef}
                   style={styles.input}
-                  placeholder="Apna mann kholo..."
-                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  placeholder="Message..."
+                  placeholderTextColor="rgba(0, 0, 0, 0.5)"
                   value={inputText}
                   onChangeText={setInputText}
                   multiline
@@ -443,29 +419,32 @@ export default function MyKrishnaChat() {
                   onSubmitEditing={handleSend}
                   editable={!historyLoading}
                   disableFullscreenUI={true}
-                  textAlignVertical="top"
+                  textAlignVertical="center"
                 />
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.sendBtn,
-                    (!inputText.trim() || isLoading) && styles.sendBtnDisabled,
-                    pressed && inputText.trim() && !isLoading && { opacity: 0.8 }
-                  ]}
-                  onPress={handleSend}
-                  disabled={!inputText.trim() || isLoading || historyLoading}
-                  android_ripple={{ color: 'rgba(255, 255, 255, 0.25)', borderless: true, radius: 18 }}
-                >
-                  <Ionicons
-                    name="send"
-                    size={18}
-                    color={inputText.trim() && !isLoading ? '#FFF' : 'rgba(255,255,255,0.25)'}
-                  />
-                </Pressable>
+                <View style={styles.inputIcons}>
+                  <Ionicons name="mic-outline" size={20} color="rgba(0, 0, 0, 0.6)" style={styles.iconMargin} />
+                  <Ionicons name="camera-outline" size={20} color="rgba(0, 0, 0, 0.6)" style={styles.iconMargin} />
+                  <Ionicons name="image-outline" size={20} color="rgba(0, 0, 0, 0.6)" />
+                </View>
               </View>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.sendBtn,
+                  pressed && { opacity: 0.7 }
+                ]}
+                onPress={handleSend}
+                disabled={!inputText.trim() || isLoading || historyLoading}
+              >
+                <Ionicons
+                  name="send"
+                  size={18}
+                  color="#000"
+                />
+              </Pressable>
             </View>
           </View>
-        )}
-      </ImageBackground>
+        </KeyboardAvoidingView>
+      </LinearGradient>
     </View>
   );
 }
@@ -477,48 +456,36 @@ const styles = StyleSheet.create({
 
   // Header
   header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
     zIndex: 100,
-    backgroundColor: 'rgba(10, 15, 60, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,215,0,0.15)',
+    backgroundColor: 'rgba(255, 250, 248, 0.50)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   clearBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerAvatarGlow: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,215,0,0.15)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,215,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#FFD700',
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 0 },
+  headerAvatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
   },
   headerTitle: {
-    color: '#FFD700',
-    fontSize: 17,
+    color: '#000000',
+    fontSize: 16,
     fontFamily: FONTS.bold,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  headerSub: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
-    fontFamily: FONTS.regular,
+    fontWeight: '700',
   },
 
   // Loader
@@ -526,44 +493,60 @@ const styles = StyleSheet.create({
   loaderText: { color: '#FFD700', fontFamily: FONTS.medium, marginTop: 12, fontSize: 14 },
 
   // Messages
-  listContent: { paddingHorizontal: 14, paddingBottom: 12 },
+  listContent: { paddingHorizontal: 14, paddingTop: 12, paddingBottom: 12 },
+  dateDivider: {
+    alignSelf: 'center',
+    marginVertical: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  dateDividerText: {
+    color: 'rgba(0, 0, 0, 0.4)',
+    fontSize: 12,
+    fontFamily: FONTS.medium,
+  },
   messageRow: { flexDirection: 'row', marginBottom: 14, maxWidth: '85%' },
   userRow: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
   assistantRow: { alignSelf: 'flex-start' },
 
-  assistantAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,215,0,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  assistantAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.3)',
   },
 
-  messageBubble: { padding: 12, borderRadius: 20 },
-  userBubble: {
-    backgroundColor: '#E65C00',
-    borderTopRightRadius: 4,
-    shadowColor: '#FF6A00',
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
+  messageBubble: { 
+    padding: 12, 
+    borderRadius: 20,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  userBubble: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.50)',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 3,
+    borderBottomLeftRadius: 20,
   },
   assistantBubble: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderTopLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.15)',
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 3,
   },
-  messageText: { fontSize: 15, fontFamily: FONTS.medium, lineHeight: 22 },
-  userText: { color: '#FFF' },
-  assistantText: { color: 'rgba(255,255,255,0.92)' },
+  messageText: { fontSize: 15, fontFamily: FONTS.medium, lineHeight: 22, color: '#000' },
+  userText: { color: '#000' },
+  assistantText: { color: '#000' },
   timestamp: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.35)',
+    color: 'rgba(0, 0, 0, 0.4)',
     marginTop: 5,
     alignSelf: 'flex-end',
   },
@@ -573,20 +556,23 @@ const styles = StyleSheet.create({
   typingBubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: '#FFF',
     borderRadius: 20,
-    borderTopLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.15)',
+    borderBottomLeftRadius: 3,
     paddingHorizontal: 14,
     paddingVertical: 14,
     gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
   dot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#FFD700',
+    backgroundColor: '#000',
   },
 
   // Suggestion chips
@@ -598,47 +584,91 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   chip: {
-    backgroundColor: 'rgba(255,215,0,0.12)',
+    backgroundColor: '#FFF',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 7,
     borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.3)',
+    borderColor: 'rgba(0, 0, 0, 0.2)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
   },
   chipText: {
-    color: '#FFD700',
+    color: '#000',
     fontSize: 12,
     fontFamily: FONTS.medium,
   },
 
-  // Input
-  inputWrapper: { paddingHorizontal: 12, paddingTop: 6 },
-  inputContainer: {
+  // Info Banner
+  infoBanner: {
+    width: 315,
+    height: 68,
+    alignSelf: 'center',
+    backgroundColor: '#F4F4F4',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 26,
+    gap: 8,
+    marginBottom: 10,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#000000',
+    fontFamily: FONTS.regular,
+    flex: 1,
+    textAlign: 'center',
+  },
+
+  // Input
+  inputWrapper: { 
+    paddingHorizontal: 12, 
+    paddingTop: 6,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    height: 44,
     borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.2)',
+    borderColor: 'rgba(0, 0, 0, 0.50)',
   },
   input: {
     flex: 1,
-    color: '#FFF',
+    color: '#000',
     fontFamily: FONTS.medium,
     fontSize: 15,
-    maxHeight: 100,
-    paddingVertical: 8,
+    paddingVertical: 4,
+  },
+  inputIcons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  iconMargin: {
+    marginRight: 2,
   },
   sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#E65C00',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.50)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: 9,
   },
-  sendBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.08)' },
 });

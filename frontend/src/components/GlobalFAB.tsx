@@ -615,8 +615,8 @@ export function GlobalFAB() {
                     style={[
                       fabStyles.centerButton,
                       {
-                        transform: [{ scale: fabItemAnims[7] }],
-                        opacity: fabItemAnims[7],
+                        transform: [{ scale: fabItemAnims[6] }],
+                        opacity: fabItemAnims[6],
                       },
                     ]}
                   >

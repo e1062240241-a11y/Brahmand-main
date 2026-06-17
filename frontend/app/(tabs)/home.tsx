@@ -2119,8 +2119,7 @@ export default function HomeScreen() {
                           fontStyle: 'normal',
                           fontWeight: '500',
                           lineHeight: 36,
-                          letterSpacing: 14,
-                          paddingLeft: 14,
+                          letterSpacing: 0,
                         }}>BRAHMAND</Text>
                       </View>
 
