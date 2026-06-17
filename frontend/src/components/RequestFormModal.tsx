@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { HospitalSearchInput } from './HospitalSearchInput';
-import { sendMsg91OTP, verifyMsg91OTP } from '../services/api';
+import { sendBloodRequestOTP, verifyBloodRequestOTP } from '../services/api';
 
 interface CommunityOption {
   id: string;
@@ -275,7 +275,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
     setPhoneSending(true);
 
     try {
-      await sendMsg91OTP(`+91${trimmedPhone}`);
+      await sendBloodRequestOTP(`+91${trimmedPhone}`);
       setPhoneOtpStage('sent');
       setPhoneOtpMessage(`OTP sent to +91${trimmedPhone}.`);
     } catch (error: any) {
@@ -296,7 +296,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
     try {
       const trimmedPhone = normalizePhoneDigits(contactNumber);
-      const res = await verifyMsg91OTP(`+91${trimmedPhone}`, phoneOtp.trim());
+      const res = await verifyBloodRequestOTP(`+91${trimmedPhone}`, phoneOtp.trim());
       if (res.data?.type === 'success') {
         setPhoneOtpStage('verified');
         setVerifiedPhone(trimmedPhone);

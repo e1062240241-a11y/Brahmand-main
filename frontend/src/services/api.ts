@@ -613,6 +613,12 @@ export const sendMsg91OTP = (phone: string) =>
 export const verifyMsg91OTP = (phone: string, otp: string) =>
   api.post('/auth/msg91/verify', { phone, otp });
 
+export const sendBloodRequestOTP = (phone: string) =>
+  api.post('/blood-request/send-otp', { phone });
+
+export const verifyBloodRequestOTP = (phone: string, otp: string) =>
+  api.post('/blood-request/verify-otp', { phone, otp });
+
 export const register = (data: { phone: string; name: string; photo?: string; language: string }) =>
   api.post('/auth/register', data);
 

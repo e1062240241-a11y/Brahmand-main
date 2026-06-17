@@ -23,7 +23,10 @@ export default function CommunityRequestBloodVerifyPage() {
   const { user, updateUser } = useAuthStore();
   const { myVendor, fetchMyVendor } = useVendorStore();
 
-  const [phoneNumber, setPhoneNumber] = React.useState((params.contactNumber || user?.phone || '').replace(/[^0-9]/g, ''));
+  const rawPhone = (params.contactNumber || user?.phone || '').replace(/[^0-9]/g, '');
+  const [phoneNumber, setPhoneNumber] = React.useState(
+    rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone
+  );
 
 
   React.useEffect(() => {
@@ -81,7 +84,7 @@ export default function CommunityRequestBloodVerifyPage() {
           <Text style={styles.stepNumber}>1</Text>
           <View style={styles.stepContent}>
             <Text style={styles.stepLabel}>Verify Your Number</Text>
-            <Text style={styles.stepDescription}>We’ll send a 6 digit OTP to verify your mobile number.</Text>
+            <Text style={styles.stepDescription}>We’ll send a 4 digit OTP to verify your mobile number.</Text>
             <View style={styles.detailBox}>
               <Text style={styles.detailLabel}>Mobile Number</Text>
               <TextInput

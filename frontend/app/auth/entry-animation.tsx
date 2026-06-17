@@ -360,9 +360,11 @@ const styles = StyleSheet.create({
   },
   continueButtonText: {
     color: '#FFFFFF',
-    fontFamily: 'Poppins',
-    fontWeight: '600',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontSize: 20,
+    fontStyle: 'normal',
+    fontWeight: '600',
     lineHeight: 24,
   },
   adminLoginButton: {

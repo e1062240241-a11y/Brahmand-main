@@ -127,7 +127,7 @@ export default function KYCStatusScreen() {
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
 
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [resendTimer, setResendTimer] = useState(25);
   const inputRefs = useRef<TextInput[]>([]);
 
@@ -200,7 +200,7 @@ export default function KYCStatusScreen() {
       await sendMsg91OTP(fullPhone);
       setOtpSent(true);
       setResendTimer(25);
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']);
       Alert.alert('Success', `OTP sent successfully to ${fullPhone}`);
     } catch (error: any) {
       console.warn('Failed to send OTP:', error);
@@ -220,7 +220,7 @@ export default function KYCStatusScreen() {
     newOtp[index] = value.replace(/[^0-9]/g, '');
     setOtp(newOtp);
     
-    if (newOtp[index] && index < 5) {
+    if (newOtp[index] && index < 3) {
       inputRefs.current[index + 1]?.focus();
     }
     
@@ -254,7 +254,7 @@ export default function KYCStatusScreen() {
     } catch (error: any) {
       console.warn('Failed to verify OTP:', error);
       Alert.alert('Error', error?.response?.data?.detail || error?.message || 'Invalid OTP. Please try again.');
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']);
       inputRefs.current[0]?.focus();
     } finally {
       setOtpLoading(false);
@@ -311,7 +311,7 @@ export default function KYCStatusScreen() {
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={styles.otpScrollContent} showsVerticalScrollIndicator={false}>
               <Text style={styles.otpSubtitle}>
-                We have sent a 6 digit OTP to{"\n"}
+                We have sent a 4 digit OTP to{"\n"}
                 <Text style={styles.otpSubtitleBold}>+91 {phoneNumber}</Text>
               </Text>
 

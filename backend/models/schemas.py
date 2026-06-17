@@ -59,10 +59,12 @@ class KYCStatus(str, Enum):
 
 class OTPRequest(BaseModel):
     phone: str
-    
+
     @validator('phone')
     def validate_phone(cls, v):
-        if len(v) < 10:
+        import re
+        digits = re.sub(r'\D', '', v)
+        if len(digits) < 10:
             raise ValueError('Phone number must be at least 10 digits')
         return v
 
@@ -70,7 +72,7 @@ class OTPRequest(BaseModel):
 class OTPVerify(BaseModel):
     phone: str
     otp: str
-    
+
     @validator('otp')
     def validate_otp(cls, v):
         if len(v) != 4:

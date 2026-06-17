@@ -8637,7 +8637,7 @@ async def send_blood_request_otp(request: OTPRequest):
     phone = request.phone.strip()
     
     # Normalize phone
-    from services.msg91_service import _normalize_phone
+    from services.nattyfish_service import _normalize_phone
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
@@ -8701,24 +8701,37 @@ async def send_blood_request_otp(request: OTPRequest):
     else:
         otp_requests_count = 1
 
-    # Call MSG91 to send OTP
-    from services.msg91_service import MSG91Service
+    # Generate OTP securely (4 digits)
+    import random
+    otp_code = f"{random.randint(1000, 9999)}"
+    logger.info(f"[Blood Request OTP] Generated OTP {otp_code} for mobile {mobile}")
+
+    # Call NattyFish to send SMS
+    from services.nattyfish_service import NattyFishService
+    template_text = os.getenv("NATTYFISH_MESSAGE_TEMPLATE", "{otp} is your verification code. - SHRSDD")
+    message_text = template_text.format(otp=otp_code)
+    
+    logger.info(f"[Blood Request OTP] Sending SMS via NattyFish to {mobile} with text: {message_text}")
     try:
-        res = await MSG91Service.send_blood_otp(mobile)
+        res = await NattyFishService.send_sms(mobile, message_text)
+        logger.info(f"[Blood Request OTP] NattyFish SMS sent response: {res}")
     except HTTPException as exc:
+        logger.error(f"[Blood Request OTP] NattyFish SMS sending failed: {exc.detail}")
         raise exc
     except Exception as exc:
+        logger.exception(f"[Blood Request OTP] NattyFish SMS sending unexpected error: {exc}")
         raise HTTPException(status_code=500, detail=str(exc))
 
     # Save verification state
     record_data = {
         "phone": mobile,
+        "otp": otp_code,
         "attempts": 0,
         "last_sent_at": now.isoformat() + 'Z',
         "otp_requests_count": otp_requests_count,
         "verified": False,
         "verified_at": None,
-        "expires_at": None
+        "expires_at": (now + timedelta(minutes=5)).isoformat() + 'Z'
     }
     
     await db.set_document("blood_request_otp_verifications", mobile, record_data)
@@ -8737,7 +8750,7 @@ async def verify_blood_request_otp(request: OTPVerify):
     otp = request.otp.strip()
     
     # Normalize phone
-    from services.msg91_service import _normalize_phone
+    from services.nattyfish_service import _normalize_phone
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
@@ -8782,19 +8795,17 @@ async def verify_blood_request_otp(request: OTPVerify):
     attempts += 1
     await db.update_document("blood_request_otp_verifications", mobile, {"attempts": attempts})
     
-    # Call MSG91 to verify OTP
-    from services.msg91_service import MSG91Service
-    try:
-        res = await MSG91Service.verify_blood_otp(mobile, otp)
-    except HTTPException as exc:
+    # Verify OTP backend-side
+    stored_otp = record.get("otp")
+    logger.info(f"[Blood Request OTP] Verification attempt for {mobile}: input={otp}, stored={stored_otp}, attempt={attempts}")
+    
+    if not stored_otp or stored_otp != otp:
         if attempts >= 5:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid OTP. Maximum verification attempts exceeded. Please request a new OTP."
             )
-        raise exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Verification failed: {str(exc)}")
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
         
     # If success, update record to verified
     expires_at = now + timedelta(minutes=5)
@@ -8834,7 +8845,7 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
             raise HTTPException(status_code=400, detail="Contact number is required for blood request.")
             
         # Normalize contact number
-        from services.msg91_service import _normalize_phone
+        from services.nattyfish_service import _normalize_phone
         try:
             contact_mobile = _normalize_phone(contact_number)
         except Exception as exc:
@@ -8906,7 +8917,7 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     # Invalidate/consume verification state so it cannot be reused
     if data.type.value == "blood":
         try:
-            from services.msg91_service import _normalize_phone
+            from services.nattyfish_service import _normalize_phone
             contact_mobile = _normalize_phone(data.contact_number)
             await db.update_document("blood_request_otp_verifications", contact_mobile, {
                 "verified": False,

@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Keyboa
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { createCommunityRequest, parseApiError, sendMsg91OTP, verifyMsg91OTP } from '../../../src/services/api';
+import { createCommunityRequest, parseApiError, sendBloodRequestOTP, verifyBloodRequestOTP } from '../../../src/services/api';
 // import { getCurrentUserToken } from '../../../src/services/firebase/authService';
 import { useAuthStore } from '../../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
@@ -24,12 +24,13 @@ export default function CommunityRequestBloodOtpPage() {
     contactNumber?: string;
   }>();
   const { login, user } = useAuthStore();
-  const phone = (params.phone || '').replace(/[^0-9]/g, '');
+  const rawPhone = (params.phone || '').replace(/[^0-9]/g, '');
+  const phone = rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone;
   const [otp, setOtp] = useState(['', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(30);
-  const [msg91RequestId, setMsg91RequestId] = useState('');
+  const [nattyFishRequestId, setNattyFishRequestId] = useState('');
   const [otpSending, setOtpSending] = useState(false);
   const inputRefs = useRef<TextInput[]>([]);
 
@@ -66,14 +67,14 @@ export default function CommunityRequestBloodOtpPage() {
     setOtpSending(true);
     setError('');
     try {
-      console.log('[MSG91] Requesting backend to send OTP to:', phone);
-      // We pass just the phone, backend handles normalization and MSG91 auth
-      const response = await sendMsg91OTP(`+91${phone}`);
-      console.log('[MSG91] Send response:', response.data);
+      console.log('[NattyFish] Requesting backend to send OTP to:', phone);
+      // We pass just the phone, backend handles normalization and NattyFish SMS
+      const response = await sendBloodRequestOTP(`+91${phone}`);
+      console.log('[NattyFish] Send response:', response.data);
 
       setResendTimer(30);
     } catch (err: any) {
-      console.error('MSG91 OTP send failed', err);
+      console.error('NattyFish OTP send failed', err);
       setError(err?.response?.data?.detail || err?.message || 'Unable to send OTP.');
     } finally {
       setOtpSending(false);
@@ -105,9 +106,9 @@ export default function CommunityRequestBloodOtpPage() {
     setError('');
 
     try {
-      console.log('[MSG91] Verifying OTP via backend...');
-      const response = await verifyMsg91OTP(`+91${phone}`, code);
-      console.log('[MSG91] Verify response:', response.data);
+      console.log('[NattyFish] Verifying OTP via backend...');
+      const response = await verifyBloodRequestOTP(`+91${phone}`, code);
+      console.log('[NattyFish] Verify response:', response.data);
 
       if (response.data.type === 'success') {
         // Verification successful, proceed with submission
@@ -116,7 +117,7 @@ export default function CommunityRequestBloodOtpPage() {
         throw new Error(response.data.message || 'Invalid OTP');
       }
     } catch (err: any) {
-      console.error('MSG91 verify failed', err);
+      console.error('NattyFish verify failed', err);
       setError(err?.response?.data?.detail || err?.message || 'Invalid OTP. Please try again.');
       setOtp(['', '', '', '']);
       inputRefs.current[0]?.focus();
