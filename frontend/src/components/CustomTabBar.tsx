@@ -62,6 +62,7 @@ const getIconPositions = (activeIndex: number): number[] => {
 };
 
 const getBackgroundRects = (activeIndex: number) => {
+  const safeIndex = activeIndex >= 0 && activeIndex < 5 ? activeIndex : 0;
   const GAP = 6;
   
   const getTabWidthForBg = (index: number) => {
@@ -72,8 +73,8 @@ const getBackgroundRects = (activeIndex: number) => {
     return 100;
   };
 
-  const tabWidth = getTabWidthForBg(activeIndex);
-  const centerX = getIconPositions(activeIndex)[activeIndex];
+  const tabWidth = getTabWidthForBg(safeIndex);
+  const centerX = getIconPositions(safeIndex)[safeIndex];
   const L_active = centerX - tabWidth / 2;
   const R_active = centerX + tabWidth / 2;
 
@@ -206,7 +207,8 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     );
   };
 
-  const iconPositions = getIconPositions(activeIndex);
+  const safeActiveIndex = activeIndex >= 0 && activeIndex < 5 ? activeIndex : 0;
+  const iconPositions = getIconPositions(safeActiveIndex);
 
   // Dynamic slot width based on active and inactive state
   const getTabWidth = (index: number, isFocused: boolean) => {
@@ -228,7 +230,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
       <View style={styles.tabBarContainer}>
         {/* Dynamic Separate Background */}
         <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>
-          {getBackgroundRects(activeIndex)}
+          {getBackgroundRects(safeActiveIndex)}
         </Svg>
 
         {/* Dynamic Slotted Tab Items */}

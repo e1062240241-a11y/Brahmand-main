@@ -114,7 +114,7 @@ export default function AllLiveJaapsScreen() {
     };
 
     fetchActiveCounts();
-    const interval = setInterval(fetchActiveCounts, 5000);
+    const interval = setInterval(fetchActiveCounts, 10000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -245,7 +245,7 @@ export default function AllLiveJaapsScreen() {
                     <View style={styles.countBadge}>
                       <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 3 }} />
                       <Text style={styles.countBadgeText}>
-                        {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
+                        {(activeCounts[getMantraRoomName(jaap.id)] || 0).toLocaleString()}
                       </Text>
                     </View>
                   )}

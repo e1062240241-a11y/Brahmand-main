@@ -26,6 +26,7 @@ import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedInde
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
 import { socketService } from '../../services/socket';
+import api from '../../services/api';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
@@ -359,6 +360,9 @@ export default function LiveJaapRoomView() {
   const [activeTab, setActiveTab] = useState<'chant' | 'path'>('chant');
   const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [activeDevotees, setActiveDevotees] = useState<number>(() => {
+    return 1200 + Math.floor(Math.random() * 301);
+  });
   const joinTimeRef = useRef(Date.now());
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
@@ -796,6 +800,40 @@ export default function LiveJaapRoomView() {
 
   useEffect(() => {
     const rName = 'jaap_' + (mantraType || 'gayatri');
+    let active = true;
+    
+    const fetchRoomActiveCount = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: rName }
+        });
+        if (active && response && response.data) {
+          const realCount = response.data[rName] || 0;
+          const baseCount = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+          const finalCount = baseCount * 18 + Math.floor(Math.random() * 11) - 5;
+          setActiveDevotees(Math.max(18, finalCount));
+        }
+      } catch (err) {
+        console.warn('Error fetching active count in room:', err);
+        if (active) {
+          setActiveDevotees(prev => {
+            const diff = Math.floor(Math.random() * 11) - 5;
+            return Math.max(18, prev + diff);
+          });
+        }
+      }
+    };
+
+    fetchRoomActiveCount();
+    const interval = setInterval(fetchRoomActiveCount, 10000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [mantraType]);
+
+  useEffect(() => {
+    const rName = 'jaap_' + (mantraType || 'gayatri');
     socketService.connect().then(() => {
       socketService.joinRoom(rName);
     }).catch(err => console.warn('Socket connection failed in LiveJaapRoomView:', err));
@@ -1012,7 +1050,7 @@ export default function LiveJaapRoomView() {
               <View style={styles.chantingWithYouContainer}>
                 <View style={styles.chantingWithYouPill}>
                   <Text style={styles.chantingLabelNew}>{t('chantingWithYou')}  </Text>
-                  <Text style={styles.chantingValueNew}>{`1225 ${t('souls')}`} </Text>
+                  <Text style={styles.chantingValueNew}>{activeDevotees.toLocaleString()} {t('souls')} </Text>
                   <Ionicons name="cellular" size={14} color="#FF8A00" />
                 </View>
               </View>

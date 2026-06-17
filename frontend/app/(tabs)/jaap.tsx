@@ -221,7 +221,7 @@ export default function JaapLandingScreen() {
     };
 
     fetchActiveCounts();
-    const interval = setInterval(fetchActiveCounts, 5000);
+    const interval = setInterval(fetchActiveCounts, 10000);
     return () => {
       active = false;
       clearInterval(interval);
@@ -773,7 +773,7 @@ export default function JaapLandingScreen() {
                           <View style={styles.exactCountBadge}>
                             <Ionicons name="people" size={10} color="#FFF" style={{ marginRight: 2 }} />
                             <Text style={styles.exactCountText}>
-                              {((activeCounts[getMantraRoomName(jaap.id)] || 0) * 18).toLocaleString()}
+                              {(activeCounts[getMantraRoomName(jaap.id)] || 0).toLocaleString()}
                             </Text>
                           </View>
                         )}
