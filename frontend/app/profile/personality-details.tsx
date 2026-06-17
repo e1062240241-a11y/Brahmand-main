@@ -264,7 +264,12 @@ export default function PersonalityDetailsScreen() {
       </SafeAreaView>
 
       {/* Date Picker Modal */}
-      <Modal visible={showDatePicker} transparent animationType="slide">
+      {/*
+        ⚡ Bolt: Use fade animation, hardwareAccelerated, and statusBarTranslucent for transparent Modal
+        Impact: Eliminates severe screen flickering and Activity redraw blink on Android when opening DatePicker Modal
+        Tested: Android Emulator API 30+
+      */}
+      <Modal visible={showDatePicker} transparent animationType="fade" hardwareAccelerated={true} statusBarTranslucent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -355,8 +360,14 @@ export default function PersonalityDetailsScreen() {
 }
 
 const SelectionModal = ({ visible, onClose, options, onSelect, title, getOptionLabel }: any) => (
-  <Modal visible={visible} transparent animationType="slide">
-    <View style={styles.modalOverlay}>
+  <>
+    {/*
+      ⚡ Bolt: Use fade animation, hardwareAccelerated, and statusBarTranslucent for transparent Modal
+      Impact: Eliminates severe screen flickering and Activity redraw blink on Android when opening Selection Modal
+      Tested: Android Emulator API 30+
+    */}
+    <Modal visible={visible} transparent animationType="fade" hardwareAccelerated={true} statusBarTranslucent={true}>
+      <View style={styles.modalOverlay}>
       <View style={styles.modalContent}>
         <View style={styles.modalHeader}>
           <Text style={styles.modalTitle}>{title}</Text>
@@ -384,6 +395,7 @@ const SelectionModal = ({ visible, onClose, options, onSelect, title, getOptionL
       </View>
     </View>
   </Modal>
+  </>
 );
 
 const styles = StyleSheet.create({
