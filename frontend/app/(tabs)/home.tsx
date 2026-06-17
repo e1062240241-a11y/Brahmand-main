@@ -2992,14 +2992,18 @@ export default function HomeScreen() {
             <View style={styles.twoButtonsRow}>
               {/* Mumbai Community Card */}
               {(() => {
-                const resolvedCityComm = resolveHomeCommunityItem(findCityCommunity());
-                if (!resolvedCityComm) return null;
+                const resolvedCityComm = resolveHomeCommunityItem(findCityCommunity()) || {
+                  id: 'mumbai-fallback',
+                  name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
+                  type: 'city',
+                  member_count: 1250,
+                };
                 let cityName = resolvedCityComm.name || 'City Community';
                 if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
                   cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
                 }
                 const cityId = resolvedCityComm.id;
-                const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 13;
+                const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
                 return (
                   <TouchableOpacity
                     style={styles.communityCardMini}
@@ -3024,7 +3028,51 @@ export default function HomeScreen() {
                 );
               })()}
 
-
+              {/* Local Community Card */}
+              {(() => {
+                const resolvedLocalComm = resolveHomeCommunityItem(findLocalCommunity()) || {
+                  id: 'food_pune',
+                  name: t('language') === 'hi' ? 'पुणे भोजन साझाकरण समूह' : 'Pune Food Sharing Group',
+                  type: 'user_group',
+                  member_count: 235,
+                };
+                const localId = resolvedLocalComm.id;
+                let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
+                if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
+                  realGroupName = 'पुणे भोजन साझाकरण समूह';
+                }
+                const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
+                const localSubgroup = resolvedLocalComm.type || 'city';
+                return (
+                  <TouchableOpacity
+                    style={styles.communityCardMini}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      router.push({
+                        pathname: '/community/[id]',
+                        params: { id: localId, subgroup: localSubgroup, name: realGroupName }
+                      });
+                    }}
+                  >
+                    <View style={styles.communityCardIconBox}>
+                      <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
+                    </View>
+                    <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                      <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>
+                      <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
+                        {realGroupName}
+                      </Text>
+                      <View style={styles.miniCardBottomRow}>
+                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
+                        <View style={styles.sevaBadgeMini}>
+                          <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                        </View>
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
+                  </TouchableOpacity>
+                );
+              })()}
             </View>
           </View>
         )}

@@ -104,10 +104,6 @@ export default function PhoneScreen() {
       >
         {Platform.OS === 'web' ? <div id="recaptcha-container-fixed"></div> : null}
 
-        {/* Back Button */}
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={28} color="#F5EEDC" />
-        </TouchableOpacity>
 
         <View style={styles.content}>
           <View style={styles.inputsStack}>
@@ -122,7 +118,7 @@ export default function PhoneScreen() {
               <TextInput
                 style={styles.phoneInput}
                 placeholder="Phone number"
-                placeholderTextColor="rgba(245,238,220,0.5)"
+                placeholderTextColor="#F5EEDC"
                 value={phone}
                 onChangeText={(text) => {
                   setPhone(text.replace(/[^0-9]/g, ''));
@@ -229,12 +225,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FF7B00',
     backgroundColor: '#000000',
-    fontSize: 15,
+    fontSize: 20,
     fontStyle: 'normal',
     fontWeight: '400',
     color: '#F5EEDC',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    lineHeight: 16,
   },
   error: {
     color: '#FFCCCC',
