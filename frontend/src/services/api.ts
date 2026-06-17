@@ -785,8 +785,7 @@ export const uploadUserPost = (
     if (isVideoMimeType(preparedVideoFile.type)) {
       const fileSize = await getLocalUploadFileSize(preparedVideoFile);
       const shouldUseDirectVideoUpload =
-        fileSize !== undefined &&
-        fileSize > CLOUD_RUN_SAFE_UPLOAD_BYTES &&
+        (fileSize === undefined || fileSize > CLOUD_RUN_SAFE_UPLOAD_BYTES) &&
         (Platform.OS !== 'web' || ENABLE_WEB_DIRECT_VIDEO_UPLOAD);
 
       if (shouldUseDirectVideoUpload) {

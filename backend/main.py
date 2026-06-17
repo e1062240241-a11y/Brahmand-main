@@ -102,6 +102,8 @@ from routes.video_upload_routes import (
     _generate_video_thumbnail,
     MAX_VIDEO_UPLOAD_BYTES,
     MAX_VIDEO_DURATION_SECONDS,
+    FFMPEG_BIN,
+    FFPROBE_BIN,
 )
 from utils.helpers import (
     WISDOM_QUOTES,
@@ -353,11 +355,9 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     }
 
     logger.info(f"Uploading {len(file_bytes)} bytes to Bunny.net: {bunny_url}")
-    # FIX 1: Use aiohttp.ClientTimeout (plain int is silently ignored by aiohttp)
-    # FIX 2: Remove ssl=False — Bunny requires valid HTTPS
     timeout = aiohttp.ClientTimeout(total=180, connect=30)
     async with aiohttp.ClientSession() as session:
-        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout, ssl=False) as resp:
+        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
             if resp.status not in (200, 201):
                 resp_text = await resp.text()
                 raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
@@ -387,12 +387,10 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     file_size = os.path.getsize(file_path)
     logger.info(f"Streaming {file_size} bytes from disk to Bunny.net: {bunny_url}")
 
-    # FIX 3: Stream from disk in chunks — avoids OOM for large videos
-    # FIX 1+2: Correct timeout type, SSL enabled
     timeout = aiohttp.ClientTimeout(total=300, connect=30)
     async with aiohttp.ClientSession() as session:
         with open(file_path, 'rb') as f:
-            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout, ssl=False) as resp:
+            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
                 if resp.status not in (200, 201):
                     resp_text = await resp.text()
                     raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
@@ -416,7 +414,7 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
     async with aiohttp.ClientSession() as session:
-        async with session.get(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
+        async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
             if resp.status != 200:
                 resp_text = await resp.text()
                 raise Exception(f"Failed to download from Bunny.net: {resp.status} - {resp_text}")
@@ -439,7 +437,7 @@ async def _delete_file_from_bunny(object_path: str):
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
     async with aiohttp.ClientSession() as session:
-        async with session.delete(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
+        async with session.delete(bunny_url, headers=headers, timeout=timeout) as resp:
             if resp.status not in (200, 204):
                 resp_text = await resp.text()
                 logger.warning(f"Failed to delete {object_path} from Bunny.net: status {resp.status} - {resp_text}")
@@ -2388,7 +2386,7 @@ async def get_bunny_media(filepath: str):
         try:
             timeout = aiohttp.ClientTimeout(total=60, connect=10)
             async with aiohttp.ClientSession() as session:
-                async with session.get(bunny_url, headers=headers, timeout=timeout, ssl=False) as resp:
+                async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
                     if resp.status == 200:
                         async for chunk in resp.content.iter_chunked(65536):
                             yield chunk
@@ -2552,68 +2550,82 @@ async def _upload_post_impl(
 
     try:
         if content_type.startswith('video/'):
-            _ensure_ffmpeg_tools_available()
             temp_input_path, original_size_bytes = await _save_upload_to_temp_file(file)
-            metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
-            duration_seconds = metadata.get('duration') or 0.0
-            media_width = metadata.get('width') or 0
-            media_height = metadata.get('height') or 0
+            has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
 
-            if duration_seconds <= 0:
-                raise HTTPException(status_code=400, detail='Unable to determine video duration')
-            if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
-                )
+            if has_ffmpeg:
+                metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_path)
+                duration_seconds = metadata.get('duration') or 0.0
+                media_width = metadata.get('width') or 0
+                media_height = metadata.get('height') or 0
 
-            target_width, target_height, _ = _pick_target_profile(media_width, media_height)
-            temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
-            temp_output_file.close()
+                if duration_seconds <= 0:
+                    raise HTTPException(status_code=400, detail='Unable to determine video duration')
+                if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
+                    )
 
-            await asyncio.to_thread(
-                _compress_video,
-                temp_input_path,
-                temp_output_file.name,
-                target_width,
-                target_height,
-            )
+                target_width, target_height, _ = _pick_target_profile(media_width, media_height)
+                temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+                temp_output_file.close()
 
-            # Generate thumbnail
-            temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
-            temp_thumb_file.close()
-            await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
-
-            compressed_size_bytes = os.path.getsize(temp_output_file.name)
-            if compressed_size_bytes <= 0:
-                raise HTTPException(status_code=500, detail='Compressed video is empty')
-
-            content_type = 'video/mp4'
-            base_url = str(request.base_url)
-            try:
-                # Try Bunny.net upload
-                media_url, object_path = await _upload_post_media_file_to_bunny(
-                    user_id,
+                await asyncio.to_thread(
+                    _compress_video,
+                    temp_input_path,
                     temp_output_file.name,
-                    content_type,
-                    base_url
+                    target_width,
+                    target_height,
                 )
-                logger.info("Uploaded video to Bunny.net successfully")
-                
-                # Upload thumbnail
-                if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
-                    try:
-                        thumbnail_url, _ = await _upload_post_media_file_to_bunny(
-                            user_id,
-                            temp_thumb_file.name,
-                            'image/jpeg',
-                            base_url
-                        )
-                    except Exception as bunny_exc:
-                        logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
-            except Exception as exc:
-                logger.exception('Post video upload failed for user_id=%s', user_id)
-                raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+
+                temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
+                temp_thumb_file.close()
+                await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
+
+                compressed_size_bytes = os.path.getsize(temp_output_file.name)
+                if compressed_size_bytes <= 0:
+                    raise HTTPException(status_code=500, detail='Compressed video is empty')
+
+                content_type = 'video/mp4'
+                base_url = str(request.base_url)
+                try:
+                    media_url, object_path = await _upload_post_media_file_to_bunny(
+                        user_id,
+                        temp_output_file.name,
+                        content_type,
+                        base_url
+                    )
+                    logger.info("Uploaded video to Bunny.net successfully")
+
+                    if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                        try:
+                            thumbnail_url, _ = await _upload_post_media_file_to_bunny(
+                                user_id,
+                                temp_thumb_file.name,
+                                'image/jpeg',
+                                base_url
+                            )
+                        except Exception as bunny_exc:
+                            logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
+                except Exception as exc:
+                    logger.exception('Post video upload failed for user_id=%s', user_id)
+                    raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+            else:
+                logger.warning("ffmpeg is not installed; uploading raw video without compression")
+                content_type = 'video/mp4'
+                base_url = str(request.base_url)
+                try:
+                    media_url, object_path = await _upload_post_media_file_to_bunny(
+                        user_id,
+                        temp_input_path,
+                        content_type,
+                        base_url
+                    )
+                    logger.info("Uploaded raw video to Bunny.net successfully")
+                except Exception as exc:
+                    logger.exception('Post raw video upload failed for user_id=%s', user_id)
+                    raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
         else:
             file_bytes = await file.read()
             if not file_bytes:
@@ -2849,7 +2861,7 @@ async def _upload_post_from_storage_impl(
     elif storage_path.lower().endswith('.mkv'):
         content_type = 'video/x-matroska'
 
-    _ensure_ffmpeg_tools_available()
+    has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
 
     temp_input_file = NamedTemporaryFile(delete=False, suffix='.mp4')
     temp_input_file.close()
@@ -2868,33 +2880,43 @@ async def _upload_post_from_storage_impl(
         if original_size_bytes > MAX_VIDEO_UPLOAD_BYTES:
             raise HTTPException(status_code=413, detail='Video upload exceeds maximum allowed size')
 
-        metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_file.name)
-        duration_seconds = metadata.get('duration') or 0.0
-        if duration_seconds <= 0:
-            raise HTTPException(status_code=400, detail='Unable to determine video duration')
-        if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
-            raise HTTPException(
-                status_code=400,
-                detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
+        duration_seconds = 0.0
+        metadata = {}
+
+        if has_ffmpeg:
+            metadata = await asyncio.to_thread(_probe_video_metadata, temp_input_file.name)
+            duration_seconds = metadata.get('duration') or 0.0
+            if duration_seconds <= 0:
+                raise HTTPException(status_code=400, detail='Unable to determine video duration')
+            if duration_seconds > MAX_VIDEO_DURATION_SECONDS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f'Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less'
+                )
+
+            target_width, target_height, _ = _pick_target_profile(metadata.get('width'), metadata.get('height'))
+            await asyncio.to_thread(
+                _compress_video,
+                temp_input_file.name,
+                temp_output_file.name,
+                target_width,
+                target_height,
             )
 
-        target_width, target_height, _ = _pick_target_profile(metadata.get('width'), metadata.get('height'))
-        await asyncio.to_thread(
-            _compress_video,
-            temp_input_file.name,
-            temp_output_file.name,
-            target_width,
-            target_height,
-        )
+            compressed_size_bytes = os.path.getsize(temp_output_file.name)
+            if compressed_size_bytes <= 0:
+                raise HTTPException(status_code=500, detail='Compressed video is empty')
 
-        compressed_size_bytes = os.path.getsize(temp_output_file.name)
-        if compressed_size_bytes <= 0:
-            raise HTTPException(status_code=500, detail='Compressed video is empty')
+            upload_source = temp_output_file.name
+        else:
+            logger.warning("ffmpeg is not installed; storing raw video without compression")
+            upload_source = temp_input_file.name
+            compressed_size_bytes = original_size_bytes
 
         try:
             media_url, object_path = await _upload_post_media_file_to_bunny(
                 user_id,
-                temp_output_file.name,
+                upload_source,
                 'video/mp4',
                 base_url
             )
