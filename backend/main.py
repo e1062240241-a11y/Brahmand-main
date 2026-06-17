@@ -92,6 +92,7 @@ from routes.ramayan_routes import router as ramayan_router
 from routes.yajurveda_routes import router as yajurveda_router
 from routes.jaap_routes import router as jaap_routes_router
 from routes.upanishads_routes import router as upanishads_router
+from routes.nettyfish_auth_routes import router as nettyfish_auth_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
