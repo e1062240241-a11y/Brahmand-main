@@ -1,170 +1,90 @@
-// accessibility: placeholder
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Platform, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  ScrollView, 
+  ActivityIndicator, 
+  Platform, 
+  TextInput 
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
-import { Button } from '../../src/components/Button';
-import { setupDualLocation, reverseGeocode } from '../../src/services/api';
+import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import Svg, { Path } from 'react-native-svg';
+import { updateExtendedProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-
-interface LocationData {
-  country: string;
-  state: string;
-  city: string;
-  area: string;
-  latitude?: number;
-  longitude?: number;
-  display_name?: string;
-}
 
 export default function LocationSetupScreen() {
   const router = useRouter();
   const { updateUser } = useAuthStore();
 
-  const [homeLocation, setHomeLocation] = useState<LocationData | null>(null);
-  const [officeLocation, setOfficeLocation] = useState<LocationData | null>(null);
+  const [dob, setDob] = useState('');
+  const [tob, setTob] = useState('');
+  const [place, setPlace] = useState('');
   const [loading, setLoading] = useState(false);
-  const [detectingHome, setDetectingHome] = useState(false);
-  const [detectingOffice, setDetectingOffice] = useState(false);
   const [error, setError] = useState('');
-  const [step, setStep] = useState<'home' | 'office' | 'done'>('home');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
 
-  useEffect(() => {
-    // Auto-detect home location on mount
-    detectCurrentLocation('home');
-  }, []);
+  // DateTimePicker states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [dobValue, setDobValue] = useState<Date | null>(null);
+  const [tobValue, setTobValue] = useState<Date | null>(null);
+  const [seconds, setSeconds] = useState('00');
 
-  const requestLocationPermission = async () => {
+  const formatDate = (date: Date) => {
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}/${m}/${y}`;
+  };
+
+  const formatTime = (date: Date) => {
+    const h = date.getHours().toString().padStart(2, '0');
+    const m = date.getMinutes().toString().padStart(2, '0');
+    const s = date.getSeconds().toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  };
+
+  const fetchSuggestions = async (query: string) => {
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        const msg = 'Please enable location access to auto-detect your area. This helps you join local communities.';
-        if (Platform.OS === 'web') {
-          window.alert(msg);
-        } else {
-          Alert.alert('Location Permission Required', msg, [{ text: 'OK' }]);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`,
+        {
+          headers: {
+            'User-Agent': 'BrahmandApp/1.0',
+          },
         }
-        return false;
+      );
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setSuggestions(data);
       }
-      return true;
-    } catch (error) {
-      console.error('Permission request error:', error);
-      if (Platform.OS === 'web') {
-        window.alert('Location permission request failed. Please check your browser settings.');
-      }
-      return false;
+    } catch (err) {
+      console.warn('Error fetching place suggestions:', err);
     }
   };
 
-  const detectCurrentLocation = async (type: 'home' | 'office') => {
-    try {
-      if (Platform.OS === 'web') {
-        // Use browser native API if expo-location blocks it
-        if (!navigator.geolocation) {
-           setError('Geolocation is not supported by your browser');
-           return;
-        }
-        
-        if (type === 'home') setDetectingHome(true);
-        else setDetectingOffice(true);
-        setError('');
-
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            try {
-              const { latitude, longitude } = position.coords;
-              const response = await reverseGeocode(latitude, longitude);
-              const locationData: LocationData = {
-                country: response.data.country,
-                state: response.data.state,
-                city: response.data.city,
-                area: response.data.area,
-                latitude,
-                longitude,
-                display_name: response.data.display_name,
-              };
-
-              if (type === 'home') {
-                setHomeLocation(locationData);
-                setStep('office');
-              } else {
-                setOfficeLocation(locationData);
-                setStep('done');
-              }
-            } catch (apiErr: any) {
-              console.error('Reverse geocode error:', apiErr);
-              setError('Could not decode location. Please enter manually.');
-            } finally {
-              if (type === 'home') setDetectingHome(false);
-              else setDetectingOffice(false);
-            }
-          },
-          (geoError) => {
-            console.error('Browser geolocation error:', geoError);
-            setError(`Location error: ${geoError.message}. Please check browser permissions.`);
-            if (type === 'home') setDetectingHome(false);
-            else setDetectingOffice(false);
-          },
-          { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
-        );
-        return;
-      }
-
-      // Native flow
-      const hasPermission = await requestLocationPermission();
-      if (!hasPermission) return;
-
-      if (type === 'home') setDetectingHome(true);
-      else setDetectingOffice(true);
-      setError('');
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const { latitude, longitude } = location.coords;
-      const response = await reverseGeocode(latitude, longitude);
-      const locationData: LocationData = {
-        country: response.data.country,
-        state: response.data.state,
-        city: response.data.city,
-        area: response.data.area,
-        latitude,
-        longitude,
-        display_name: response.data.display_name,
-      };
-
-      if (type === 'home') {
-        setHomeLocation(locationData);
-        setStep('office');
-      } else {
-        setOfficeLocation(locationData);
-        setStep('done');
-      }
-    } catch (err: any) {
-      console.error('Location detection error:', err);
-      setError(`Location detection failed: ${err.message || 'Unknown error'}`);
-    } finally {
-      if (Platform.OS !== 'web') {
-        if (type === 'home') {
-          setDetectingHome(false);
-        } else {
-          setDetectingOffice(false);
-        }
-      }
+  const handleNext = async () => {
+    if (!dob) {
+      setError('Please select your Date of Birth');
+      return;
     }
-  };
-
-  const handleSkipOffice = () => {
-    setStep('done');
-  };
-
-  const handleSetupLocations = async () => {
-    if (!homeLocation) {
-      setError('Please set at least your home location');
+    if (!tob) {
+      setError('Please select your Time of Birth');
+      return;
+    }
+    if (!place.trim()) {
+      setError('Please enter your Place of Birth');
       return;
     }
 
@@ -172,363 +92,502 @@ export default function LocationSetupScreen() {
     setError('');
 
     try {
-      const response = await setupDualLocation({
-        home_location: homeLocation,
-        office_location: officeLocation || undefined,
+      const response = await updateExtendedProfile({
+        date_of_birth: dob,
+        time_of_birth: tob,
+        place_of_birth: place.trim(),
       });
-
+      
       updateUser(response.data.user);
-      router.replace('/auth/entry-animation');
+      router.replace('/home');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to setup locations. Please try again.');
+      setError(err.response?.data?.detail || 'Failed to save birth details');
     } finally {
       setLoading(false);
     }
   };
 
-  const renderLocationCard = (
-    title: string,
-    location: LocationData | null,
-    isDetecting: boolean,
-    onDetect: () => void,
-    icon: keyof typeof Ionicons.glyphMap,
-    color: string
-  ) => (
-    <View style={styles.locationCard}>
-      <View style={styles.locationHeader}>
-        <View style={[styles.locationIcon, { backgroundColor: `${color}20` }]}>
-          <Ionicons name={icon} size={24} color={color} />
-        </View>
-        <Text style={styles.locationTitle}>{title}</Text>
-      </View>
-
-      {location ? (
-        <View style={styles.locationDetails}>
-          <View style={styles.locationRow}>
-            <Ionicons name="location" size={16} color={COLORS.success} />
-            <Text style={styles.areaText}>{location.area}</Text>
-          </View>
-          <Text style={styles.addressText}>
-            {location.city}, {location.state}
-          </Text>
-          <Text style={styles.countryText}>{location.country}</Text>
-          
-          <TouchableOpacity style={styles.changeButton} onPress={onDetect}>
-            <Ionicons name="refresh" size={16} color={COLORS.primary} />
-            <Text style={styles.changeText}>Re-detect Location</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <TouchableOpacity 
-          style={styles.detectButton} 
-          onPress={onDetect}
-          disabled={isDetecting}
-        >
-          {isDetecting ? (
-            <>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.detectingText}>Detecting your location...</Text>
-            </>
-          ) : (
-            <>
-              <Ionicons name="navigate" size={20} color={COLORS.primary} />
-              <Text style={styles.detectText}>Detect Current Location</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-    </View>
-  );
+  const handleSkip = () => {
+    router.replace('/home');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Ionicons name="location" size={48} color={COLORS.primary} />
-            <Text style={styles.title}>Set Your Locations</Text>
-            <Text style={styles.subtitle}>
-              We'll auto-detect your location and add you to local Sanatan communities
-            </Text>
-          </View>
-
-          {/* Step Indicator */}
-          <View style={styles.stepIndicator}>
-            <View style={[styles.stepDot, step !== 'home' && styles.stepDotComplete]}>
-              {step !== 'home' ? (
-                <Ionicons name="checkmark" size={14} color={COLORS.textWhite} />
-              ) : (
-                <Text style={styles.stepNumber}>1</Text>
-              )}
-            </View>
-            <View style={[styles.stepLine, step !== 'home' && styles.stepLineComplete]} />
-            <View style={[styles.stepDot, step === 'done' && styles.stepDotComplete]}>
-              {step === 'done' ? (
-                <Ionicons name="checkmark" size={14} color={COLORS.textWhite} />
-              ) : (
-                <Text style={styles.stepNumber}>2</Text>
-              )}
-            </View>
-          </View>
-
-          {/* Home Location */}
-          {renderLocationCard(
-            'Home Location',
-            homeLocation,
-            detectingHome,
-            () => detectCurrentLocation('home'),
-            'home',
-            COLORS.success
-          )}
-
-          {/* Office Location - Show after home is set */}
-          {step !== 'home' && (
-            <>
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>Required</Text>
-                <View style={styles.dividerLine} />
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.1058, 0.2212]}
+      style={styles.container}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.content}>
+            {/* Header Badge */}
+            <View style={styles.badgeContainer}>
+              <View style={styles.badgeCircle}>
+                <Svg width={29.333} height={29.333} viewBox="0 0 30 30" fill="none">
+                  <Path d="M24 10.6667L22.3333 7L18.6667 5.33333L22.3333 3.66667L24 0L25.6667 3.66667L29.3333 5.33333L25.6667 7L24 10.6667ZM24 29.3333L22.3333 25.6667L18.6667 24L22.3333 22.3333L24 18.6667L25.6667 22.3333L29.3333 24L25.6667 25.6667L24 29.3333ZM10.6667 25.3333L7.33333 18L0 14.6667L7.33333 11.3333L10.6667 4L14 11.3333L21.3333 14.6667L14 18L10.6667 25.3333Z" fill="#FF7B00"/>
+                </Svg>
               </View>
+            </View>
 
-              {renderLocationCard(
-                'Office Location',
-                officeLocation,
-                detectingOffice,
-                () => detectCurrentLocation('office'),
-                'business',
-                COLORS.info
-              )}
-
-              {!officeLocation && step === 'office' && (
-                <View style={styles.requiredNote}>
-                  <Ionicons name="information-circle" size={16} color={COLORS.warning} />
-                  <Text style={styles.requiredText}>Please detect your office location to continue</Text>
-                </View>
-              )}
-            </>
-          )}
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {/* Info Box */}
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color={COLORS.info} />
-            <Text style={styles.infoText}>
-              Both locations are required. You'll be added to 3 communities based on your Home and Office areas for connecting with local Sanatan communities.
+            {/* Header */}
+            <Text style={styles.title}>Begin Your Celestial Map</Text>
+            <Text style={styles.subtitle}>
+              The stars were in a specific alignment the moment you arrived.
             </Text>
-          </View>
 
-          {/* Submit Button - Requires both home and office locations */}
-          {homeLocation && officeLocation ? (
-            <Button
-              title="Join Communities"
-              onPress={handleSetupLocations}
-              loading={loading}
-              style={styles.button}
-            />
-          ) : null}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            {/* Date of Birth Field */}
+            <View style={styles.labelRow}>
+              <Ionicons name="calendar-outline" size={16} color="#584235" style={styles.labelIcon} />
+              <Text style={styles.label}>Date of Birth</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.inputContainer} 
+              onPress={() => setShowDatePicker(!showDatePicker)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.inputText, !dob && styles.placeholderText]}>
+                {dob || 'dd/mm/yyyy'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Inline Date Picker */}
+            {showDatePicker && (
+              <View style={styles.inlinePickerContainer}>
+                <DateTimePicker
+                  value={dobValue || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowDatePicker(false);
+                    }
+                    if (selectedDate) {
+                      setDobValue(selectedDate);
+                      setDob(formatDate(selectedDate));
+                    }
+                  }}
+                />
+              </View>
+            )}
+
+            {/* Time of Birth Field */}
+            <View style={styles.labelRow}>
+              <Ionicons name="time-outline" size={16} color="#584235" style={styles.labelIcon} />
+              <Text style={styles.label}>Time of Birth</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.inputContainer} 
+              onPress={() => setShowTimePicker(!showTimePicker)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.inputText, !tob && styles.placeholderText]}>
+                {tob || '00:00:00'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Inline Time Picker */}
+            {showTimePicker && (
+              <View style={styles.inlinePickerContainer}>
+                <DateTimePicker
+                  value={tobValue || new Date()}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  is24Hour={true}
+                  onChange={(event, selectedTime) => {
+                    if (Platform.OS === 'android') {
+                      setShowTimePicker(false);
+                    }
+                    if (selectedTime) {
+                      const newTime = new Date(selectedTime);
+                      newTime.setSeconds(parseInt(seconds) || 0);
+                      setTobValue(newTime);
+                      setTob(formatTime(newTime));
+                    }
+                  }}
+                />
+                <View style={styles.secondsSelectorContainer}>
+                  <Text style={styles.secondsLabel}>Seconds:</Text>
+                  <TextInput
+                    style={styles.secondsInput}
+                    keyboardType="number-pad"
+                    maxLength={2}
+                    placeholder="00"
+                    placeholderTextColor="#C5B49F"
+                    value={seconds}
+                    onChangeText={(val) => {
+                      const cleanVal = val.replace(/[^0-9]/g, '');
+                      const secNum = Math.min(59, parseInt(cleanVal) || 0);
+                      const secStr = cleanVal ? secNum.toString().padStart(2, '0') : '';
+                      setSeconds(secStr);
+                      const activeSec = cleanVal ? secNum : 0;
+                      
+                      let baseTime = tobValue ? new Date(tobValue) : new Date();
+                      baseTime.setSeconds(activeSec);
+                      setTobValue(baseTime);
+                      setTob(formatTime(baseTime));
+                    }}
+                  />
+                </View>
+              </View>
+            )}
+
+            {/* Place of Birth Field */}
+            <View style={styles.labelRow}>
+              <Ionicons name="location-outline" size={16} color="#584235" style={styles.labelIcon} />
+              <Text style={styles.label}>Place of Birth</Text>
+            </View>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.textInput}
+                placeholder="City, State, Country"
+                placeholderTextColor="#C5B49F"
+                value={place}
+                onChangeText={(text) => {
+                  setPlace(text);
+                  setError('');
+                  fetchSuggestions(text);
+                }}
+              />
+              <TouchableOpacity onPress={() => {
+                if (suggestions.length > 0) {
+                  setSuggestions([]);
+                } else {
+                  fetchSuggestions(place || 'Delhi');
+                }
+              }}>
+                <Ionicons name={suggestions.length > 0 ? "chevron-up-outline" : "chevron-down-outline"} size={20} color="#C5B49F" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Suggestions list */}
+            {suggestions.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                {suggestions.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.suggestionItem}
+                    onPress={() => {
+                      setPlace(item.display_name);
+                      setSuggestions([]);
+                    }}
+                  >
+                    <Ionicons name="location-outline" size={16} color="#723600" style={{ marginRight: 8 }} />
+                    <Text style={styles.suggestionText} numberOfLines={1}>
+                      {item.display_name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Error Message */}
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            {/* Info Card */}
+            <View style={styles.infoCard}>
+              <View style={styles.infoIconContainer}>
+                <Ionicons name="information-circle" size={24} color="#FF7B00" />
+              </View>
+              <Text style={styles.infoText}>
+                Creating your <Text style={styles.boldOrangeText}>Kundli</Text> unlocks personalised <Text style={styles.boldOrangeText}>Jyotish</Text> insights, <Text style={styles.boldOrangeText}>spiritual guidance</Text> and recommendations tailored to your journey. 🙏
+              </Text>
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={styles.skipButton} 
+                onPress={handleSkip}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.skipButtonText}>Skip</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.nextButton} 
+                onPress={handleNext}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <Text style={styles.nextButtonText}>Next </Text>
+                    <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
-  scrollView: {
+  safeArea: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
   },
   content: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.xl,
-  },
-  header: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    width: '100%',
+  },
+  badgeContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  badgeCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FBE9E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: 'rgba(0, 0, 0, 0.05)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginTop: SPACING.lg,
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    color: '#1E1B17',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 24,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 32,
     textAlign: 'center',
-    lineHeight: 20,
-  },
-  stepIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.xl,
-  },
-  stepDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepDotComplete: {
-    backgroundColor: COLORS.success,
-  },
-  stepNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  stepLine: {
-    width: 60,
-    height: 2,
-    backgroundColor: COLORS.border,
-  },
-  stepLineComplete: {
-    backgroundColor: COLORS.success,
-  },
-  locationCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  locationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  locationIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: BORDER_RADIUS.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  locationTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  locationDetails: {
-    paddingLeft: 52,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    marginTop: 4,
     marginBottom: 4,
   },
-  areaText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginLeft: SPACING.xs,
-  },
-  addressText: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginBottom: 2,
-  },
-  countryText: {
-    fontSize: 13,
-    color: COLORS.textLight,
-  },
-  changeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.md,
-  },
-  changeText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    marginLeft: SPACING.xs,
-  },
-  detectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: `${COLORS.primary}10`,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderStyle: 'dashed',
-  },
-  detectText: {
+  subtitle: {
+    color: '#564337',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontSize: 16,
-    color: COLORS.primary,
-    fontWeight: '500',
-    marginLeft: SPACING.sm,
+    fontStyle: 'normal',
+    fontWeight: '400',
+    lineHeight: 24,
+    textAlign: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 20,
   },
-  detectingText: {
-    fontSize: 14,
-    color: COLORS.primary,
-    marginLeft: SPACING.sm,
-  },
-  divider: {
+  labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: SPACING.lg,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    marginTop: 6,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.border,
+  labelIcon: {
+    marginRight: 6,
   },
-  dividerText: {
-    marginHorizontal: SPACING.md,
-    fontSize: 12,
-    color: COLORS.textLight,
-    fontWeight: '500',
-  },
-  skipButton: {
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-  },
-  skipText: {
+  label: {
     fontSize: 14,
-    color: COLORS.textSecondary,
-    textDecorationLine: 'underline',
+    fontWeight: '600',
+    color: '#584235',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
-  requiredNote: {
+  inputContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    height: 50,
+    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 10,
+  },
+  inputText: {
+    fontSize: 16,
+    color: '#8B4F3B',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  placeholderText: {
+    color: '#C5B49F',
+  },
+  textInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 16,
+    color: '#8B4F3B',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  errorText: {
+    color: '#FF3B30',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  inlinePickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    padding: 10,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  suggestionsContainer: {
+    alignSelf: 'stretch',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    marginTop: -8,
+    marginBottom: 10,
+    maxHeight: 180,
+    overflow: 'hidden',
+    zIndex: 10,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5ECE6',
+  },
+  suggestionText: {
+    color: '#584235',
+    fontSize: 14,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  infoCard: {
+    alignSelf: 'stretch',
+    padding: 20,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF7B00',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SPACING.sm,
-    marginTop: SPACING.xs,
+    marginVertical: 8,
   },
-  requiredText: {
-    fontSize: 13,
-    color: COLORS.warning,
-    marginLeft: SPACING.xs,
-  },
-  error: {
-    color: COLORS.error,
-    textAlign: 'center',
-    marginVertical: SPACING.md,
-  },
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: `${COLORS.info}15`,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
-    marginVertical: SPACING.lg,
+  infoIconContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   infoText: {
     flex: 1,
-    marginLeft: SPACING.sm,
-    fontSize: 13,
-    color: COLORS.info,
-    lineHeight: 18,
+    fontSize: 16,
+    lineHeight: 26,
+    color: '#723600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontWeight: '400',
+    fontStyle: 'normal',
+    marginLeft: 20,
   },
-  button: {
-    marginTop: SPACING.md,
+  boldOrangeText: {
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 16,
+    fontStyle: 'normal',
+    fontWeight: '700',
+    lineHeight: 26,
+    color: '#FF7B00',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 8,
+  },
+  skipButton: {
+    width: 160,
+    height: 56,
+    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.00)',
+    shadowColor: 'rgba(160, 65, 0, 0.20)',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  skipButtonText: {
+    color: '#584235',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  nextButton: {
+    width: 160,
+    height: 56,
+    borderRadius: 50,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    shadowColor: 'rgba(160, 65, 0, 0.20)',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  nextButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  secondsSelectorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F5ECE6',
+    paddingTop: 10,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  secondsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#584235',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    marginRight: 10,
+  },
+  secondsInput: {
+    width: 60,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    backgroundColor: '#FFFFFF',
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8B4F3B',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
 });

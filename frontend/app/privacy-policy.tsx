@@ -1,23 +1,55 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING } from '../src/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [isAtBottom, setIsAtBottom] = useState(false);
+
+  const handleScroll = (event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const paddingToBottom = 50;
+    const atBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - paddingToBottom;
+    setIsAtBottom(atBottom);
+  };
+
+  const handleScrollButtonPress = () => {
+    scrollViewRef.current?.scrollToEnd({ animated: true });
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Terms & Privacy Policy</Text>
+    <View style={styles.container}>
+      {/* Fixed Header */}
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={['#FC8F5B', '#FDC7AD', '#FFFFFF']}
+          locations={[0, 0.5052, 1]}
+          style={styles.headerGradient}
+        >
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#000000" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.agreementLabel}>AGREEMENT</Text>
+            <Text style={styles.headerTitle}>Terms of Service</Text>
+          </View>
+        </LinearGradient>
+        <View style={styles.headerDivider} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
+      {/* Main Scrollable Content */}
+      <ScrollView
+        ref={scrollViewRef}
+        style={styles.scrollView}
+        contentContainerStyle={styles.contentContainer}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
+      >
         <Text style={styles.mainTitle}>BRAHMAND TERMS OF SERVICE</Text>
         
         <Text style={styles.paragraph}>
@@ -253,7 +285,7 @@ export default function PrivacyPolicyScreen() {
           END OF TERMS OF SERVICE
         </Text>
 
-        <View style={styles.divider} />
+        <View style={styles.textDivider} />
 
         <Text style={styles.mainTitle}>BRAHMAND PRIVACY POLICY</Text>
         
@@ -510,72 +542,181 @@ export default function PrivacyPolicyScreen() {
           END OF PRIVACY POLICY
         </Text>
 
-        <View style={{ height: 40 }} />
+        <TouchableOpacity style={styles.acceptButton} onPress={() => router.back()}>
+          <Text style={styles.acceptButtonText}>Accept & Continue</Text>
+        </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Floating Footer */}
+      {!isAtBottom && (
+        <View style={styles.footerContainer}>
+          <LinearGradient
+            colors={['rgba(0, 0, 0, 0)', '#000000']}
+            style={styles.footerGradient}
+          >
+            <TouchableOpacity style={styles.scrollButton} onPress={handleScrollButtonPress}>
+              <Text style={styles.scrollButtonText}>Scroll to Bottom</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#000000',
   },
-  header: {
-    flexDirection: 'row',
+  headerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 140,
+    zIndex: 10,
+  },
+  headerGradient: {
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 44 : 20,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
   },
   backButton: {
-    marginRight: SPACING.sm,
+    position: 'absolute',
+    left: 20,
+    top: Platform.OS === 'ios' ? 40 : 15,
+    zIndex: 15,
     padding: 8,
   },
+  headerTextContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  agreementLabel: {
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#000000',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
   headerTitle: {
-    fontSize: 18,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 24,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#D9D9D9',
   },
   scrollView: {
     flex: 1,
+    backgroundColor: '#000000',
   },
   contentContainer: {
-    padding: SPACING.lg,
+    paddingTop: 154,
+    paddingBottom: 120,
+    paddingHorizontal: 38,
   },
   mainTitle: {
     fontSize: 22,
-    fontWeight: '800',
-    color: COLORS.text,
-    marginBottom: SPACING.md,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 24,
     textAlign: 'center',
-    letterSpacing: 0.5,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
-    color: COLORS.text,
-    marginTop: SPACING.xl,
-    marginBottom: SPACING.sm,
+    color: '#FFFFFF',
+    marginTop: 24,
+    marginBottom: 12,
+    lineHeight: 33,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
   subSectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
-    color: COLORS.text,
-    marginTop: SPACING.md,
-    marginBottom: SPACING.xs,
+    color: '#FFFFFF',
+    marginTop: 16,
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
   paragraph: {
-    fontSize: 15,
-    color: COLORS.textSecondary,
-    lineHeight: 22,
-    marginBottom: SPACING.sm,
+    fontSize: 16,
+    fontWeight: '400',
+    color: '#FFFFFF',
+    lineHeight: 24,
+    marginBottom: 16,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
-  divider: {
+  textDivider: {
     height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: SPACING.xl * 2,
+    backgroundColor: '#333333',
+    marginVertical: 40,
+  },
+  footerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 106,
+    zIndex: 10,
+  },
+  footerGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+  },
+  scrollButton: {
+    paddingTop: 17,
+    paddingBottom: 18,
+    paddingLeft: 102,
+    paddingRight: 102,
+    borderRadius: 100,
+    borderWidth: 2,
+    borderColor: '#FF7B00',
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollButtonText: {
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  acceptButton: {
+    alignSelf: 'stretch',
+    height: 56,
+    borderRadius: 50,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 40,
+    shadowColor: 'rgba(160, 65, 0, 0.20)',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  acceptButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 });

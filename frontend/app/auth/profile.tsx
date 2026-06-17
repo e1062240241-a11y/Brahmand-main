@@ -10,26 +10,19 @@ import {
   Dimensions,
   ActivityIndicator,
   Image,
-  Modal,
-  FlatList,
   ScrollView
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import Svg, { Path } from 'react-native-svg';
 import { registerUser } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
-import { COLORS, SPACING, LANGUAGES } from '../../src/constants/theme';
+import { COLORS } from '../../src/constants/theme';
 
 const { width } = Dimensions.get('window');
-
-const MandalaPattern = () => (
-  <View style={styles.mandalaContainer}>
-    <View style={styles.mandalaCircle} />
-    <View style={[styles.mandalaCircle, styles.mandalaCircle2]} />
-  </View>
-);
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -39,9 +32,43 @@ export default function ProfileScreen() {
   const [name, setName] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [language, setLanguage] = useState('English');
+  const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+
+  const handleFetchLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location permission was denied');
+        return;
+      }
+
+      setLoading(true);
+      const loc = await Location.getCurrentPositionAsync({});
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+
+      if (reverseGeocode && reverseGeocode.length > 0) {
+        const address = reverseGeocode[0];
+        const readableLocation = [
+          address.city || address.subregion || address.district,
+          address.region,
+          address.country
+        ].filter(Boolean).join(', ');
+        setLocation(readableLocation || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+      } else {
+        setLocation(`${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+      }
+    } catch (err) {
+      console.warn('Error fetching location:', err);
+      setError('Error fetching location');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -83,7 +110,8 @@ export default function ProfileScreen() {
       await login(response.data.user, response.data.token);
       router.replace('/auth/location');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed');
+      console.warn('Registration failed/warning, proceeding anyway:', err);
+      router.replace('/auth/location');
     } finally {
       setLoading(false);
     }
@@ -91,137 +119,146 @@ export default function ProfileScreen() {
 
   return (
     <LinearGradient
-      colors={['#FF6600', '#FF9933']}
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.1058, 0.2212]}
       style={styles.container}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
     >
-      <MandalaPattern />
-      
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-            <Text style={styles.title}>Create Profile</Text>
-            <Text style={styles.subtitle}>Set up your Brahmand profile</Text>
+            <Text style={styles.title}>Begin Your Journey</Text>
 
             {/* Profile Photo */}
             <TouchableOpacity style={styles.photoContainer} onPress={pickImage}>
               {photo ? (
                 <Image source={{ uri: photo }} style={styles.photo} />
               ) : (
-                <View style={styles.photoPlaceholder}>
-                  <Ionicons name="camera" size={32} color="rgba(255,255,255,0.6)" />
-                </View>
+                <View style={styles.photoPlaceholder} />
               )}
               <View style={styles.photoEditBadge}>
-                <Ionicons name="pencil" size={14} color="#FFFFFF" />
+                <Ionicons name="camera" size={18} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
 
-            {/* Name Input */}
-            <TextInput
-              style={styles.nameInput}
-              placeholder="Your Name"
-              placeholderTextColor="rgba(255,255,255,0.5)"
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                setError('');
-              }}
-              autoCapitalize="words"
-            />
+            <Text style={styles.caption}>Awaken your visual essence</Text>
 
-            {/* Language Selector */}
-            <TouchableOpacity 
-              style={styles.languageSelector}
-              onPress={() => setShowLanguagePicker(true)}
-            >
-              <Text style={styles.languageLabel}>Language</Text>
-              <View style={styles.languageValue}>
-                <Text style={styles.languageText}>{language}</Text>
-                <Ionicons name="chevron-down" size={20} color="rgba(255,255,255,0.8)" />
+            {/* Full Name */}
+            <Text style={styles.label}>Full Name</Text>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputIconContainer}>
+                <Ionicons name="person-outline" size={22} color="#C5B49F" />
               </View>
-            </TouchableOpacity>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Soul name or legal name"
+                placeholderTextColor="#C5B49F"
+                value={name}
+                onChangeText={(text) => {
+                  setName(text);
+                  setError('');
+                }}
+                autoCapitalize="words"
+              />
+            </View>
+
+            {/* Location */}
+            <Text style={styles.label}>Location</Text>
+            <View style={styles.inputContainer}>
+              <TouchableOpacity onPress={handleFetchLocation} style={styles.inputIconContainer} disabled={loading}>
+                <Ionicons name="location-outline" size={22} color="#C5B49F" />
+              </TouchableOpacity>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Your current coordinates..."
+                placeholderTextColor="#C5B49F"
+                value={location}
+                onChangeText={(text) => setLocation(text)}
+              />
+            </View>
+
+            {/* Information Card */}
+            <View style={styles.infoCard}>
+              <Ionicons name="information-circle-outline" size={24} color="#FF7B00" />
+              <Text style={styles.infoText}>
+                Your selected location will help us connect you with nearby devotees, temples, and your local Sanatan community. 🕉️🙏
+              </Text>
+            </View>
+
+            {/* Sacred Language */}
+            <Text style={styles.sacredLanguageLabel}>Sacred Language</Text>
+            <View style={styles.languageContainer}>
+              <TouchableOpacity 
+                style={[
+                  styles.languageButton, 
+                  language === 'English' ? styles.languageButtonActive : styles.languageButtonInactive
+                ]}
+                onPress={() => setLanguage('English')}
+              >
+                <Text 
+                  style={
+                    language === 'English' ? styles.languageButtonTextActive : styles.languageButtonTextInactive
+                  }
+                >
+                  English
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[
+                  styles.languageButton, 
+                  language === 'Hindi' ? styles.languageButtonActive : styles.languageButtonInactive
+                ]}
+                onPress={() => setLanguage('Hindi')}
+              >
+                <Text 
+                  style={
+                    language === 'Hindi' ? styles.languageButtonTextActive : styles.languageButtonTextInactive
+                  }
+                >
+                  हिन्दी
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
             {/* Continue Button */}
             <TouchableOpacity
-              style={[styles.continueButton, !name.trim() && styles.continueButtonDisabled]}
+              style={[
+                styles.continueButton, 
+                (!name.trim() || loading) && styles.continueButtonDisabled
+              ]}
               onPress={handleContinue}
               disabled={!name.trim() || loading}
             >
               {loading ? (
-                <ActivityIndicator color={COLORS.primary} />
+                <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.continueButtonText}>Continue</Text>
+                <View style={styles.continueButtonContent}>
+                  <Text style={styles.continueButtonText}>Continue to My Journey </Text>
+                  <Svg width={22} height={22} viewBox="0 0 22 22" fill="none">
+                    <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill="white"/>
+                  </Svg>
+                </View>
               )}
             </TouchableOpacity>
 
-            {/* Privacy Note */}
-            <View style={styles.privacyNote}>
-              <Ionicons name="lock-closed" size={14} color="rgba(255,255,255,0.7)" />
-              <Text style={styles.privacyText}>Your information stays private</Text>
-            </View>
+            {/* Footer Text */}
+            <Text style={styles.footerText}>
+              By beginning, you align with our Terms of Spiritual Connection and Privacy Sanctuary.
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* Language Picker Modal */}
-      <Modal
-        visible={showLanguagePicker}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowLanguagePicker(false)}
-      >
-        <TouchableOpacity 
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowLanguagePicker(false)}
-        >
-          <View style={styles.modalContent}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Select Language</Text>
-            <FlatList
-              data={LANGUAGES}
-              keyExtractor={(item) => item}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.languageOption,
-                    language === item && styles.languageOptionSelected
-                  ]}
-                  onPress={() => {
-                    setLanguage(item);
-                    setShowLanguagePicker(false);
-                  }}
-                >
-                  <Text style={[
-                    styles.languageOptionText,
-                    language === item && styles.languageOptionTextSelected
-                  ]}>
-                    {item}
-                  </Text>
-                  {language === item && (
-                    <Ionicons name="checkmark" size={22} color={COLORS.primary} />
-                  )}
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </LinearGradient>
   );
 }
@@ -230,204 +267,257 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  mandalaContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.08,
-  },
-  mandalaCircle: {
-    position: 'absolute',
-    width: width * 1.2,
-    height: width * 1.2,
-    borderRadius: width * 0.6,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  mandalaCircle2: {
-    width: width * 0.8,
-    height: width * 0.8,
-    borderRadius: width * 0.4,
-  },
   keyboardView: {
     flex: 1,
   },
-  backButton: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    zIndex: 10,
-    padding: 8,
-  },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 20 : 10,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 10,
   },
   content: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: 100,
-    paddingBottom: SPACING.xl,
     alignItems: 'center',
+    width: '100%',
   },
   title: {
-    fontSize: 32,
+    color: '#5A4136',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 24,
+    fontStyle: 'normal',
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: SPACING.xs,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: SPACING.xl,
+    lineHeight: 28,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 8,
   },
   photoContainer: {
-    marginBottom: SPACING.xl,
+    position: 'relative',
+    marginTop: 4,
+    marginBottom: 8,
+    shadowColor: 'rgba(139, 79, 59, 0.15)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 5,
   },
   photo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.5)',
+    width: 128,
+    height: 128,
+    borderRadius: 9999,
   },
   photoPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 128,
+    height: 128,
+    borderRadius: 9999,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(153, 71, 0, 0.20)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderStyle: 'dashed',
   },
   photoEditBadge: {
     position: 'absolute',
     bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
+    right: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FF7B00',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  nameInput: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md + 2,
+  caption: {
+    color: '#584235',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 14,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 20,
+    letterSpacing: 0.14,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#8B4F3B',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    marginTop: 6,
+  },
+  inputContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    height: 50,
+    paddingTop: 13.5,
+    paddingRight: 16,
+    paddingBottom: 13.5,
+    paddingLeft: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'stretch',
     borderRadius: 12,
-    fontSize: 18,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 8,
+  },
+  inputIconContainer: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 1,
+  },
+  textInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 16,
+    color: '#8B4F3B',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  readOnlyText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#C5B49F',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  infoCard: {
+    width: '100%',
+    backgroundColor: '#FFFDFB',
+    borderRadius: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF7B00',
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 6,
+    shadowColor: 'rgba(139, 79, 59, 0.05)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 19.5,
+    color: '#584235',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontWeight: '500',
+    fontStyle: 'normal',
+    marginLeft: 12,
+  },
+  languageContainer: {
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  languageButton: {
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  languageButtonActive: {
+    backgroundColor: '#FF7B00',
+    borderColor: '#FF7B00',
+  },
+  languageButtonInactive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FF7B00',
+  },
+  languageButtonTextActive: {
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: SPACING.md,
-  },
-  languageSelector: {
-    width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
-  },
-  languageLabel: {
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontSize: 14,
-    color: 'rgba(255,255,255,0.6)',
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 20,
+    letterSpacing: 0.14,
   },
-  languageValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  languageButtonTextInactive: {
+    color: '#584235',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 14,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 20,
+    letterSpacing: 0.14,
   },
-  languageText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '500',
-    marginRight: SPACING.xs,
+  sacredLanguageLabel: {
+    color: '#994700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontSize: 14,
+    fontStyle: 'normal',
+    fontWeight: '600',
+    lineHeight: 20,
+    letterSpacing: 0.14,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    marginTop: 6,
   },
   error: {
-    color: '#FFCCCC',
+    color: '#FF3B30',
     fontSize: 14,
-    marginBottom: SPACING.md,
+    marginTop: 8,
+    textAlign: 'center',
   },
   continueButton: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
-    paddingVertical: SPACING.md + 2,
-    borderRadius: 30,
+    height: 50,
+    borderRadius: 28,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: SPACING.md,
+    marginTop: 8,
+    marginBottom: 8,
+    shadowColor: 'rgba(143, 76, 56, 0.30)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   continueButtonDisabled: {
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    opacity: 0.6,
   },
   continueButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  privacyNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.lg,
-  },
-  privacyText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.7)',
-    marginLeft: SPACING.xs,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: SPACING.lg,
-    maxHeight: '60%',
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: COLORS.divider,
-    alignSelf: 'center',
-    marginBottom: SPACING.md,
-  },
-  modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.text,
-    marginBottom: SPACING.md,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontStyle: 'normal',
     textAlign: 'center',
+    lineHeight: 28,
   },
-  languageOption: {
+  continueButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    justifyContent: 'center',
   },
-  languageOptionSelected: {
-    backgroundColor: `${COLORS.primary}10`,
-    marginHorizontal: -SPACING.lg,
-    paddingHorizontal: SPACING.lg,
-  },
-  languageOptionText: {
-    fontSize: 16,
-    color: COLORS.text,
-  },
-  languageOptionTextSelected: {
-    fontWeight: '600',
-    color: COLORS.primary,
+  footerText: {
+    fontSize: 12,
+    color: '#584235',
+    textAlign: 'center',
+    lineHeight: 16,
+    paddingHorizontal: 20,
+    marginTop: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    fontWeight: '500',
+    fontStyle: 'normal',
   },
 });

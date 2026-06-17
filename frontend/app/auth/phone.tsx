@@ -1,15 +1,16 @@
 import React, { useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   Dimensions,
   ActivityIndicator,
-  Alert
+  Alert,
+  TouchableWithoutFeedback
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,7 +33,9 @@ export default function PhoneScreen() {
   const [phone, setPhone] = useState<string>((params.phone?.toString() || '').replace(/[^0-9]/g, '').replace(/^91/, ''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+  const [isFocused, setIsFocused] = useState(false);
+  const phoneInputRef = useRef<TextInput>(null);
+
   // Initialize Firebase on mount
   React.useEffect(() => {
     initializeFirebase();
@@ -68,17 +71,17 @@ export default function PhoneScreen() {
 
     try {
       const fullPhone = `+91${phone}`;
-      
+
       if (isAnonymousPhone(fullPhone)) {
         console.log('[Phone Auth] Detected anonymous predefined number');
         router.push({ pathname: '/auth/profile', params: { phone: fullPhone, anonymous: 'true' } });
         return;
       }
-      
+
       // Use Firebase Phone Auth instead of backend API
       const { sendFirebaseOTP } = require('../../src/services/firebase/authService');
       await sendFirebaseOTP(fullPhone);
-      
+
       console.log('[Phone Auth] OTP sent via Firebase');
       router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
       return;
@@ -98,7 +101,7 @@ export default function PhoneScreen() {
 
   return (
     <View style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
@@ -111,24 +114,32 @@ export default function PhoneScreen() {
             <Text style={styles.subtitle}>We'll send you a verification code</Text>
 
             {/* Phone Input */}
-            <View style={styles.phoneContainer}>
-              <View style={styles.prefixBox}>
-                <Text style={styles.prefixText}>+91</Text>
+            <TouchableWithoutFeedback onPress={() => phoneInputRef.current?.focus()}>
+              <View style={styles.phoneContainer}>
+                <View style={[styles.prefixBox, isFocused && styles.activeBorder]}>
+                  <Text style={styles.prefixText}>+91</Text>
+                </View>
+                <TextInput
+                  ref={phoneInputRef}
+                  style={[styles.phoneInput, isFocused && styles.activeBorder]}
+                  placeholder="Phone number"
+                  placeholderTextColor="#F5EEDC"
+                  value={phone}
+                  onChangeText={(text) => {
+                    setPhone(text.replace(/[^0-9]/g, ''));
+                    setError('');
+                  }}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                  autoFocus
+                  textContentType="telephoneNumber"
+                  autoComplete="tel"
+                  importantForAutofill="yes"
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                />
               </View>
-              <TextInput
-                style={styles.phoneInput}
-                placeholder="Phone number"
-                placeholderTextColor="#F5EEDC"
-                value={phone}
-                onChangeText={(text) => {
-                  setPhone(text.replace(/[^0-9]/g, ''));
-                  setError('');
-                }}
-                keyboardType="phone-pad"
-                maxLength={10}
-                autoFocus
-              />
-            </View>
+            </TouchableWithoutFeedback>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
           </View>
@@ -206,7 +217,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FF7B00',
+    borderColor: 'rgba(245, 238, 220, 0.3)',
     backgroundColor: '#000000',
   },
   prefixText: {
@@ -223,13 +234,16 @@ const styles = StyleSheet.create({
     paddingRight: 147,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FF7B00',
+    borderColor: 'rgba(245, 238, 220, 0.3)',
     backgroundColor: '#000000',
     fontSize: 20,
     fontStyle: 'normal',
     fontWeight: '400',
     color: '#F5EEDC',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  activeBorder: {
+    borderColor: '#FF7B00',
   },
   error: {
     color: '#FFCCCC',
@@ -257,7 +271,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: 'rgba(255, 123, 0, 0.4)',
+    backgroundColor: '#FFB085',
+    opacity: 0.5,
   },
   sendButtonText: {
     color: '#FFFFFF',
