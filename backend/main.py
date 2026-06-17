@@ -99,6 +99,7 @@ from routes.messaging_routes import router as messaging_router
 from routes.temple_routes import router as temple_router
 from routes.event_routes import router as event_router
 from routes.circle_routes import router as circle_router
+from routes.nettyfish_auth_routes import router as nettyfish_auth_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
@@ -1161,6 +1162,7 @@ api_router.include_router(messaging_router)
 api_router.include_router(temple_router)
 api_router.include_router(event_router)
 api_router.include_router(circle_router)
+api_router.include_router(nettyfish_auth_router)
 
 
 
