@@ -20,7 +20,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { useVendorStore } from '../src/store/vendorStore';
 import { useAuthStore } from '../src/store/authStore';
 import { VendorKYCModal } from '../src/components/VendorKYCModal';
-import { getKYCStatus, sendMsg91OTP, verifyMsg91OTP } from '../src/services/api';
+import { getKYCStatus, sendNettyfishOTP, verifyNettyfishOTP } from '../src/services/api';
 import { useTranslation } from '../src/utils/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, G } from 'react-native-svg';
@@ -195,7 +195,7 @@ export default function KYCStatusScreen() {
     setOtpLoading(true);
     try {
       const fullPhone = `${countryCode}${phoneNumber}`;
-      await sendMsg91OTP(fullPhone);
+      await sendNettyfishOTP(fullPhone);
       setOtpSent(true);
       setResendTimer(25);
       setOtp(['', '', '', '']);
@@ -245,7 +245,7 @@ export default function KYCStatusScreen() {
         return;
       }
       const fullPhone = `${countryCode}${phoneNumber}`;
-      await verifyMsg91OTP(fullPhone, trimmedCode);
+      await verifyNettyfishOTP(fullPhone, trimmedCode);
       setPhoneVerified(true);
       setOtpSent(false);
       Alert.alert('Success', 'Phone number verified successfully!');
@@ -261,8 +261,8 @@ export default function KYCStatusScreen() {
 
   const handleVerifyOTP = async () => {
     const code = otp.join('');
-    if (code.length < 6) {
-      Alert.alert('Error', 'Please enter the 6-digit OTP');
+    if (code.length < 4) {
+      Alert.alert('Error', 'Please enter the 4-digit OTP');
       return;
     }
     await verifyCode(code);
