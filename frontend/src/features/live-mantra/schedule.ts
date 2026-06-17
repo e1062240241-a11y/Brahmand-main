@@ -45,23 +45,22 @@ export const ALL_TIME_SLOTS = [...TIME_SLOTS, ...SPECIAL_TIME_SLOTS];
 // Check if current time is within any allowed chanting window
 export const isWithinGayatriMantraWindow = (date = new Date()) => {
   const currentHour = date.getHours();
-  const currentMinute = date.getMinutes();
-  const currentTimeDecimal = currentHour + (currentMinute / 60);
-  
-  // Check regular hour-based slots
-  for (const slot of TIME_SLOTS) {
-    if (currentHour >= slot.start && currentHour < slot.end) {
-      return { allowed: true, slot: slot.name, recommended: slot.recommended };
+  const currentMin = date.getMinutes();
+  const currentMinTotal = currentHour * 60 + currentMin;
+
+  for (const session of GAYATRI_SESSIONS) {
+    const startMin = session.startHour * 60 + session.startMin;
+    const endMin = session.endHour * 60 + session.endMin;
+
+    if (endMin < startMin) {
+      if (currentMinTotal >= startMin || currentMinTotal < endMin) {
+        return { allowed: true, slot: session.name, recommended: true };
+      }
+    } else if (currentMinTotal >= startMin && currentMinTotal < endMin) {
+      return { allowed: true, slot: session.name, recommended: true };
     }
   }
-  
-  // Check special half-hour slots
-  for (const slot of SPECIAL_TIME_SLOTS) {
-    if (currentTimeDecimal >= slot.start && currentTimeDecimal < slot.end) {
-      return { allowed: true, slot: slot.name, recommended: slot.recommended };
-    }
-  }
-  
+
   return null;
 };
 
@@ -148,16 +147,24 @@ export const isTimeSlotAvailable = (hour: number, minute = 0) => {
 // For compatibility with home.tsx and other components
 export const getCurrentGayatriEnd = (date = new Date()) => {
   const currentHour = date.getHours();
-  const currentMinute = date.getMinutes();
-  const currentTimeDecimal = currentHour + (currentMinute / 60);
-  
-  const current = ALL_TIME_SLOTS.find(slot => currentTimeDecimal >= slot.start && currentTimeDecimal < slot.end);
+  const currentMin = date.getMinutes();
+  const currentMinTotal = currentHour * 60 + currentMin;
+
+  const current = GAYATRI_SESSIONS.find(session => {
+    const startMin = session.startHour * 60 + session.startMin;
+    const endMin = session.endHour * 60 + session.endMin;
+    if (endMin < startMin) {
+      return currentMinTotal >= startMin || currentMinTotal < endMin;
+    }
+    return currentMinTotal >= startMin && currentMinTotal < endMin;
+  });
   if (!current) return null;
-  
+
   const end = new Date(date);
-  const hours = Math.floor(current.end);
-  const minutes = Math.floor((current.end % 1) * 60);
-  end.setHours(hours, minutes, 0, 0);
+  if (current.endHour < current.startHour || (current.endHour === current.startHour && current.endMin < current.startMin)) {
+    end.setDate(end.getDate() + 1);
+  }
+  end.setHours(current.endHour, current.endMin, 0, 0);
   return end;
 };
 // Compatibility helpers
@@ -189,10 +196,8 @@ export type HanumanSession = {
 };
 
 export const HANUMAN_SESSIONS: HanumanSession[] = [
-  { name: 'Morning', startHour: 5, startMin: 30, endHour: 9, endMin: 0, reps: 13, startRoundOffset: 1 },
-  { name: 'Afternoon', startHour: 12, startMin: 0, endHour: 15, endMin: 30, reps: 13, startRoundOffset: 14 },
-  { name: 'Evening', startHour: 16, startMin: 0, endHour: 19, endMin: 30, reps: 13, startRoundOffset: 27 },
-  { name: 'Night', startHour: 21, startMin: 0, endHour: 0, endMin: 15, reps: 12, startRoundOffset: 40 },
+  { name: 'Morning', startHour: 6, startMin: 0, endHour: 12, endMin: 0, reps: 26, startRoundOffset: 1 },
+  { name: 'Evening', startHour: 18, startMin: 0, endHour: 0, endMin: 0, reps: 25, startRoundOffset: 27 },
 ];
 
 export const CHALISA_DURATION = 961.39; // seconds
@@ -225,17 +230,16 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
     let sessionStart = new Date(now);
     let sessionEnd = new Date(now);
 
-    if (session.name === 'Night') {
-      // Night session crosses midnight: 9:00 PM to 12:15 AM
-      if (currentHour >= 21) {
-        sessionStart.setHours(21, 0, 0, 0);
+    if (session.endHour < session.startHour || (session.endHour === session.startHour && session.endMin < session.startMin)) {
+      if (currentHour >= session.startHour || (currentHour === session.startHour && currentMin >= session.startMin)) {
+        sessionStart.setHours(session.startHour, session.startMin, 0, 0);
         sessionEnd.setDate(sessionEnd.getDate() + 1);
-        sessionEnd.setHours(0, 15, 0, 0);
+        sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
         isMatch = now >= sessionStart && now < sessionEnd;
-      } else if (currentHour === 0 && currentMin < 15) {
+      } else if (currentHour < session.endHour || (currentHour === session.endHour && currentMin < session.endMin)) {
         sessionStart.setDate(sessionStart.getDate() - 1);
-        sessionStart.setHours(21, 0, 0, 0);
-        sessionEnd.setHours(0, 15, 0, 0);
+        sessionStart.setHours(session.startHour, session.startMin, 0, 0);
+        sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
         isMatch = now >= sessionStart && now < sessionEnd;
       }
     } else {
@@ -327,6 +331,36 @@ export const OTHER_JAAP_SESSIONS: OtherJaapSession[] = [
   { name: 'Night', startHour: 21, startMin: 0, endHour: 0, endMin: 15 },
 ];
 
+export const GAYATRI_SESSIONS: OtherJaapSession[] = [
+  { name: 'Morning', startHour: 6, startMin: 0, endHour: 12, endMin: 0 },
+  { name: 'Evening', startHour: 18, startMin: 0, endHour: 0, endMin: 0 },
+];
+
+export const SHIVA_SESSIONS: OtherJaapSession[] = [
+  { name: 'Morning', startHour: 6, startMin: 0, endHour: 9, endMin: 0 },
+  { name: 'Afternoon', startHour: 12, startMin: 0, endHour: 15, endMin: 0 },
+  { name: 'Evening', startHour: 21, startMin: 0, endHour: 0, endMin: 0 },
+];
+
+export const KRISHNA_SESSIONS: OtherJaapSession[] = [
+  { name: 'Morning', startHour: 6, startMin: 0, endHour: 10, endMin: 0 },
+  { name: 'Afternoon', startHour: 12, startMin: 0, endHour: 16, endMin: 0 },
+  { name: 'Evening', startHour: 19, startMin: 0, endHour: 23, endMin: 0 },
+];
+
+const MANTRA_SESSIONS_MAP: Record<string, OtherJaapSession[]> = {
+  gayatri: GAYATRI_SESSIONS,
+  shiva: SHIVA_SESSIONS,
+  krishna: KRISHNA_SESSIONS,
+};
+
+export const getSessionsForMantra = (mantraType?: string): OtherJaapSession[] => {
+  if (mantraType && MANTRA_SESSIONS_MAP[mantraType]) {
+    return MANTRA_SESSIONS_MAP[mantraType];
+  }
+  return OTHER_JAAP_SESSIONS;
+};
+
 export type OtherJaapStatus =
   | {
       isActive: true;
@@ -343,22 +377,23 @@ export type OtherJaapStatus =
 export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string): OtherJaapStatus => {
   const currentHour = now.getHours();
   const currentMin = now.getMinutes();
+  const sessions = getSessionsForMantra(mantraType);
 
-  for (const session of OTHER_JAAP_SESSIONS) {
+  for (const session of sessions) {
     let isMatch = false;
     let sessionStart = new Date(now);
     let sessionEnd = new Date(now);
 
-    if (session.name === 'Night') {
-      if (currentHour >= 21) {
-        sessionStart.setHours(21, 0, 0, 0);
+    if (session.endHour < session.startHour || (session.endHour === session.startHour && session.endMin < session.startMin)) {
+      if (currentHour >= session.startHour || (currentHour === session.startHour && currentMin >= session.startMin)) {
+        sessionStart.setHours(session.startHour, session.startMin, 0, 0);
         sessionEnd.setDate(sessionEnd.getDate() + 1);
-        sessionEnd.setHours(0, 15, 0, 0);
+        sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
         isMatch = now >= sessionStart && now < sessionEnd;
-      } else if (currentHour === 0 && currentMin < 15) {
+      } else if (currentHour < session.endHour || (currentHour === session.endHour && currentMin < session.endMin)) {
         sessionStart.setDate(sessionStart.getDate() - 1);
-        sessionStart.setHours(21, 0, 0, 0);
-        sessionEnd.setHours(0, 15, 0, 0);
+        sessionStart.setHours(session.startHour, session.startMin, 0, 0);
+        sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
         isMatch = now >= sessionStart && now < sessionEnd;
       }
     } else {
@@ -382,7 +417,7 @@ export const getCurrentOtherJaapStatus = (now = new Date(), mantraType?: string)
   let minDiff = Infinity;
   let nextSessionStart: Date | null = null;
 
-  for (const session of OTHER_JAAP_SESSIONS) {
+  for (const session of sessions) {
     const startCandidate = new Date(now);
     startCandidate.setHours(session.startHour, session.startMin, 0, 0);
     if (startCandidate < now) {
@@ -479,5 +514,9 @@ export default {
   CHALISA_DURATION,
   getCurrentOtherJaapStatus,
   OTHER_JAAP_SESSIONS,
+  GAYATRI_SESSIONS,
+  SHIVA_SESSIONS,
+  KRISHNA_SESSIONS,
+  getSessionsForMantra,
   getSynchronizedIndex
 };
