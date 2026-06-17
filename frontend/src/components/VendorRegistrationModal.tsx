@@ -24,7 +24,7 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { DEFAULT_CATEGORIES } from '../store/vendorStore';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
-import { sendMsg91OTP, verifyMsg91OTP } from '../services/api';
+
 
 const AddressIcon = ({ width = 24, height = 24, color = '#94A3B8' }) => (
   <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
@@ -323,52 +323,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [selectedPhotos, setSelectedPhotos] = useState<{ uri: string; name: string; type: string }[]>([]);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
   const [selectedTempCategories, setSelectedTempCategories] = useState<string[]>([]);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const [otpStage, setOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
-  const [otp, setOtp] = useState('');
-  const [otpSending, setOtpSending] = useState(false);
-  const [otpVerifying, setOtpVerifying] = useState(false);
 
-  const handleVerifyOtp = async () => {
-    if (!otp.trim()) {
-      Alert.alert('Error', 'Please enter the OTP.');
-      return;
-    }
-    const trimmedPhone = phoneNumber.replace(/\D/g, '');
-    let cleanedPhone = trimmedPhone;
-    if (cleanedPhone.startsWith('0')) {
-      cleanedPhone = cleanedPhone.substring(1);
-    }
-    
-    setOtpVerifying(true);
-    try {
-      await verifyMsg91OTP(cleanedPhone, otp.trim());
-      setOtpStage('verified');
-      Alert.alert('Success', 'OTP Verified successfully!');
-    } catch (e: any) {
-      Alert.alert('Error', 'Try your business again. OTP is incorrect.');
-    } finally {
-      setOtpVerifying(false);
-    }
-  };
-
-  const handleSendOtp = async () => {
-    const trimmedPhone = phoneNumber.replace(/\D/g, '');
-    if (trimmedPhone.length !== 10) {
-      Alert.alert('Error', 'Please enter a valid 10 digit number.');
-      return;
-    }
-    setOtpSending(true);
-    try {
-      await sendMsg91OTP(trimmedPhone);
-      setOtpStage('sent');
-      Alert.alert('Success', 'OTP sent successfully!');
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.detail || e?.message || 'Failed to send OTP.');
-    } finally {
-      setOtpSending(false);
-    }
-  };
 
   const pickBusinessPhotos = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -584,13 +541,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     setSubCategories([]);
     setSubCategoryInput('');
     setSelectedPhotos([]);
-    setOtpStage('idle');
-    setOtp('');
   };
 
   const handleSubmit = async () => {
-    console.log('🔵 Submit button pressed');
-    
+    setErrorMsg('');
     Keyboard.dismiss();
     
     const trimmedBusinessName = businessName.trim();
@@ -610,33 +564,33 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
     // Validation
     if (!trimmedBusinessName) {
-      Alert.alert('Error', 'Business name is required');
+      setErrorMsg('Business name is required');
       return;
     }
     if (trimmedBusinessName.length < 2 || trimmedBusinessName.length > 100) {
-      Alert.alert('Error', 'Business name must be between 2 and 100 characters');
+      setErrorMsg('Business name must be between 2 and 100 characters');
       return;
     }
 
     if (!trimmedOwnerName) {
-      Alert.alert('Error', 'Owner name is required');
+      setErrorMsg('Owner name is required');
       return;
     }
     if (trimmedOwnerName.length < 2 || trimmedOwnerName.length > 100) {
-      Alert.alert('Error', 'Owner name must be between 2 and 100 characters');
+      setErrorMsg('Owner name must be between 2 and 100 characters');
       return;
     }
 
     if (!trimmedPhone) {
-      Alert.alert('Error', 'Phone number is required');
+      setErrorMsg('Phone number is required');
       return;
     }
     if (countryCode === '+91' && trimmedPhone.length !== 10) {
-      Alert.alert('Error', 'Indian phone numbers must be exactly 10 digits');
+      setErrorMsg('Indian phone numbers must be exactly 10 digits');
       return;
     }
     if (trimmedPhone.length < 7 || trimmedPhone.length > 15) {
-      Alert.alert('Error', 'Phone number must be between 7 and 15 digits');
+      setErrorMsg('Phone number must be between 7 and 15 digits');
       return;
     }
 
@@ -647,40 +601,34 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     const fullPhone = countryCode + cleanedPhone;
 
     if (!yearsInBusiness) {
-      Alert.alert('Error', 'Years in business is required');
+      setErrorMsg('Years in business is required');
       return;
     }
     const yearsNum = parseInt(yearsInBusiness, 10);
     if (isNaN(yearsNum) || yearsNum < 0 || yearsNum > 99) {
-      Alert.alert('Error', 'Years in business must be a valid number between 0 and 99');
+      setErrorMsg('Years in business must be a valid number between 0 and 99');
       return;
     }
 
     if (!trimmedAddress) {
-      Alert.alert('Error', 'Address is required');
+      setErrorMsg('Address is required');
       return;
     }
     if (trimmedAddress.length < 5 || trimmedAddress.length > 250) {
-      Alert.alert('Error', 'Address must be between 5 and 250 characters');
+      setErrorMsg('Address must be between 5 and 250 characters');
       return;
     }
 
     if (selectedPhotos.length < 2) {
-      Alert.alert('Error', 'Please upload at least 2 business photos');
+      setErrorMsg('Please upload at least 2 business photos');
       return;
     }
 
     console.log('Validation passed');
 
-    // Ensure OTP is verified before creating business
-    if (otpStage !== 'verified') {
-      Alert.alert('Error', 'Please send and verify OTP for your mobile number before submitting.');
-      return;
-    }
-
     const mergedCategories = [...categories, ...subCategories].filter(Boolean).slice(0, 5);
-    if (mergedCategories.length === 0) {
-      Alert.alert('Error', 'Please select or add at least one category or subcategory');
+    if (categories.length === 0) {
+      setErrorMsg('Please select at least one category');
       return;
     }
 
@@ -696,7 +644,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
     if (!onSubmit) {
       console.error('onSubmit is undefined!');
-      Alert.alert('Error', 'Submit function is not available');
+      setErrorMsg('Submit function is not available');
       return;
     }
 
@@ -704,17 +652,16 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     try {
       await onSubmit(payload);
       resetForm();
-      // Only close if successful (onSubmit might also close it, but good to be safe)
-      onClose();
+      // Parent (handleRegisterVendor) handles modal close and navigation
     } catch (error: any) {
       console.error('Submit error:', error);
       let errMsg = error?.message || 'Registration failed';
       if (error?.response?.data?.detail) {
-        errMsg = Array.isArray(error.response.data.detail) 
-          ? error.response.data.detail[0].msg 
+        errMsg = Array.isArray(error.response.data.detail)
+          ? error.response.data.detail[0].msg
           : error.response.data.detail;
       }
-      Alert.alert('Registration Error', String(errMsg));
+      setErrorMsg(String(errMsg));
     } finally {
       setLoading(false);
     }
@@ -797,8 +744,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 onChangeText={(text) => {
                   const numericText = text.replace(/\D/g, '');
                   setPhoneNumber(numericText.slice(0, 15));
-                  setOtpStage('idle');
-                  setOtp('');
                 }}
                 keyboardType="phone-pad"
                 maxLength={15}
@@ -824,39 +769,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               )}
             </View>
             
-            {phoneNumber.replace(/\D/g, '').length === 10 && otpStage === 'idle' && (
-              <TouchableOpacity onPress={handleSendOtp} disabled={otpSending} style={{ alignSelf: 'flex-start', marginTop: 4, marginBottom: 8 }}>
-                {otpSending ? <ActivityIndicator size="small" color={COLORS.primary} /> : <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Send OTP</Text>}
-              </TouchableOpacity>
-            )}
 
-            {otpStage === 'sent' && (
-              <>
-                <Text style={[styles.label, { marginTop: 8 }]}>Enter OTP *</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                  <TextInput
-                    style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                    placeholder="Enter 4-digit OTP"
-                    placeholderTextColor={COLORS.textLight}
-                    value={otp}
-                    onChangeText={setOtp}
-                    keyboardType="number-pad"
-                    maxLength={6}
-                  />
-                  <TouchableOpacity 
-                    onPress={handleVerifyOtp} 
-                    disabled={otpVerifying || !otp.trim()} 
-                    style={{ marginLeft: 8, padding: 12, backgroundColor: COLORS.primary, borderRadius: BORDER_RADIUS.md, opacity: (otpVerifying || !otp.trim()) ? 0.6 : 1 }}
-                  >
-                    {otpVerifying ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Verify</Text>}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-
-            {otpStage === 'verified' && (
-              <Text style={{ color: 'green', marginTop: 4, marginBottom: 8, fontWeight: '500' }}>✓ Number Verified</Text>
-            )}
 
             {/* Years in Business */}
             <Text style={styles.label}>Years in Business *</Text>
@@ -912,7 +825,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             )}
 
             {/* Sub Categories */}
-            <Text style={styles.label}>Sub Categories *</Text>
+            <Text style={styles.label}>Sub Categories</Text>
             <View style={{ marginBottom: SPACING.md }}>
               <View style={styles.dropdownInputContainer}>
                 <TextInput
@@ -1073,11 +986,29 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               </ScrollView>
             )}
 
+            {/* Inline Error Banner */}
+            {!!errorMsg && (
+              <View style={{
+                backgroundColor: '#FEE2E2',
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 12,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                <Text style={{ color: '#DC2626', fontSize: 13, fontWeight: '600', flex: 1, flexWrap: 'wrap' }}>
+                  {errorMsg}
+                </Text>
+              </View>
+            )}
+
             {/* Submit Button */}
             <TouchableOpacity
-              style={[styles.submitBtn, (loading || otpStage !== 'verified') && styles.submitBtnDisabled]}
+              style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
-              disabled={loading || otpStage !== 'verified'}
+              disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />

@@ -234,19 +234,19 @@ export default function ProfileScreen() {
             {/* Continue Button */}
             <TouchableOpacity
               style={[
-                styles.continueButton, 
-                (!name.trim() || loading) && styles.continueButtonDisabled
+                styles.continueButton,
+                !name.trim() && styles.continueButtonEmpty,
               ]}
               onPress={handleContinue}
               disabled={!name.trim() || loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FF7B00" />
               ) : (
                 <View style={styles.continueButtonContent}>
-                  <Text style={styles.continueButtonText}>Continue to My Journey </Text>
+                  <Text style={[styles.continueButtonText, !name.trim() && styles.continueButtonTextEmpty]}>Continue to My Journey </Text>
                   <Svg width={22} height={22} viewBox="0 0 22 22" fill="none">
-                    <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill="white"/>
+                    <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill={!name.trim() ? '#FF7B00' : 'white'}/>
                   </Svg>
                 </View>
               )}
@@ -273,8 +273,8 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 20 : 10,
-    paddingBottom: Platform.OS === 'ios' ? 10 : 10,
+    paddingTop: Platform.OS === 'ios' ? 55 : 30,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   content: {
     alignItems: 'center',
@@ -288,13 +288,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 28,
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 16,
   },
   photoContainer: {
     position: 'relative',
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 12,
     shadowColor: 'rgba(139, 79, 59, 0.15)',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     letterSpacing: 0.14,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 20,
   },
   label: {
     fontSize: 16,
@@ -352,16 +352,16 @@ const styles = StyleSheet.create({
     color: '#8B4F3B',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     alignSelf: 'flex-start',
-    marginBottom: 4,
-    marginTop: 6,
+    marginBottom: 8,
+    marginTop: 12,
   },
   inputContainer: {
     display: 'flex',
     flexDirection: 'row',
-    height: 50,
-    paddingTop: 13.5,
+    height: 56,
+    paddingTop: 16.5,
     paddingRight: 16,
-    paddingBottom: 13.5,
+    paddingBottom: 16.5,
     paddingLeft: 48,
     justifyContent: 'center',
     alignItems: 'center',
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0C0AF',
     backgroundColor: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 16,
   },
   inputIconContainer: {
     position: 'absolute',
@@ -396,10 +396,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderLeftWidth: 4,
     borderLeftColor: '#FF7B00',
-    padding: 12,
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 6,
+    marginVertical: 8,
     shadowColor: 'rgba(139, 79, 59, 0.05)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'flex-start',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 24,
     marginTop: 4,
   },
   languageButton: {
@@ -479,21 +479,25 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     width: '100%',
-    height: 50,
+    height: 56,
     borderRadius: 28,
     backgroundColor: '#FF7B00',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 16,
     shadowColor: 'rgba(143, 76, 56, 0.30)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
     shadowRadius: 8,
     elevation: 4,
   },
-  continueButtonDisabled: {
-    opacity: 0.6,
+  continueButtonEmpty: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#FF7B00',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   continueButtonText: {
     fontSize: 20,
@@ -503,6 +507,9 @@ const styles = StyleSheet.create({
     fontStyle: 'normal',
     textAlign: 'center',
     lineHeight: 28,
+  },
+  continueButtonTextEmpty: {
+    color: '#FF7B00',
   },
   continueButtonContent: {
     flexDirection: 'row',

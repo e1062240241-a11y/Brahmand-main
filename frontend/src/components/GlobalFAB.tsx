@@ -37,7 +37,7 @@ export function GlobalFAB() {
   const fabScale = useRef(new Animated.Value(0)).current;
   const fabRotation = useRef(new Animated.Value(0)).current;
   const fabItemAnims = useRef(
-    Array.from({ length: 8 }, () => new Animated.Value(0))
+    Array.from({ length: 7 }, () => new Animated.Value(0))
   ).current;
 
   const { t } = useTranslation();
@@ -389,10 +389,9 @@ export function GlobalFAB() {
                   { label: 'My Krishn', key: 'myKrishna', icon: 'heart-outline' as const, route: '/my-krishna' },
                   { label: 'Panchang', key: 'panchang', icon: 'today-outline' as const, route: '/panchang' },
                   { label: 'Brahmand\nLibrary', key: 'brahmandLibrary', icon: 'library-outline' as const, route: '/library' },
-                  { label: 'Jyotish', key: 'jyotish', icon: 'star-outline' as const, route: '/horoscope' },
                 ].map((item, index) => {
-                  // Position items in a circle (7 items, starting from top)
-                  const totalItems = 7;
+                  // Position items in a circle (6 items, starting from top)
+                  const totalItems = 6;
                   const angleStep = (2 * Math.PI) / totalItems;
                   const startAngle = -Math.PI / 2; // Start from top
                   const angle = startAngle + index * angleStep;
@@ -452,10 +451,6 @@ export function GlobalFAB() {
                         ) : item.key === 'brahmandLibrary' ? (
                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'jyotish' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 42, height: 42 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : (
                           <Ionicons name={item.icon as any} size={28} color="#FFF" />

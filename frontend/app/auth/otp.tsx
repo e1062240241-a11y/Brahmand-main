@@ -95,8 +95,14 @@ export default function OTPScreen() {
       const response = await verifyFirebaseToken(idToken);
       const data = response.data;
 
-      await login(data.user, data.token);
-      router.replace({ pathname: '/auth/profile', params: { phone } });
+      if (data.is_new_user) {
+        // New user — go to profile setup
+        router.replace({ pathname: '/auth/profile', params: { phone } });
+      } else {
+        // Existing registered user — log in and go to home
+        await login(data.user, data.token);
+        router.replace('/(tabs)/home');
+      }
     } catch (err: any) {
       console.log('Verification Error:', err);
       let message = 'Invalid OTP. Please try again.';
@@ -211,14 +217,18 @@ export default function OTPScreen() {
         {/* Action Button at the bottom */}
         <View style={styles.bottomContainer}>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={[
+              styles.actionButton,
+              otp.join('').length === 0 && styles.actionButtonEmpty,
+              otp.join('').length > 0 && otp.join('').length < 6 && styles.actionButtonPartial,
+            ]}
             onPress={handleVerifyPress}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.actionButtonText}>
+              <Text style={[styles.actionButtonText, otp.join('').length === 0 && styles.actionButtonTextEmpty]}>
                 {otp.join('').length > 0 ? 'Verify OTP' : 'Enter OTP'}
               </Text>
             )}
@@ -328,6 +338,17 @@ const styles = StyleSheet.create({
     elevation: 4,
     alignSelf: 'center',
   },
+  actionButtonEmpty: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#FF7B00',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  actionButtonPartial: {
+    backgroundColor: '#FF7B00',
+    opacity: 0.5,
+  },
   actionButtonText: {
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
@@ -335,5 +356,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 24,
     textAlign: 'center',
+  },
+  actionButtonTextEmpty: {
+    color: '#FF7B00',
   },
 });

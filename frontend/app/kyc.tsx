@@ -151,9 +151,7 @@ export default function KYCStatusScreen() {
     refreshKycStatus();
   }, [refreshKycStatus]);
 
-  const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
-  const isVendorVerified = (myVendor as any)?.kyc_status === 'verified';
-  const isVerified = isUserVerified || isVendorVerified;
+  const isVerified = (myVendor as any)?.kyc_status === 'verified';
 
   const isUserReview = (user as any)?.kyc_status === 'manual_review';
   const isVendorReview = (myVendor as any)?.kyc_status === 'manual_review';

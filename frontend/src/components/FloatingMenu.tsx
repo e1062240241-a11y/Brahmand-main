@@ -18,7 +18,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
   const [fabExpanded, setFabExpanded] = useState(false);
   const fabScale = useRef(new Animated.Value(0)).current;
   const fabRotation = useRef(new Animated.Value(0)).current;
-  const fabItemAnims = useRef(Array.from({ length: 8 }, () => new Animated.Value(0))).current;
+  const fabItemAnims = useRef(Array.from({ length: 7 }, () => new Animated.Value(0))).current;
 
   // Draggable state
   const pan = useRef(new Animated.ValueXY()).current;
@@ -130,9 +130,8 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                       { key: 'myKrishna', label: t('myKrishna'), icon: 'heart-outline' as const, route: '/my-krishna' },
                       { key: 'panchang', label: t('panchang'), icon: 'today-outline' as const, route: '/panchang' },
                       { key: 'brahmandLibrary', label: t('brahmandLibrary'), icon: 'library-outline' as const, route: '/library' },
-                      { key: 'jyotish', label: t('jyotish'), icon: 'star-outline' as const, route: '/horoscope' },
                     ].map((item, index) => {
-                      const totalItems = 7;
+                      const totalItems = 6;
                       const angleStep = (2 * Math.PI) / totalItems;
                       const startAngle = -Math.PI / 2; // Start from top
                       const angle = startAngle + index * angleStep;
@@ -197,10 +196,6 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                             ) : item.key === 'brahmandLibrary' ? (
                               <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                                 <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
-                              </ImageBackground>
-                            ) : item.key === 'jyotish' ? (
-                              <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                                <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 42, height: 42 }} resizeMode="contain" />
                               </ImageBackground>
                             ) : (
                               <Ionicons name={item.icon as any} size={28} color="#FFF" />

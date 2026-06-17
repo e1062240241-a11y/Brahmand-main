@@ -20,6 +20,7 @@ import { Input } from '../../src/components/Input';
 import { BORDER_RADIUS, COLORS, SPACING } from '../../src/constants/theme';
 import { getUserProfile, updateExtendedProfile, deleteUserProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { useVendorStore } from '../../src/store/vendorStore';
 import { useTranslation } from '../../src/utils/i18n';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 
@@ -27,6 +28,7 @@ export default function EditProfileScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { updateUser, logout } = useAuthStore();
+  const { myVendor, fetchMyVendor } = useVendorStore();
   const [deleting, setDeleting] = useState(false);
   const handleBack = () => {
     router.replace('/(tabs)/profile');
@@ -79,6 +81,7 @@ export default function EditProfileScreen() {
     };
 
     loadProfile();
+    fetchMyVendor().catch(() => {});
   }, []);
 
   const astrologyReady = useMemo(() => {
@@ -371,6 +374,66 @@ export default function EditProfileScreen() {
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
+            {/* Service Registration Info */}
+            {myVendor && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  {t('language') === 'hi' ? 'सेवा पंजीकरण' : 'Service Registration'}
+                </Text>
+                <View style={styles.card}>
+                  <View style={styles.vendorRow}>
+                    <Ionicons name="storefront-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                    <Text style={styles.vendorLabel}>{t('language') === 'hi' ? 'व्यवसाय का नाम' : 'Business Name'}</Text>
+                  </View>
+                  <Text style={styles.vendorValue}>{myVendor.business_name || '—'}</Text>
+
+                  <View style={[styles.vendorRow, { marginTop: 12 }]}>
+                    <Ionicons name="person-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                    <Text style={styles.vendorLabel}>{t('language') === 'hi' ? 'मालिक का नाम' : 'Owner Name'}</Text>
+                  </View>
+                  <Text style={styles.vendorValue}>{myVendor.owner_name || '—'}</Text>
+
+                  <View style={[styles.vendorRow, { marginTop: 12 }]}>
+                    <Ionicons name="call-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                    <Text style={styles.vendorLabel}>{t('language') === 'hi' ? 'मोबाइल नंबर' : 'Mobile Number'}</Text>
+                  </View>
+                  <Text style={styles.vendorValue}>{myVendor.phone_number || '—'}</Text>
+
+                  <View style={[styles.vendorRow, { marginTop: 12 }]}>
+                    <Ionicons name="location-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                    <Text style={styles.vendorLabel}>{t('language') === 'hi' ? 'पता' : 'Address'}</Text>
+                  </View>
+                  <Text style={styles.vendorValue}>{myVendor.full_address || '—'}</Text>
+
+                  {(myVendor.categories || []).length > 0 && (
+                    <>
+                      <View style={[styles.vendorRow, { marginTop: 12 }]}>
+                        <Ionicons name="grid-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                        <Text style={styles.vendorLabel}>{t('language') === 'hi' ? 'श्रेणियाँ' : 'Categories'}</Text>
+                      </View>
+                      <View style={styles.categoriesWrap}>
+                        {(myVendor.categories || []).map((cat: string, idx: number) => (
+                          <View key={idx} style={styles.categoryChip}>
+                            <Text style={styles.categoryChipText}>{cat}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.editServiceBtn}
+                    onPress={() => router.push('/vendor/dashboard')}
+                  >
+                    <Ionicons name="pencil-outline" size={14} color={COLORS.primary} />
+                    <Text style={styles.editServiceBtnText}>
+                      {t('language') === 'hi' ? 'सेवा प्रोफ़ाइल संपादित करें' : 'Edit Service Profile'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             <Button 
               title={t('language') === 'hi' ? 'प्रोफ़ाइल सहेजें' : 'Save Profile'} 
               onPress={handleSave} 
@@ -576,5 +639,57 @@ const styles = StyleSheet.create({
   },
   disabledBtn: {
     opacity: 0.5,
+  },
+  vendorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  vendorLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  vendorValue: {
+    fontSize: 15,
+    color: COLORS.text,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  categoriesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  categoryChip: {
+    backgroundColor: `${COLORS.primary}18`,
+    borderRadius: BORDER_RADIUS.full,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  categoryChipText: {
+    fontSize: 12,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+  editServiceBtn: {
+    marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  editServiceBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.primary,
   },
 });

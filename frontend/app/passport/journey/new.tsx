@@ -913,15 +913,17 @@ export default function NewPassportJourneyScreen() {
         />
         <ScrollView contentContainerStyle={styles.introScrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.introTopContainer}>
-            <View style={{ width: '100%', flexDirection: 'row', justifyContent: 'flex-start', marginBottom: 16 }}>
-              <TouchableOpacity onPress={handleBack} style={{ padding: 4, marginLeft: -4 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="arrow-back" size={24} color="#564337" />
+            <View style={{ width: '100%', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'center', marginBottom: 16 }}>
+              <TouchableOpacity onPress={handleBack} style={{ marginRight: 24, marginTop: 4, width: 24, height: 24, justifyContent: 'center', alignItems: 'center' }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                  <Path d="M15.375 5.25L8.625 12L15.375 18.75" stroke="black" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round"/>
+                </Svg>
               </TouchableOpacity>
+              <Text style={[styles.introTitle, { marginBottom: 0, flex: 1 }]}>Story Summary Generated{"\n"}by Brahmand</Text>
             </View>
             
             {/* Hero Section */}
             <View style={styles.introHero}>
-              <Text style={styles.introTitle}>Story Summary Generated{"\n"}by Brahmand</Text>
               <Text style={styles.introSubtitle}>
                 Brahmand creates a soulful record of{"\n"}your sacred pilgrimage from your{"\n"}responses.
               </Text>
@@ -2113,9 +2115,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   introTitle: {
-    color: '#964900',
+    color: '#1E1B17',
     fontFamily: 'SF Pro',
     fontSize: 24,
+    fontStyle: 'normal',
     fontWeight: '700',
     lineHeight: 32,
     textAlign: 'center',
@@ -2125,6 +2128,7 @@ const styles = StyleSheet.create({
     color: '#564337',
     fontFamily: 'SF Pro',
     fontSize: 16,
+    fontStyle: 'normal',
     fontWeight: '400',
     lineHeight: 24,
     textAlign: 'center',

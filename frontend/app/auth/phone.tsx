@@ -102,8 +102,9 @@ export default function PhoneScreen() {
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
       >
         {Platform.OS === 'web' ? <div id="recaptcha-container-fixed"></div> : null}
 
@@ -132,6 +133,7 @@ export default function PhoneScreen() {
                   keyboardType="phone-pad"
                   maxLength={10}
                   autoFocus
+                  showSoftInputOnFocus={true}
                   textContentType="telephoneNumber"
                   autoComplete="tel"
                   importantForAutofill="yes"
@@ -148,14 +150,18 @@ export default function PhoneScreen() {
         {/* Action Button at the bottom */}
         <View style={styles.bottomContainer}>
           <TouchableOpacity
-            style={[styles.sendButton, phone.length !== 10 && styles.sendButtonDisabled]}
+            style={[
+              styles.sendButton,
+              phone.length === 0 && styles.sendButtonEmpty,
+              phone.length > 0 && phone.length !== 10 && styles.sendButtonPartial,
+            ]}
             onPress={handleSendOTP}
             disabled={phone.length !== 10 || loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.sendButtonText}>Enter Phone Number</Text>
+              <Text style={[styles.sendButtonText, phone.length === 0 && styles.sendButtonTextEmpty]}>Enter Phone Number</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -270,8 +276,15 @@ const styles = StyleSheet.create({
     elevation: 4,
     alignSelf: 'center',
   },
-  sendButtonDisabled: {
-    backgroundColor: '#FFB085',
+  sendButtonEmpty: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: '#FF7B00',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  sendButtonPartial: {
+    backgroundColor: '#FF7B00',
     opacity: 0.5,
   },
   sendButtonText: {
@@ -281,5 +294,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     lineHeight: 24,
     textAlign: 'center',
+  },
+  sendButtonTextEmpty: {
+    color: '#FF7B00',
   },
 });

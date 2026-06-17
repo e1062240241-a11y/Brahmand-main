@@ -673,15 +673,16 @@ export default function VendorScreen() {
         }
       }
       
-      // Close modal immediately so UI feels fast
+      // Close modal immediately
       setShowRegistrationModal(false);
       
-      // Refresh vendor data so the UI updates before the modal closes
-      await Promise.all([
+      // Refresh vendor data in background
+      Promise.all([
         fetchMyVendor(),
         userLocation ? fetchVendors(userLocation) : fetchVendors()
       ]).catch(err => console.warn('Background fetch error:', err));
       
+      // Navigate to Number & KYC verification
       router.push('/kyc');
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);

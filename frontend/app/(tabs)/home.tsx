@@ -367,7 +367,6 @@ const baseQuickAccess = [
   { label: 'SOS', subtitle: 'Quick help\nfrom Sanatan', color: '#FFF', urgent: true },
   { label: 'Panchang', subtitle: 'Plan with\nVedic wisdom', color: '#FFF' },
   { label: 'Kundli', subtitle: 'Your birth chart insights', color: '#FFF' },
-  { label: 'Jyotish', subtitle: 'Your birth chart insights', color: '#FFF' },
   { label: 'Brahmand Passport', subtitle: 'Track your spiritual journey', color: '#FFF' },
   { label: 'Festival', subtitle: 'Next Festival & Rituals', color: '#FFF' },
   { label: 'Brahmand Library', subtitle: 'Explore Wisdom', color: '#FFF' },
@@ -2331,9 +2330,6 @@ export default function HomeScreen() {
                               } else if (item.label === 'Kundli') {
                                 displayLabel = 'कुंडली';
                                 displaySubtitle = 'Your birth chart insights';
-                              } else if (item.label === 'Jyotish') {
-                                displayLabel = 'ज्योतिष';
-                                displaySubtitle = 'Your birth chart insights';
                               } else if (item.label === 'Brahmand Passport') {
                                 displayLabel = 'ब्रह्मांड पासपोर्ट';
                                 displaySubtitle = 'आपकी मंदिर यात्रा का रिकॉर्ड';
@@ -2356,7 +2352,6 @@ export default function HomeScreen() {
                                   else if (item.label === 'My Krishn') router.push('/my-krishna');
                                   else if (item.label === 'SOS') router.push('/sos');
                                   else if (item.label === 'Kundli') router.push('/astrology' as any);
-                                  else if (item.label === 'Jyotish') router.push('/horoscope');
                                   else if (item.label === 'Brahmand Passport') router.push('/passport');
                                   else if (item.label === 'Festival') router.push('/festivals');
                                   else if (item.label === 'Brahmand Library') router.push('/library');
@@ -2386,12 +2381,6 @@ export default function HomeScreen() {
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                                     <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
                                       <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
-                                    </ImageBackground>
-                                  </View>
-                                ) : item.label === 'Jyotish' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/tab bar/siren_phosphor2.png')} style={{ width: 28, height: 28 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Brahmand Passport' ? (
