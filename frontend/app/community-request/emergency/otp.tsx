@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Keyboa
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { sendMsg91OTP, verifyMsg91OTP, createCommunityRequest, parseApiError } from '../../../src/services/api';
+import api, { createCommunityRequest, parseApiError } from '../../../src/services/api';
 import { useAuthStore } from '../../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 
@@ -63,12 +63,15 @@ export default function CommunityRequestEmergencyOtpPage() {
     setOtpSending(true);
     setError('');
     try {
-      console.log('[MSG91] Requesting backend to send OTP to:', phone);
-      const response = await sendMsg91OTP(`+91${phone}`);
-      console.log('[MSG91] Send response:', response.data);
+      console.log('[Nettyfish] Requesting backend to send OTP to:', phone);
+      const response = await api.post('/auth/nettyfish/send', {
+        phone: `+91${phone}`,
+        purpose: 'help_request'
+      });
+      console.log('[Nettyfish] Send response:', response.data);
       setResendTimer(30);
     } catch (err: any) {
-      console.error('MSG91 OTP send failed', err);
+      console.error('Nettyfish OTP send failed', err);
       setError(err?.response?.data?.detail || err?.message || 'Unable to send OTP.');
     } finally {
       setOtpSending(false);
@@ -100,17 +103,21 @@ export default function CommunityRequestEmergencyOtpPage() {
     setError('');
 
     try {
-      console.log('[MSG91] Verifying OTP via backend...');
-      const response = await verifyMsg91OTP(`+91${phone}`, code);
-      console.log('[MSG91] Verify response:', response.data);
+      console.log('[Nettyfish] Verifying OTP via backend...');
+      const response = await api.post('/auth/nettyfish/verify', {
+        phone: `+91${phone}`,
+        otp: code,
+        purpose: 'help_request'
+      });
+      console.log('[Nettyfish] Verify response:', response.data);
 
-      if (response.data.type === 'success') {
+      if (response.data.status === 'success') {
         await submitRequestIfKycVerified(user);
       } else {
         throw new Error(response.data.message || 'Invalid OTP');
       }
     } catch (err: any) {
-      console.error('MSG91 verify failed', err);
+      console.error('Nettyfish verify failed', err);
       setError(err?.response?.data?.detail || err?.message || 'Invalid OTP. Please try again.');
       setOtp(['', '', '', '']);
       inputRefs.current[0]?.focus();

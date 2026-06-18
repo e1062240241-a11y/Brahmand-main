@@ -59,6 +59,7 @@ class KYCStatus(str, Enum):
 
 class OTPRequest(BaseModel):
     phone: str
+    purpose: Optional[str] = "kyc"
 
     @validator('phone')
     def validate_phone(cls, v):
@@ -72,6 +73,7 @@ class OTPRequest(BaseModel):
 class OTPVerify(BaseModel):
     phone: str
     otp: str
+    purpose: Optional[str] = "kyc"
 
     @validator('otp')
     def validate_otp(cls, v):
