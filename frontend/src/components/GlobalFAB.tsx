@@ -358,12 +358,9 @@ export function GlobalFAB() {
   const { showCoachMarks, coachMarkStep } = useCoachMarkStore();
 
   useEffect(() => {
-    if (showCoachMarks && coachMarkStep === 5) {
-      expandFab(true);
-    } else {
-      if (showCoachMarks && coachMarkStep !== 5) {
-        expandFab(false);
-      }
+    // During coach mark tour, keep FAB collapsed to avoid overlay conflicts
+    if (showCoachMarks) {
+      expandFab(false);
     }
   }, [showCoachMarks, coachMarkStep, expandFab]);
 

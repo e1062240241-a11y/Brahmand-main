@@ -191,7 +191,17 @@ export default function AstrologyScreen() {
 
       if (hasAllDetails) {
         setShowForm(false);
-        fetchKundli();
+        const parsedDate = new Date(user.date_of_birth!);
+        const year = parsedDate.getFullYear();
+        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(parsedDate.getDate()).padStart(2, '0');
+        const dobStr = `${year}-${month}-${day}`;
+        fetchKundli(false, {
+          dob: dobStr,
+          tob: user.time_of_birth,
+          lat: user.place_of_birth_latitude,
+          lon: user.place_of_birth_longitude,
+        });
       } else {
         setShowForm(true);
         setLoading(false);
@@ -202,7 +212,7 @@ export default function AstrologyScreen() {
     }
 
     return () => { isMountedRef.current = false; };
-  }, [user, fetchKundli]);
+  }, [fetchKundli]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -295,7 +305,17 @@ export default function AstrologyScreen() {
         gender: gender,
       });
 
-      updateUser(response.data || {});
+      // Persist the birth details directly into the auth store so the form
+      // is never shown again on subsequent visits (secureStorage is updated by updateUser).
+      updateUser({
+        ...(response.data || {}),
+        date_of_birth: dobStr,
+        time_of_birth: timeOfBirth.trim(),
+        place_of_birth: placeOfBirth.trim(),
+        place_of_birth_latitude: lat,
+        place_of_birth_longitude: lon,
+        gender: gender,
+      });
       setShowForm(false);
       fetchKundli(false, {
         dob: dobStr,
@@ -358,7 +378,9 @@ export default function AstrologyScreen() {
   return (
     <LinearGradient 
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
-      locations={[0, 0.2, 0.8]} 
+      locations={[0, 0.1058, 0.2212]} 
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
       style={styles.container}
     >
       <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
@@ -367,13 +389,7 @@ export default function AstrologyScreen() {
             <Ionicons name="chevron-back" size={24} color="#5A3E2B" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Janam Kundli</Text>
-          {!showForm ? (
-            <TouchableOpacity onPress={() => setShowForm(true)} style={styles.headerEditBtn}>
-              <Ionicons name="pencil-outline" size={20} color="#5A3E2B" />
-            </TouchableOpacity>
-          ) : (
-            <View style={{ width: 40 }} />
-          )}
+          <View style={{ width: 40 }} />
         </View>
       </SafeAreaView>
 
@@ -592,26 +608,90 @@ export default function AstrologyScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C67C4E" />}
         >
-          {/* Profile Section */}
-          <View style={styles.profileSection}>
-            <View style={styles.profileRow}>
-              <View style={styles.avatarWrap}>
-                {user?.photo ? (
-                  <Image source={{ uri: user.photo }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                    <Ionicons name="person" size={28} color="#C67C4E" />
-                  </View>
-                )}
-              </View>
-              <View style={styles.profileText}>
-                <Text style={styles.profileName}>{user?.name || 'Devotee'}</Text>
-                <View style={styles.profileStatusRow}>
-                  <View style={styles.statusDot} />
-                  <Text style={styles.profileStatus}>Celestial Profile Active</Text>
+          {/* Profile Card */}
+          <View style={styles.profileCard}>
+            <View style={styles.profileCardAvatar}>
+              {user?.photo ? (
+                <Image source={{ uri: user.photo }} style={styles.profileCardAvatarImg} />
+              ) : (
+                <View style={[styles.profileCardAvatarImg, styles.profileCardAvatarPlaceholder]}>
+                  <Ionicons name="person" size={24} color="#C67C4E" />
                 </View>
+              )}
+            </View>
+            <View style={styles.profileCardText}>
+              <Text style={styles.profileCardName}>{user?.name || 'Devotee'}</Text>
+              <Text style={styles.profileCardSub}>
+                {(() => {
+                  const parts: string[] = [];
+                  if (user?.date_of_birth) {
+                    const d = new Date(user.date_of_birth);
+                    if (!isNaN(d.getTime())) {
+                      const day = d.getDate();
+                      const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                      parts.push(`${day} ${monthNames[d.getMonth()]} ${d.getFullYear()}`);
+                    }
+                  }
+                  if (user?.time_of_birth) {
+                    const timeParts = user.time_of_birth.split(':');
+                    if (timeParts.length >= 2) {
+                      const h = parseInt(timeParts[0], 10);
+                      const m = timeParts[1].padStart(2, '0');
+                      const ampm = h >= 12 ? 'PM' : 'AM';
+                      const h12 = h % 12 === 0 ? 12 : h % 12;
+                      parts.push(`${h12}:${m} ${ampm}`);
+                    }
+                  }
+                  return parts.join(' · ') || 'Birth details saved';
+                })()}
+              </Text>
+            </View>
+          </View>
+
+          {/* Kundli Chart Image */}
+          <View style={styles.chartCard}>
+            <Image
+              source={require('../assets/images/kundli_chart.jpg')}
+              style={styles.chartImage}
+              resizeMode="cover"
+            />
+          </View>
+
+          {/* Ask AI Card */}
+          <View style={styles.askAiCard}>
+            <View style={styles.askAiHeader}>
+              <Text style={styles.askAiIcon}>✦</Text>
+              <View style={styles.askAiHeaderText}>
+                <Text style={styles.askAiTitle}>Ask AI about your horoscope</Text>
+                <Text style={styles.askAiSubtitle}>Get insights tailored to your situation</Text>
               </View>
             </View>
+            <View style={styles.askAiChips}>
+              {[
+                { label: 'Love', icon: 'heart' },
+                { label: 'Career', icon: 'briefcase' },
+                { label: 'Health', icon: 'fitness' },
+                { label: 'Auspicious Timing', icon: 'time' },
+                { label: 'Spiritual Guidance', icon: 'sparkles' },
+              ].map((chip) => (
+                <View key={chip.label} style={styles.askAiChip}>
+                  <Ionicons
+                    name={chip.icon === 'sparkles' ? 'star' : chip.icon as any}
+                    size={12}
+                    color="#C67C4E"
+                  />
+                  <Text style={styles.askAiChipText}>{chip.label}</Text>
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={styles.askAiBtn}
+              activeOpacity={0.85}
+              onPress={() => router.push('/ai-jyotish' as any)}
+            >
+              <Text style={styles.askAiBtnText}>Ask Now</Text>
+              <Ionicons name="chevron-forward" size={16} color="#FFF" />
+            </TouchableOpacity>
           </View>
 
           {/* Nakshatra & Rashi Card */}
@@ -937,7 +1017,156 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // Profile
+  // Profile Card (new design matching reference)
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.00)',
+    marginHorizontal: 20,
+    marginTop: 16,
+    width: 350,
+    height: 80,
+    alignSelf: 'center',
+    borderRadius: 48,
+    paddingHorizontal: 16,
+    shadowColor: 'rgba(150, 73, 0, 1)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 20,
+    elevation: 2,
+  },
+  profileCardAvatar: {
+    marginRight: 12,
+  },
+  profileCardAvatarImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  profileCardAvatarPlaceholder: {
+    backgroundColor: '#FCEADE',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileCardText: {
+    flex: 1,
+  },
+  profileCardName: {
+    color: '#1B1C1C',
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  profileCardSub: {
+    color: '#7D685E',
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+    marginTop: 2,
+  },
+
+  // Kundli Chart
+  chartCard: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    borderRadius: 20,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+  },
+  chartImage: {
+    width: 289,
+    height: 289,
+    borderRadius: 12,
+  },
+
+  // Ask AI Card
+  askAiCard: {
+    marginHorizontal: 20,
+    marginTop: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 18,
+    shadowColor: '#8D6E63',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0E0D0',
+  },
+  askAiHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  askAiIcon: {
+    fontSize: 18,
+    color: '#FF7B00',
+    marginRight: 10,
+    marginTop: 1,
+  },
+  askAiHeaderText: {
+    flex: 1,
+  },
+  askAiTitle: {
+    color: '#1B1C1C',
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  askAiSubtitle: {
+    color: '#7D685E',
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  askAiChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  askAiChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5F0',
+    borderRadius: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#F0D5B8',
+    gap: 5,
+  },
+  askAiChipText: {
+    color: '#7D685E',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  askAiBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF7B00',
+    borderRadius: 50,
+    height: 48,
+    gap: 6,
+    shadowColor: 'rgba(255, 123, 0, 0.30)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  askAiBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // Legacy profile styles (kept for backward compat)
   profileSection: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   profileRow: { flexDirection: 'row', alignItems: 'center' },
   avatarWrap: {
