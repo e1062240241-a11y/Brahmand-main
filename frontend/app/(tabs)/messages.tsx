@@ -141,6 +141,7 @@ function MessagesScreen({
   const onMessagesScrollTabBar = useScrollToHideTabBar();
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
   const activeRequestScrollRef = useRef<ScrollView>(null);
 
@@ -208,6 +209,22 @@ function MessagesScreen({
         last_message_at: c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : undefined,
       }));
   }, [observedConversations, apiDMs]);
+
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery) return circles;
+    return circles.filter(chat =>
+      chat.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (chat.last_message || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, circles]);
+
+  const filteredAll = useMemo(() => {
+    if (!searchQuery) return conversations;
+    return conversations.filter(chat =>
+      (chat.user?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (chat.last_message || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, conversations]);
 
   const [userGroups, setUserGroups] = useState<Community[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
@@ -1343,42 +1360,61 @@ function MessagesScreen({
             <View style={{ height: 90 }} />
           </View>
         ) : (
-          <View style={styles.chatContent}>
-            <View style={styles.chatSectionHeader}>
-              <Text style={styles.chatSectionTitle}>
-                {t('language') === 'hi' ? 'समूह और मंडल' : 'Groups & Circles'}
-              </Text>
+          <View style={styles.privateChatContent}>
+            {/* Search Bar */}
+            <View style={styles.searchBarContainer}>
+              <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Find people, groups"
+                placeholderTextColor="#8E8E93"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+              />
               <TouchableOpacity
                 onPress={() => router.push('/dm/new')}
-                style={styles.newChatHeaderButton}
+                style={styles.composeButton}
               >
-                <Ionicons name="chatbubbles-outline" size={16} color="#FF6600" />
-                <Text style={styles.newChatHeaderText}>
-                  {t('language') === 'hi' ? 'नई चैट' : 'New Chat'}
-                </Text>
+                <Ionicons name="create-outline" size={20} color="#000000" />
               </TouchableOpacity>
             </View>
-            {circles.length > 0 ? (
-              circles.map(circle => (
-                <TouchableOpacity
-                   key={circle.id}
-                   style={styles.chatItem}
-                   onPress={() => router.push(`/chat/circle/${circle.id}`)}
-                >
-                  <Avatar name={circle.name} photo={circle.photo} size={50} />
-                  <View style={styles.chatItemInfo}>
-                    <Text style={styles.chatItemName}>{circle.name}</Text>
-                    <Text style={styles.chatItemLastMsg} numberOfLines={1}>
-                      {circle.last_message || (t('language') === 'hi' ? 'बातचीत शुरू करें' : 'Start a conversation')}
-                    </Text>
-                  </View>
-                  <View style={styles.chatItemRight}>
-                    <Text style={styles.chatItemTime}>{circle.last_message_time || ''}</Text>
-                    {circle.member_count > 0 && <View style={styles.chatBadge}><Text style={styles.chatBadgeText}>{circle.member_count}</Text></View>}
-                  </View>
-                </TouchableOpacity>
-              ))
-            ) : (
+
+            {/* Group Chats Section */}
+            {filteredGroups.length > 0 ? (
+              <View style={styles.chatSection}>
+                <Text style={styles.privateChatSectionTitle}>Group Chats</Text>
+                {filteredGroups.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.chatRow}
+                    onPress={() => {
+                      router.push(`/chat/circle/${item.id}`);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Avatar name={item.name} photo={item.photo} size={52} />
+                    <View style={styles.chatRowMiddle}>
+                      <Text style={styles.chatRowTitle} numberOfLines={1}>{item.name}</Text>
+                      <Text style={styles.chatRowSubtitle} numberOfLines={1}>
+                        {item.last_message || (t('language') === 'hi' ? 'बातचीत शुरू करें' : 'Start a conversation')}
+                      </Text>
+                    </View>
+                    <View style={styles.chatRowRight}>
+                      <Text style={styles.chatRowTime}>{item.last_message_time || ''}</Text>
+                      {!!item.last_message && (
+                        <MaterialCommunityIcons
+                          name="check-all"
+                          size={18}
+                          color="#34B7F1"
+                          style={styles.checkmarkIcon}
+                        />
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : !searchQuery && (
               <View style={styles.emptyChat}>
                 <Text style={styles.emptyChatText}>
                   {t('language') === 'hi' ? 'अभी तक कोई ग्रुप चैट नहीं है' : 'No group chats yet'}
@@ -1386,41 +1422,51 @@ function MessagesScreen({
               </View>
             )}
 
-            <View style={styles.chatSectionHeader}>
-              <Text style={styles.chatSectionTitle}>
-                {t('language') === 'hi' ? 'सीधे संदेश' : 'Direct Messages'}
-              </Text>
-            </View>
-            {conversations.length > 0 ? (
-              conversations.map(conv => {
-                const conversationId = conv.conversation_id || conv.id;
-                const isMuted = conversationId ? mutedConversations.has(conversationId) : false;
-                return (
-                  <TouchableOpacity
-                    key={conversationId}
-                    style={styles.chatItem}
-                    onPress={() => router.push(`/dm/${conversationId}`)}
-                  >
-                    <Avatar name={conv.user?.name || '?'} photo={conv.user?.photo} size={50} />
-                    <View style={styles.chatItemInfo}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.chatItemName}>{conv.user?.name}</Text>
-                        {(conv.user as any)?.is_verified && (
-                          <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 4 }} />
-                        )}
-                      </View>
-                      <Text style={[styles.chatItemLastMsg, isMuted ? { color: COLORS.textLight } : undefined]} numberOfLines={1}>
-                        {conv.last_message || (t('language') === 'hi' ? 'एक संदेश भेजें' : 'Send a message')}
-                      </Text>
+            {/* All Chats Section */}
+            {filteredAll.length > 0 ? (
+              <View style={styles.chatSection}>
+                <Text style={styles.privateChatSectionTitle}>All Chats</Text>
+                {filteredAll.map((item, index) => {
+                  const conversationId = item.conversation_id || item.id;
+                  return (
+                    <View key={conversationId}>
+                      <TouchableOpacity
+                        style={styles.chatRow}
+                        onPress={() => {
+                          router.push(`/dm/${conversationId}`);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <Avatar name={item.user?.name || '?'} photo={item.user?.photo} size={52} />
+                        <View style={styles.chatRowMiddle}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.chatRowTitle} numberOfLines={1}>{item.user?.name}</Text>
+                            {(item.user as any)?.is_verified && (
+                              <MaterialCommunityIcons name="check-decagram" size={16} color="#FF6B00" style={{ marginLeft: 4 }} />
+                            )}
+                          </View>
+                          <Text style={styles.chatRowSubtitle} numberOfLines={1}>
+                            {item.last_message || (t('language') === 'hi' ? 'एक संदेश भेजें' : 'Send a message')}
+                          </Text>
+                        </View>
+                        <View style={styles.chatRowRight}>
+                          <Text style={styles.chatRowTime}>{formatTime(item.last_message_at)}</Text>
+                          {!!item.last_message && (
+                            <MaterialCommunityIcons
+                              name="check-all"
+                              size={18}
+                              color="#34B7F1"
+                              style={styles.checkmarkIcon}
+                            />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                      {index < filteredAll.length - 1 && <View style={styles.chatSeparator} />}
                     </View>
-                    <View style={styles.chatItemRight}>
-                      <Text style={styles.chatItemTime}>{formatTime(conv.last_message_at)}</Text>
-                      {isMuted && <Ionicons name="notifications-off" size={14} color={COLORS.textLight} style={{ marginTop: 4 }} />}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            ) : (
+                  );
+                })}
+              </View>
+            ) : !searchQuery && (
               <View style={styles.emptyChat}>
                 <Text style={styles.emptyChatText}>
                   {t('language') === 'hi' ? 'अभी तक कोई निजी संदेश नहीं है' : 'No private messages yet'}
@@ -1428,7 +1474,15 @@ function MessagesScreen({
               </View>
             )}
 
-            <View style={{ height: 90 }} />
+            {filteredGroups.length === 0 && filteredAll.length === 0 && !!searchQuery && (
+              <View style={styles.emptyChat}>
+                <Text style={styles.emptyChatText}>
+                  {t('language') === 'hi' ? 'कोई परिणाम नहीं मिला' : 'No results found'}
+                </Text>
+              </View>
+            )}
+
+            <View style={{ height: 100 }} />
           </View>
         )}
       </ScrollView>
@@ -1577,30 +1631,31 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'stretch',
-    borderRadius: 16,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(229, 231, 235, 0.5)',
-    backgroundColor: 'rgba(243, 244, 246, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    height: 48,
   },
   segmentPill: {
     flex: 1,
-    height: 34,
-    borderRadius: 12,
+    height: 38,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   segmentPillActive: {
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
   segmentText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: FONTS.bold,
-    color: '#8E8E93',
+    color: '#4A4A4A',
   },
   segmentTextActive: {
     color: '#EA4C0F',
@@ -2127,6 +2182,89 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: FONTS.bold,
     fontWeight: '800',
+  },
+  privateChatContent: {
+    paddingTop: 10,
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    height: 48,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: FONTS.regular,
+    color: '#000000',
+    paddingVertical: 8,
+  },
+  composeButton: {
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chatSection: {
+    marginBottom: 20,
+  },
+  privateChatSectionTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.bold,
+    color: '#1C1C1E',
+    marginHorizontal: 16,
+    marginVertical: 12,
+  },
+  chatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  chatRowMiddle: {
+    flex: 1,
+    justifyContent: 'center',
+    marginLeft: 14,
+  },
+  chatRowTitle: {
+    fontSize: 16,
+    fontFamily: FONTS.bold,
+    color: '#1C1C1E',
+    marginBottom: 4,
+  },
+  chatRowSubtitle: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    color: '#8E8E93',
+  },
+  chatRowRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    height: 48,
+  },
+  chatRowTime: {
+    fontSize: 12,
+    fontFamily: FONTS.regular,
+    color: '#8E8E93',
+    marginBottom: 4,
+  },
+  checkmarkIcon: {
+    marginTop: 2,
+  },
+  chatSeparator: {
+    height: 1,
+    backgroundColor: '#F2F2F7',
+    marginLeft: 82,
+    marginRight: 16,
   },
 });
 
