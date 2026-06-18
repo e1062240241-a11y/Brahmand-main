@@ -2581,7 +2581,7 @@ export default function CommunityDetailScreen() {
             <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
           </View>
         </View>
-        <View style={{ backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : '#F0F0F0', padding: 16, ...(isFulfilled ? { backgroundColor: '#F0FDF4' } : {}) }}>
+        <View style={[{ backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : '#F0F0F0', padding: 16 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
           <View style={styles.festEventMain}>
             {(item.image || item.image_url || item.media_url) && (
               <CommunityMediaItem
@@ -2687,6 +2687,7 @@ export default function CommunityDetailScreen() {
           <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
             <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
