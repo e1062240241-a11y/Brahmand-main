@@ -358,7 +358,8 @@ export function GlobalFAB() {
   const { showCoachMarks, coachMarkStep } = useCoachMarkStore();
 
   useEffect(() => {
-    if (showCoachMarks && coachMarkStep === 4) {
+    if (!showCoachMarks) return;
+    if (coachMarkStep === 4) {
       expandFab(true);
     } else {
       expandFab(false);
