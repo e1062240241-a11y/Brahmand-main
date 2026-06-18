@@ -358,8 +358,9 @@ export function GlobalFAB() {
   const { showCoachMarks, coachMarkStep } = useCoachMarkStore();
 
   useEffect(() => {
-    // During coach mark tour, keep FAB collapsed to avoid overlay conflicts
-    if (showCoachMarks) {
+    if (showCoachMarks && coachMarkStep === 4) {
+      expandFab(true);
+    } else {
       expandFab(false);
     }
   }, [showCoachMarks, coachMarkStep, expandFab]);
@@ -369,14 +370,17 @@ export function GlobalFAB() {
     return null;
   }
 
+  const OverlayComponent = showCoachMarks ? View : TouchableOpacity;
+
   return (
     <>
       {/* ─── Floating Action Button (FAB) Overlay ─── */}
       {fabExpanded && (
-        <TouchableOpacity
-          style={fabStyles.overlay}
+        <OverlayComponent
+          style={[fabStyles.overlay, showCoachMarks && { backgroundColor: 'transparent' }]}
           activeOpacity={1}
-          onPress={toggleFab}
+          onPress={showCoachMarks ? undefined : toggleFab}
+          pointerEvents={showCoachMarks ? "box-none" : "auto"}
         >
           <Animated.View
             style={[
@@ -386,13 +390,23 @@ export function GlobalFAB() {
                 opacity: fabScale,
               },
             ]}
+            pointerEvents={showCoachMarks ? "box-none" : "auto"}
           >
             {/* Outer decorative ring */}
-            <View style={[fabStyles.outerRing, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#FFEBEE' }]}>
+            <View 
+              style={[fabStyles.outerRing, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#FFEBEE' }]}
+              pointerEvents={showCoachMarks ? "box-none" : "auto"}
+            >
               {/* Inner circle with items */}
-              <View style={[fabStyles.innerCircle, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F' }]}>
+              <View 
+                style={[fabStyles.innerCircle, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F' }]}
+                pointerEvents={showCoachMarks ? "box-none" : "auto"}
+              >
                 {/* Decorative dotted ring */}
-                <View style={[fabStyles.dottedRing, (activeSOS || nearbySOSAlerts.length > 0) && { borderColor: 'rgba(255, 255, 255, 0.2)' }]} />
+                <View 
+                  style={[fabStyles.dottedRing, (activeSOS || nearbySOSAlerts.length > 0) && { borderColor: 'rgba(255, 255, 255, 0.2)' }]} 
+                  pointerEvents="none"
+                />
 
                 {/* Menu items arranged in a circle */}
                 {[
@@ -442,7 +456,7 @@ export function GlobalFAB() {
                         }}
                       >
                         {item.key === 'myKrishna' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
                           </ImageBackground>
                         ) : item.key === 'festival' ? (
@@ -494,7 +508,7 @@ export function GlobalFAB() {
                     <View style={fabStyles.sosStatusCard}>
                       <View style={fabStyles.sosStatusHeader}>
                         <View style={fabStyles.peopleIconBox}>
-                          <Ionicons name="people" size={24} color="#FFF" />
+                           <Ionicons name="people" size={24} color="#FFF" />
                         </View>
                         <View style={fabStyles.sosStatusTextCol}>
                           <Text style={fabStyles.sosStatusTitle}>{(activeSOS.responders?.length || 0)} {(activeSOS.responders?.length === 1) ? (t('personIs') || 'PERSON IS') : (t('peopleAre') || 'PEOPLE ARE')}</Text>
@@ -632,6 +646,7 @@ export function GlobalFAB() {
                         opacity: fabItemAnims[6],
                       },
                     ]}
+                    pointerEvents={showCoachMarks ? "box-none" : "auto"}
                   >
                     <TouchableOpacity
                       style={fabStyles.centerButtonInner}
@@ -655,7 +670,7 @@ export function GlobalFAB() {
               </View>
             </View>
           </Animated.View>
-        </TouchableOpacity>
+        </OverlayComponent>
       )}
 
       {/* FAB trigger button */}

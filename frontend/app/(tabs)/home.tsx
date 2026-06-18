@@ -422,8 +422,10 @@ export default function HomeScreen() {
   const [bannersY, setBannersY] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [isHomeInitialized, setIsHomeInitialized] = useState(false);
 
   useEffect(() => {
+    if (!isHomeInitialized) return;
     const checkCoachMarks = async () => {
       try {
         const seen = await AsyncStorage.getItem('brahmand_coachmarks_seen_v1');
@@ -438,7 +440,7 @@ export default function HomeScreen() {
       }
     };
     checkCoachMarks();
-  }, []);
+  }, [isHomeInitialized]);
 
   useEffect(() => {
     if (showCoachMarks) {
@@ -941,6 +943,8 @@ export default function HomeScreen() {
       }
     } catch (err) {
       console.warn('Failed to init home data:', err);
+    } finally {
+      setIsHomeInitialized(true);
     }
   }, [setUnreadCount, setTabFeed, fetchLocalCommunities]);
 
