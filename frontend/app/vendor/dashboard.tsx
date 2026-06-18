@@ -24,8 +24,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
-
-import { sendMsg91OTP, verifyMsg91OTP, getKYCStatus } from '../../src/services/api';
+import api, { sendMsg91OTP, verifyMsg91OTP, getKYCStatus } from '../../src/services/api';
 
 const PersonalInfoIcon = () => (
   <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
@@ -58,6 +57,9 @@ export default function VendorDashboardScreen() {
   const [loading, setLoading] = useState(false);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [deleteOtpModalVisible, setDeleteOtpModalVisible] = useState(false);
+  const [deleteOtpSent, setDeleteOtpSent] = useState(false);
+  const [deleteOtpValue, setDeleteOtpValue] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const [phoneOtpStage, setPhoneOtpStage] = useState<'idle' | 'sent' | 'verified'>('idle');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [phoneOtpError, setPhoneOtpError] = useState<string | null>(null);
@@ -480,7 +482,7 @@ export default function VendorDashboardScreen() {
     router.push('/kyc');
   };
 
-  const handleDeleteBusiness = () => {
+  const handleDeleteBusiness = async () => {
     if (!myVendor) return;
     const vendorPhone = myVendor.phone_number || (user as any)?.phone_number;
     if (!vendorPhone) {
@@ -491,33 +493,32 @@ export default function VendorDashboardScreen() {
       return;
     }
 
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('Are you sure you want to delete your business? This action cannot be undone.');
-      if (confirmed) {
-        setDeleteOtpModalVisible(true);
+    setIsDeleting(true);
+    try {
+      await api.post('/auth/nettyfish/send', {
+        phone: vendorPhone,
+        purpose: 'delete_business'
+      });
+      setDeleteOtpSent(true);
+      if (Platform.OS !== 'web') {
+        Alert.alert('OTP Sent', 'An OTP has been sent to your business phone number.');
       }
-      return;
+    } catch (error: any) {
+      console.error('Failed to send delete OTP:', error);
+      Alert.alert('Error', error?.response?.data?.detail || 'Failed to send OTP.');
+    } finally {
+      setIsDeleting(false);
     }
-
-    Alert.alert(
-      'Delete Business',
-      'Are you sure you want to delete your business? This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => setDeleteOtpModalVisible(true),
-        }
-      ]
-    );
   };
 
-  const handleVerifyOTPAndDeleteBusiness = async (otp: string) => {
-    if (!myVendor) return;
+  const handleVerifyOTPAndDeleteBusiness = async () => {
+    if (!myVendor || !deleteOtpValue) return;
+    const vendorPhone = myVendor.phone_number || (user as any)?.phone_number;
+    setIsDeleting(true);
     try {
-      await deleteVendor(myVendor.id, otp);
-      setDeleteOtpModalVisible(false);
+      await deleteVendor(myVendor.id, deleteOtpValue.trim());
+      setDeleteOtpSent(false);
+      setDeleteOtpValue('');
       if (Platform.OS === 'web') {
         window.alert('Your business has been deleted.');
       } else {
@@ -525,7 +526,10 @@ export default function VendorDashboardScreen() {
       }
       router.replace('/(tabs)/vendor');
     } catch (error: any) {
-      throw error; // Let modal handle error display
+      console.error('Delete error:', error);
+      Alert.alert('Error', error?.response?.data?.detail || 'Failed to verify OTP or delete business.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -887,21 +891,32 @@ export default function VendorDashboardScreen() {
         {/* Section: Delete Account */}
         <View style={styles.deactivateCard}>
           <Text style={styles.deactivateTitle}>Delete Account</Text>
-          <TouchableOpacity style={styles.deactivateButton} onPress={handleDeleteBusiness}>
-            <Ionicons name="trash-outline" size={18} color="#D34F40" style={{ marginRight: 8 }} />
-            <Text style={styles.deactivateButtonText}>Deactivate Business Profile</Text>
-          </TouchableOpacity>
+          {!deleteOtpSent ? (
+            <TouchableOpacity style={styles.deactivateButton} onPress={handleDeleteBusiness} disabled={isDeleting}>
+              <Ionicons name="trash-outline" size={18} color="#D34F40" style={{ marginRight: 8 }} />
+              <Text style={styles.deactivateButtonText}>{isDeleting ? 'Sending OTP...' : 'Deactivate Business Profile'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ marginTop: 8, flexDirection: 'row', alignItems: 'center' }}>
+              <TextInput
+                style={{ flex: 1, backgroundColor: '#FFF', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: COLORS.divider, marginRight: 8 }}
+                placeholder="Enter OTP"
+                value={deleteOtpValue}
+                onChangeText={setDeleteOtpValue}
+                keyboardType="number-pad"
+                maxLength={6}
+              />
+              <TouchableOpacity
+                style={{ backgroundColor: COLORS.error, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8 }}
+                onPress={handleVerifyOTPAndDeleteBusiness}
+                disabled={isDeleting || deleteOtpValue.length < 4}
+              >
+                <Text style={{ color: '#FFF', fontWeight: '600' }}>{isDeleting ? '...' : 'Verify & Delete'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
-
-      <DeleteOTPModal
-        visible={deleteOtpModalVisible}
-        phoneNumber={myVendor?.phone_number || (user as any)?.phone_number || ''}
-        onClose={() => setDeleteOtpModalVisible(false)}
-        onVerify={handleVerifyOTPAndDeleteBusiness}
-        title="Delete Business"
-        description="Verify OTP to delete your business profile"
-      />
 
       {/* Edit Modal (used for Category/Phone verification/Hours popups) */}
       <Modal

@@ -10084,19 +10084,39 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can delete the vendor")
         
-    # Verify OTP
+    # We query the otp_verifications to ensure the otp for this number and purpose was generated and verify it
+    # We do a basic validation for older implementation fallback if not found in our new system
     user = await db.get_document('users', user_id)
     phone = vendor.get('phone_number') or (user and user.get('phone_number'))
     if not phone:
         raise HTTPException(status_code=400, detail="A registered mobile number is required to delete your business.")
     if not otp:
         raise HTTPException(status_code=400, detail="OTP is required for deletion.")
-        
-    from services.msg91_service import MSG91Service
-    otp_res = await MSG91Service.verify_otp(phone, otp)
-    if otp_res.get("type") != "success":
-        raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
     
+    from services.nattyfish_service import _normalize_phone
+    try:
+        mobile = _normalize_phone(phone)
+        def _get_otp_docs():
+            return db.client.collection("otp_verifications").where("phone", "==", mobile).where("purpose", "==", "delete_business").limit(1).get()
+        docs = await db._run_sync(_get_otp_docs)
+        if docs:
+            doc = docs[0]
+            record = doc.to_dict()
+            if record.get("otp") != otp:
+                raise HTTPException(status_code=400, detail="Invalid OTP")
+            # If valid, just delete the doc so it can't be reused
+            def _delete_doc():
+                doc.reference.delete()
+            await db._run_sync(_delete_doc)
+        else:
+            # Fallback to msg91 if not found in nettyfish records
+            from services.msg91_service import MSG91Service
+            otp_res = await MSG91Service.verify_otp(phone, otp)
+            if otp_res.get("type") != "success":
+                raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     await db.delete_document('vendors', vendor_id)
     await db.update_document('users', user_id, {'is_vendor': False, 'vendor_id': None})
     try:
