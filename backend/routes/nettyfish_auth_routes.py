@@ -30,15 +30,18 @@ async def send_nettyfish_otp(request: OTPRequest):
     otp = generate_otp()
     expires_at = datetime.utcnow() + timedelta(minutes=5)
 
-    # Store OTP in Firestore
-    collection_ref = db.collection("kyc_otp_verifications")
+    purpose = request.purpose.strip() if request.purpose else "kyc"
 
-    # Check if there's an existing record for this phone to update, or create a new one
-    docs = collection_ref.where("phone", "==", mobile).limit(1).get()
+    # Store OTP in Firestore
+    collection_ref = db.collection("otp_verifications")
+
+    # Check if there's an existing record for this phone + purpose to update, or create a new one
+    docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
 
     data = {
         "phone": mobile,
         "otp": otp,
+        "purpose": purpose,
         "expires_at": expires_at,
         "attempts": 0
     }
@@ -50,7 +53,18 @@ async def send_nettyfish_otp(request: OTPRequest):
         collection_ref.add(data)
 
     # Send SMS via Nettyfish
-    message_text = f"Your OTP for Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
+    if purpose == "kyc":
+        message_text = f"Your OTP for KYC Verification on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
+    elif purpose == "register_business":
+        message_text = f"Your OTP to register a business on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
+    elif purpose == "delete_business":
+        message_text = f"Your OTP to delete your business on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
+    elif purpose == "blood_request":
+        message_text = f"Your OTP to create a blood request on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
+    elif purpose == "help_request":
+        message_text = f"Your OTP to create a help request on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
+    else:
+        message_text = f"Your OTP for Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
 
     try:
         await NattyFishService.send_sms(mobile, message_text)
@@ -68,14 +82,15 @@ async def verify_nettyfish_otp(request: OTPVerify):
     db = await get_database()
     phone = request.phone.strip()
     user_otp = request.otp.strip()
+    purpose = request.purpose.strip() if request.purpose else "kyc"
 
     try:
         mobile = _normalize_phone(phone)
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    collection_ref = db.collection("kyc_otp_verifications")
-    docs = collection_ref.where("phone", "==", mobile).limit(1).get()
+    collection_ref = db.collection("otp_verifications")
+    docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
 
     if not docs:
         raise HTTPException(status_code=400, detail="No OTP request found for this number. Please request a new OTP.")
@@ -102,4 +117,4 @@ async def verify_nettyfish_otp(request: OTPVerify):
     # Success: delete the OTP record
     doc.reference.delete()
 
-    return {"status": "success", "message": "OTP verified successfully"}
+    return {"status": "success", "type": "success", "message": "OTP verified successfully"}

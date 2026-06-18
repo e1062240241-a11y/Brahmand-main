@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Keyboa
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { createCommunityRequest, parseApiError, sendBloodRequestOTP, verifyBloodRequestOTP } from '../../../src/services/api';
+import api, { createCommunityRequest, parseApiError } from '../../../src/services/api';
 // import { getCurrentUserToken } from '../../../src/services/firebase/authService';
 import { useAuthStore } from '../../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
@@ -68,8 +68,10 @@ export default function CommunityRequestBloodOtpPage() {
     setError('');
     try {
       console.log('[NattyFish] Requesting backend to send OTP to:', phone);
-      // We pass just the phone, backend handles normalization and NattyFish SMS
-      const response = await sendBloodRequestOTP(`+91${phone}`);
+      const response = await api.post('/auth/nettyfish/send', {
+        phone: `+91${phone}`,
+        purpose: 'blood_request'
+      });
       console.log('[NattyFish] Send response:', response.data);
 
       setResendTimer(30);
@@ -107,10 +109,14 @@ export default function CommunityRequestBloodOtpPage() {
 
     try {
       console.log('[NattyFish] Verifying OTP via backend...');
-      const response = await verifyBloodRequestOTP(`+91${phone}`, code);
+      const response = await api.post('/auth/nettyfish/verify', {
+        phone: `+91${phone}`,
+        otp: code,
+        purpose: 'blood_request'
+      });
       console.log('[NattyFish] Verify response:', response.data);
 
-      if (response.data.type === 'success') {
+      if (response.data.status === 'success') {
         // Verification successful, proceed with submission
         await submitRequestIfKycVerified(user);
       } else {
