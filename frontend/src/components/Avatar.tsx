@@ -21,7 +21,14 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
 
   const borderRadius = shape === 'circle' ? size / 2 : shape === 'rounded' ? 12 : 0;
 
-  if (photo) {
+  const hasPhoto =
+    photo &&
+    photo !== 'nan' &&
+    photo !== 'NaN' &&
+    photo !== 'None' &&
+    photo !== '';
+
+  if (hasPhoto) {
     const isRequiredAsset = typeof photo === 'number' || (typeof photo === 'object' && photo !== null);
     
     if (isRequiredAsset) {

@@ -15,6 +15,7 @@ import {
   Image,
   Platform,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,12 +28,18 @@ import { VendorRegistrationModal } from '../../src/components/VendorRegistration
 import { JobProfileModal } from '../../src/components/JobProfileModal';
 import VendorCategories from '../../src/components/VendorCategories';
 import { useTranslation } from '../../src/utils/i18n';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCoachMarkStore } from '../../src/utils/coachMarkState';
+import Svg, { Path } from 'react-native-svg';
 
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore, Vendor, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, getKYCStatus, uploadJobProfileFile } from '../../src/services/api';
 import * as Location from 'expo-location';
+
+const VSCREEN_WIDTH = Dimensions.get('window').width;
+const VSCREEN_HEIGHT = Dimensions.get('window').height;
 
 const TABS = ['Nearby'];
 const MAIN_SECTIONS = ['Services', 'Jobs'];
@@ -216,6 +223,11 @@ export default function VendorScreen() {
   const [jobsLoading, setJobsLoading] = useState(false);
 
   const searchAnim = useRef(new Animated.Value(0)).current;
+
+  // Coach marks
+  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks } = useCoachMarkStore();
+  const [searchBarLayout, setSearchBarLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [registerBtnLayout, setRegisterBtnLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const loadKycStatus = useCallback(async (): Promise<string | null> => {
     try {
@@ -738,6 +750,136 @@ export default function VendorScreen() {
     Linking.openURL(`tel:${phone}`);
   };
 
+  // ─── Vendor Coach Marks Renderer ────────────────────────────────────────────
+  const renderVendorCoachMarks = () => {
+    const isStep6 = coachMarkStep === 6;
+    const targetLayout = isStep6 ? searchBarLayout : registerBtnLayout;
+
+    if (!targetLayout) return null;
+
+    const { x: tX, y: tY, width: tW, height: tH } = targetLayout;
+    const cardWidth = 320;
+    const cardLeft = (VSCREEN_WIDTH - cardWidth) / 2;
+    const cardTop = tY + tH + 14;
+    const arrowX = tX + tW / 2 - cardLeft;
+
+    const handleVendorSkip = async () => {
+      setCoachMarkStep(1);
+      setShowCoachMarks(false);
+      try { await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true'); } catch (e) {}
+    };
+
+    const handleVendorNext = async () => {
+      if (coachMarkStep === 6) {
+        setCoachMarkStep(7);
+      } else {
+        // Step 7 — done
+        setCoachMarkStep(1);
+        setShowCoachMarks(false);
+        try { await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true'); } catch (e) {}
+      }
+    };
+
+    const stepData = [
+      {
+        title: 'Find Services Near You',
+        desc: 'Search for local Sanatani professionals — from astrologers and pandits to electricians and carpenters.',
+        callout: 'Type any skill or profession to instantly discover verified vendors in your area.',
+      },
+      {
+        title: 'Register Your Business',
+        desc: 'Are you a local business or professional? Register here to connect with your community and grow.',
+        callout: 'Complete KYC verification to unlock full visibility and attract more customers.',
+      },
+    ];
+
+    const current = stepData[coachMarkStep - 6];
+    const dotCount = 2;
+    const activeDot = coachMarkStep - 6; // 0 or 1
+
+    return (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-none">
+        {/* Dark overlays around target */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: tY - 4, backgroundColor: 'rgba(0,0,0,0.72)' }} />
+        <View style={{ position: 'absolute', top: tY - 4, left: 0, width: tX - 4, height: tH + 8, backgroundColor: 'rgba(0,0,0,0.72)' }} />
+        <View style={{ position: 'absolute', top: tY - 4, left: tX + tW + 4, right: 0, height: tH + 8, backgroundColor: 'rgba(0,0,0,0.72)' }} />
+        <View style={{ position: 'absolute', top: tY + tH + 4, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' }} />
+
+        {/* Coach card */}
+        <View
+          style={[
+            vendorCoachStyles.card,
+            { top: cardTop, left: cardLeft, width: cardWidth },
+          ]}
+          pointerEvents="box-none"
+        >
+          {/* Arrow pointing up to the target */}
+          <View style={{
+            position: 'absolute', top: -8, left: arrowX,
+            width: 0, height: 0,
+            borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 8,
+            borderLeftColor: 'transparent', borderRightColor: 'transparent',
+            borderBottomColor: '#FCF3EE',
+          }} />
+
+          {/* Skip */}
+          <TouchableOpacity style={vendorCoachStyles.skip} onPress={handleVendorSkip}>
+            <Text style={vendorCoachStyles.skipText}>Skip</Text>
+          </TouchableOpacity>
+
+          {/* Icon + title */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
+            <View style={vendorCoachStyles.iconWrap}>
+              <Ionicons name={isStep6 ? 'search' : 'storefront'} size={22} color="#FF701F" />
+            </View>
+            <Text style={vendorCoachStyles.title}>{current.title}</Text>
+          </View>
+
+          {/* Desc */}
+          <Text style={vendorCoachStyles.desc}>{current.desc}</Text>
+
+          {/* Callout */}
+          <View style={vendorCoachStyles.callout}>
+            <Ionicons name="information-circle" size={14} color="#FF701F" style={{ marginRight: 8 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={vendorCoachStyles.calloutText}>{current.callout}</Text>
+            </View>
+          </View>
+
+          {/* Footer */}
+          <View style={vendorCoachStyles.footer}>
+            {/* Dots */}
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {Array.from({ length: dotCount }).map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    vendorCoachStyles.dot,
+                    i === activeDot && vendorCoachStyles.dotActive,
+                  ]}
+                />
+              ))}
+            </View>
+
+            {/* Next / Done button */}
+            <TouchableOpacity style={vendorCoachStyles.nextBtn} onPress={handleVendorNext} activeOpacity={0.85}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Text style={vendorCoachStyles.nextText}>{coachMarkStep === 7 ? 'Done' : 'Next'}</Text>
+                {coachMarkStep !== 7 && (
+                  <Svg width={7.4} height={12} viewBox="0 0 8 12">
+                    <Path d="M4.6 6L0 1.4L1.4 0L7.4 6L1.4 12L0 10.6L4.6 6Z" fill="white" />
+                  </Svg>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+  // ────────────────────────────────────────────────────────────────────────────
+
+
   const getVendorIcon = (vendorCategories?: string[]) => {
     const cats = vendorCategories || [];
     const category = cats[0]?.toLowerCase() || '';
@@ -933,7 +1075,13 @@ export default function VendorScreen() {
       style={styles.container}
     >
       {/* Top Search Bar (Figma Design) */}
-      <View style={[styles.figmaSearchContainer, { marginTop: insets.top > 0 ? insets.top + 16 : 28 }]}>
+      <View
+        style={[styles.figmaSearchContainer, { marginTop: insets.top > 0 ? insets.top + 16 : 28 }]}
+        onLayout={(e) => {
+          const { x, y, width, height } = e.nativeEvent.layout;
+          setSearchBarLayout({ x, y: y + (insets.top > 0 ? insets.top + 16 : 28), width, height });
+        }}
+      >
         <Ionicons name="search" size={20} color="#9CA3AF" style={{ marginRight: 8 }} />
         <TextInput
           ref={searchInputRef}
@@ -966,6 +1114,11 @@ export default function VendorScreen() {
           {/* Registration Button */}
           <TouchableOpacity 
             style={[styles.figmaRegisterBtn, { zIndex: 10 }]}
+            onLayout={(e) => {
+              e.target.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
+                setRegisterBtnLayout({ x: pageX, y: pageY, width, height });
+              });
+            }}
             onPress={() => {
               if (myVendor) {
                 // KYC is mandatory to access Edit Profile / Dashboard
@@ -1279,6 +1432,8 @@ export default function VendorScreen() {
         onSubmit={handleCreateJobProfile}
       />
 
+      {/* Vendor Coach Marks (Steps 6 & 7) */}
+      {(coachMarkStep === 6 || coachMarkStep === 7) && renderVendorCoachMarks()}
 
     </LinearGradient>
   );
@@ -1940,5 +2095,116 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 7,
+  },
+});
+
+const vendorCoachStyles = StyleSheet.create({
+  card: {
+    position: 'absolute',
+    backgroundColor: '#FCF3EE',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#FFEFE5',
+    paddingTop: 16,
+    paddingHorizontal: 18,
+    paddingBottom: 72,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+    zIndex: 100000,
+  },
+  skip: {
+    position: 'absolute',
+    top: 12,
+    right: 16,
+    zIndex: 5,
+  },
+  skipText: {
+    color: '#8E7D90',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  iconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF3EC',
+    borderWidth: 1,
+    borderColor: '#FFCFAA',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    flex: 1,
+    color: '#000',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  desc: {
+    marginTop: 10,
+    color: '#444',
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 18,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  callout: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.10)',
+    borderRadius: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  calloutText: {
+    fontSize: 9,
+    color: '#444',
+    fontWeight: '400',
+    lineHeight: 13,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 14,
+    left: 18,
+    right: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E6DDD5',
+  },
+  dotActive: {
+    backgroundColor: '#FF701F',
+    width: 12,
+  },
+  nextBtn: {
+    backgroundColor: '#FF701F',
+    width: 120,
+    height: 44,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#A04100',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  nextText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 });

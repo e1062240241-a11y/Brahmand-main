@@ -352,7 +352,14 @@ export default function ProfileScreen() {
   };
 
   const showAvatarOptions = () => {
-    const hasPhoto = !!(profile?.photo || user?.photo);
+    const currentPhoto = profile?.photo || user?.photo;
+    const hasPhoto = !!(
+      currentPhoto &&
+      currentPhoto !== 'nan' &&
+      currentPhoto !== 'NaN' &&
+      currentPhoto !== 'None' &&
+      currentPhoto !== ''
+    );
     if (Platform.OS === 'web') {
       showImageSourcePicker('photo');
       return;
@@ -1282,7 +1289,26 @@ export default function ProfileScreen() {
           activeOpacity={1}
           onPress={() => setAvatarModalVisible(false)}
         >
-          <Image source={{ uri: profile?.photo || user?.photo }} style={styles.fullImage} resizeMode="contain" />
+          <Image
+            source={{
+              uri:
+                profile?.photo &&
+                profile.photo !== 'nan' &&
+                profile.photo !== 'NaN' &&
+                profile.photo !== 'None' &&
+                profile.photo !== ''
+                  ? profile.photo
+                  : user?.photo &&
+                    user.photo !== 'nan' &&
+                    user.photo !== 'NaN' &&
+                    user.photo !== 'None' &&
+                    user.photo !== ''
+                  ? user.photo
+                  : '',
+            }}
+            style={styles.fullImage}
+            resizeMode="contain"
+          />
         </TouchableOpacity>
       </Modal>
 

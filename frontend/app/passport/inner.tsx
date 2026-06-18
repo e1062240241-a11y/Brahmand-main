@@ -69,9 +69,14 @@ function PassportInnerScreen({
 
   // ── Derived data (English only) ────────────────────────────
 
-  const userPhoto =
-    localUser?.photo ||
-    'https://images.unsplash.com/photo-1517292987719-0369a794ec0f?auto=format&fit=crop&w=500&q=80';
+  const hasPhoto =
+    localUser?.photo &&
+    localUser.photo !== 'nan' &&
+    localUser.photo !== 'NaN' &&
+    localUser.photo !== 'None' &&
+    localUser.photo !== '';
+
+  const userPhoto = hasPhoto ? localUser.photo : null;
 
   const userNameEnglish = (localUser?.name || 'SANATANI').toUpperCase();
 
@@ -207,11 +212,17 @@ function PassportInnerScreen({
             {/* RIGHT: photo + signature */}
             <View style={styles.rightColumn}>
               <View style={styles.photoContainer}>
-                <Image
-                  source={{ uri: userPhoto }}
-                  style={styles.photo}
-                  contentFit="cover"
-                />
+                {userPhoto ? (
+                  <Image
+                    source={{ uri: userPhoto }}
+                    style={styles.photo}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={styles.photoPlaceholder}>
+                    <Ionicons name="person" size={40} color="rgba(0,0,0,0.25)" />
+                  </View>
+                )}
               </View>
 
               <View style={styles.signatureContainer}>
@@ -417,6 +428,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   photo: { width: '100%', height: '100%' },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E5DDC8',
+  },
 
   // Signature
   signatureContainer: {

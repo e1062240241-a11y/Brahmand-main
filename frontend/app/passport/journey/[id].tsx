@@ -175,7 +175,7 @@ function PassportJourneyDetailScreen({ observedJourneys = [] }: { observedJourne
           {/* User Header */}
           <View style={styles.userHeader}>
             <View style={styles.userInfo}>
-              {user?.photo ? (
+              {user?.photo && user.photo !== 'nan' && user.photo !== 'NaN' && user.photo !== 'None' && user.photo !== '' ? (
                 <Image source={{ uri: user.photo }} style={styles.avatarImage} />
               ) : (
                 <View style={styles.avatarFallback}>

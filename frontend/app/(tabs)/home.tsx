@@ -34,6 +34,7 @@ import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
 import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
+import { useCoachMarkStore } from '../../src/utils/coachMarkState';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
@@ -42,7 +43,7 @@ import { SmartPost } from '../../src/components/SmartPost';
 import { useFeedOptimizationStore } from '../../src/store/feedOptimizationStore';
 import { useSmartFeed } from '../../src/hooks/useSmartFeed';
 import HomeJyotishSection from '../../src/components/HomeJyotishSection';
-import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, G, Text as SvgText } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import {
@@ -353,6 +354,11 @@ function HomeCardTextureBg({
 }
 
 const shivaImage = require('../../assets/images/image temple/SomnathTemple.jpg');
+const communityPhoneImage = require('../../assets/images/community_phone.png');
+const kundliChartImage = require('../../assets/images/kundli_chart.jpg');
+const astrologerMockImg = require('../../assets/images/tab bar/rashi/vendor/Astrologer.jpg');
+const salonMockImg = require('../../assets/images/tab bar/rashi/vendor/salon.png');
+const electricianMockImg = require('../../assets/images/tab bar/rashi/vendor/Electrician.jpg');
 const FEED_PAGE_SIZE = 7;
 
 let FileSystemModule: any = null;
@@ -410,6 +416,50 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
+
+  const { showCoachMarks, setShowCoachMarks, coachMarkStep, setCoachMarkStep } = useCoachMarkStore();
+  const [topFeaturesY, setTopFeaturesY] = useState(0);
+  const [bannersY, setBannersY] = useState(0);
+  const bannerScrollRef = useRef<ScrollView>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const checkCoachMarks = async () => {
+      try {
+        const seen = await AsyncStorage.getItem('brahmand_coachmarks_seen_v1');
+        if (!seen) {
+          setTimeout(() => {
+            setShowCoachMarks(true);
+            topFeaturesScrollRef.current?.scrollTo({ x: 0, animated: false });
+          }, 1000);
+        }
+      } catch (e) {
+        console.warn('Failed to read coachmarks seen state:', e);
+      }
+    };
+    checkCoachMarks();
+  }, []);
+
+  useEffect(() => {
+    if (showCoachMarks) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.05,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [showCoachMarks, coachMarkStep]);
 
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
@@ -512,7 +562,7 @@ export default function HomeScreen() {
   // Auto-scroll for quick access feature cards
   const topFeaturesAutoScrollIndex = useRef(0);
   useEffect(() => {
-    if (!isFocused) return;
+    if (!isFocused || showCoachMarks) return;
     const CARD_WIDTH = 185; // 175 card + 10 gap
     const TOTAL_CARDS = baseQuickAccess.length;
     const interval = setInterval(() => {
@@ -523,7 +573,7 @@ export default function HomeScreen() {
       });
     }, 10000);
     return () => clearInterval(interval);
-  }, [isFocused]);
+  }, [isFocused, showCoachMarks]);
 
   useEffect(() => {
     if (user?.id) {
@@ -1998,12 +2048,628 @@ export default function HomeScreen() {
 
   const insets = useSafeAreaInsets();
 
+  const renderCoachMarks = () => {
+    // Only handle home-screen steps 1-4; steps 5+ belong to messages/vendor
+    if (coachMarkStep < 1 || coachMarkStep > 4) return null;
+    // 1. Calculate bottom tab bar position
+    const bottomPosition = Platform.OS === 'android' 
+      ? Math.max(insets.bottom + 5, 5) 
+      : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
+      
+    const tabY = SCREEN_HEIGHT - bottomPosition - 69;
+    const tabCenterY = SCREEN_HEIGHT - bottomPosition - 69 / 2;
+    const tabCenterX = (idx: number) => {
+      const leftOffset = (SCREEN_WIDTH - 373) / 2;
+      const centers = [63, 160, 215, 270, 325];
+      return leftOffset + centers[idx];
+    };
+
+    let targetX = 0;
+    let targetY = 0;
+    let targetW = 0;
+    let targetH = 0;
+    let arrowDirection: 'up' | 'down' = 'up';
+
+    // Set coordinates based on current step
+    switch (coachMarkStep) {
+      case 1: // SOS Card (Top menu, index 1)
+        targetX = 201;
+        targetY = insets.top + topFeaturesY;
+        targetW = 175;
+        targetH = 75;
+        arrowDirection = 'up';
+        break;
+      case 2: // Live Jaap (Hanuman Chalisa)
+        targetX = 20;
+        targetY = insets.top + bannersY - 80;
+        targetW = SCREEN_WIDTH - 40;
+        targetH = 160;
+        arrowDirection = 'up';
+        break;
+      case 3: // Live Aarti (Somnath Temple)
+        targetX = 20;
+        targetY = insets.top + bannersY - 80;
+        targetW = SCREEN_WIDTH - 40;
+        targetH = 160;
+        arrowDirection = 'up';
+        break;
+      case 4: { // Kundli item in the open Floating Action Button (FAB)
+        const totalItems = 6;
+        const angleStep = (2 * Math.PI) / totalItems;
+        const startAngle = -Math.PI / 2;
+        const angle = startAngle + 1 * angleStep; // Kundli is index 1
+        const radius = 120;
+        const x = (180 - 40) + radius * Math.cos(angle);
+        const y = (180 - 40 - 15) + radius * Math.sin(angle);
+        targetX = (SCREEN_WIDTH - 360) / 2 + x;
+        targetY = (SCREEN_HEIGHT - 360) / 2 + y;
+        targetW = 80;
+        targetH = 80;
+        arrowDirection = 'up';
+        break;
+      }
+      default:
+        break;
+    }
+
+    const isStep2Or3 = coachMarkStep === 2 || coachMarkStep === 3;
+    const cardWidth = isStep2Or3 ? 340 : 348;
+    const cardHeight = isStep2Or3 ? 275.793 : (coachMarkStep === 4 ? 352.167 : 369.999);
+    const cardBg = isStep2Or3 ? '#D9D9D9' : '#FCF3EE';
+    const cardBorderColor = isStep2Or3 ? '#D9D9D9' : '#FFEFE5';
+
+    const cardLeft = (SCREEN_WIDTH - cardWidth) / 2;
+    const arrowX = targetX + targetW / 2 - cardLeft;
+
+    const handleSkip = async () => {
+      setShowCoachMarks(false);
+      try {
+        await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true');
+      } catch (e) {
+        console.warn('Failed to save coachmarks state:', e);
+      }
+    };
+
+    const handleNext = async () => {
+      const nextStep = coachMarkStep + 1;
+      if (nextStep > 4) {
+        // Home tour done — move to Community tab
+        setCoachMarkStep(5);
+        router.push('/(tabs)/messages');
+        return;
+      }
+
+      // Scroll views programmatically based on the next step
+      if (nextStep === 1) {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        topFeaturesScrollRef.current?.scrollTo({ x: 0, animated: true });
+      } else if (nextStep === 2) {
+        scrollViewRef.current?.scrollTo({ y: 80, animated: true });
+        bannerScrollRef.current?.scrollTo({ x: 0, animated: true });
+      } else if (nextStep === 3) {
+        scrollViewRef.current?.scrollTo({ y: 80, animated: true });
+        bannerScrollRef.current?.scrollTo({ x: SCREEN_WIDTH - 40 + 12, animated: true });
+      } else if (nextStep === 4) {
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      }
+
+      setCoachMarkStep(nextStep);
+    };
+
+    const stepData = [
+      {
+        title: 'Instant Help, Always Together',
+        subtitle: '',
+        desc: 'Need urgent help? Tap SOS to connect with verified volunteers and get support from your Brahmand community.',
+        callout: 'Use SOS during threat, abuse, violence, medical emergency, or any urgent situation.',
+        bullets: ['REAL PEOPLE REAL HELP', 'FAST RESPONSE', 'VERIFIED VOLUNTEERS'],
+      },
+      {
+        title: 'Chant Together, Rise Together',
+        subtitle: '',
+        desc: 'Join Our live Jaaps, chant alongside Thousands of Devotees, and feel the divine energy of a Community united in prayer and purpose.',
+        callout: '',
+        bullets: [],
+      },
+      {
+        title: 'Chant, Rise & Awaken',
+        subtitle: '',
+        desc: 'Witness live temple Aartis, sacred rituals, and powerful moments of devotion happening right now. One tap is all it takes to step into the divine. 🙏',
+        callout: '',
+        bullets: [],
+      },
+      {
+        title: 'Kundli',
+        subtitle: 'Your cosmic blueprint',
+        desc: 'Your Kundli is a unique map of the planets at the time of your birth. It reveals your strengths, challenges and the path ahead.',
+        callout: 'Your birth details and kundli information are fully protected and are never shared with anyone.',
+        bullets: ['PERSONALITY INSIGHTS', 'REMEDIES', 'CAREER & FINANCE'],
+      },
+    ];
+
+    const currentData = stepData[coachMarkStep - 1];
+
+    return (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-none">
+        {/* Cutout overlays */}
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: targetY, backgroundColor: 'rgba(0, 0, 0, 0.72)' }} />
+        <View style={{ position: 'absolute', top: targetY + targetH, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.72)' }} />
+        <View style={{ position: 'absolute', top: targetY, left: 0, width: targetX, height: targetH, backgroundColor: 'rgba(0, 0, 0, 0.72)' }} />
+        <View style={{ position: 'absolute', top: targetY, left: targetX + targetW, right: 0, height: targetH, backgroundColor: 'rgba(0, 0, 0, 0.72)' }} />
+
+        {/* Spotlight pulse border */}
+        <Animated.View
+          style={{
+            position: 'absolute',
+            top: targetY,
+            left: targetX,
+            width: targetW,
+            height: targetH,
+            borderRadius: coachMarkStep === 4 || coachMarkStep === 6 ? 29 : 15,
+            borderWidth: 2.5,
+            borderColor: '#FF701F',
+            backgroundColor: 'transparent',
+            transform: [{ scale: pulseAnim }],
+          }}
+          pointerEvents="none"
+        />
+
+        {/* Tooltip Card */}
+        <View
+          style={[
+            styles.coachCard,
+            arrowDirection === 'up'
+              ? { top: targetY + targetH + 12 }
+              : { bottom: SCREEN_HEIGHT - targetY + 12 },
+            {
+              width: cardWidth,
+              height: cardHeight,
+              left: cardLeft,
+              backgroundColor: cardBg,
+              borderColor: cardBorderColor,
+              paddingBottom: coachMarkStep === 4 ? 100 : 69,
+            }
+          ]}
+        >
+          {/* Arrow Pointer */}
+          {arrowDirection === 'up' ? (
+            <View
+              style={{
+                position: 'absolute',
+                top: -8,
+                left: arrowX,
+                width: 0,
+                height: 0,
+                borderLeftWidth: 8,
+                borderRightWidth: 8,
+                borderBottomWidth: 8,
+                borderLeftColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderBottomColor: cardBg,
+              }}
+            />
+          ) : (
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -8,
+                left: arrowX,
+                width: 0,
+                height: 0,
+                borderLeftWidth: 8,
+                borderRightWidth: 8,
+                borderTopWidth: 8,
+                borderLeftColor: 'transparent',
+                borderRightColor: 'transparent',
+                borderTopColor: cardBg,
+              }}
+            />
+          )}
+
+          {/* Close/Skip button */}
+          <TouchableOpacity
+            style={styles.coachSkipBtn}
+            onPress={handleSkip}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.coachSkipText}>Skip</Text>
+          </TouchableOpacity>
+
+          <View style={[
+            styles.coachCardBody,
+            (coachMarkStep === 2 || coachMarkStep === 3) && {
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 8,
+              marginTop: 4,
+              marginBottom: 4,
+            }
+          ]}>
+            {/* Left Column: Visual/Illustration */}
+            <View style={[
+              styles.coachVisualCol,
+              (coachMarkStep === 2 || coachMarkStep === 3) && {
+                width: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }
+            ]}>
+              {coachMarkStep === 1 && (
+                <Svg width={144.046} height={144.046} viewBox="0 0 128 128">
+                  {/* Circle 6: width 127px, height 127px, stroke-width 1px, stroke #FFA663 */}
+                  <Circle cx="64" cy="64" r="63.5" stroke="#FFA663" strokeWidth="1" fill="none" />
+                  
+                  {/* Circle 5: width 112px, height 112px, stroke-width 1px, stroke #FEE8D0 */}
+                  <Circle cx="64" cy="64" r="56" stroke="#FEE8D0" strokeWidth="1" fill="none" />
+                  
+                  {/* Circle 4: width 99px, height 99px, stroke-width 1px, stroke #F8D6B3 */}
+                  <Circle cx="64" cy="64" r="49.5" stroke="#F8D6B3" strokeWidth="1" fill="none" />
+                  
+                  {/* Circle 3: width 73px, height 73px, fill #F7CDAF */}
+                  <Circle cx="64" cy="64" r="36.5" fill="#F7CDAF" />
+                  
+                  {/* Circle 2: width 66px, height 66px, fill #FA8766 */}
+                  <Circle cx="64" cy="64" r="33" fill="#FA8766" />
+                  
+                  {/* Circle 1: width 47px, height 47px, fill #ED3517 */}
+                  <Circle cx="64" cy="64" r="23.5" fill="#ED3517" />
+                  
+                  {/* Text: SOS */}
+                  <SvgText 
+                    x="64" 
+                    y="71" 
+                    fill="#FFF" 
+                    textAnchor="middle" 
+                    fontFamily="SF Pro" 
+                    fontSize="20" 
+                    fontWeight="700"
+                  >
+                    SOS
+                  </SvgText>
+
+                  {/* Top Badge: Real People Real Help (People Icon) */}
+                  <Circle cx="64" cy="16" r="11" fill="#FFF" />
+                  <G transform="translate(56.16, 10.248)">
+                    <Path d="M3.66595 6.52541C3.67343 6.67483 3.5542 6.80003 3.40459 6.79984H0.521727C0.278796 6.80021 0.0676333 6.63318 0.0120583 6.39669C-0.0219667 6.23752 0.016852 6.07146 0.117915 5.94388C0.579102 5.33226 1.19101 4.85071 1.8939 4.54622C0.407115 3.19064 0.945333 0.733914 2.86269 0.124108C4.38781 -0.360942 5.98676 0.626207 6.23649 2.207C6.25378 2.32098 6.19318 2.43256 6.08816 2.48013C4.60779 3.16451 3.65951 4.6462 3.65811 6.27711C3.65811 6.36075 3.65811 6.44308 3.66595 6.52541ZM15.5581 5.94322C15.098 5.33232 14.4875 4.85102 13.786 4.54622C15.2728 3.19064 14.7346 0.733914 12.8172 0.124108C11.2921 -0.360942 9.69317 0.626207 9.44345 2.207C9.42615 2.32098 9.48675 2.43256 9.59177 2.48013C11.0721 3.16451 12.0204 4.6462 12.0218 6.27711C12.0218 6.36075 12.0218 6.44308 12.014 6.52541C12.0065 6.67483 12.1257 6.80003 12.2753 6.79984H15.1582C15.4011 6.80021 15.6123 6.63318 15.6679 6.39669C15.7021 6.23721 15.663 6.07078 15.5614 5.94322H15.5581ZM9.74271 8.76466C11.6595 7.29666 11.2684 4.30412 9.03866 3.3781C6.80892 2.45206 4.41287 4.28706 4.72578 6.6811C4.83385 7.50791 5.26671 8.25766 5.92873 8.76466C5.00515 9.16483 4.23395 9.85017 3.72803 10.7203C3.52683 11.0688 3.77833 11.5044 4.18073 11.5044H11.4991C11.9015 11.5045 12.1531 11.069 11.952 10.7204C11.9519 10.7204 11.952 10.7205 11.952 10.7204C11.445 9.84971 10.6723 9.16421 9.74728 8.76466H9.74271Z" fill="#FF701F" />
+                  </G>
+
+                  {/* Right Badge: First Aid Kit Icon */}
+                  <Circle cx="112" cy="64" r="11" fill="#FFF" />
+                  <G transform="translate(104.16, 56.763)">
+                    <Path d="M14.4738 2.41231H11.4585V1.80923C11.4585 0.810025 10.6484 0 9.64923 0H6.03077C5.03156 0 4.22154 0.810025 4.22154 1.80923V2.41231H1.20616C0.540012 2.41231 0 2.95233 0 3.61846V13.2677C0 13.9339 0.539994 14.4739 1.20616 14.4739H14.4738C15.14 14.4738 15.68 13.9338 15.68 13.2677V3.61846C15.68 2.95234 15.14 2.41234 14.4738 2.41231ZM9.64923 9.04616H8.44308V10.2523C8.44308 10.7166 7.94051 11.0067 7.53846 10.7746C7.35187 10.6669 7.23693 10.4678 7.23693 10.2523V9.04616H6.03077C5.56652 9.04616 5.27636 8.54359 5.50849 8.14154C5.61621 7.95496 5.81532 7.84001 6.03077 7.84H7.23693V6.63385C7.23693 6.1696 7.73949 5.87944 8.14154 6.11157C8.32813 6.2193 8.44308 6.41839 8.44308 6.63385V7.84H9.64923C10.1135 7.84002 10.4036 8.3426 10.1715 8.74464C10.0638 8.93122 9.86468 9.04616 9.64923 9.04616ZM10.2523 2.41231H5.42769V1.80923C5.42769 1.47615 5.69769 1.20614 6.03077 1.20616H9.64923C9.9823 1.20616 10.2523 1.47616 10.2523 1.80923V2.41231Z" fill="#FF701F" />
+                  </G>
+
+                  {/* Bottom Badge: Hand holding heart Icon */}
+                  <Circle cx="64" cy="112" r="11" fill="#FFF" />
+                  <G transform="translate(56.16, 105.99)">
+                    <Path d="M15.0455 7.124C14.7001 6.85785 14.2606 6.74521 13.8298 6.81242C15.0566 5.57393 15.6771 4.34262 15.6771 3.13549C15.6771 1.40643 14.2864 6.13378e-05 12.577 6.13378e-05C11.6588 -0.00570116 10.7851 0.394818 10.1901 1.09419C9.59519 0.394818 8.72146 -0.00570116 7.80328 6.13378e-05C6.09383 6.13378e-05 4.70313 1.40643 4.70313 3.13549C4.70313 3.85402 4.91478 4.5523 5.36027 5.29109C4.99541 5.38352 4.66243 5.57315 4.39678 5.83979L2.91921 7.31605H1.04514C0.467925 7.31605 0 7.78397 0 8.36119V10.974C0 11.5513 0.467925 12.0192 1.04514 12.0192H7.83856C7.88128 12.0192 7.92384 12.0139 7.96528 12.0035L12.1458 10.9584C12.1725 10.952 12.1985 10.9433 12.2735 10.9322L14.7626 9.85182L14.7914 9.83876C15.8548 9.30738 15.993 7.8453 15.0481 7.124H15.0455ZM14.3335 8.89748L11.8512 9.95437L7.77324 10.974H3.65799V8.05484L5.13621 6.57727C5.33154 6.38037 5.59766 6.27002 5.875 6.27091H9.14498C9.74839 6.27094 10.1255 6.92417 9.82381 7.44672C9.68378 7.68923 9.42501 7.83862 9.14498 7.83862H7.31599C6.91371 7.83906 6.66276 8.27481 6.86428 8.62297C6.95761 8.7842 7.1297 8.88356 7.31599 8.88376H9.40627C9.4456 8.88365 9.48481 8.87927 9.52319 8.8707L13.8997 7.86409L13.92 7.85887C14.3367 7.74319 14.7223 8.12197 14.6142 8.54067C14.5745 8.69416 14.4718 8.82375 14.3315 8.89748H14.3335Z" fill="#FF701F" />
+                  </G>
+
+                  {/* Left Badge: Shield Checkmark Icon */}
+                  <Circle cx="16" cy="64" r="11" fill="#FFF" />
+                  <G transform="translate(8.4735, 56.16)">
+                    <Path d="M13.7984 0H1.2544C0.561612 0 0 0.561613 0 1.25439V5.64479C0 9.77802 2.00076 12.2829 3.67931 13.6565C5.4872 15.1351 7.28569 15.6368 7.36409 15.658C7.47189 15.6873 7.58558 15.6873 7.69338 15.658C7.77178 15.6368 9.56791 15.1351 11.3782 13.6565C13.052 12.2829 15.0528 9.77802 15.0528 5.64479V1.25439C15.0528 0.561613 14.4911 0 13.7984 0ZM11.1077 5.46133L6.71729 9.85172C6.4723 10.097 6.0748 10.097 5.82981 9.85172L3.94821 7.97013C3.60662 7.62853 3.76291 7.04525 4.22954 6.92021C4.4461 6.86219 4.67717 6.9241 4.8357 7.08264L6.27199 8.52128L10.2186 4.57384C10.5602 4.23225 11.1435 4.38854 11.2685 4.85516C11.3266 5.07172 11.2647 5.30279 11.1061 5.46133H11.1077Z" fill="#FF701F" />
+                  </G>
+                </Svg>
+              )}
+
+              {coachMarkStep === 2 && (
+                <View style={styles.miniJaapPreview}>
+                  <View style={{ width: 58, height: 58, position: 'relative' }}>
+                    <Image source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.miniJaapImage} />
+                    <View style={styles.miniJaapBadge}>
+                      <Text style={styles.miniJaapBadgeText}>LIVE</Text>
+                    </View>
+                  </View>
+                  <View style={styles.miniJaapTextWrap}>
+                    <Text style={styles.miniJaapTag}>ONGOING JAAP</Text>
+                    <Text style={styles.miniJaapTitle} numberOfLines={1}>Hanuman Chalisa</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF701F' }} />
+                      <Text style={styles.miniJaapChantText}>1,248 Chanting now</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {coachMarkStep === 3 && (
+                <View style={styles.miniJaapPreview}>
+                  <View style={{ width: 58, height: 58, position: 'relative' }}>
+                    <Image source={shivaImage} style={styles.miniJaapImage} />
+                    <View style={styles.miniJaapBadge}>
+                      <Text style={styles.miniJaapBadgeText}>LIVE</Text>
+                    </View>
+                  </View>
+                  <View style={styles.miniJaapTextWrap}>
+                    <Text style={styles.miniJaapTag}>ONGOING AARTI</Text>
+                    <Text style={styles.miniJaapTitle} numberOfLines={1}>Somnath Mandir</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF701F' }} />
+                      <Text style={styles.miniJaapChantText}>1,248 Chanting now</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {coachMarkStep === 4 && (
+                <View style={{ width: 144.046, height: 180, justifyContent: 'center', alignItems: 'center' }}>
+                  <Image
+                    source={kundliChartImage}
+                    style={{ width: 110, height: 110, borderRadius: 10 }}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+            </View>
+
+            {/* Right Column: Text and Details */}
+            <View style={[
+              styles.coachTextCol,
+              (coachMarkStep === 2 || coachMarkStep === 3) && {
+                flex: 0,
+                width: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 12,
+              },
+              coachMarkStep === 4 && {
+                alignItems: 'flex-start',
+                width: 144,
+              }
+            ]}>
+              <Text
+                style={[
+                  styles.coachTitle,
+                  (coachMarkStep === 2 || coachMarkStep === 3) && {
+                    color: '#000',
+                    textAlign: 'center',
+                    fontFamily: 'SF Pro',
+                    fontSize: 16,
+                    fontStyle: 'normal',
+                    fontWeight: '600',
+                    width: 308,
+                  },
+                  (coachMarkStep === 4) && {
+                    fontSize: 14,
+                    lineHeight: 18,
+                    fontWeight: '700',
+                    width: 144,
+                  }
+                ]}
+              >
+                {currentData.title}
+              </Text>
+              {currentData.subtitle ? (
+                <Text style={[
+                  styles.coachSubtitle,
+                  coachMarkStep === 4 && {
+                    textTransform: 'none',
+                    fontSize: 13,
+                    lineHeight: 16,
+                    fontWeight: '700',
+                    width: 144,
+                  }
+                ]}>{currentData.subtitle}</Text>
+              ) : null}
+              <Text
+                style={[
+                  styles.coachDesc,
+                  (coachMarkStep === 2 || coachMarkStep === 3) && {
+                    color: '#000',
+                    textAlign: 'center',
+                    fontFamily: 'SF Pro',
+                    fontSize: 12,
+                    fontStyle: 'normal',
+                    fontWeight: '500',
+                    width: 308,
+                  },
+                  coachMarkStep === 4 && {
+                    fontSize: 10,
+                    lineHeight: 14,
+                    width: 144,
+                  }
+                ]}
+              >
+                {currentData.desc}
+              </Text>
+
+              {currentData.callout ? (
+                <View style={[
+                  styles.coachCallout,
+                  coachMarkStep === 4 && {
+                    width: 144,
+                    marginTop: 8,
+                    padding: 6,
+                    backgroundColor: '#FFF',
+                    borderWidth: 0.5,
+                    borderColor: '#DDD',
+                  }
+                ]}>
+                  <Ionicons name="shield-checkmark" size={16} color="#FF701F" style={{ marginRight: 6 }} />
+                  <View style={{ flex: 1, justifyContent: 'center' }}>
+                    <Text style={[
+                      styles.coachCalloutText,
+                      coachMarkStep === 4 && {
+                        fontSize: 8,
+                        lineHeight: 11,
+                      }
+                    ]}>{currentData.callout}</Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {coachMarkStep === 1 && (
+                <View style={styles.sosGridContainer}>
+                  {/* Bullet 1: Real People Real Help */}
+                  <View style={styles.sosGridItem}>
+                    <View style={styles.sosIconContainer}>
+                      <Svg width={15.68} height={11.504} viewBox="0 0 15.68 11.504">
+                        <Path d="M3.66595 6.52541C3.67343 6.67483 3.5542 6.80003 3.40459 6.79984H0.521727C0.278796 6.80021 0.0676333 6.63318 0.0120583 6.39669C-0.0219667 6.23752 0.016852 6.07146 0.117915 5.94388C0.579102 5.33226 1.19101 4.85071 1.8939 4.54622C0.407115 3.19064 0.945333 0.733914 2.86269 0.124108C4.38781 -0.360942 5.98676 0.626207 6.23649 2.207C6.25378 2.32098 6.19318 2.43256 6.08816 2.48013C4.60779 3.16451 3.65951 4.6462 3.65811 6.27711C3.65811 6.36075 3.65811 6.44308 3.66595 6.52541ZM15.5581 5.94322C15.098 5.33232 14.4875 4.85102 13.786 4.54622C15.2728 3.19064 14.7346 0.733914 12.8172 0.124108C11.2921 -0.360942 9.69317 0.626207 9.44345 2.207C9.42615 2.32098 9.48675 2.43256 9.59177 2.48013C11.0721 3.16451 12.0204 4.6462 12.0218 6.27711C12.0218 6.36075 12.0218 6.44308 12.014 6.52541C12.0065 6.67483 12.1257 6.80003 12.2753 6.79984H15.1582C15.4011 6.80021 15.6123 6.63318 15.6679 6.39669C15.7021 6.23721 15.663 6.07078 15.5614 5.94322H15.5581ZM9.74271 8.76466C11.6595 7.29666 11.2684 4.30412 9.03866 3.3781C6.80892 2.45206 4.41287 4.28706 4.72578 6.6811C4.83385 7.50791 5.26671 8.25766 5.92873 8.76466C5.00515 9.16483 4.23395 9.85017 3.72803 10.7203C3.52683 11.0688 3.77833 11.5044 4.18073 11.5044H11.4991C11.9015 11.5045 12.1531 11.069 11.952 10.7204C11.9519 10.7204 11.952 10.7205 11.952 10.7204C11.445 9.84971 10.6723 9.16421 9.74728 8.76466H9.74271Z" fill="#FF701F" />
+                      </Svg>
+                    </View>
+                    <View style={styles.sosTextContainer}>
+                      <Text style={[styles.bulletTextSOS, { textAlign: 'center' }]}>{"Real People\nReal Help"}</Text>
+                    </View>
+                  </View>
+
+                  {/* Bullet 2: FAST RESPONSE */}
+                  <View style={styles.sosGridItem}>
+                    <View style={styles.sosIconContainer}>
+                      <Svg width={11} height={15} viewBox="0 0 11 15">
+                        <Path d="M10.8661 7.34375L3.86608 14.8437C3.79189 14.9229 3.69398 14.9758 3.5871 14.9944C3.48022 15.0131 3.37019 14.9964 3.27359 14.947C3.177 14.8977 3.09909 14.8182 3.05162 14.7206C3.00415 14.6231 2.9897 14.5127 3.01045 14.4062L3.9267 9.82312L0.324825 8.47062C0.24747 8.44169 0.178487 8.39404 0.12404 8.33194C0.0695919 8.26984 0.0313755 8.19522 0.0128044 8.11474C-0.00576672 8.03427 -0.00411393 7.95044 0.0176149 7.87076C0.0393438 7.79108 0.0804719 7.71803 0.137325 7.65812L7.13733 0.15812C7.21151 0.0789551 7.30942 0.026065 7.4163 0.00743103C7.52318 -0.0112029 7.63321 0.00543054 7.72981 0.0548213C7.8264 0.104212 7.90431 0.18368 7.95178 0.281234C7.99925 0.378788 8.0137 0.489134 7.99295 0.59562L7.0742 5.18375L10.6761 6.53437C10.7529 6.5635 10.8213 6.61109 10.8753 6.67295C10.9293 6.7348 10.9673 6.80901 10.9858 6.88902C11.0044 6.96903 11.0029 7.05236 10.9816 7.13167C10.9603 7.21098 10.9197 7.28382 10.8636 7.34375H10.8661Z" fill="#FF701F" />
+                      </Svg>
+                    </View>
+                    <View style={styles.sosTextContainer}>
+                      <Text style={[styles.bulletTextSOS, { textAlign: 'center' }]}>{"FAST\nRESPONSE"}</Text>
+                    </View>
+                  </View>
+
+                  {/* Bullet 3: VERIFIED Volunteers */}
+                  <View style={styles.sosGridItem}>
+                    <View style={styles.sosIconContainer}>
+                      <Svg width={15.053} height={15.68} viewBox="0 0 15.053 15.68">
+                        <Path d="M13.7984 0H1.2544C0.561612 0 0 0.561613 0 1.25439V5.64479C0 9.77802 2.00076 12.2829 3.67931 13.6565C5.4872 15.1351 7.28569 15.6368 7.36409 15.658C7.47189 15.6873 7.58558 15.6873 7.69338 15.658C7.77178 15.6368 9.56791 15.1351 11.3782 13.6565C13.052 12.2829 15.0528 9.77802 15.0528 5.64479V1.25439C15.0528 0.561613 14.4911 0 13.7984 0ZM11.1077 5.46133L6.71729 9.85172C6.4723 10.097 6.0748 10.097 5.82981 9.85172L3.94821 7.97013C3.60662 7.62853 3.76291 7.04525 4.22954 6.92021C4.4461 6.86219 4.67717 6.9241 4.8357 7.08264L6.27199 8.52128L10.2186 4.57384C10.5602 4.23225 11.1435 4.38854 11.2685 4.85516C11.3266 5.07172 11.2647 5.30279 11.1061 5.46133H11.1077Z" fill="#FF701F" />
+                      </Svg>
+                    </View>
+                    <View style={styles.sosTextContainer}>
+                      <Text style={[styles.bulletTextSOS, { textAlign: 'center' }]}>{"VERIFIED\nVolunteers"}</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Generic bullets for steps that have them (not SOS step 1, not Kundli step 4) */}
+              {coachMarkStep !== 1 && coachMarkStep !== 4 && currentData.bullets && currentData.bullets.length > 0 && (
+                <View style={styles.bulletsWrap}>
+                  {currentData.bullets.map((bullet, bIdx) => (
+                    <View key={bIdx} style={styles.bulletItem}>
+                      <Ionicons name="checkmark-circle" size={12} color="#FF701F" style={{ marginRight: 4, marginTop: 1 }} />
+                      <Text style={styles.bulletText}>{bullet}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Custom Step 4 Community Bullets Row */}
+          {coachMarkStep === 4 && currentData.bullets && currentData.bullets.length >= 3 && (
+            <View style={styles.communityBulletsRow}>
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Svg width={15.68} height={11.504} viewBox="0 0 16 12" fill="none">
+                    <Path d="M3.66595 6.52541C3.67343 6.67483 3.5542 6.80003 3.40459 6.79984H0.521727C0.278796 6.80021 0.0676333 6.63318 0.0120583 6.39669C-0.0219667 6.23752 0.016852 6.07146 0.117915 5.94388C0.579102 5.33226 1.19101 4.85071 1.8939 4.54622C0.407115 3.19064 0.945333 0.733914 2.86269 0.124108C4.38781 -0.360942 5.98676 0.626207 6.23649 2.207C6.25378 2.32098 6.19318 2.43256 6.08816 2.48013C4.60779 3.16451 3.65951 4.6462 3.65811 6.27711C3.65811 6.36075 3.65811 6.44308 3.66595 6.52541ZM15.5581 5.94322C15.098 5.33232 14.4875 4.85102 13.786 4.54622C15.2728 3.19064 14.7346 0.733914 12.8172 0.124108C11.2921 -0.360942 9.69317 0.626207 9.44345 2.207C9.42615 2.32098 9.48675 2.43256 9.59177 2.48013C11.0721 3.16451 12.0204 4.6462 12.0218 6.27711C12.0218 6.36075 12.0218 6.44308 12.014 6.52541C12.0065 6.67483 12.1257 6.80003 12.2753 6.79984H15.1582C15.4011 6.80021 15.6123 6.63318 15.6679 6.39669C15.7021 6.23721 15.663 6.07078 15.5614 5.94322H15.5581ZM9.74271 8.76466C11.6595 7.29666 11.2684 4.30412 9.03866 3.3781C6.80892 2.45206 4.41287 4.28706 4.72578 6.6811C4.83385 7.50791 5.26671 8.25766 5.92873 8.76466C5.00515 9.16483 4.23395 9.85017 3.72803 10.7203C3.52683 11.0688 3.77833 11.5044 4.18073 11.5044H11.4991C11.9015 11.5045 12.1531 11.069 11.952 10.7204C11.9519 10.7204 11.952 10.7205 11.952 10.7204C11.445 9.84971 10.6723 9.16421 9.74728 8.76466H9.74271Z" fill="#FF701F"/>
+                  </Svg>
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[0]}</Text>
+              </View>
+              
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Svg width={15.68} height={14.988} viewBox="0 0 16 15" fill="none">
+                    <Path d="M7.56 10.9975C7.73219 11.096 7.94361 11.096 8.1158 10.9975C8.2873 10.8988 12.3158 8.54754 12.3158 4.35104C12.2116 0.903912 8.41481 -1.13772 5.48161 0.676111C4.20334 1.46657 3.40659 2.84533 3.36 4.34754C3.36 8.54754 7.3906 10.8953 7.56 10.9975ZM7.84 2.66754C9.13326 2.6676 9.94157 4.06764 9.29489 5.1876C8.6482 6.30757 7.03162 6.30751 6.38504 5.18747C6.23761 4.9321 6.16 4.64242 6.16 4.34754C6.16 3.41967 6.91213 2.6675 7.84 2.66754ZM15.68 11.6275C15.68 13.8101 11.6403 14.9875 7.84 14.9875C4.0397 14.9875 0 13.8101 0 11.6275C0 10.6062 0.9254 9.70184 2.6061 9.08164C3.01543 8.94641 3.41765 9.30501 3.33009 9.72711C3.29227 9.90947 3.16626 10.0611 2.9939 10.1316C1.8382 10.5593 1.12 11.1319 1.12 11.6275C1.12 12.5627 3.6764 13.8675 7.84 13.8675C12.0036 13.8675 14.56 12.5627 14.56 11.6275C14.56 11.1319 13.8418 10.5593 12.6861 10.1323C12.2871 9.96904 12.2146 9.43509 12.5555 9.17123C12.7027 9.05724 12.8971 9.02392 13.0739 9.08234C14.7546 9.70184 15.68 10.6062 15.68 11.6275Z" fill="#FF701F"/>
+                  </Svg>
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[1]}</Text>
+              </View>
+              
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Svg width={15.682} height={13.44} viewBox="0 0 16 14" fill="none">
+                    <Path d="M0.000835868 10.64C0.000835868 10.3307 0.251548 10.08 0.560836 10.08H1.12084V8.96C1.12507 5.46748 3.8008 2.55884 7.28084 2.2638V1.12H6.16084C5.72975 1.12 5.46032 0.653331 5.67586 0.28C5.7759 0.106737 5.96077 0 6.16084 0H9.52084C9.95192 0 10.2214 0.466669 10.0058 0.84C9.90577 1.01326 9.7209 1.12 9.52084 1.12H8.40084V2.2638C11.8809 2.55884 14.5566 5.46748 14.5608 8.96V10.08H15.1208C15.5519 10.08 15.8214 10.5467 15.6058 10.92C15.5058 11.0933 15.3209 11.2 15.1208 11.2H0.560836C0.251555 11.2 0.000835868 10.9493 0.000835868 10.64ZM15.1208 12.32H0.560836C0.129748 12.32 -0.139683 12.7867 0.0758609 13.16C0.175898 13.3333 0.360767 13.44 0.560836 13.44H15.1208C15.5519 13.44 15.8214 12.9733 15.6058 12.6C15.5058 12.4267 15.3209 12.32 15.1208 12.32Z" fill="#FF701F"/>
+                  </Svg>
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[2]}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Custom Step 5 Kundli Bullets Row */}
+          {coachMarkStep === 5 && currentData.bullets && currentData.bullets.length >= 3 && (
+            <View style={styles.communityBulletsRow}>
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Svg width={15.681} height={15.088} viewBox="0 0 16 16" fill="none">
+                    <Path d="M15.6005 14.7864C15.4927 14.9731 15.2935 15.088 15.078 15.088H0.603392C0.139392 15.0875 -0.150302 14.5852 0.081698 14.1833C1.22987 12.1983 2.99924 10.775 5.06414 10.1003C1.47372 7.96288 1.54352 2.74025 5.18977 0.699565C8.83603 -1.34113 13.324 1.33062 13.2682 5.50872C13.243 7.39605 12.2391 9.13477 10.6173 10.1003C12.6822 10.775 14.4515 12.1983 15.5997 14.1833C15.7077 14.3698 15.708 14.5997 15.6005 14.7864Z" fill="#FF701F"/>
+                  </Svg>
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[0]}</Text>
+              </View>
+              
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Svg width={15.68} height={11.501} viewBox="0 0 16 12" fill="none">
+                    <Path d="M15.5406 5.85682C15.4059 5.62016 15.1818 5.44758 14.9186 5.37784C14.4458 5.2562 13.9573 5.20729 13.4699 5.23278C13.7313 3.93569 13.5352 2.90979 13.3392 2.30143C13.1735 1.78374 12.6421 1.47621 12.1107 1.59048C11.4458 1.73857 10.8135 2.00698 10.2451 2.38246C9.82885 1.53209 9.22276 0.788737 8.47364 0.209756C8.10075 -0.0699188 7.58801 -0.0699188 7.21511 0.209756C6.4648 0.788369 5.85757 1.53176 5.44036 2.38246C4.87196 2.00698 4.2397 1.73857 3.57478 1.59048C3.04344 1.47562 2.51184 1.78343 2.34695 2.30143C2.15092 2.90979 1.95489 3.93504 2.21235 5.23278C1.72488 5.20729 1.23638 5.2562 0.763657 5.37784C0.500432 5.44758 0.276276 5.62016 0.141583 5.85682C0.000788748 6.09906 -0.0368738 6.38767 0.0370262 6.65794C0.258545 7.47997 0.938782 9.04236 2.99909 10.2734C5.05939 11.5045 6.86944 11.5006 7.84438 11.5006C8.81931 11.5006 10.6326 11.5006 12.6799 10.2734C14.7402 9.04236 15.4204 7.47997 15.6419 6.65794C15.7168 6.38811 15.6803 6.09952 15.5406 5.85682ZM3.53491 9.37626C1.7948 8.33598 1.22956 7.06046 1.0453 6.38414C1.52606 6.26544 2.02505 6.23949 2.51554 6.30769C2.6793 6.74633 2.87928 7.17058 3.11345 7.57603C3.68838 8.56726 4.44161 9.44366 5.33515 10.161C4.70331 9.97939 4.09805 9.71554 3.53491 9.37626ZM7.84111 10.3505C7.23144 9.89706 5.75009 8.50588 5.75009 5.69607C5.75009 2.92089 7.21249 1.51861 7.84111 1.04551C8.46972 1.51991 9.93213 2.9222 9.93213 5.69737C9.93213 8.50588 8.45077 9.89706 7.84111 10.3505ZM14.6369 6.38546C14.4559 7.05458 13.892 8.33337 12.148 9.37626C11.5848 9.71531 10.9795 9.97894 10.3477 10.1604C11.2413 9.443 11.9945 8.5666 12.5694 7.57537C12.8036 7.16992 13.0036 6.74568 13.1673 6.30704C13.6577 6.23947 14.1564 6.26652 14.6369 6.38546Z" fill="#FF701F"/>
+                  </Svg>
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[1]}</Text>
+              </View>
+
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Svg width={15.68} height={14.474} viewBox="0 0 16 15" fill="none">
+                    <Path d="M9.64923 6.63385C9.64923 6.96691 9.37921 7.23691 9.04616 7.23693H6.63384C6.1696 7.23691 5.87944 6.73433 6.11158 6.33229C6.21931 6.14571 6.4184 6.03077 6.63384 6.03077H9.04616C9.37921 6.03079 9.64923 6.30079 9.64923 6.63385ZM15.68 3.61846V13.2677C15.68 13.9338 15.14 14.4738 14.4738 14.4739H1.20616C0.539994 14.4739 0 13.9339 0 13.2677V3.61846C0 2.9523 0.539994 2.41228 1.20616 2.41231H4.22154V1.80923C4.22154 0.810025 5.03156 0 6.03077 0H9.64923C10.6484 0 11.4585 0.810025 11.4585 1.80923V2.41231H14.4738C15.14 2.41231 15.68 2.95233 15.68 3.61846ZM5.42769 2.41231H10.2523V1.80923C10.2523 1.47616 9.9823 1.20616 9.64923 1.20616H6.03077C5.69769 1.20614 5.42769 1.47615 5.42769 1.80923V2.41231ZM14.4738 6.75522V3.61846H1.20616V6.75522C3.24173 7.86321 5.52241 8.44351 7.84 8.44308C10.1576 8.44351 12.4383 7.86321 14.4738 6.75522Z" fill="#FF701F"/>
+                  </Svg>
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[2]}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Custom Step 6 Services Bullets Row */}
+          {coachMarkStep === 6 && currentData.bullets && currentData.bullets.length >= 3 && (
+            <View style={styles.communityBulletsRow}>
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Ionicons name="people" size={16} color="#FF701F" />
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[0]}</Text>
+              </View>
+
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <Ionicons name="location" size={16} color="#FF701F" />
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[1]}</Text>
+              </View>
+
+              <View style={styles.communityBulletBlock}>
+                <View style={styles.communityBulletIconWrap}>
+                  <MaterialCommunityIcons name="room-service" size={16} color="#FF701F" />
+                </View>
+                <Text style={styles.communityBulletText}>{currentData.bullets[2]}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Footer Page Dots & Next Button */}
+          <View style={styles.coachFooter}>
+            <View />
+            <TouchableOpacity
+              style={styles.coachNextBtn}
+              onPress={handleNext}
+              activeOpacity={0.85}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Text style={styles.coachNextText}>Next</Text>
+                <Svg width={7.4} height={12} viewBox="0 0 8 12">
+                  <Path d="M4.6 6L0 1.4L1.4 0L7.4 6L1.4 12L0 10.6L4.6 6Z" fill="white" />
+                </Svg>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
           <ScrollView
             ref={scrollViewRef}
+            scrollEnabled={!showCoachMarks}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.content,
@@ -2279,7 +2945,12 @@ export default function HomeScreen() {
                         ) : null}
                       </View>
                     ) : (
-                      <View style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}>
+                      <View 
+                        style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}
+                        onLayout={(e) => {
+                          setTopFeaturesY(e.nativeEvent.layout.y);
+                        }}
+                      >
                         <ScrollView
                           ref={topFeaturesScrollRef}
                           horizontal
@@ -2430,8 +3101,14 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    <View style={{ position: 'relative' }}>
+                    <View 
+                      style={{ position: 'relative' }}
+                      onLayout={(e) => {
+                        setBannersY(e.nativeEvent.layout.y);
+                      }}
+                    >
                       <ScrollView
+                        ref={bannerScrollRef}
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         decelerationRate="fast"
@@ -3526,6 +4203,7 @@ export default function HomeScreen() {
       title="Choose Your Location"
       initialCoords={liveCoords}
     />
+    {showCoachMarks && coachMarkStep >= 1 && coachMarkStep <= 4 && renderCoachMarks()}
     </View >
   );
 }
@@ -4836,5 +5514,328 @@ const styles = StyleSheet.create({
   },
   modalBackgroundDismiss: {
     ...StyleSheet.absoluteFillObject,
+  },
+  coachCard: {
+    position: 'absolute',
+    left: (SCREEN_WIDTH - 340) / 2,
+    width: 340,
+    height: 275.793,
+    backgroundColor: '#D9D9D9',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#FFEFE5',
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 69,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
+    zIndex: 100000,
+  },
+  coachSkipBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 16,
+    zIndex: 5,
+  },
+  coachSkipText: {
+    color: '#8E7D90',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  coachCardBody: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  coachVisualCol: {
+    width: 144.046,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coachTextCol: {
+    flex: 1,
+  },
+  coachTitle: {
+    width: 141.88,
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  coachSubtitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FF701F',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  coachDesc: {
+    width: 144.046,
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  coachCallout: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.10)',
+    borderRadius: 7,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    height: 61,
+    marginTop: 8,
+  },
+  coachCalloutText: {
+    fontSize: 8,
+    color: '#000',
+    flex: 1,
+    fontWeight: '400',
+  },
+  bulletsWrap: {
+    marginTop: 8,
+    gap: 4,
+  },
+  bulletItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  bulletText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#FF701F',
+    lineHeight: 12,
+  },
+  bulletTextSOS: {
+    fontSize: 10,
+    color: '#594137',
+    fontWeight: '500',
+    lineHeight: 15,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  sosGridContainer: {
+    width: 278.359,
+    height: 82,
+    flexDirection: 'row',
+    alignSelf: 'flex-start',
+    marginLeft: -135.226,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  sosGridItem: {
+    flex: 1,
+    height: 82,
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  sosIconContainer: {
+    height: 51,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sosTextContainer: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coachFooter: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  coachDotsContainer: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  coachDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#E6DDD5',
+  },
+  coachDotActive: {
+    backgroundColor: '#FF701F',
+    width: 12,
+  },
+  coachNextBtn: {
+    backgroundColor: '#FF701F',
+    width: 140,
+    height: 50,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#A04100',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.20,
+    shadowRadius: 15,
+    elevation: 4,
+  },
+  coachNextText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: 'SF Pro',
+    fontWeight: '600',
+    lineHeight: 24,
+    textTransform: 'capitalize',
+  },
+  miniJaapPreview: {
+    width: 308,
+    height: 78,
+    borderRadius: 15,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  miniJaapImage: {
+    width: 58,
+    height: 58,
+    borderRadius: 12,
+  },
+  miniJaapBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FFA2A2',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  miniJaapDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#FFF',
+  },
+  miniJaapBadgeText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+    fontFamily: 'SF Pro',
+  },
+  miniJaapTextWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 2,
+  },
+  miniJaapTag: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FF701F',
+    fontFamily: 'SF Pro',
+  },
+  miniJaapTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000',
+    fontFamily: 'SF Pro',
+  },
+  miniJaapChantText: {
+    fontSize: 10,
+    color: '#FF8A50',
+    fontWeight: '500',
+    fontFamily: 'SF Pro',
+  },
+  phoneMockupContainer: {
+    width: 110,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  phoneMockup: {
+    width: 96,
+    height: 180,
+    borderRadius: 24,
+    borderWidth: 5,
+    borderColor: '#111',
+    backgroundColor: '#FFF',
+    overflow: 'hidden',
+    position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  communityBulletsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 0,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  communityBulletBlock: {
+    flex: 1,
+    backgroundColor: '#FFF8F2',
+    borderWidth: 0.5,
+    borderColor: '#FFD8BF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    gap: 4,
+  },
+  communityBulletIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF701F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  communityBulletIcon: {
+    fontSize: 16,
+  },
+  communityBulletText: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#8B5B34',
+    textAlign: 'center',
+    fontFamily: 'SF Pro',
+  },
+  servicesGrid: {
+    width: 80,
+    gap: 4,
+  },
+  serviceItemMock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF8F2',
+    borderWidth: 0.5,
+    borderColor: '#FFD8BF',
+    borderRadius: 5,
+    paddingVertical: 3,
+    paddingHorizontal: 5,
+    gap: 4,
+  },
+  serviceTextMock: {
+    fontSize: 7.5,
+    fontWeight: 'bold',
+    color: '#5C3E26',
   },
 });

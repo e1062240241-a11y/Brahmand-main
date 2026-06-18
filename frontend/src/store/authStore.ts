@@ -98,16 +98,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             'vendors',
             'sync_queue'
           ];
+          const operations: any[] = [];
           for (const tableName of tables) {
             try {
               const collection = database.get(tableName);
               const records = await collection.query().fetch();
               for (const record of records) {
-                await record.destroyPermanently();
+                operations.push(record.prepareDestroyPermanently());
               }
             } catch (tableErr) {
-              console.warn(`[Auth] Failed to clear table ${tableName}:`, tableErr);
+              console.warn(`[Auth] Failed to query table ${tableName}:`, tableErr);
             }
+          }
+          if (operations.length > 0) {
+            await database.batch(...operations);
           }
         });
       }

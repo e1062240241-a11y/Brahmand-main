@@ -28,6 +28,7 @@ import { useTranslation } from '../utils/i18n';
 import LocationService from '../services/location';
 import { useAuthStore } from '../store/authStore';
 import { socketService } from '../services/socket';
+import { useCoachMarkStore } from '../utils/coachMarkState';
 
 export function GlobalFAB() {
   const router = useRouter();
@@ -302,8 +303,7 @@ export function GlobalFAB() {
     })
   ).current;
 
-  const toggleFab = useCallback(() => {
-    const toOpen = !fabExpanded;
+  const expandFab = useCallback((toOpen: boolean) => {
     setFabExpanded(toOpen);
     if (toOpen) {
       Animated.parallel([
@@ -349,7 +349,23 @@ export function GlobalFAB() {
         ),
       ]).start();
     }
-  }, [fabExpanded, fabScale, fabRotation, fabItemAnims]);
+  }, [fabScale, fabRotation, fabItemAnims]);
+
+  const toggleFab = useCallback(() => {
+    expandFab(!fabExpanded);
+  }, [fabExpanded, expandFab]);
+
+  const { showCoachMarks, coachMarkStep } = useCoachMarkStore();
+
+  useEffect(() => {
+    if (showCoachMarks && coachMarkStep === 5) {
+      expandFab(true);
+    } else {
+      if (showCoachMarks && coachMarkStep !== 5) {
+        expandFab(false);
+      }
+    }
+  }, [showCoachMarks, coachMarkStep, expandFab]);
 
   // Do not show FAB on authentication screens
   if (!pathname || pathname === '/' || pathname === '/index' || pathname.startsWith('/auth')) {

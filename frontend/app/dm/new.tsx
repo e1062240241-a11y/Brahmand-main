@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, FlatList, Image, Alert } from 'react-native';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, ScrollView, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Button } from '../../src/components/Button';
 import { getAllUsers, getConversations, sendDirectMessage } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -20,6 +21,7 @@ export default function NewDMScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ userId?: string; userName?: string; userSL?: string; shareText?: string }>();
   const { user } = useAuthStore();
+  const searchInputRef = useRef<TextInput>(null);
 
   const selectedUserId = toParamString(params.userId as any);
   const selectedUserName = toParamString(params.userName as any);
@@ -31,7 +33,8 @@ export default function NewDMScreen() {
   const [sending, setSending] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
+  const [frequentUsers, setFrequentUsers] = useState<any[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [error, setError] = useState('');
 
@@ -81,11 +84,29 @@ export default function NewDMScreen() {
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      const response = await getAllUsers();
-      const allUsers = response.data || [];
+      const [usersResponse, convResponse] = await Promise.all([
+        getAllUsers(),
+        getConversations().catch(() => ({ data: [] }))
+      ]);
+      const allUsers = usersResponse.data || [];
+      const conversationsList = convResponse.data || [];
       const otherUsers = allUsers.filter((u: any) => u.id !== user?.id);
+
+      const chattedUserIds = new Set(
+        conversationsList.map((c: any) => c.user?.id).filter(Boolean)
+      );
+      
+      let frequent = otherUsers.filter((u: any) => chattedUserIds.has(u.id));
+      let suggested = otherUsers.filter((u: any) => !chattedUserIds.has(u.id));
+      
+      if (frequent.length === 0 && otherUsers.length > 0) {
+        frequent = otherUsers.slice(0, 3);
+        suggested = otherUsers.slice(3);
+      }
+      
       setUsers(otherUsers);
-      setFilteredUsers(otherUsers);
+      setFrequentUsers(frequent);
+      setSuggestedUsers(suggested);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to load users');
     } finally {
@@ -95,18 +116,25 @@ export default function NewDMScreen() {
 
   const handleUserSearch = (query: string) => {
     setUserSearchQuery(query);
-    if (!query.trim()) {
-      setFilteredUsers(users);
-      return;
-    }
+  };
 
-    const q = query.toLowerCase();
-    const filtered = users.filter((u: any) =>
+  const filteredFrequent = useMemo(() => {
+    if (!userSearchQuery.trim()) return frequentUsers;
+    const q = userSearchQuery.toLowerCase();
+    return frequentUsers.filter((u: any) =>
       u.name?.toLowerCase().includes(q) ||
       u.sl_id?.toLowerCase().includes(q)
     );
-    setFilteredUsers(filtered);
-  };
+  }, [userSearchQuery, frequentUsers]);
+
+  const filteredSuggested = useMemo(() => {
+    if (!userSearchQuery.trim()) return suggestedUsers;
+    const q = userSearchQuery.toLowerCase();
+    return suggestedUsers.filter((u: any) =>
+      u.name?.toLowerCase().includes(q) ||
+      u.sl_id?.toLowerCase().includes(q)
+    );
+  }, [userSearchQuery, suggestedUsers]);
 
   const handleBackNavigation = () => {
     try {
@@ -146,7 +174,6 @@ export default function NewDMScreen() {
     setSending(true);
     try {
       const response = await sendDirectMessage(foundUser.sl_id, message.trim());
-      // Navigate to the chat conversation
       router.replace(`/dm/${response.data.chat_id}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to send message');
@@ -154,17 +181,9 @@ export default function NewDMScreen() {
     }
   };
 
-  const renderUserItem = ({ item }: { item: any }) => (
-    <TouchableOpacity style={styles.userItem} onPress={() => handleSelectUser(item)}>
-      <View style={styles.userAvatar}>
-        {item.photo ? (
-          <Image source={{ uri: item.photo }} style={styles.avatarImage} />
-        ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarText}>{item.name?.charAt(0)?.toUpperCase() || '?'}</Text>
-          </View>
-        )}
-      </View>
+  const renderUserItem = (item: any) => (
+    <TouchableOpacity key={item.id} style={styles.userRow} onPress={() => handleSelectUser(item)}>
+      <Avatar name={item.name} photo={item.photo} size={42} />
       <View style={styles.userMeta}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
@@ -172,134 +191,153 @@ export default function NewDMScreen() {
             <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />
           )}
         </View>
-        <Text style={styles.userSl}>SL: {item.sl_id}</Text>
       </View>
-      <Ionicons name="chatbubble-outline" size={20} color={COLORS.primary} />
     </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBackNavigation}>
-            <Ionicons name="close" size={24} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>New Message</Text>
-          <View style={{ width: 24 }} />
-        </View>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.09, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardView}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <TouchableOpacity onPress={handleBackNavigation} style={styles.backButton}>
+              <Ionicons name="chevron-back" size={24} color="#111111" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>New Chat</Text>
+          </View>
 
-        <View style={styles.content}>
-
-          {/* If no user is selected yet, show search + list */}
-          {!foundUser && (
-            <>
-              <View style={styles.topActions}>
-                <TouchableOpacity
-                  style={styles.createGroupPill}
-                  onPress={() => router.push('/circle/create')}
-                >
-                  <Ionicons name="add" size={16} color={COLORS.primary} />
-                  <Text style={styles.createGroupText}>Create Group</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.searchWrap}>
-                <Ionicons name="search" size={18} color={COLORS.textLight} />
-                <TextInput
-                  style={styles.searchInputText}
-                  placeholder="Search users by name or SL number"
-                  placeholderTextColor={COLORS.textLight}
-                  value={userSearchQuery}
-                  onChangeText={handleUserSearch}
-                />
-                {userSearchQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => handleUserSearch('')}>
-                    <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              <Text style={styles.label}>All Registered Users</Text>
-
-              {loadingUsers ? (
-                <ActivityIndicator size="large" color={COLORS.primary} style={{ marginVertical: SPACING.lg }} />
-              ) : (
-                <FlatList
-                  data={filteredUsers}
-                  renderItem={renderUserItem}
-                  keyExtractor={(item) => item.id}
-                  style={styles.usersList}
-                  contentContainerStyle={{ paddingBottom: SPACING.lg }}
-                  ListEmptyComponent={
-                    <Text style={styles.emptyUsersText}>No users found</Text>
-                  }
-                />
-              )}
-
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-            </>
-          )}
-
-          {/* Compose view: shown when a user is selected */}
-          {foundUser && (
-            <View style={styles.composeContainer}>
-              {/* Selected User Card */}
-              <View style={styles.userCard}>
-                <Avatar name={foundUser.name} photo={foundUser.photo} size={50} />
-                <View style={styles.userInfo}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={styles.selectedUserName}>{foundUser.name}</Text>
-                    {(foundUser.is_verified || foundUser.isVerified) && (
-                      <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />
+          <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+            {/* If no user is selected yet, show search + list */}
+            {!foundUser && (
+              <>
+                <View style={styles.searchContainer}>
+                  <View style={styles.searchBar}>
+                    <Ionicons name="search" size={20} color="#777" />
+                    <TextInput
+                      ref={searchInputRef}
+                      style={styles.searchInput}
+                      placeholder="Find people, groups"
+                      placeholderTextColor="#777"
+                      value={userSearchQuery}
+                      onChangeText={handleUserSearch}
+                    />
+                    {userSearchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => handleUserSearch('')}>
+                        <Ionicons name="close-circle" size={18} color="#777" />
+                      </TouchableOpacity>
                     )}
                   </View>
-                  <Text style={styles.userSlId}>{foundUser.sl_id}</Text>
                 </View>
-                <TouchableOpacity onPress={() => setFoundUser(null)}>
-                  <Ionicons name="close-circle" size={24} color={COLORS.textSecondary} />
-                </TouchableOpacity>
+
+                {/* Quick Row Actions */}
+                <View style={styles.rowActionsContainer}>
+                  <TouchableOpacity
+                    style={styles.actionRow}
+                    onPress={() => router.push('/circle/create')}
+                  >
+                    <MaterialCommunityIcons name="account-group-outline" size={24} color="#111" />
+                    <Text style={styles.actionText}>New Group</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.actionRow}
+                    onPress={() => searchInputRef.current?.focus()}
+                  >
+                    <MaterialCommunityIcons name="account-outline" size={24} color="#111" />
+                    <Text style={styles.actionText}>New Contact</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {loadingUsers ? (
+                  <ActivityIndicator size="large" color="#FF8D57" style={{ marginVertical: 32 }} />
+                ) : (
+                  <View style={{ paddingBottom: 32 }}>
+                    {/* Frequently Contacted Section */}
+                    {filteredFrequent.length > 0 && (
+                      <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Frequently contacted</Text>
+                        {filteredFrequent.map(renderUserItem)}
+                      </View>
+                    )}
+
+                    {/* Suggested Section */}
+                    {filteredSuggested.length > 0 && (
+                      <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Suggested</Text>
+                        {filteredSuggested.map(renderUserItem)}
+                      </View>
+                    )}
+
+                    {filteredFrequent.length === 0 && filteredSuggested.length === 0 && (
+                      <Text style={styles.emptyText}>No users found</Text>
+                    )}
+                  </View>
+                )}
+
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+              </>
+            )}
+
+            {/* Compose view: shown when a user is selected */}
+            {foundUser && (
+              <View style={styles.composeContainer}>
+                <View style={styles.userCard}>
+                  <Avatar name={foundUser.name} photo={foundUser.photo} size={50} />
+                  <View style={styles.userInfo}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={styles.selectedUserName}>{foundUser.name}</Text>
+                      {(foundUser.is_verified || foundUser.isVerified) && (
+                        <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />
+                      )}
+                    </View>
+                    <Text style={styles.userSlId}>{foundUser.sl_id}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setFoundUser(null)}>
+                    <Ionicons name="close-circle" size={24} color="#777" />
+                  </TouchableOpacity>
+                </View>
+
+                {error ? <Text style={styles.error}>{error}</Text> : null}
+
+                <View style={styles.messageSection}>
+                  <Text style={styles.label}>Message</Text>
+                  <TextInput
+                    placeholder="Type your message..."
+                    placeholderTextColor="#777"
+                    value={message}
+                    onChangeText={setMessage}
+                    multiline
+                    autoFocus
+                    style={styles.messageInput}
+                    textAlignVertical="top"
+                  />
+                  <Button
+                    title="Send Message"
+                    onPress={handleSend}
+                    loading={sending}
+                    disabled={!message.trim()}
+                  />
+                </View>
               </View>
-
-              {error ? <Text style={styles.error}>{error}</Text> : null}
-
-              {/* Message Input */}
-              <View style={styles.messageSection}>
-                <Text style={styles.label}>Message</Text>
-                <TextInput
-                  placeholder="Type your message..."
-                  placeholderTextColor={COLORS.textLight}
-                  value={message}
-                  onChangeText={setMessage}
-                  multiline
-                  autoFocus
-                  style={styles.messageInput}
-                  textAlignVertical="top"
-                />
-                <Button
-                  title="Send Message"
-                  onPress={handleSend}
-                  loading={sending}
-                  disabled={!message.trim()}
-                />
-              </View>
-            </View>
-          )}
-
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+            )}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   keyboardView: {
     flex: 1,
@@ -307,158 +345,143 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    justifyContent: 'center',
+    height: 56,
+    position: 'relative',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#111111',
   },
   content: {
     flex: 1,
-    padding: SPACING.lg,
   },
-  topActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginBottom: SPACING.sm,
+  searchContainer: {
+    paddingHorizontal: 16,
+    marginVertical: 12,
   },
-  createGroupPill: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: `${COLORS.primary}15`,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: 16,
-    gap: 4,
-  },
-  createGroupText: {
-    color: COLORS.primary,
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  searchWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    height: 46,
     borderWidth: 1,
-    borderColor: COLORS.divider,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.sm,
-    marginBottom: SPACING.sm,
+    borderColor: 'rgba(0,0,0,0.08)',
   },
-  searchInputText: {
+  searchInput: {
     flex: 1,
-    color: COLORS.text,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.xs,
-    fontSize: 14,
+    height: '100%',
+    marginLeft: 8,
+    fontSize: 15,
+    color: '#111111',
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
+  rowActionsContainer: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
-  usersList: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  composeContainer: {
-    flex: 1,
-  },
-  emptyUsersText: {
-    textAlign: 'center',
-    color: COLORS.textSecondary,
-    paddingVertical: SPACING.md,
-  },
-  userItem: {
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.sm,
-    marginBottom: SPACING.sm,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-    marginRight: SPACING.sm,
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarFallback: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  actionText: {
     fontSize: 16,
+    fontWeight: '500',
+    color: '#111111',
+    marginLeft: 12,
   },
-  userMeta: {
-    flex: 1,
+  section: {
+    marginTop: 16,
   },
-  userName: {
+  sectionTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#333333',
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
-  userSl: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 2,
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  userMeta: {
+    marginLeft: 12,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111111',
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#777777',
+    marginTop: 32,
+    fontSize: 15,
   },
   error: {
-    color: COLORS.error,
-    marginTop: SPACING.sm,
+    color: '#FF3B30',
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  composeContainer: {
+    padding: 16,
   },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    marginTop: SPACING.lg,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   userInfo: {
     flex: 1,
-    marginLeft: SPACING.md,
+    marginLeft: 12,
   },
   selectedUserName: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.text,
+    color: '#111111',
   },
   userSlId: {
     fontSize: 12,
-    color: COLORS.primary,
+    color: '#FF8D57',
     marginTop: 2,
   },
   messageSection: {
-    marginTop: SPACING.lg,
+    marginTop: 20,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 8,
   },
   messageInput: {
-    height: 100,
-    backgroundColor: COLORS.surface,
+    height: 120,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: '#111111',
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.divider,
-    borderRadius: BORDER_RADIUS.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
-    marginBottom: SPACING.md,
-    color: COLORS.text,
-    textAlignVertical: 'top',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
 });
