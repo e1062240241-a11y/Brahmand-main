@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api, { API_URL, getPostComments, addPostComment, getProfile, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
+import api, { API_URL, getPostComments, addPostComment, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { formatTimeAgo, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
@@ -950,20 +950,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   // Watch-time tracking
   const watchStartRef = useRef<number>(Date.now());
-  const [currentUser, setCurrentUser] = useState<any>(null);
-
-  useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const res = await getProfile();
-        setCurrentUser(res.data);
-      } catch (e) {
-        console.warn('Failed to fetch user in ReelViewer', e);
-      }
-    };
-    if (isVisible) fetchMe();
-  }, [isVisible]);
-
   const [isShareVisible, setIsShareVisible] = useState(false);
   const [isCommentVisible, setIsCommentVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
@@ -1067,8 +1053,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const optimisticComment = {
       id: tempId,
       text: textToPost,
-      username: currentUser?.name || 'User',
-      user_photo: currentUser?.photo || '',
+      username: user?.name || 'User',
+      user_photo: user?.photo || '',
       created_at: new Date().toISOString(),
       is_optimistic: true,
       user_id: user?.id,

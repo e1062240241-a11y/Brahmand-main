@@ -198,6 +198,7 @@ type PostUploadFields = {
   cropOffsetY?: number;
   originalWidth?: number;
   originalHeight?: number;
+  muteAudio?: boolean;
 };
 
 const appendPostUploadFields = (formData: FormData, fields: PostUploadFields) => {
@@ -226,6 +227,9 @@ const appendPostUploadFields = (formData: FormData, fields: PostUploadFields) =>
   if (fields.originalHeight) {
     formData.append('original_height', String(fields.originalHeight));
   }
+  if (fields.muteAudio) {
+    formData.append('mute_audio', 'true');
+  }
 };
 
 const getLocalUploadFileSize = async (file: { uri: string; name: string; type: string }) => {
@@ -250,12 +254,20 @@ const getLocalUploadFileSize = async (file: { uri: string; name: string; type: s
   return undefined;
 };
 
+const readFileAsBlob = async (file: { uri: string; type: string }): Promise<Blob> => {
+  // Use fetch(uri) for both web and native — React Native's fetch handles
+  // file:// URIs as a stream so large videos don't get loaded into RAM.
+  // The old base64 approach tripled memory usage (base64 string + decode buffer
+  // + Uint8Array) and caused silent OOM crashes for files larger than ~80 MB.
+  const response = await fetch(file.uri);
+  return response.blob();
+};
+
 const uploadLargeVideoViaBunny = async (
   file: { uri: string; name: string; type: string },
   onProgress?: (progressEvent: any) => void,
 ) => {
-  const response = await fetch(file.uri);
-  const blob = await response.blob();
+  const blob = await readFileAsBlob(file);
   if (!blob || blob.size <= 0) {
     throw new Error('Could not read selected video file');
   }
@@ -742,19 +754,29 @@ const nativeMultipartPost = async (endpoint: string, formData: FormData) => {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, {
-    method: 'POST',
-    headers,
-    body: formData,
-  });
+  // AbortController gives us an upload timeout — without it, large uploads
+  // that stall on a slow connection hang forever with no error shown to the user.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20 * 60 * 1000); // 20 min
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Upload failed: ${response.status} ${text}`);
+  try {
+    const response = await fetch(`${API_URL}/api${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Upload failed: ${response.status} ${text}`);
+    }
+
+    const data = await response.json();
+    return { data };
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const data = await response.json();
-  return { data };
 };
 
 export const uploadUserPost = (
@@ -769,7 +791,8 @@ export const uploadUserPost = (
   cropOffsetX?: number,
   cropOffsetY?: number,
   originalWidth?: number,
-  originalHeight?: number
+  originalHeight?: number,
+  muteAudio?: boolean
 ) => {
   return (async () => {
     const postFields: PostUploadFields = {
@@ -783,6 +806,7 @@ export const uploadUserPost = (
       cropOffsetY,
       originalWidth,
       originalHeight,
+      muteAudio,
     };
     const preparedVideoFile = isVideoMimeType(file.type)
       ? await normalizeNativeUploadFile(file)
