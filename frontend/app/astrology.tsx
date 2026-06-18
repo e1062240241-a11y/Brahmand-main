@@ -11,13 +11,16 @@ import {
   TextInput,
   Image,
   Modal,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Location from 'expo-location';
 
-import { getNakshatraReport } from '../src/services/api';
+import { getNakshatraReport, updateExtendedProfile } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
@@ -33,9 +36,84 @@ const COSMIC_TABS = [
   { key: 'health', label: 'Health', img: require('../assets/images/festival_image/cosmic/cos5.png') },
 ];
 
+const CITIES_DB = [
+  "Mumbai, Maharashtra, India",
+  "Delhi, NCR, India",
+  "Bengaluru, Karnataka, India",
+  "Kolkata, West Bengal, India",
+  "Chennai, Tamil Nadu, India",
+  "Hyderabad, Telangana, India",
+  "Pune, Maharashtra, India",
+  "Ahmedabad, Gujarat, India",
+  "Surat, Gujarat, India",
+  "Jaipur, Rajasthan, India",
+  "Lucknow, Uttar Pradesh, India",
+  "Kanpur, Uttar Pradesh, India",
+  "Nagpur, Maharashtra, India",
+  "Indore, Madhya Pradesh, India",
+  "Thane, Maharashtra, India",
+  "Bhopal, Madhya Pradesh, India",
+  "Visakhapatnam, Andhra Pradesh, India",
+  "Pimpri-Chinchwad, Maharashtra, India",
+  "Patna, Bihar, India",
+  "Vadodara, Gujarat, India",
+  "Ghaziabad, Uttar Pradesh, India",
+  "Ludhiana, Punjab, India",
+  "Agra, Uttar Pradesh, India",
+  "Nashik, Maharashtra, India",
+  "Ranchi, Jharkhand, India",
+  "Faridabad, Haryana, India",
+  "Meerut, Uttar Pradesh, India",
+  "Rajkot, Gujarat, India",
+  "Kalyan-Dombivli, Maharashtra, India",
+  "Vasai-Virar, Maharashtra, India",
+  "Varanasi, Uttar Pradesh, India",
+  "Srinagar, Jammu & Kashmir, India",
+  "Aurangabad, Maharashtra, India",
+  "Dhanbad, Jharkhand, India",
+  "Amritsar, Punjab, India",
+  "Navi Mumbai, Maharashtra, India",
+  "Allahabad, Uttar Pradesh, India",
+  "Howrah, West Bengal, India",
+  "Gwalior, Madhya Pradesh, India",
+  "Jabalpur, Madhya Pradesh, India",
+  "Coimbatore, Tamil Nadu, India",
+  "Vijayawada, Andhra Pradesh, India",
+  "Jodhpur, Rajasthan, India",
+  "Madurai, Tamil Nadu, India",
+  "Raipur, Chhattisgarh, India",
+  "Kota, Rajasthan, India",
+  "Chandigarh, India",
+  "Guwahati, Assam, India",
+  "Solapur, Maharashtra, India",
+  "Hubli-Dharwad, Karnataka, India",
+  "Mysore, Karnataka, India",
+  "Trivandrum, Kerala, India",
+  "Kochi, Kerala, India",
+  "Dehradun, Uttarakhand, India",
+  "Rishikesh, Uttarakhand, India",
+  "Haridwar, Uttarakhand, India",
+  "Shimla, Himachal Pradesh, India",
+  "Dharamshala, Himachal Pradesh, India",
+  "Jammu, Jammu & Kashmir, India",
+  "Udaipur, Rajasthan, India",
+  "Ajmer, Rajasthan, India",
+  "Pushkar, Rajasthan, India",
+  "New York, USA",
+  "London, UK",
+  "Toronto, Canada",
+  "Dubai, UAE",
+  "Singapore",
+  "Sydney, Australia",
+  "Melbourne, Australia",
+  "Paris, France",
+  "Berlin, Germany",
+  "Tokyo, Japan",
+];
+
 export default function AstrologyScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -44,13 +122,25 @@ export default function AstrologyScreen() {
   const [activeCosmicTab, setActiveCosmicTab] = useState<string | null>(null);
   const isMountedRef = useRef(true);
 
-  const fetchKundli = useCallback(async (forceRefresh = false) => {
+  // Form States
+  const [showForm, setShowForm] = useState(true);
+  const [date, setDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [timeOfBirth, setTimeOfBirth] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('female');
+  const [placeOfBirth, setPlaceOfBirth] = useState('');
+  const [filteredCities, setFilteredCities] = useState<string[]>([]);
+  const [validationError, setValidationError] = useState('');
+  const [calculating, setCalculating] = useState(false);
+
+  const fetchKundli = useCallback(async (forceRefresh = false, params?: any) => {
     try {
       if (!isMountedRef.current) return;
       setError('');
       setLoading(!forceRefresh);
       
-      const response = await getNakshatraReport();
+      const response = await getNakshatraReport(params);
       if (isMountedRef.current) {
         setData(response.data || null);
       }
@@ -68,13 +158,69 @@ export default function AstrologyScreen() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchKundli();
+    
+    // Initialize form states from user profile
+    if (user) {
+      let hasAllDetails = true;
+
+      if (user.date_of_birth) {
+        const parsedDate = new Date(user.date_of_birth);
+        setDate(isNaN(parsedDate.getTime()) ? null : parsedDate);
+      } else {
+        hasAllDetails = false;
+      }
+
+      if (user.time_of_birth) {
+        setTimeOfBirth(user.time_of_birth);
+      } else {
+        hasAllDetails = false;
+      }
+
+      if (user.gender) {
+        const g = user.gender.toLowerCase();
+        if (g === 'male' || g === 'female' || g === 'other') {
+          setGender(g as any);
+        }
+      }
+
+      if (user.place_of_birth) {
+        setPlaceOfBirth(user.place_of_birth);
+      } else {
+        hasAllDetails = false;
+      }
+
+      if (hasAllDetails) {
+        setShowForm(false);
+        fetchKundli();
+      } else {
+        setShowForm(true);
+        setLoading(false);
+      }
+    } else {
+      setShowForm(true);
+      setLoading(false);
+    }
+
     return () => { isMountedRef.current = false; };
-  }, [fetchKundli]);
+  }, [user, fetchKundli]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchKundli(true);
+    if (date && timeOfBirth && placeOfBirth) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dobStr = `${year}-${month}-${day}`;
+
+      fetchKundli(true, {
+        dob: dobStr,
+        tob: timeOfBirth.trim(),
+        lat: user?.place_of_birth_latitude,
+        lon: user?.place_of_birth_longitude,
+      });
+    } else {
+      fetchKundli(true);
+    }
   };
 
   const normalizeTextBlock = (value: any) => {
@@ -82,6 +228,86 @@ export default function AstrologyScreen() {
       ? value.map((item) => String(item).trim()).filter(Boolean).join(' ')
       : String(value ?? '');
     return text.replace(/\s+/g, ' ').trim();
+  };
+
+  const formatDateString = (d: Date) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatTimeString = (hours: number, minutes: number) => {
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(minutes).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const getDisplayTime = () => {
+    if (!timeOfBirth) return '00:00:00';
+    if (timeOfBirth.split(':').length === 2) {
+      return `${timeOfBirth}:00`;
+    }
+    return timeOfBirth;
+  };
+
+  const handleCalculate = async () => {
+    if (!date || !timeOfBirth.trim() || !placeOfBirth.trim()) {
+      setValidationError('All fields (Date, Time, and Place of Birth) are mandatory.');
+      return;
+    }
+    setValidationError('');
+    setCalculating(true);
+
+    try {
+      let lat = 28.6139; // Default New Delhi
+      let lon = 77.2090;
+
+      try {
+        const results = await Location.geocodeAsync(placeOfBirth.trim());
+        if (Array.isArray(results) && results.length > 0) {
+          lat = results[0].latitude;
+          lon = results[0].longitude;
+        }
+      } catch (err) {
+        try {
+          const q = encodeURIComponent(placeOfBirth.trim());
+          const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+          const data = await resp.json();
+          if (Array.isArray(data) && data.length > 0) {
+            lat = parseFloat(data[0].lat);
+            lon = parseFloat(data[0].lon);
+          }
+        } catch {}
+      }
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dobStr = `${year}-${month}-${day}`;
+
+      const response = await updateExtendedProfile({
+        date_of_birth: dobStr,
+        time_of_birth: timeOfBirth.trim(),
+        place_of_birth: placeOfBirth.trim(),
+        place_of_birth_latitude: lat,
+        place_of_birth_longitude: lon,
+        gender: gender,
+      });
+
+      updateUser(response.data || {});
+      setShowForm(false);
+      fetchKundli(false, {
+        dob: dobStr,
+        tob: timeOfBirth.trim(),
+        lat: lat,
+        lon: lon,
+      });
+    } catch (err: any) {
+      setValidationError(err?.response?.data?.detail || err?.message || 'Failed to update birth details');
+    } finally {
+      setCalculating(false);
+    }
   };
 
   if (loading) {
@@ -118,7 +344,6 @@ export default function AstrologyScreen() {
     health: data?.sadhesati_status?.response?.description || 'No health status details available.',
   };
 
-  // Attribute grid items matching the Figma design
   const attributes = [
     { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.png'), color: '#F59E0B' },
     { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.png'), color: '#C67C4E' },
@@ -142,148 +367,365 @@ export default function AstrologyScreen() {
             <Ionicons name="chevron-back" size={24} color="#5A3E2B" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Janam Kundli</Text>
-          <View style={{ width: 40 }} />
+          {!showForm ? (
+            <TouchableOpacity onPress={() => setShowForm(true)} style={styles.headerEditBtn}>
+              <Ionicons name="pencil-outline" size={20} color="#5A3E2B" />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
         </View>
       </SafeAreaView>
 
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C67C4E" />}
-      >
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.profileRow}>
-            <View style={styles.avatarWrap}>
-              {user?.photo ? (
-                <Image source={{ uri: user.photo }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Ionicons name="person" size={28} color="#C67C4E" />
+      {showForm ? (
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.formScrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.formCard}>
+            <Text style={styles.formTitle}>Enter Birth Details</Text>
+
+            {/* Date of Birth */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="calendar-outline" size={15} color="#5A4136" />
+                <Text style={styles.inputLabel}>Date of Birth</Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  setShowDatePicker(!showDatePicker);
+                  setShowTimePicker(false);
+                }}
+                style={styles.touchableInput}
+              >
+                <Text style={{ fontSize: 16, color: date ? '#1B1C1C' : '#A9968F' }}>
+                  {date ? formatDateString(date) : 'dd/mm/yyyy'}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowDatePicker(false);
+                    }
+                    if (selectedDate) {
+                      setDate(selectedDate);
+                    }
+                  }}
+                  style={styles.pickerStyle}
+                />
+              )}
+            </View>
+
+            {/* Time of Birth */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="time-outline" size={15} color="#5A4136" />
+                <Text style={styles.inputLabel}>Time of Birth</Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  setShowTimePicker(!showTimePicker);
+                  setShowDatePicker(false);
+                }}
+                style={styles.touchableInput}
+              >
+                <Text style={{ fontSize: 16, color: timeOfBirth ? '#1B1C1C' : '#A9968F' }}>
+                  {getDisplayTime()}
+                </Text>
+              </TouchableOpacity>
+
+              {showTimePicker && (
+                <DateTimePicker
+                  value={new Date()}
+                  mode="time"
+                  is24Hour={true}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, selectedTime) => {
+                    if (Platform.OS === 'android') {
+                      setShowTimePicker(false);
+                    }
+                    if (selectedTime) {
+                      setTimeOfBirth(formatTimeString(selectedTime.getHours(), selectedTime.getMinutes()));
+                    }
+                  }}
+                  style={styles.pickerStyle}
+                />
+              )}
+            </View>
+
+            {/* Gender */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="transgender-outline" size={15} color="#5A4136" />
+                <Text style={styles.inputLabel}>Gender</Text>
+              </View>
+              <View style={styles.genderRowContainer}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setGender('male')}
+                  style={[styles.genderButton, gender === 'male' && styles.genderButtonActive]}
+                >
+                  <Ionicons
+                    name="male"
+                    size={16}
+                    color={gender === 'male' ? '#FF7B00' : '#7D685E'}
+                  />
+                  <Text style={[styles.genderButtonText, gender === 'male' && styles.genderButtonTextActive]}>
+                    Male
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setGender('female')}
+                  style={[styles.genderButton, gender === 'female' && styles.genderButtonActive]}
+                >
+                  <Ionicons
+                    name="female"
+                    size={16}
+                    color={gender === 'female' ? '#FF7B00' : '#7D685E'}
+                  />
+                  <Text style={[styles.genderButtonText, gender === 'female' && styles.genderButtonTextActive]}>
+                    Female
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setGender('other')}
+                  style={[styles.genderButton, gender === 'other' && styles.genderButtonActive]}
+                >
+                  <Ionicons
+                    name="transgender"
+                    size={16}
+                    color={gender === 'other' ? '#FF7B00' : '#7D685E'}
+                  />
+                  <Text style={[styles.genderButtonText, gender === 'other' && styles.genderButtonTextActive]}>
+                    Other
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Place of Birth */}
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="location-outline" size={15} color="#5A4136" />
+                <Text style={styles.inputLabel}>Place of Birth</Text>
+              </View>
+              <TextInput
+                style={styles.textInput}
+                placeholder="City, State or Country"
+                placeholderTextColor="#A9968F"
+                value={placeOfBirth}
+                onChangeText={(val) => {
+                  setPlaceOfBirth(val);
+                  if (val.trim().length >= 2) {
+                    const filtered = CITIES_DB.filter(city =>
+                      city.toLowerCase().includes(val.toLowerCase())
+                    );
+                    setFilteredCities(filtered.slice(0, 5));
+                  } else {
+                    setFilteredCities([]);
+                  }
+                }}
+              />
+              {filteredCities.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  {filteredCities.map((city, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setPlaceOfBirth(city);
+                        setFilteredCities([]);
+                      }}
+                    >
+                      <Ionicons name="location-outline" size={14} color="#7D685E" style={{ marginRight: 8 }} />
+                      <Text style={styles.suggestionText}>{city}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
               )}
             </View>
-            <View style={styles.profileText}>
-              <Text style={styles.profileName}>{user?.name || 'Devotee'}</Text>
-              <View style={styles.profileStatusRow}>
-                <View style={styles.statusDot} />
-                <Text style={styles.profileStatus}>Celestial Profile Active</Text>
-              </View>
+
+            {/* Info Box */}
+            <View style={styles.infoNotice}>
+              <Ionicons name="information-circle-outline" size={20} color="#FF7B00" />
+              <Text style={styles.infoNoticeText}>
+                Explore your Vedic birth chart and see how planetary placements shape your current cosmic phase.
+              </Text>
             </View>
-          </View>
-        </View>
 
-        {/* Nakshatra & Rashi Card */}
-        {!error && (
-          <View style={styles.insightsCard}>
-            <View style={styles.insightBox}>
-              <Text style={styles.insightLabel}>NAKSHATRA</Text>
-              <Text style={styles.insightValue}>{details.Naksahtra || '-'}</Text>
-            </View>
-            <View style={styles.insightDivider} />
-            <View style={styles.insightBox}>
-              <Text style={styles.insightLabel}>RASHI</Text>
-              <Text style={styles.insightValue}>{details.sign || '-'}</Text>
-            </View>
-          </View>
-        )}
+            {/* Validation Error */}
+            {!!validationError && (
+              <Text style={styles.errorText}>{validationError}</Text>
+            )}
 
-        {error ? (
-          <View style={styles.errorBanner}>
-            <Ionicons name="alert-circle" size={20} color="#EF4444" />
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        {/* Spiritual Attributes */}
-        {!error && details && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Spiritual Attributes (Ashtakoot)</Text>
-            <View style={styles.grid}>
-              {attributes.map((attr, i) => (
-                <View key={i} style={styles.attrCard}>
-                  <View style={styles.attrIconBg}>  
-                    <Image source={attr.img} style={{ width: 24, height: 24 }} resizeMode="contain" />
-                  </View>
-                  <View style={styles.attrTextCol}>
-                    <Text style={styles.attrLabel}>{attr.label}</Text>
-                    <Text style={styles.attrValue}>{attr.value || '-'}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Cosmic Analysis */}
-        {!error && report && Object.keys(report).length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Cosmic Analysis</Text>
-            
-            {/* Tab Row */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cosmicTabScroll} contentContainerStyle={styles.cosmicTabRow}>
-              {COSMIC_TABS.map((tab) => {
-                const isActive = activeCosmicTab === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[styles.cosmicTab, isActive && styles.cosmicTabActive]}
-                    onPress={() => setActiveCosmicTab(tab.key)}
-                    activeOpacity={0.8}
-                  >
-                    <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
-                      <Image source={tab.img} style={{ width: 36, height: 36, aspectRatio: 1, tintColor: isActive ? '#FFF' : undefined }} resizeMode="contain" />
-                    </View>
-                    <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* Report Content Modal */}
-            <Modal
-              visible={!!activeCosmicTab}
-              transparent
-              animationType="fade"
-              onRequestClose={() => setActiveCosmicTab(null)}
+            {/* Calculate Button */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.calculateBtn}
+              onPress={handleCalculate}
+              disabled={calculating}
             >
-              <View style={styles.modalOverlay}>
-                <View style={styles.modalCard}>
-                  {(() => {
-                    const activeTabObj = COSMIC_TABS.find(t => t.key === activeCosmicTab);
-                    if (!activeTabObj) return null;
-                    
-                    let activeReportText = '';
-                    for (const [key, paragraphs] of Object.entries(report)) {
-                      if (key.toLowerCase().includes(activeCosmicTab as string)) {
-                        activeReportText = normalizeTextBlock(paragraphs);
-                        break;
-                      }
-                    }
-
-                    return (
-                      <>
-                        <View style={styles.modalIconWrap}>
-                          <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
-                        </View>
-                        <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
-                        <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                          <Text style={styles.modalDesc}>{activeReportText || 'No summary available.'}</Text>
-                        </ScrollView>
-                        <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveCosmicTab(null)} activeOpacity={0.8}>
-                          <Text style={styles.modalCloseText}>Close</Text>
-                        </TouchableOpacity>
-                      </>
-                    );
-                  })()}
+              <Text style={styles.calculateBtnText}>
+                {calculating ? 'Calculating...' : 'Calculate Kundli'}
+              </Text>
+              {!calculating && <Ionicons name="chevron-forward" size={18} color="#FFF" />}
+            </TouchableOpacity>
+          </View>
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      ) : (
+        <ScrollView 
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C67C4E" />}
+        >
+          {/* Profile Section */}
+          <View style={styles.profileSection}>
+            <View style={styles.profileRow}>
+              <View style={styles.avatarWrap}>
+                {user?.photo ? (
+                  <Image source={{ uri: user.photo }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Ionicons name="person" size={28} color="#C67C4E" />
+                  </View>
+                )}
+              </View>
+              <View style={styles.profileText}>
+                <Text style={styles.profileName}>{user?.name || 'Devotee'}</Text>
+                <View style={styles.profileStatusRow}>
+                  <View style={styles.statusDot} />
+                  <Text style={styles.profileStatus}>Celestial Profile Active</Text>
                 </View>
               </View>
-            </Modal>
+            </View>
           </View>
-        )}
 
-        <View style={{ height: 120 }} />
-      </ScrollView>
+          {/* Nakshatra & Rashi Card */}
+          {!error && (
+            <View style={styles.insightsCard}>
+              <View style={styles.insightBox}>
+                <Text style={styles.insightLabel}>NAKSHATRA</Text>
+                <Text style={styles.insightValue}>{details.Naksahtra || '-'}</Text>
+              </View>
+              <View style={styles.insightDivider} />
+              <View style={styles.insightBox}>
+                <Text style={styles.insightLabel}>RASHI</Text>
+                <Text style={styles.insightValue}>{details.sign || '-'}</Text>
+              </View>
+            </View>
+          )}
+
+          {error ? (
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle" size={20} color="#EF4444" />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          {/* Spiritual Attributes */}
+          {!error && details && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Spiritual Attributes (Ashtakoot)</Text>
+              <View style={styles.grid}>
+                {attributes.map((attr, i) => (
+                  <View key={i} style={styles.attrCard}>
+                    <View style={styles.attrIconBg}>  
+                      <Image source={attr.img} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                    </View>
+                    <View style={styles.attrTextCol}>
+                      <Text style={styles.attrLabel}>{attr.label}</Text>
+                      <Text style={styles.attrValue}>{attr.value || '-'}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Cosmic Analysis */}
+          {!error && report && Object.keys(report).length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Cosmic Analysis</Text>
+              
+              {/* Tab Row */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cosmicTabScroll} contentContainerStyle={styles.cosmicTabRow}>
+                {COSMIC_TABS.map((tab) => {
+                  const isActive = activeCosmicTab === tab.key;
+                  return (
+                    <TouchableOpacity
+                      key={tab.key}
+                      style={[styles.cosmicTab, isActive && styles.cosmicTabActive]}
+                      onPress={() => setActiveCosmicTab(tab.key)}
+                      activeOpacity={0.8}
+                    >
+                      <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
+                        <Image source={tab.img} style={{ width: 36, height: 36, aspectRatio: 1, tintColor: isActive ? '#FFF' : undefined }} resizeMode="contain" />
+                      </View>
+                      <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Report Content Modal */}
+              <Modal
+                visible={!!activeCosmicTab}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setActiveCosmicTab(null)}
+              >
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalCard}>
+                    {(() => {
+                      const activeTabObj = COSMIC_TABS.find(t => t.key === activeCosmicTab);
+                      if (!activeTabObj) return null;
+                      
+                      let activeReportText = '';
+                      for (const [key, paragraphs] of Object.entries(report)) {
+                        if (key.toLowerCase().includes(activeCosmicTab as string)) {
+                          activeReportText = normalizeTextBlock(paragraphs);
+                          break;
+                        }
+                      }
+
+                      return (
+                        <>
+                          <View style={styles.modalIconWrap}>
+                            <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
+                          </View>
+                          <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
+                          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                            <Text style={styles.modalDesc}>{activeReportText || 'No summary available.'}</Text>
+                          </ScrollView>
+                          <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveCosmicTab(null)} activeOpacity={0.8}>
+                            <Text style={styles.modalCloseText}>Close</Text>
+                          </TouchableOpacity>
+                        </>
+                      );
+                    })()}
+                  </View>
+                </View>
+              </Modal>
+            </View>
+          )}
+
+          <View style={{ height: 120 }} />
+        </ScrollView>
+      )}
     </LinearGradient>
   );
 }
@@ -309,9 +751,191 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 24,
   },
+  headerEditBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   content: { flex: 1 },
   loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loaderText: { marginTop: 12, color: '#8D6E63', fontSize: 14 },
+
+  // Form Styles
+  formScrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 40,
+  },
+  formCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 28,
+    padding: 24,
+    shadowColor: 'rgba(160, 65, 0, 0.1)',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 1,
+    shadowRadius: 60,
+    elevation: 10,
+  },
+  formTitle: {
+    alignSelf: 'stretch',
+    color: '#1B1C1C',
+    textAlign: 'center',
+    fontFamily: 'System',
+    fontSize: 24,
+    fontWeight: '600',
+    lineHeight: 40,
+    marginBottom: 20,
+  },
+  inputGroup: {
+    alignSelf: 'stretch',
+    marginBottom: 16,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  inputLabel: {
+    color: '#5A4136',
+    fontFamily: 'System',
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 24,
+    marginLeft: 8,
+  },
+  touchableInput: {
+    height: 50,
+    backgroundColor: '#FFF5F0',
+    borderWidth: 1,
+    borderColor: '#E2BFB0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
+  textInput: {
+    height: 50,
+    backgroundColor: '#FFF5F0',
+    borderWidth: 1,
+    borderColor: '#E2BFB0',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: '#1B1C1C',
+  },
+  genderRowContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF5F0',
+    borderWidth: 1,
+    borderColor: '#E2BFB0',
+    borderRadius: 12,
+    height: 50,
+    padding: 3,
+    alignItems: 'center',
+  },
+  genderButton: {
+    flex: 1,
+    height: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    gap: 6,
+  },
+  genderButtonActive: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#FF7B00',
+  },
+  genderButtonText: {
+    color: '#7D685E',
+    fontFamily: 'System',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  genderButtonTextActive: {
+    color: '#FF7B00',
+    fontWeight: '600',
+  },
+  suggestionsContainer: {
+    backgroundColor: '#FFF',
+    borderColor: '#E2BFB0',
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    marginTop: -4,
+    paddingTop: 4,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2ECE9',
+  },
+  suggestionText: {
+    fontSize: 14,
+    color: '#1B1C1C',
+  },
+  infoNotice: {
+    alignSelf: 'stretch',
+    backgroundColor: '#FFF5F0',
+    borderRadius: 12,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  infoNoticeText: {
+    color: '#5A4136',
+    fontFamily: 'System',
+    fontSize: 12,
+    fontStyle: 'normal',
+    fontWeight: '500',
+    lineHeight: 16,
+    marginLeft: 10,
+    flex: 1,
+  },
+  calculateBtn: {
+    alignSelf: 'center',
+    width: '100%',
+    height: 56,
+    backgroundColor: '#FF7B00',
+    borderRadius: 50,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: 'rgba(255, 123, 0, 0.30)',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  calculateBtnText: {
+    color: '#FFF',
+    textAlign: 'center',
+    fontFamily: 'System',
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 24,
+    textTransform: 'capitalize',
+    marginRight: 8,
+  },
+  pickerStyle: {
+    alignSelf: 'center',
+    width: '100%',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    marginTop: 8,
+  },
 
   // Profile
   profileSection: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
