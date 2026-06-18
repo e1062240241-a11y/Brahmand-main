@@ -389,7 +389,13 @@ export default function AstrologyScreen() {
             <Ionicons name="chevron-back" size={24} color="#5A3E2B" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Janam Kundli</Text>
-          <View style={{ width: 40 }} />
+          {!showForm ? (
+            <TouchableOpacity onPress={() => setShowForm(true)} style={styles.headerEditBtn}>
+              <Ionicons name="pencil-outline" size={20} color="#5A3E2B" />
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 40 }} />
+          )}
         </View>
       </SafeAreaView>
 
