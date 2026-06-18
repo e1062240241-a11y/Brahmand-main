@@ -166,7 +166,7 @@ def _pick_target_profile(width: Optional[int], height: Optional[int]) -> tuple[i
         return 1280, 720, "720p"
 
 
-def _compress_video(input_path: str, output_path: str, target_width: int, target_height: int) -> None:
+def _compress_video(input_path: str, output_path: str, target_width: int, target_height: int, mute_audio: bool = False) -> None:
     if not FFMPEG_BIN:
         raise HTTPException(status_code=500, detail="ffmpeg is missing")
     
@@ -193,14 +193,16 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
         "4.0",      # Broad compatibility
         "-pix_fmt",
         "yuv420p",
-        "-c:a",
-        "aac",
-        "-b:a",
-        "96k",      # Optimize audio bitrate
         "-movflags",
         "+faststart", # Crucial for web streaming
-        output_path,
     ]
+
+    if mute_audio:
+        command.append("-an")
+    else:
+        command.extend(["-c:a", "aac", "-b:a", "96k"])
+
+    command.append(output_path)
 
     try:
         subprocess.run(command, capture_output=True, text=True, check=True)

@@ -2581,59 +2581,49 @@ export default function CommunityDetailScreen() {
             <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
           </View>
         </View>
-        <View style={styles.festEventMain}>
-          {(item.image || item.image_url || item.media_url) && (
-            <CommunityMediaItem
-              media={item.image || item.image_url || item.media_url}
-              style={styles.festEventImage}
-              isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-              onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
-            />
-          )}
-          <View style={styles.festEventInfo}>
-            <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Request'}</Text>
-            {item.description ? (
-              <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
-            ) : null}
-            <View style={styles.festEventMeta}>
-              {item.location ? (
-                <TouchableOpacity 
-                  style={styles.festMetaRow}
-                  onPress={() => handleOpenMap(item.location)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="location" size={14} color="#FF6B00" />
-                  <Text style={[styles.festMetaText, { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>
-                    {item.location}
-                  </Text>
-                </TouchableOpacity>
+        <View style={[{ backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : '#F0F0F0', padding: 16 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>
+          <View style={styles.festEventMain}>
+            {(item.image || item.image_url || item.media_url) && (
+              <CommunityMediaItem
+                media={item.image || item.image_url || item.media_url}
+                style={styles.festEventImage}
+                isActive={activeVideoKey === (item.id ? String(item.id) : '')}
+                onPress={() => setFullScreenMedia(typeof (item.image || item.image_url || item.media_url) === 'string' ? (item.image || item.image_url || item.media_url) : (item.image || item.image_url || item.media_url).uri)}
+              />
+            )}
+            <View style={styles.festEventInfo}>
+              <Text style={styles.festEventTitle} numberOfLines={2}>{item.title || item.content || 'Request'}</Text>
+              {item.description ? (
+                <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
               ) : null}
-              <View style={styles.festMetaRow}>
-                <Ionicons name={iconDetails.name as any} size={14} color={iconDetails.color} />
-                <Text style={styles.festMetaText} numberOfLines={1}>{(item.urgency_level || 'Normal').toUpperCase()}</Text>
-              </View>
-              <View style={styles.festMetaRow}>
-                <Ionicons name="time-outline" size={14} color="#FF3B30" />
-                <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
+              <View style={styles.festEventMeta}>
+                {item.location ? (
+                  <TouchableOpacity 
+                    style={styles.festMetaRow}
+                    onPress={() => handleOpenMap(item.location)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="location" size={14} color="#FF6B00" />
+                    <Text style={[styles.festMetaText, { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>
+                      {item.location}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+                <View style={styles.festMetaRow}>
+                  <Ionicons name={iconDetails.name as any} size={14} color={iconDetails.color} />
+                  <Text style={styles.festMetaText} numberOfLines={1}>{(item.urgency_level || 'Normal').toUpperCase()}</Text>
+                </View>
+                <View style={styles.festMetaRow}>
+                  <Ionicons name="time-outline" size={14} color="#FF3B30" />
+                  <Text style={styles.festMetaText} numberOfLines={1}>{getTimeAgo(item.created_at || item.timestamp)}</Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
 
-        <View style={[styles.festEventFooter, { borderBottomWidth: 1, borderBottomColor: '#F0F0F0', paddingBottom: 12 }]}>
-          <View style={styles.festOrgDetailsRow}>
-            <Avatar name={item.user_name || item.user?.name || 'User'} size={32} photo={item.user?.photo} />
-              <View style={{ marginLeft: 8, flex: 1 }}>
-              <View style={styles.festOrgNameRow}>
-                <Text style={styles.festOrgName} numberOfLines={1}>{item.user_name || item.user?.name || 'User'}</Text>
-                {item.user?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-              </View>
-              <Text style={styles.festOrgLabel}>{item.request_type ? item.request_type.toUpperCase() : 'Requester'}</Text>
-            </View>
-          </View>
-        </View>
+          <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 12 }} />
 
-        <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
+          <View style={[styles.eventActionRow, { marginTop: 0, paddingHorizontal: 0 }]}>
           <TouchableOpacity
             style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
             onPress={() => handleCallPress(phone)}
@@ -2697,6 +2687,7 @@ export default function CommunityDetailScreen() {
           <TouchableOpacity style={styles.actionIconBtn} onPress={() => handleShareRequest(item)}>
             <Ionicons name="share-social-outline" size={18} color="#888" />
           </TouchableOpacity>
+          </View>
         </View>
       </View>
     );

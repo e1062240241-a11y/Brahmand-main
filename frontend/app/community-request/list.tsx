@@ -420,11 +420,7 @@ export default function ActiveRequestsList() {
 
     return (
       <TouchableOpacity
-        style={[
-          styles.requestCard, 
-          { borderColor: isResolved ? '#A7F3D0' : theme.border },
-          isResolved && { backgroundColor: '#F0FDF4' }
-        ]}
+        style={styles.requestCard} 
         activeOpacity={0.9}
         onPress={() => setSelectedRequest(item)}
       >
@@ -439,93 +435,93 @@ export default function ActiveRequestsList() {
               </Text>
               <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}> · {getTimeAgo(item.created_at)}</Text>
             </View>
-            <Text style={styles.requesterRole} numberOfLines={1}>{requestTypeLabel}</Text>
           </View>
         </View>
 
-        <View style={styles.cardHeader}>
-          <View style={[styles.iconWrapper, { backgroundColor: isResolved ? '#10B98115' : theme.iconColor + '15' }]}>
-            <MaterialCommunityIcons 
-              name={isResolved ? 'check-circle' : theme.icon as any} 
-              size={22} 
-              color={isResolved ? '#10B981' : theme.iconColor} 
-            />
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={[styles.cardTypeLabel, { color: isResolved ? '#10B981' : theme.iconColor }]}>
-              {isResolved ? 'Help Completed' : theme.label}
-            </Text>
-            <Text style={styles.timeAgo}>{getTimeAgo(item.created_at)}</Text>
-          </View>
-          {isResolved ? (
-            <View style={[styles.urgencyBadge, { backgroundColor: '#D1FAE5', borderColor: '#A7F3D0' }]}>
-              <Text style={[styles.urgencyText, { color: '#065F46' }]}>RESOLVED</Text>
+        <View style={[styles.requestContentCard, { borderColor: isResolved ? '#A7F3D0' : theme.border }, isResolved && { backgroundColor: '#F0FDF4' }]}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconWrapper, { backgroundColor: isResolved ? '#10B98115' : theme.iconColor + '15' }]}>
+              <MaterialCommunityIcons 
+                name={isResolved ? 'check-circle' : theme.icon as any} 
+                size={22} 
+                color={isResolved ? '#10B981' : theme.iconColor} 
+              />
             </View>
-          ) : (
-            <View style={[styles.urgencyBadge, { backgroundColor: urgency.bg, borderColor: urgency.border }]}>
-              <Text style={[styles.urgencyText, { color: urgency.text }]}>{item.urgency_level.toUpperCase()}</Text>
+            <View style={styles.headerInfo}>
+              <Text style={[styles.cardTypeLabel, { color: isResolved ? '#10B981' : theme.iconColor }]}>
+                {isResolved ? 'Help Completed' : theme.label}
+              </Text>
             </View>
-          )}
-        </View>
-
-        <Text style={[styles.cardTitle, isResolved && { color: '#065F46' }]} numberOfLines={2}>
-          {item.title}
-        </Text>
-        <Text style={styles.cardDesc} numberOfLines={2}>
-          {item.description}
-        </Text>
-
-        <View style={[styles.locRow, { marginBottom: 12 }]}>
-          <Ionicons name="location" size={14} color="#6B7280" />
-          <Text style={styles.locText} numberOfLines={1}>{item.location}</Text>
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.cardFooter}>
-          {isResolved ? (
-            <View style={styles.resolvedFooterRow}>
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.viewBtn]}
-                onPress={() => setSelectedRequest(item)}
-              >
-                <Ionicons name="eye" size={14} color="#6366F1" />
-                <Text style={styles.viewBtnText}>View</Text>
-              </TouchableOpacity>
-              <View style={styles.helpDoneBadge}>
-                <Ionicons name="checkmark-circle" size={15} color="#10B981" />
-                <Text style={styles.helpDoneBadgeText}>Help Done ✅</Text>
+            {isResolved ? (
+              <View style={[styles.urgencyBadge, { backgroundColor: '#D1FAE5', borderColor: '#A7F3D0' }]}>
+                <Text style={[styles.urgencyText, { color: '#065F46' }]}>RESOLVED</Text>
               </View>
-            </View>
-          ) : (
-            <View style={styles.activeFooterRow}>
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.viewBtn]}
-                onPress={() => setSelectedRequest(item)}
-              >
-                <Ionicons name="eye" size={14} color="#6366F1" />
-                <Text style={styles.viewBtnText}>View</Text>
-              </TouchableOpacity>
+            ) : (
+              <View style={[styles.urgencyBadge, { backgroundColor: urgency.bg, borderColor: urgency.border }]}>
+                <Text style={[styles.urgencyText, { color: urgency.text }]}>{item.urgency_level.toUpperCase()}</Text>
+              </View>
+            )}
+          </View>
 
-              <TouchableOpacity 
-                style={[styles.actionBtn, styles.waBtn]}
-                onPress={() => handleWhatsApp(item.contact_number, item.title)}
-              >
-                <FontAwesome5 name="whatsapp" size={14} color="#FFF" />
-                <Text style={styles.actionBtnText}>Offer Help</Text>
-              </TouchableOpacity>
+          <Text style={[styles.cardTitle, isResolved && { color: '#065F46' }]} numberOfLines={2}>
+            {item.title}
+          </Text>
+          <Text style={styles.cardDesc} numberOfLines={3}>
+            {item.description}
+          </Text>
 
-              {item.user_id === user?.id && (
+          <View style={styles.locRow}>
+            <Ionicons name="location" size={14} color="#6B7280" />
+            <Text style={styles.locText} numberOfLines={1}>{item.location}</Text>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.cardFooter}>
+            {isResolved ? (
+              <View style={styles.resolvedFooterRow}>
                 <TouchableOpacity 
-                  style={[styles.actionBtn, styles.fulfillBtn]}
-                  onPress={() => handleResolveRequest(item.id)}
+                  style={[styles.actionBtn, styles.viewBtn]}
+                  onPress={() => setSelectedRequest(item)}
                 >
-                  <Ionicons name="checkmark-done" size={14} color="#FFF" />
-                  <Text style={styles.actionBtnText}>Fulfill</Text>
+                  <Ionicons name="eye" size={14} color="#6366F1" />
+                  <Text style={styles.viewBtnText}>View</Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          )}
+                <View style={styles.helpDoneBadge}>
+                  <Ionicons name="checkmark-circle" size={15} color="#10B981" />
+                  <Text style={styles.helpDoneBadgeText}>Help Done ✅</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.activeFooterRow}>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.viewBtn]}
+                  onPress={() => setSelectedRequest(item)}
+                >
+                  <Ionicons name="eye" size={14} color="#6366F1" />
+                  <Text style={styles.viewBtnText}>View</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.actionBtn, styles.waBtn]}
+                  onPress={() => handleWhatsApp(item.contact_number, item.title)}
+                >
+                  <FontAwesome5 name="whatsapp" size={14} color="#FFF" />
+                  <Text style={styles.actionBtnText}>Offer Help</Text>
+                </TouchableOpacity>
+
+                {item.user_id === user?.id && (
+                  <TouchableOpacity 
+                    style={[styles.actionBtn, styles.fulfillBtn]}
+                    onPress={() => handleResolveRequest(item.id)}
+                  >
+                    <Ionicons name="checkmark-done" size={14} color="#FFF" />
+                    <Text style={styles.actionBtnText}>Fulfill</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -843,6 +839,9 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   requestCard: {
+    marginBottom: 12,
+  },
+  requestContentCard: {
     backgroundColor: '#FFF',
     borderRadius: 24,
     borderWidth: 1,

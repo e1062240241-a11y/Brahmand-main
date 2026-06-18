@@ -26,6 +26,7 @@ interface UploadState {
     offsetYPercent?: number;
     originalWidth?: number;
     originalHeight?: number;
+    muteAudio?: boolean;
   }) => Promise<void>;
   reset: () => void;
 }
@@ -70,7 +71,8 @@ export const useUploadStore = create<UploadState>((set) => ({
         params.offsetXPercent,
         params.offsetYPercent,
         params.originalWidth,
-        params.originalHeight
+        params.originalHeight,
+        params.muteAudio
       );
 
       const newPost = response.data;

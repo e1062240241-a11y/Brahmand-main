@@ -149,6 +149,19 @@ export const PostFeedCard = memo(({
     setVideoPosterUrl(posterUrl);
   }, [posterUrl]);
 
+  // Preload the first 1MB of video content so ReelViewer opens instantly when tapped
+  useEffect(() => {
+    const isVideoPost = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
+    if (!mediaUrl || !isVideoPost) return;
+    const ctrl = new AbortController();
+    fetch(mediaUrl, {
+      method: 'GET',
+      headers: { Range: 'bytes=0-1048576' },
+      signal: ctrl.signal,
+    }).catch(() => {});
+    return () => ctrl.abort();
+  }, [mediaUrl]);
+
   const handleImageError = (e: any) => {
     console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', imageUri);
     if (imageUri && imageUri.includes('b-cdn.net')) {

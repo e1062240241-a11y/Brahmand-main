@@ -302,9 +302,9 @@ function MessagesScreen({
   const handleResolveRequest = async (requestId: string) => {
     try {
       await resolveCommunityRequest(requestId);
-      Alert.alert('Success', 'Request marked as fulfilled successfully!');
+      setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'resolved' } : r));
       setSelectedRequest(null);
-      fetchData();
+      Alert.alert('Success', 'Request marked as fulfilled successfully!');
     } catch (err: any) {
       Alert.alert('Error', parseApiError(err));
     }
@@ -1406,41 +1406,66 @@ function MessagesScreen({
       >
         {activeTopTab === 'Community' ? (
           <View style={styles.communityContent}>
-            {renderCommunityBanner()}
-            {renderOurCommunitiesSection()}
-
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <MaterialCommunityIcons name="account-group-outline" size={22} color="#FF6600" />
-                <Text style={styles.sectionTitle}>
-                  {t('language') === 'hi' ? 'स्थानीय समुदाय ' : 'Local Communities '}
-                  <Text style={styles.subTitleSmall}>
-                    {t('language') === 'hi' ? '(उपयोगकर्ता समूह)' : '(User groups)'}
-                  </Text>
-                </Text>
-              </View>
-              <TouchableOpacity onPress={() => router.push('/community/discover')}>
-                <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Local Communities Slider */}
-            {userGroupsToRender.length > 0 ? (
-              <View style={{ marginBottom: 10, minHeight: 190 }}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
-                >
-                  {userGroupsToRender.map((item, idx) => renderLocalCommunityCard(item, idx))}
-                </ScrollView>
+            {loading && communities.length === 0 && requests.length === 0 ? (
+              <View style={styles.skeletonContainer}>
+                <View style={styles.skeletonBanner} />
+                <View style={styles.skeletonSectionHeader}>
+                  <View style={styles.skeletonSectionTitle} />
+                  <View style={styles.skeletonChip} />
+                </View>
+                <View style={styles.skeletonSlider}>
+                  {[1, 2, 3].map((i) => (
+                    <View key={i} style={styles.skeletonCard} />
+                  ))}
+                </View>
+                <View style={styles.skeletonSectionHeader}>
+                  <View style={styles.skeletonSectionTitle} />
+                </View>
+                <View style={styles.skeletonSlider}>
+                  {[1, 2, 3].map((i) => (
+                    <View key={i} style={styles.skeletonRequestCard} />
+                  ))}
+                </View>
               </View>
             ) : (
-              <View style={styles.localCommEmptyBox}>
-                <Text style={styles.localCommEmptyText}>
-                  {t('language') === 'hi' ? 'अभी तक कोई उपयोगकर्ता समूह नहीं बनाया गया है। शुरुआत करने वाले पहले बनें!' : 'No user groups created yet. Be the first to start one!'}
-                </Text>
-              </View>
+              <>
+                {renderCommunityBanner()}
+                {renderOurCommunitiesSection()}
+
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <MaterialCommunityIcons name="account-group-outline" size={22} color="#FF6600" />
+                    <Text style={styles.sectionTitle}>
+                      {t('language') === 'hi' ? 'स्थानीय समुदाय ' : 'Local Communities '}
+                      <Text style={styles.subTitleSmall}>
+                        {t('language') === 'hi' ? '(उपयोगकर्ता समूह)' : '(User groups)'}
+                      </Text>
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => router.push('/community/discover')}>
+                    <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Local Communities Slider */}
+                {userGroupsToRender.length > 0 ? (
+                  <View style={{ marginBottom: 10, minHeight: 190 }}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+                    >
+                      {userGroupsToRender.map((item, idx) => renderLocalCommunityCard(item, idx))}
+                    </ScrollView>
+                  </View>
+                ) : (
+                  <View style={styles.localCommEmptyBox}>
+                    <Text style={styles.localCommEmptyText}>
+                      {t('language') === 'hi' ? 'अभी तक कोई उपयोगकर्ता समूह नहीं बनाया गया है। शुरुआत करने वाले पहले बनें!' : 'No user groups created yet. Be the first to start one!'}
+                    </Text>
+                  </View>
+                )}
+              </>
             )}
 
             {/* Active Requests */}
@@ -1651,48 +1676,47 @@ function MessagesScreen({
             </View>
 
             <View style={styles.sheetContent}>
-              <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
+              <View style={styles.requestInfoCard}>
+                <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
 
-              <View style={styles.sheetMetaRow}>
-                <View style={[styles.urgencyBadgeSheet, {
-                  backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg,
-                  borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border
-                }]}>
-                  <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
-                    {(() => {
-                      const lvl = (selectedRequest.urgency_level || '').toLowerCase();
-                      if (t('language') === 'hi') {
-                        if (lvl === 'critical' || lvl === 'urgent') return 'अति आवश्यक';
-                        if (lvl === 'high') return 'उच्च प्राथमिकता';
-                        if (lvl === 'medium') return 'मध्यम';
-                        return 'सामान्य';
-                      }
-                      return `${selectedRequest.urgency_level.toUpperCase()} URGENCY`;
-                    })()}
-                  </Text>
+                <View style={styles.sheetMetaRow}>
+                  <View style={[styles.urgencyBadgeSheet, {
+                    backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg,
+                    borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border
+                  }]}>
+                    <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
+                      {(() => {
+                        const lvl = (selectedRequest.urgency_level || '').toLowerCase();
+                        if (t('language') === 'hi') {
+                          if (lvl === 'critical' || lvl === 'urgent') return 'अति आवश्यक';
+                          if (lvl === 'high') return 'उच्च प्राथमिकता';
+                          if (lvl === 'medium') return 'मध्यम';
+                          return 'सामान्य';
+                        }
+                        return `${selectedRequest.urgency_level.toUpperCase()} URGENCY`;
+                      })()}
+                    </Text>
+                  </View>
+                  <View style={styles.sheetLocBadge}>
+                    <Ionicons name="location" size={14} color="#64748B" />
+                    <Text style={styles.sheetLocText}>{selectedRequest.location || 'Mumbai'}</Text>
+                  </View>
                 </View>
-                <View style={styles.sheetLocBadge}>
-                  <Ionicons name="location" size={14} color="#64748B" />
-                  <Text style={styles.sheetLocText}>{selectedRequest.location || 'Mumbai'}</Text>
-                </View>
-              </View>
 
-              <Text style={styles.sheetDescSectionTitle}>
-                {t('language') === 'hi' ? 'विवरण' : 'Details / Description'}
-              </Text>
-              <Text style={styles.sheetDesc}>
-                {selectedRequest.description || (t('language') === 'hi' ? 'कोई विवरण नहीं दिया गया है।' : 'No description provided.')}
-              </Text>
+                <Text style={styles.sheetDescSectionTitle}>
+                  {t('language') === 'hi' ? 'विवरण' : 'Details / Description'}
+                </Text>
+                <Text style={styles.sheetDesc}>
+                  {selectedRequest.description || (t('language') === 'hi' ? 'कोई विवरण नहीं दिया गया है।' : 'No description provided.')}
+                </Text>
 
-              <View style={styles.requesterCard}>
-                <Ionicons name="person-circle" size={40} color="#E2E8F0" />
-                <View style={{ marginLeft: 10 }}>
-                  <Text style={styles.requesterName}>
-                    {selectedRequest.user_name || (t('language') === 'hi' ? 'सत्यापित पड़ोसी' : 'Verified Neighbor')}
-                  </Text>
-                  <Text style={styles.requesterLabel}>
-                    {t('language') === 'hi' ? 'समुदाय के सदस्य' : 'Community Member'}
-                  </Text>
+                <View style={styles.requesterCard}>
+                  <Ionicons name="person-circle" size={36} color="#E2E8F0" />
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.requesterName}>
+                      {selectedRequest.user_name || (t('language') === 'hi' ? 'पड़ोसी' : 'Neighbor')}
+                    </Text>
+                  </View>
                 </View>
               </View>
 
@@ -2189,6 +2213,19 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   sheetContent: {},
+  requestInfoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#FFE8D4',
+    shadowColor: '#FF8A00',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+    marginBottom: 16,
+  },
   sheetTitle: {
     fontSize: 20,
     fontFamily: FONTS.bold,
@@ -2385,6 +2422,57 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     marginLeft: 82,
     marginRight: 16,
+  },
+  skeletonContainer: {
+    paddingVertical: 20,
+  },
+  skeletonBanner: {
+    height: 100,
+    backgroundColor: '#FFDCC5',
+    borderRadius: 16,
+    marginHorizontal: 16,
+    marginBottom: 20,
+  },
+  skeletonSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  skeletonSectionTitle: {
+    width: 140,
+    height: 18,
+    backgroundColor: '#E8D5C8',
+    borderRadius: 8,
+  },
+  skeletonChip: {
+    width: 60,
+    height: 18,
+    backgroundColor: '#E8D5C8',
+    borderRadius: 8,
+  },
+  skeletonSlider: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    gap: 12,
+  },
+  skeletonCard: {
+    width: 152,
+    height: 170,
+    backgroundColor: '#FFEEE5',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FFDDCC',
+  },
+  skeletonRequestCard: {
+    width: 140,
+    height: 200,
+    backgroundColor: '#FFEEE5',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FFDDCC',
   },
 });
 

@@ -6,6 +6,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -181,6 +182,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
+  const [mutedAudio, setMutedAudio] = useState(false);
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const progressWidth = progressAnim.interpolate({
@@ -427,6 +429,7 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
     setUploading(false);
     setUploadProgress(0);
     setIsCompressing(false);
+    setMutedAudio(false);
     setAspectRatioMode('4:5');
     setOffsetXPercent(0.5);
     setOffsetYPercent(0.5);
@@ -611,7 +614,8 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
         offsetXPercent,
         offsetYPercent,
         selectedMedia.width,
-        selectedMedia.height
+        selectedMedia.height,
+        mutedAudio
       );
       onUploadSuccess(response.data);
       resetAndClose();
@@ -799,13 +803,27 @@ export const UploadPostModal = ({ visible, onClose, onUploadSuccess, onUploadSta
               <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'पोस्ट विवरण' : 'Post Details'}</Text>
               <M3OutlinedInput label={t('language') === 'hi' ? 'कैप्शन / विवरण' : 'Caption / Description'} value={caption} onChangeText={setCaption} multiline />
               {selectedMedia?.mediaType === 'video' && (
-                <View style={styles.disclaimerContainer}>
-                  <Text style={styles.disclaimerText}>
-                    {t('language') === 'hi'
-                      ? 'सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।'
-                      : 'By uploading content, you confirm you own or have rights to use the audio and video.'}
-                  </Text>
-                </View>
+                <>
+                  <View style={styles.muteRow}>
+                    <Ionicons name={mutedAudio ? 'volume-mute' : 'volume-high'} size={20} color="#666" />
+                    <Text style={styles.muteLabel}>
+                      {t('language') === 'hi' ? 'ऑडियो म्यूट करें' : 'Mute Audio'}
+                    </Text>
+                    <Switch
+                      value={mutedAudio}
+                      onValueChange={setMutedAudio}
+                      trackColor={{ false: '#ddd', true: '#FF6B00' }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                  <View style={styles.disclaimerContainer}>
+                    <Text style={styles.disclaimerText}>
+                      {t('language') === 'hi'
+                        ? 'सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।'
+                        : 'By uploading content, you confirm you own or have rights to use the audio and video.'}
+                    </Text>
+                  </View>
+                </>
               )}
             </View>
 
@@ -1231,6 +1249,19 @@ const styles = StyleSheet.create({
   mentionSL: {
     fontSize: 12,
     color: '#888',
+  },
+  muteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+  muteLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: '#444',
+    fontWeight: '500',
   },
   disclaimerContainer: {
     marginTop: 12,

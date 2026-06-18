@@ -2453,6 +2453,7 @@ async def upload_post(
     crop_offset_y: Optional[float] = Form(None),
     original_width: Optional[int] = Form(None),
     original_height: Optional[int] = Form(None),
+    mute_audio: Optional[str] = Form(None),
     file: UploadFile = File(...),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit)
@@ -2463,7 +2464,7 @@ async def upload_post(
     async with global_semaphore:
         async with user_lock:
             return await _upload_post_impl(
-                caption, source, filter_name, file, token_data, request, category, community_level, media_width, media_height, crop_offset_x, crop_offset_y, original_width, original_height
+                caption, source, filter_name, file, token_data, request, category, community_level, media_width, media_height, crop_offset_x, crop_offset_y, original_width, original_height, mute_audio
             )
 
 async def _upload_post_impl(
@@ -2481,6 +2482,7 @@ async def _upload_post_impl(
     crop_offset_y: Optional[float] = None,
     original_width: Optional[int] = None,
     original_height: Optional[int] = None,
+    mute_audio: Optional[str] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2594,6 +2596,7 @@ async def _upload_post_impl(
                     temp_output_file.name,
                     target_width,
                     target_height,
+                    mute_audio == 'true',
                 )
 
                 temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
@@ -2818,6 +2821,7 @@ async def upload_post_from_storage(
     media_height: Optional[int] = Form(None),
     crop_offset_x: Optional[float] = Form(None),
     crop_offset_y: Optional[float] = Form(None),
+    mute_audio: Optional[str] = Form(None),
     token_data: dict = Depends(verify_token),
     _: bool = Depends(upload_rate_limit),
 ):
@@ -2825,7 +2829,7 @@ async def upload_post_from_storage(
     lock = await get_user_upload_lock(user_id)
     async with lock:
         return await _upload_post_from_storage_impl(
-            storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url), media_width, media_height, crop_offset_x, crop_offset_y
+            storage_path, caption, source, filter_name, token_data, category, community_level, str(request.base_url), media_width, media_height, crop_offset_x, crop_offset_y, mute_audio
         )
 
 async def _upload_post_from_storage_impl(
@@ -2841,6 +2845,7 @@ async def _upload_post_from_storage_impl(
     passed_media_height: Optional[int] = None,
     crop_offset_x: Optional[float] = None,
     crop_offset_y: Optional[float] = None,
+    mute_audio: Optional[str] = None,
 ):
     db = await get_db()
     user_id = token_data['user_id']
@@ -2918,6 +2923,7 @@ async def _upload_post_from_storage_impl(
                 temp_output_file.name,
                 target_width,
                 target_height,
+                mute_audio == 'true',
             )
 
             compressed_size_bytes = os.path.getsize(temp_output_file.name)

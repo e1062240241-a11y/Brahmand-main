@@ -1,13 +1,14 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { Slot, usePathname, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../src/store/authStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
 import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
-import { sendDirectMessage } from '../src/services/api';
+import { sendDirectMessage, getCommunities, getCircles, getConversations, discoverCommunities } from '../src/services/api';
 import { getAllMutedConversations } from '../src/services/mutedChats';
 import { COLORS } from '../src/constants/theme';
 import { useAdminStore } from '../src/store/adminStore';
@@ -20,7 +21,7 @@ import { useNotificationStore } from '../src/store/notificationStore';
 import { ToastContainer } from '../src/components/ToastContainer';
 import { UploadProgressBanner } from '../src/components/UploadProgressBanner';
 import { toast } from '../src/store/toastStore';
-import { Alert as RNAlert, Animated } from 'react-native';
+import { Alert as RNAlert } from 'react-native';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 import { syncDatabase } from '../src/database/sync';
 import { GlobalFAB } from '../src/components/GlobalFAB';
@@ -541,19 +542,7 @@ export default function RootLayout() {
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
   const { loadStoredAdminAuth } = useAdminStore();
   const pushInitStartedRef = useRef(false);
-
-  const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    Outfit_400Regular,
-    Outfit_500Medium,
-    Outfit_600SemiBold,
-    Outfit_700Bold,
-    'Cinzel': Cinzel_500Medium,
-    'Poppins': Poppins_400Regular,
-  });
+  const [fontsReady, setFontsReady] = useState(false);
 
   useDeepLinkHandler();
   useAppBackHandler();
@@ -579,12 +568,6 @@ export default function RootLayout() {
     }
   }, []);
 
-  // Configure Android status bar and bottom navigation bar globally once to prevent flickering/glitching
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    // Android status/nav bar config can be added here if needed
-  }, []);
-
   useEffect(() => {
     initSyncQueueListener();
   }, []);
@@ -603,54 +586,83 @@ export default function RootLayout() {
     });
   }, [loadStoredAuth, loadStoredAdminAuth]);
 
-  // Start Firebase auth state listener to catch silent auto-verification on Android
   useEffect(() => {
     const unsubscribe = startAuthStateListener((user) => {
       if (user) {
         console.log('[Auth] onAuthStateChanged: user signed in via auto-verification');
       }
     });
-
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (isLoading || !token || !isAuthenticated || pushInitStartedRef.current) {
-      return;
-    }
-
+    if (isLoading || !token || !isAuthenticated || pushInitStartedRef.current) return;
     pushInitStartedRef.current = true;
     initPushNotifications().catch((error) => {
       console.warn('[Push] Auto init on app load failed:', error);
     });
   }, [isLoading, token, isAuthenticated, initPushNotifications]);
 
-  // Synchronize WatermelonDB local database on startup/authentication (native only)
   useEffect(() => {
-    if (Platform.OS === 'web') return; // WatermelonDB is native-only; skip on web
+    if (Platform.OS === 'web') return;
     if (!isLoading && isAuthenticated && token) {
-      console.log('[Sync] Initializing local database sync...');
       syncDatabase()
         .then(() => console.log('[Sync] WatermelonDB sync complete on startup'))
         .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
     }
   }, [isLoading, isAuthenticated, token]);
 
-  // Connect/disconnect Socket.IO globally and handle real-time notifications
+  // Preload community data after auth resolves — cache it so Community tab shows instantly
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !token) return;
+
+    const preload = async () => {
+      try {
+        const [communitiesRes, circlesRes, conversationsRes, discoverRes] = await Promise.all([
+          getCommunities().catch(() => ({ data: [] })),
+          getCircles().catch(() => ({ data: [] })),
+          getConversations().catch(() => ({ data: [] })),
+          discoverCommunities().catch(() => ({ data: [] })),
+        ]);
+
+        if (Platform.OS === 'web') {
+          if (communitiesRes?.data?.length) {
+            AsyncStorage.setItem('web_communities_cache', JSON.stringify(communitiesRes.data)).catch(() => {});
+          }
+          if (circlesRes?.data?.length) {
+            AsyncStorage.setItem('web_circles_cache', JSON.stringify(circlesRes.data)).catch(() => {});
+          }
+          if (conversationsRes?.data?.length) {
+            AsyncStorage.setItem('web_dms_cache', JSON.stringify(conversationsRes.data)).catch(() => {});
+          }
+          if (discoverRes?.data) {
+            const discoverData = Array.isArray(discoverRes.data) ? discoverRes.data : discoverRes.data?.data || [];
+            AsyncStorage.setItem('user_groups_discover_cache', JSON.stringify({ data: discoverData, timestamp: Date.now() })).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.warn('[Preload] Community data preload failed:', e);
+      }
+    };
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => preload(), { timeout: 3000 });
+    } else {
+      setTimeout(preload, 500);
+    }
+  }, [isLoading, isAuthenticated, token]);
+
   useEffect(() => {
     if (!isLoading && isAuthenticated && token) {
-      console.log('[Socket] Connecting globally...');
       socketService.connect().catch((err) => {
         console.warn('[Socket] Global connection failed:', err);
       });
 
       const handleNewNotification = (notification: any) => {
-        console.log('[Socket] Received real-time notification:', notification);
         try {
           const { unreadCount, setUnreadCount, addRecentNotification } = useNotificationStore.getState();
           addRecentNotification(notification);
           setUnreadCount(unreadCount + 1);
-          
           if (pathname !== '/notifications' && pathname !== '/(tabs)/notifications') {
             toast.show(notification.title || 'New Notification', 'info');
           }
@@ -665,51 +677,48 @@ export default function RootLayout() {
         socketService.offEvent('new_notification', handleNewNotification);
       };
     } else if (!isLoading && !isAuthenticated) {
-      console.log('[Socket] Disconnecting globally...');
       socketService.disconnect();
     }
   }, [isLoading, isAuthenticated, token, pathname]);
 
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
-    if (!isLoading && fontsLoaded) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isLoading, fontsLoaded]);
-
-  if (isLoading || !fontsLoaded) {
-    return (
-      <BrandedLoading />
-    );
-  }
+    (async () => {
+      try {
+        const Font = require('expo-font');
+        await Font.loadAsync({
+          Inter_400Regular,
+          Inter_500Medium,
+          Inter_600SemiBold,
+          Inter_700Bold,
+          Outfit_400Regular,
+          Outfit_500Medium,
+          Outfit_600SemiBold,
+          Outfit_700Bold,
+          'Cinzel': Cinzel_500Medium,
+          'Poppins': Poppins_400Regular,
+        });
+      } catch (e) {
+        console.warn('[Fonts] Non-blocking font load failed:', e);
+      }
+      setFontsReady(true);
+    })();
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        {/*
-          ⚡ Bolt: Global StatusBar config — forces translucent bar and transparent background
-          Impact: Eliminates Activity redraw blink when opening DatePicker or other Modals on Android
-          Tested: Android API 30+ emulator / Web / iOS
-        */}
         <StatusBar
           style={Platform.OS === 'android' ? 'dark' : isDarkScreen ? 'light' : 'dark'}
           backgroundColor="transparent"
           translucent={true}
         />
-        <Animated.View style={[styles.root, { opacity: fadeAnim }]}>
-          <MuteProvider>
-            <Stack screenOptions={{
-              headerShown: false,
-              animation: 'slide_from_right',
-              gestureEnabled: true,
-              gestureDirection: 'horizontal'
-            }}>
+        <MuteProvider>
+          <Stack screenOptions={{
+            headerShown: false,
+            animation: 'slide_from_right',
+            gestureEnabled: true,
+            gestureDirection: 'horizontal'
+          }}>
               {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
               <Stack.Screen
                 key="(tabs)"
@@ -861,17 +870,12 @@ export default function RootLayout() {
             <UploadProgressBanner />
             <ToastContainer />
           </MuteProvider>
-        </Animated.View>
-      </SafeAreaProvider>
+        </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
