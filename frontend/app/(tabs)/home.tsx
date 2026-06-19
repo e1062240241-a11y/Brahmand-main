@@ -1509,7 +1509,7 @@ export default function HomeScreen() {
 
   const safeCommunityRequests = Array.isArray(communityRequests) ? communityRequests : [];
   const bloodRequests = safeCommunityRequests
-    .filter((item) => item?.request_type === 'blood' && item?.status !== 'resolved')
+    .filter((item) => item?.request_type === 'blood' && item?.status !== 'resolved' && String(item?.user_id) !== String(user?.id))
     .slice(0, 5);
   const bloodRequest = bloodRequests[0];
   const cowRequest = safeCommunityRequests.find((item) => {
