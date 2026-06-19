@@ -16,8 +16,8 @@ import sys
 from datetime import datetime
 
 # Test configuration
-BASE_URL = "https://brahmand-requests.preview.emergentagent.com/api"
-TEST_PHONE = "+919998887770"
+BASE_URL = "http://127.0.0.1:8000/api"
+TEST_PHONE = "+919999887770"
 TEST_OTP = "123456"
 
 class Colors:
@@ -134,12 +134,11 @@ def test_help_request_flow():
     print(f"\n{Colors.YELLOW}Step 3: POST /api/help-requests{Colors.END}")
     headers = {"Authorization": f"Bearer {auth_token}"}
     help_request_data = {
-        "type": "blood",
-        "title": "Blood Test", 
+        "type": "medical",
+        "title": "Medical Test", 
         "description": "Testing blood request creation",
         "contact_number": TEST_PHONE,
         "urgency": "normal",
-        "blood_group": "A+",
         "community_level": "area"
     }
     

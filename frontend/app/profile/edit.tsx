@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
@@ -48,6 +50,28 @@ export default function EditProfileScreen() {
   const [timeOfBirth, setTimeOfBirth] = useState('');
   const [placeOfBirth, setPlaceOfBirth] = useState('');
 
+  const [gender, setGender] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [dobDate, setDobDate] = useState<Date | null>(null);
+  const [tempTime, setTempTime] = useState<Date>(new Date());
+
+  const getTimeValue = () => {
+    const d = new Date();
+    if (timeOfBirth) {
+      const parts = timeOfBirth.split(':');
+      if (parts.length >= 2) {
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          d.setHours(hours);
+          d.setMinutes(minutes);
+        }
+      }
+    }
+    return d;
+  };
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
@@ -65,14 +89,29 @@ export default function EditProfileScreen() {
         if (rawDob && /^\d{4}-\d{2}-\d{2}$/.test(rawDob)) {
           const [y, m, d] = rawDob.split('-');
           setDateOfBirth(`${d}/${m}/${y}`);
+          setDobDate(new Date(parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10)));
         } else {
           setDateOfBirth(rawDob);
+          if (rawDob) {
+            const parsed = new Date(rawDob);
+            if (!isNaN(parsed.getTime())) {
+              setDobDate(parsed);
+            }
+          }
         }
-        setTimeOfBirth(data.time_of_birth || '');
+        let rawTob = data.time_of_birth || '';
+        if (rawTob) {
+          const parts = rawTob.split(':');
+          if (parts.length >= 2) {
+            rawTob = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`;
+          }
+        }
+        setTimeOfBirth(rawTob);
         setPlaceOfBirth(
           data.place_of_birth ||
             [homeLocation.area, homeLocation.city, homeLocation.state].filter(Boolean).join(', ')
         );
+        setGender(data.gender || '');
       } catch (err: any) {
         setError(err?.response?.data?.detail || err?.message || 'Failed to load profile');
       } finally {
@@ -108,7 +147,7 @@ export default function EditProfileScreen() {
         return t('language') === 'hi' ? 'जन्म तिथि DD/MM/YYYY प्रारूप में होनी चाहिए' : 'Date of birth must be in DD/MM/YYYY format';
       }
     }
-    if (timeOfBirth && !/^\d{2}:\d{2}$/.test(timeOfBirth.trim())) {
+    if (timeOfBirth && !/^\d{2}:\d{2}(:\d{2})?$/.test(timeOfBirth.trim())) {
       return t('language') === 'hi' ? 'जन्म का समय HH:MM प्रारूप में होना चाहिए' : 'Time of birth must be in HH:MM format';
     }
     return '';
@@ -226,6 +265,7 @@ export default function EditProfileScreen() {
         place_of_birth: placeText || undefined,
         place_of_birth_latitude: lat,
         place_of_birth_longitude: lng,
+        gender: gender.trim() || undefined,
       });
 
       updateUser(response.data || {});
@@ -320,20 +360,137 @@ export default function EditProfileScreen() {
                 {t('language') === 'hi' ? 'जन्म का विवरण' : 'Birth Details'}
               </Text>
               <View style={styles.card}>
-                <Input
-                  label={t('language') === 'hi' ? 'जन्म तिथि' : 'Date of Birth'}
-                  value={dateOfBirth}
-                  onChangeText={setDateOfBirth}
-                  placeholder="DD/MM/YYYY"
-                  keyboardType="numbers-and-punctuation"
-                />
-                <Input
-                  label={t('language') === 'hi' ? 'जन्म का समय' : 'Time of Birth'}
-                  value={timeOfBirth}
-                  onChangeText={setTimeOfBirth}
-                  placeholder="HH:MM"
-                  keyboardType="numbers-and-punctuation"
-                />
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    if (!dobDate) {
+                      setDobDate(new Date());
+                    }
+                    setShowDatePicker(!showDatePicker);
+                    setShowTimePicker(false);
+                  }}
+                >
+                  <View pointerEvents="none">
+                    <Input
+                      label={t('language') === 'hi' ? 'जन्म तिथि' : 'Date of Birth'}
+                      value={dateOfBirth}
+                      placeholder="DD/MM/YYYY"
+                      editable={false}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={dobDate || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                      }
+                      if (selectedDate) {
+                        setDobDate(selectedDate);
+                        const day = String(selectedDate.getDate()).padStart(2, '0');
+                        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                        const year = selectedDate.getFullYear();
+                        setDateOfBirth(`${day}/${month}/${year}`);
+                      }
+                    }}
+                    style={{ alignSelf: 'center', marginVertical: 8 }}
+                  />
+                )}
+
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setShowTimePicker(!showTimePicker);
+                    setShowDatePicker(false);
+                  }}
+                >
+                  <View pointerEvents="none">
+                    <Input
+                      label={t('language') === 'hi' ? 'जन्म का समय' : 'Time of Birth'}
+                      value={timeOfBirth}
+                      placeholder="HH:MM"
+                      editable={false}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={getTimeValue()}
+                    mode="time"
+                    is24Hour={true}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedTime) => {
+                      if (Platform.OS === 'android') {
+                        setShowTimePicker(false);
+                      }
+                      if (selectedTime) {
+                        const hours = String(selectedTime.getHours()).padStart(2, '0');
+                        const minutes = String(selectedTime.getMinutes()).padStart(2, '0');
+                        setTimeOfBirth(`${hours}:${minutes}`);
+                      }
+                    }}
+                    style={{ alignSelf: 'center', marginVertical: 8 }}
+                  />
+                )}
+
+                {/* Gender */}
+                <View style={styles.genderContainer}>
+                  <Text style={styles.genderLabel}>
+                    {t('language') === 'hi' ? 'लिंग' : 'Gender'}
+                  </Text>
+                  <View style={styles.genderRowContainer}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => setGender('male')}
+                      style={[styles.genderButton, gender === 'male' && styles.genderButtonActive]}
+                    >
+                      <Ionicons
+                        name="male"
+                        size={16}
+                        color={gender === 'male' ? COLORS.primary : COLORS.textSecondary}
+                      />
+                      <Text style={[styles.genderButtonText, gender === 'male' && styles.genderButtonTextActive]}>
+                        {t('language') === 'hi' ? 'पुरुष' : 'Male'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => setGender('female')}
+                      style={[styles.genderButton, gender === 'female' && styles.genderButtonActive]}
+                    >
+                      <Ionicons
+                        name="female"
+                        size={16}
+                        color={gender === 'female' ? COLORS.primary : COLORS.textSecondary}
+                      />
+                      <Text style={[styles.genderButtonText, gender === 'female' && styles.genderButtonTextActive]}>
+                        {t('language') === 'hi' ? 'महिला' : 'Female'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => setGender('other')}
+                      style={[styles.genderButton, gender === 'other' && styles.genderButtonActive]}
+                    >
+                      <Ionicons
+                        name="transgender"
+                        size={16}
+                        color={gender === 'other' ? COLORS.primary : COLORS.textSecondary}
+                      />
+                      <Text style={[styles.genderButtonText, gender === 'other' && styles.genderButtonTextActive]}>
+                        {t('language') === 'hi' ? 'अन्य' : 'Other'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <Input
                   label={t('language') === 'hi' ? 'जन्म स्थान' : 'Place of Birth'}
                   value={placeOfBirth}
@@ -482,6 +639,7 @@ export default function EditProfileScreen() {
         title={t('language') === 'hi' ? 'खाता हटाएं' : 'Delete Account'}
         description={t('language') === 'hi' ? 'खाता हटाने के लिए OTP सत्यापित करें' : 'Verify OTP to delete your account'}
       />
+
     </SafeAreaView>
   );
 }
@@ -691,5 +849,79 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.primary,
+  },
+  genderContainer: {
+    marginBottom: SPACING.md,
+  },
+  genderLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SPACING.sm,
+  },
+  genderRowContainer: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+  },
+  genderButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.sm + 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: BORDER_RADIUS.md,
+    backgroundColor: COLORS.surface,
+    gap: 6,
+  },
+  genderButtonActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: `${COLORS.primary}0B`,
+  },
+  genderButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  genderButtonTextActive: {
+    color: COLORS.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.lg,
+    padding: SPACING.md,
+    width: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: SPACING.md,
+    gap: SPACING.md,
+  },
+  modalButtonCancel: {
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    fontSize: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  modalButtonOk: {
+    color: COLORS.primary,
+    fontWeight: '600',
+    fontSize: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
 });

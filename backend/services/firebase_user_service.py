@@ -58,6 +58,22 @@ class FirebaseUserService:
         return await FirebaseUserService.get_profile(user_id)
     
     @staticmethod
+    async def update_extended_profile(user_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update extended profile fields"""
+        db = await FirebaseUserService.get_db()
+        
+        # Filter out None values
+        update_data = {k: v for k, v in update_data.items() if v is not None}
+        
+        if update_data:
+            await db.update_document('users', user_id, update_data)
+            
+        # Invalidate cache
+        await cache_manager.invalidate_user(user_id)
+        
+        return await FirebaseUserService.get_profile(user_id)
+    
+    @staticmethod
     async def search_by_sl_id(sl_id: str) -> Dict[str, Any]:
         """Search user by SL ID"""
         db = await FirebaseUserService.get_db()

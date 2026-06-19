@@ -352,7 +352,10 @@ export default function SOSScreen() {
           style={styles.content}
         >
           {stage === 'type' && (
-            <>
+            <ScrollView 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ flexGrow: 1 }}
+            >
               <View style={styles.warningContainer}>
                 <View style={styles.warningIconBg}>
                   <Text style={styles.warningExclamation}>!</Text>
@@ -397,7 +400,13 @@ export default function SOSScreen() {
                 })}
               </View>
 
-              <View style={{ height: 16 }} />
+              <View style={styles.disclaimerBox}>
+                <Ionicons name="information-circle-outline" size={18} color="#FF6B00" style={{ marginRight: 8, marginTop: 1 }} />
+                <Text style={styles.disclaimerText}>
+                  <Text style={{ fontWeight: '700' }}>Disclaimer: </Text>
+                  Brahmand is not a police, ambulance, fire, or emergency medical service. In life-threatening emergencies, contact official emergency services immediately.
+                </Text>
+              </View>
 
               <TouchableOpacity 
                 style={[
@@ -421,7 +430,7 @@ export default function SOSScreen() {
               <TouchableOpacity style={styles.cancelButton} onPress={handleBack} activeOpacity={0.8}>
                 <Text style={styles.cancelButtonText}>Cancel SOS</Text>
               </TouchableOpacity>
-            </>
+            </ScrollView>
           )}
 
           {stage === 'location' && (
@@ -763,49 +772,49 @@ const styles = StyleSheet.create({
   },
   warningContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
+    marginBottom: 10,
+    marginTop: 5,
   },
   warningIconBg: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#FFF0EE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   warningExclamation: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '900',
     color: '#FF3B30',
     marginTop: -2,
   },
   warningTitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
     color: '#1A1A1A',
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'center',
   },
   warningText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#666',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
     paddingHorizontal: 16,
   },
   optionsContainer: {
-    marginTop: 10,
+    marginTop: 5,
   },
   typeOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#E5E5EA',
     borderRadius: 16,
-    marginBottom: 10,
+    marginBottom: 8,
     backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -1140,8 +1149,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
-    marginTop: 15,
-    marginBottom: 15,
+    marginTop: 8,
+    marginBottom: 8,
     alignItems: 'flex-start',
   },
   disclaimerText: {

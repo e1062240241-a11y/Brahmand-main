@@ -30,6 +30,7 @@ import VendorCategories from '../../src/components/VendorCategories';
 import { useTranslation } from '../../src/utils/i18n';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCoachMarkStore } from '../../src/utils/coachMarkState';
+import { useIsFocused } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuthStore } from '../../src/store/authStore';
@@ -225,9 +226,35 @@ export default function VendorScreen() {
   const searchAnim = useRef(new Animated.Value(0)).current;
 
   // Coach marks
-  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks } = useCoachMarkStore();
+  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [searchBarLayout, setSearchBarLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [registerBtnLayout, setRegisterBtnLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const checkVendorCoach = async () => {
+      const userId = user?.id;
+      await loadFlags(userId);
+      const latestFlags = useCoachMarkStore.getState().seenFlags;
+      
+      if (!latestFlags.vendorCoachSeen) {
+        const latestState = useCoachMarkStore.getState();
+        if (!latestState.showCoachMarks || (latestState.coachMarkStep !== 7 && latestState.coachMarkStep !== 8)) {
+          setShowCoachMarks(true);
+          setCoachMarkStep(7);
+        }
+      } else {
+        const latestState = useCoachMarkStore.getState();
+        if (latestState.showCoachMarks && (latestState.coachMarkStep === 7 || latestState.coachMarkStep === 8)) {
+          setShowCoachMarks(false);
+          setCoachMarkStep(1);
+        }
+      }
+    };
+    checkVendorCoach();
+  }, [isFocused, user?.id]);
 
   const loadKycStatus = useCallback(async (): Promise<string | null> => {
     try {
@@ -767,7 +794,10 @@ export default function VendorScreen() {
     const handleVendorSkip = async () => {
       setCoachMarkStep(1);
       setShowCoachMarks(false);
-      try { await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true'); } catch (e) {}
+      try {
+        const userId = user?.id;
+        await setFlagSeen(userId, 'vendorCoachSeen');
+      } catch (e) {}
     };
 
     const handleVendorNext = async () => {
@@ -777,7 +807,10 @@ export default function VendorScreen() {
         // Step 8 — done
         setCoachMarkStep(1);
         setShowCoachMarks(false);
-        try { await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true'); } catch (e) {}
+        try {
+          const userId = user?.id;
+          await setFlagSeen(userId, 'vendorCoachSeen');
+        } catch (e) {}
       }
     };
 

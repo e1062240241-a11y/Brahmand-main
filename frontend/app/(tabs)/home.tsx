@@ -34,7 +34,7 @@ import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
 import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
-import { useCoachMarkStore } from '../../src/utils/coachMarkState';
+import { useCoachMarkStore, getNextStep } from '../../src/utils/coachMarkState';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
@@ -417,7 +417,7 @@ export default function HomeScreen() {
   const isFocused = useIsFocused();
   const { user, updateUser } = useAuthStore();
 
-  const { showCoachMarks, setShowCoachMarks, coachMarkStep, setCoachMarkStep } = useCoachMarkStore();
+  const { showCoachMarks, setShowCoachMarks, coachMarkStep, setCoachMarkStep, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [topFeaturesY, setTopFeaturesY] = useState(0);
   const [bannersY, setBannersY] = useState(0);
   const bannerScrollRef = useRef<ScrollView>(null);
@@ -426,21 +426,37 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (!isHomeInitialized) return;
+    if (!isFocused) return;
     const checkCoachMarks = async () => {
       try {
-        const seen = await AsyncStorage.getItem('brahmand_coachmarks_seen_v1');
-        if (!seen) {
+        const userId = user?.id;
+        await loadFlags(userId);
+        const latestState = useCoachMarkStore.getState();
+        const { seenFlags: latestFlags } = latestState;
+
+        const showHome = !latestFlags.homeCoachSeen;
+        const showKundli = !latestFlags.kundliCoachSeen;
+
+        if (showHome || showKundli) {
+          const startStep = showHome ? 1 : 2;
           setTimeout(() => {
+            setCoachMarkStep(startStep);
             setShowCoachMarks(true);
-            topFeaturesScrollRef.current?.scrollTo({ x: 0, animated: false });
+            if (startStep === 1) {
+              topFeaturesScrollRef.current?.scrollTo({ x: 0, animated: false });
+            } else {
+              topFeaturesScrollRef.current?.scrollTo({ x: 3 * (175 + 10), animated: false });
+            }
           }, 1000);
+        } else {
+          setShowCoachMarks(false);
         }
       } catch (e) {
         console.warn('Failed to read coachmarks seen state:', e);
       }
     };
     checkCoachMarks();
-  }, [isHomeInitialized]);
+  }, [isHomeInitialized, isFocused, user?.id]);
 
   useEffect(() => {
     if (showCoachMarks) {
@@ -466,12 +482,24 @@ export default function HomeScreen() {
   // Auto-advance from FAB coach mark (step 5) after 1.8 seconds
   useEffect(() => {
     if (!showCoachMarks || coachMarkStep !== 5) return;
-    const timer = setTimeout(() => {
-      setCoachMarkStep(6);
-      router.push('/(tabs)/messages');
+    const timer = setTimeout(async () => {
+      const userId = user?.id;
+      await setFlagSeen(userId, 'homeCoachSeen');
+      await setFlagSeen(userId, 'kundliCoachSeen');
+      
+      const latestFlags = useCoachMarkStore.getState().seenFlags;
+      if (!latestFlags.feedCoachSeen) {
+        setCoachMarkStep(6);
+        router.push('/(tabs)/messages');
+      } else if (!latestFlags.vendorCoachSeen) {
+        setCoachMarkStep(7);
+        router.push('/(tabs)/vendor');
+      } else {
+        setShowCoachMarks(false);
+      }
     }, 1800);
     return () => clearTimeout(timer);
-  }, [showCoachMarks, coachMarkStep]);
+  }, [showCoachMarks, coachMarkStep, user?.id]);
 
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
@@ -2154,18 +2182,35 @@ export default function HomeScreen() {
     const handleSkip = async () => {
       setShowCoachMarks(false);
       try {
-        await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true');
+        const userId = user?.id;
+        await setFlagSeen(userId, 'homeCoachSeen');
+        await setFlagSeen(userId, 'kundliCoachSeen');
       } catch (e) {
         console.warn('Failed to save coachmarks state:', e);
       }
     };
 
     const handleNext = async () => {
-      const nextStep = coachMarkStep + 1;
+      const nextStep = getNextStep(coachMarkStep, seenFlags);
+      const userId = user?.id;
+
+      if (coachMarkStep === 2) {
+        await setFlagSeen(userId, 'kundliCoachSeen');
+      }
+
       if (nextStep > 5) {
-        // Home tour done — move to Community tab
-        setCoachMarkStep(6);
-        router.push('/(tabs)/messages');
+        await setFlagSeen(userId, 'homeCoachSeen');
+        await setFlagSeen(userId, 'kundliCoachSeen');
+        const latestFlags = useCoachMarkStore.getState().seenFlags;
+        if (!latestFlags.feedCoachSeen) {
+          setCoachMarkStep(6);
+          router.push('/(tabs)/messages');
+        } else if (!latestFlags.vendorCoachSeen) {
+          setCoachMarkStep(7);
+          router.push('/(tabs)/vendor');
+        } else {
+          setShowCoachMarks(false);
+        }
         return;
       }
 

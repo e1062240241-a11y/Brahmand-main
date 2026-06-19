@@ -32,7 +32,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme
 import { useAuthStore } from '../../src/store/authStore';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { useCoachMarkStore } from '../../src/utils/coachMarkState';
+import { useCoachMarkStore, getNextStep } from '../../src/utils/coachMarkState';
 import Svg, { Path } from 'react-native-svg';
 import {
   getCircles,
@@ -140,9 +140,38 @@ function MessagesScreen({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks } = useCoachMarkStore();
+  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [communityHeaderLayout, setCommunityHeaderLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const onMessagesScrollTabBar = useScrollToHideTabBar();
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const checkFeedCoach = async () => {
+      const userId = user?.id;
+      await loadFlags(userId);
+      const latestFlags = useCoachMarkStore.getState().seenFlags;
+      
+      if (!latestFlags.feedCoachSeen) {
+        const latestState = useCoachMarkStore.getState();
+        if (!latestState.showCoachMarks || latestState.coachMarkStep < 6) {
+          setShowCoachMarks(true);
+          setCoachMarkStep(6);
+        }
+      } else {
+        const latestState = useCoachMarkStore.getState();
+        if (latestState.showCoachMarks && latestState.coachMarkStep === 6) {
+          const next = getNextStep(6, latestFlags);
+          if (next <= 8) {
+            setCoachMarkStep(next);
+            router.push('/(tabs)/vendor');
+          } else {
+            setShowCoachMarks(false);
+          }
+        }
+      }
+    };
+    checkFeedCoach();
+  }, [isFocused, user?.id]);
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1269,11 +1298,23 @@ function MessagesScreen({
     const handleSkip = async () => {
       setCoachMarkStep(1);
       setShowCoachMarks(false);
-      try { await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true'); } catch (_) {}
+      try {
+        const userId = user?.id;
+        await setFlagSeen(userId, 'feedCoachSeen');
+      } catch (_) {}
     };
     const handleNext = async () => {
-      setCoachMarkStep(7);
-      router.push('/(tabs)/vendor');
+      const userId = user?.id;
+      await setFlagSeen(userId, 'feedCoachSeen');
+      
+      const latestFlags = useCoachMarkStore.getState().seenFlags;
+      const next = getNextStep(6, latestFlags);
+      if (next <= 8) {
+        setCoachMarkStep(next);
+        router.push('/(tabs)/vendor');
+      } else {
+        setShowCoachMarks(false);
+      }
     };
 
     return (

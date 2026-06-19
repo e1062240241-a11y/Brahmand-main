@@ -2,7 +2,7 @@
 """
 Community Request System Backend API Testing
 Quick verification test as per review request:
-1. Create test user with phone: +911112223333
+1. Create test user with phone: +919999112223
 2. Create Help Request with specific data  
 3. Get Community Requests filtered by type=help
 """
@@ -14,7 +14,7 @@ import random
 from datetime import datetime
 
 # Backend configuration
-BASE_URL = "https://brahmand-requests.preview.emergentagent.com/api"
+BASE_URL = "http://127.0.0.1:8000/api"
 MOCK_OTP = "123456"
 
 class QuickVerificationTester:
@@ -52,10 +52,10 @@ class QuickVerificationTester:
         return response
 
     def test_1_create_test_user(self):
-        """TEST 1: Create test user with phone: +911112223333"""
-        print("\n🔹 TEST 1: Create test user with phone: +911112223333")
+        """TEST 1: Create test user with phone: +919999112223"""
+        print("\n🔹 TEST 1: Create test user with phone: +919999112223")
         
-        phone = "+911112223333"
+        phone = "+919999112223"
         
         try:
             # Send OTP
@@ -124,7 +124,7 @@ class QuickVerificationTester:
                 "request_type": "help",
                 "title": "Test Help",
                 "description": "Testing help request", 
-                "contact_number": "+911112223333",
+                "contact_number": "+919999112223",
                 "visibility_level": "area",
                 "urgency_level": "low"
             }
@@ -190,7 +190,7 @@ class QuickVerificationTester:
         print("🚀 COMMUNITY REQUEST SYSTEM - QUICK VERIFICATION TEST")
         print("=" * 60)
         print("Test Scenarios:")
-        print("1. Create test user with phone: +911112223333")
+        print("1. Create test user with phone: +919999112223")
         print("2. Create Help Request with specific data")
         print("3. Get Community Requests filtered by type=help")
         print("=" * 60)
@@ -210,7 +210,7 @@ class QuickVerificationTester:
         total = len(results)
         
         test_names = {
-            'test_1': "Create test user (+911112223333)",
+            'test_1': "Create test user (+919999112223)",
             'test_2': "Create Help Request",
             'test_3': "Get Community Requests (type=help)"
         }
