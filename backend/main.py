@@ -364,7 +364,7 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
 
     logger.info(f"Uploading {len(file_bytes)} bytes to Bunny.net: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=180, connect=30)
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
             if resp.status not in (200, 201):
                 resp_text = await resp.text()
@@ -396,7 +396,7 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     logger.info(f"Streaming {file_size} bytes from disk to Bunny.net: {bunny_url}")
 
     timeout = aiohttp.ClientTimeout(total=300, connect=30)
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         with open(file_path, 'rb') as f:
             async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
                 if resp.status not in (200, 201):
@@ -421,7 +421,7 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     }
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
             if resp.status != 200:
                 resp_text = await resp.text()
@@ -444,7 +444,7 @@ async def _delete_file_from_bunny(object_path: str):
     }
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         async with session.delete(bunny_url, headers=headers, timeout=timeout) as resp:
             if resp.status not in (200, 204):
                 resp_text = await resp.text()
@@ -2402,7 +2402,7 @@ async def get_bunny_media(filepath: str):
     async def file_sender():
         try:
             timeout = aiohttp.ClientTimeout(total=60, connect=10)
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
                 async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
                     if resp.status == 200:
                         async for chunk in resp.content.iter_chunked(65536):
