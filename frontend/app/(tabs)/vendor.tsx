@@ -262,6 +262,7 @@ export default function VendorScreen() {
   }, [loadKycStatus, user, myVendor?.kyc_status, router]);
   const filterAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput | null>(null);
+  const registerBtnRef = useRef<TouchableOpacity>(null);
 
   const homeLocation = (user as any)?.home_location;
   const homeLatitude = homeLocation?.latitude;
@@ -1113,9 +1114,10 @@ export default function VendorScreen() {
 
           {/* Registration Button */}
           <TouchableOpacity 
+            ref={registerBtnRef}
             style={[styles.figmaRegisterBtn, { zIndex: 10 }]}
             onLayout={(e) => {
-              e.target.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
+              registerBtnRef.current?.measure((_x: number, _y: number, width: number, height: number, pageX: number, pageY: number) => {
                 setRegisterBtnLayout({ x: pageX, y: pageY, width, height });
               });
             }}

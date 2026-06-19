@@ -1,15 +1,16 @@
-import { create } from 'zustand';
-import { uploadUserPost } from '../services/api';
-import { toast } from './toastStore';
-import { useFeedStore } from './feedStore';
+import { create } from "zustand";
+import { uploadUserPost } from "../services/api";
+import { toast } from "./toastStore";
+import { useFeedStore } from "./feedStore";
+import { DeviceEventEmitter } from "react-native";
 
 interface UploadState {
   isUploading: boolean;
   progress: number;
   isCompressing: boolean;
-  status: 'idle' | 'uploading' | 'compressing' | 'success' | 'error';
+  status: "idle" | "uploading" | "compressing" | "success" | "error";
   caption: string;
-  mediaType: 'video' | 'image' | null;
+  mediaType: "video" | "image" | null;
   errorMessage: string | null;
   startBackgroundUpload: (params: {
     uri: string;
@@ -35,8 +36,8 @@ export const useUploadStore = create<UploadState>((set) => ({
   isUploading: false,
   progress: 0,
   isCompressing: false,
-  status: 'idle',
-  caption: '',
+  status: "idle",
+  caption: "",
   mediaType: null,
   errorMessage: null,
   startBackgroundUpload: async (params) => {
@@ -44,9 +45,9 @@ export const useUploadStore = create<UploadState>((set) => ({
       isUploading: true,
       progress: 0,
       isCompressing: false,
-      status: 'uploading',
+      status: "uploading",
       caption: params.caption,
-      mediaType: params.mediaType === 'video' ? 'video' : 'image',
+      mediaType: params.mediaType === "video" ? "video" : "image",
       errorMessage: null,
     });
 
@@ -57,10 +58,12 @@ export const useUploadStore = create<UploadState>((set) => ({
         params.selectedFilter,
         (progressEvent) => {
           if (progressEvent.total) {
-            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            const percent = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
             set({ progress: percent });
-            if (percent >= 100 && params.mediaType === 'video') {
-              set({ isCompressing: true, status: 'compressing' });
+            if (percent >= 100 && params.mediaType === "video") {
+              set({ isCompressing: true, status: "compressing" });
             }
           }
         },
@@ -72,48 +75,86 @@ export const useUploadStore = create<UploadState>((set) => ({
         params.offsetYPercent,
         params.originalWidth,
         params.originalHeight,
-        params.muteAudio
+        params.muteAudio,
       );
 
       const newPost = response.data;
       if (newPost) {
         const activeTab = useFeedStore.getState().activeTab;
-        const category = params.uploadCategory || 'feed';
-        
+        const category = params.uploadCategory || "feed";
+
         // Optimistically add to current active tab if it matches the category
         // or if we are in 'for_you'
-        if (activeTab === 'for_you' || activeTab === category) {
-          const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
-          const currentOffset = useFeedStore.getState().tabFeeds[activeTab]?.offset || 0;
+        if (activeTab === "for_you" || activeTab === category) {
+          const currentPosts =
+            useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+          const currentOffset =
+            useFeedStore.getState().tabFeeds[activeTab]?.offset || 0;
           useFeedStore.getState().setTabFeed(activeTab, {
             posts: [newPost, ...currentPosts],
-            offset: currentOffset + 1
+            offset: currentOffset + 1,
           });
         }
 
         // Also clear cache for 'festivals' if we uploaded a festival post so it refreshes next time
-        if (category === 'festivals' && activeTab !== 'festivals') {
-          useFeedStore.getState().setTabFeed('festivals', { lastFetched: 0 }); // Mark as stale
+        if (category === "festivals" && activeTab !== "festivals") {
+          useFeedStore.getState().setTabFeed("festivals", { lastFetched: 0 }); // Mark as stale
         }
       }
 
-      set({ status: 'success', isUploading: false, progress: 100, isCompressing: false });
+      // Notify profile tab and any other listeners to instantly reflect the new post
+      DeviceEventEmitter.emit("post_uploaded", newPost);
+
+      set({
+        status: "success",
+        isUploading: false,
+        progress: 100,
+        isCompressing: false,
+      });
       toast.success(
-        params.mediaType === 'video' ? 'Video uploaded successfully!' : 'Post uploaded successfully!'
+        params.mediaType === "video"
+          ? "Video uploaded successfully!"
+          : "Post uploaded successfully!",
       );
-      
+
       setTimeout(() => {
-        set({ status: 'idle', isUploading: false, progress: 0, isCompressing: false, caption: '', mediaType: null });
+        set({
+          status: "idle",
+          isUploading: false,
+          progress: 0,
+          isCompressing: false,
+          caption: "",
+          mediaType: null,
+        });
       }, 3000);
     } catch (error: any) {
-      console.error('[UploadStore] Background upload failed:', error);
-      set({ status: 'error', isUploading: false, errorMessage: error?.message || 'Upload failed' });
-      toast.error(
-        error?.message || 'Could not upload post. Please try again.'
-      );
-      
+      console.error("[UploadStore] Background upload failed:", error);
+      if (error?.config) {
+        console.error("[UploadStore] Failed Request URL:", error.config.url);
+        console.error("[UploadStore] Failed Request Method:", error.config.method);
+        console.error("[UploadStore] Failed Request Headers:", error.config.headers);
+      }
+      if (error?.response) {
+        console.error("[UploadStore] Response Status:", error.response.status);
+        console.error("[UploadStore] Response Data:", error.response.data);
+      }
+      set({
+        status: "error",
+        isUploading: false,
+        errorMessage: error?.message || "Upload failed",
+      });
+      toast.error(error?.message || "Could not upload post. Please try again.");
+
       setTimeout(() => {
-        set({ status: 'idle', isUploading: false, progress: 0, isCompressing: false, caption: '', mediaType: null, errorMessage: null });
+        set({
+          status: "idle",
+          isUploading: false,
+          progress: 0,
+          isCompressing: false,
+          caption: "",
+          mediaType: null,
+          errorMessage: null,
+        });
       }, 5000);
     }
   },
@@ -122,8 +163,8 @@ export const useUploadStore = create<UploadState>((set) => ({
       isUploading: false,
       progress: 0,
       isCompressing: false,
-      status: 'idle',
-      caption: '',
+      status: "idle",
+      caption: "",
       mediaType: null,
       errorMessage: null,
     });

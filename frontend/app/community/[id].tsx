@@ -2577,8 +2577,10 @@ export default function CommunityDetailScreen() {
                 {item.user?.handle ? ` ${item.user.handle}` : ` @${ownerName.replace(/\s+/g, '').toLowerCase()}`}
               </Text>
               <Text style={styles.postHandle} numberOfLines={1}> · {getTimeAgo(item.created_at || item.timestamp)}</Text>
+              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
+              </View>
             </View>
-            <Text style={styles.requestOwnerSubtext} numberOfLines={1}>{requestTypeLabel}</Text>
           </View>
         </View>
         <View style={[{ backgroundColor: '#FFF', borderRadius: 20, borderWidth: 1, borderColor: isFulfilled ? '#A7F3D0' : '#F0F0F0', padding: 16 }, isFulfilled ? { backgroundColor: '#F0FDF4' } : {}]}>

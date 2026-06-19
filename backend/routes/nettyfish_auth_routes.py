@@ -68,9 +68,11 @@ async def send_nettyfish_otp(request: OTPRequest):
 
     try:
         await NattyFishService.send_sms(mobile, message_text)
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.error(f"Failed to send Nettyfish SMS: {e}")
-        raise HTTPException(status_code=500, detail="Failed to send OTP SMS.")
+        raise HTTPException(status_code=500, detail=f"Failed to send OTP SMS: {str(e)}")
 
     return {"status": "success", "message": "OTP sent successfully"}
 
