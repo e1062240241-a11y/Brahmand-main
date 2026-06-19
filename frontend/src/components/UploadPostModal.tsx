@@ -781,6 +781,11 @@ export const UploadPostModal = ({
                     <Text style={styles.previewPlaceholder}>
                       {t("uploadPlaceholder")}
                     </Text>
+                    <Text style={styles.emptyPreviewDisclaimer}>
+                      {t("language") === "hi"
+                        ? "सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।"
+                        : "By uploading content, you confirm you own or have rights to use the audio and video."}
+                    </Text>
                   </View>
                 ) : (
                   <View
@@ -1088,33 +1093,24 @@ export const UploadPostModal = ({
                 multiline
               />
               {selectedMedia?.mediaType === "video" && (
-                <>
-                  <View style={styles.muteRow}>
-                    <Ionicons
-                      name={mutedAudio ? "volume-mute" : "volume-high"}
-                      size={20}
-                      color="#666"
-                    />
-                    <Text style={styles.muteLabel}>
-                      {t("language") === "hi"
-                        ? "ऑडियो म्यूट करें"
-                        : "Mute Audio"}
-                    </Text>
-                    <Switch
-                      value={mutedAudio}
-                      onValueChange={setMutedAudio}
-                      trackColor={{ false: "#ddd", true: "#FF6B00" }}
-                      thumbColor="#fff"
-                    />
-                  </View>
-                  <View style={styles.disclaimerContainer}>
-                    <Text style={styles.disclaimerText}>
-                      {t("language") === "hi"
-                        ? "सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।"
-                        : "By uploading content, you confirm you own or have rights to use the audio and video."}
-                    </Text>
-                  </View>
-                </>
+                <View style={styles.muteRow}>
+                  <Ionicons
+                    name={mutedAudio ? "volume-mute" : "volume-high"}
+                    size={20}
+                    color="#666"
+                  />
+                  <Text style={styles.muteLabel}>
+                    {t("language") === "hi"
+                      ? "ऑडियो म्यूट करें"
+                      : "Mute Audio"}
+                  </Text>
+                  <Switch
+                    value={mutedAudio}
+                    onValueChange={setMutedAudio}
+                    trackColor={{ false: "#ddd", true: "#FF6B00" }}
+                    thumbColor="#fff"
+                  />
+                </View>
               )}
             </View>
 
@@ -1592,6 +1588,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666666",
     lineHeight: 18,
+    fontStyle: "italic",
+  },
+  emptyPreviewDisclaimer: {
+    fontSize: 11,
+    color: "#666666",
+    textAlign: "center",
+    marginTop: 16,
+    paddingHorizontal: 20,
+    lineHeight: 16,
     fontStyle: "italic",
   },
 });
