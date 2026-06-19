@@ -340,17 +340,38 @@ const uploadLargeVideoViaBunny = async (
     "Content-Type": file.type || "video/mp4",
   };
 
-  await axios.put(fullUploadUrl, blob, {
-    headers: uploadHeaders,
-    onUploadProgress: (progressEvent) => {
-      if (onProgress && progressEvent.total) {
-        onProgress({
-          loaded: progressEvent.loaded,
-          total: progressEvent.total,
-        });
-      }
-    },
-  });
+  console.info("[API] Direct Bunny upload URL:", fullUploadUrl);
+  console.info("[API] Direct Bunny upload headers:", uploadHeaders);
+  try {
+    const putResponse = await axios.put(fullUploadUrl, blob, {
+      headers: uploadHeaders,
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          onProgress({
+            loaded: progressEvent.loaded,
+            total: progressEvent.total,
+          });
+        }
+      },
+    });
+    console.info(
+      "[API] Direct Bunny upload success status:",
+      putResponse.status,
+    );
+  } catch (putError: any) {
+    console.error("[API] Direct Bunny upload failed:", putError);
+    if (putError.response) {
+      console.error(
+        "[API] Direct Bunny upload error response status:",
+        putError.response.status,
+      );
+      console.error(
+        "[API] Direct Bunny upload error response data:",
+        putError.response.data,
+      );
+    }
+    throw putError;
+  }
 
   return {
     objectPath,

@@ -2894,8 +2894,8 @@ async def _upload_post_from_storage_impl(
         try:
             original_size_bytes = await _download_file_from_bunny(storage_path, temp_input_file.name)
         except Exception as download_err:
-            logger.error(f"Failed to download raw video from Bunny: {download_err}")
-            raise HTTPException(status_code=404, detail='Uploaded raw video not found in storage')
+            logger.error(f"Failed to download raw video from Bunny (path: {storage_path}): {download_err}")
+            raise HTTPException(status_code=404, detail=f"Uploaded raw video not found in storage. Path: {storage_path}. Error: {str(download_err)}")
 
         if original_size_bytes <= 0:
             raise HTTPException(status_code=400, detail='Stored video is empty')
