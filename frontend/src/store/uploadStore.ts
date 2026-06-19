@@ -129,6 +129,15 @@ export const useUploadStore = create<UploadState>((set) => ({
       }, 3000);
     } catch (error: any) {
       console.error("[UploadStore] Background upload failed:", error);
+      if (error?.config) {
+        console.error("[UploadStore] Failed Request URL:", error.config.url);
+        console.error("[UploadStore] Failed Request Method:", error.config.method);
+        console.error("[UploadStore] Failed Request Headers:", error.config.headers);
+      }
+      if (error?.response) {
+        console.error("[UploadStore] Response Status:", error.response.status);
+        console.error("[UploadStore] Response Data:", error.response.data);
+      }
       set({
         status: "error",
         isUploading: false,

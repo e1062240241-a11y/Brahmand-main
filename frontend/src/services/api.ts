@@ -957,6 +957,10 @@ export const uploadUserPost = (
 
         return api.post("/posts/upload-from-storage", formData, {
           timeout: 20 * 60 * 1000, // 20 min
+          headers:
+            Platform.OS === "web"
+              ? { "Content-Type": "multipart/form-data" }
+              : undefined,
         });
       }
     }
@@ -968,6 +972,10 @@ export const uploadUserPost = (
     try {
       return await api.post("/posts/upload", formData, {
         timeout: 20 * 60 * 1000, // 20 min — large videos need time to compress + upload
+        headers:
+          Platform.OS === "web"
+            ? { "Content-Type": "multipart/form-data" }
+            : undefined,
         onUploadProgress: onProgress,
       });
     } catch (error: any) {
@@ -1077,7 +1085,12 @@ export const uploadChatMedia = (file: {
       }
     }
 
-    return api.post("/media/upload", formData);
+    return api.post("/media/upload", formData, {
+      headers:
+        Platform.OS === "web"
+          ? { "Content-Type": "multipart/form-data" }
+          : undefined,
+    });
   })();
 };
 
@@ -1096,6 +1109,10 @@ export const uploadCompressedVideo = (file: {
 
     return api.post("/videos/upload", formData, {
       timeout: 10 * 60 * 1000,
+      headers:
+        Platform.OS === "web"
+          ? { "Content-Type": "multipart/form-data" }
+          : undefined,
     });
   })();
 };
@@ -1939,11 +1956,22 @@ export const uploadVendorBusinessImage = (
         return api.post(
           `/vendors/${vendorId}/business/images/upload`,
           formData,
+          {
+            headers:
+              Platform.OS === "web"
+                ? { "Content-Type": "multipart/form-data" }
+                : undefined,
+          },
         );
       }
     }
 
-    return api.post(`/vendors/${vendorId}/business/images/upload`, formData);
+    return api.post(`/vendors/${vendorId}/business/images/upload`, formData, {
+      headers:
+        Platform.OS === "web"
+          ? { "Content-Type": "multipart/form-data" }
+          : undefined,
+    });
   })();
 };
 
