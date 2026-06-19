@@ -81,25 +81,27 @@ async def verify_token(
         from config.database import get_database
         db = await get_database()
         user_doc = db.collection('users').document(user_id).get()
-        if user_doc.exists:
-            user_data = user_doc.to_dict()
-            if user_data.get('is_blocked'):
-                from datetime import datetime, timezone
-                blocked_until_str = user_data.get('blocked_until')
-                if blocked_until_str:
-                    try:
-                        blocked_until = datetime.fromisoformat(blocked_until_str)
-                        if blocked_until.tzinfo is None:
-                            blocked_until = blocked_until.replace(tzinfo=timezone.utc)
-                        now = datetime.now(timezone.utc)
-                        if now < blocked_until:
-                            raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
-                    except HTTPException:
-                        raise
-                    except Exception:
+        if not user_doc.exists:
+            raise HTTPException(status_code=401, detail="User account not found")
+        
+        user_data = user_doc.to_dict()
+        if user_data.get('is_blocked'):
+            from datetime import datetime, timezone
+            blocked_until_str = user_data.get('blocked_until')
+            if blocked_until_str:
+                try:
+                    blocked_until = datetime.fromisoformat(blocked_until_str)
+                    if blocked_until.tzinfo is None:
+                        blocked_until = blocked_until.replace(tzinfo=timezone.utc)
+                    now = datetime.now(timezone.utc)
+                    if now < blocked_until:
                         raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
-                else:
-                    raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
+                except HTTPException:
+                    raise
+                except Exception:
+                    raise HTTPException(status_code=403, detail="User account is temporarily blocked/deactivated")
+            else:
+                raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
     except HTTPException:
         raise
     except Exception as e:

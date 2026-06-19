@@ -60,6 +60,7 @@ const UserProfileScreen = () => {
 
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [posts, setPosts] = useState<any[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -239,6 +240,7 @@ const UserProfileScreen = () => {
 
   const loadProfile = useCallback(async (showLoading = true) => {
     if (!profileUserId) return;
+    setError(null);
     
     // 1. Optimistic load from WatermelonDB
     try {
@@ -300,8 +302,13 @@ const UserProfileScreen = () => {
         console.log('Failed to update profile cache:', dbErr);
       }
       
-    } catch (error) {
-      console.error('Failed to load user profile', error);
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        setError('User profile not found. This account may have been deleted.');
+      } else {
+        console.warn('Failed to load user profile:', error);
+        setError('Failed to load profile. Please check your connection.');
+      }
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -698,6 +705,43 @@ const UserProfileScreen = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.centerWrap}>
           <Text style={styles.errorText}>Invalid profile selected.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (loading && !profile && !error) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerWrap]}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        {/* Custom Header Bar */}
+        <View style={[styles.navBar, { backgroundColor: '#FFF', paddingTop: insets.top, height: 50 + insets.top, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#DBDBDB' }]}>
+          <TouchableOpacity 
+            onPress={() => router.back()} 
+            style={styles.navIcon}
+          >
+            <Ionicons name="chevron-back" size={28} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.navTitle}>Profile</Text>
+          <View style={{ width: 44 }} />
+        </View>
+        <View style={[styles.centerWrap, { paddingHorizontal: 32 }]}>
+          <Ionicons name="alert-circle-outline" size={64} color={COLORS.textSecondary} style={{ marginBottom: 16 }} />
+          <Text style={[styles.emptyTitle, { marginBottom: 8, fontSize: 20 }]}>Profile Not Found</Text>
+          <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 24 }}>{error}</Text>
+          <TouchableOpacity 
+            style={{ paddingVertical: 12, paddingHorizontal: 24, borderRadius: 24, backgroundColor: COLORS.primary }}
+            onPress={() => router.back()}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>Go Back</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );

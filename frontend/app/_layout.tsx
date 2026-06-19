@@ -869,14 +869,6 @@ export default function RootLayout() {
                   gestureEnabled: false
                 }}
               />
-              <Stack.Screen
-                key="library"
-                name="library"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'horizontal'
-                }}
-              />
               {/* Other standard stack navigations will inherit default slide_from_right */}
             </Stack>
             <GlobalFAB />

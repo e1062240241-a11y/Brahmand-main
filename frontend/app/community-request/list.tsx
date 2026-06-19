@@ -434,6 +434,9 @@ export default function ActiveRequestsList() {
                 @{ownerName.replace(/\s+/g, '').toLowerCase()}
               </Text>
               <Text style={{ fontSize: 14, color: '#536471' }} numberOfLines={1}> · {getTimeAgo(item.created_at)}</Text>
+              <View style={{ backgroundColor: '#F8FAFC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginLeft: 6, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '500' }}>{requestTypeLabel}</Text>
+              </View>
             </View>
           </View>
         </View>
