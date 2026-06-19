@@ -1272,7 +1272,7 @@ function MessagesScreen({
       try { await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true'); } catch (_) {}
     };
     const handleNext = async () => {
-      setCoachMarkStep(6);
+      setCoachMarkStep(7);
       router.push('/(tabs)/vendor');
     };
 
@@ -1756,7 +1756,7 @@ function MessagesScreen({
         </View>
       )}
       {/* Community Coach Mark (Step 5) */}
-      {coachMarkStep === 5 && renderCommunityCoachMark()}
+      {coachMarkStep === 6 && renderCommunityCoachMark()}
     </LinearGradient>
   );
 }

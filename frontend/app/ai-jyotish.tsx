@@ -180,6 +180,25 @@ export default function AIJyotishScreen() {
     loadMessages();
   }, []);
 
+  const getTimeValue = () => {
+    const d = new Date();
+    if (timeOfBirth) {
+      const match = timeOfBirth.match(/^(\d{1,2}):(\d{1,2})\s*(AM|PM)?$/i);
+      if (match) {
+        let hours = parseInt(match[1], 10);
+        const minutes = parseInt(match[2], 10);
+        const ampm = match[3]?.toUpperCase();
+        if (ampm === 'PM' && hours < 12) hours += 12;
+        if (ampm === 'AM' && hours === 12) hours = 0;
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          d.setHours(hours);
+          d.setMinutes(minutes);
+        }
+      }
+    }
+    return d;
+  };
+
   const handleCalculateHoroscope = () => {
     if (!date || !timeOfBirth.trim() || !placeOfBirth.trim()) {
       setValidationError('All fields (Date, Time, and Place of Birth) are mandatory.');
@@ -445,7 +464,7 @@ export default function AIJyotishScreen() {
 
                   {showTimePicker && (
                     <DateTimePicker
-                      value={new Date()}
+                      value={getTimeValue()}
                       mode="time"
                       is24Hour={false}
                       display={Platform.OS === 'ios' ? 'spinner' : 'default'}

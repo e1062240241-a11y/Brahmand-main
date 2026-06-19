@@ -752,8 +752,8 @@ export default function VendorScreen() {
 
   // ─── Vendor Coach Marks Renderer ────────────────────────────────────────────
   const renderVendorCoachMarks = () => {
-    const isStep6 = coachMarkStep === 6;
-    const targetLayout = isStep6 ? searchBarLayout : registerBtnLayout;
+    const isStep7 = coachMarkStep === 7;
+    const targetLayout = isStep7 ? searchBarLayout : registerBtnLayout;
 
     if (!targetLayout) return null;
 
@@ -770,10 +770,10 @@ export default function VendorScreen() {
     };
 
     const handleVendorNext = async () => {
-      if (coachMarkStep === 6) {
-        setCoachMarkStep(7);
+      if (coachMarkStep === 7) {
+        setCoachMarkStep(8);
       } else {
-        // Step 7 — done
+        // Step 8 — done
         setCoachMarkStep(1);
         setShowCoachMarks(false);
         try { await AsyncStorage.setItem('brahmand_coachmarks_seen_v1', 'true'); } catch (e) {}
@@ -793,9 +793,9 @@ export default function VendorScreen() {
       },
     ];
 
-    const current = stepData[coachMarkStep - 6];
+    const current = stepData[coachMarkStep - 7];
     const dotCount = 2;
-    const activeDot = coachMarkStep - 6; // 0 or 1
+    const activeDot = coachMarkStep - 7; // 0 or 1
 
     return (
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-none">
@@ -864,8 +864,8 @@ export default function VendorScreen() {
             {/* Next / Done button */}
             <TouchableOpacity style={vendorCoachStyles.nextBtn} onPress={handleVendorNext} activeOpacity={0.85}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                <Text style={vendorCoachStyles.nextText}>{coachMarkStep === 7 ? 'Done' : 'Next'}</Text>
-                {coachMarkStep !== 7 && (
+                <Text style={vendorCoachStyles.nextText}>{coachMarkStep === 8 ? 'Done' : 'Next'}</Text>
+                {coachMarkStep !== 8 && (
                   <Svg width={7.4} height={12} viewBox="0 0 8 12">
                     <Path d="M4.6 6L0 1.4L1.4 0L7.4 6L1.4 12L0 10.6L4.6 6Z" fill="white" />
                   </Svg>
@@ -1433,7 +1433,7 @@ export default function VendorScreen() {
       />
 
       {/* Vendor Coach Marks (Steps 6 & 7) */}
-      {(coachMarkStep === 6 || coachMarkStep === 7) && renderVendorCoachMarks()}
+      {(coachMarkStep === 7 || coachMarkStep === 8) && renderVendorCoachMarks()}
 
     </LinearGradient>
   );

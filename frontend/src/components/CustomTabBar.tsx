@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { useAnimatedStyle, interpolate, Extrapolate } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
 import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
@@ -118,7 +118,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
       tabBarTranslateY.value,
       [0, 150],
       [1, 0.85],
-      Extrapolate.CLAMP
+      'clamp'
     );
     
     // When shrinking, we move it down a bit so it looks like it sticks to the bottom
@@ -126,7 +126,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
       tabBarTranslateY.value,
       [0, 150],
       [0, Platform.OS === 'android' ? 15 : 20],
-      Extrapolate.CLAMP
+      'clamp'
     );
 
     return {
@@ -150,10 +150,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   let activeIndex = visibleRoutes.findIndex((r: any) => r.key === activeRoute.key);
 
   if (showCoachMarks) {
-    if (coachMarkStep === 4) {
+    if (coachMarkStep === 6) {
       activeIndex = 1;
       activeRoute = visibleRoutes[1] || activeRoute;
-    } else if (coachMarkStep === 6) {
+    } else if (coachMarkStep === 7 || coachMarkStep === 8) {
       activeIndex = 2;
       activeRoute = visibleRoutes[2] || activeRoute;
     }

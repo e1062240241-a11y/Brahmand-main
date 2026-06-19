@@ -358,8 +358,12 @@ export function GlobalFAB() {
   const { showCoachMarks, coachMarkStep } = useCoachMarkStore();
 
   useEffect(() => {
-    if (!showCoachMarks) return;
-    if (coachMarkStep === 4) {
+    if (!showCoachMarks) {
+      expandFab(false);
+      return;
+    }
+    // Expand FAB only during the FAB coach mark step (step 5)
+    if (coachMarkStep === 5) {
       expandFab(true);
     } else {
       expandFab(false);
