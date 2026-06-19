@@ -187,6 +187,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { useJyotishStore } = require('./jyotishStore');
       useJyotishStore.setState({ dob: null, tob: null, pob: null });
+      // jyotish AsyncStorage keys are wiped by the AsyncStorage.clear() above (step 5)
     } catch (err) {
       console.warn('[Auth] Failed to clear jyotishStore:', err);
     }
@@ -223,10 +224,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const token = await secureStorage.getItem('auth_token');
       const userStr = await secureStorage.getItem('user');
-      
+
       if (token && userStr) {
         const user = JSON.parse(userStr);
+        // Restore cached user first so the app is unblocked immediately
         set({ user, token, isAuthenticated: true, isLoading: false });
+
+        // Then refresh profile from backend to pick up any birth details
+        // saved in a previous session that may not be in the local cache.
+        try {
+          const { getProfile } = require('../services/api');
+          const res = await getProfile();
+          if (res?.data) {
+            const updatedUser = { ...user, ...res.data };
+            set({ user: updatedUser });
+            secureStorage.setItem('user', JSON.stringify(updatedUser));
+          }
+        } catch (profileErr) {
+          // Network may be unavailable on startup — use cached data, not fatal.
+          console.warn('[Auth] Could not refresh profile on startup:', profileErr);
+        }
       } else {
         set({ isLoading: false });
       }

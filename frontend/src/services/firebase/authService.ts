@@ -162,17 +162,23 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
     } else {
       try {
         const authModule = getNativeAuthModule();
-        const getNativeAuth = authModule.getAuth || authModule.default;
-        const nativeSignInWithPhoneNumber = authModule.signInWithPhoneNumber;
 
-        let confirmation: any = null;
-        if (getNativeAuth && nativeSignInWithPhoneNumber) {
-          confirmation = await nativeSignInWithPhoneNumber(getNativeAuth(), formattedPhone);
+        // @react-native-firebase/auth v23: default export is the auth instance factory
+        // signInWithPhoneNumber is an instance method, not a named export
+        let nativeAuth: any;
+        if (typeof authModule.default === 'function') {
+          nativeAuth = authModule.default();
+        } else if (typeof authModule === 'function') {
+          nativeAuth = authModule();
         } else {
-          const nativeAuth = authModule.default();
-          confirmation = await nativeAuth.signInWithPhoneNumber(formattedPhone);
+          nativeAuth = authModule.default || authModule;
         }
 
+        if (!nativeAuth || typeof nativeAuth.signInWithPhoneNumber !== 'function') {
+          throw new Error('signInWithPhoneNumber is not available on the native auth instance. Check @react-native-firebase/auth v23 setup.');
+        }
+
+        const confirmation = await nativeAuth.signInWithPhoneNumber(formattedPhone);
         confirmationResult = confirmation;
         console.log('[Firebase] Native OTP sent successfully');
         return confirmation;
@@ -187,7 +193,11 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
           throw new Error('OTP quota exceeded. Please try again later.');
         }
 
-        throw new Error('Phone auth is not configured for this native build.');
+        // Re-throw the real error so callers get the actual cause
+        const realMessage = nativeError?.message || nativeError?.toString() || 'Unknown native auth error';
+        const wrapped = new Error(`[Native Firebase Phone Auth] ${realMessage}`);
+        (wrapped as any).code = nativeError?.code;
+        throw wrapped;
       }
     }
   } catch (error: any) {

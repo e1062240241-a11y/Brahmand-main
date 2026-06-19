@@ -19,10 +19,12 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
+import { SvgXml } from 'react-native-svg';
 
-import { getNakshatraReport, updateExtendedProfile } from '../src/services/api';
+import { getNakshatraReport, updateExtendedProfile, getProfile } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
+import { Avatar } from '../src/components/Avatar';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -124,6 +126,7 @@ export default function AstrologyScreen() {
 
   // Form States
   const [showForm, setShowForm] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const [date, setDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -158,58 +161,99 @@ export default function AstrologyScreen() {
 
   useEffect(() => {
     isMountedRef.current = true;
-    
-    // Initialize form states from user profile
-    if (user) {
-      let hasAllDetails = true;
 
-      if (user.date_of_birth) {
-        const parsedDate = new Date(user.date_of_birth);
-        setDate(isNaN(parsedDate.getTime()) ? null : parsedDate);
-      } else {
-        hasAllDetails = false;
-      }
+    const checkAndInitProfile = async () => {
+      // Start with already-synced user from authStore (refreshed by loadStoredAuth on startup)
+      let activeUser = user;
 
-      if (user.time_of_birth) {
-        setTimeOfBirth(user.time_of_birth);
-      } else {
-        hasAllDetails = false;
-      }
+      const hasBirthDetails = (u: typeof user) =>
+        !!(u?.date_of_birth && u?.time_of_birth && u?.place_of_birth);
 
-      if (user.gender) {
-        const g = user.gender.toLowerCase();
-        if (g === 'male' || g === 'female' || g === 'other') {
-          setGender(g as any);
+      // Only hit the network if the locally cached user is missing birth details
+      if (!hasBirthDetails(activeUser)) {
+        try {
+          setLoading(true);
+          const res = await getProfile();
+          if (res?.data && isMountedRef.current) {
+            updateUser(res.data);
+            activeUser = { ...user, ...res.data } as typeof user;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch user profile on astrology mount:', err);
         }
       }
 
-      if (user.place_of_birth) {
-        setPlaceOfBirth(user.place_of_birth);
-      } else {
-        hasAllDetails = false;
-      }
+      if (!isMountedRef.current) return;
 
-      if (hasAllDetails) {
-        setShowForm(false);
-        const parsedDate = new Date(user.date_of_birth!);
-        const year = parsedDate.getFullYear();
-        const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(parsedDate.getDate()).padStart(2, '0');
-        const dobStr = `${year}-${month}-${day}`;
-        fetchKundli(false, {
-          dob: dobStr,
-          tob: user.time_of_birth,
-          lat: user.place_of_birth_latitude,
-          lon: user.place_of_birth_longitude,
-        });
+      if (activeUser) {
+        let hasAllDetails = true;
+
+        if (activeUser.date_of_birth) {
+          const parsedDate = new Date(activeUser.date_of_birth);
+          setDate(isNaN(parsedDate.getTime()) ? null : parsedDate);
+        } else {
+          hasAllDetails = false;
+        }
+
+        if (activeUser.time_of_birth) {
+          setTimeOfBirth(activeUser.time_of_birth);
+        } else {
+          hasAllDetails = false;
+        }
+
+        if (activeUser.gender) {
+          const g = activeUser.gender.toLowerCase();
+          if (g === 'male' || g === 'female' || g === 'other') {
+            setGender(g as any);
+          }
+        }
+
+        if (activeUser.place_of_birth) {
+          setPlaceOfBirth(activeUser.place_of_birth);
+        } else {
+          hasAllDetails = false;
+        }
+
+        if (hasAllDetails) {
+          setShowForm(false);
+          const parsedDate = new Date(activeUser.date_of_birth!);
+          const year = parsedDate.getFullYear();
+          const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+          const day = String(parsedDate.getDate()).padStart(2, '0');
+          const dobStr = `${year}-${month}-${day}`;
+
+          // Sync jyotishStore in-memory state only (no backend write — data already persisted)
+          try {
+            const { useJyotishStore } = require('../src/store/jyotishStore');
+            const js = useJyotishStore.getState();
+            if (!js.dob || !js.tob || !js.pob) {
+              useJyotishStore.setState({
+                dob: dobStr,
+                tob: activeUser.time_of_birth!,
+                pob: activeUser.place_of_birth!,
+              });
+            }
+          } catch (e) {
+            console.warn('Failed to sync to jyotishStore in astrology mount:', e);
+          }
+
+          fetchKundli(false, {
+            dob: dobStr,
+            tob: activeUser.time_of_birth,
+            lat: activeUser.place_of_birth_latitude,
+            lon: activeUser.place_of_birth_longitude,
+          });
+        } else {
+          setShowForm(true);
+          setLoading(false);
+        }
       } else {
         setShowForm(true);
         setLoading(false);
       }
-    } else {
-      setShowForm(true);
-      setLoading(false);
-    }
+    };
+
+    checkAndInitProfile();
 
     return () => { isMountedRef.current = false; };
   }, [fetchKundli]);
@@ -259,6 +303,22 @@ export default function AstrologyScreen() {
       return `${timeOfBirth}:00`;
     }
     return timeOfBirth;
+  };
+
+  const getTimeValue = () => {
+    const d = new Date();
+    if (timeOfBirth) {
+      const parts = timeOfBirth.split(':');
+      if (parts.length >= 2) {
+        const hours = parseInt(parts[0], 10);
+        const minutes = parseInt(parts[1], 10);
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          d.setHours(hours);
+          d.setMinutes(minutes);
+        }
+      }
+    }
+    return d;
   };
 
   const handleCalculate = async () => {
@@ -316,7 +376,17 @@ export default function AstrologyScreen() {
         place_of_birth_longitude: lon,
         gender: gender,
       });
+
+      // Sync to Jyotish store too
+      try {
+        const { useJyotishStore } = require('../src/store/jyotishStore');
+        await useJyotishStore.getState().setBirthDetails(dobStr, timeOfBirth.trim(), placeOfBirth.trim());
+      } catch (e) {
+        console.warn('Failed to sync to jyotishStore:', e);
+      }
+
       setShowForm(false);
+      setShowModal(false);
       fetchKundli(false, {
         dob: dobStr,
         tob: timeOfBirth.trim(),
@@ -390,8 +460,8 @@ export default function AstrologyScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Janam Kundli</Text>
           {!showForm ? (
-            <TouchableOpacity onPress={() => setShowForm(true)} style={styles.headerEditBtn}>
-              <Ionicons name="pencil-outline" size={20} color="#5A3E2B" />
+            <TouchableOpacity onPress={() => setShowModal(true)} style={styles.headerEditBtn}>
+              <Ionicons name="ellipsis-horizontal" size={24} color="#5A3E2B" />
             </TouchableOpacity>
           ) : (
             <View style={{ width: 40 }} />
@@ -467,7 +537,7 @@ export default function AstrologyScreen() {
 
               {showTimePicker && (
                 <DateTimePicker
-                  value={new Date()}
+                  value={getTimeValue()}
                   mode="time"
                   is24Hour={true}
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -616,51 +686,61 @@ export default function AstrologyScreen() {
         >
           {/* Profile Card */}
           <View style={styles.profileCard}>
-            <View style={styles.profileCardAvatar}>
-              {user?.photo ? (
-                <Image source={{ uri: user.photo }} style={styles.profileCardAvatarImg} />
-              ) : (
-                <View style={[styles.profileCardAvatarImg, styles.profileCardAvatarPlaceholder]}>
-                  <Ionicons name="person" size={24} color="#C67C4E" />
-                </View>
-              )}
+            <View style={styles.profileCardAvatarWrapper}>
+              <Avatar 
+                name={user?.name || 'Aakruti Sharma'} 
+                photo={user?.photo || require('../assets/images/aakruti_avatar.png')} 
+                size={48} 
+              />
             </View>
             <View style={styles.profileCardText}>
-              <Text style={styles.profileCardName}>{user?.name || 'Devotee'}</Text>
+              <Text style={styles.profileCardName}>{user?.name || 'Aakruti Sharma'}</Text>
               <Text style={styles.profileCardSub}>
                 {(() => {
                   const parts: string[] = [];
-                  if (user?.date_of_birth) {
-                    const d = new Date(user.date_of_birth);
+                  const dob = user?.date_of_birth || '1994-09-24';
+                  const tob = user?.time_of_birth || '06:45';
+
+                  if (dob) {
+                    const d = new Date(dob);
                     if (!isNaN(d.getTime())) {
                       const day = d.getDate();
                       const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                       parts.push(`${day} ${monthNames[d.getMonth()]} ${d.getFullYear()}`);
                     }
                   }
-                  if (user?.time_of_birth) {
-                    const timeParts = user.time_of_birth.split(':');
+                  if (tob) {
+                    const timeParts = tob.split(':');
                     if (timeParts.length >= 2) {
                       const h = parseInt(timeParts[0], 10);
                       const m = timeParts[1].padStart(2, '0');
                       const ampm = h >= 12 ? 'PM' : 'AM';
                       const h12 = h % 12 === 0 ? 12 : h % 12;
-                      parts.push(`${h12}:${m} ${ampm}`);
+                      parts.push(`${String(h12).padStart(2, '0')}:${m} ${ampm}`);
                     }
                   }
-                  return parts.join(' · ') || 'Birth details saved';
+                  return parts.join(' • ');
                 })()}
               </Text>
             </View>
           </View>
 
-          {/* Kundli Chart Image */}
+           {/* Kundli Chart Image */}
           <View style={styles.chartCard}>
-            <Image
-              source={require('../assets/images/kundli_chart.jpg')}
-              style={styles.chartImage}
-              resizeMode="cover"
-            />
+            {data?.chart_d1 ? (
+              <SvgXml
+                xml={data.chart_d1}
+                width={289}
+                height={289}
+                style={{ borderRadius: 12 }}
+              />
+            ) : (
+              <Image
+                source={require('../assets/images/kundli_chart.jpg')}
+                style={styles.chartImage}
+                resizeMode="cover"
+              />
+            )}
           </View>
 
           {/* Ask AI Card */}
@@ -812,6 +892,236 @@ export default function AstrologyScreen() {
           <View style={{ height: 120 }} />
         </ScrollView>
       )}
+
+      {/* CHANGE BIRTH DETAILS BOTTOM SHEET MODAL */}
+      <Modal
+        visible={showModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.bottomSheetOverlay} 
+          activeOpacity={1} 
+          onPress={() => setShowModal(false)}
+        >
+          <TouchableOpacity 
+            activeOpacity={1} 
+            style={styles.bottomSheetCard}
+          >
+            <View style={styles.bottomSheetHeader}>
+              <View style={{ width: 24 }} />
+              <Text style={styles.bottomSheetTitle}>Change Birth Details</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)} style={styles.bottomSheetClose}>
+                <Ionicons name="close" size={24} color="#5A4136" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              {/* Date of Birth */}
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Ionicons name="calendar-outline" size={15} color="#5A4136" />
+                  <Text style={styles.inputLabel}>Date of Birth</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setShowDatePicker(!showDatePicker);
+                    setShowTimePicker(false);
+                  }}
+                  style={styles.touchableInput}
+                >
+                  <Text style={{ fontSize: 16, color: date ? '#1B1C1C' : '#A9968F' }}>
+                    {date ? formatDateString(date) : 'dd/mm/yyyy'}
+                  </Text>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={date || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                      }
+                      if (selectedDate) {
+                        setDate(selectedDate);
+                      }
+                    }}
+                    style={styles.pickerStyle}
+                  />
+                )}
+              </View>
+
+              {/* Time of Birth */}
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Ionicons name="time-outline" size={15} color="#5A4136" />
+                  <Text style={styles.inputLabel}>Time of Birth</Text>
+                </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setShowTimePicker(!showTimePicker);
+                    setShowDatePicker(false);
+                  }}
+                  style={styles.touchableInput}
+                >
+                  <Text style={{ fontSize: 16, color: timeOfBirth ? '#1B1C1C' : '#A9968F' }}>
+                    {getDisplayTime()}
+                  </Text>
+                </TouchableOpacity>
+
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={getTimeValue()}
+                    mode="time"
+                    is24Hour={true}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    onChange={(event, selectedTime) => {
+                      if (Platform.OS === 'android') {
+                        setShowTimePicker(false);
+                      }
+                      if (selectedTime) {
+                        setTimeOfBirth(formatTimeString(selectedTime.getHours(), selectedTime.getMinutes()));
+                      }
+                    }}
+                    style={styles.pickerStyle}
+                  />
+                )}
+              </View>
+
+              {/* Gender */}
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Ionicons name="transgender-outline" size={15} color="#5A4136" />
+                  <Text style={styles.inputLabel}>Gender</Text>
+                </View>
+                <View style={styles.genderRowContainer}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setGender('male')}
+                    style={[styles.genderButton, gender === 'male' && styles.genderButtonActive]}
+                  >
+                    <Ionicons
+                      name="male"
+                      size={16}
+                      color={gender === 'male' ? '#FF7B00' : '#7D685E'}
+                    />
+                    <Text style={[styles.genderButtonText, gender === 'male' && styles.genderButtonTextActive]}>
+                      Male
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setGender('female')}
+                    style={[styles.genderButton, gender === 'female' && styles.genderButtonActive]}
+                  >
+                    <Ionicons
+                      name="female"
+                      size={16}
+                      color={gender === 'female' ? '#FF7B00' : '#7D685E'}
+                    />
+                    <Text style={[styles.genderButtonText, gender === 'female' && styles.genderButtonTextActive]}>
+                      Female
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => setGender('other')}
+                    style={[styles.genderButton, gender === 'other' && styles.genderButtonActive]}
+                  >
+                    <Ionicons
+                      name="transgender"
+                      size={16}
+                      color={gender === 'other' ? '#FF7B00' : '#7D685E'}
+                    />
+                    <Text style={[styles.genderButtonText, gender === 'other' && styles.genderButtonTextActive]}>
+                      Other
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Place of Birth */}
+              <View style={styles.inputGroup}>
+                <View style={styles.labelRow}>
+                  <Ionicons name="location-outline" size={15} color="#5A4136" />
+                  <Text style={styles.inputLabel}>Place of Birth</Text>
+                </View>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="City, State or Country"
+                  placeholderTextColor="#A9968F"
+                  value={placeOfBirth}
+                  onChangeText={(val) => {
+                    setPlaceOfBirth(val);
+                    if (val.trim().length >= 2) {
+                      const filtered = CITIES_DB.filter(city =>
+                        city.toLowerCase().includes(val.toLowerCase())
+                      );
+                      setFilteredCities(filtered.slice(0, 5));
+                    } else {
+                      setFilteredCities([]);
+                    }
+                  }}
+                />
+                {filteredCities.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    {filteredCities.map((city, idx) => (
+                      <TouchableOpacity
+                        key={idx}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setPlaceOfBirth(city);
+                          setFilteredCities([]);
+                        }}
+                      >
+                        <Ionicons name="location-outline" size={14} color="#7D685E" style={{ marginRight: 8 }} />
+                        <Text style={styles.suggestionText}>{city}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* Info Box */}
+              <View style={styles.infoNotice}>
+                <Ionicons name="information-circle-outline" size={20} color="#FF7B00" />
+                <Text style={styles.infoNoticeText}>
+                  Explore your Vedic birth chart and see how planetary placements shape your current cosmic phase.
+                </Text>
+              </View>
+
+              {/* Validation Error */}
+              {!!validationError && (
+                <Text style={styles.errorText}>{validationError}</Text>
+              )}
+
+              {/* Calculate Button */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={styles.calculateBtn}
+                onPress={handleCalculate}
+                disabled={calculating}
+              >
+                <Text style={styles.calculateBtnText}>
+                  {calculating ? 'Calculating...' : 'Calculate Kundli'}
+                </Text>
+                {!calculating && <Ionicons name="chevron-forward" size={18} color="#FFF" />}
+              </TouchableOpacity>
+            </ScrollView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -1027,10 +1337,9 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.00)',
+    backgroundColor: '#FFF',
     marginHorizontal: 20,
     marginTop: 16,
-    width: 350,
     height: 80,
     alignSelf: 'center',
     borderRadius: 48,
@@ -1040,34 +1349,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 20,
     elevation: 2,
+    width: 350,
   },
-  profileCardAvatar: {
+  profileCardAvatarWrapper: {
+    borderWidth: 2,
+    borderColor: '#FF7B00',
+    borderRadius: 26,
+    padding: 1.5,
     marginRight: 12,
-  },
-  profileCardAvatarImg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  profileCardAvatarPlaceholder: {
-    backgroundColor: '#FCEADE',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   profileCardText: {
     flex: 1,
   },
   profileCardName: {
-    color: '#1B1C1C',
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 22,
+    color: '#1A1C1C',
+    fontFamily: 'System',
+    fontSize: 20,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   profileCardSub: {
-    color: '#7D685E',
-    fontSize: 13,
-    fontWeight: '400',
-    lineHeight: 18,
+    color: '#564337',
+    fontFamily: 'System',
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
     marginTop: 2,
   },
 
@@ -1347,5 +1655,45 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  bottomSheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  bottomSheetCard: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    maxHeight: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  bottomSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  bottomSheetTitle: {
+    color: '#1B1C1C',
+    fontFamily: 'System',
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
+    textAlign: 'center',
+    flex: 1,
+  },
+  bottomSheetClose: {
+    padding: 4,
+  },
+  modalScrollContent: {
+    paddingBottom: 24,
   },
 });

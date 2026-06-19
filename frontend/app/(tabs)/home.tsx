@@ -463,6 +463,16 @@ export default function HomeScreen() {
     }
   }, [showCoachMarks, coachMarkStep]);
 
+  // Auto-advance from FAB coach mark (step 5) after 1.8 seconds
+  useEffect(() => {
+    if (!showCoachMarks || coachMarkStep !== 5) return;
+    const timer = setTimeout(() => {
+      setCoachMarkStep(6);
+      router.push('/(tabs)/messages');
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, [showCoachMarks, coachMarkStep]);
+
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
   const currentUserId = (user as any)?.id;
@@ -2083,44 +2093,60 @@ export default function HomeScreen() {
         targetH = 75;
         arrowDirection = 'up';
         break;
-      case 2: // Live Jaap (Hanuman Chalisa)
+      case 2: { // Kundli card in horizontal quick-access scroll (index 3)
+        const PAGE_PADDING_STEP2 = 16;
+        const CARD_WIDTH_STEP2 = 175;
+        const CARD_GAP_STEP2 = 10;
+        const kundliCardIndex = 3; // Kundli is 4th item (0-indexed)
+        const scrollOffsetStep2 = kundliCardIndex * (CARD_WIDTH_STEP2 + CARD_GAP_STEP2);
+        const cardLeftStep2 = PAGE_PADDING_STEP2 + scrollOffsetStep2 - scrollOffsetStep2; // after scroll: card starts at left edge
+        targetX = PAGE_PADDING_STEP2;
+        targetY = insets.top + topFeaturesY;
+        targetW = CARD_WIDTH_STEP2;
+        targetH = 75;
+        arrowDirection = 'up';
+        break;
+      }
+      case 3: // Live Jaap (Hanuman Chalisa)
         targetX = 20;
         targetY = insets.top + bannersY - 80;
         targetW = SCREEN_WIDTH - 40;
         targetH = 160;
         arrowDirection = 'up';
         break;
-      case 3: // Live Aarti (Somnath Temple)
+      case 4: // Live Aarti (Somnath Temple)
         targetX = 20;
         targetY = insets.top + bannersY - 80;
         targetW = SCREEN_WIDTH - 40;
         targetH = 160;
         arrowDirection = 'up';
         break;
-      case 4: { // Kundli item in the open Floating Action Button (FAB)
-        const totalItems = 6;
-        const angleStep = (2 * Math.PI) / totalItems;
-        const startAngle = -Math.PI / 2;
-        const angle = startAngle + 1 * angleStep; // Kundli is index 1
-        const radius = 120;
-        const x = (180 - 40) + radius * Math.cos(angle);
-        const y = (180 - 40 - 15) + radius * Math.sin(angle);
-        targetX = (SCREEN_WIDTH - 360) / 2 + x;
-        targetY = (SCREEN_HEIGHT - 360) / 2 + y;
-        targetW = 80;
-        targetH = 80;
-        arrowDirection = 'up';
+      case 5: { // Floating Action Button (FAB)
+        const fabSize = 60;
+        const fabRight = 20;
+        const fabBottom = 90 + insets.bottom;
+        targetX = SCREEN_WIDTH - fabRight - fabSize;
+        targetY = SCREEN_HEIGHT - fabBottom - fabSize;
+        targetW = fabSize;
+        targetH = fabSize;
+        arrowDirection = 'down';
         break;
       }
       default:
         break;
     }
 
-    const isStep2Or3 = coachMarkStep === 2 || coachMarkStep === 3;
-    const cardWidth = isStep2Or3 ? 340 : 348;
-    const cardHeight = isStep2Or3 ? 275.793 : (coachMarkStep === 4 ? 352.167 : 369.999);
-    const cardBg = isStep2Or3 ? '#D9D9D9' : '#FCF3EE';
-    const cardBorderColor = isStep2Or3 ? '#D9D9D9' : '#FFEFE5';
+    const isStep3Or4 = coachMarkStep === 3 || coachMarkStep === 4;
+    const cardWidth = isStep3Or4 ? 340 : 348;
+    const cardHeight = isStep3Or4 ? 275.793 : (coachMarkStep === 2 ? 352.167 : 369.999);
+    const cardBg = isStep3Or4 ? '#D9D9D9' : '#FCF3EE';
+    const cardBorderColor = isStep3Or4 ? '#D9D9D9' : '#FFEFE5';
+    const cardTopOffset = arrowDirection === 'up'
+      ? targetY + targetH + 12
+      : undefined;
+    const cardBottomOffset = arrowDirection === 'down'
+      ? SCREEN_HEIGHT - targetY + 12
+      : undefined;
 
     const cardLeft = (SCREEN_WIDTH - cardWidth) / 2;
     const arrowX = targetX + targetW / 2 - cardLeft;
@@ -2136,9 +2162,9 @@ export default function HomeScreen() {
 
     const handleNext = async () => {
       const nextStep = coachMarkStep + 1;
-      if (nextStep > 4) {
+      if (nextStep > 5) {
         // Home tour done — move to Community tab
-        setCoachMarkStep(5);
+        setCoachMarkStep(6);
         router.push('/(tabs)/messages');
         return;
       }
@@ -2148,13 +2174,20 @@ export default function HomeScreen() {
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
         topFeaturesScrollRef.current?.scrollTo({ x: 0, animated: true });
       } else if (nextStep === 2) {
+        // Scroll to Kundli card (index 3) in horizontal quick-access row
+        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        topFeaturesScrollRef.current?.scrollTo({ x: 3 * (175 + 10), animated: true });
+      } else if (nextStep === 3) {
+        topFeaturesScrollRef.current?.scrollTo({ x: 0, animated: true });
         scrollViewRef.current?.scrollTo({ y: 80, animated: true });
         bannerScrollRef.current?.scrollTo({ x: 0, animated: true });
-      } else if (nextStep === 3) {
+      } else if (nextStep === 4) {
         scrollViewRef.current?.scrollTo({ y: 80, animated: true });
         bannerScrollRef.current?.scrollTo({ x: SCREEN_WIDTH - 40 + 12, animated: true });
-      } else if (nextStep === 4) {
+      } else if (nextStep === 5) {
+        // Scroll back to top for FAB spotlight
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        bannerScrollRef.current?.scrollTo({ x: 0, animated: true });
       }
 
       setCoachMarkStep(nextStep);
@@ -2167,6 +2200,13 @@ export default function HomeScreen() {
         desc: 'Need urgent help? Tap SOS to connect with verified volunteers and get support from your Brahmand community.',
         callout: 'Use SOS during threat, abuse, violence, medical emergency, or any urgent situation.',
         bullets: ['REAL PEOPLE REAL HELP', 'FAST RESPONSE', 'VERIFIED VOLUNTEERS'],
+      },
+      {
+        title: 'Kundli',
+        subtitle: 'Your cosmic blueprint',
+        desc: 'Your Kundli is a unique map of the planets at the time of your birth. It reveals your strengths, challenges and the path ahead.',
+        callout: 'Your birth details and kundli information are fully protected and are never shared with anyone.',
+        bullets: ['PERSONALITY INSIGHTS', 'REMEDIES', 'CAREER & FINANCE'],
       },
       {
         title: 'Chant Together, Rise Together',
@@ -2183,11 +2223,11 @@ export default function HomeScreen() {
         bullets: [],
       },
       {
-        title: 'Kundli',
-        subtitle: 'Your cosmic blueprint',
-        desc: 'Your Kundli is a unique map of the planets at the time of your birth. It reveals your strengths, challenges and the path ahead.',
-        callout: 'Your birth details and kundli information are fully protected and are never shared with anyone.',
-        bullets: ['PERSONALITY INSIGHTS', 'REMEDIES', 'CAREER & FINANCE'],
+        title: 'Brahmand at Your Fingertips',
+        subtitle: 'Your spiritual hub',
+        desc: 'Tap the floating button anytime to access My Krishna AI, Kundli, Panchang, Passport, SOS and more — all in one sacred space.',
+        callout: 'This button is always available wherever you are in the app.',
+        bullets: ['MY KRISHNA AI', 'QUICK ACCESS', 'ALWAYS REACHABLE'],
       },
     ];
 
@@ -2209,7 +2249,7 @@ export default function HomeScreen() {
             left: targetX,
             width: targetW,
             height: targetH,
-            borderRadius: coachMarkStep === 4 || coachMarkStep === 6 ? 29 : 15,
+            borderRadius: coachMarkStep === 5 || coachMarkStep === 7 ? 30 : 15,
             borderWidth: 2.5,
             borderColor: '#FF701F',
             backgroundColor: 'transparent',
@@ -2222,16 +2262,16 @@ export default function HomeScreen() {
         <View
           style={[
             styles.coachCard,
-            arrowDirection === 'up'
-              ? { top: targetY + targetH + 12 }
-              : { bottom: SCREEN_HEIGHT - targetY + 12 },
+            cardTopOffset !== undefined
+              ? { top: cardTopOffset }
+              : { bottom: cardBottomOffset },
             {
               width: cardWidth,
               height: cardHeight,
               left: cardLeft,
               backgroundColor: cardBg,
               borderColor: cardBorderColor,
-              paddingBottom: coachMarkStep === 4 ? 100 : 69,
+              paddingBottom: coachMarkStep === 2 ? 100 : 69,
             }
           ]}
         >
@@ -2281,7 +2321,7 @@ export default function HomeScreen() {
 
           <View style={[
             styles.coachCardBody,
-            (coachMarkStep === 2 || coachMarkStep === 3) && {
+            (coachMarkStep === 3 || coachMarkStep === 4) && {
               flexDirection: 'column',
               alignItems: 'center',
               gap: 8,
@@ -2292,7 +2332,7 @@ export default function HomeScreen() {
             {/* Left Column: Visual/Illustration */}
             <View style={[
               styles.coachVisualCol,
-              (coachMarkStep === 2 || coachMarkStep === 3) && {
+              (coachMarkStep === 3 || coachMarkStep === 4) && {
                 width: '100%',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2358,6 +2398,16 @@ export default function HomeScreen() {
               )}
 
               {coachMarkStep === 2 && (
+                <View style={{ width: 144.046, height: 180, justifyContent: 'center', alignItems: 'center' }}>
+                  <Image
+                    source={kundliChartImage}
+                    style={{ width: 110, height: 110, borderRadius: 10 }}
+                    resizeMode="contain"
+                  />
+                </View>
+              )}
+
+              {coachMarkStep === 3 && (
                 <View style={styles.miniJaapPreview}>
                   <View style={{ width: 58, height: 58, position: 'relative' }}>
                     <Image source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.miniJaapImage} />
@@ -2376,7 +2426,7 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {coachMarkStep === 3 && (
+              {coachMarkStep === 4 && (
                 <View style={styles.miniJaapPreview}>
                   <View style={{ width: 58, height: 58, position: 'relative' }}>
                     <Image source={shivaImage} style={styles.miniJaapImage} />
@@ -2395,13 +2445,22 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {coachMarkStep === 4 && (
-                <View style={{ width: 144.046, height: 180, justifyContent: 'center', alignItems: 'center' }}>
-                  <Image
-                    source={kundliChartImage}
-                    style={{ width: 110, height: 110, borderRadius: 10 }}
-                    resizeMode="contain"
-                  />
+              {coachMarkStep === 5 && (
+                <View style={{ width: 120, height: 120, justifyContent: 'center', alignItems: 'center' }}>
+                  <View style={{
+                    width: 80, height: 80, borderRadius: 40,
+                    backgroundColor: '#FF7B00',
+                    justifyContent: 'center', alignItems: 'center',
+                    shadowColor: '#FF5100', shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.35, shadowRadius: 12, elevation: 8,
+                    borderWidth: 3, borderColor: '#FFD5B8',
+                  }}>
+                    <ExpoImage
+                      source={require('../../assets/images/tab bar/my_krishna.png')}
+                      style={{ width: 60, height: 60 }}
+                      contentFit="cover"
+                    />
+                  </View>
                 </View>
               )}
             </View>
@@ -2409,14 +2468,14 @@ export default function HomeScreen() {
             {/* Right Column: Text and Details */}
             <View style={[
               styles.coachTextCol,
-              (coachMarkStep === 2 || coachMarkStep === 3) && {
+              (coachMarkStep === 3 || coachMarkStep === 4) && {
                 flex: 0,
                 width: '100%',
                 alignItems: 'center',
                 justifyContent: 'center',
                 marginTop: 12,
               },
-              coachMarkStep === 4 && {
+              coachMarkStep === 2 && {
                 alignItems: 'flex-start',
                 width: 144,
               }
@@ -2424,7 +2483,7 @@ export default function HomeScreen() {
               <Text
                 style={[
                   styles.coachTitle,
-                  (coachMarkStep === 2 || coachMarkStep === 3) && {
+                  (coachMarkStep === 3 || coachMarkStep === 4) && {
                     color: '#000',
                     textAlign: 'center',
                     fontFamily: 'SF Pro',
@@ -2433,7 +2492,7 @@ export default function HomeScreen() {
                     fontWeight: '600',
                     width: 308,
                   },
-                  (coachMarkStep === 4) && {
+                  (coachMarkStep === 2) && {
                     fontSize: 14,
                     lineHeight: 18,
                     fontWeight: '700',
@@ -2446,7 +2505,7 @@ export default function HomeScreen() {
               {currentData.subtitle ? (
                 <Text style={[
                   styles.coachSubtitle,
-                  coachMarkStep === 4 && {
+                  coachMarkStep === 2 && {
                     textTransform: 'none',
                     fontSize: 13,
                     lineHeight: 16,
@@ -2458,7 +2517,7 @@ export default function HomeScreen() {
               <Text
                 style={[
                   styles.coachDesc,
-                  (coachMarkStep === 2 || coachMarkStep === 3) && {
+                  (coachMarkStep === 3 || coachMarkStep === 4) && {
                     color: '#000',
                     textAlign: 'center',
                     fontFamily: 'SF Pro',
@@ -2467,7 +2526,7 @@ export default function HomeScreen() {
                     fontWeight: '500',
                     width: 308,
                   },
-                  coachMarkStep === 4 && {
+                  coachMarkStep === 2 && {
                     fontSize: 10,
                     lineHeight: 14,
                     width: 144,
@@ -2480,7 +2539,7 @@ export default function HomeScreen() {
               {currentData.callout ? (
                 <View style={[
                   styles.coachCallout,
-                  coachMarkStep === 4 && {
+                  coachMarkStep === 2 && {
                     width: 144,
                     marginTop: 8,
                     padding: 6,
@@ -2493,7 +2552,7 @@ export default function HomeScreen() {
                   <View style={{ flex: 1, justifyContent: 'center' }}>
                     <Text style={[
                       styles.coachCalloutText,
-                      coachMarkStep === 4 && {
+                      coachMarkStep === 2 && {
                         fontSize: 8,
                         lineHeight: 11,
                       }
@@ -2542,8 +2601,8 @@ export default function HomeScreen() {
                 </View>
               )}
 
-              {/* Generic bullets for steps that have them (not SOS step 1, not Kundli step 4) */}
-              {coachMarkStep !== 1 && coachMarkStep !== 4 && currentData.bullets && currentData.bullets.length > 0 && (
+              {/* Generic bullets for steps that have them (not SOS step 1, not Kundli step 2, not FAB step 5) */}
+              {coachMarkStep !== 1 && coachMarkStep !== 2 && coachMarkStep !== 5 && currentData.bullets && currentData.bullets.length > 0 && (
                 <View style={styles.bulletsWrap}>
                   {currentData.bullets.map((bullet, bIdx) => (
                     <View key={bIdx} style={styles.bulletItem}>
@@ -2556,8 +2615,8 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Custom Step 4 Community Bullets Row */}
-          {coachMarkStep === 4 && currentData.bullets && currentData.bullets.length >= 3 && (
+          {/* Custom Step 5 FAB Bullets Row */}
+          {coachMarkStep === 5 && currentData.bullets && currentData.bullets.length >= 3 && (
             <View style={styles.communityBulletsRow}>
               <View style={styles.communityBulletBlock}>
                 <View style={styles.communityBulletIconWrap}>
@@ -2588,8 +2647,8 @@ export default function HomeScreen() {
             </View>
           )}
 
-          {/* Custom Step 5 Kundli Bullets Row */}
-          {coachMarkStep === 5 && currentData.bullets && currentData.bullets.length >= 3 && (
+          {/* Custom Step 2 Kundli Bullets Row */}
+          {coachMarkStep === 2 && currentData.bullets && currentData.bullets.length >= 3 && (
             <View style={styles.communityBulletsRow}>
               <View style={styles.communityBulletBlock}>
                 <View style={styles.communityBulletIconWrap}>
@@ -4207,7 +4266,7 @@ export default function HomeScreen() {
       title="Choose Your Location"
       initialCoords={liveCoords}
     />
-    {showCoachMarks && coachMarkStep >= 1 && coachMarkStep <= 4 && renderCoachMarks()}
+    {showCoachMarks && coachMarkStep >= 1 && coachMarkStep <= 5 && renderCoachMarks()}
     </View >
   );
 }

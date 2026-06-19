@@ -581,6 +581,21 @@ export default function RootLayout() {
       if (adminErr) {
         console.warn('Failed to load stored admin auth:', adminErr?.message || adminErr);
       }
+
+      // Sync birth details into jyotishStore after auth is restored.
+      // loadStoredAuth already fetched the fresh profile from backend, so
+      // loadBirthDetails will find birth details in authStore immediately.
+      try {
+        const { token } = useAuthStore.getState();
+        if (token) {
+          const { useJyotishStore } = require('../src/store/jyotishStore');
+          useJyotishStore.getState().loadBirthDetails().catch((e: any) => {
+            console.warn('Failed to load birth details on startup:', e);
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to require jyotishStore on startup:', e);
+      }
     });
   }, [loadStoredAuth, loadStoredAdminAuth]);
 
