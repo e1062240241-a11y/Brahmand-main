@@ -48,10 +48,10 @@ const reverseGeocodeWithTimeout = async (
 };
 
 const SOS_TYPES = [
-  { label: 'Safety', value: 'safety', icon: 'shield-checkmark' },
-  { label: 'Medical', value: 'medical', icon: 'medkit' },
-  { label: 'Accident', value: 'accident', icon: 'car-sport' },
-  { label: 'Other', value: 'other', icon: 'warning' },
+  { label: 'Safety', value: 'safety', icon: 'shield-checkmark-outline' },
+  { label: 'Medical', value: 'medical', icon: 'medkit-outline' },
+  { label: 'Accident', value: 'accident', icon: 'car-sport-outline' },
+  { label: 'Other', value: 'other', icon: 'warning-outline' },
 ];
 
 export default function SOSScreen() {
@@ -332,400 +332,412 @@ export default function SOSScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Emergency SOS</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5', '#FFEEE5']}
+      locations={[0, 0.1058, 0.2212, 1.0]}
+      style={styles.container}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Emergency SOS</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-        style={styles.content}
-      >
-        {stage === 'type' && (
-          <>
-            <View style={styles.warningContainer}>
-              <View style={styles.warningIconBg}>
-                <Ionicons name="alert" size={40} color="#FF3B30" />
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+          style={styles.content}
+        >
+          {stage === 'type' && (
+            <>
+              <View style={styles.warningContainer}>
+                <View style={styles.warningIconBg}>
+                  <Text style={styles.warningExclamation}>!</Text>
+                </View>
+                <Text style={styles.warningTitle}>Confirm Emergency Type</Text>
+                <Text style={styles.warningText}>
+                  Please select the nature of your emergency to notify nearby Sanatan Lok members effectively.
+                </Text>
               </View>
-              <Text style={styles.warningTitle}>Confirm Emergency Type</Text>
-              <Text style={styles.warningText}>
-                Please select the nature of your emergency to notify nearby Sanatan Lok members effectively.
-              </Text>
-            </View>
 
-            <View style={styles.optionsContainer}>
-              {SOS_TYPES.map((option) => {
-                const isSelected = emergencyType === option.value;
-                return (
-                  <TouchableOpacity
-                    key={option.value}
-                    style={[
-                      styles.typeOption,
-                      isSelected && styles.typeOptionSelected
-                    ]}
-                    onPress={() => {
-                      setEmergencyType(option.value);
-                      // Auto-continue to location stage after selection
-                      setTimeout(() => {
-                        handleContinueToLocation(option.value);
-                      }, 400);
-                    }}
+              <View style={styles.optionsContainer}>
+                {SOS_TYPES.map((option) => {
+                  const isSelected = emergencyType === option.value;
+                  return (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.typeOption,
+                        isSelected && styles.typeOptionSelected
+                      ]}
+                      onPress={() => {
+                        setEmergencyType(option.value);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons 
+                        name={option.icon as any} 
+                        size={24} 
+                        color={isSelected ? '#FF8A7A' : '#8E8E93'} 
+                      />
+                      <Text style={[
+                        styles.typeOptionText,
+                        isSelected && styles.typeOptionTextSelected
+                      ]}>
+                        {option.label}
+                      </Text>
+                      <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                        {isSelected && <View style={styles.radioInner} />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={{ height: 16 }} />
+
+              <TouchableOpacity 
+                style={[
+                  styles.continueButton,
+                  emergencyType ? styles.continueButtonActive : null
+                ]} 
+                onPress={() => handleContinueToLocation()}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.continueButtonText}>CONTINUE</Text>
+                <View style={styles.continueButtonIconBg}>
+                  <Ionicons 
+                    name="play" 
+                    size={10} 
+                    color={emergencyType ? "#FF3B30" : "#FF8A7A"} 
+                    style={{ marginLeft: 2 }} 
+                  />
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.cancelButton} onPress={handleBack} activeOpacity={0.8}>
+                <Text style={styles.cancelButtonText}>Cancel SOS</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {stage === 'location' && (
+            <ScrollView 
+              showsVerticalScrollIndicator={false} 
+              contentContainerStyle={{ 
+                flexGrow: 1, 
+                paddingBottom: Math.max(insets.bottom, 20) 
+              }}
+            >
+              <View style={styles.mapContainer}>
+                {location ? (
+                  <SOSMap 
+                    latitude={location.coords.latitude} 
+                    longitude={location.coords.longitude} 
+                  />
+                ) : (
+                  <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0F0F0' }]}>
+                    <ActivityIndicator size="large" color="#FF3B30" />
+                    <Text style={{ marginTop: 10, color: '#666' }}>Fetching your location...</Text>
+                  </View>
+                )}
+              </View>
+
+              {location ? (
+                <View style={styles.warningContainer}>
+                  <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB', width: 60, height: 60, marginTop: 10 }]}>
+                    <Ionicons name="location" size={30} color="#34C759" />
+                  </View>
+                  <Text style={styles.warningTitle}>Location Detected</Text>
+                  {location.coords.accuracy && (
+                    <Text style={styles.warningText}>
+                      GPS Accuracy: {location.coords.accuracy.toFixed(1)}m
+                    </Text>
+                  )}
+                  
+                  {/* Clickable Google Maps Link */}
+                  <TouchableOpacity 
+                    style={styles.mapsLinkBtn} 
+                    onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.coords.latitude},${location.coords.longitude}`)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons 
-                      name={option.icon as any} 
-                      size={24} 
-                      color={isSelected ? '#FF3B30' : '#666'} 
-                    />
-                    <Text style={[
-                      styles.typeOptionText,
-                      isSelected && styles.typeOptionTextSelected
-                    ]}>
-                      {option.label}
+                    <Ionicons name="map-outline" size={16} color="#FF3B30" />
+                    <Text style={styles.mapsLinkText}>
+                      View Live GPS Link ({location.coords.latitude.toFixed(5)}, {location.coords.longitude.toFixed(5)})
                     </Text>
-                    <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
-                      {isSelected && <View style={styles.radioInner} />}
-                    </View>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
 
-            <View style={styles.disclaimerBox}>
-              <Ionicons name="information-circle-outline" size={18} color="#FF6B00" style={{ marginRight: 8, marginTop: 1 }} />
-              <Text style={styles.disclaimerText}>
-                <Text style={{ fontWeight: '700' }}>Disclaimer: </Text>
-                Brahmand is not a police, ambulance, fire, or emergency medical service. In life-threatening emergencies, contact official emergency services immediately.
-              </Text>
-            </View>
+                  <TouchableOpacity 
+                    style={[styles.mapsLinkBtn, { marginTop: 10, backgroundColor: '#FFF5EB', borderColor: '#FFD7C2' }]} 
+                    onPress={() => setPickerVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="pencil-sharp" size={16} color="#FF6B00" />
+                    <Text style={[styles.mapsLinkText, { color: '#FF6B00' }]}>
+                      Choose Manually (Map / Search)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.warningContainer}>
+                  <View style={[styles.warningIconBg, { backgroundColor: '#FFF0F0', width: 60, height: 60, marginTop: 10 }]}>
+                    <Ionicons name="close-circle" size={30} color="#FF3B30" />
+                  </View>
+                  
+                  {gpsErrorType === 'permission' && (
+                    <>
+                      <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>Permission Denied</Text>
+                      <Text style={styles.warningText}>
+                        Brahmand needs Location permission to fetch your real-time position during an emergency.
+                      </Text>
+                      
+                      <View style={styles.guideBox}>
+                        <Text style={styles.guideHeader}>How to enable permission:</Text>
+                        <Text style={styles.guideStep}>1. Tap 'Open Settings' button below.</Text>
+                        <Text style={styles.guideStep}>2. Tap 'Permissions' or 'Location'.</Text>
+                        <Text style={styles.guideStep}>3. Select 'Allow all the time' or 'While using the app'.</Text>
+                      </View>
 
-            <View style={{ flex: 1 }} />
+                      <View style={styles.errorBtnRow}>
+                        <TouchableOpacity 
+                          style={styles.actionSettingsBtn} 
+                          onPress={() => Linking.openSettings()}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="settings-outline" size={16} color="#FFF" />
+                          <Text style={styles.actionSettingsText}>Open Settings</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={styles.actionRetryBtn} 
+                          onPress={handleRetryLocation}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="refresh" size={16} color="#FF3B30" />
+                          <Text style={styles.actionRetryText}>Retry</Text>
+                        </TouchableOpacity>
+                      </View>
 
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
-              <Text style={styles.secondaryButtonText}>Cancel SOS</Text>
-            </TouchableOpacity>
-          </>
-        )}
+                      <TouchableOpacity 
+                        style={[styles.mapsLinkBtn, { marginTop: 15, width: '100%', justifyContent: 'center' }]} 
+                        onPress={() => setPickerVisible(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="map-outline" size={16} color="#FF3B30" />
+                        <Text style={styles.mapsLinkText}>Choose Location Manually (Map / Search)</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
 
-        {stage === 'location' && (
-          <ScrollView 
-            showsVerticalScrollIndicator={false} 
-            contentContainerStyle={{ 
-              flexGrow: 1, 
-              paddingBottom: Math.max(insets.bottom, 20) 
-            }}
-          >
-            <View style={styles.mapContainer}>
-              {location ? (
-                <SOSMap 
-                  latitude={location.coords.latitude} 
-                  longitude={location.coords.longitude} 
+                  {gpsErrorType === 'disabled' && (
+                    <>
+                      <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>GPS/Location is OFF</Text>
+                      <Text style={styles.warningText}>
+                        Your device Location services are currently disabled. Real-time GPS is required to alert responders.
+                      </Text>
+                      
+                      <View style={styles.guideBox}>
+                        <Text style={styles.guideHeader}>How to turn on GPS:</Text>
+                        {Platform.OS === 'ios' ? (
+                          <>
+                            <Text style={styles.guideStep}>1. Tap 'Open Settings' button below.</Text>
+                            <Text style={styles.guideStep}>2. Go to Privacy & Security &rarr; Location Services.</Text>
+                            <Text style={styles.guideStep}>3. Toggle the switch to ON.</Text>
+                          </>
+                        ) : (
+                          <>
+                            <Text style={styles.guideStep}>1. Swipe down from the top of your screen to open Quick Panel.</Text>
+                            <Text style={styles.guideStep}>2. Locate and tap the 'Location' or 'GPS' toggle to turn it ON.</Text>
+                            <Text style={styles.guideStep}>3. Or tap 'Open Settings' below and toggle location services.</Text>
+                          </>
+                        )}
+                      </View>
+
+                      <View style={styles.errorBtnRow}>
+                        <TouchableOpacity 
+                          style={styles.actionSettingsBtn} 
+                          onPress={() => Linking.openSettings()}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="settings-outline" size={16} color="#FFF" />
+                          <Text style={styles.actionSettingsText}>Open Settings</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={styles.actionRetryBtn} 
+                          onPress={handleRetryLocation}
+                          activeOpacity={0.8}
+                        >
+                          <Ionicons name="refresh" size={16} color="#FF3B30" />
+                          <Text style={styles.actionRetryText}>Retry</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity 
+                        style={[styles.mapsLinkBtn, { marginTop: 15, width: '100%', justifyContent: 'center' }]} 
+                        onPress={() => setPickerVisible(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="map-outline" size={16} color="#FF3B30" />
+                        <Text style={styles.mapsLinkText}>Choose Location Manually (Map / Search)</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {(gpsErrorType === 'timeout' || !gpsErrorType) && (
+                    <>
+                      <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>GPS Signal Weak</Text>
+                      <Text style={styles.warningText}>
+                        We couldn't detect a strong real-time GPS signal. Please move to an open area and try again.
+                      </Text>
+                      
+                      <TouchableOpacity 
+                        style={styles.retryFetchBtn} 
+                        onPress={handleRetryLocation}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="refresh" size={16} color="#FFF" />
+                        <Text style={styles.retryFetchText}>Retry Fetching GPS</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity 
+                        style={[styles.retryFetchBtn, { backgroundColor: '#FF6B00', marginTop: 10 }]} 
+                        onPress={() => setPickerVisible(true)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="map-outline" size={16} color="#FFF" />
+                        <Text style={styles.retryFetchText}>Select Manually on Map</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              )}
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Add More Detail (Optional)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter personal accurate address, landmark..."
+                  placeholderTextColor="#999"
+                  value={microLocation}
+                  onChangeText={setMicroLocation}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
                 />
-              ) : (
-                <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F0F0F0' }]}>
-                  <ActivityIndicator size="large" color="#FF3B30" />
-                  <Text style={{ marginTop: 10, color: '#666' }}>Fetching your location...</Text>
-                </View>
-              )}
-            </View>
-
-            {location ? (
-              <View style={styles.warningContainer}>
-                <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB', width: 60, height: 60, marginTop: 10 }]}>
-                  <Ionicons name="location" size={30} color="#34C759" />
-                </View>
-                <Text style={styles.warningTitle}>Location Detected</Text>
-                {location.coords.accuracy && (
-                  <Text style={styles.warningText}>
-                    GPS Accuracy: {location.coords.accuracy.toFixed(1)}m
-                  </Text>
-                )}
-                
-                {/* Clickable Google Maps Link */}
-                <TouchableOpacity 
-                  style={styles.mapsLinkBtn} 
-                  onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${location.coords.latitude},${location.coords.longitude}`)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="map-outline" size={16} color="#FF3B30" />
-                  <Text style={styles.mapsLinkText}>
-                    View Live GPS Link ({location.coords.latitude.toFixed(5)}, {location.coords.longitude.toFixed(5)})
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.mapsLinkBtn, { marginTop: 10, backgroundColor: '#FFF5EB', borderColor: '#FFD7C2' }]} 
-                  onPress={() => setPickerVisible(true)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="pencil-sharp" size={16} color="#FF6B00" />
-                  <Text style={[styles.mapsLinkText, { color: '#FF6B00' }]}>
-                    Choose Manually (Map / Search)
-                  </Text>
-                </TouchableOpacity>
               </View>
-            ) : (
-              <View style={styles.warningContainer}>
-                <View style={[styles.warningIconBg, { backgroundColor: '#FFF0F0', width: 60, height: 60, marginTop: 10 }]}>
-                  <Ionicons name="close-circle" size={30} color="#FF3B30" />
+
+              <View style={{ flex: 1 }} />
+
+              <TouchableOpacity 
+                style={[styles.primaryButton, !location && styles.primaryButtonDisabled]} 
+                onPress={handleStartCountdown}
+                disabled={!location}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.primaryButtonText}>CREATE SOS</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
+                <Text style={styles.secondaryButtonText}>Back</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          {stage === 'countdown' && (
+            <View style={styles.countdownContainer}>
+              <View style={[styles.warningIconBg, { backgroundColor: '#FFF0F0' }]}>
+                <Ionicons name="warning" size={40} color="#FF3B30" />
+              </View>
+              <Text style={styles.warningTitle}>SOS Sending in...</Text>
+              <Text style={styles.countdownNumber}>{countdown}</Text>
+              <Text style={styles.warningText}>
+                Cancel now if this was a mistake. Your community and contacts will be alerted in {countdown} seconds.
+              </Text>
+              
+              <View style={{ flex: 1 }} />
+              
+              <TouchableOpacity style={styles.secondaryButton} onPress={handleCancelCountdown}>
+                <Text style={styles.secondaryButtonText}>Cancel SOS</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {stage === 'activating' && (
+            <View style={styles.activatingContainer}>
+              <View style={styles.pulseContainer}>
+                <Animated.View style={[styles.pulseCircle, {
+                  transform: [{ scale: pulse1.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
+                  opacity: pulse1.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
+                }]} />
+                <Animated.View style={[styles.pulseCircle, {
+                  transform: [{ scale: pulse2.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
+                  opacity: pulse2.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
+                }]} />
+                <Animated.View style={[styles.pulseCircle, {
+                  transform: [{ scale: pulse3.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
+                  opacity: pulse3.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
+                }]} />
+                <View style={styles.pulseCenter}>
+                  <Ionicons name="radio" size={32} color="#FFF" />
                 </View>
-                
-                {gpsErrorType === 'permission' && (
-                  <>
-                    <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>Permission Denied</Text>
-                    <Text style={styles.warningText}>
-                      Brahmand needs Location permission to fetch your real-time position during an emergency.
-                    </Text>
-                    
-                    <View style={styles.guideBox}>
-                      <Text style={styles.guideHeader}>How to enable permission:</Text>
-                      <Text style={styles.guideStep}>1. Tap 'Open Settings' button below.</Text>
-                      <Text style={styles.guideStep}>2. Tap 'Permissions' or 'Location'.</Text>
-                      <Text style={styles.guideStep}>3. Select 'Allow all the time' or 'While using the app'.</Text>
-                    </View>
-
-                    <View style={styles.errorBtnRow}>
-                      <TouchableOpacity 
-                        style={styles.actionSettingsBtn} 
-                        onPress={() => Linking.openSettings()}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="settings-outline" size={16} color="#FFF" />
-                        <Text style={styles.actionSettingsText}>Open Settings</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={styles.actionRetryBtn} 
-                        onPress={handleRetryLocation}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="refresh" size={16} color="#FF3B30" />
-                        <Text style={styles.actionRetryText}>Retry</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <TouchableOpacity 
-                      style={[styles.mapsLinkBtn, { marginTop: 15, width: '100%', justifyContent: 'center' }]} 
-                      onPress={() => setPickerVisible(true)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="map-outline" size={16} color="#FF3B30" />
-                      <Text style={styles.mapsLinkText}>Choose Location Manually (Map / Search)</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {gpsErrorType === 'disabled' && (
-                  <>
-                    <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>GPS/Location is OFF</Text>
-                    <Text style={styles.warningText}>
-                      Your device Location services are currently disabled. Real-time GPS is required to alert responders.
-                    </Text>
-                    
-                    <View style={styles.guideBox}>
-                      <Text style={styles.guideHeader}>How to turn on GPS:</Text>
-                      {Platform.OS === 'ios' ? (
-                        <>
-                          <Text style={styles.guideStep}>1. Tap 'Open Settings' button below.</Text>
-                          <Text style={styles.guideStep}>2. Go to Privacy & Security &rarr; Location Services.</Text>
-                          <Text style={styles.guideStep}>3. Toggle the switch to ON.</Text>
-                        </>
-                      ) : (
-                        <>
-                          <Text style={styles.guideStep}>1. Swipe down from the top of your screen to open Quick Panel.</Text>
-                          <Text style={styles.guideStep}>2. Locate and tap the 'Location' or 'GPS' toggle to turn it ON.</Text>
-                          <Text style={styles.guideStep}>3. Or tap 'Open Settings' below and toggle location services.</Text>
-                        </>
-                      )}
-                    </View>
-
-                    <View style={styles.errorBtnRow}>
-                      <TouchableOpacity 
-                        style={styles.actionSettingsBtn} 
-                        onPress={() => Linking.openSettings()}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="settings-outline" size={16} color="#FFF" />
-                        <Text style={styles.actionSettingsText}>Open Settings</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={styles.actionRetryBtn} 
-                        onPress={handleRetryLocation}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="refresh" size={16} color="#FF3B30" />
-                        <Text style={styles.actionRetryText}>Retry</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    <TouchableOpacity 
-                      style={[styles.mapsLinkBtn, { marginTop: 15, width: '100%', justifyContent: 'center' }]} 
-                      onPress={() => setPickerVisible(true)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="map-outline" size={16} color="#FF3B30" />
-                      <Text style={styles.mapsLinkText}>Choose Location Manually (Map / Search)</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {(gpsErrorType === 'timeout' || !gpsErrorType) && (
-                  <>
-                    <Text style={[styles.warningTitle, { color: '#FF3B30' }]}>GPS Signal Weak</Text>
-                    <Text style={styles.warningText}>
-                      We couldn't detect a strong real-time GPS signal. Please move to an open area and try again.
-                    </Text>
-                    
-                    <TouchableOpacity 
-                      style={styles.retryFetchBtn} 
-                      onPress={handleRetryLocation}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="refresh" size={16} color="#FFF" />
-                      <Text style={styles.retryFetchText}>Retry Fetching GPS</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                      style={[styles.retryFetchBtn, { backgroundColor: '#FF6B00', marginTop: 10 }]} 
-                      onPress={() => setPickerVisible(true)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="map-outline" size={16} color="#FFF" />
-                      <Text style={styles.retryFetchText}>Select Manually on Map</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
               </View>
-            )}
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Add More Detail (Optional)</Text>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter personal accurate address, landmark..."
-                placeholderTextColor="#999"
-                value={microLocation}
-                onChangeText={setMicroLocation}
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
+              <Text style={styles.activatingText}>{loadingText}</Text>
             </View>
+          )}
 
-            <View style={{ flex: 1 }} />
+          {stage === 'active' && (
+            <View style={styles.activeContainer}>
+              <Ionicons name="checkmark-circle" size={80} color="#34C759" />
+              <Text style={styles.activeTitle}>SOS Active</Text>
+              <Text style={styles.activeText}>
+                Your emergency contacts and nearby community members have been alerted with your live location. Help is on the way.
+              </Text>
+              <TouchableOpacity style={styles.primaryButtonBlack} onPress={handleBack}>
+                <Text style={styles.primaryButtonText}>OK</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.primaryButton, !location && styles.primaryButtonDisabled]} 
-              onPress={handleStartCountdown}
-              disabled={!location}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.primaryButtonText}>CREATE SOS</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
-              <Text style={styles.secondaryButtonText}>Back</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        )}
-
-        {stage === 'countdown' && (
-          <View style={styles.countdownContainer}>
-            <View style={[styles.warningIconBg, { backgroundColor: '#FFF0F0' }]}>
-              <Ionicons name="warning" size={40} color="#FF3B30" />
+              <TouchableOpacity 
+                style={[styles.primaryButton, { backgroundColor: '#FF3B30', marginTop: 16 }]} 
+                onPress={async () => {
+                  const success = await handleCancelExistingSOS();
+                  if (success) {
+                    Alert.alert('Cancelled', 'Your SOS request has been cancelled successfully.', [
+                      { text: 'OK', onPress: handleBack }
+                    ]);
+                  }
+                }}
+                disabled={resolving}
+                activeOpacity={0.8}
+              >
+                {resolving ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>CANCEL SOS</Text>
+                )}
+              </TouchableOpacity>
             </View>
-            <Text style={styles.warningTitle}>SOS Sending in...</Text>
-            <Text style={styles.countdownNumber}>{countdown}</Text>
-            <Text style={styles.warningText}>
-              Cancel now if this was a mistake. Your community and contacts will be alerted in {countdown} seconds.
-            </Text>
-            
-            <View style={{ flex: 1 }} />
-            
-            <TouchableOpacity style={styles.secondaryButton} onPress={handleCancelCountdown}>
-              <Text style={styles.secondaryButtonText}>Cancel SOS</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
+        </KeyboardAvoidingView>
 
-        {stage === 'activating' && (
-          <View style={styles.activatingContainer}>
-            <View style={styles.pulseContainer}>
-              <Animated.View style={[styles.pulseCircle, {
-                transform: [{ scale: pulse1.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
-                opacity: pulse1.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
-              }]} />
-              <Animated.View style={[styles.pulseCircle, {
-                transform: [{ scale: pulse2.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
-                opacity: pulse2.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
-              }]} />
-              <Animated.View style={[styles.pulseCircle, {
-                transform: [{ scale: pulse3.interpolate({ inputRange: [0, 1], outputRange: [1, 3] }) }],
-                opacity: pulse3.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.6, 0.3, 0] })
-              }]} />
-              <View style={styles.pulseCenter}>
-                <Ionicons name="radio" size={32} color="#FFF" />
-              </View>
-            </View>
-            <Text style={styles.activatingText}>{loadingText}</Text>
-          </View>
-        )}
-
-        {stage === 'active' && (
-          <View style={styles.activeContainer}>
-            <Ionicons name="checkmark-circle" size={80} color="#34C759" />
-            <Text style={styles.activeTitle}>SOS Active</Text>
-            <Text style={styles.activeText}>
-              Your emergency contacts and nearby community members have been alerted with your live location. Help is on the way.
-            </Text>
-            <TouchableOpacity style={styles.primaryButtonBlack} onPress={handleBack}>
-              <Text style={styles.primaryButtonText}>OK</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.primaryButton, { backgroundColor: '#FF3B30', marginTop: 16 }]} 
-              onPress={async () => {
-                const success = await handleCancelExistingSOS();
-                if (success) {
-                  Alert.alert('Cancelled', 'Your SOS request has been cancelled successfully.', [
-                    { text: 'OK', onPress: handleBack }
-                  ]);
-                }
-              }}
-              disabled={resolving}
-              activeOpacity={0.8}
-            >
-              {resolving ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.primaryButtonText}>CANCEL SOS</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-      </KeyboardAvoidingView>
-
-      <LocationPickerModal
-        visible={pickerVisible}
-        onClose={() => setPickerVisible(false)}
-        onConfirm={handleConfirmManualLocation}
-        title="Confirm SOS Location"
-        initialCoords={location ? { latitude: location.coords.latitude, longitude: location.coords.longitude } : null}
-      />
-    </SafeAreaView>
+        <LocationPickerModal
+          visible={pickerVisible}
+          onClose={() => setPickerVisible(false)}
+          onConfirm={handleConfirmManualLocation}
+          title="Confirm SOS Location"
+          initialCoords={location ? { latitude: location.coords.latitude, longitude: location.coords.longitude } : null}
+        />
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFF',
   },
   header: {
     flexDirection: 'row',
@@ -733,8 +745,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
   },
   backButton: {
     width: 40,
@@ -753,30 +763,37 @@ const styles = StyleSheet.create({
   },
   warningContainer: {
     alignItems: 'center',
-    marginBottom: 30,
-    marginTop: 20,
+    marginBottom: 20,
+    marginTop: 10,
   },
   warningIconBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FFF0F0',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: '#FFF0EE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  warningExclamation: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#FF3B30',
+    marginTop: -2,
   },
   warningTitle: {
     fontSize: 22,
     fontWeight: '800',
     color: '#1A1A1A',
     marginBottom: 8,
+    textAlign: 'center',
   },
   warningText: {
     fontSize: 14,
     color: '#666',
     textAlign: 'center',
     lineHeight: 20,
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
   },
   optionsContainer: {
     marginTop: 10,
@@ -786,42 +803,91 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 16,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    marginBottom: 12,
-    backgroundColor: '#FAFAFA',
+    borderColor: '#E5E5EA',
+    borderRadius: 16,
+    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 2,
   },
   typeOptionSelected: {
-    borderColor: '#FF3B30',
-    backgroundColor: '#FFF0F0',
+    borderColor: '#FF8A7A',
+    backgroundColor: '#FFF5F2',
   },
   typeOptionText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#48484A',
     marginLeft: 12,
   },
   typeOptionTextSelected: {
-    color: '#FF3B30',
+    color: '#FF8A7A',
+    fontWeight: '700',
   },
   radioCircle: {
     width: 24,
     height: 24,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#CCC',
+    borderColor: '#D1D1D6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioCircleSelected: {
-    borderColor: '#FF3B30',
+    borderColor: '#FF8A7A',
   },
   radioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
+    backgroundColor: '#FF8A7A',
+  },
+  continueButton: {
+    backgroundColor: '#FF8A7A',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    flexDirection: 'row',
+  },
+  continueButtonActive: {
     backgroundColor: '#FF3B30',
+    borderRadius: 12,
+  },
+  continueButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+  },
+  continueButtonIconBg: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FF8A7A',
+    marginBottom: 10,
+  },
+  cancelButtonText: {
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '700',
   },
   primaryButton: {
     backgroundColor: '#FF3B30',

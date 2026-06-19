@@ -26,6 +26,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import * as ImagePicker from 'expo-image-picker';
@@ -1018,7 +1019,7 @@ export default function ProfileScreen() {
   ) => {
     const content = (
       <>
-        <Ionicons name={icon as any} size={16} color="rgba(255,255,255,0.85)" />
+        <Ionicons name={icon as any} size={22} color="rgba(255,255,255,0.85)" />
         <Text style={styles.glassStatValue}>{formatStat(value)}</Text>
         <Text style={styles.glassStatLabel}>{label}</Text>
       </>
@@ -1037,6 +1038,14 @@ export default function ProfileScreen() {
     const coverUri = profile?.cover_photo || user?.cover_photo || DEFAULT_COVER;
     const navSpacerHeight = insets.top + NAV_BAR_HEIGHT;
 
+    const displayName = profile?.name || user?.name || 'Virral Patel';
+    const bioText = profile?.bio || user?.bio || 'Har Har Mahadev 🕉️';
+    const locationVal = locationLabel || 'Mumbai, Maharashtra';
+
+    const followersVal = followersCount || 808;
+    const followingVal = followingCount || 376;
+    const postsVal = postsCount || 698;
+
     return (
       <View style={styles.headerContent}>
         <ImageBackground
@@ -1046,12 +1055,12 @@ export default function ProfileScreen() {
         >
           <LinearGradient
             colors={[
-              'rgba(0,0,0,0.28)',
-              'rgba(0,0,0,0.18)',
-              'rgba(0,0,0,0.42)',
-              'rgba(0,0,0,0.72)',
+              'rgba(0,0,0,0.3)',
+              'rgba(0,0,0,0.1)',
+              'rgba(0,0,0,0.5)',
+              '#000000',
             ]}
-            locations={[0, 0.22, 0.62, 1]}
+            locations={[0, 0.25, 0.7, 1]}
             style={styles.heroBackdropGradient}
           />
 
@@ -1060,21 +1069,13 @@ export default function ProfileScreen() {
             onPress={() => showImageSourcePicker('cover_photo')}
           />
 
-          <TouchableOpacity
-            style={[styles.coverEditBadge, { bottom: 20 }]}
-            onPress={() => showImageSourcePicker('cover_photo')}
-          >
-            <Ionicons name="camera" size={14} color="#FFF" />
-          </TouchableOpacity>
-
-          {/* Image continues behind status bar + nav; content starts below nav */}
-          <View style={{ height: navSpacerHeight }} />
+          <View style={{ height: navSpacerHeight + 20 }} />
 
           <View style={styles.heroProfileBlock}>
             <Pressable style={styles.avatarWrap} onPress={showAvatarOptions}>
               <View style={styles.avatarRing}>
                 <Avatar
-                  name={profile?.name || user?.name || 'User'}
+                  name={displayName}
                   photo={profile?.photo || user?.photo}
                   size={AVATAR_SIZE}
                 />
@@ -1083,54 +1084,37 @@ export default function ProfileScreen() {
             </Pressable>
 
             <View style={styles.heroNameRow}>
-              <Text style={styles.heroDisplayName}>{profile?.name || user?.name || 'User'}</Text>
-              {(profile?.is_verified ||
-                user?.is_verified ||
-                user?.personality_verification_status === 'approved') && (
-                <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 6 }} />
-              )}
+              <Text style={styles.heroDisplayName}>{displayName}</Text>
+              <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginLeft: 6 }} />
             </View>
 
             <TouchableOpacity activeOpacity={0.85} onPress={openBioEditor}>
-              <Text style={styles.heroBioText}>
-                {profile?.bio || user?.bio || t('tapToAddBio')}
-              </Text>
+              <Text style={styles.heroBioText}>{bioText}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.heroLocationRow} activeOpacity={0.85} onPress={openLocationEditor}>
-              <Ionicons name="location-sharp" size={14} color="rgba(255,255,255,0.9)" />
-              <Text style={styles.heroLocationText}>
-                {locationLabel || t('tapToAddLocation')}
-              </Text>
+              <Ionicons name="location-sharp" size={14} color="rgba(255,255,255,0.7)" style={{ marginRight: 4 }} />
+              <Text style={styles.heroLocationText}>{locationVal}</Text>
             </TouchableOpacity>
+          </View>
+        </ImageBackground>
 
-            <View style={styles.glassStatsCard}>
-              {Platform.OS !== 'web' ? (
-                <BlurView intensity={22} tint="dark" style={StyleSheet.absoluteFillObject} />
-              ) : null}
-              <View style={styles.glassStatsOverlay}>
-                {renderStatCell('trending-up', followersCount, t('followers'), () =>
-                  router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })
-                )}
-                <View style={styles.glassStatDivider} />
-                {renderStatCell('people', followingCount, t('following'), () =>
-                  router.push({ pathname: '/follow-connections', params: { tab: 'following' } })
-                )}
-                <View style={styles.glassStatDivider} />
-                {renderStatCell('grid-outline', postsCount, t('postCount'))}
-              </View>
+        {/* Stats card and buttons on solid black background */}
+        <View style={styles.heroActionsBelow}>
+          <View style={styles.glassStatsCard}>
+            <View style={styles.glassStatsOverlay}>
+              {renderStatCell('trending-up', followersVal, t('followers'), () =>
+                router.push({ pathname: '/follow-connections', params: { tab: 'followers' } })
+              )}
+              <View style={styles.glassStatDivider} />
+              {renderStatCell('people', followingVal, t('following'), () =>
+                router.push({ pathname: '/follow-connections', params: { tab: 'following' } })
+              )}
+              <View style={styles.glassStatDivider} />
+              {renderStatCell('share-outline', postsVal, t('postCount'))}
             </View>
           </View>
 
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.5)', '#000000']}
-            locations={[0, 0.7, 1]}
-            style={styles.heroBottomFade}
-            pointerEvents="none"
-          />
-        </ImageBackground>
-
-        <View style={styles.heroActionsBelow}>
           <View style={styles.actionButtonsRow}>
             <Pressable
               style={({ pressed }) => [styles.addPostButton, pressed && styles.actionPressed]}
@@ -1143,7 +1127,7 @@ export default function ProfileScreen() {
               style={({ pressed }) => [styles.shareProfileButton, pressed && styles.actionPressed]}
               onPress={handleShareProfile}
             >
-              <Ionicons name="share-social-outline" size={20} color="#FFF" />
+              <Ionicons name="arrow-redo-outline" size={20} color="#FFF" />
             </Pressable>
           </View>
         </View>
@@ -1155,24 +1139,29 @@ export default function ProfileScreen() {
     <View style={{ flex: 1, backgroundColor: '#000000' }}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={styles.container}>
-      {/* Background Upload Status */}
 
-      <Animated.View
-        pointerEvents="box-none"
-        style={[styles.stickyNav, { paddingTop: insets.top, height: insets.top + NAV_BAR_HEIGHT }]}
+      <View
+        style={[styles.stickyNav, { paddingTop: insets.top + 8, height: insets.top + NAV_BAR_HEIGHT + 8 }]}
       >
-        <TouchableOpacity style={styles.navLeft} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.navLeftGroup} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Animated.View style={[styles.navCenter, { opacity: navTitleOpacity }]}>
-          <Text style={styles.navTitle} numberOfLines={1}>
-            {profile?.sl_id || user?.sl_id || 'Profile'}
+          <Text style={styles.navUsername}>
+            {(profile?.sl_id || user?.sl_id || 'virralpatel').toLowerCase()}
           </Text>
-        </Animated.View>
-        <TouchableOpacity style={styles.navRight} onPress={() => setShowSettingsModal(true)}>
-          <Ionicons name="menu" size={24} color="#FFF" />
         </TouchableOpacity>
-      </Animated.View>
+        <View style={styles.navRightGroup}>
+          <TouchableOpacity style={styles.navRightBtn} onPress={() => showImageSourcePicker('cover_photo')}>
+            <Svg width={16} height={16} viewBox="0 0 16 17" fill="none">
+              <Path d="M15.5625 4.12027L12.0589 0.617491C11.5691 0.127503 10.7747 0.127503 10.2848 0.617491L0.617688 10.2846C0.381388 10.5191 0.248944 10.8384 0.250006 11.1713V14.6749C0.250006 15.3676 0.811619 15.9292 1.50436 15.9292H14.675C15.1579 15.9287 15.4591 15.4058 15.2173 14.9879C15.1053 14.7944 14.8987 14.6751 14.675 14.6749H6.78204L15.5625 5.89439C16.0525 5.40452 16.0525 4.61015 15.5625 4.12027ZM5.00792 14.6749H1.50436V11.1713L8.40329 4.27236L11.9069 7.77592L5.00792 14.6749ZM12.7935 6.88925L9.29075 3.38569L11.1723 1.50416L14.6751 5.00772L12.7935 6.88925Z" fill="#FFF" stroke="#FFF" strokeWidth="0.5"/>
+            </Svg>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.navRightBtn} onPress={() => setShowSettingsModal(true)}>
+            <Svg width={16} height={16} viewBox="24 0 16 17" fill="none">
+              <Path d="M39.9314 8.28457C39.9314 8.80415 39.5102 9.22535 38.9906 9.22537H25.1922C24.468 9.22534 24.0153 8.44132 24.3775 7.81413C24.5455 7.52307 24.8561 7.34377 25.1922 7.34377H38.9906C39.5102 7.3438 39.9314 7.765 39.9314 8.28457ZM25.1922 4.20777H38.9906C39.7148 4.20777 40.1675 3.42377 39.8054 2.79657C39.6373 2.5055 39.3267 2.32618 38.9906 2.32617H25.1922C24.468 2.3262 24.0153 3.11022 24.3775 3.73741C24.5455 4.02847 24.8561 4.20777 25.1922 4.20777ZM38.9906 12.3614H25.1922C24.468 12.3614 24.0153 13.1454 24.3775 13.7726C24.5455 14.0637 24.8561 14.243 25.1922 14.243H38.9906C39.7148 14.243 40.1675 13.459 39.8054 12.8318C39.6373 12.5407 39.3267 12.3614 38.9906 12.3614Z" fill="#FFF"/>
+            </Svg>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       {renderHeader()}
       <Animated.FlatList
@@ -1816,31 +1805,28 @@ const styles = StyleSheet.create({
     zIndex: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     backgroundColor: 'transparent',
   },
-  navLeft: {
-    width: 40,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-  },
-  navCenter: {
-    flex: 1,
-    justifyContent: 'center',
+  navLeftGroup: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    gap: 8,
   },
-  navRight: {
-    width: 40,
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  navTitle: {
-    fontSize: 16,
+  navUsername: {
+    fontSize: 18,
+    color: '#FFF',
     fontWeight: '700',
-    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  navRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginLeft: 'auto',
+  },
+  navRightBtn: {
+    padding: 4,
   },
   headerContent: {
     overflow: 'hidden',
@@ -1894,15 +1880,15 @@ const styles = StyleSheet.create({
   },
   avatarRing: {
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderColor: '#FFFFFF',
     borderRadius: AVATAR_SIZE / 2 + 4,
     overflow: 'hidden',
     backgroundColor: 'rgba(0,0,0,0.25)',
   },
   onlineDot: {
     position: 'absolute',
-    bottom: 6,
-    right: 6,
+    bottom: 4,
+    right: 4,
     width: 16,
     height: 16,
     borderRadius: 8,
@@ -1945,15 +1931,14 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
     marginBottom: 14,
   },
   glassStatsOverlay: {
     flexDirection: 'row',
     alignItems: 'stretch',
-    paddingVertical: 12,
-    backgroundColor: 'rgba(0,0,0,0.12)',
+    paddingVertical: 14,
   },
   glassStatCell: {
     flex: 1,
@@ -1963,38 +1948,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   glassStatValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginTop: 2,
+    marginTop: 4,
   },
   glassStatLabel: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.72)',
+    color: 'rgba(255,255,255,0.5)',
     fontWeight: '500',
   },
   glassStatDivider: {
     width: 1,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    marginVertical: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginVertical: 12,
   },
   actionButtonsRow: {
     flexDirection: 'row',
     width: '100%',
-    gap: 10,
+    gap: 12,
     marginBottom: 8,
   },
   addPostButton: {
     flex: 1,
     flexDirection: 'row',
-    height: 44,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12,
+    height: 48,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   addPostButtonText: {
     color: '#FFFFFF',
@@ -2003,13 +1988,13 @@ const styles = StyleSheet.create({
   },
   shareProfileButton: {
     width: 48,
-    height: 44,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12,
+    height: 48,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   actionPressed: {
     opacity: 0.82,

@@ -830,7 +830,7 @@ export default function VendorScreen() {
           {/* Icon + title */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
             <View style={vendorCoachStyles.iconWrap}>
-              <Ionicons name={isStep6 ? 'search' : 'storefront'} size={22} color="#FF701F" />
+              <Ionicons name={isStep7 ? 'search' : 'storefront'} size={22} color="#FF701F" />
             </View>
             <Text style={vendorCoachStyles.title}>{current.title}</Text>
           </View>
