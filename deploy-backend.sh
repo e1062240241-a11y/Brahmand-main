@@ -1,5 +1,13 @@
 #!/bin/bash
-export CLOUDSDK_PYTHON=/usr/local/bin/python3.11
+# Bypass macOS proxy lookup issues that cause Python/gcloud to hang during socket import
+export no_proxy="*"
+
+# Use custom Python 3.11 interpreter if available, otherwise fallback to python3
+if [ -x "/usr/local/bin/python3.11" ]; then
+  export CLOUDSDK_PYTHON="/usr/local/bin/python3.11"
+else
+  export CLOUDSDK_PYTHON="python3"
+fi
 
 # Force gcloudignore to be active
 gcloud config set gcloudignore/enabled true
