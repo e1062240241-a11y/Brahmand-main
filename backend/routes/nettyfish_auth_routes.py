@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from datetime import datetime, timedelta
 import random
+import os
 import logging
 
 from config.database import get_database
@@ -52,19 +53,14 @@ async def send_nettyfish_otp(request: OTPRequest):
     else:
         collection_ref.add(data)
 
-    # Send SMS via Nettyfish
-    if purpose == "kyc":
-        message_text = f"Your OTP for KYC Verification on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
-    elif purpose == "register_business":
-        message_text = f"Your OTP to register a business on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
-    elif purpose == "delete_business":
-        message_text = f"Your OTP to delete your business on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
-    elif purpose == "blood_request":
-        message_text = f"Your OTP to create a blood request on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
-    elif purpose == "help_request":
-        message_text = f"Your OTP to create a help request on Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
-    else:
-        message_text = f"Your OTP for Shree Siddhivinayak Brahmand is {otp}. Do not share this OTP with anyone."
+    # Build SMS text using the DLT-registered template.
+    # NATTYFISH_MESSAGE_TEMPLATE must match the template registered with TRAI exactly.
+    # Default: "{otp} is your verification code. - SHRSDD"
+    template = os.getenv(
+        "NATTYFISH_MESSAGE_TEMPLATE",
+        "{otp} is your verification code. - SHRSDD"
+    )
+    message_text = template.replace("{otp}", otp)
 
     try:
         await NattyFishService.send_sms(mobile, message_text)

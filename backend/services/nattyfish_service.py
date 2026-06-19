@@ -1,8 +1,8 @@
 import logging
-import requests
+import httpx
 import os
 import re
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from fastapi import HTTPException
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class NattyFishService:
 
     @staticmethod
     async def send_sms(phone: str, text: str) -> Dict[str, Any]:
-        """Send a transactional SMS using the NattyFish API."""
+        """Send a transactional SMS using the NattyFish API (async, non-blocking)."""
         if not phone:
             raise HTTPException(status_code=400, detail="Phone number is required")
         if not text:
@@ -105,40 +105,64 @@ class NattyFishService:
         }
 
         # Mask password in log
-        logged_params = params.copy()
-        logged_params["password"] = "****"
-        logger.info(f"[NattyFish] Sending SMS request to {NattyFishService.ENDPOINT} with params: {logged_params}")
+        logged_params = {**params, "password": "****"}
+        logger.info(f"[NattyFish] Sending SMS to {NattyFishService.ENDPOINT} with params: {logged_params}")
 
         try:
-            # Nettyfish API commonly uses GET request for sending SMS
-            response = requests.get(
-                NattyFishService.ENDPOINT,
-                params=params,
-                timeout=10
-            )
+            # Use async httpx client to avoid blocking the FastAPI event loop
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                response = await client.get(NattyFishService.ENDPOINT, params=params)
+
             logger.info(f"[NattyFish] SMS Response Status: {response.status_code}, Body: {response.text}")
 
             if response.status_code == 200:
                 try:
                     result = response.json()
-                    if result.get("ErrorCode") == "000":
+                    error_code = str(result.get("ErrorCode", "")).strip()
+                    if error_code == "000":
                         return {"status": "success", "response": result}
                     else:
-                        error_msg = result.get("ErrorMessage", "Unknown error")
-                        logger.error(f"[NattyFish] Send SMS failed with error: {error_msg}")
-                        raise HTTPException(status_code=400, detail=f"SMS Gateway Error: {error_msg}")
-                except ValueError:
-                    # If response is not JSON
-                    if "Done" in response.text or "ErrorCode: 000" in response.text:
-                        return {"status": "success", "raw_response": response.text}
-                    logger.error(f"[NattyFish] Non-JSON response received: {response.text}")
-                    raise HTTPException(status_code=502, detail=f"Invalid response from SMS gateway: {response.text}")
+                        error_msg = result.get("ErrorMessage", "Unknown error from SMS gateway")
+                        logger.error(f"[NattyFish] Send SMS failed — ErrorCode={error_code}, ErrorMessage={error_msg}")
+                        raise HTTPException(
+                            status_code=400,
+                            detail=f"SMS Gateway Error: {error_msg}"
+                        )
+                except (ValueError, KeyError):
+                    # Response is plain text (some Nettyfish endpoints return non-JSON)
+                    raw = response.text.strip()
+                    if "Done" in raw or "ErrorCode: 000" in raw or "ErrorCode=000" in raw:
+                        logger.info(f"[NattyFish] SMS sent (plain-text OK response): {raw}")
+                        return {"status": "success", "raw_response": raw}
+                    logger.error(f"[NattyFish] Non-JSON error response: {raw}")
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"SMS gateway returned unexpected response: {raw[:200]}"
+                    )
             else:
-                logger.error(f"[NattyFish] HTTP Error: {response.status_code} - {response.text}")
-                raise HTTPException(status_code=502, detail=f"Failed to communicate with SMS gateway: {response.status_code}")
+                logger.error(f"[NattyFish] HTTP {response.status_code}: {response.text}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"SMS gateway HTTP error {response.status_code}"
+                )
 
         except HTTPException:
             raise
+        except httpx.ConnectError as exc:
+            logger.error(f"[NattyFish] Connection failed — could not reach {NattyFishService.ENDPOINT}: {exc}")
+            raise HTTPException(
+                status_code=503,
+                detail="Could not reach SMS gateway. Check network connectivity."
+            )
+        except httpx.TimeoutException as exc:
+            logger.error(f"[NattyFish] Request timed out: {exc}")
+            raise HTTPException(
+                status_code=504,
+                detail="SMS gateway request timed out. Please try again."
+            )
         except Exception as exc:
-            logger.exception(f"[NattyFish] Exception occurred while sending SMS: {exc}")
-            raise HTTPException(status_code=500, detail=f"SMS delivery failed: {exc}")
+            logger.exception(f"[NattyFish] Unexpected error while sending SMS: {exc}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"SMS delivery failed: {exc}"
+            )
