@@ -233,12 +233,6 @@ export default function KYCStatusScreen() {
     setOtpLoading(true);
     try {
       const trimmedCode = code.trim();
-      if (trimmedCode === '1234') {
-        setPhoneVerified(true);
-        setOtpSent(false);
-        Alert.alert('Success', 'Phone number verified successfully!');
-        return;
-      }
       const fullPhone = `${countryCode}${phoneNumber}`;
       await verifyNettyfishOTP(fullPhone, trimmedCode);
       setPhoneVerified(true);
