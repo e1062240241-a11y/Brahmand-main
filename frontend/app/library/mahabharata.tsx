@@ -34,7 +34,7 @@ import { loadMahabharataBook } from '../../src/services/mahabharata-service';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Mahabharata image provided by the user
-const geeta3DImage = require('../../assets/images/tab bar/books/Mahabharat.png');
+const geeta3DImage = require('../../assets/images/tab-bar/books/Mahabharat.png');
 // Custom bookmark icons
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');

@@ -356,9 +356,9 @@ function HomeCardTextureBg({
 const shivaImage = require('../../assets/images/image temple/SomnathTemple.jpg');
 const communityPhoneImage = require('../../assets/images/community_phone.png');
 const kundliChartImage = require('../../assets/images/kundli_chart.jpg');
-const astrologerMockImg = require('../../assets/images/tab bar/rashi/vendor/Astrologer.jpg');
-const salonMockImg = require('../../assets/images/tab bar/rashi/vendor/salon.png');
-const electricianMockImg = require('../../assets/images/tab bar/rashi/vendor/Electrician.jpg');
+const astrologerMockImg = require('../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg');
+const salonMockImg = require('../../assets/images/tab-bar/rashi/vendor/salon.png');
+const electricianMockImg = require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg');
 const FEED_PAGE_SIZE = 7;
 
 let FileSystemModule: any = null;
@@ -2093,7 +2093,7 @@ export default function HomeScreen() {
   const renderCoachMarks = () => {
     // Only handle home-screen steps 1-4; steps 5+ belong to messages/vendor
     if (coachMarkStep < 1 || coachMarkStep > 4) return null;
-    // 1. Calculate bottom tab bar position
+    // 1. Calculate bottom tab-bar position
     const bottomPosition = Platform.OS === 'android' 
       ? Math.max(insets.bottom + 5, 5) 
       : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
@@ -2501,7 +2501,7 @@ export default function HomeScreen() {
                     borderWidth: 3, borderColor: '#FFD5B8',
                   }}>
                     <ExpoImage
-                      source={require('../../assets/images/tab bar/my_krishna.png')}
+                      source={require('../../assets/images/tab-bar/my_krishna.png')}
                       style={{ width: 60, height: 60 }}
                       contentFit="cover"
                     />
@@ -3146,7 +3146,7 @@ export default function HomeScreen() {
                                 ) : item.label === 'My Krishn' ? (
                                   <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
                                     <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 42, height: 42 }} contentFit="contain" />
+                                      <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 42, height: 42 }} contentFit="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Panchang' ? (

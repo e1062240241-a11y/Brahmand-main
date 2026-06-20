@@ -34,7 +34,7 @@ import { loadUpanishadChapter } from '../../src/services/upanishads-service';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Upanishads image provided by the user
-const geeta3DImage = require('../../assets/images/tab bar/books/upanishad.png');
+const geeta3DImage = require('../../assets/images/tab-bar/books/upanishad.png');
 // Custom bookmark icons
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');

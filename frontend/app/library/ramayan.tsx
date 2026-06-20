@@ -34,7 +34,7 @@ import { loadRamayanChapter } from '../../src/services/ramayan-service';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Ramayan image provided by the user
-const geeta3DImage = require('../../assets/images/tab bar/books/Ramayana.png');
+const geeta3DImage = require('../../assets/images/tab-bar/books/Ramayana.png');
 // Custom bookmark icons
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');

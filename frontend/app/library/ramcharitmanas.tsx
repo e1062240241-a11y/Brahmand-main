@@ -34,7 +34,7 @@ import { loadRamcharitmanasKand } from '../../src/services/ramcharitmanas-servic
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Ramcharitmanas image provided by the user
-const geeta3DImage = require('../../assets/images/tab bar/books/ramcharit.png');
+const geeta3DImage = require('../../assets/images/tab-bar/books/ramcharit.png');
 // Custom bookmark icons
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');

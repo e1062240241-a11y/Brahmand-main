@@ -134,7 +134,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     };
   });
 
-  // Move the tab bar down slightly by default, taking Android into account
+  // Move the tab-bar down slightly by default, taking Android into account
   const bottomPosition = Platform.OS === 'android' 
     ? Math.max(insets.bottom + 5, 5) 
     : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
@@ -177,24 +177,24 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
     switch (routeName) {
       case 'home':
-        activeSrc = require('../../assets/images/tab bar/hoe.png');
-        inactiveSrc = require('../../assets/images/tab bar/home_outline.png');
+        activeSrc = require('../../assets/images/tab-bar/hoe.png');
+        inactiveSrc = require('../../assets/images/tab-bar/home_outline.png');
         break;
       case 'messages': // Community
-        activeSrc = require('../../assets/images/tab bar/comunity2.png');
-        inactiveSrc = require('../../assets/images/tab bar/community.png');
+        activeSrc = require('../../assets/images/tab-bar/comunity2.png');
+        inactiveSrc = require('../../assets/images/tab-bar/community.png');
         break;
       case 'vendor': // Service
-        activeSrc = require('../../assets/images/tab bar/ser.png');
-        inactiveSrc = require('../../assets/images/tab bar/service.png');
+        activeSrc = require('../../assets/images/tab-bar/ser.png');
+        inactiveSrc = require('../../assets/images/tab-bar/service.png');
         break;
       case 'jaap': // Temple
-        activeSrc = require('../../assets/images/tab bar/temp.png');
-        inactiveSrc = require('../../assets/images/tab bar/temple.png');
+        activeSrc = require('../../assets/images/tab-bar/temp.png');
+        inactiveSrc = require('../../assets/images/tab-bar/temple.png');
         break;
       case 'profile':
-        activeSrc = require('../../assets/images/tab bar/profile2.png');
-        inactiveSrc = require('../../assets/images/tab bar/profile.png');
+        activeSrc = require('../../assets/images/tab-bar/profile2.png');
+        inactiveSrc = require('../../assets/images/tab-bar/profile.png');
         break;
       default:
         // Fallback if needed

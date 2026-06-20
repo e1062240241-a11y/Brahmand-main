@@ -889,7 +889,7 @@ export const FloatingUtilityButton = () => {
               <View style={styles.fabDefaultContent}>
                 <View style={styles.fabAvatarRing}>
                   <ExpoImage
-                    source={require('../../assets/images/tab bar/my_krishna.png')}
+                    source={require('../../assets/images/tab-bar/my_krishna.png')}
                     style={styles.fabAvatar}
                     contentFit="cover"
                   />
@@ -957,7 +957,7 @@ export const FloatingUtilityButton = () => {
  
                   <View style={styles.centerGuruContainerSOS}>
                     <View style={styles.guruImageWrapperSOS}>
-                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
+                      <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
                     </View>
                   </View>
  
@@ -1190,7 +1190,7 @@ export const FloatingUtilityButton = () => {
                     onPress={() => { setModalVisible(false); router.push('/my-krishna'); }}
                   >
                     <View style={styles.guruImageWrapper}>
-                      <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
+                      <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={styles.guruImage} contentFit="cover" />
                     </View>
                     <View style={styles.guruTitleBox}>
                       <Ionicons name="leaf" size={16} color="#FFD54F" style={{ marginBottom: -2 }} />

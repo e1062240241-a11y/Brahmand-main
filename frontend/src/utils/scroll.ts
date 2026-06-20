@@ -3,8 +3,8 @@ import { NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useTabBar } from '../contexts/TabBarContext';
 
 /**
- * A custom hook to hide/show the bottom tab bar when scrolling.
- * @param threshold The scroll distance in pixels required to trigger a change in tab bar visibility.
+ * A custom hook to hide/show the bottom tab-bar when scrolling.
+ * @param threshold The scroll distance in pixels required to trigger a change in tab-bar visibility.
  */
 export function useScrollToHideTabBar(threshold = 15) {
   const { showTabBar, hideTabBar } = useTabBar();
@@ -14,7 +14,7 @@ export function useScrollToHideTabBar(threshold = 15) {
     const currentOffsetY = event.nativeEvent.contentOffset.y;
     const diff = currentOffsetY - lastOffsetY.current;
 
-    // Always show the tab bar when scrolled to the very top (or bouncing)
+    // Always show the tab-bar when scrolled to the very top (or bouncing)
     if (currentOffsetY <= 10) {
       showTabBar();
       lastOffsetY.current = currentOffsetY;
