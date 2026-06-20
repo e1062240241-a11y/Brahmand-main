@@ -8465,17 +8465,16 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         }
 
         payload = {
-            "model": "google/gemma-4-31b-it",
+            "model": "meta/llama-3.1-70b-instruct",
             "messages": combined_messages,
             "max_tokens": 2048,
             "temperature": 0.7,
             "top_p": 0.95,
             "stream": False,
-            "chat_template_kwargs": {"enable_thinking": False},
         }
 
         try:
-            response = requests.post(invoke_url, headers=headers, json=payload)
+            response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
             response.raise_for_status()
             result = response.json()
             return result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -8815,8 +8814,8 @@ async def send_blood_request_otp(request: OTPRequest):
 
     # Call NattyFish to send SMS
     from services.nattyfish_service import NattyFishService
-    template_text = os.getenv("NATTYFISH_MESSAGE_TEMPLATE", "{otp} is your verification code. - SHRSDD")
-    message_text = template_text.format(otp=otp_code)
+    template_text = os.getenv("NATTYFISH_MESSAGE_TEMPLATE", "Your OTP for Shree Siddhivinayak Brahmand is {#var#}. Do not share this OTP with anyone.")
+    message_text = template_text.replace("{otp}", otp_code).replace("{OTP}", otp_code).replace("{#var#}", otp_code)
     
     logger.info(f"[Blood Request OTP] Sending SMS via NattyFish to {mobile} with text: {message_text}")
     try:
@@ -12041,10 +12040,15 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
     def _call():
-        import google.genai as genai
+        import requests
+        nvidia_key = os.environ.get("NVIDIA_API_KEY")
+        invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-        model = "gemma-4-31b-it"
+        headers = {
+            "Authorization": f"Bearer {nvidia_key}",
+            "Accept": "application/json"
+        }
+
         prompt = (
             f"Generate a highly detailed, comprehensive, spiritual, and positive daily horoscope prediction for the zodiac sign {zodiac_name}. "
             f"Return ONLY a valid JSON object in this exact schema structure, with no markdown formatting. Do not copy placeholder descriptions; generate real predictions:\n"
@@ -12062,17 +12066,20 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             f'  }}\n'
             f'}}'
         )
-        from google.genai import types
-        config = types.GenerateContentConfig(
-            temperature=0.7
-        )
-        
-        response = client.models.generate_content(
-            model=model,
-            contents=prompt,
-            config=config,
-        )
-        return response.text
+
+        payload = {
+            "model": "meta/llama-3.1-70b-instruct",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1024,
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "stream": False,
+        }
+
+        response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+        result = response.json()
+        return result.get("choices", [{}])[0].get("message", {}).get("content", "")
         
     try:
         text = await asyncio.to_thread(_call)

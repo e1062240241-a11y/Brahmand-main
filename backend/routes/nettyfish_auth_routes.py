@@ -55,12 +55,12 @@ async def send_nettyfish_otp(request: OTPRequest):
 
     # Build SMS text using the DLT-registered template.
     # NATTYFISH_MESSAGE_TEMPLATE must match the template registered with TRAI exactly.
-    # Default: "{otp} is your verification code. - SHRSDD"
+    # Default: "Your OTP for Shree Siddhivinayak Brahmand is {#var#}. Do not share this OTP with anyone."
     template = os.getenv(
         "NATTYFISH_MESSAGE_TEMPLATE",
-        "{otp} is your verification code. - SHRSDD"
+        "Your OTP for Shree Siddhivinayak Brahmand is {#var#}. Do not share this OTP with anyone."
     )
-    message_text = template.replace("{otp}", otp)
+    message_text = template.replace("{otp}", otp).replace("{OTP}", otp).replace("{#var#}", otp)
 
     try:
         await NattyFishService.send_sms(mobile, message_text)

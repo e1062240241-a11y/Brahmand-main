@@ -151,47 +151,41 @@ def _astrology_payload_to_prompt(payload: dict) -> str:
 
 
 class GroqService:
-    """A compatibility wrapper that routes the GroqService endpoints to Gemini."""
+    """A compatibility wrapper that routes the GroqService endpoints to NVIDIA API."""
     def __init__(self):
-        import google.genai as genai
-        gemini_key = os.environ.get("GEMINI_API_KEY") or settings.GEMINI_API_KEY
-        if not gemini_key:
-            raise ValueError('GEMINI_API_KEY is not configured')
-        self.client = genai.Client(api_key=gemini_key)
+        self.nvidia_key = os.environ.get("NVIDIA_API_KEY")
+        if not self.nvidia_key:
+            raise ValueError('NVIDIA_API_KEY is not configured')
 
     def _create_chat_completion(self, system_content: str, user_content: str, max_completion_tokens: int = 300) -> str:
-        from google.genai import types
+        import requests
+        invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-        config = types.GenerateContentConfig(
-            temperature=0.38,
-            max_output_tokens=2048,
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
-        )
+        headers = {
+            "Authorization": f"Bearer {self.nvidia_key}",
+            "Accept": "application/json"
+        }
 
-        contents = [
-            types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=f"System Instruction:\n{system_content}")]
-            ),
-            types.Content(
-                role="model",
-                parts=[types.Part.from_text(text="Understood. I will follow those instructions.")]
-            ),
-            types.Content(
-                role="user",
-                parts=[types.Part.from_text(text=user_content)]
-            )
-        ]
+        payload = {
+            "model": "meta/llama-3.1-70b-instruct",
+            "messages": [
+                {"role": "user", "content": f"System Instruction:\n{system_content}"},
+                {"role": "assistant", "content": "Understood. I will follow those instructions."},
+                {"role": "user", "content": user_content}
+            ],
+            "max_tokens": max_completion_tokens,
+            "temperature": 0.38,
+            "top_p": 0.95,
+            "stream": False,
+        }
 
         try:
-            response = self.client.models.generate_content(
-                model="gemma-4-31b-it",
-                contents=contents,
-                config=config,
-            )
-            return response.text or ''
+            response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            result = response.json()
+            return result.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception as e:
-            print(f"Gemini generation error in GroqService compatibility layer: {e}")
+            print(f"NVIDIA generation error in GroqService compatibility layer: {e}")
             return 'Priya mitra, mai kewal aadhyaatmik aur shisht vishayon par charcha karne ke liye hoon. Radhe Radhe! 🙏'
 
     def summarize_panchang(self, payload: dict) -> str:

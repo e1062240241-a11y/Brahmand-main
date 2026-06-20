@@ -18,16 +18,15 @@ def _call_nvidia_api(prompt: str, max_tokens: int = 300, temperature: float = 0.
     }
 
     payload = {
-        "model": "google/gemma-4-31b-it",
+        "model": "meta/llama-3.1-70b-instruct",
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
         "temperature": temperature,
         "top_p": 0.95,
         "stream": False,
-        "chat_template_kwargs": {"enable_thinking": False},
     }
 
-    response = requests.post(INVOKE_URL, headers=headers, json=payload)
+    response = requests.post(INVOKE_URL, headers=headers, json=payload, timeout=30)
     response.raise_for_status()
     result = response.json()
     return result.get("choices", [{}])[0].get("message", {}).get("content", "")
