@@ -1,22 +1,36 @@
-"""
-Krishna Personalizer Utility
-
-Handles session detection, profile extraction (mood, concern, tone),
-dynamic persona mapping, and past conversation summarization.
-"""
 import os
 import json
 import logging
 from datetime import datetime, timezone
-import google.genai as genai
-from google.genai import types
+import requests
+import base64
 
 logger = logging.getLogger(__name__)
 
-def _get_gemini_client():
-    gemini_key = os.environ.get("GEMINI_API_KEY")
-    # genai.Client will automatically use GOOGLE_APPLICATION_CREDENTIALS if api_key is None
-    return genai.Client(api_key=gemini_key)
+# Provide the Nvidia details
+NVIDIA_API_KEY = os.environ.get("NVIDIA_API_KEY")
+INVOKE_URL = "https://integrate.api.nvidia.com/v1/chat/completions"
+
+def _call_nvidia_api(prompt: str, max_tokens: int = 300, temperature: float = 0.2) -> str:
+    headers = {
+        "Authorization": f"Bearer {NVIDIA_API_KEY}",
+        "Accept": "application/json"
+    }
+
+    payload = {
+        "model": "google/gemma-4-31b-it",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "top_p": 0.95,
+        "stream": False,
+        "chat_template_kwargs": {"enable_thinking": False},
+    }
+
+    response = requests.post(INVOKE_URL, headers=headers, json=payload)
+    response.raise_for_status()
+    result = response.json()
+    return result.get("choices", [{}])[0].get("message", {}).get("content", "")
 
 def check_session_boundary(last_updated_str: str, session_threshold_seconds: int = 900) -> bool:
     """
@@ -27,7 +41,6 @@ def check_session_boundary(last_updated_str: str, session_threshold_seconds: int
         return True
         
     try:
-        # Parse ISO string
         if last_updated_str.endswith("Z"):
             last_updated_str = last_updated_str[:-1] + "+00:00"
         last_updated = datetime.fromisoformat(last_updated_str)
@@ -41,12 +54,8 @@ def check_session_boundary(last_updated_str: str, session_threshold_seconds: int
 
 async def extract_user_profile(user_message: str, chat_history: list = None) -> dict:
     """
-    Extracts the user's Spiritual-Psychological Profile from user_message and optional chat_history.
-    Returns a dict with: { "mood": "...", "focus_area": "...", "persona": "..." }
+    Extracts the user's Spiritual-Psychological Profile using Nvidia NM API.
     """
-    client = _get_gemini_client()
-    
-    # Build a context from history if available
     history_text = ""
     if chat_history:
         history_text = "\n".join([f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in chat_history[-6:]])
@@ -61,7 +70,7 @@ async def extract_user_profile(user_message: str, chat_history: list = None) -> 
     Recent Chat History:
     {history_text}
 
-    You MUST output ONLY a valid JSON object matching this schema:
+    You MUST output ONLY a valid JSON object matching this schema without any markdown formatting or code blocks:
     {{
       "mood": "Emotional baseline of the user",
       "focus_area": "Main area of concern or topic they are asking about",
@@ -71,24 +80,15 @@ async def extract_user_profile(user_message: str, chat_history: list = None) -> 
     
     try:
         import asyncio
-        # Run in thread since SDK is sync
-        def _call():
-            config = types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-                max_output_tokens=300
-            )
-            response = client.models.generate_content(
-                model="gemma-4-31b-it",
-                contents=prompt,
-                config=config
-            )
-            return response.text
+        res_text = await asyncio.to_thread(_call_nvidia_api, prompt, 300, 0.2)
+        # Clean potential markdown
+        if res_text.startswith("```json"):
+            res_text = res_text[7:]
+        if res_text.endswith("```"):
+            res_text = res_text[:-3]
             
-        res_text = await asyncio.to_thread(_call)
         profile = json.loads(res_text.strip())
         
-        # Ensure keys are present and default if not
         validated_profile = {
             "mood": str(profile.get("mood", "Neutral")).strip(),
             "focus_area": str(profile.get("focus_area", "General")).strip(),
@@ -96,8 +96,7 @@ async def extract_user_profile(user_message: str, chat_history: list = None) -> 
         }
         return validated_profile
     except Exception as e:
-        logger.error(f"Failed to extract user profile: {e}")
-        # Default fallback
+        logger.error(f"Failed to extract user profile via Nvidia API: {e}")
         return {
             "mood": "Neutral",
             "focus_area": "General",
@@ -106,16 +105,13 @@ async def extract_user_profile(user_message: str, chat_history: list = None) -> 
 
 async def generate_chat_summary(messages: list) -> str:
     """
-    Generates a 1-line summary of the chat history.
+    Generates a 1-line summary of the chat history using Nvidia NM API.
     """
     if not messages:
         return ""
         
-    client = _get_gemini_client()
-    
-    # Format messages for the summarizer
     chat_text = ""
-    for msg in messages[-30:]: # Limit to last 30 messages for summary
+    for msg in messages[-30:]:
         role = "User" if msg.get("role") == "user" else "Krishna"
         content = msg.get("content", "")
         chat_text += f"{role}: {content}\n"
@@ -134,20 +130,8 @@ async def generate_chat_summary(messages: list) -> str:
     
     try:
         import asyncio
-        def _call():
-            config = types.GenerateContentConfig(
-                temperature=0.3,
-                max_output_tokens=150
-            )
-            response = client.models.generate_content(
-                model="gemma-4-31b-it",
-                contents=prompt,
-                config=config
-            )
-            return response.text
-            
-        summary = await asyncio.to_thread(_call)
+        summary = await asyncio.to_thread(_call_nvidia_api, prompt, 150, 0.3)
         return summary.strip()
     except Exception as e:
-        logger.error(f"Failed to generate chat summary: {e}")
+        logger.error(f"Failed to generate chat summary via Nvidia API: {e}")
         return ""

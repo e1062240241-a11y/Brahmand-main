@@ -33,7 +33,7 @@ def _with_country_code(mobile_10: str) -> str:
 class NattyFishService:
     """Service to handle SMS sending via NattyFish API."""
 
-    ENDPOINT = "http://retailsms.nettyfish.com/api/mt/SendSMS"
+    ENDPOINT = "https://retailsms.nettyfish.com/api/mt/SendSMS"
 
     @staticmethod
     def _username() -> str:
