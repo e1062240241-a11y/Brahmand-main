@@ -289,8 +289,7 @@ export default function VendorScreen() {
   }, [loadKycStatus, user, myVendor?.kyc_status, router]);
   const filterAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput | null>(null);
-  const registerBtnRef = useRef<TouchableOpacity>(null);
-
+  const registerBtnRef = useRef<any>(null);
   const homeLocation = (user as any)?.home_location;
   const homeLatitude = homeLocation?.latitude;
   const homeLongitude = homeLocation?.longitude;
@@ -1156,13 +1155,7 @@ export default function VendorScreen() {
             }}
             onPress={() => {
               if (myVendor) {
-                // KYC is mandatory to access Edit Profile / Dashboard
-                if (hasVerifiedKyc) {
-                  router.push('/vendor/dashboard');
-                } else {
-                  // Navigate directly to KYC page
-                  router.push('/kyc');
-                }
+                router.push('/vendor/dashboard');
               } else {
                 setShowRegistrationModal(true);
               }

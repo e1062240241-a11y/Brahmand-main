@@ -327,6 +327,20 @@ class FirebaseAuthService:
             if existing.get('anonymous_disabled'):
                 raise ValueError("Anonymous login has been permanently disabled for this number")
 
+            # Reset verification status for testing IDs/anonymous users to allow testing the KYC flow
+            await db.update_document('users', existing['id'], {
+                'is_verified': False,
+                'kyc_status': None,
+                'kyc_role': None,
+                'kyc_verified_at': None,
+                'badges': ["Anonymous Member"]
+            })
+            existing['is_verified'] = False
+            existing['kyc_status'] = None
+            existing['kyc_role'] = None
+            existing['kyc_verified_at'] = None
+            existing['badges'] = ["Anonymous Member"]
+
             token = create_jwt_token(existing['id'], existing['sl_id'])
             return {
                 "message": "Anonymous login successful",
@@ -351,7 +365,7 @@ class FirebaseAuthService:
             "location": None,
             "home_location": None,
             "office_location": None,
-            "is_verified": True,
+            "is_verified": False,
             "badges": ["Anonymous Member"],
             "reputation": 0,
             "temple_passbook": {
@@ -365,10 +379,10 @@ class FirebaseAuthService:
             "fcm_tokens": [],
             "agreed_rules": [],
             "sanatan_declaration_agreed": True,
-            "kyc_status": "verified",
+            "kyc_status": None,
             "kyc_role": None,
             "kyc_documents": None,
-            "kyc_verified_at": datetime.utcnow().isoformat() + 'Z',
+            "kyc_verified_at": None,
             "anonymous_account": True,
             "anonymous_disabled": False,
             "anonymous_login_source": "predefined_number",

@@ -31,6 +31,101 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type TabType = 'panchang' | 'hora' | 'planets';
 
+const parseTimeStr = (timeStr: string) => {
+  const match = timeStr.match(/(\d{1,2})\s*:\s*(\d{1,2})\s*(AM|PM)?/i);
+  if (!match) return null;
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  const ampm = match[3];
+  
+  if (ampm) {
+    if (ampm.toUpperCase() === 'PM' && hour < 12) hour += 12;
+    if (ampm.toUpperCase() === 'AM' && hour === 12) hour = 0;
+  }
+  return { hour, minute };
+};
+
+const splitTimeRange = (timeStr: string) => {
+  let parts = timeStr.split(/\s+:\s+|\s*-\s*/);
+  if (parts.length < 2) {
+    parts = timeStr.split(/(?<=[APap][Mm])\s+/);
+  }
+  if (parts.length < 2) {
+    const matches = timeStr.match(/\d{1,2}:\d{1,2}(\s*(?:AM|PM|am|pm))?/g);
+    if (matches && matches.length >= 2) {
+      parts = [matches[0], matches[1]];
+    }
+  }
+  return parts.map(p => p.trim());
+};
+
+const buildHoraDateRanges = (horaList: any[], baseDate: Date) => {
+  const currentStartDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  const currentEndDay = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+  let prevStartHour = -1;
+
+  return horaList.map((item) => {
+    const timeStr = item.time || "";
+    if (!timeStr) return { ...item, startDate: null, endDate: null };
+
+    const parts = splitTimeRange(timeStr);
+    if (parts.length < 2) return { ...item, startDate: null, endDate: null };
+
+    const startParsed = parseTimeStr(parts[0]);
+    const endParsed = parseTimeStr(parts[1]);
+
+    if (!startParsed || !endParsed) return { ...item, startDate: null, endDate: null };
+
+    const sh = startParsed.hour;
+    const sm = startParsed.minute;
+    const eh = endParsed.hour;
+    const em = endParsed.minute;
+
+    if (prevStartHour !== -1 && sh < prevStartHour) {
+      currentStartDay.setDate(currentStartDay.getDate() + 1);
+      currentEndDay.setDate(currentEndDay.getDate() + 1);
+    }
+    prevStartHour = sh;
+
+    const startDate = new Date(currentStartDay);
+    startDate.setHours(sh, sm, 0, 0);
+
+    if (eh < sh) {
+      const tempEndDay = new Date(currentEndDay);
+      tempEndDay.setDate(tempEndDay.getDate() + 1);
+      
+      const endDate = new Date(tempEndDay);
+      endDate.setHours(eh, em, 0, 0);
+      
+      currentEndDay.setDate(currentEndDay.getDate() + 1);
+      currentStartDay.setDate(currentStartDay.getDate() + 1);
+      prevStartHour = eh;
+      
+      return { ...item, startDate, endDate };
+    } else {
+      const endDate = new Date(currentEndDay);
+      endDate.setHours(eh, em, 0, 0);
+      return { ...item, startDate, endDate };
+    }
+  });
+};
+
+const findActiveHoraIdx = (horaList: any[], baseDate: Date) => {
+  const nowTime = new Date();
+  const horaListWithDates = buildHoraDateRanges(horaList, baseDate);
+  return horaListWithDates.findIndex((h) => {
+    if (!h.startDate || !h.endDate) return false;
+    return nowTime >= h.startDate && nowTime < h.endDate;
+  });
+};
+
+const formatPlanetDegree = (normDegree: number) => {
+  if (normDegree == null) return "0° 00'";
+  const deg = Math.floor(normDegree);
+  const min = Math.round((normDegree - deg) * 60);
+  return `${deg}° ${min.toString().padStart(2, '0')}'`;
+};
+
 export default function PanchangScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -66,6 +161,8 @@ export default function PanchangScreen() {
   const [activeHoraIdx, setActiveHoraIdx] = useState<number>(1);
 
   const isMountedRef = useRef(true);
+  const mainScrollRef = useRef<ScrollView>(null);
+  const horaCardYPositions = useRef<number[]>([]);
 
   const fetchPanchang = useCallback(async (lat?: number, lng?: number, forceRefresh = false, targetDate?: Date) => {
     try {
@@ -98,6 +195,33 @@ export default function PanchangScreen() {
     fetchPanchang(activeCoords.lat, activeCoords.lng, false, selectedDate);
     return () => { isMountedRef.current = false; };
   }, [fetchPanchang]);
+
+  useEffect(() => {
+    horaCardYPositions.current = [];
+  }, [selectedDate, payload]);
+
+  useEffect(() => {
+    if (activeTab === 'hora' && !loading && payload) {
+      const horaSource = getHoraSource();
+      const currentList = horaSource
+        ? [...(horaSource.day || []), ...(horaSource.night || [])]
+        : [];
+      
+      const currentIdx = findActiveHoraIdx(currentList, selectedDate);
+      if (currentIdx !== -1) {
+        setActiveHoraIdx(currentIdx);
+
+        // Delay slightly to ensure layout positions are calculated
+        const timer = setTimeout(() => {
+          const yPos = horaCardYPositions.current[currentIdx];
+          if (typeof yPos === 'number') {
+            mainScrollRef.current?.scrollTo({ y: yPos, animated: true });
+          }
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [activeTab, loading, payload, selectedDate]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -146,8 +270,8 @@ export default function PanchangScreen() {
   };
 
   const getAdvancedPanchang = () => payload?.sources?.advanced_panchang || payload?.sources?.panchang_advanced;
-  const getChaughadiyaSource = () => payload?.chaughadiya || payload?.sources?.chaughadiya_muhurta?.chaughadiya;
-  const getHoraSource = () => payload?.hora || payload?.sources?.hora_muhurta?.hora;
+  const getChaughadiyaSource = () => payload?.chaughadiya || payload?.sources?.chaughadiya_muhurta?.chaughadiya || payload?.sources?.chaughadiya_muhurta;
+  const getHoraSource = () => payload?.hora || payload?.sources?.hora_muhurta?.hora || payload?.sources?.hora_muhurta;
   const getPlanetsSource = () => payload?.planets || payload?.sources?.planet_panchang;
 
   const formatDateLabel = (date: Date) => {
@@ -224,7 +348,27 @@ export default function PanchangScreen() {
     overview = overview.filter((item: any) => !item.label.toLowerCase().includes('paksha') && !item.label.toLowerCase().includes('pakaha'));
 
     // Choghadiya cards mapping for display (day vs night)
-    const choghadiyaList = chaughadiyaSource?.[choghadiyaMode];
+    const choghadiyaList = chaughadiyaSource?.[choghadiyaMode] || chaughadiyaSource?.day || chaughadiyaSource?.night;
+
+    const staticChoghadiyaList = [
+      { muhurta: 'Char', time: '06:00 - 07:30', is_good: true },
+      { muhurta: 'Amrit', time: '07:30 - 09:30', is_good: true },
+      { muhurta: 'Amrit', time: '09:00 - 10:30', is_good: true },
+      { muhurta: 'Kaal', time: '10:30 - 12:00', is_good: false },
+      { muhurta: 'Shubh', time: '12:00 - 13:30', is_good: true },
+      { muhurta: 'Rog', time: '13:00 - 15:30', is_good: false },
+      { muhurta: 'Labh', time: '15:00 - 16:30', is_good: true },
+      { muhurta: 'Udveg', time: '16:00 - 18:30', is_good: false },
+    ];
+
+    const goodMuhurtas = ['Amrit', 'Shubh', 'Labh', 'Char', 'Chara'];
+    const activeChoghadiyaList = choghadiyaList
+      ? choghadiyaList.map((m: any) => ({
+          muhurta: m.muhurta || '',
+          time: m.time || '',
+          is_good: goodMuhurtas.includes(m.muhurta),
+        }))
+      : staticChoghadiyaList;
 
     return (
       <View style={styles.tabContent}>
@@ -316,17 +460,8 @@ export default function PanchangScreen() {
         {/* Day Choghadiya Section */}
         <Text style={[styles.sectionHeader, { marginTop: 0 }]}>Day Choghadiya</Text>
         <View style={styles.choghadiyaGrid}>
-          {[
-            { muhurta: 'Char', time: '06:00 - 07:30', is_good: true },
-            { muhurta: 'Amrit', time: '07:30 - 09:30', is_good: true },
-            { muhurta: 'Amrit', time: '09:00 - 10:30', is_good: true },
-            { muhurta: 'Kaal', time: '10:30 - 12:00', is_good: false },
-            { muhurta: 'Shubh', time: '12:00 - 13:30', is_good: true },
-            { muhurta: 'Rog', time: '13:00 - 15:30', is_good: false },
-            { muhurta: 'Labh', time: '15:00 - 16:30', is_good: true },
-            { muhurta: 'Udveg', time: '16:00 - 18:30', is_good: false },
-          ].map((m: any, idx: number) => (
-            <View key={`day-${idx}`} style={styles.choghadiyaCard}>
+          {activeChoghadiyaList.map((m: any, idx: number) => (
+            <View key={`${choghadiyaMode}-${idx}`} style={styles.choghadiyaCard}>
               <Text style={styles.choghadiyaTitle}>{m.muhurta}</Text>
               <Text style={styles.choghadiyaTime} numberOfLines={1}>{m.time}</Text>
               <View style={[styles.choghadiyaBadge, m.is_good ? styles.choghadiyaBadgeGood : styles.choghadiyaBadgeBad]}>
@@ -362,11 +497,47 @@ export default function PanchangScreen() {
       { time: '11:45 AM - 12:45 PM', hora: 'Mars', nature: { text: 'BAD', type: 'bad' } },
     ];
 
+    const planetNatures: Record<string, { text: string; type: 'good' | 'neutral' | 'bad' }> = {
+      Sun: { text: 'BENEFIC', type: 'good' },
+      Moon: { text: 'BENEFIC', type: 'good' },
+      Mars: { text: 'BAD', type: 'bad' },
+      Mercury: { text: 'NEUTRAL', type: 'neutral' },
+      Jupiter: { text: 'BENEFIC', type: 'good' },
+      Venus: { text: 'GOOD', type: 'good' },
+      Saturn: { text: 'MALEFIC', type: 'bad' },
+    };
+
+    const getPlanetNature = (planetName: string) => {
+      const normalized = (planetName || '').trim();
+      const capitalized = normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+      return planetNatures[capitalized] || { text: 'NEUTRAL', type: 'neutral' };
+    };
+
+    const horaSource = getHoraSource();
+    const rawHoraList = horaSource
+      ? [...(horaSource.day || []), ...(horaSource.night || [])].map((item: any) => ({
+          ...item,
+          hora: item.hora || item.name || '',
+          nature: getPlanetNature(item.hora || item.name || ''),
+        }))
+      : staticHoraList;
+
+    const horaList = rawHoraList.map((item: any) => {
+      const rawHora = item.hora || '';
+      const normalizedHora = rawHora.charAt(0).toUpperCase() + rawHora.slice(1).toLowerCase();
+      return {
+        ...item,
+        hora: normalizedHora,
+      };
+    });
+
+    const currentHoraIdx = findActiveHoraIdx(horaList, selectedDate);
+
     return (
       <View style={styles.tabContent}>
         <View style={styles.horaTimelineContainer}>
-          {staticHoraList.map((h: any, idx: number) => {
-            const isLast = idx === staticHoraList.length - 1;
+          {horaList.map((h: any, idx: number) => {
+            const isLast = idx === horaList.length - 1;
             const isActive = idx === activeHoraIdx;
             const activeTypeStr = isActive ? `${h.nature.type}_active` : h.nature.type;
 
@@ -376,6 +547,10 @@ export default function PanchangScreen() {
                 style={styles.horaTimelineRow} 
                 onPress={() => setActiveHoraIdx(idx)}
                 activeOpacity={isActive ? 1 : 0.7}
+                onLayout={(event) => {
+                  const layout = event.nativeEvent.layout;
+                  horaCardYPositions.current[idx] = layout.y;
+                }}
               >
                 {/* Timeline Column */}
                 <View style={styles.horaTimelineCol}>
@@ -395,13 +570,15 @@ export default function PanchangScreen() {
                 <View style={styles.horaContentCol}>
                   {isActive ? (
                     <View style={styles.horaActiveCard}>
-                      <View style={styles.horaActiveTopRow}>
-                        <Text style={styles.horaActiveTitle}>CURRENT HORA</Text>
-                        <View style={styles.horaActiveNowBadge}>
-                          <Text style={styles.horaActiveNowText}>NOW</Text>
+                      {idx === currentHoraIdx && (
+                        <View style={styles.horaActiveTopRow}>
+                          <Text style={styles.horaActiveTitle}>CURRENT HORA</Text>
+                          <View style={styles.horaActiveNowBadge}>
+                            <Text style={styles.horaActiveNowText}>NOW</Text>
+                          </View>
                         </View>
-                      </View>
-                      <Text style={styles.horaActiveTime}>{h.time}</Text>
+                      )}
+                      <Text style={[styles.horaActiveTime, idx !== currentHoraIdx && { marginTop: 4 }]}>{h.time}</Text>
                       <View style={styles.horaPlanetRowMain}>
                         <View style={styles.horaPlanetLeft}>
                           {planetIcons[h.hora] && <Image source={planetIcons[h.hora]} style={styles.horaPlanetIconActive} resizeMode="contain" />}
@@ -414,17 +591,27 @@ export default function PanchangScreen() {
                       </View>
                     </View>
                   ) : (
-                    <View style={styles.horaInactiveBox}>
-                      <View style={styles.horaInactiveInfo}>
-                        <Text style={styles.horaInactiveTime}>{h.time}</Text>
-                        <View style={styles.horaPlanetLeft}>
-                          {planetIcons[h.hora] && <Image source={planetIcons[h.hora]} style={styles.horaPlanetIcon} resizeMode="contain" />}
-                          <Text style={styles.horaPlanetNameInactive}>{h.hora}</Text>
+                    <View style={[styles.horaInactiveBox, idx === currentHoraIdx && { flexDirection: 'column', alignItems: 'flex-start' }]}>
+                      {idx === currentHoraIdx && (
+                        <View style={[styles.horaActiveTopRow, { marginBottom: 8 }]}>
+                          <Text style={styles.horaActiveTitle}>CURRENT HORA</Text>
+                          <View style={styles.horaActiveNowBadge}>
+                            <Text style={styles.horaActiveNowText}>NOW</Text>
+                          </View>
                         </View>
-                      </View>
-                      <View style={[styles.natureBadge, (styles as any)[`natureBadge_${h.nature.type}`]]}>
-                        <View style={[styles.natureDot, (styles as any)[`natureDot_${h.nature.type}`]]} />
-                        <Text style={[styles.natureText, (styles as any)[`natureText_${h.nature.type}`]]}>{h.nature.text}</Text>
+                      )}
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <View style={styles.horaInactiveInfo}>
+                          <Text style={styles.horaInactiveTime}>{h.time}</Text>
+                          <View style={styles.horaPlanetLeft}>
+                            {planetIcons[h.hora] && <Image source={planetIcons[h.hora]} style={styles.horaPlanetIcon} resizeMode="contain" />}
+                            <Text style={styles.horaPlanetNameInactive}>{h.hora}</Text>
+                          </View>
+                        </View>
+                        <View style={[styles.natureBadge, (styles as any)[`natureBadge_${h.nature.type}`]]}>
+                          <View style={[styles.natureDot, (styles as any)[`natureDot_${h.nature.type}`]]} />
+                          <Text style={[styles.natureText, (styles as any)[`natureText_${h.nature.type}`]]}>{h.nature.text}</Text>
+                        </View>
                       </View>
                     </View>
                   )}
@@ -438,17 +625,75 @@ export default function PanchangScreen() {
   };
 
   const renderPlanetsTab = () => {
+    const planetsSource = getPlanetsSource();
+
+    const planetDetails: Record<string, { sanskrit: string; desc: string; icon: any }> = {
+      Sun: { sanskrit: 'SURYA', desc: 'Auspicious for new beginnings and leadership roles.', icon: require('../assets/images/zodiac/su/sun3.png') },
+      Moon: { sanskrit: 'CHANDRA', desc: 'Mental peace and emotional stability. Good for family.', icon: require('../assets/images/zodiac/su/moon2.png') },
+      Jupiter: { sanskrit: 'GURU', desc: 'Internal growth. Re-evaluate financial investments.', icon: require('../assets/images/zodiac/su/jupiter2.png') },
+      Mars: { sanskrit: 'MANGAL', desc: 'High courage and ambition. Avoid arguments today.', icon: require('../assets/images/zodiac/su/mars2.png') },
+      Saturn: { sanskrit: 'SHANI', desc: 'Focus on discipline and planning. Patience is key.', icon: require('../assets/images/zodiac/su/saturn2.png') },
+      Rahu: { sanskrit: 'RAHU', desc: 'TRANSFORMATION', icon: require('../assets/images/zodiac/su/rahu.png') },
+      Ketu: { sanskrit: 'KETU', desc: 'WISDOM', icon: require('../assets/images/zodiac/su/ketu.png') },
+    };
+
+    const getPlanetFromApi = (name: string, fallback: any) => {
+      if (!planetsSource || !Array.isArray(planetsSource)) return fallback;
+      const apiPlanet = planetsSource.find((p: any) => (p.name || '').toLowerCase() === name.toLowerCase());
+      if (!apiPlanet) return fallback;
+      
+      const motion = (apiPlanet.isRetro === 'true' || apiPlanet.isRetro === true) ? 'RETRO' : 'DIRECT';
+      const degreeVal = apiPlanet.normDegree ?? apiPlanet.normdegree;
+      
+      return {
+        name,
+        sanskrit: planetDetails[name]?.sanskrit || name.toUpperCase(),
+        sign: apiPlanet.sign || fallback.sign,
+        degree: degreeVal != null ? formatPlanetDegree(degreeVal) : fallback.degree,
+        motion,
+        desc: planetDetails[name]?.desc || fallback.desc,
+        icon: planetDetails[name]?.icon || fallback.icon,
+      };
+    };
+
+    const getShadowPlanetFromApi = (name: string, fallback: any) => {
+      if (!planetsSource || !Array.isArray(planetsSource)) return fallback;
+      const apiPlanet = planetsSource.find((p: any) => (p.name || '').toLowerCase() === name.toLowerCase());
+      if (!apiPlanet) return fallback;
+      
+      const degreeVal = apiPlanet.normDegree ?? apiPlanet.normdegree;
+      const formattedDegree = degreeVal != null ? formatPlanetDegree(degreeVal) : '';
+      const sign = apiPlanet.sign || '';
+      
+      return {
+        name,
+        signDegree: sign && formattedDegree ? `${sign} • ${formattedDegree}` : fallback.signDegree,
+        meaning: name === 'Rahu' ? 'TRANSFORMATION' : 'WISDOM',
+        icon: planetDetails[name]?.icon || fallback.icon,
+      };
+    };
+
     const mainPlanets = [
-      { name: 'Sun', sanskrit: 'SURYA', sign: 'Aries', degree: "15° 42'", motion: 'DIRECT', desc: 'Auspicious for new beginnings and leadership roles.', icon: require('../assets/images/zodiac/su/sun3.png') },
-      { name: 'Moon', sanskrit: 'CHANDRA', sign: 'Cancer', degree: "22° 11'", motion: 'DIRECT', desc: 'Mental peace and emotional stability. Good for family.', icon: require('../assets/images/zodiac/su/moon2.png') },
-      { name: 'Jupiter', sanskrit: 'GURU', sign: 'Taurus', degree: "08° 15'", motion: 'RETRO', desc: 'Internal growth. Re-evaluate financial investments.', icon: require('../assets/images/zodiac/su/jupiter2.png') },
-      { name: 'Mars', sanskrit: 'MANGAL', sign: 'Leo', degree: "04° 29'", motion: 'DIRECT', desc: 'High courage and ambition. Avoid arguments today.', icon: require('../assets/images/zodiac/su/mars2.png') },
+      getPlanetFromApi('Sun', { name: 'Sun', sanskrit: 'SURYA', sign: 'Aries', degree: "15° 42'", motion: 'DIRECT', desc: 'Auspicious for new beginnings and leadership roles.', icon: require('../assets/images/zodiac/su/sun3.png') }),
+      getPlanetFromApi('Moon', { name: 'Moon', sanskrit: 'CHANDRA', sign: 'Cancer', degree: "22° 11'", motion: 'DIRECT', desc: 'Mental peace and emotional stability. Good for family.', icon: require('../assets/images/zodiac/su/moon2.png') }),
+      getPlanetFromApi('Jupiter', { name: 'Jupiter', sanskrit: 'GURU', sign: 'Taurus', degree: "08° 15'", motion: 'RETRO', desc: 'Internal growth. Re-evaluate financial investments.', icon: require('../assets/images/zodiac/su/jupiter2.png') }),
+      getPlanetFromApi('Mars', { name: 'Mars', sanskrit: 'MANGAL', sign: 'Leo', degree: "04° 29'", motion: 'DIRECT', desc: 'High courage and ambition. Avoid arguments today.', icon: require('../assets/images/zodiac/su/mars2.png') }),
     ];
 
     const shadowPlanets = [
-      { name: 'Rahu', signDegree: "Pisces • 12° 50'", meaning: 'TRANSFORMATION', icon: require('../assets/images/zodiac/su/rahu.png') },
-      { name: 'Ketu', signDegree: "Virgo • 12° 50'", meaning: 'WISDOM', icon: require('../assets/images/zodiac/su/ketu.png') },
+      getShadowPlanetFromApi('Rahu', { name: 'Rahu', signDegree: "Pisces • 12° 50'", meaning: 'TRANSFORMATION', icon: require('../assets/images/zodiac/su/rahu.png') }),
+      getShadowPlanetFromApi('Ketu', { name: 'Ketu', signDegree: "Virgo • 12° 50'", meaning: 'WISDOM', icon: require('../assets/images/zodiac/su/ketu.png') }),
     ];
+
+    const saturnData = getPlanetFromApi('Saturn', {
+      name: 'Saturn',
+      sanskrit: 'SHANI',
+      sign: 'Aquarius',
+      degree: "28° 02'",
+      motion: 'DIRECT',
+      desc: 'Focus on discipline and planning. Patience is key.',
+      icon: require('../assets/images/zodiac/su/saturn2.png'),
+    });
 
     return (
       <View style={styles.planetsTabContent}>
@@ -494,21 +739,21 @@ export default function PanchangScreen() {
         <View style={styles.planetCardNew}>
           <View style={styles.planetHeaderNew}>
             <View style={styles.planetHeaderLeft}>
-              <Image source={require('../assets/images/zodiac/su/saturn2.png')} style={{ width: 18.333, height: 18.333, tintColor: '#994700' }} resizeMode="contain" />
+              {saturnData.icon && <Image source={saturnData.icon} style={{ width: 18.333, height: 18.333, tintColor: '#994700' }} resizeMode="contain" />}
               <View style={styles.planetNameCol}>
-                <Text style={styles.planetNameNew}>Saturn</Text>
-                <Text style={styles.planetSanskritNew}>SHANI</Text>
+                <Text style={styles.planetNameNew}>{saturnData.name}</Text>
+                <Text style={styles.planetSanskritNew}>{saturnData.sanskrit}</Text>
               </View>
             </View>
             <View style={styles.planetHeaderRight}>
-              <Text style={styles.planetSignNew}>Aquarius</Text>
-              <Text style={styles.planetDegreeNew}>28° 02'</Text>
+              <Text style={styles.planetSignNew}>{saturnData.sign}</Text>
+              <Text style={styles.planetDegreeNew}>{saturnData.degree}</Text>
               <View style={styles.planetDot} />
-              <Text style={styles.planetMotionNew}>DIRECT</Text>
+              <Text style={[styles.planetMotionNew, saturnData.motion === 'RETRO' ? styles.planetMotionRetro : null]}>{saturnData.motion}</Text>
             </View>
           </View>
           <View style={styles.planetDescBox}>
-            <Text style={styles.planetDescText}>Focus on discipline and planning. Patience is key.</Text>
+            <Text style={styles.planetDescText}>{saturnData.desc}</Text>
           </View>
         </View>
 
@@ -590,6 +835,7 @@ export default function PanchangScreen() {
 
       {/* Main Content Area */}
       <ScrollView
+        ref={mainScrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}

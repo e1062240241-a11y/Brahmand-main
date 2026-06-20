@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Base URLs from frontend .env
-BASE_URL = "https://brahmand-requests.preview.emergentagent.com/api"
+BASE_URL = "http://127.0.0.1:8000/api"
 
 # Test configuration as specified in review request
 PHONE_1 = "+919999001111"

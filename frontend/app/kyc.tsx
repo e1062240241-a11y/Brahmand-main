@@ -151,15 +151,10 @@ export default function KYCStatusScreen() {
     refreshKycStatus();
   }, [refreshKycStatus]);
 
-  const isVerified = (myVendor as any)?.kyc_status === 'verified';
-
-  const isUserReview = (user as any)?.kyc_status === 'manual_review';
-  const isVendorReview = (myVendor as any)?.kyc_status === 'manual_review';
-  const isReview = isUserReview || isVendorReview;
-
-  const isUserRejected = (user as any)?.kyc_status === 'rejected';
-  const isVendorRejected = (myVendor as any)?.kyc_status === 'rejected';
-  const isRejected = isUserRejected || isVendorRejected;
+  const status = (user as any)?.kyc_status || (myVendor as any)?.kyc_status || null;
+  const isVerified = status === 'verified' || (user as any)?.is_verified === true || (myVendor as any)?.is_verified === true;
+  const isReview = !isVerified && (status === 'pending' || status === 'manual_review');
+  const isRejected = !isVerified && !isReview && status === 'rejected';
 
   const handleBack = useCallback(() => {
     if (otpSent && !phoneVerified) {
@@ -238,7 +233,7 @@ export default function KYCStatusScreen() {
     setOtpLoading(true);
     try {
       const trimmedCode = code.trim();
-      if (trimmedCode === '123456') {
+      if (trimmedCode === '1234') {
         setPhoneVerified(true);
         setOtpSent(false);
         Alert.alert('Success', 'Phone number verified successfully!');
@@ -270,16 +265,22 @@ export default function KYCStatusScreen() {
 
   const getKYCAlertBg = () => {
     if (isVerified) return '#E8F5E9';
+    if (isReview) return '#FFF9E6';
+    if (isRejected) return '#FFEBEE';
     return '#FFF4ED';
   };
 
   const getKYCAlertColor = () => {
     if (isVerified) return '#2E7D32';
+    if (isReview) return '#D97706';
+    if (isRejected) return '#C62828';
     return '#F26522';
   };
 
   const getKYCAlertText = () => {
     if (isVerified) return 'KYC Verified! You are all set.';
+    if (isReview) return 'Your KYC request is currently under review. This process usually takes up to 24 hours. Awaiting Admin Approval.';
+    if (isRejected) return `Your KYC was rejected. Reason: ${(user as any)?.kyc_rejection_reason || 'Please submit valid documents.'}`;
     return 'Complete KYC to continue.';
   };
 
@@ -499,22 +500,24 @@ export default function KYCStatusScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={[
                     styles.warningTitle,
-                    isVerified && { color: getKYCAlertColor() }
+                    { color: getKYCAlertColor() }
                   ]}>
-                    {isVerified ? 'KYC Verified' : 'Not KYC Verified?'}
+                    {isVerified ? 'KYC Verified' : 'Not KYC Verified'}
                   </Text>
                   <Text style={styles.warningDescription}>
                     {getKYCAlertText()}
                   </Text>
                 </View>
               </View>
-
               <TouchableOpacity 
                 style={[
                   styles.primaryBtn, 
                   (!phoneVerified || isVerified) && styles.disabledBtn
                 ]} 
-                onPress={() => router.push('/kyc-submit')}
+                onPress={() => router.push({
+                  pathname: '/kyc-submit',
+                  params: { verifiedPhone: phoneNumber }
+                })}
                 disabled={!phoneVerified || isVerified}
               >
                 <Text style={styles.primaryBtnText}>

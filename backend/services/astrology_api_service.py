@@ -443,7 +443,7 @@ class AstrologyApiService:
                         "sign": item.get("sign") or "-",
                         "sign_lord": item.get("signLord") or "-",
                         "nakshatra": item.get("nakshatra") or "-",
-                        "nakshatra_lord": item.get("nakshatra_lord") or "-",
+                        "nakshatra_lord": item.get("nakshatraLord") or item.get("nakshatra_lord") or "-",
                         "house": item.get("house") or 1,
                         "is_retro": "true" if str(item.get("isRetro")).lower() == "true" else "false"
                     })

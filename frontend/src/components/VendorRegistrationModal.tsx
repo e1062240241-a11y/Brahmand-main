@@ -318,10 +318,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   const [phoneNumber, setPhoneNumber] = useState('');
   const [countryCode, setCountryCode] = useState('+91');
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [isOtpSending, setIsOtpSending] = useState(false);
-  const [isOtpVerified, setIsOtpVerified] = useState(false);
+
   const [yearsInBusiness, setYearsInBusiness] = useState('');
   const [address, setAddress] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
@@ -495,60 +492,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     }
   };
 
-  const handleSendOtp = async () => {
-    if (phoneNumber.length < 10) {
-      Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    setIsOtpSending(true);
-    try {
-      let cleanedPhone = phoneNumber.trim();
-      if (cleanedPhone.startsWith('0')) {
-        cleanedPhone = cleanedPhone.substring(1);
-      }
-      const fullPhone = countryCode + cleanedPhone;
 
-      await api.post('/auth/nettyfish/send', {
-        phone: fullPhone,
-        purpose: 'register_business'
-      });
-      setOtpSent(true);
-      Alert.alert('Success', 'OTP sent to your mobile number.');
-    } catch (error: any) {
-      console.error('Failed to send OTP:', error);
-      Alert.alert('Error', error?.response?.data?.detail || 'Failed to send OTP. Please try again.');
-    } finally {
-      setIsOtpSending(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (otp.length < 4) {
-      Alert.alert('Invalid OTP', 'Please enter a valid OTP.');
-      return;
-    }
-    setIsOtpSending(true);
-    try {
-      let cleanedPhone = phoneNumber.trim();
-      if (cleanedPhone.startsWith('0')) {
-        cleanedPhone = cleanedPhone.substring(1);
-      }
-      const fullPhone = countryCode + cleanedPhone;
-
-      await api.post('/auth/nettyfish/verify', {
-        phone: fullPhone,
-        otp: otp,
-        purpose: 'register_business'
-      });
-      setIsOtpVerified(true);
-      Alert.alert('Success', 'Mobile number verified successfully.');
-    } catch (error: any) {
-      console.error('Failed to verify OTP:', error);
-      Alert.alert('Error', error?.response?.data?.detail || 'Invalid OTP. Please try again.');
-    } finally {
-      setIsOtpSending(false);
-    }
-  };
 
   const handleMapConfirm = async () => {
     if (!mapRegion) {
@@ -594,10 +538,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     setPhoneNumber('');
     setCountryCode('+91');
     setShowCountryDropdown(false);
-    setOtpSent(false);
-    setOtp('');
-    setIsOtpSending(false);
-    setIsOtpVerified(false);
     setYearsInBusiness('');
     setAddress('');
     setCategories([]);
@@ -664,10 +604,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     }
     const fullPhone = countryCode + cleanedPhone;
 
-    if (!isOtpVerified) {
-      setErrorMsg('Please verify your mobile number with OTP');
-      return;
-    }
 
     if (!yearsInBusiness) {
       setErrorMsg('Years in business is required');
@@ -810,7 +746,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 placeholder="Enter mobile number"
                 placeholderTextColor={COLORS.textLight}
                 value={phoneNumber}
-                editable={!isOtpVerified}
+                editable={true}
                 onChangeText={(text) => {
                   const numericText = text.replace(/\D/g, '');
                   setPhoneNumber(numericText.slice(0, 15));
@@ -819,23 +755,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 maxLength={15}
               />
               
-              {phoneNumber.length >= 10 && !isOtpVerified && !otpSent && (
-                <TouchableOpacity
-                  onPress={handleSendOtp}
-                  disabled={isOtpSending}
-                  style={{ justifyContent: 'center', marginLeft: 8 }}
-                >
-                  <Text style={{ color: COLORS.primary, fontWeight: '600', fontSize: 13 }}>
-                    {isOtpSending ? 'Sending...' : 'Receive OTP'}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              {isOtpVerified && (
-                <View style={{ justifyContent: 'center', marginLeft: 8 }}>
-                  <Ionicons name="checkmark-circle" size={24} color="#10B981" />
-                </View>
-              )}
-
               {showCountryDropdown && (
                 <View style={[styles.dropdownListContainer, { position: 'absolute', top: 52, left: 0, width: 140, zIndex: 100, maxHeight: 200 }]}>
                   <ScrollView nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
@@ -855,29 +774,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 </View>
               )}
             </View>
-            
-            {otpSent && !isOtpVerified && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.md }}>
-                <TextInput
-                  style={[styles.input, { flex: 1, marginRight: 8 }]}
-                  placeholder="Enter OTP"
-                  placeholderTextColor={COLORS.textLight}
-                  value={otp}
-                  onChangeText={setOtp}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                />
-                <TouchableOpacity
-                  onPress={handleVerifyOtp}
-                  disabled={isOtpSending || otp.length < 4}
-                  style={{ backgroundColor: COLORS.primary, paddingHorizontal: 16, paddingVertical: 12, borderRadius: BORDER_RADIUS.md, opacity: otp.length < 4 ? 0.6 : 1 }}
-                >
-                  <Text style={{ color: '#FFF', fontWeight: '600' }}>
-                    {isOtpSending ? '...' : 'Verify'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
 
             {/* Years in Business */}
             <Text style={styles.label}>Years in Business *</Text>

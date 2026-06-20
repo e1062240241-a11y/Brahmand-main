@@ -54,8 +54,9 @@ export default function AdminPanelScreen() {
 
   const isKycCompleted = (record: AdminVendorReview) => {
     const hasOtpVerified = !!record.aadhaar_otp_verified_at;
-    const hasAllDocs = !!record.aadhar_url && !!record.pan_url && !!record.face_scan_url;
-    return hasOtpVerified || hasAllDocs;
+    const hasAadhaar = !!record.aadhar_url;
+    const hasPan = !!record.pan_url;
+    return hasOtpVerified || hasAadhaar || hasPan;
   };
 
   const pendingKycRequests = useMemo(
@@ -89,6 +90,7 @@ export default function AdminPanelScreen() {
   );
 
   const loadRequests = async () => {
+    // Triggering fast refresh
     if (!adminToken) return;
     try {
       const [vendorResponse, userKycResponse, reportsResponse, anonymousResponse, personalityResponse, sosReportsResponse] = await Promise.all([

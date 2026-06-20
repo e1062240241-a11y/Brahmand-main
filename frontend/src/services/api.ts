@@ -1979,7 +1979,7 @@ export const uploadVendorBusinessImage = (
           formData,
           {
             headers:
-              Platform.OS === "web"
+              (Platform.OS as string) === "web"
                 ? { "Content-Type": "multipart/form-data" }
                 : undefined,
           },
@@ -1989,7 +1989,7 @@ export const uploadVendorBusinessImage = (
 
     return api.post(`/vendors/${vendorId}/business/images/upload`, formData, {
       headers:
-        Platform.OS === "web"
+        (Platform.OS as string) === "web"
           ? { "Content-Type": "multipart/form-data" }
           : undefined,
     });

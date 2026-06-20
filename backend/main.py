@@ -7560,6 +7560,28 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     await db.update_document('users', user_id, kyc_data)
 
+    user_doc = await db.get_document('users', user_id)
+    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
+    if kyc_role == 'vendor' or is_vendor_user:
+        vendor_id = user_doc.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
+        if vendor_id:
+            vendor_updates = {
+                'kyc_status': kyc_data['kyc_status'],
+                'kyc_rejection_reason': None
+            }
+            if id_type == 'aadhaar':
+                vendor_updates['aadhar_url'] = id_photo
+            elif id_type == 'pan':
+                vendor_updates['pan_url'] = id_photo
+                vendor_updates['face_scan_url'] = selfie_photo
+            
+            await db.update_document('vendors', vendor_id, vendor_updates)
+            await _sync_vendor_to_admin_queue(db, vendor_id)
+
     if id_type == 'aadhaar':
         await db.update_document('users', user_id, {
             'kyc_aadhaar_otp_verified': False,
@@ -7680,30 +7702,54 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
         
         logger.info(f"KYC verified for user {user_id}")
         return {"message": "KYC verified", "badge_added": badge_map.get(kyc_role)}
-    
+
     elif action == 'reject':
+        rejection_reason = data.get('rejection_reason', 'Documents not acceptable')
         update_data = {
-            'kyc_status': 'pending',
-            'kyc_rejection_reason': data.get('rejection_reason', 'Documents not acceptable')
+            'kyc_status': 'rejected',
+            'kyc_rejection_reason': rejection_reason,
+            'is_verified': False
         }
         await db.update_document('users', user_id, update_data)
+
+        if target_user.get('is_vendor') or target_user.get('vendor_id'):
+            vendor_id = target_user.get('vendor_id')
+            if not vendor_id:
+                v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+                if v_list:
+                    vendor_id = v_list[0]['id']
+            if vendor_id:
+                vendor = await db.get_document('vendors', vendor_id)
+                if vendor:
+                    await db.update_document('vendors', vendor_id, {
+                        'kyc_status': 'rejected',
+                        'kyc_rejection_reason': rejection_reason,
+                        'kyc_reviewed_by': token_data.get("user_id"),
+                        'kyc_reviewed_at': datetime.utcnow().isoformat() + 'Z',
+                    })
+                    await db.set_document('vendor_admin_reviews', vendor_id, {
+                        **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'rejected'}),
+                        'review_status': 'rejected',
+                        'review_state': 'closed',
+                        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
+                        'reviewed_by': token_data.get("user_id"),
+                        'rejection_reason': rejection_reason,
+                    })
 
         # Notify the user about rejection
         try:
             await NotificationService.create_notification(
                 user_id=user_id,
                 title='KYC rejected',
-                body=f"Your KYC was rejected: {update_data.get('kyc_rejection_reason')}",
+                body=f"Your KYC was rejected: {rejection_reason}",
                 notification_type=NotificationService.TYPE_VERIFICATION,
-                data={'rejection_reason': update_data.get('kyc_rejection_reason')}
+                data={'rejection_reason': rejection_reason}
             )
         except Exception as notify_err:
             logger.warning(f"KYC rejected but notification failed for user {user_id}: {notify_err}")
     
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
-
-
 @api_router.get("/admin/kyc/pending")
 async def get_pending_kyc(token_data: dict = Depends(verify_token)):
     """Get all users with pending KYC (admin only)"""
@@ -10431,14 +10477,14 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
     reason = data.get('reason') or 'Denied by admin'
 
     await db.update_document('vendors', vendor_id, {
-        'kyc_status': 'pending',
+        'kyc_status': 'rejected',
         'kyc_rejection_reason': reason,
         'kyc_reviewed_by': admin_user_id,
         'kyc_reviewed_at': datetime.utcnow().isoformat() + 'Z',
     })
 
     await db.set_document('vendor_admin_reviews', vendor_id, {
-        **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'pending'}),
+        **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'rejected'}),
         'review_status': 'rejected',
         'review_state': 'closed',
         'reviewed_at': datetime.utcnow().isoformat() + 'Z',
@@ -10446,14 +10492,21 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
         'rejection_reason': reason,
     })
 
+    # Update owner user's KYC status to rejected
+    owner_id = vendor.get('owner_id')
+    if owner_id:
+        await db.update_document('users', owner_id, {
+            'kyc_status': 'rejected',
+            'kyc_rejection_reason': reason,
+            'is_verified': False
+        })
+
     return {
         'message': 'Vendor rejected',
         'vendor_id': vendor_id,
-        'kyc_status': 'pending',
+        'kyc_status': 'rejected',
         'reason': reason,
     }
-
-
 # =================== CULTURAL COMMUNITY ===================
 
 @api_router.get("/debug-info")

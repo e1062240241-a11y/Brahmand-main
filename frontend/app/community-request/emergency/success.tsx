@@ -1,8 +1,17 @@
-// accessibility: placeholder
-import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect } from 'react';
-import { BackHandler, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  BackHandler, 
+  Image, 
+  ScrollView, 
+  Dimensions 
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 
@@ -29,88 +38,109 @@ export default function CommunityRequestEmergencySuccessPage() {
   }, [params.community_id]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBackToCommunity}>
-          <Ionicons name="chevron-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="checkmark-circle" size={72} color="#4CAF50" />
-        </View>
-        <Text style={styles.title}>Request Shared Successfully!</Text>
-        <Text style={styles.subtitle}>Your community has been notified and is ready to help.</Text>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>1,248</Text>
-            <Text style={styles.statLabel}>Community Members Nearby</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Volunteers Nearby</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>2</Text>
-            <Text style={styles.statLabel}>Potential Helpers Nearby</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity 
-          style={styles.primaryButton} 
-          onPress={() => router.replace({
-            pathname: '/community-request/list',
-            params: { community_id: params.community_id }
-          })} 
-          activeOpacity={0.8}
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.primaryButtonText}>View My Request</Text>
-        </TouchableOpacity>
+          {/* Main Card */}
+          <View style={styles.card}>
+            {/* Illustration */}
+            <View style={styles.illustrationContainer}>
+              <Image 
+                source={require('../../../assets/images/verification_thank_you_illustration.jpg')} 
+                style={styles.illustration}
+                resizeMode="cover"
+              />
+            </View>
 
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => {}} activeOpacity={0.8}>
-          <Text style={styles.secondaryButtonText}>Share Externally</Text>
-        </TouchableOpacity>
+            {/* Success Title */}
+            <Text style={styles.title}>Request Shared Successfully!</Text>
+            
+            {/* Success Subtitle */}
+            <Text style={styles.subtitle}>
+              Your community has been notified and is ready to help.
+            </Text>
 
-        <TouchableOpacity style={styles.linkButton} onPress={handleBackToCommunity} activeOpacity={0.8}>
-          <Text style={styles.linkButtonText}>Go to Community</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+            {/* Stats White Card */}
+            <View style={styles.statsCard}>
+              <Text style={styles.statsHeader}>YOUR REQUEST MAY REACH:</Text>
+              
+              <View style={styles.statsRow}>
+                {/* Community Members */}
+                <View style={styles.statColumn}>
+                  <Ionicons name="people" size={24} color="#FF6B00" />
+                  <Text style={styles.statNumber}>1,248</Text>
+                  <Text style={styles.statLabel}>Community{"\n"}Members</Text>
+                </View>
+
+                {/* Volunteers Nearby */}
+                <View style={styles.statColumn}>
+                  <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
+                  <Text style={styles.statNumber}>12</Text>
+                  <Text style={styles.statLabel}>Volunteers{"\n"}Nearby</Text>
+                </View>
+
+                {/* Potential Helpers Nearby */}
+                <View style={styles.statColumn}>
+                  <Ionicons name="heart" size={24} color="#FF6B00" />
+                  <Text style={styles.statNumber}>3</Text>
+                  <Text style={styles.statLabel}>Potential Helpers{"\n"}Nearby</Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Action Buttons */}
+            <TouchableOpacity 
+              style={styles.primaryButton} 
+              onPress={() => router.replace({
+                pathname: '/community-request/list',
+                params: { community_id: params.community_id }
+              })} 
+              activeOpacity={0.8}
+            >
+              <Text style={styles.primaryButtonText}>View My Request</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.secondaryButton} 
+              onPress={() => {}} 
+              activeOpacity={0.8}
+            >
+              <Text style={styles.secondaryButtonText}>Share Externally</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFF',
-    paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.md,
   },
-  header: {
-    flexDirection: 'row',
+  safeArea: {
+    flex: 1,
+  },
+  scrollContent: {
     alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
   },
   card: {
-    flex: 1,
+    width: '100%',
+    maxWidth: 380,
     backgroundColor: '#FFFFFF',
-    borderRadius: BORDER_RADIUS.xl,
-    padding: SPACING.lg,
+    borderRadius: 24,
+    padding: 20,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -118,56 +148,91 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 6,
   },
-  iconWrap: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
+  illustrationContainer: {
+    width: '100%',
+    aspectRatio: 94 / 99,
+    borderRadius: 18,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  illustration: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
   },
   title: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '800',
-    color: COLORS.text,
+    color: '#3F1E19',
     textAlign: 'center',
-    marginBottom: SPACING.sm,
+    marginTop: 8,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
+    fontSize: 15,
+    color: '#666666',
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: SPACING.lg,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+  },
+  statsCard: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFEBE0',
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statsHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8C6E6A',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    marginBottom: 16,
   },
   statsRow: {
-    width: '100%',
-    marginBottom: SPACING.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
-  statCard: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
+  statColumn: {
+    flex: 1,
+    alignItems: 'center',
   },
   statNumber: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#E65100',
+    color: '#FF6B00',
+    marginTop: 6,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.xs,
+    fontSize: 11,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 14,
   },
   primaryButton: {
     width: '100%',
+    height: 56,
     backgroundColor: '#FF6B00',
-    borderRadius: BORDER_RADIUS.xl,
-    paddingVertical: SPACING.lg,
+    borderRadius: 28,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: 12,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -176,22 +241,16 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     width: '100%',
-    backgroundColor: '#FFF3E0',
-    borderRadius: BORDER_RADIUS.xl,
-    paddingVertical: SPACING.lg,
+    height: 56,
+    backgroundColor: '#FFF5EF',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: '#FF6B00',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.sm,
   },
   secondaryButtonText: {
-    color: '#E65100',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  linkButton: {
-    marginTop: SPACING.sm,
-  },
-  linkButtonText: {
-    color: '#FF6B00',
+    color: '#000000',
     fontSize: 16,
     fontWeight: '700',
   },

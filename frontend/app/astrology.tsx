@@ -743,7 +743,8 @@ export default function AstrologyScreen() {
             )}
           </View>
 
-          {/* Ask AI Card */}
+          {/* Ask AI Card commented out for now */}
+          {/*
           <View style={styles.askAiCard}>
             <View style={styles.askAiHeader}>
               <Text style={styles.askAiIcon}>✦</Text>
@@ -779,6 +780,7 @@ export default function AstrologyScreen() {
               <Ionicons name="chevron-forward" size={16} color="#FFF" />
             </TouchableOpacity>
           </View>
+          */}
 
           {/* Nakshatra & Rashi Card */}
           {!error && (

@@ -15,7 +15,7 @@ import {
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
@@ -46,6 +46,7 @@ const LockIcon = () => (
 
 export default function KycSubmitScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ verifiedPhone?: string }>();
   const { user, updateUser } = useAuthStore();
 
   const [statusLoading, setStatusLoading] = useState(true);
@@ -92,11 +93,31 @@ export default function KycSubmitScreen() {
   };
 
   useEffect(() => {
+    if (params.verifiedPhone) {
+      let phoneVal = params.verifiedPhone;
+      if (phoneVal.startsWith('+91')) {
+        setCountryCode('+91');
+        phoneVal = phoneVal.slice(3);
+      } else if (phoneVal.startsWith('91') && phoneVal.length > 10) {
+        setCountryCode('+91');
+        phoneVal = phoneVal.slice(2);
+      }
+      setPhoneNumber(phoneVal);
+    } else if (user) {
+      let phoneVal = user.phone || '';
+      if (phoneVal.startsWith('+91')) {
+        setCountryCode('+91');
+        phoneVal = phoneVal.slice(3);
+      } else if (phoneVal.startsWith('91') && phoneVal.length > 10) {
+        setCountryCode('+91');
+        phoneVal = phoneVal.slice(2);
+      }
+      setPhoneNumber(phoneVal);
+    }
     if (user) {
       setFullName(user.name || '');
-      setPhoneNumber(user.phone || '');
     }
-  }, [user]);
+  }, [user, params.verifiedPhone]);
 
   useEffect(() => {
     const loadStatus = async () => {
@@ -506,7 +527,8 @@ export default function KycSubmitScreen() {
                     </View>
                   </View>
 
-                  {/* Card 3: Selfie Verification */}
+                  {/* Card 3: Selfie Verification (Bypassed for testing ID) */}
+                  {/*
                   <View style={styles.whiteCard}>
                     <View style={styles.cardHeader}>
                       <View style={styles.badgeCircle}>
@@ -545,6 +567,7 @@ export default function KycSubmitScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
+                  */}
 
                   {/* Submit Button */}
                   <TouchableOpacity 
@@ -801,7 +824,7 @@ const styles = StyleSheet.create({
   },
   dashedCard: {
     display: 'flex',
-    padding: 32,
+    height: 180,
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
@@ -817,6 +840,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
+    padding: 20,
   },
   cloudCircle: {
     display: 'flex',
