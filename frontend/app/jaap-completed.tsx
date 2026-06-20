@@ -8,26 +8,20 @@ import {
   StatusBar,
   ScrollView,
   Platform,
+  Image,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { useAuthStore } from '../src/store/authStore';
 
 export default function JaapCompleted() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams();
-  const mantraType = (params.mantraType as string) || 'gayatri';
-  const fromHome = params.fromHome === 'true';
+  const { user } = useAuthStore();
 
   const handlePressContinue = () => {
-    if (mantraType === 'kedarnath' || fromHome) {
-      router.replace('/(tabs)/home');
-    } else {
-      router.replace('/(tabs)/jaap');
-    }
+    router.replace('/(tabs)/home');
   };
 
   return (
@@ -36,69 +30,60 @@ export default function JaapCompleted() {
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <ScrollView
         contentContainerStyle={[
           styles.safeArea,
           {
-            paddingTop: Math.max(insets.top, 20),
-            paddingBottom: Math.max(insets.bottom, 20),
+            paddingTop: Math.max(insets.top, 24),
+            paddingBottom: Math.max(insets.bottom, 24),
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Top Navigation Row */}
-        <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 10, marginBottom: 15, paddingHorizontal: 4 }}>
-          <TouchableOpacity
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: 'rgba(255, 255, 255, 0.75)',
-              justifyContent: 'center',
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOpacity: 0.1,
-              shadowRadius: 5,
-              shadowOffset: { width: 0, height: 2 },
-              elevation: 2,
-            }}
-            activeOpacity={0.85}
-            onPress={handlePressContinue}
-          >
-            <Ionicons name="arrow-back" size={22} color="#5A4136" />
-          </TouchableOpacity>
-        </View>
+        {/* Top Spacer to replace header back button */}
+        <View style={{ height: 20 }} />
+
         {/* Header Section */}
         <View style={styles.headerContainer}>
           {/* Header Lotus Icon */}
           <View style={styles.lotusContainer}>
-            <Text style={styles.lotusEmoji}>🪷</Text>
+            <Image
+              source={require('../assets/images/pink_lotus_splash.png')}
+              style={styles.lotusImage}
+              resizeMode="cover"
+            />
           </View>
 
           {/* Heading Section */}
-          <Text style={styles.title}>You Did It!</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>You Have Done It!</Text>
+            {user?.name ? (
+              <Text style={styles.userName}>{user.name}</Text>
+            ) : null}
+          </View>
+          
           <Text style={styles.subtitle}>
-            Your effort, your time, your energy — all have meaning.
+            Your effort, your time, your energy{"\n"}— all have meaning.
           </Text>
         </View>
 
-        {/* Spacer */}
-        <View style={{ flex: 1, minHeight: 24 }} />
+        {/* Spacer to expose the meditating person image in the background */}
+        <View style={styles.middleSpacer} />
 
         {/* Glassmorphic Card */}
         <View style={styles.cardWrapper}>
           {Platform.OS === 'ios' ? (
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFillObject} />
+            <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFillObject} />
           ) : (
             <View style={[StyleSheet.absoluteFillObject, styles.cardAndroidBg]} />
           )}
           <Text style={styles.cardText1}>
             Your journey and records are now stored in your{' '}
-            <Text style={{ fontFamily: 'Outfit_700Bold' }}>Brahmand</Text> Passport.
+            <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700' }}>Brahmand Passport</Text>.
           </Text>
           <Text style={styles.cardText2}>
-            Carry this feeling forward. You're capable of amazing things. ✨
+            Carry this feeling forward.{"\n"}You're capable of amazing things. ✨
           </Text>
 
           {/* Button */}
@@ -107,12 +92,12 @@ export default function JaapCompleted() {
             activeOpacity={0.85}
             onPress={handlePressContinue}
           >
-            <Text style={styles.buttonText}>KEEP GOING, KEEP GLOWING</Text>
+            <Text style={styles.buttonText}>BACK TO HOME</Text>
           </TouchableOpacity>
         </View>
 
         {/* Space after card */}
-        <View style={{ height: 24 }} />
+        <View style={{ height: 28 }} />
 
         {/* Footer Mantra */}
         <View style={styles.footerContainer}>
@@ -137,140 +122,147 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     alignItems: 'center',
+    alignSelf: 'center',
     width: '100%',
-    marginTop: 0,
-    gap: 16,
+    marginTop: 10,
+    gap: 12,
   },
   lotusContainer: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: 'rgba(255, 255, 255, 0.90)',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.12,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
   },
-  lotusEmoji: {
-    fontSize: 42,
+  lotusImage: {
+    width: '100%',
+    height: '100%',
+  },
+  titleContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
   },
   title: {
-    fontSize: 36,
-    color: '#5A4136',
+    fontSize: 32,
+    color: '#3F1E19',
     textAlign: 'center',
-    fontWeight: '700',
-    lineHeight: 40,
-    letterSpacing: -0.9,
-    ...Platform.select({
-      ios: { fontFamily: 'System' },
-      android: { fontFamily: 'sans-serif' },
-      default: { fontFamily: 'System' },
-    }),
+    fontWeight: '800',
+    lineHeight: 38,
+    fontFamily: 'Outfit_700Bold',
+    letterSpacing: -0.5,
+  },
+  userName: {
+    fontSize: 32,
+    color: '#3F1E19',
+    textAlign: 'center',
+    fontWeight: '800',
+    lineHeight: 38,
+    fontFamily: 'Outfit_700Bold',
+    letterSpacing: -0.5,
+    marginTop: 2,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#5A4136',
     textAlign: 'center',
     fontWeight: '600',
-    lineHeight: 29.25,
+    lineHeight: 22,
     paddingHorizontal: 20,
-    ...Platform.select({
-      ios: { fontFamily: 'System' },
-      android: { fontFamily: 'sans-serif' },
-      default: { fontFamily: 'System' },
-    }),
+    fontFamily: 'Outfit_600SemiBold',
+    marginTop: 4,
+    alignSelf: 'center',
+  },
+  middleSpacer: {
+    height: 160,
+    alignSelf: 'center',
   },
   cardWrapper: {
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 360,
     borderRadius: 24,
     paddingHorizontal: 24,
     paddingVertical: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.30)',
-    backgroundColor: 'rgba(255, 255, 255, 0.20)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    alignSelf: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 32,
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
+    overflow: 'hidden',
   },
   cardAndroidBg: {
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.30)',
+    backgroundColor: 'rgba(255, 255, 255, 0.20)',
   },
   cardText1: {
-    fontSize: 18,
+    fontSize: 17,
     color: '#FFF',
     textAlign: 'center',
-    fontWeight: '500',
-    lineHeight: 24.75,
+    fontWeight: '600',
+    lineHeight: 24,
     marginBottom: 16,
     zIndex: 1,
-    ...Platform.select({
-      ios: { fontFamily: 'System' },
-      android: { fontFamily: 'sans-serif' },
-      default: { fontFamily: 'System' },
-    }),
+    fontFamily: 'Outfit_600SemiBold',
   },
   cardText2: {
     fontSize: 14,
     fontStyle: 'italic',
-    color: 'rgba(255, 255, 255, 0.80)',
+    color: 'rgba(255, 255, 255, 0.90)',
     textAlign: 'center',
     fontWeight: '400',
     lineHeight: 20,
     marginBottom: 24,
     zIndex: 1,
-    ...Platform.select({
-      ios: { fontFamily: 'System' },
-      android: { fontFamily: 'sans-serif' },
-      default: { fontFamily: 'System' },
-    }),
+    fontFamily: 'Outfit_400Regular',
   },
   button: {
-    height: 48,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    height: 52,
+    paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'stretch',
-    borderRadius: 9999,
-    backgroundColor: '#FF7B00',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
+    borderRadius: 26,
+    backgroundColor: '#FF6B00',
+    shadowColor: '#FF6B00',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
     zIndex: 1,
   },
   buttonText: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#FFF',
     textAlign: 'center',
-    fontWeight: '600',
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-    ...Platform.select({
-      ios: { fontFamily: 'System' },
-      android: { fontFamily: 'sans-serif' },
-      default: { fontFamily: 'System' },
-    }),
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontFamily: 'Outfit_700Bold',
   },
   footerContainer: {
     alignItems: 'center',
+    alignSelf: 'center',
     width: '100%',
   },
   footerMantra: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: 'Outfit_700Bold',
     color: 'rgba(255, 255, 255, 0.8)',
-    letterSpacing: 1.4,
+    letterSpacing: 1.5,
     textAlign: 'center',
   },
 });
