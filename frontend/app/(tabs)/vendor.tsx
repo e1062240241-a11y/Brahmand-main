@@ -1155,7 +1155,18 @@ export default function VendorScreen() {
             }}
             onPress={() => {
               if (myVendor) {
-                router.push('/vendor/dashboard');
+                if (hasVerifiedKyc) {
+                  router.push('/vendor/dashboard');
+                } else {
+                  Alert.alert(
+                    'KYC Required',
+                    'Please complete your KYC verification to manage your business/service.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Complete KYC', onPress: () => router.push('/kyc') }
+                    ]
+                  );
+                }
               } else {
                 setShowRegistrationModal(true);
               }

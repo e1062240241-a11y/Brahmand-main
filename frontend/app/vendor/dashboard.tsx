@@ -76,12 +76,25 @@ export default function VendorDashboardScreen() {
     setPhoneVerifying(false);
   };
 
-  // Redirect if not authenticated
+  // Redirect if not authenticated or not KYC verified
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.replace('/');
+      return;
     }
-  }, [authLoading, isAuthenticated, router]);
+
+    if (!authLoading && !isInitializing && myVendor) {
+      const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+      const isVendorVerified = myVendor?.kyc_status === 'verified';
+      if (!isUserVerified && !isVendorVerified) {
+        Alert.alert(
+          'KYC Required',
+          'Please complete your KYC verification to access the dashboard.',
+          [{ text: 'OK', onPress: () => router.replace('/kyc') }]
+        );
+      }
+    }
+  }, [authLoading, isAuthenticated, isInitializing, myVendor, user, router]);
 
   
   // Edit modals
