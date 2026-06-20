@@ -6398,7 +6398,8 @@ async def mark_messages_read(chat_id: str, token_data: dict = Depends(verify_tok
     
     # Get all messages and mark them as read
     messages = await db.get_chat_messages(chat_id, 100)
-    updated_count = 0
+
+    updates_to_apply = []
     
     for msg in messages:
         # Only mark messages from other users as read
@@ -6406,13 +6407,18 @@ async def mark_messages_read(chat_id: str, token_data: dict = Depends(verify_tok
             read_by = msg.get('read_by', [])
             if user_id not in read_by:
                 read_by.append(user_id)
-                await db.update_chat_message(chat_id, msg['id'], {
-                    'read_by': read_by,
-                    'status': 'read'
+                updates_to_apply.append({
+                    'message_id': msg['id'],
+                    'data': {
+                        'read_by': read_by,
+                        'status': 'read'
+                    }
                 })
-                updated_count += 1
     
-    return {"message": f"Marked {updated_count} messages as read"}
+    if updates_to_apply:
+        await db.batch_update_chat_messages(chat_id, updates_to_apply)
+
+    return {"message": f"Marked {len(updates_to_apply)} messages as read"}
 
 
 @api_router.get("/user/privacy-settings")
