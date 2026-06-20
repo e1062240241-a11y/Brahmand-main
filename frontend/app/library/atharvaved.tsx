@@ -34,7 +34,7 @@ import { loadAtharvavedChapter } from '../../src/services/atharvaved-service';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Atharvaved image provided by the user
-const geeta3DImage = require('../../assets/images/tab bar/books/Atharveda.png');
+const geeta3DImage = require('../../assets/images/tab-bar/books/Atharveda.png');
 // Custom bookmark icons
 const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
 const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');

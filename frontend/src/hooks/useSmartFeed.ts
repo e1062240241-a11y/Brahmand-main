@@ -36,7 +36,7 @@ interface UseSmartFeedOptions {
   postHeightsRef: React.MutableRefObject<Record<string, number>>;
   /** Ref holding the top-of-feed Y offset (header height) */
   feedTabsYRef: React.MutableRefObject<number>;
-  /** Extra offset (sticky tab bar height), defaults to 48 */
+  /** Extra offset (sticky tab-bar height), defaults to 48 */
   tabBarHeight?: number;
 }
 

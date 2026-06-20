@@ -461,27 +461,27 @@ export function GlobalFAB() {
                         }}
                       >
                         {item.key === 'myKrishna' ? (
-                           <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
+                           <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
                           </ImageBackground>
                         ) : item.key === 'festival' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.key === 'kundli' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/tab bar/hand_eye_phosphor.png')} style={{ width: 52, height: 52 }} resizeMode="contain" />
+                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                            <Image source={require('../../assets/images/tab-bar/hand_eye_phosphor.png')} style={{ width: 52, height: 52 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.key === 'brahmandPassport' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 62, height: 62 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.key === 'panchang' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : item.key === 'brahmandLibrary' ? (
-                          <ImageBackground source={require('../../assets/images/tab bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
+                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
                             <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
                           </ImageBackground>
                         ) : (
@@ -507,7 +507,7 @@ export function GlobalFAB() {
                     </View>
                     <View style={fabStyles.centerGuruContainerSOS}>
                       <View style={fabStyles.guruImageWrapperSOS}>
-                        <ExpoImage source={require('../../assets/images/tab bar/my_krishna.png')} style={fabStyles.guruImage} contentFit="cover" />
+                        <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={fabStyles.guruImage} contentFit="cover" />
                       </View>
                     </View>
                     <View style={fabStyles.sosStatusCard}>
@@ -698,7 +698,7 @@ export function GlobalFAB() {
             <MaterialCommunityIcons name="alarm-light" size={30} color="#FFF" />
           ) : (
             <ExpoImage
-              source={require('../../assets/images/tab bar/my_krishna.png')}
+              source={require('../../assets/images/tab-bar/my_krishna.png')}
               style={fabStyles.fabIcon}
               contentFit="cover"
             />

@@ -7,18 +7,18 @@ import { Image as ExpoImage } from 'expo-image';
 const { width } = Dimensions.get('window');
 
 const ZODIAC_DATA = [
-  { id: 'aries', name: 'Aries', hindi: 'Mesh', image: require('../../assets/images/tab bar/rashi/Aries.png') },
-  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', image: require('../../assets/images/tab bar/rashi/Taurus.png') },
-  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', image: require('../../assets/images/tab bar/rashi/gemini.png') },
-  { id: 'cancer', name: 'Cancer', hindi: 'Kark', image: require('../../assets/images/tab bar/rashi/cancer.png') },
-  { id: 'leo', name: 'Leo', hindi: 'Simha', image: require('../../assets/images/tab bar/rashi/Leo.png') },
-  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', image: require('../../assets/images/tab bar/rashi/Virgo.png') },
-  { id: 'libra', name: 'Libra', hindi: 'Tula', image: require('../../assets/images/tab bar/rashi/Libra.png') },
-  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', image: require('../../assets/images/tab bar/rashi/Scorpio.png') },
-  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', image: require('../../assets/images/tab bar/rashi/sagittarius.png') },
-  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', image: require('../../assets/images/tab bar/rashi/Capricorn.png') },
-  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', image: require('../../assets/images/tab bar/rashi/Aquarius.png') },
-  { id: 'pisces', name: 'Pisces', hindi: 'Meen', image: require('../../assets/images/tab bar/rashi/Pisces.png') },
+  { id: 'aries', name: 'Aries', hindi: 'Mesh', image: require('../../assets/images/tab-bar/rashi/Aries.png') },
+  { id: 'taurus', name: 'Taurus', hindi: 'Vrishabh', image: require('../../assets/images/tab-bar/rashi/Taurus.png') },
+  { id: 'gemini', name: 'Gemini', hindi: 'Mithun', image: require('../../assets/images/tab-bar/rashi/gemini.png') },
+  { id: 'cancer', name: 'Cancer', hindi: 'Kark', image: require('../../assets/images/tab-bar/rashi/cancer.png') },
+  { id: 'leo', name: 'Leo', hindi: 'Simha', image: require('../../assets/images/tab-bar/rashi/Leo.png') },
+  { id: 'virgo', name: 'Virgo', hindi: 'Kanya', image: require('../../assets/images/tab-bar/rashi/Virgo.png') },
+  { id: 'libra', name: 'Libra', hindi: 'Tula', image: require('../../assets/images/tab-bar/rashi/Libra.png') },
+  { id: 'scorpio', name: 'Scorpio', hindi: 'Vrishchik', image: require('../../assets/images/tab-bar/rashi/Scorpio.png') },
+  { id: 'sagittarius', name: 'Sagittarius', hindi: 'Dhanu', image: require('../../assets/images/tab-bar/rashi/sagittarius.png') },
+  { id: 'capricorn', name: 'Capricorn', hindi: 'Makar', image: require('../../assets/images/tab-bar/rashi/Capricorn.png') },
+  { id: 'aquarius', name: 'Aquarius', hindi: 'Kumbh', image: require('../../assets/images/tab-bar/rashi/Aquarius.png') },
+  { id: 'pisces', name: 'Pisces', hindi: 'Meen', image: require('../../assets/images/tab-bar/rashi/Pisces.png') },
 ];
 
 export default function HomeJyotishSection() {
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingTop: 32,
-    paddingBottom: 120, // Safe padding for tab bar
+    paddingBottom: 120, // Safe padding for tab-bar
     minHeight: Dimensions.get('window').height,
   },
   title: {

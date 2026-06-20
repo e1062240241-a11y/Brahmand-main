@@ -45,7 +45,7 @@ const CHAPTERS = [
 
 const RELATED = [
   { title: 'Upanishads', sub: 'Core Philosophies', cover: upanishadCover, route: '/library/upanishads' },
-  { title: 'Patanjali Yoga Sutras', sub: 'Meditative Practice', cover: yogaSutrasCover, route: '/library/yoga-sutras' },
+  { title: 'Patanjali Yoga Sutras', sub: 'Meditative Practice', cover: yogaSutrasCover, route: '/library/upanishads' },
 ];
 
 const AVATAR_COLORS = ['#E76F51', '#F4A261', '#2A9D8F', '#264653', '#E9C46A'];

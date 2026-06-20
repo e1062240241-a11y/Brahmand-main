@@ -688,13 +688,13 @@ export default function AstrologyScreen() {
           <View style={styles.profileCard}>
             <View style={styles.profileCardAvatarWrapper}>
               <Avatar 
-                name={user?.name || 'Aakruti Sharma'} 
-                photo={user?.photo || require('../assets/images/aakruti_avatar.png')} 
+                name={user?.name || 'User'} 
+                photo={user?.photo} 
                 size={48} 
               />
             </View>
             <View style={styles.profileCardText}>
-              <Text style={styles.profileCardName}>{user?.name || 'Aakruti Sharma'}</Text>
+              <Text style={styles.profileCardName}>{user?.name || 'User'}</Text>
               <Text style={styles.profileCardSub}>
                 {(() => {
                   const parts: string[] = [];
