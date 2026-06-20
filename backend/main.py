@@ -2885,7 +2885,12 @@ async def _upload_post_from_storage_impl(
 
     has_ffmpeg = FFMPEG_BIN is not None and FFPROBE_BIN is not None
 
-    temp_input_file = NamedTemporaryFile(delete=False, suffix='.mp4')
+    # Extract extension to use matching temp file so FFmpeg isn't confused
+    ext = '.mp4'
+    if '.' in storage_path:
+        ext = '.' + storage_path.split('.')[-1].lower()
+
+    temp_input_file = NamedTemporaryFile(delete=False, suffix=ext)
     temp_input_file.close()
     temp_output_file = NamedTemporaryFile(delete=False, suffix='.mp4')
     temp_output_file.close()
@@ -8377,23 +8382,23 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
     if rag_context:
         final_system_prompt = system_prompt + f"\n\n{rag_context}"
 
-    def _call_gemini():
-        import google.genai as genai
-        from google.genai import types
+    def _call_nvidia():
+        import requests
 
-        client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+        nvidia_key = os.environ.get("NVIDIA_API_KEY")
+        invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-        contents = []
         combined_messages = []
+        # Add system prompt as a user message to trick the model
         combined_messages.append({"role": "user", "content": f"System Instruction:\n{final_system_prompt}"})
-        combined_messages.append({"role": "model", "content": "Understood. I will follow those instructions and act as Lord Krishna."})
+        combined_messages.append({"role": "assistant", "content": "Understood. I will follow those instructions and act as Lord Krishna."})
 
         # Filter out system messages and flatten
         for msg in messages:
             role = msg.get("role")
             if role == "system":
                 continue
-            gemini_role = "user" if role == "user" else "model"
+            gemini_role = "user" if role == "user" else "assistant"
             content = msg.get("content", "")
             
             # Combine consecutive messages with the same role
@@ -8402,35 +8407,33 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             else:
                 combined_messages.append({"role": gemini_role, "content": content})
 
-        for msg in combined_messages:
-            contents.append(
-                types.Content(
-                    role=msg["role"],
-                    parts=[types.Part.from_text(text=msg["content"])]
-                )
-            )
+        headers = {
+            "Authorization": f"Bearer {nvidia_key}",
+            "Accept": "application/json"
+        }
 
-        config = types.GenerateContentConfig(
-            temperature=0.7,
-            max_output_tokens=2048,
-            thinking_config=types.ThinkingConfig(thinking_level="MINIMAL"),
-            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
-        )
+        payload = {
+            "model": "google/gemma-4-31b-it",
+            "messages": combined_messages,
+            "max_tokens": 2048,
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False},
+        }
 
         try:
-            response = client.models.generate_content(
-                model="gemma-4-31b-it",
-                contents=contents,
-                config=config,
-            )
-            return response.text or ""
+            response = requests.post(invoke_url, headers=headers, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            return result.get("choices", [{}])[0].get("message", {}).get("content", "")
         except Exception as e:
             import logging
-            logging.error(f"Gemini API Error: {e}")
+            logging.error(f"NVIDIA NM API Error: {e}")
             return "Priya mitra, mai kewal aadhyaatmik aur jeevan ke maargdarshan ke liye hoon. Kripya shishtta banaye rakhein. Radhe Radhe! 🙏"
 
     try:
-        assistant_reply = await asyncio.to_thread(_call_gemini)
+        assistant_reply = await asyncio.to_thread(_call_nvidia)
 
         # Save to Firebase Firestore
         try:
