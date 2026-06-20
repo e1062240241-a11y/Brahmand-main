@@ -1546,9 +1546,15 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 }, {} as Record<string, any[]>);
 
                 return (
+                  {/* ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android */}
                   <FlatList
                     data={parentComments}
                     keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={5}
+                    windowSize={5}
+                    removeClippedSubviews={Platform.OS === 'android'}
+
                     renderItem={({ item }) => {
                       const canDelete = item.user_id === user?.id || selectedPost?.user_id === user?.id;
                       const replies = repliesMap[item.id] || [];
