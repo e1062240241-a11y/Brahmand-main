@@ -128,6 +128,10 @@ export default function MyKrishnaChat() {
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  // Mirror messages in a ref so sendMessage always reads the latest state
+  // without needing messages as a useCallback dependency (avoids stale closure).
+  const messagesRef = useRef<Message[]>([]);
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
 
   // Load chat history from Firestore on mount
   useEffect(() => {
@@ -187,11 +191,13 @@ export default function MyKrishnaChat() {
       scrollToBottom();
 
       try {
-        // Filter out system greetings and keep only real exchange history
-        const apiMessages = messages
+        // Read the latest messages from the ref (not the stale closure) so the
+        // LLM always receives the complete conversation context.
+        const apiMessages = messagesRef.current
           .filter(m => m.id !== 'welcome')
           .map((m) => ({ role: m.role, content: m.content }));
 
+        // Append the new user turn that was just queued into state.
         apiMessages.push({ role: userMsg.role, content: userMsg.content });
 
         const response = await aiChat(apiMessages);
@@ -221,7 +227,7 @@ export default function MyKrishnaChat() {
         scrollToBottom();
       }
     },
-    [messages, isLoading, scrollToBottom]
+    [isLoading, scrollToBottom]  // messages removed — read via messagesRef instead
   );
 
   const handleSend = () => sendMessage(inputText);
