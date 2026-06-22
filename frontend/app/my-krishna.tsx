@@ -116,7 +116,7 @@ export default function MyKrishnaChat() {
   const defaultWelcomeMessage = useCallback((): Message => ({
     id: 'welcome',
     role: 'assistant',
-    content: `Radhe Radhe, ${displayName}! 🙏\n\nMain yahan hoon — tumhare dil ki baat sunne ke liye, Gita ki seekh share karne ke liye.\n\nAaj mann mein kya chal raha hai?`,
+    content: `Jai Shri Krishna, ${displayName}! 🙏\n\nMain yahan hoon — tumhare dil ki baat sunne ke liye, Gita ki seekh share karne ke liye.\n\nAaj mann mein kya chal raha hai?`,
     timestamp: new Date(),
   }), [displayName]);
 
@@ -204,6 +204,9 @@ export default function MyKrishnaChat() {
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMsg]);
+        } else {
+          // Fallback if API response structure is different
+          throw new Error('Invalid API response');
         }
       } catch (error) {
         console.error('Chat error:', error);
