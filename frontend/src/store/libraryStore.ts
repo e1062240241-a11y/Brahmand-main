@@ -60,7 +60,8 @@ export const useLibraryStore = create<LibraryState>()(
         }
       },
       getRecentBooks: () => {
-        const books = Object.values(get().progresses);
+        const progresses = get().progresses || {};
+        const books = Object.values(progresses);
         return books.sort((a, b) => b.lastOpenedTime - a.lastOpenedTime);
       }
     }),
