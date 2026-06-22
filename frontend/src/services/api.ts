@@ -325,10 +325,22 @@ const uploadLargeVideoViaBunny = async (
   }
 
   const uploadId = makeUploadId();
-  const safeName = (file.name || `video-${uploadId}.mp4`).replace(
-    /[^a-zA-Z0-9._-]/g,
-    "_",
-  );
+
+  // Make sure we keep the correct extension if file.name lacks it but file.type is known
+  let fileNameWithExt = file.name || `video-${uploadId}.mp4`;
+  if (!fileNameWithExt.includes('.') && file.type) {
+     if (file.type === 'video/quicktime') fileNameWithExt += '.mov';
+     else if (file.type === 'video/mp4') fileNameWithExt += '.mp4';
+     else if (file.type === 'video/webm') fileNameWithExt += '.webm';
+     else fileNameWithExt += '.mp4';
+  }
+
+  // Preserve the extension when sanitizing the name
+  const lastDotIdx = fileNameWithExt.lastIndexOf('.');
+  const namePart = lastDotIdx > -1 ? fileNameWithExt.substring(0, lastDotIdx) : fileNameWithExt;
+  const extPart = lastDotIdx > -1 ? fileNameWithExt.substring(lastDotIdx) : '.mp4';
+  const safeName = namePart.replace(/[^a-zA-Z0-9_-]/g, "_") + extPart;
+
   const objectPath = `raw-post-videos/direct/${uploadId}-${safeName}`;
 
   const credsResponse = await api.get("/posts/bunny-upload-credentials");
@@ -343,21 +355,72 @@ const uploadLargeVideoViaBunny = async (
   console.info("[API] Direct Bunny upload URL:", fullUploadUrl);
   console.info("[API] Direct Bunny upload headers:", uploadHeaders);
   try {
-    const putResponse = await axios.put(fullUploadUrl, blob, {
-      headers: uploadHeaders,
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
+    if (Platform.OS === "web") {
+      const putResponse = await axios.put(fullUploadUrl, blob, {
+        headers: uploadHeaders,
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            onProgress({
+              loaded: progressEvent.loaded,
+              total: progressEvent.total,
+            });
+          }
+        },
+      });
+      console.info(
+        "[API] Direct Bunny upload success status:",
+        putResponse.status,
+      );
+    } else {
+      let simulatedProgress = 0;
+      const progressInterval = setInterval(() => {
+        if (simulatedProgress < 90) {
+          simulatedProgress += Math.random() * 8 + 4;
+          if (simulatedProgress > 90) simulatedProgress = 90;
+          if (onProgress) {
+            onProgress({
+              loaded: Math.round(simulatedProgress),
+              total: 100,
+            });
+          }
+        }
+      }, 400);
+
+      try {
+        const response = await fetch(fullUploadUrl, {
+          method: "PUT",
+          headers: uploadHeaders,
+          body: blob,
+        });
+
+        clearInterval(progressInterval);
+
+        if (!response.ok) {
+          const text = await response.text();
+          console.error(
+            "[API] Native fetch direct Bunny upload failed:",
+            response.status,
+            text,
+          );
+          throw new Error(`Upload failed: ${response.status} ${text}`);
+        }
+
+        if (onProgress) {
           onProgress({
-            loaded: progressEvent.loaded,
-            total: progressEvent.total,
+            loaded: 100,
+            total: 100,
           });
         }
-      },
-    });
-    console.info(
-      "[API] Direct Bunny upload success status:",
-      putResponse.status,
-    );
+
+        console.info(
+          "[API] Direct Bunny upload success status:",
+          response.status,
+        );
+      } catch (fetchErr) {
+        clearInterval(progressInterval);
+        throw fetchErr;
+      }
+    }
   } catch (putError: any) {
     console.error("[API] Direct Bunny upload failed:", putError);
     if (putError.response) {

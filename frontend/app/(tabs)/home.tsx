@@ -4132,10 +4132,16 @@ export default function HomeScreen() {
                   return acc;
                 }, {} as Record<string, any[]>);
 
+                // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
                 return (
                   <FlatList
                     data={parentComments}
                     keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
+                    initialNumToRender={10}
+                    maxToRenderPerBatch={5}
+                    windowSize={5}
+                    removeClippedSubviews={Platform.OS === 'android'}
+
                     renderItem={({ item }) => {
                       const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                       const replies = repliesMap[item.id] || [];

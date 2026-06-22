@@ -8492,18 +8492,19 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         }
 
         payload = {
-            "model": "meta/llama-3.1-70b-instruct",
+            "model": "google/gemma-4-31b-it",
             "messages": combined_messages,
-            "max_tokens": 2048,
-            "temperature": 0.7,
+            "max_tokens": 16384,
+            "temperature": 1.00,
             "top_p": 0.95,
             "frequency_penalty": 0.7,
             "presence_penalty": 0.6,
             "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False}
         }
 
         try:
-            response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
+            response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
             response.raise_for_status()
             result = response.json()
             return result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -12116,15 +12117,16 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         )
 
         payload = {
-            "model": "meta/llama-3.1-70b-instruct",
+            "model": "google/gemma-4-31b-it",
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 1024,
-            "temperature": 0.7,
+            "temperature": 1.0,
             "top_p": 0.95,
             "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False}
         }
 
-        response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
+        response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
