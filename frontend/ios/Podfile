@@ -1,10 +1,5 @@
 # Set by expo-router. This enables Fabric-only features from react-native-screens
 ENV['RNS_GAMMA_ENABLED'] ||= '1'
-
-# Pin Firebase iOS SDK to a version compatible with @react-native-firebase v23.x
-# Firebase 12.x introduced breaking internal API changes (AuthBackend, AuthRPCRequest etc.)
-# that the current react-native-firebase native pods have not yet been updated for.
-$FirebaseSDKVersion = '11.13.0'
 require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
 
@@ -71,5 +66,18 @@ target 'Brahmand' do
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # Fix Firebase 12.x AuthBackend / AuthRPCRequest "cannot find type" compile errors.
+    # Firebase 12.x uses Swift actors internally; strict concurrency checking causes
+    # symbols to become invisible across compilation units. Setting minimal concurrency
+    # and whole-module optimisation restores visibility without changing behaviour.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['SWIFT_STRICT_CONCURRENCY'] = 'minimal'
+        if target.name.start_with?('Firebase', 'RNFB', 'GoogleUtilities', 'Google')
+          config.build_settings['SWIFT_COMPILATION_MODE'] = 'wholemodule'
+        end
+      end
+    end
   end
 end
