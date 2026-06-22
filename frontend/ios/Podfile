@@ -5,10 +5,16 @@ source 'https://cdn.cocoapods.org/'
 # Set by expo-router. This enables Fabric-only features from react-native-screens
 ENV['RNS_GAMMA_ENABLED'] ||= '1'
 
-# Pin Firebase iOS SDK to 11.13.0 — the last version compatible with
-# @react-native-firebase v23.x. Firebase 12.x restructured internal Swift types
-# (AuthBackend, AuthRPCRequest etc.) that RNFB v23 Obj-C code references directly.
-$FirebaseSDKVersion = '11.13.0'
+# Pin Firebase iOS SDK to 11.12.0 — stable, confirmed indexed in CocoaPods CDN.
+# 11.13.0 causes "FirebaseAnalytics/IdentitySupport not found" on EAS because
+# the subspec is not yet indexed in the remote CDN cache.
+$FirebaseSDKVersion = '11.12.0'
+
+# Use FirebaseAnalytics WITHOUT the IdentitySupport subspec.
+# This avoids "FirebaseAnalytics/IdentitySupport (= x.x.x)" resolution failures
+# on EAS build machines where that subspec is not indexed in the CDN.
+# Note: analytics will still work; Ad ID collection is simply not linked.
+$RNFirebaseAnalyticsWithoutAdIdSupport = true
 
 require File.join(File.dirname(`node --print "require.resolve('expo/package.json')"`), "scripts/autolinking")
 require File.join(File.dirname(`node --print "require.resolve('react-native/package.json')"`), "scripts/react_native_pods")
