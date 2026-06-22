@@ -32,6 +32,7 @@ import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
 import { useUploadStore } from '../../src/store/uploadStore';
+import { DeviceEventEmitter } from 'react-native';
 import api, {
   getUserPosts,
   getUserProfile,
@@ -530,6 +531,14 @@ export default function ProfileScreen() {
       loadPosts(true);
     }
   }, [uploadStatus]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('post_uploaded', () => {
+      setOffset(0);
+      loadPosts(true);
+    });
+    return () => sub.remove();
+  }, [loadPosts]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
