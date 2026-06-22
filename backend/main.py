@@ -207,6 +207,20 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_jaap_reminder_worker())
     logger.info("Jaap reminder worker started")
 
+    # Run Krishna RAG pipeline diagnostics at startup
+    try:
+        from services.krishna_rag_service import run_startup_diagnostics
+        rag_diag = await asyncio.to_thread(run_startup_diagnostics)
+        logger.info(
+            "[RAG-Startup] mode=%s | chromadb_installed=%s | collection_count=%d | local_verses=%d",
+            rag_diag.get("rag_mode"),
+            rag_diag.get("chromadb_installed"),
+            rag_diag.get("collection_count", 0),
+            rag_diag.get("local_verses_loaded", 0),
+        )
+    except Exception as _rag_diag_err:
+        logger.error("[RAG-Startup] Diagnostics failed to run: %s", _rag_diag_err)
+
     _panchang_prefetch_task = None
     logger.info("Panchang prefetch loop disabled")
     
@@ -3025,7 +3039,7 @@ async def get_posts_feed(
 
     # Fetch user for location data
     current_user = await db.get_document('users', current_user_id)
-    user_loc = current_user.get('location', {}) if current_user else {}
+    user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
     # Fetch a large pool of posts (latest and random mixes)
     posts_dict = {}
@@ -8560,9 +8574,22 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
             rag_context = build_rag_context(shlokas)
             if rag_context:
-                logger.info(f"RAG: Injecting {len(shlokas)} Gita shlokas into Krishna response for enhanced query: '{rag_query}'")
+                source = shlokas[0].get("source", "unknown") if shlokas else "unknown"
+                logger.info(
+                    "[RAG] Injecting %d Gita shlokas (source=%s) for query: '%s'",
+                    len(shlokas), source, rag_query[:60],
+                )
+            else:
+                logger.warning(
+                    "[RAG] No shlokas retrieved for query: '%s' — Krishna will respond without Gita grounding.",
+                    rag_query[:60],
+                )
     except Exception as rag_err:
-        logger.warning(f"RAG retrieval skipped (non-fatal): {rag_err}")
+        logger.error(
+            "[RAG] Retrieval raised an unexpected exception: %s — "
+            "Krishna will respond without Gita grounding.",
+            rag_err,
+        )
         rag_context = ""
 
     # Build the system prompt with optional RAG context
@@ -8601,16 +8628,19 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         }
 
         payload = {
-            "model": "meta/llama-3.1-70b-instruct",
+            "model": "google/gemma-4-31b-it",
             "messages": combined_messages,
-            "max_tokens": 2048,
-            "temperature": 0.7,
+            "max_tokens": 16384,
+            "temperature": 1.00,
             "top_p": 0.95,
+            "frequency_penalty": 0.7,
+            "presence_penalty": 0.6,
             "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False}
         }
 
         try:
-            response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
+            response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
             response.raise_for_status()
             result = response.json()
             return result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -8631,21 +8661,40 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             from datetime import datetime, timezone
             db = await get_firestore()
             chat_ref = db.collection('krishna_chats').document(user_id)
-            
-            db_messages.append({
-                "role": "user",
-                "content": latest_user_msg,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
-            db_messages.append({
-                "role": "assistant",
-                "content": assistant_reply,
-                "timestamp": datetime.now(timezone.utc).isoformat()
-            })
-            
+
+            # Idempotency guard: skip append if the last two messages in Firestore
+            # already represent this exact user-turn + assistant-reply pair.
+            # This prevents duplicate history entries on network retries or double-submits.
+            already_stored = False
+            if len(db_messages) >= 2:
+                _prev_user = db_messages[-2]
+                _prev_asst = db_messages[-1]
+                if (
+                    _prev_user.get("role") == "user"
+                    and _prev_user.get("content") == latest_user_msg
+                    and _prev_asst.get("role") == "assistant"
+                ):
+                    already_stored = True
+                    logger.info(
+                        "[Chat] Duplicate request detected for user %s — skipping Firestore append.",
+                        user_id,
+                    )
+
+            if not already_stored:
+                db_messages.append({
+                    "role": "user",
+                    "content": latest_user_msg,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+                db_messages.append({
+                    "role": "assistant",
+                    "content": assistant_reply,
+                    "timestamp": datetime.now(timezone.utc).isoformat()
+                })
+
             # Limit history to 100 messages to respect document limits
             db_messages = db_messages[-100:]
-            
+
             chat_ref.set({
                 "messages": db_messages,
                 "profile": profile,
@@ -12208,15 +12257,16 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         )
 
         payload = {
-            "model": "meta/llama-3.1-70b-instruct",
+            "model": "google/gemma-4-31b-it",
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 1024,
-            "temperature": 0.7,
+            "temperature": 1.0,
             "top_p": 0.95,
             "stream": False,
+            "chat_template_kwargs": {"enable_thinking": False}
         }
 
-        response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
+        response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
