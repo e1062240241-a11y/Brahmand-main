@@ -72,7 +72,6 @@
     "expo-video": "~55.0.17",
     "expo-web-browser": "~55.0.14",
     "firebase": "^12.11.0",
-    "lightningcss-darwin-x64": "^1.32.0",
     "pdfjs-dist": "^5.6.205",
     "react": "19.2.0",
     "react-dom": "19.2.0",
@@ -107,6 +106,10 @@
     "typescript": "~5.9.3",
     "util": "^0.12.5",
     "vm-browserify": "^1.1.2"
+  },
+  "optionalDependencies": {
+    "lightningcss-darwin-x64": "^1.32.0",
+    "lightningcss-darwin-arm64": "^1.32.0"
   },
   "private": true,
   "overrides": {
