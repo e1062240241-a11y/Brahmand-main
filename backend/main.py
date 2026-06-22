@@ -2967,6 +2967,28 @@ async def _upload_post_from_storage_impl(
             logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
             raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
 
+        thumbnail_url = None
+        if has_ffmpeg:
+            temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
+            temp_thumb_file.close()
+            try:
+                await asyncio.to_thread(_generate_video_thumbnail, upload_source, temp_thumb_file.name)
+                if os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                    thumbnail_url, _ = await _upload_post_media_file_to_bunny(
+                        user_id,
+                        temp_thumb_file.name,
+                        'image/jpeg',
+                        base_url
+                    )
+            except Exception as thumb_err:
+                logger.warning(f"Failed to generate/upload thumbnail for storage post: {thumb_err}")
+            finally:
+                if os.path.exists(temp_thumb_file.name):
+                    try:
+                        os.unlink(temp_thumb_file.name)
+                    except Exception:
+                        pass
+
         post_doc = await _create_post_document(
             db=db,
             user_id=user_id,
@@ -2986,6 +3008,7 @@ async def _upload_post_from_storage_impl(
                 'height': passed_media_height if passed_media_height else metadata.get('height', 0),
                 'crop_offset_x': crop_offset_x,
                 'crop_offset_y': crop_offset_y,
+                'thumbnail_url': thumbnail_url,
             },
             category=category,
             community_level=community_level,

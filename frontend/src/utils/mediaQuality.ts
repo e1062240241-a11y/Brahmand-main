@@ -82,6 +82,15 @@ export function getMediaUrl(post: any, quality: MediaQuality): string {
 
   if (!rawUrl) return '';
 
+  const mediaType = String(post?.media_type || post?.mediaType || '').toLowerCase();
+  const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(rawUrl);
+
+  if (isVideo) {
+    // Videos: always return the original video URL (do not use the image poster/thumbnail here,
+    // as overriding media_url with a jpeg causes AVPlayer to crash/throw errors when preloading or playing).
+    return rawUrl;
+  }
+
   if (quality === 'high') {
     return rawUrl;
   }
@@ -95,14 +104,6 @@ export function getMediaUrl(post: any, quality: MediaQuality): string {
 
   if (explicitThumb && explicitThumb !== rawUrl) {
     return explicitThumb;
-  }
-
-  // Videos: always use poster/thumbnail for non-active posts
-  const mediaType = String(post?.media_type || post?.mediaType || '').toLowerCase();
-  const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(rawUrl);
-  if (isVideo) {
-    // Return poster/thumbnail; if none, return empty so no video loads
-    return explicitThumb || '';
   }
 
   // Images: try CDN thumbnail transform

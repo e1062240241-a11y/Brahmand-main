@@ -381,13 +381,19 @@ try {
 
 const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media: string | any, style: any, onPress?: () => void, isActive?: boolean }) => {
   const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
-  const isVideo = typeof mediaUrl === 'string' && (
-    /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
-    mediaUrl.toLowerCase().startsWith('video') || 
-    mediaUrl.toLowerCase().includes('/video/') || 
-    mediaUrl.toLowerCase().includes('_video_') ||
-    ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
-     !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
+  const isVideo = (
+    (typeof media === 'object' && media !== null && (
+      String(media.type || media.media_type || media.mediaType || '').toLowerCase().startsWith('video')
+    )) || (
+      typeof mediaUrl === 'string' && (
+        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
+        mediaUrl.toLowerCase().startsWith('video') || 
+        mediaUrl.toLowerCase().includes('/video/') || 
+        mediaUrl.toLowerCase().includes('_video_') ||
+        ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
+         !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
+      )
+    )
   );
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const isFocused = useIsFocused();
@@ -549,13 +555,19 @@ export default function CommunityDetailScreen() {
       if (!item) return false;
       const url = item.image || item.image_url || item.media_url || '';
       const mediaUrl = typeof url === 'string' ? url : (url?.uri || '');
-      return typeof mediaUrl === 'string' && (
-        /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
-        mediaUrl.toLowerCase().startsWith('video') || 
-        mediaUrl.toLowerCase().includes('/video/') || 
-        mediaUrl.toLowerCase().includes('_video_') ||
-        ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
-         !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
+      return (
+        (typeof url === 'object' && url !== null && (
+          String(url.type || url.media_type || url.mediaType || '').toLowerCase().startsWith('video')
+        )) || (
+          typeof mediaUrl === 'string' && (
+            /\.(mp4|mov|m4v|webm|mkv|3gp|avi)(\?|$)/i.test(mediaUrl) ||
+            mediaUrl.toLowerCase().startsWith('video') || 
+            mediaUrl.toLowerCase().includes('/video/') || 
+            mediaUrl.toLowerCase().includes('_video_') ||
+            ((mediaUrl.toLowerCase().includes('expopicker') || mediaUrl.toLowerCase().includes('imagepicker')) && 
+             !/\.(jpg|jpeg|png|gif|heic|webp|bmp|tiff|avif)(\?|$)/i.test(mediaUrl))
+          )
+        )
       );
     };
 
