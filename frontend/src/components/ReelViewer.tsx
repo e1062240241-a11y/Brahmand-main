@@ -1545,8 +1545,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   return acc;
                 }, {} as Record<string, any[]>);
 
+                // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
                 return (
-                  {/* ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android */}
                   <FlatList
                     data={parentComments}
                     keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
