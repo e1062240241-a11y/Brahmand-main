@@ -325,10 +325,22 @@ const uploadLargeVideoViaBunny = async (
   }
 
   const uploadId = makeUploadId();
-  const safeName = (file.name || `video-${uploadId}.mp4`).replace(
-    /[^a-zA-Z0-9._-]/g,
-    "_",
-  );
+
+  // Make sure we keep the correct extension if file.name lacks it but file.type is known
+  let fileNameWithExt = file.name || `video-${uploadId}.mp4`;
+  if (!fileNameWithExt.includes('.') && file.type) {
+     if (file.type === 'video/quicktime') fileNameWithExt += '.mov';
+     else if (file.type === 'video/mp4') fileNameWithExt += '.mp4';
+     else if (file.type === 'video/webm') fileNameWithExt += '.webm';
+     else fileNameWithExt += '.mp4';
+  }
+
+  // Preserve the extension when sanitizing the name
+  const lastDotIdx = fileNameWithExt.lastIndexOf('.');
+  const namePart = lastDotIdx > -1 ? fileNameWithExt.substring(0, lastDotIdx) : fileNameWithExt;
+  const extPart = lastDotIdx > -1 ? fileNameWithExt.substring(lastDotIdx) : '.mp4';
+  const safeName = namePart.replace(/[^a-zA-Z0-9_-]/g, "_") + extPart;
+
   const objectPath = `raw-post-videos/direct/${uploadId}-${safeName}`;
 
   const credsResponse = await api.get("/posts/bunny-upload-credentials");
