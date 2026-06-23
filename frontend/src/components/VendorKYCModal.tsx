@@ -19,6 +19,7 @@ import {
 import { useVendorStore } from '../store/vendorStore';
 import { useAuthStore } from '../store/authStore';
 import { uploadFileToFirebase } from '../services/firebase/storageService';
+import * as FileSystem from 'expo-file-system';
 
 let TextRecognition: typeof import('expo-text-recognition') | null = null;
 try {
@@ -442,18 +443,24 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
   };
 
   const getBase64FromUri = async (uri: string) => {
-    const response = await fetch(uri);
-    const blob = await response.blob();
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        const base64 = result.includes(',') ? result.split(',')[1] : result;
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          const base64 = result.includes(',') ? result.split(',')[1] : result;
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      return await FileSystem.readAsStringAsync(uri, {
+        encoding: 'base64',
+      });
+    }
   };
 
   const handleSubmit = async () => {

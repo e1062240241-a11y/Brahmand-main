@@ -732,6 +732,7 @@ export default function RootLayout() {
             gestureEnabled: true,
             gestureDirection: 'horizontal'
           }}>
+<<<<<<< HEAD
             {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
             <Stack.Screen
               key="(tabs)"
@@ -890,6 +891,166 @@ export default function RootLayout() {
           <ToastContainer />
         </MuteProvider>
       </SafeAreaProvider>
+=======
+              {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
+              <Stack.Screen
+                key="(tabs)"
+                name="(tabs)"
+                options={{
+                  animation: 'fade',
+                  gestureEnabled: false
+                }}
+              />
+              <Stack.Screen
+                key="index"
+                name="index"
+                options={{
+                  animation: 'fade',
+                  gestureEnabled: false
+                }}
+              />
+              {/* Modals and Creation Forms - Slide from Bottom */}
+              <Stack.Screen
+                key="community-request/blood"
+                name="community-request/blood"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community-request/food"
+                name="community-request/food"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community-request/gau-seva"
+                name="community-request/gau-seva"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community-request/animal-care"
+                name="community-request/animal-care"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community-request/temple-help"
+                name="community-request/temple-help"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community-request/emergency"
+                name="community-request/emergency"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community-request/other"
+                name="community-request/other"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="sos"
+                name="sos"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="kyc-submit"
+                name="kyc-submit"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="kyc-success"
+                name="kyc-success"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="live-jaap-welcome"
+                name="live-jaap-welcome"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="circle/create"
+                name="circle/create"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community/create"
+                name="community/create"
+                options={{
+                  animation: 'slide_from_right',
+                  gestureDirection: 'vertical'
+                }}
+              />
+              <Stack.Screen
+                key="community-tweets"
+                name="community-tweets"
+                options={{
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                key="jaap-completed"
+                name="jaap-completed"
+                options={{
+                  animation: 'fade',
+                  gestureEnabled: false
+                }}
+              />
+              <Stack.Screen
+                key="library"
+                name="library/index"
+                options={{
+                  animation: 'slide_from_right',
+                }}
+              />
+              <Stack.Screen
+                key="my-krishna"
+                name="my-krishna"
+                options={{
+                  animation: 'slide_from_right',
+                }}
+              />
+              {/* Other standard stack navigations will inherit default slide_from_right */}
+            </Stack>
+            <GlobalFAB />
+            <UploadProgressBanner />
+            <ToastContainer />
+          </MuteProvider>
+        </SafeAreaProvider>
+>>>>>>> 5b3de6bbe14955f7c31a4053db27ec32661d87d0
     </GestureHandlerRootView>
   );
 }
