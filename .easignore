@@ -39,4 +39,4 @@ search_ocr.py
 *.patch
 *.txt
 tmp/
-Library/
+/Library/
