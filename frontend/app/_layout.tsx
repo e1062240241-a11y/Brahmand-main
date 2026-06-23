@@ -870,13 +870,6 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
-              key="library"
-              name="library/index"
-              options={{
-                animation: 'slide_from_right',
-              }}
-            />
-            <Stack.Screen
               key="my-krishna"
               name="my-krishna"
               options={{

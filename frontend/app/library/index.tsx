@@ -12,7 +12,7 @@ import {
   StatusBar,
   Dimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FONTS } from '../../src/constants/theme';
@@ -87,6 +87,7 @@ function LibraryPage() {
 
   return (
     <View style={styles.root}>
+      <Stack.Screen options={{ animation: 'slide_from_right' }} />
       <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Community tab background */}
