@@ -319,11 +319,6 @@ const uploadLargeVideoViaBunny = async (
   file: { uri: string; name: string; type: string },
   onProgress?: (progressEvent: any) => void,
 ) => {
-  const blob = await readFileAsBlob(file);
-  if (!blob || blob.size <= 0) {
-    throw new Error("Could not read selected video file");
-  }
-
   const uploadId = makeUploadId();
 
   // Make sure we keep the correct extension if file.name lacks it but file.type is known
@@ -354,8 +349,17 @@ const uploadLargeVideoViaBunny = async (
 
   console.info("[API] Direct Bunny upload URL:", fullUploadUrl);
   console.info("[API] Direct Bunny upload headers:", uploadHeaders);
+
+  let fileSize = 0;
+
   try {
     if (Platform.OS === "web") {
+      const blob = await readFileAsBlob(file);
+      if (!blob || blob.size <= 0) {
+        throw new Error("Could not read selected video file");
+      }
+      fileSize = blob.size;
+
       const putResponse = await axios.put(fullUploadUrl, blob, {
         headers: uploadHeaders,
         onUploadProgress: (progressEvent) => {
@@ -372,73 +376,55 @@ const uploadLargeVideoViaBunny = async (
         putResponse.status,
       );
     } else {
-      let simulatedProgress = 0;
-      const progressInterval = setInterval(() => {
-        if (simulatedProgress < 90) {
-          simulatedProgress += Math.random() * 8 + 4;
-          if (simulatedProgress > 90) simulatedProgress = 90;
-          if (onProgress) {
+      // Mobile production-safe path: stream using expo-file-system
+      const fileInfo = await FileSystem.getInfoAsync(file.uri);
+      if (!fileInfo.exists) {
+        throw new Error("Local video file does not exist");
+      }
+      fileSize = (fileInfo as any).size || 0;
+
+      const uploadTask = FileSystem.createUploadTask(
+        fullUploadUrl,
+        file.uri,
+        {
+          httpMethod: "PUT",
+          uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: uploadHeaders,
+        },
+        (progress) => {
+          if (onProgress && progress.totalBytesExpectedToSend) {
             onProgress({
-              loaded: Math.round(simulatedProgress),
-              total: 100,
+              loaded: progress.totalBytesSent,
+              total: progress.totalBytesExpectedToSend,
             });
           }
         }
-      }, 400);
+      );
 
-      try {
-        const response = await fetch(fullUploadUrl, {
-          method: "PUT",
-          headers: uploadHeaders,
-          body: blob,
-        });
+      const result = await uploadTask.uploadAsync();
 
-        clearInterval(progressInterval);
-
-        if (!response.ok) {
-          const text = await response.text();
-          console.error(
-            "[API] Native fetch direct Bunny upload failed:",
-            response.status,
-            text,
-          );
-          throw new Error(`Upload failed: ${response.status} ${text}`);
-        }
-
-        if (onProgress) {
-          onProgress({
-            loaded: 100,
-            total: 100,
-          });
-        }
-
-        console.info(
-          "[API] Direct Bunny upload success status:",
-          response.status,
+      if (!result || result.status !== 200) {
+        console.error(
+          "[API] Native FileSystem direct Bunny upload failed:",
+          result?.status,
+          result?.body,
         );
-      } catch (fetchErr) {
-        clearInterval(progressInterval);
-        throw fetchErr;
+        throw new Error(`Upload failed: ${result?.status} ${result?.body}`);
       }
+
+      console.info(
+        "[API] Native FileSystem direct Bunny upload success status:",
+        result.status,
+      );
     }
   } catch (putError: any) {
     console.error("[API] Direct Bunny upload failed:", putError);
-    if (putError.response) {
-      console.error(
-        "[API] Direct Bunny upload error response status:",
-        putError.response.status,
-      );
-      console.error(
-        "[API] Direct Bunny upload error response data:",
-        putError.response.data,
-      );
-    }
     throw putError;
   }
 
   return {
     objectPath,
-    fileSize: blob.size,
+    fileSize,
   };
 };
 
