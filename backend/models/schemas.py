@@ -532,7 +532,7 @@ class VendorCreate(BaseModel):
     menu_items: Optional[List[str]] = Field(default_factory=list, max_items=30)
     offers_home_delivery: Optional[bool] = False
     business_media_key: Optional[str] = None
-    kyc_status: KYCStatus = KYCStatus.PENDING
+    kyc_status: Optional[KYCStatus] = None
     gstin: Optional[str] = None
     business_email: Optional[str] = None
     website_link: Optional[str] = None
@@ -584,7 +584,7 @@ class VendorResponse(BaseModel):
     menu_items: List[str] = []
     offers_home_delivery: bool = False
     business_media_key: Optional[str] = None
-    kyc_status: Optional[KYCStatus] = KYCStatus.PENDING
+    kyc_status: Optional[KYCStatus] = None
     distance: Optional[float] = None
     created_at: datetime
 

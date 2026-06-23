@@ -586,6 +586,9 @@ export interface AdminUserKycRequest {
   kyc_role?: string;
   kyc_id_type?: string;
   kyc_submitted_at?: string;
+  kyc_id_photo?: string;
+  kyc_selfie_photo?: string;
+  kyc_id_number?: string;
 }
 
 export interface AdminPostReport {
@@ -677,8 +680,9 @@ export const adminDeleteVendor = (
     { headers: { Authorization: `Bearer ${adminToken}` } },
   );
 
-export const getAdminPendingKyc = (adminToken: string) =>
+export const getAdminPendingKyc = (adminToken: string, status: string = "pending") =>
   adminApi.get<AdminUserKycRequest[]>("/admin/kyc/pending", {
+    params: { status },
     headers: { Authorization: `Bearer ${adminToken}` },
   });
 

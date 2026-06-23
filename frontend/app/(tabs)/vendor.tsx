@@ -929,12 +929,13 @@ export default function VendorScreen() {
   const renderVendor = ({ item }: { item: Vendor }) => {
     const vendorCategories = item?.categories || [];
     const isApprovedVendor =
-      item.kyc_status === 'verified' ||
-      item.kyc_status === 'approved' ||
-      item.is_verified ||
-      (item as any).review_status === 'approved' ||
-      (item as any).review_status === 'verified' ||
-      (item as any).review_state === 'closed';
+      (item.kyc_status === 'verified' ||
+       item.kyc_status === 'approved' ||
+       item.is_verified ||
+       (item as any).review_status === 'approved' ||
+       (item as any).review_status === 'verified') &&
+      item.kyc_status !== 'rejected' &&
+      (item as any).review_status !== 'rejected';
     
     return (
       <Pressable 

@@ -23,7 +23,7 @@ import { VendorKYCModal } from '../src/components/VendorKYCModal';
 import { getKYCStatus, sendNettyfishOTP, verifyNettyfishOTP } from '../src/services/api';
 import { useTranslation } from '../src/utils/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Rect, G } from 'react-native-svg';
+import Svg, { Path, Rect, G, Circle } from 'react-native-svg';
 
 // Custom SVGs from Figma specs
 const PadlockIcon = () => (
@@ -103,6 +103,114 @@ const CustomBackIcon = () => (
     />
   </Svg>
 );
+
+const SupportIcon = ({ style }: { style?: any }) => (
+  <Svg width={20} height={18} viewBox="0 0 20 18" fill="none" style={style}>
+    <Path 
+      d="M9 18V16H17V8.9C17 6.95 16.3208 5.29583 14.9625 3.9375C13.6042 2.57917 11.95 1.9 10 1.9C8.05 1.9 6.39583 2.57917 5.0375 3.9375C3.67917 5.29583 3 6.95 3 8.9V15H2C1.45 15 0.979167 14.8042 0.5875 14.4125C0.195833 14.0208 0 13.55 0 13V11C0 10.65 0.0875 10.3208 0.2625 10.0125C0.4375 9.70417 0.683333 9.45833 1 9.275L1.075 7.95C1.20833 6.81667 1.5375 5.76667 2.0625 4.8C2.5875 3.83333 3.24583 2.99167 4.0375 2.275C4.82917 1.55833 5.7375 1 6.7625 0.6C7.7875 0.2 8.86667 0 10 0C11.1333 0 12.2083 0.2 13.225 0.6C14.2417 1 15.15 1.55417 15.95 2.2625C16.75 2.97083 17.4083 3.80833 17.925 4.775C18.4417 5.74167 18.775 6.79167 18.925 7.925L19 9.225C19.3167 9.375 19.5625 9.6 19.7375 9.9C19.9125 10.2 20 10.5167 20 10.85V13.15C20 13.4833 19.9125 13.8 19.7375 14.1C19.5625 14.4 19.3167 14.625 19 14.775V16C19 16.55 18.8042 17.0208 18.4125 17.4125C18.0208 17.8042 17.55 18 17 18H9ZM7 11C6.71667 11 6.47917 10.9042 6.2875 10.7125C6.09583 10.5208 6 10.2833 6 10C6 9.71667 6.09583 9.47917 6.2875 9.2875C6.47917 9.09583 6.71667 9 7 9C7.28333 9 7.52083 9.09583 7.7125 9.2875C7.90417 9.47917 8 9.71667 8 10C8 10.2833 7.90417 10.5208 7.7125 10.7125C7.52083 10.9042 7.28333 11 7 11ZM13 11C12.7167 11 12.4792 10.9042 12.2875 10.7125C12.0958 10.5208 12 10.2833 12 10C12 9.71667 12.0958 9.47917 12.2875 9.2875C12.4792 9.09583 12.7167 9 13 9C13.2833 9 13.5208 9.09583 13.7125 9.2875C13.9042 9.47917 14 9.71667 14 10C14 10.2833 13.9042 10.5208 13.7125 10.7125C13.5208 10.9042 13.2833 11 13 11ZM4.025 9.45C3.90833 7.68333 4.44167 6.16667 5.625 4.9C6.80833 3.63333 8.28333 3 10.05 3C11.5333 3 12.8375 3.47083 13.9625 4.4125C15.0875 5.35417 15.7667 6.55833 16 8.025C14.4833 8.00833 13.0875 7.6 11.8125 6.8C10.5375 6 9.55833 4.91667 8.875 3.55C8.60833 4.88333 8.04583 6.07083 7.1875 7.1125C6.32917 8.15417 5.275 8.93333 4.025 9.45Z" 
+      fill="white"
+    />
+  </Svg>
+);
+
+const ProgressRing = ({ progress = 0.35, size = 60, strokeWidth = 5 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference * (1 - progress);
+
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+        <Circle 
+          cx={size / 2} 
+          cy={size / 2} 
+          r={radius} 
+          stroke="#FFDBCC" 
+          strokeWidth={strokeWidth} 
+          fill="none" 
+        />
+        <Circle 
+          cx={size / 2} 
+          cy={size / 2} 
+          r={radius} 
+          stroke="#FF7B00" 
+          strokeWidth={strokeWidth} 
+          fill="none" 
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <View style={{ position: 'absolute' }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: '#A04100' }}>35%</Text>
+      </View>
+    </View>
+  );
+};
+
+const TimelineItem = ({ isCompleted, isActive, title, description, iconName, showLine }: any) => {
+  const getIconColor = () => {
+    if (title === "Documents Received") return '#FFFFFF';
+    if (isCompleted) return '#10B981';
+    if (isActive) return '#FF7B00';
+    return '#9CA3AF';
+  };
+
+  const getBgColor = () => {
+    if (title === "Documents Received") return '#3C6A00';
+    if (isCompleted) return '#D1FAE5';
+    if (isActive) return '#FFEEE5';
+    return '#F3F4F6';
+  };
+
+  const getBorderRadius = () => {
+    if (title === "Documents Received") return 9999;
+    return 16;
+  };
+
+  return (
+    <View style={{ flexDirection: 'row', width: '100%', minHeight: 60 }}>
+      <View style={{ alignItems: 'center', marginRight: 16, width: 32 }}>
+        <View style={{ 
+          width: 32, 
+          height: 32, 
+          borderRadius: getBorderRadius(), 
+          backgroundColor: getBgColor(), 
+          justifyContent: 'center', 
+          alignItems: 'center' 
+        }}>
+          <Ionicons name={iconName as any} size={18} color={getIconColor()} />
+        </View>
+        {showLine && (
+          <View style={{ 
+            flex: 1, 
+            width: 2, 
+            backgroundColor: isCompleted ? '#10B981' : '#E5E7EB',
+            marginVertical: 4
+          }} />
+        )}
+      </View>
+      <View style={{ flex: 1, paddingBottom: 12 }}>
+        <Text style={{ 
+          fontSize: 15, 
+          fontWeight: '600', 
+          color: '#231A11',
+          marginBottom: 4
+        }}>
+          {title}
+        </Text>
+        <Text style={{ 
+          fontSize: 14, 
+          color: '#5A4136', 
+          lineHeight: 20 
+        }}>
+          {description}
+        </Text>
+      </View>
+    </View>
+  );
+};
 
 export default function KYCStatusScreen() {
   const { t } = useTranslation();
@@ -373,19 +481,27 @@ export default function KYCStatusScreen() {
     );
   }
 
+  const submissionDate = (user as any)?.kyc_submitted_at 
+    ? new Date((user as any).kyc_submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    
+  const requestId = "BR-" + (myVendor?.id ? myVendor.id.slice(0, 4).toUpperCase() : "8921");
+
   return (
     <LinearGradient
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
-      locations={[0, 0.0913, 0.25]}
+      locations={isReview ? [0, 0.1058, 0.2212] : [0, 0.0913, 0.25]}
       style={styles.container}
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1 }} edges={isReview ? ['top', 'bottom'] : ['top']}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={24} color="#000000" />
+            {isReview ? <CustomBackIcon /> : <Ionicons name="chevron-back" size={24} color="#000000" />}
           </TouchableOpacity>
-          <Text style={styles.title}>Verify Your Number & KYC</Text>
+          <Text style={isReview ? styles.titleText : styles.title}>
+            {isReview ? 'Request Status' : 'Verify Your Number & KYC'}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -396,24 +512,22 @@ export default function KYCStatusScreen() {
         ) : (
           <ScrollView 
             style={styles.scrollContainer}
-            contentContainerStyle={styles.scrollContent}
+            contentContainerStyle={isReview ? styles.scrollContentStatus : styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {isVerified || isReview ? (
+            {isVerified ? (
               <View style={[styles.whiteCard, { alignItems: 'center', gap: 20, paddingVertical: 32, marginTop: 24 }]}>
                 <View style={{ alignItems: 'center', gap: 12, width: '100%' }}>
                   <Ionicons 
-                    name={isVerified ? 'checkmark-circle' : 'time'} 
+                    name="checkmark-circle"
                     size={64} 
-                    color={isVerified ? '#2E7D32' : '#F26522'} 
+                    color="#2E7D32" 
                   />
                   <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 8 }}>
-                    {isVerified ? 'KYC Verified' : 'KYC Under Review'}
+                    KYC Verified
                   </Text>
                   <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20, paddingHorizontal: 16 }}>
-                    {isVerified 
-                      ? 'Your KYC documents have been successfully verified. You now have full access to all features.' 
-                      : 'Your documents have been submitted and are under review. This process usually takes up to 24 hours. Awaiting Admin Approval.'}
+                    Your KYC documents have been successfully verified. You now have full access to all features.
                   </Text>
                 </View>
                 <TouchableOpacity 
@@ -423,6 +537,85 @@ export default function KYCStatusScreen() {
                   <Text style={styles.primaryBtnText}>Go Back</Text>
                 </TouchableOpacity>
               </View>
+            ) : isReview ? (
+              <>
+                {/* Status Card */}
+                <View style={styles.statusCard}>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={styles.statusCardLabel}>REQUEST #{requestId}</Text>
+                    <Text style={styles.statusCardTitle}>In Review</Text>
+                    <Text style={styles.statusCardSubtitle}>Submitted on {submissionDate}</Text>
+                  </View>
+                  <ProgressRing progress={0.35} />
+                </View>
+
+                {/* Next Steps Section */}
+                <View style={styles.nextStepsSection}>
+                  <Text style={styles.sectionHeading}>Next Steps</Text>
+                  
+                  <View style={{ marginTop: 16 }}>
+                    <TimelineItem 
+                      isCompleted={true}
+                      isActive={false}
+                      title="Documents Received"
+                      description="Successfully uploaded all KYC files."
+                      iconName="checkmark"
+                      showLine={true}
+                    />
+                    
+                    <TimelineItem 
+                      isCompleted={false}
+                      isActive={true}
+                      title="Final Approval"
+                      description="Quality check by our verification experts."
+                      iconName="sync"
+                      showLine={true}
+                    />
+                    
+                    <TimelineItem 
+                      isCompleted={false}
+                      isActive={false}
+                      title="Business Profile Live"
+                      description="Your business visible to the community."
+                      iconName="settings"
+                      showLine={false}
+                    />
+                  </View>
+                </View>
+
+                {/* What to Expect Box */}
+                <View style={styles.expectBox}>
+                  <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
+                    <Ionicons name="information-circle" size={24} color="#D97706" style={{ marginTop: 2 }} />
+                    <View style={{ flex: 1, gap: 4 }}>
+                      <Text style={styles.expectBoxTitle}>What to Expect</Text>
+                      <Text style={styles.expectBoxDescription}>
+                        Our team is currently verifying your business details. You will receive a push notification once the process is complete.
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Bottom Actions */}
+                <View style={styles.bottomActions}>
+                  <TouchableOpacity 
+                    style={styles.contactSupportBtn}
+                    onPress={() => {
+                      Alert.alert("Support", "Connecting to support. Please dial: +91 8747283324");
+                    }}
+                  >
+                    <SupportIcon style={{ marginRight: 8 }} />
+                    <Text style={styles.contactSupportBtnText}>Contact Support</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.backHomeBtn}
+                    onPress={() => router.replace('/(tabs)/vendor' as any)}
+                  >
+                    <Text style={styles.backHomeBtnText}>Back to Home</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
             ) : (
               <>
                 {/* Middle Illustration Cards Section */}
@@ -680,7 +873,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   whiteCard: {
-    width: 361,
+    width: '100%',
     alignSelf: 'center',
     padding: 24,
     flexDirection: 'column',
@@ -994,7 +1187,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
-    width: 361,
+    width: '100%',
     minHeight: 85,
     alignSelf: 'center',
     gap: 12,
@@ -1031,5 +1224,129 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 32 : 24,
     paddingTop: 12,
     backgroundColor: 'transparent',
+  },
+  scrollContentStatus: {
+    paddingHorizontal: 16,
+    paddingBottom: 24,
+    gap: 17,
+  },
+  titleText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  statusCard: {
+    width: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFDBCC',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignSelf: 'center',
+    shadowColor: 'rgba(0, 0, 0, 0.05)',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  statusCardLabel: {
+    color: '#A04100',
+    fontSize: 14,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  statusCardTitle: {
+    color: '#000000',
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    marginVertical: 2,
+  },
+  statusCardSubtitle: {
+    color: '#5A4136',
+    fontSize: 14,
+    fontWeight: '400',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  nextStepsSection: {
+    width: '100%',
+    alignSelf: 'center',
+    paddingHorizontal: 8,
+  },
+  sectionHeading: {
+    color: '#000000',
+    fontSize: 22,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  expectBox: {
+    width: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EBE1D3',
+    backgroundColor: 'rgba(235, 225, 211, 0.3)',
+    padding: 16,
+    alignSelf: 'center',
+  },
+  expectBoxTitle: {
+    color: '#353127',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  expectBoxDescription: {
+    color: '#4C463B',
+    fontSize: 14,
+    fontWeight: '400',
+    lineHeight: 22.75,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  bottomActions: {
+    width: '100%',
+    alignSelf: 'center',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  contactSupportBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 45,
+    backgroundColor: '#FF7B00',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    shadowColor: 'rgba(255, 107, 0, 0.2)',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 5,
+  },
+  contactSupportBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  backHomeBtn: {
+    width: '100%',
+    height: 56,
+    borderRadius: 41,
+    borderWidth: 2,
+    borderColor: '#FF7B00',
+    backgroundColor: 'rgba(255, 255, 255, 0.50)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backHomeBtnText: {
+    color: '#A04100',
+    fontSize: 16,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 });

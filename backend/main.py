@@ -7775,18 +7775,26 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc(token_data: dict = Depends(verify_token)):
-    """Get all users with pending KYC (admin only)"""
+async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
+    """Get all users with pending or verified KYC (admin only)"""
     db, _ = await _ensure_admin_user(token_data)
 
+    target_statuses = ['pending', 'manual_review']
+    if status == 'verified':
+        target_statuses = ['verified']
+    elif status == 'rejected':
+        target_statuses = ['rejected']
+    elif status == 'all':
+        target_statuses = ['pending', 'manual_review', 'verified', 'rejected']
+
     try:
-        pending = await db.query_documents('users', filters=[('kyc_status', 'in', ['pending', 'manual_review'])])
+        pending = await db.query_documents('users', filters=[('kyc_status', 'in', target_statuses)])
     except Exception as query_error:
         logger.warning(f"/admin/kyc/pending primary query failed, using fallback scan: {query_error}")
         all_users = await db.query_documents('users')
         pending = [
             u for u in (all_users or [])
-            if u.get('kyc_status') in ['pending', 'manual_review']
+            if u.get('kyc_status') in target_statuses
         ]
     
     # Return only necessary fields
@@ -7796,7 +7804,10 @@ async def get_pending_kyc(token_data: dict = Depends(verify_token)):
         'sl_id': u.get('sl_id'),
         'kyc_role': u.get('kyc_role'),
         'kyc_id_type': u.get('kyc_id_type'),
-        'kyc_submitted_at': u.get('kyc_submitted_at')
+        'kyc_submitted_at': u.get('kyc_submitted_at'),
+        'kyc_id_photo': u.get('kyc_id_photo'),
+        'kyc_selfie_photo': u.get('kyc_selfie_photo'),
+        'kyc_id_number': u.get('kyc_id_number'),
     } for u in pending]
 
 
@@ -9348,12 +9359,6 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
 
-    central_vendor_kyc_verified = (
-        (user or {}).get('kyc_status') == 'verified'
-        and (user or {}).get('kyc_role') == 'vendor'
-    )
-    verified_at = (user or {}).get('kyc_verified_at') or datetime.utcnow().isoformat() + 'Z'
-
     normalized_categories = [str(category).strip() for category in (data.categories or []) if str(category).strip()]
     owner_name = (data.owner_name or (user or {}).get('name') or 'Vendor Owner').strip()
     full_address = (data.full_address or '').strip()
@@ -9395,17 +9400,27 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "menu_items": data.menu_items if data.menu_items else [],
         "offers_home_delivery": bool(data.offers_home_delivery),
         "business_media_key": data.business_media_key,
-        "kyc_status": 'verified' if central_vendor_kyc_verified else 'pending',
-        "kyc_verified_at": verified_at if central_vendor_kyc_verified else None,
-        "kyc_reviewed_by": 'system_user_kyc_sync' if central_vendor_kyc_verified else None,
-        "kyc_review_note": 'Applied from central user KYC status' if central_vendor_kyc_verified else None,
+        "kyc_status": None,
+        "kyc_verified_at": None,
+        "kyc_reviewed_by": None,
+        "kyc_review_note": None,
     }
 
     vendor_id = await db.create_document('vendors', vendor_data)
     vendor_data['id'] = vendor_id
 
-    # Update user to mark as vendor
-    await db.update_document('users', user_id, {'is_vendor': True, 'vendor_id': vendor_id})
+    # Update user to mark as vendor and reset KYC/verified status to make KYC steps mandatory
+    await db.update_document('users', user_id, {
+        'is_vendor': True,
+        'vendor_id': vendor_id,
+        'kyc_status': None,
+        'is_verified': False,
+        'kyc_role': 'vendor',
+        'kyc_submitted_at': None,
+        'kyc_verified_at': None,
+        'kyc_rejection_reason': None,
+        'kyc_aadhaar_otp_verified': False,
+    })
 
     await _sync_vendor_to_admin_queue(db, vendor_id)
 
@@ -9461,23 +9476,22 @@ async def get_vendors(
             vendor['user_is_verified'] = user_doc.get('is_verified')
 
     # ── KYC GATE: Only show vendors who have completed KYC verification ──
-    # A vendor is considered verified if any of the following is true:
-    #   1. kyc_status is 'verified' or 'approved'
-    #   2. review_status is 'verified' or 'approved'
-    #   3. review_state is 'closed' (legacy admin-approved path)
-    #   4. The owner user profile is verified/approved centrally
-    #   5. The vendor has no owner_id (legacy/seeded vendors)
+    # A vendor is considered verified if:
+    #   - kyc_status, review_status, or user_kyc_status is 'verified' or 'approved'
+    #   - And none of them are 'rejected'
+    #   - Or it's a legacy/seeded vendor with no owner_id
     def _is_kyc_cleared(v: dict) -> bool:
         kyc = (v.get('kyc_status') or '').lower()
         rev = (v.get('review_status') or '').lower()
-        state = (v.get('review_state') or '').lower()
-        
         user_kyc = (v.get('user_kyc_status') or '').lower()
         
+        # Deny if explicitly rejected
+        if kyc in ('rejected', 'denied') or rev in ('rejected', 'denied') or user_kyc in ('rejected', 'denied'):
+            return False
+            
         return (
             kyc in ('verified', 'approved') or
             rev in ('verified', 'approved') or
-            state == 'closed' or
             user_kyc in ('verified', 'approved') or
             not v.get('owner_id')
         )
@@ -9537,6 +9551,28 @@ async def get_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
     vendor = await db.get_document('vendors', vendor_id)
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
+        
+    user_id = token_data.get("user_id")
+    is_owner = vendor.get('owner_id') == user_id
+    
+    is_admin = False
+    if user_id:
+        user_doc = await db.get_document('users', user_id)
+        if user_doc and user_doc.get('is_admin'):
+            is_admin = True
+            
+    if not is_owner and not is_admin:
+        kyc = (vendor.get('kyc_status') or '').lower()
+        owner_verified = False
+        owner_id = vendor.get('owner_id')
+        if owner_id:
+            owner_doc = await db.get_document('users', owner_id)
+            if owner_doc and (owner_doc.get('kyc_status') or '').lower() in ('verified', 'approved'):
+                owner_verified = True
+                
+        if not owner_verified and kyc not in ('verified', 'approved') and owner_id:
+            raise HTTPException(status_code=403, detail="This business is awaiting KYC verification and is not live yet.")
+            
     return vendor
 
 
@@ -10366,7 +10402,25 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         raise HTTPException(status_code=400, detail=str(exc))
 
     await db.delete_document('vendors', vendor_id)
-    await db.update_document('users', user_id, {'is_vendor': False, 'vendor_id': None})
+    
+    # Reset owner user's KYC fields, verified status, and badges upon business deletion
+    await db.update_document('users', user_id, {
+        'is_vendor': False,
+        'vendor_id': None,
+        'kyc_status': None,
+        'is_verified': False,
+        'kyc_rejection_reason': None,
+        'kyc_submitted_at': None,
+        'kyc_verified_at': None,
+        'kyc_role': None,
+        'kyc_aadhaar_otp_verified': False,
+    })
+    
+    try:
+        await db.array_remove_update('users', user_id, 'badges', ['Verified Vendor'])
+    except Exception:
+        pass
+
     try:
         await db.delete_document('vendor_admin_reviews', vendor_id)
     except Exception:
@@ -10738,10 +10792,13 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
     db, admin_user_id = await _ensure_admin_user(token_data)
 
     vendor = await db.get_document('vendors', vendor_id)
-    if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
-
-    owner_id = vendor.get('owner_id')
+    review_doc = await db.get_document('vendor_admin_reviews', vendor_id)
+    
+    owner_id = None
+    if vendor:
+        owner_id = vendor.get('owner_id')
+    elif review_doc:
+        owner_id = review_doc.get('owner_id')
 
     # Delete admin reviews
     try:
@@ -10757,7 +10814,8 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
             pass
 
     # Delete vendor
-    await db.delete_document('vendors', vendor_id)
+    if vendor:
+        await db.delete_document('vendors', vendor_id)
 
     # Reset owner's KYC
     if owner_id:
@@ -10769,6 +10827,7 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
             'vendor_id': None,
             'is_vendor': False,
             'kyc_role': None,
+            'kyc_aadhaar_otp_verified': False,
         })
         try:
             await db.array_remove_update('users', owner_id, 'badges', ['Verified Vendor'])

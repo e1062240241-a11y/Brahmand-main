@@ -338,14 +338,26 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
         phone_number: data.phoneNumber,
         latitude: data.latitude,
         longitude: data.longitude,
-        kyc_status: 'pending' as const,
+        kyc_status: undefined,
       };
       const response = await createVendorAPI(transformedData);
       const newVendor = {
         ...response.data,
-        kyc_status: (response?.data?.kyc_status || 'pending') as Vendor['kyc_status'],
+        kyc_status: response?.data?.kyc_status as Vendor['kyc_status'],
       } as Vendor;
       set({ myVendor: newVendor });
+      
+      // Update local authStore user to sync kyc_status (null/None)
+      try {
+        const { useAuthStore } = require('./authStore');
+        useAuthStore.getState().updateUser({
+          kyc_status: response?.data?.kyc_status || null,
+          is_verified: false
+        });
+      } catch (e) {
+        // ignore
+      }
+
       return newVendor;
     } catch (error: any) {
       console.error('createVendor failed:', error?.response?.data || error?.message || error);
@@ -395,6 +407,20 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   deleteVendor: async (vendorId, otp) => {
     await deleteVendorAPI(vendorId, otp);
     set({ myVendor: null });
+    try {
+      const { useAuthStore } = require('./authStore');
+      useAuthStore.getState().updateUser({
+        kyc_status: null,
+        is_verified: false,
+        kyc_rejection_reason: null,
+        kyc_submitted_at: null,
+        kyc_verified_at: null,
+        kyc_role: null,
+        kyc_aadhaar_otp_verified: false,
+      } as any);
+    } catch (e) {
+      console.warn('Failed to update auth store after vendor deletion:', e);
+    }
   },
   
   getFilteredVendors: (category, searchTerm) => {

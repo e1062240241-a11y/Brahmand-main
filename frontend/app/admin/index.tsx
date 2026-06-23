@@ -46,11 +46,25 @@ export default function AdminPanelScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'pending' | 'verified'>('pending');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
   const [vendorRequests, setVendorRequests] = useState<AdminVendorReview[]>([]);
+  const [verifiedVendorRequests, setVerifiedVendorRequests] = useState<AdminVendorReview[]>([]);
+
   const [userKycRequests, setUserKycRequests] = useState<AdminUserKycRequest[]>([]);
+  const [verifiedUserKycRequests, setVerifiedUserKycRequests] = useState<AdminUserKycRequest[]>([]);
+
   const [reportedPosts, setReportedPosts] = useState<AdminPostReport[]>([]);
   const [anonymousUsers, setAnonymousUsers] = useState<AdminAnonymousUser[]>([]);
+
   const [personalityRequests, setPersonalityRequests] = useState<AdminPersonalityVerification[]>([]);
+  const [verifiedPersonalityRequests, setVerifiedPersonalityRequests] = useState<AdminPersonalityVerification[]>([]);
+
   const [misuseReports, setMisuseReports] = useState<AdminSOSMisuseReport[]>([]);
 
   const isKycCompleted = (record: AdminVendorReview) => {
@@ -65,9 +79,19 @@ export default function AdminPanelScreen() {
     [vendorRequests]
   );
 
+  const approvedKycRequests = useMemo(
+    () => (verifiedVendorRequests || []).filter((record) => record.review_status === 'approved'),
+    [verifiedVendorRequests]
+  );
+
   const pendingUserKycRequests = useMemo(
     () => (userKycRequests || []).filter((record) => !!record?.id),
     [userKycRequests]
+  );
+
+  const approvedUserKycRequests = useMemo(
+    () => (verifiedUserKycRequests || []).filter((record) => !!record?.id),
+    [verifiedUserKycRequests]
   );
 
   const pendingPostReports = useMemo(
@@ -90,29 +114,53 @@ export default function AdminPanelScreen() {
     [personalityRequests]
   );
 
+  const approvedPersonalityRequests = useMemo(
+    () => (verifiedPersonalityRequests || []).filter((req) => req.status === 'approved'),
+    [verifiedPersonalityRequests]
+  );
+
   const loadRequests = async () => {
     // Triggering fast refresh
     if (!adminToken) return;
     try {
-      const [vendorResponse, userKycResponse, reportsResponse, anonymousResponse, personalityResponse, sosReportsResponse] = await Promise.all([
+      const [
+        vendorResponse,
+        verifiedVendorResponse,
+        userKycResponse,
+        verifiedUserKycResponse,
+        reportsResponse,
+        anonymousResponse,
+        personalityResponse,
+        verifiedPersonalityResponse,
+        sosReportsResponse
+      ] = await Promise.all([
         getAdminVendorReviewQueue(adminToken, 'pending'),
-        getAdminPendingKyc(adminToken),
+        getAdminVendorReviewQueue(adminToken, 'approved'),
+        getAdminPendingKyc(adminToken, 'pending'),
+        getAdminPendingKyc(adminToken, 'verified'),
         getAdminReports(adminToken, 'pending', 'post', 150),
         getAdminAnonymousUsers(adminToken),
         adminListPersonalityVerifications(adminToken, 'pending'),
+        adminListPersonalityVerifications(adminToken, 'approved'),
         getAdminSOSMisuseReports(adminToken),
       ]);
       console.log('[Admin] Loaded requests:', {
         vendors: vendorResponse.data?.length,
+        verifiedVendors: verifiedVendorResponse.data?.length,
         kyc: userKycResponse.data?.length,
+        verifiedKyc: verifiedUserKycResponse.data?.length,
         personality: personalityResponse.data?.length,
+        verifiedPersonality: verifiedPersonalityResponse.data?.length,
         sosReports: sosReportsResponse.data?.length
       });
       setVendorRequests(Array.isArray(vendorResponse.data) ? vendorResponse.data : []);
+      setVerifiedVendorRequests(Array.isArray(verifiedVendorResponse.data) ? verifiedVendorResponse.data : []);
       setUserKycRequests(Array.isArray(userKycResponse.data) ? userKycResponse.data : []);
+      setVerifiedUserKycRequests(Array.isArray(verifiedUserKycResponse.data) ? verifiedUserKycResponse.data : []);
       setReportedPosts(Array.isArray(reportsResponse.data) ? reportsResponse.data : []);
       setAnonymousUsers(Array.isArray(anonymousResponse.data?.users) ? anonymousResponse.data.users : []);
       setPersonalityRequests(Array.isArray(personalityResponse.data) ? personalityResponse.data : []);
+      setVerifiedPersonalityRequests(Array.isArray(verifiedPersonalityResponse.data) ? verifiedPersonalityResponse.data : []);
       setMisuseReports(Array.isArray(sosReportsResponse.data) ? sosReportsResponse.data : []);
     } catch (error: any) {
       console.error('[Admin] Load failed:', error);
@@ -322,14 +370,49 @@ export default function AdminPanelScreen() {
 
   const renderVendorItem = ({ item }: { item: AdminVendorReview }) => {
     const busy = processingKey === `vendor:${item.vendor_id}`;
+    const isExpanded = expandedId === item.vendor_id;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.vendor_id)} style={styles.card}>
         <Text style={styles.businessName}>{item.business_name || 'Unnamed Business'}</Text>
         <Text style={styles.meta}>Owner: {item.owner_name || 'N/A'}</Text>
         <Text style={styles.meta}>Phone: {item.phone_number || 'N/A'}</Text>
-        <Text style={styles.meta}>Address: {item.full_address || 'N/A'}</Text>
-        <Text style={styles.meta}>Categories: {(item.categories || []).join(', ') || 'N/A'}</Text>
+        
+        {isExpanded ? (
+          <View style={styles.expandedContent}>
+            <Text style={styles.meta}>Address: {item.full_address || 'N/A'}</Text>
+            <Text style={styles.meta}>Categories: {(item.categories || []).join(', ') || 'N/A'}</Text>
+            <Text style={styles.meta}>Aadhaar OTP Verified: {item.aadhaar_otp_verified_at || 'No'}</Text>
+            <Text style={styles.meta}>Review Status: {item.review_status || 'pending'}</Text>
+
+            <Text style={styles.sectionSub}>Submitted Documents</Text>
+            <View style={styles.docRow}>
+              {item.aadhar_url ? (
+                <TouchableOpacity onPress={() => Alert.alert('Aadhaar Document', item.aadhar_url || undefined)}>
+                  <Image source={{ uri: item.aadhar_url }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>Aadhaar</Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.pan_url ? (
+                <TouchableOpacity onPress={() => Alert.alert('PAN Document', item.pan_url || undefined)}>
+                  <Image source={{ uri: item.pan_url }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>PAN</Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.face_scan_url ? (
+                <TouchableOpacity onPress={() => Alert.alert('Face Scan / Selfie', item.face_scan_url || undefined)}>
+                  <Image source={{ uri: item.face_scan_url }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>Selfie</Text>
+                </TouchableOpacity>
+              ) : null}
+              {!item.aadhar_url && !item.pan_url && !item.face_scan_url && (
+                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+              )}
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.expandHint}>Tap to view details & documents</Text>
+        )}
 
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -356,20 +439,48 @@ export default function AdminPanelScreen() {
             <Text style={styles.buttonText}>Delete</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
   const renderUserKycItem = ({ item }: { item: AdminUserKycRequest }) => {
     const busy = processingKey === `user:${item.id}`;
+    const isExpanded = expandedId === item.id;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.id)} style={styles.card}>
         <Text style={styles.businessName}>{item.name || 'Unnamed User'}</Text>
         <Text style={styles.meta}>SL ID: {item.sl_id || 'N/A'}</Text>
         <Text style={styles.meta}>Role: {item.kyc_role || 'N/A'}</Text>
-        <Text style={styles.meta}>ID Type: {item.kyc_id_type || 'N/A'}</Text>
-        <Text style={styles.meta}>Submitted: {item.kyc_submitted_at || 'N/A'}</Text>
+
+        {isExpanded ? (
+          <View style={styles.expandedContent}>
+            <Text style={styles.meta}>ID Type: {item.kyc_id_type || 'N/A'}</Text>
+            <Text style={styles.meta}>ID Number: {item.kyc_id_number || 'N/A'}</Text>
+            <Text style={styles.meta}>Submitted: {item.kyc_submitted_at || 'N/A'}</Text>
+
+            <Text style={styles.sectionSub}>Submitted Documents</Text>
+            <View style={styles.docRow}>
+              {item.kyc_id_photo ? (
+                <TouchableOpacity onPress={() => Alert.alert('ID Photo', item.kyc_id_photo)}>
+                  <Image source={{ uri: item.kyc_id_photo }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>ID Photo</Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.kyc_selfie_photo ? (
+                <TouchableOpacity onPress={() => Alert.alert('Selfie Photo', item.kyc_selfie_photo)}>
+                  <Image source={{ uri: item.kyc_selfie_photo }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>Selfie</Text>
+                </TouchableOpacity>
+              ) : null}
+              {!item.kyc_id_photo && !item.kyc_selfie_photo && (
+                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+              )}
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.expandHint}>Tap to view details & documents</Text>
+        )}
 
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -388,7 +499,7 @@ export default function AdminPanelScreen() {
             <Text style={styles.buttonText}>Deny</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -553,6 +664,140 @@ export default function AdminPanelScreen() {
       </View>
     );
   };
+  const renderApprovedVendorItem = ({ item }: { item: AdminVendorReview }) => {
+    const busy = processingKey === `vendor:${item.vendor_id}`;
+    const isExpanded = expandedId === item.vendor_id;
+
+    return (
+      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.vendor_id)} style={styles.card}>
+        <View style={styles.badgeRow}>
+          <Text style={styles.businessName}>{item.business_name || 'Unnamed Business'}</Text>
+          <View style={[styles.statusBadge, styles.successBadge]}>
+            <Text style={styles.statusBadgeText}>APPROVED</Text>
+          </View>
+        </View>
+        <Text style={styles.meta}>Owner: {item.owner_name || 'N/A'}</Text>
+        <Text style={styles.meta}>Phone: {item.phone_number || 'N/A'}</Text>
+
+        {isExpanded ? (
+          <View style={styles.expandedContent}>
+            <Text style={styles.meta}>Address: {item.full_address || 'N/A'}</Text>
+            <Text style={styles.meta}>Categories: {(item.categories || []).join(', ') || 'N/A'}</Text>
+            <Text style={styles.meta}>Aadhaar OTP Verified: {item.aadhaar_otp_verified_at || 'No'}</Text>
+
+            <Text style={styles.sectionSub}>Submitted Documents</Text>
+            <View style={styles.docRow}>
+              {item.aadhar_url ? (
+                <TouchableOpacity onPress={() => Alert.alert('Aadhaar Document', item.aadhar_url || undefined)}>
+                  <Image source={{ uri: item.aadhar_url }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>Aadhaar</Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.pan_url ? (
+                <TouchableOpacity onPress={() => Alert.alert('PAN Document', item.pan_url || undefined)}>
+                  <Image source={{ uri: item.pan_url }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>PAN</Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.face_scan_url ? (
+                <TouchableOpacity onPress={() => Alert.alert('Face Scan / Selfie', item.face_scan_url || undefined)}>
+                  <Image source={{ uri: item.face_scan_url }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>Selfie</Text>
+                </TouchableOpacity>
+              ) : null}
+              {!item.aadhar_url && !item.pan_url && !item.face_scan_url && (
+                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+              )}
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.expandHint}>Tap to view details & documents</Text>
+        )}
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.deleteButton, busy && styles.buttonDisabled]}
+            disabled={busy}
+            onPress={() => handleDeleteVendor(item.vendor_id)}
+          >
+            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Delete Vendor</Text>}
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderApprovedUserKycItem = ({ item }: { item: AdminUserKycRequest }) => {
+    const isExpanded = expandedId === item.id;
+
+    return (
+      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.id)} style={styles.card}>
+        <View style={styles.badgeRow}>
+          <Text style={styles.businessName}>{item.name || 'Unnamed User'}</Text>
+          <View style={[styles.statusBadge, styles.successBadge]}>
+            <Text style={styles.statusBadgeText}>VERIFIED</Text>
+          </View>
+        </View>
+        <Text style={styles.meta}>SL ID: {item.sl_id || 'N/A'}</Text>
+        <Text style={styles.meta}>Role: {item.kyc_role || 'N/A'}</Text>
+
+        {isExpanded ? (
+          <View style={styles.expandedContent}>
+            <Text style={styles.meta}>ID Type: {item.kyc_id_type || 'N/A'}</Text>
+            <Text style={styles.meta}>ID Number: {item.kyc_id_number || 'N/A'}</Text>
+            <Text style={styles.meta}>Submitted: {item.kyc_submitted_at || 'N/A'}</Text>
+
+            <Text style={styles.sectionSub}>Submitted Documents</Text>
+            <View style={styles.docRow}>
+              {item.kyc_id_photo ? (
+                <TouchableOpacity onPress={() => Alert.alert('ID Photo', item.kyc_id_photo)}>
+                  <Image source={{ uri: item.kyc_id_photo }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>ID Photo</Text>
+                </TouchableOpacity>
+              ) : null}
+              {item.kyc_selfie_photo ? (
+                <TouchableOpacity onPress={() => Alert.alert('Selfie Photo', item.kyc_selfie_photo)}>
+                  <Image source={{ uri: item.kyc_selfie_photo }} style={styles.docThumbnail} />
+                  <Text style={styles.docLabel}>Selfie</Text>
+                </TouchableOpacity>
+              ) : null}
+              {!item.kyc_id_photo && !item.kyc_selfie_photo && (
+                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+              )}
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.expandHint}>Tap to view details & documents</Text>
+        )}
+      </TouchableOpacity>
+    );
+  };
+
+  const renderApprovedPersonalityRequestItem = ({ item }: { item: AdminPersonalityVerification }) => {
+    const level = item.level || 'unknown';
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.badgeContainer}>
+          <Text style={[styles.levelBadge, level === 'national' ? styles.nationalBadge : styles.stateBadge]}>
+            {level.toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.badgeRow}>
+          <Text style={styles.businessName}>{item.full_name || 'Anonymous'}</Text>
+          <View style={[styles.statusBadge, styles.successBadge]}>
+            <Text style={styles.statusBadgeText}>APPROVED</Text>
+          </View>
+        </View>
+        <Text style={styles.meta}>Profession: {item.profession}</Text>
+        <Text style={styles.meta}>Org: {item.organization || 'N/A'}</Text>
+        <Text style={styles.meta}>City: {item.city || 'N/A'}</Text>
+        <Text style={styles.meta}>Areas: {Array.isArray(item.areas) ? item.areas.join(', ') : 'None'}</Text>
+        <Text style={styles.meta}>Experience: {item.experience || 'N/A'}</Text>
+        <Text style={styles.bioMeta}>Bio: {item.bio || 'No bio provided'}</Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -563,106 +808,175 @@ export default function AdminPanelScreen() {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.subtitle}>Pending vendor KYC requests ({pendingKycRequests.length})</Text>
       <Text style={styles.adminName}>Logged in as {adminUser?.name || 'Admin'}</Text>
 
-      <FlatList
-        data={pendingKycRequests}
-        keyExtractor={(item) => item.vendor_id}
-        renderItem={renderVendorItem}
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>No pending KYC approval requests.</Text>
-          </View>
-        }
-        ListHeaderComponent={
-          <View style={{ marginBottom: 20 }}>
-             <Text style={styles.subtitle}>Pending Personality Verifications ({pendingPersonalityRequests.length})</Text>
-            {pendingPersonalityRequests.length === 0 ? (
-              <View style={styles.centeredCompact}>
-                <Text style={styles.emptyText}>No pending requests found.</Text>
-              </View>
-            ) : (
-              pendingPersonalityRequests.map((item) => (
-                <View key={item.id} style={{ marginVertical: 8 }}>
-                  {renderPersonalityRequestItem({ item })}
-                </View>
-              ))
-            )}
-            <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 15 }} />
-          </View>
-        }
-        ListFooterComponent={
-          <View style={styles.footerSection}>
-            <Text style={styles.subtitle}>Pending user/jobs KYC requests ({pendingUserKycRequests.length})</Text>
-            {pendingUserKycRequests.length === 0 ? (
-              <View style={styles.centeredCompact}>
-                <Text style={styles.emptyText}>No pending user KYC approval requests.</Text>
-              </View>
-            ) : (
-              pendingUserKycRequests.map((item) => (
-                <View key={item.id}>
-                  {renderUserKycItem({ item })}
-                </View>
-              ))
-            )}
+      {/* Tab Switcher */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'pending' && styles.activeTabButton]}
+          onPress={() => setActiveTab('pending')}
+        >
+          <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
+            Pending Review
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'verified' && styles.activeTabButton]}
+          onPress={() => setActiveTab('verified')}
+        >
+          <Text style={[styles.tabText, activeTab === 'verified' && styles.activeTabText]}>
+            Verified & Approved
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-            <Text style={styles.subtitle}>Active anonymous predefined users ({activeAnonymousUsers.length})</Text>
-            {activeAnonymousUsers.length === 0 ? (
-              <View style={styles.centeredCompact}>
-                <Text style={styles.emptyText}>No active anonymous predefined users.</Text>
-              </View>
-            ) : (
-              activeAnonymousUsers.map((item) => (
-                <View key={item.id}>
-                  {renderAnonymousUserItem({ item })}
+      {activeTab === 'pending' ? (
+        <FlatList
+          data={pendingKycRequests}
+          keyExtractor={(item) => item.vendor_id}
+          renderItem={renderVendorItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>No pending KYC approval requests.</Text>
+            </View>
+          }
+          ListHeaderComponent={
+            <View style={{ marginBottom: 20 }}>
+              <Text style={styles.subtitle}>Pending Personality Verifications ({pendingPersonalityRequests.length})</Text>
+              {pendingPersonalityRequests.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No pending requests found.</Text>
                 </View>
-              ))
-            )}
+              ) : (
+                pendingPersonalityRequests.map((item) => (
+                  <View key={item.id} style={{ marginVertical: 8 }}>
+                    {renderPersonalityRequestItem({ item })}
+                  </View>
+                ))
+              )}
+              <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 15 }} />
+              <Text style={styles.subtitle}>Pending Vendor KYC requests ({pendingKycRequests.length})</Text>
+            </View>
+          }
+          ListFooterComponent={
+            <View style={styles.footerSection}>
+              <Text style={styles.subtitle}>Pending user/jobs KYC requests ({pendingUserKycRequests.length})</Text>
+              {pendingUserKycRequests.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No pending user KYC approval requests.</Text>
+                </View>
+              ) : (
+                pendingUserKycRequests.map((item) => (
+                  <View key={item.id}>
+                    {renderUserKycItem({ item })}
+                  </View>
+                ))
+              )}
 
-            <Text style={styles.subtitle}>Disabled anonymous predefined users ({disabledAnonymousUsers.length})</Text>
-            {disabledAnonymousUsers.length === 0 ? (
-              <View style={styles.centeredCompact}>
-                <Text style={styles.emptyText}>No disabled anonymous predefined users.</Text>
-              </View>
-            ) : (
-              disabledAnonymousUsers.map((item) => (
-                <View key={item.id}>
-                  {renderAnonymousUserItem({ item })}
+              <Text style={styles.subtitle}>Active anonymous predefined users ({activeAnonymousUsers.length})</Text>
+              {activeAnonymousUsers.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No active anonymous predefined users.</Text>
                 </View>
-              ))
-            )}
+              ) : (
+                activeAnonymousUsers.map((item) => (
+                  <View key={item.id}>
+                    {renderAnonymousUserItem({ item })}
+                  </View>
+                ))
+              )}
 
-            <Text style={styles.subtitle}>Pending reported posts ({pendingPostReports.length})</Text>
-            {pendingPostReports.length === 0 ? (
-              <View style={styles.centeredCompact}>
-                <Text style={styles.emptyText}>No pending post reports.</Text>
-              </View>
-            ) : (
-              pendingPostReports.map((item) => (
-                <View key={item.id}>
-                  {renderReportedPostItem({ item })}
+              <Text style={styles.subtitle}>Disabled anonymous predefined users ({disabledAnonymousUsers.length})</Text>
+              {disabledAnonymousUsers.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No disabled anonymous predefined users.</Text>
                 </View>
-              ))
-            )}
+              ) : (
+                disabledAnonymousUsers.map((item) => (
+                  <View key={item.id}>
+                    {renderAnonymousUserItem({ item })}
+                  </View>
+                ))
+              )}
 
-            <Text style={styles.subtitle}>SOS Misuse Reports ({misuseReports.length})</Text>
-            {misuseReports.length === 0 ? (
-              <View style={styles.centeredCompact}>
-                <Text style={styles.emptyText}>No SOS misuse reports.</Text>
-              </View>
-            ) : (
-              misuseReports.map((item) => (
-                <View key={item.id}>
-                  {renderMisuseReportItem({ item })}
+              <Text style={styles.subtitle}>Pending reported posts ({pendingPostReports.length})</Text>
+              {pendingPostReports.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No pending post reports.</Text>
                 </View>
-              ))
-            )}
-          </View>
-        }
-      />
+              ) : (
+                pendingPostReports.map((item) => (
+                  <View key={item.id}>
+                    {renderReportedPostItem({ item })}
+                  </View>
+                ))
+              )}
+
+              <Text style={styles.subtitle}>SOS Misuse Reports ({misuseReports.length})</Text>
+              {misuseReports.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No SOS misuse reports.</Text>
+                </View>
+              ) : (
+                misuseReports.map((item) => (
+                  <View key={item.id}>
+                    {renderMisuseReportItem({ item })}
+                  </View>
+                ))
+              )}
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={approvedKycRequests}
+          keyExtractor={(item) => item.vendor_id}
+          renderItem={renderApprovedVendorItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            <View style={styles.centered}>
+              <Text style={styles.emptyText}>No approved/verified vendor requests.</Text>
+            </View>
+          }
+          ListHeaderComponent={
+            <View style={{ marginBottom: 20 }}>
+              <Text style={styles.subtitle}>Approved Personality Verifications ({approvedPersonalityRequests.length})</Text>
+              {approvedPersonalityRequests.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No approved requests found.</Text>
+                </View>
+              ) : (
+                approvedPersonalityRequests.map((item) => (
+                  <View key={item.id} style={{ marginVertical: 8 }}>
+                    {renderApprovedPersonalityRequestItem({ item })}
+                  </View>
+                ))
+              )}
+              <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 15 }} />
+              <Text style={styles.subtitle}>Approved Vendor KYC requests ({approvedKycRequests.length})</Text>
+            </View>
+          }
+          ListFooterComponent={
+            <View style={styles.footerSection}>
+              <Text style={styles.subtitle}>Approved user/jobs KYC requests ({approvedUserKycRequests.length})</Text>
+              {approvedUserKycRequests.length === 0 ? (
+                <View style={styles.centeredCompact}>
+                  <Text style={styles.emptyText}>No approved/verified user KYC requests.</Text>
+                </View>
+              ) : (
+                approvedUserKycRequests.map((item) => (
+                  <View key={item.id}>
+                    {renderApprovedUserKycItem({ item })}
+                  </View>
+                ))
+              )}
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -702,6 +1016,33 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     textDecorationLine: 'underline',
     fontWeight: '600',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    backgroundColor: COLORS.surface,
+    borderRadius: BORDER_RADIUS.md,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.md - 2,
+  },
+  activeTabButton: {
+    backgroundColor: COLORS.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  activeTabText: {
+    color: '#fff',
   },
   listContent: {
     padding: SPACING.md,
@@ -779,6 +1120,27 @@ const styles = StyleSheet.create({
   stateBadge: {
     backgroundColor: '#4169E1',
   },
+  badgeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  successBadge: {
+    backgroundColor: COLORS.success + '20',
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.success,
+  },
   actionRow: {
     marginTop: SPACING.sm,
     flexDirection: 'row',
@@ -836,5 +1198,24 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontSize: 12,
     marginTop: SPACING.xs,
+  },
+  expandedContent: {
+    marginTop: SPACING.xs,
+    paddingTop: SPACING.xs,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 4,
+  },
+  expandHint: {
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  emptyTextCompact: {
+    fontSize: 12,
+    color: COLORS.textLight,
+    fontStyle: 'italic',
   },
 });
