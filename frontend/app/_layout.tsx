@@ -106,7 +106,7 @@ import * as ExpoLinking from 'expo-linking';
 
 function isValidAppPath(path: string): boolean {
   const cleanPath = path.split('?')[0];
-  
+
   const staticPaths = [
     '/home',
     '/messages',
@@ -251,7 +251,7 @@ function useDeepLinkHandler() {
       const path = pendingDeepLink;
       setPendingDeepLink(null); // Clear first to avoid duplicate pushes
       console.log('[DeepLink] Redirecting to pending deep link after auth load:', path);
-      
+
       setTimeout(() => {
         router.push(path as any);
       }, 100);
@@ -478,7 +478,7 @@ function useMutedNotificationFilter() {
     const init = async () => {
       sub = await addNotificationReceivedListener(async (notification: any) => {
         const data = notification?.request?.content?.data;
-        
+
         // Trigger background sync immediately when message notification is received
         if (data?.type === 'dm' || data?.type === 'message' || data?.type === 'circle_message') {
           if (Platform.OS !== 'web') {
@@ -532,8 +532,8 @@ import { useLanguageStore } from '../src/utils/i18n';
 
 export default function RootLayout() {
   const pathname = usePathname();
-  const isDarkScreen = 
-    pathname.includes('/profile') || 
+  const isDarkScreen =
+    pathname.includes('/profile') ||
     pathname.includes('/reel') ||
     pathname.includes('/post/') ||
     pathname === '/community-tweets';
@@ -640,17 +640,17 @@ export default function RootLayout() {
 
         if (Platform.OS === 'web') {
           if (communitiesRes?.data?.length) {
-            AsyncStorage.setItem('web_communities_cache', JSON.stringify(communitiesRes.data)).catch(() => {});
+            AsyncStorage.setItem('web_communities_cache', JSON.stringify(communitiesRes.data)).catch(() => { });
           }
           if (circlesRes?.data?.length) {
-            AsyncStorage.setItem('web_circles_cache', JSON.stringify(circlesRes.data)).catch(() => {});
+            AsyncStorage.setItem('web_circles_cache', JSON.stringify(circlesRes.data)).catch(() => { });
           }
           if (conversationsRes?.data?.length) {
-            AsyncStorage.setItem('web_dms_cache', JSON.stringify(conversationsRes.data)).catch(() => {});
+            AsyncStorage.setItem('web_dms_cache', JSON.stringify(conversationsRes.data)).catch(() => { });
           }
           if (discoverRes?.data) {
             const discoverData = Array.isArray(discoverRes.data) ? discoverRes.data : discoverRes.data?.data || [];
-            AsyncStorage.setItem('user_groups_discover_cache', JSON.stringify({ data: discoverData, timestamp: Date.now() })).catch(() => {});
+            AsyncStorage.setItem('user_groups_discover_cache', JSON.stringify({ data: discoverData, timestamp: Date.now() })).catch(() => { });
           }
         }
       } catch (e) {
@@ -732,164 +732,158 @@ export default function RootLayout() {
             gestureEnabled: true,
             gestureDirection: 'horizontal'
           }}>
-              {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
-              <Stack.Screen
-                key="(tabs)"
-                name="(tabs)"
-                options={{
-                  animation: 'fade',
-                  gestureEnabled: false
-                }}
-              />
-              <Stack.Screen
-                key="index"
-                name="index"
-                options={{
-                  animation: 'fade',
-                  gestureEnabled: false
-                }}
-              />
-              {/* Modals and Creation Forms - Slide from Bottom */}
-              <Stack.Screen
-                key="community-request/blood"
-                name="community-request/blood"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community-request/food"
-                name="community-request/food"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community-request/gau-seva"
-                name="community-request/gau-seva"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community-request/animal-care"
-                name="community-request/animal-care"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community-request/temple-help"
-                name="community-request/temple-help"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community-request/emergency"
-                name="community-request/emergency"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community-request/other"
-                name="community-request/other"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="sos"
-                name="sos"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="kyc-submit"
-                name="kyc-submit"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="kyc-success"
-                name="kyc-success"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="live-jaap-welcome"
-                name="live-jaap-welcome"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="circle/create"
-                name="circle/create"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community/create"
-                name="community/create"
-                options={{
-                  animation: 'slide_from_right',
-                  gestureDirection: 'vertical'
-                }}
-              />
-              <Stack.Screen
-                key="community-tweets"
-                name="community-tweets"
-                options={{
-                  animation: 'slide_from_right',
-                }}
-              />
-              <Stack.Screen
-                key="jaap-completed"
-                name="jaap-completed"
-                options={{
-                  animation: 'fade',
-                  gestureEnabled: false
-                }}
-              />
-              <Stack.Screen
-                key="library"
-                name="library/index"
-                options={{
-                  animation: 'slide_from_right',
-                }}
-              />
-              <Stack.Screen
-                key="my-krishna"
-                name="my-krishna"
-                options={{
-                  animation: 'slide_from_right',
-                }}
-              />
-              {/* Other standard stack navigations will inherit default slide_from_right */}
-            </Stack>
-            <GlobalFAB />
-            <UploadProgressBanner />
-            <ToastContainer />
-          </MuteProvider>
-        </SafeAreaProvider>
+            {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
+            <Stack.Screen
+              key="(tabs)"
+              name="(tabs)"
+              options={{
+                animation: 'fade',
+                gestureEnabled: false
+              }}
+            />
+            <Stack.Screen
+              key="index"
+              name="index"
+              options={{
+                animation: 'fade',
+                gestureEnabled: false
+              }}
+            />
+            {/* Modals and Creation Forms - Slide from Bottom */}
+            <Stack.Screen
+              key="community-request/blood"
+              name="community-request/blood"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community-request/food"
+              name="community-request/food"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community-request/gau-seva"
+              name="community-request/gau-seva"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community-request/animal-care"
+              name="community-request/animal-care"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community-request/temple-help"
+              name="community-request/temple-help"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community-request/emergency"
+              name="community-request/emergency"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community-request/other"
+              name="community-request/other"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="sos"
+              name="sos"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="kyc-submit"
+              name="kyc-submit"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="kyc-success"
+              name="kyc-success"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="live-jaap-welcome"
+              name="live-jaap-welcome"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="circle/create"
+              name="circle/create"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community/create"
+              name="community/create"
+              options={{
+                animation: 'slide_from_right',
+                gestureDirection: 'vertical'
+              }}
+            />
+            <Stack.Screen
+              key="community-tweets"
+              name="community-tweets"
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            <Stack.Screen
+              key="jaap-completed"
+              name="jaap-completed"
+              options={{
+                animation: 'fade',
+                gestureEnabled: false
+              }}
+            />
+            <Stack.Screen
+              key="my-krishna"
+              name="my-krishna"
+              options={{
+                animation: 'slide_from_right',
+              }}
+            />
+            {/* Other standard stack navigations will inherit default slide_from_right */}
+          </Stack>
+          <GlobalFAB />
+          <UploadProgressBanner />
+          <ToastContainer />
+        </MuteProvider>
+      </SafeAreaProvider>
+
     </GestureHandlerRootView>
   );
 }

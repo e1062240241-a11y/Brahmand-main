@@ -77,29 +77,8 @@ export default function VendorDashboardScreen() {
     setPhoneVerifying(false);
   };
 
-  // Redirect if not authenticated or not KYC verified
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.replace('/');
-      return;
-    }
 
-    if (!authLoading && !isInitializing && myVendor) {
-      const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
-      const isVendorVerified = myVendor?.kyc_status === 'verified';
-      const isUserPending = (user as any)?.kyc_status === 'pending' || (user as any)?.kyc_status === 'manual_review';
-      const isVendorPending = myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
-      if (!isUserVerified && !isVendorVerified && !isUserPending && !isVendorPending) {
-        Alert.alert(
-          'KYC Required',
-          'Please complete your KYC verification to access the dashboard.',
-          [{ text: 'OK', onPress: () => router.replace('/kyc') }]
-        );
-      }
-    }
-  }, [authLoading, isAuthenticated, isInitializing, myVendor, user, router]);
 
-  
   // Edit modals
   const [editModal, setEditModal] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -139,6 +118,27 @@ export default function VendorDashboardScreen() {
     }
   }, [myVendor]);
 
+  // Redirect if not authenticated or not KYC verified
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      router.replace('/');
+      return;
+    }
+
+    if (!authLoading && !isInitializing && myVendor) {
+      const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+      const isVendorVerified = myVendor?.kyc_status === 'verified';
+      const isUserPending = (user as any)?.kyc_status === 'pending' || (user as any)?.kyc_status === 'manual_review';
+      const isVendorPending = myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
+      if (!isUserVerified && !isVendorVerified && !isUserPending && !isVendorPending) {
+        Alert.alert(
+          'KYC Required',
+          'Please complete your KYC verification to access the dashboard.',
+          [{ text: 'OK', onPress: () => router.replace('/kyc') }]
+        );
+      }
+    }
+  }, [authLoading, isAuthenticated, isInitializing, myVendor, user, router]);
 
   useEffect(() => {
     // Refresh myVendor and KYC status on mount and when this component re-renders.
