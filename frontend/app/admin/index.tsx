@@ -57,8 +57,7 @@ export default function AdminPanelScreen() {
     const hasOtpVerified = !!record.aadhaar_otp_verified_at;
     const hasAadhaar = !!record.aadhar_url;
     const hasPan = !!record.pan_url;
-    const isPendingOrReview = record.kyc_status === 'pending' || record.kyc_status === 'manual_review';
-    return hasOtpVerified || hasAadhaar || hasPan || isPendingOrReview;
+    return hasOtpVerified || hasAadhaar || hasPan;
   };
 
   const pendingKycRequests = useMemo(

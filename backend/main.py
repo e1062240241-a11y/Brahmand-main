@@ -10614,13 +10614,19 @@ async def get_vendor_review_queue(
     token_data: dict = Depends(verify_token)
 ):
     """Admin: list vendor review queue snapshots."""
+    with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+        f.write(f"\n--- API CALL: get_vendor_review_queue status={status} limit={limit} ---\n")
+    
     db, _ = await _ensure_admin_user(token_data)
 
     filters = []
     if status:
         filters.append(('review_status', '==', status))
 
+    records = []
     try:
+        with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+            f.write("Attempting query with ordering...\n")
         records = await db.query_documents(
             'vendor_admin_reviews',
             filters=filters if filters else None,
@@ -10628,17 +10634,38 @@ async def get_vendor_review_queue(
             order_direction='DESCENDING',
             limit=limit,
         )
+        with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+            f.write(f"Ordered query success: {len(records)} records found.\n")
     except Exception as exc:
-        logger.warning(
-            "Firestore query failed in /admin/vendors/review-queue, likely due to index constraints. error=%s",
-            exc,
-        )
-        records = await db.query_documents(
-            'vendor_admin_reviews',
-            filters=filters if filters else None,
-        )
-        records.sort(key=lambda item: item.get('updated_at') or datetime.min, reverse=True)
-        records = records[:max(1, limit)]
+        with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+            f.write(f"Ordered query failed: {exc}\nAttempting fallback query...\n")
+        try:
+            records = await db.query_documents(
+                'vendor_admin_reviews',
+                filters=filters if filters else None,
+            )
+            with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+                f.write(f"Fallback query fetched {len(records)} records. Types of updated_at:\n")
+                for r in records:
+                    up_at = r.get('updated_at')
+                    f.write(f"  ID: {r.get('vendor_id') or r.get('id')} - updated_at: {up_at} ({type(up_at)})\n")
+            
+            # Helper to get sorting key safely
+            def get_sort_key(item):
+                val = item.get('updated_at')
+                if not val:
+                    return ""
+                if isinstance(val, datetime):
+                    return val.isoformat()
+                return str(val)
+                
+            records.sort(key=get_sort_key, reverse=True)
+            records = records[:max(1, limit)]
+            with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+                f.write("Fallback sorting succeeded.\n")
+        except Exception as fallback_exc:
+            with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+                f.write(f"Fallback query or sort failed: {fallback_exc}\n")
 
     return records
 
