@@ -265,6 +265,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const updatedUser = { ...currentUser, ...updates };
       set({ user: updatedUser });
       secureStorage.setItem('user', JSON.stringify(updatedUser));
+
+      try {
+        const { useVendorStore } = require('./vendorStore');
+        const myVendor = useVendorStore.getState().myVendor;
+        if (myVendor && updates.kyc_status) {
+          useVendorStore.setState({
+            myVendor: {
+              ...myVendor,
+              kyc_status: updates.kyc_status as any,
+            }
+          });
+        }
+      } catch (e) {
+        // ignore
+      }
     }
   },
   

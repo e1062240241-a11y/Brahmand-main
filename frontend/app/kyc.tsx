@@ -399,134 +399,162 @@ export default function KYCStatusScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {/* Middle Illustration Cards Section */}
-            <View style={styles.illustrationContainer}>
-              <View style={styles.padlockCard}>
-                <PadlockIcon />
-              </View>
-              
-              <View style={styles.shieldCenter}>
-                <ShieldIcon />
-              </View>
-
-              <View style={styles.placeholderCard}>
-                <View style={styles.avatarCircle} />
-                <View style={styles.profileLinesColumn}>
-                  <View style={styles.profileLine} />
-                  <View style={[styles.profileLine, { width: 20 }]} />
+            {isVerified || isReview ? (
+              <View style={[styles.whiteCard, { alignItems: 'center', gap: 20, paddingVertical: 32, marginTop: 24 }]}>
+                <View style={{ alignItems: 'center', gap: 12, width: '100%' }}>
+                  <Ionicons 
+                    name={isVerified ? 'checkmark-circle' : 'time'} 
+                    size={64} 
+                    color={isVerified ? '#2E7D32' : '#F26522'} 
+                  />
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 8 }}>
+                    {isVerified ? 'KYC Verified' : 'KYC Under Review'}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20, paddingHorizontal: 16 }}>
+                    {isVerified 
+                      ? 'Your KYC documents have been successfully verified. You now have full access to all features.' 
+                      : 'Your documents have been submitted and are under review. This process usually takes up to 24 hours. Awaiting Admin Approval.'}
+                  </Text>
                 </View>
-              </View>
-            </View>
-
-            {/* Intro paragraph text */}
-            <Text style={styles.introParagraph}>
-              To create and register your request, you need{"\n"}to verify your number and be a KYC verified{"\n"}member.
-            </Text>
-
-            {/* Card 1: Verify Your Number */}
-            <View style={styles.whiteCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.badgeCircle}>
-                  <Text style={styles.badgeText}>1</Text>
-                </View>
-                <View style={styles.cardHeaderTexts}>
-                  <Text style={styles.cardTitle}>Verify Your Number</Text>
-                  <Text style={styles.cardDescription}>We'll send a 6 digit OTP to verify your{"\n"}mobile number.</Text>
-                </View>
-              </View>
-
-              <View style={styles.phoneInputRow}>
-                <View style={styles.countryDropdown}>
-                  <Text style={styles.countryText}>{countryCode}</Text>
-                  <Ionicons name="chevron-down" size={14} color="#666666" />
-                </View>
-                <TextInput
-                  style={styles.phoneNumberInput}
-                  placeholder="Enter your mobile number"
-                  placeholderTextColor="#999999"
-                  value={phoneNumber}
-                  onChangeText={(text) => {
-                    const cleanText = text.replace(/\D/g, '');
-                    setPhoneNumber(cleanText.slice(0, 10));
-                  }}
-                  keyboardType="phone-pad"
-                  maxLength={10}
-                  editable={!phoneVerified}
-                />
-              </View>
-
-              {phoneVerified ? (
-                <View style={styles.verifiedSuccessBox}>
-                  <Ionicons name="checkmark-circle" size={20} color="#2E7D32" />
-                  <Text style={styles.verifiedSuccessText}>Mobile number verified successfully</Text>
-                </View>
-              ) : (
                 <TouchableOpacity 
-                  style={[styles.primaryBtn, otpLoading && { opacity: 0.7 }]} 
-                  onPress={handleSendOTP}
-                  disabled={otpLoading}
+                  style={[styles.primaryBtn, { width: '90%', marginTop: 12 }]} 
+                  onPress={handleBack}
                 >
-                  {otpLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.primaryBtnText}>
-                      Send OTP
-                    </Text>
-                  )}
+                  <Text style={styles.primaryBtnText}>Go Back</Text>
                 </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Card 2: Complete KYC Verification */}
-            <View style={styles.whiteCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.badgeCircle}>
-                  <Text style={styles.badgeText}>2</Text>
-                </View>
-                 <View style={styles.cardHeaderTexts}>
-                  <Text style={styles.cardTitle}>Complete KYC Verification</Text>
-                  <Text style={styles.cardDescription}>KYC helps us maintain trust and safety{"\n"}in the community.</Text>
-                </View>
               </View>
+            ) : (
+              <>
+                {/* Middle Illustration Cards Section */}
+                <View style={styles.illustrationContainer}>
+                  <View style={styles.padlockCard}>
+                    <PadlockIcon />
+                  </View>
+                  
+                  <View style={styles.shieldCenter}>
+                    <ShieldIcon />
+                  </View>
 
-              <View style={[styles.warningBanner, { backgroundColor: getKYCAlertBg() }]}>
-                <WarningCardShieldIcon color={getKYCAlertColor()} size={40} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[
-                    styles.warningTitle,
-                    { color: getKYCAlertColor() }
-                  ]}>
-                    {isVerified ? 'KYC Verified' : 'Not KYC Verified'}
-                  </Text>
-                  <Text style={styles.warningDescription}>
-                    {getKYCAlertText()}
-                  </Text>
+                  <View style={styles.placeholderCard}>
+                    <View style={styles.avatarCircle} />
+                    <View style={styles.profileLinesColumn}>
+                      <View style={styles.profileLine} />
+                      <View style={[styles.profileLine, { width: 20 }]} />
+                    </View>
+                  </View>
                 </View>
-              </View>
-              <TouchableOpacity 
-                style={[
-                  styles.primaryBtn, 
-                  (!phoneVerified || isVerified) && styles.disabledBtn
-                ]} 
-                onPress={() => router.push({
-                  pathname: '/kyc-submit',
-                  params: { verifiedPhone: phoneNumber }
-                })}
-                disabled={!phoneVerified || isVerified}
-              >
-                <Text style={styles.primaryBtnText}>
-                  {isVerified ? 'Verified' : 'Complete KYC Now'}
+
+                {/* Intro paragraph text */}
+                <Text style={styles.introParagraph}>
+                  To create and register your request, you need{"\n"}to verify your number and be a KYC verified{"\n"}member.
                 </Text>
-              </TouchableOpacity>
-            </View>
 
-            {/* Disclaimer Footer */}
-            <View style={styles.disclaimerContainer}>
-              <LockIcon />
-              <Text style={styles.disclaimerText}>
-                Your information is secure and never shared with anyone.
-              </Text>
-            </View>
+                {/* Card 1: Verify Your Number */}
+                <View style={styles.whiteCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.badgeCircle}>
+                      <Text style={styles.badgeText}>1</Text>
+                    </View>
+                    <View style={styles.cardHeaderTexts}>
+                      <Text style={styles.cardTitle}>Verify Your Number</Text>
+                      <Text style={styles.cardDescription}>We'll send a 6 digit OTP to verify your{"\n"}mobile number.</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.phoneInputRow}>
+                    <View style={styles.countryDropdown}>
+                      <Text style={styles.countryText}>{countryCode}</Text>
+                      <Ionicons name="chevron-down" size={14} color="#666666" />
+                    </View>
+                    <TextInput
+                      style={styles.phoneNumberInput}
+                      placeholder="Enter your mobile number"
+                      placeholderTextColor="#999999"
+                      value={phoneNumber}
+                      onChangeText={(text) => {
+                        const cleanText = text.replace(/\D/g, '');
+                        setPhoneNumber(cleanText.slice(0, 10));
+                      }}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      editable={!phoneVerified}
+                    />
+                  </View>
+
+                  {phoneVerified ? (
+                    <View style={styles.verifiedSuccessBox}>
+                      <Ionicons name="checkmark-circle" size={20} color="#2E7D32" />
+                      <Text style={styles.verifiedSuccessText}>Mobile number verified successfully</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity 
+                      style={[styles.primaryBtn, otpLoading && { opacity: 0.7 }]} 
+                      onPress={handleSendOTP}
+                      disabled={otpLoading}
+                    >
+                      {otpLoading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.primaryBtnText}>
+                          Send OTP
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Card 2: Complete KYC Verification */}
+                <View style={styles.whiteCard}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.badgeCircle}>
+                      <Text style={styles.badgeText}>2</Text>
+                    </View>
+                    <View style={styles.cardHeaderTexts}>
+                      <Text style={styles.cardTitle}>Complete KYC Verification</Text>
+                      <Text style={styles.cardDescription}>KYC helps us maintain trust and safety{"\n"}in the community.</Text>
+                    </View>
+                  </View>
+
+                  <View style={[styles.warningBanner, { backgroundColor: getKYCAlertBg() }]}>
+                    <WarningCardShieldIcon color={getKYCAlertColor()} size={40} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[
+                        styles.warningTitle,
+                        { color: getKYCAlertColor() }
+                      ]}>
+                        {isVerified ? 'KYC Verified' : 'Not KYC Verified'}
+                      </Text>
+                      <Text style={styles.warningDescription}>
+                        {getKYCAlertText()}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={[
+                      styles.primaryBtn, 
+                      (!phoneVerified || isVerified) && styles.disabledBtn
+                    ]} 
+                    onPress={() => router.push({
+                      pathname: '/kyc-submit',
+                      params: { verifiedPhone: phoneNumber }
+                    })}
+                    disabled={!phoneVerified || isVerified}
+                  >
+                    <Text style={styles.primaryBtnText}>
+                      {isVerified ? 'Verified' : 'Complete KYC Now'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Disclaimer Footer */}
+                <View style={styles.disclaimerContainer}>
+                  <LockIcon />
+                  <Text style={styles.disclaimerText}>
+                    Your information is secure and never shared with anyone.
+                  </Text>
+                </View>
+              </>
+            )}
           </ScrollView>
         )}
 

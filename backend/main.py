@@ -817,6 +817,7 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
         'review_status': 'pending' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else vendor.get('kyc_status'),
         'review_state': 'needs_admin_action' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else 'closed',
+        'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.utcnow().isoformat() + 'Z'),
     }
 
 
@@ -10727,6 +10728,62 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
         'kyc_status': 'rejected',
         'reason': reason,
     }
+
+
+@api_router.delete("/admin/vendors/{vendor_id}")
+async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_token)):
+    """Admin: delete a vendor and reset owner's KYC status."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    owner_id = vendor.get('owner_id')
+
+    # Delete admin reviews
+    try:
+        await db.delete_document('vendor_admin_reviews', vendor_id)
+    except Exception:
+        pass
+
+    reviews = await db.query_documents('vendor_admin_reviews', filters=[('vendor_id', '==', vendor_id)])
+    for review in reviews:
+        try:
+            await db.delete_document('vendor_admin_reviews', review.get('id'))
+        except Exception:
+            pass
+
+    # Delete vendor
+    await db.delete_document('vendors', vendor_id)
+
+    # Reset owner's KYC
+    if owner_id:
+        await db.update_document('users', owner_id, {
+            'kyc_status': None,
+            'is_verified': False,
+            'kyc_rejection_reason': None,
+            'kyc_submitted_at': None,
+            'vendor_id': None,
+            'is_vendor': False,
+            'kyc_role': None,
+        })
+        try:
+            await db.array_remove_update('users', owner_id, 'badges', ['Verified Vendor'])
+        except Exception:
+            pass
+
+        # Delete KYC submissions
+        for field in ['user_id', 'owner_id']:
+            try:
+                kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', owner_id)])
+                for doc in kyc_docs:
+                    await db.delete_document('kyc_submissions', doc.get('id'))
+            except Exception:
+                pass
+
+    logger.info(f"Vendor {vendor_id} deleted by admin {admin_user_id}")
+    return {"message": "Vendor deleted successfully", "vendor_id": vendor_id}
 # =================== CULTURAL COMMUNITY ===================
 
 @api_router.get("/debug-info")

@@ -331,7 +331,7 @@ export default function MyKrishnaChat() {
         <View style={[styles.header, { height: insets.top + 60, paddingTop: insets.top }]}>
           <View style={styles.headerLeft}>
             <Pressable
-              onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
+              onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/home' as any)}
               style={({ pressed }) => [styles.backBtn, pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: true, radius: 20 }}
             >

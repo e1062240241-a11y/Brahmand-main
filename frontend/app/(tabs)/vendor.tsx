@@ -190,6 +190,7 @@ export default function VendorScreen() {
   const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
   const currentKycStatus = kycStatus || (user as any)?.kyc_status || null;
   const isKycVerified = currentKycStatus === 'verified' || Boolean((user as any)?.is_verified);
+  const isKycPending = currentKycStatus === 'pending' || currentKycStatus === 'manual_review';
   const { 
     vendors, 
     myVendor, 
@@ -202,6 +203,8 @@ export default function VendorScreen() {
     uploadBusinessImage
   } = useVendorStore();
   const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
+  const hasPendingKyc = isKycPending || myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
+  const canAccessDashboard = hasVerifiedKyc || hasPendingKyc;
   
   const [activeTab, setActiveTab] = useState('Nearby');
   const [activeSection, setActiveSection] = useState('Services');
@@ -1155,7 +1158,7 @@ export default function VendorScreen() {
             }}
             onPress={() => {
               if (myVendor) {
-                if (hasVerifiedKyc) {
+                if (canAccessDashboard) {
                   router.push('/vendor/dashboard');
                 } else {
                   Alert.alert(
@@ -1175,7 +1178,7 @@ export default function VendorScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Text style={styles.figmaRegisterBtnText}>
                 {myVendor 
-                  ? (hasVerifiedKyc ? 'Manage My Service' : 'Manage My Service')
+                  ? 'Manage My Service'
                   : 'Register Your Business/Service'}
               </Text>
               {myVendor && hasVerifiedKyc && (
@@ -1184,10 +1187,16 @@ export default function VendorScreen() {
                   <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700', marginLeft: 3 }}>KYC Complete</Text>
                 </View>
               )}
-              {myVendor && !hasVerifiedKyc && (
+              {myVendor && !hasVerifiedKyc && hasPendingKyc && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
+                  <Ionicons name="time" size={12} color="#FFF" />
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>KYC Under Review</Text>
+                </View>
+              )}
+              {myVendor && !hasVerifiedKyc && !hasPendingKyc && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
                   <Ionicons name="lock-closed" size={12} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>KYC Pending</Text>
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>KYC Required</Text>
                 </View>
               )}
             </View>

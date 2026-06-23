@@ -38,6 +38,8 @@ export interface User {
   communities: string[];
   circles: string[];
   is_verified?: boolean;
+  kyc_status?: 'pending' | 'manual_review' | 'verified' | 'rejected' | null;
+  kyc_role?: 'temple' | 'vendor' | 'organizer' | null;
   cover_photo?: string;
   followers_count?: number;
   following_count?: number;

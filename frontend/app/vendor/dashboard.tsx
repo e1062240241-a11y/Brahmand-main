@@ -55,6 +55,7 @@ export default function VendorDashboardScreen() {
   const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor, uploadBusinessImage } = useVendorStore();
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [deleteOtpModalVisible, setDeleteOtpModalVisible] = useState(false);
   const [deleteOtpSent, setDeleteOtpSent] = useState(false);
@@ -86,7 +87,9 @@ export default function VendorDashboardScreen() {
     if (!authLoading && !isInitializing && myVendor) {
       const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
       const isVendorVerified = myVendor?.kyc_status === 'verified';
-      if (!isUserVerified && !isVendorVerified) {
+      const isUserPending = (user as any)?.kyc_status === 'pending' || (user as any)?.kyc_status === 'manual_review';
+      const isVendorPending = myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
+      if (!isUserVerified && !isVendorVerified && !isUserPending && !isVendorPending) {
         Alert.alert(
           'KYC Required',
           'Please complete your KYC verification to access the dashboard.',
@@ -136,7 +139,6 @@ export default function VendorDashboardScreen() {
     }
   }, [myVendor]);
 
-  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     // Refresh myVendor and KYC status on mount and when this component re-renders.
@@ -433,6 +435,9 @@ export default function VendorDashboardScreen() {
   const isVendorManualReview = myVendor?.kyc_status === 'manual_review';
   const isManualReview = isUserManualReview || isVendorManualReview;
 
+  const isUserPending = (user as any)?.kyc_status === 'pending' || isUserManualReview;
+  const isVendorPending = myVendor?.kyc_status === 'pending' || isVendorManualReview;
+
   const isUserKycVerified = isUserVerified;
   const effectiveKycStatus = isVerified ? 'verified' : (isManualReview ? 'manual_review' : (myVendor?.kyc_status || (user as any)?.kyc_status || 'pending'));
   const isReviewOrVerified = isManualReview || isVerified;
@@ -499,12 +504,20 @@ export default function VendorDashboardScreen() {
   };
 
   const handleEditWeekdayHours = () => {
+    if (!isVerified) {
+      Alert.alert('Verification Required', 'Business hours can be edited only after KYC verification.');
+      return;
+    }
     const { weekday } = getParsedHours();
     setEditValue(weekday);
     setEditModal('weekday_hours');
   };
 
   const handleEditSundayHours = () => {
+    if (!isVerified) {
+      Alert.alert('Verification Required', 'Business hours can be edited only after KYC verification.');
+      return;
+    }
     const { sunday } = getParsedHours();
     setEditValue(sunday);
     setEditModal('sunday_hours');
@@ -512,6 +525,10 @@ export default function VendorDashboardScreen() {
 
   const pickAndUploadImage = async (slot: number) => {
     if (!myVendor) return;
+    if (!isVerified) {
+      Alert.alert('Verification Required', 'Business photos can be uploaded only after KYC verification.');
+      return;
+    }
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== 'granted') {
@@ -559,15 +576,17 @@ export default function VendorDashboardScreen() {
 
       await updateVendor(myVendor.id, vendorUpdates);
 
-      await updateBusinessProfile(myVendor.id, {
-        website_link: websiteVal,
-        social_media: {
-          instagram: instagramVal,
-          whatsapp: whatsappVal,
-        },
-        business_hours: businessHoursVal,
-        offers: offersVal,
-      });
+      if (isVerified) {
+        await updateBusinessProfile(myVendor.id, {
+          website_link: websiteVal,
+          social_media: {
+            instagram: instagramVal,
+            whatsapp: whatsappVal,
+          },
+          business_hours: businessHoursVal,
+          offers: offersVal,
+        });
+      }
 
       Alert.alert('Success', 'Business profile updated successfully!');
       router.replace(`/vendor/${myVendor.id}`);
@@ -607,6 +626,29 @@ export default function VendorDashboardScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
+        {!isVerified && (isUserPending || isVendorPending) && (
+          <View style={{
+            backgroundColor: '#FFF9E6',
+            borderColor: '#F59E0B',
+            borderWidth: 1,
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            alignSelf: 'stretch',
+          }}>
+            <Ionicons name="time" size={24} color="#D97706" style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#D97706', marginBottom: 2 }}>
+                KYC Verification Pending
+              </Text>
+              <Text style={{ fontSize: 12, color: '#B45309', lineHeight: 16 }}>
+                Your KYC is currently under review. Edits to some premium profile sections (website links, social media, offers, business hours, and photos) will be locked until approved, but you can view your details and update basic info.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Profile Image Section */}
         <View style={styles.profileSection}>
@@ -683,6 +725,7 @@ export default function VendorDashboardScreen() {
               placeholderTextColor="#9A897E"
               keyboardType="url"
               autoCapitalize="none"
+              editable={isVerified}
             />
           </View>
 
@@ -695,6 +738,7 @@ export default function VendorDashboardScreen() {
               placeholder="Instagram handle (e.g. @username)"
               placeholderTextColor="#9A897E"
               autoCapitalize="none"
+              editable={isVerified}
             />
           </View>
 
@@ -707,6 +751,7 @@ export default function VendorDashboardScreen() {
               placeholder="WhatsApp Number"
               placeholderTextColor="#9A897E"
               keyboardType="phone-pad"
+              editable={isVerified}
             />
           </View>
         </View>
@@ -851,6 +896,7 @@ export default function VendorDashboardScreen() {
               placeholderTextColor="#9A897E"
               multiline
               numberOfLines={3}
+              editable={isVerified}
             />
           </View>
         </View>

@@ -35,6 +35,7 @@ import {
   getAdminSOSMisuseReports,
   adminBlockSOS,
   adminUnblockSOS,
+  adminDeleteVendor,
 } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
 
@@ -56,7 +57,8 @@ export default function AdminPanelScreen() {
     const hasOtpVerified = !!record.aadhaar_otp_verified_at;
     const hasAadhaar = !!record.aadhar_url;
     const hasPan = !!record.pan_url;
-    return hasOtpVerified || hasAadhaar || hasPan;
+    const isPendingOrReview = record.kyc_status === 'pending' || record.kyc_status === 'manual_review';
+    return hasOtpVerified || hasAadhaar || hasPan || isPendingOrReview;
   };
 
   const pendingKycRequests = useMemo(
@@ -158,6 +160,34 @@ export default function AdminPanelScreen() {
     } finally {
       setProcessingKey(null);
     }
+  };
+
+  const handleDeleteVendor = async (vendorId: string) => {
+    if (!adminToken) return;
+    Alert.alert(
+      'Confirm Delete',
+      'Are you sure you want to permanently delete this vendor? This will delete the vendor profile, reset the owner’s KYC status, and remove any verified badges.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setProcessingKey(`vendor:${vendorId}`);
+            try {
+              await adminDeleteVendor(adminToken, vendorId);
+              await loadRequests();
+              Alert.alert('Success', 'Vendor deleted successfully.');
+            } catch (error: any) {
+              const detail = error?.response?.data?.detail || 'Delete failed';
+              Alert.alert('Error', detail);
+            } finally {
+              setProcessingKey(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleApproveUserKyc = async (userId: string) => {
@@ -312,11 +342,19 @@ export default function AdminPanelScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
+            style={[styles.button, styles.warningButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleDeny(item.vendor_id)}
           >
             <Text style={styles.buttonText}>Deny</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.deleteButton, busy && styles.buttonDisabled]}
+            disabled={busy}
+            onPress={() => handleDeleteVendor(item.vendor_id)}
+          >
+            <Text style={styles.buttonText}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -758,6 +796,12 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.success,
   },
   denyButton: {
+    backgroundColor: COLORS.error,
+  },
+  warningButton: {
+    backgroundColor: COLORS.warning,
+  },
+  deleteButton: {
     backgroundColor: COLORS.error,
   },
   buttonText: {

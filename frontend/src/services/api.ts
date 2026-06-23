@@ -668,6 +668,15 @@ export const adminRejectVendor = (
     { headers: { Authorization: `Bearer ${adminToken}` } },
   );
 
+export const adminDeleteVendor = (
+  adminToken: string,
+  vendorId: string,
+) =>
+  adminApi.delete(
+    `/admin/vendors/${vendorId}`,
+    { headers: { Authorization: `Bearer ${adminToken}` } },
+  );
+
 export const getAdminPendingKyc = (adminToken: string) =>
   adminApi.get<AdminUserKycRequest[]>("/admin/kyc/pending", {
     headers: { Authorization: `Bearer ${adminToken}` },

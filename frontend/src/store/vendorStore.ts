@@ -264,7 +264,22 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   fetchMyVendor: async () => {
     try {
       const response = await getMyVendor();
-      set({ myVendor: response?.data || null });
+      const vendor = response?.data || null;
+      set({ myVendor: vendor });
+      if (vendor && vendor.kyc_status) {
+        try {
+          const { useAuthStore } = require('./authStore');
+          const user = useAuthStore.getState().user;
+          if (user && user.kyc_status !== vendor.kyc_status) {
+            useAuthStore.getState().updateUser({
+              kyc_status: vendor.kyc_status,
+              is_verified: vendor.kyc_status === 'verified' || Boolean(user.is_verified)
+            });
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
     } catch (error: any) {
       if (error?.response?.status !== 404 && error?.response?.status !== 503) {
         console.warn('Error fetching my vendor:', error?.message || error);
