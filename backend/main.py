@@ -1784,10 +1784,46 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     if not otp:
         raise HTTPException(status_code=400, detail="OTP is required for deletion.")
     
-    from services.msg91_service import MSG91Service
-    otp_res = await MSG91Service.verify_otp(phone, otp)
-    if otp_res.get("type") != "success":
-        raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
+    # Verify OTP via Nettyfish logic using the nettyfish auth route helper function indirectly or directly by checking Firestore
+    from services.nattyfish_service import _normalize_phone
+    from datetime import datetime
+
+    try:
+        mobile = _normalize_phone(phone)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    def _verify_otp_sync():
+        collection_ref = db.client.collection("otp_verifications")
+        docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", "kyc").limit(1).get()
+        return docs
+
+    docs = await db._run_sync(_verify_otp_sync)
+
+    if not docs:
+        raise HTTPException(status_code=400, detail="No OTP request found for this number. Please request a new OTP.")
+
+    doc = docs[0]
+    record = doc.to_dict()
+
+    expires_at = record.get("expires_at")
+    if hasattr(expires_at, "timestamp"):
+        if expires_at.timestamp() < datetime.utcnow().timestamp():
+            raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
+
+    attempts = record.get("attempts", 0)
+    if attempts >= 5:
+        raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
+
+    if record.get("otp") != otp:
+        def _increment_attempts():
+            doc.reference.update({"attempts": attempts + 1})
+        await db._run_sync(_increment_attempts)
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+
+    def _delete_otp_doc():
+        doc.reference.delete()
+    await db._run_sync(_delete_otp_doc)
         
     # 2. Delete user's posts
     try:
