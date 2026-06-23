@@ -80,13 +80,12 @@ export default function JobProfileDetailScreen() {
 
   const isKycVerified =
     (user as any)?.kyc_status === 'verified' ||
-    Boolean((user as any)?.is_verified) ||
     myVendor?.kyc_status === 'verified';
 
   const loadKycStatus = useCallback(async (): Promise<string | null> => {
     try {
       const response = await getKYCStatus();
-      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      const serverStatus = response?.data?.kyc_status || null;
       updateUser({
         kyc_status: serverStatus,
         is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
@@ -107,7 +106,6 @@ export default function JobProfileDetailScreen() {
     const effectiveStatus =
       latestStatus ||
       (user as any)?.kyc_status ||
-      ((user as any)?.is_verified ? 'verified' : null) ||
       (myVendor?.kyc_status === 'verified' ? 'verified' : null);
 
     if (effectiveStatus === 'verified') {

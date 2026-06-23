@@ -135,7 +135,7 @@ export default function KYCStatusScreen() {
     try {
       await fetchMyVendor();
       const response = await getKYCStatus();
-      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      const serverStatus = response?.data?.kyc_status || null;
       updateUser({
         kyc_status: serverStatus,
         is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
@@ -152,7 +152,7 @@ export default function KYCStatusScreen() {
   }, [refreshKycStatus]);
 
   const status = (user as any)?.kyc_status || (myVendor as any)?.kyc_status || null;
-  const isVerified = status === 'verified' || (user as any)?.is_verified === true || (myVendor as any)?.is_verified === true;
+  const isVerified = status === 'verified';
   const isReview = !isVerified && (status === 'pending' || status === 'manual_review');
   const isRejected = !isVerified && !isReview && status === 'rejected';
 

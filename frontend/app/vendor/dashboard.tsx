@@ -126,7 +126,7 @@ export default function VendorDashboardScreen() {
     }
 
     if (!authLoading && !isInitializing && myVendor) {
-      const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+      const isUserVerified = (user as any)?.kyc_status === 'verified';
       const isVendorVerified = myVendor?.kyc_status === 'verified';
       const isUserPending = (user as any)?.kyc_status === 'pending' || (user as any)?.kyc_status === 'manual_review';
       const isVendorPending = myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
@@ -146,7 +146,7 @@ export default function VendorDashboardScreen() {
       try {
         await fetchMyVendor();
         const response = await getKYCStatus();
-        const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+        const serverStatus = response?.data?.kyc_status || null;
         updateUser({
           kyc_status: serverStatus,
           is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
@@ -182,7 +182,7 @@ export default function VendorDashboardScreen() {
   }, [router]);
 
   // KYC Guard: Redirect to KYC if not verified
-  const isUserVerifiedForGuard = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+  const isUserVerifiedForGuard = (user as any)?.kyc_status === 'verified';
   const isVendorVerifiedForGuard = myVendor?.kyc_status === 'verified';
   const isKycVerifiedForGuard = isUserVerifiedForGuard || isVendorVerifiedForGuard;
 
@@ -427,7 +427,7 @@ export default function VendorDashboardScreen() {
       ).slice(0, 5)
     : [];
 
-  const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+  const isUserVerified = (user as any)?.kyc_status === 'verified';
   const isVendorVerified = myVendor?.kyc_status === 'verified';
   const isVerified = isUserVerified || isVendorVerified;
 

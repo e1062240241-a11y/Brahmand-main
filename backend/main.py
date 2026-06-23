@@ -881,37 +881,7 @@ def _is_configured_firebase_test_phone(phone: str) -> bool:
 
 async def _auto_approve_vendor_for_test_phone(db: FirestoreDB, user_id: str, phone: str) -> bool:
     """Auto-approve vendor KYC for configured Firebase test numbers."""
-    if not _is_configured_firebase_test_phone(phone):
-        return False
-
-    vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
-    if not vendor:
-        return False
-
-    if vendor.get('kyc_status') == 'verified':
-        return True
-
-    reviewed_at = datetime.utcnow().isoformat() + 'Z'
-    review_note = 'Auto-approved for Firebase testing number'
-
-    await db.update_document('vendors', vendor['id'], {
-        'kyc_status': 'verified',
-        'kyc_verified_at': reviewed_at,
-        'kyc_reviewed_by': 'system_firebase_test',
-        'kyc_review_note': review_note,
-    })
-
-    await db.set_document('vendor_admin_reviews', vendor['id'], {
-        **_build_vendor_admin_snapshot({**vendor, 'id': vendor['id'], 'kyc_status': 'verified'}),
-        'review_status': 'approved',
-        'review_state': 'closed',
-        'reviewed_at': reviewed_at,
-        'reviewed_by': 'system_firebase_test',
-        'review_note': review_note,
-    })
-
-    logger.info('Auto-approved vendor %s for Firebase test phone %s', vendor['id'], phone)
-    return True
+    return False
 
 
 # =================== MIDDLEWARE ===================
@@ -4228,14 +4198,17 @@ async def get_verification_status(token_data: dict = Depends(verify_token)):
 async def request_verification(data: dict, token_data: dict = Depends(verify_token)):
     db = await get_db()
     
-    # Auto-approve for demo
-    await db.update_document('users', token_data["user_id"], {
-        'is_verified': True,
-        'verification_date': datetime.utcnow()
-    })
-    await db.array_union_update('users', token_data["user_id"], 'badges', ['Verified Member'])
+    verification_data = {
+        "user_id": token_data["user_id"],
+        "full_name": data.get("full_name"),
+        "id_type": data.get("id_type"),
+        "id_number": data.get("id_number"),
+        "status": "pending",
+        "created_at": datetime.utcnow()
+    }
+    await db.create_document('verifications', verification_data)
     
-    return {"message": "Verification completed", "status": "approved"}
+    return {"message": "Verification request submitted successfully", "status": "pending"}
     
 
 async def verify_admin(token_data: dict = Depends(verify_token)):
@@ -7325,8 +7298,9 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
     kyc_status = user.get('kyc_status')
     is_verified = bool(user.get('is_verified'))
 
-    if not kyc_status and is_verified:
-        kyc_status = 'verified'
+    # do not fallback to 'verified' based on community is_verified flag
+    # if not kyc_status and is_verified:
+    #     kyc_status = 'verified'
     
     return {
         "kyc_status": kyc_status,  # pending/verified/rejected
@@ -9497,18 +9471,14 @@ async def get_vendors(
         kyc = (v.get('kyc_status') or '').lower()
         rev = (v.get('review_status') or '').lower()
         state = (v.get('review_state') or '').lower()
-        is_verified = v.get('is_verified') is True
         
         user_kyc = (v.get('user_kyc_status') or '').lower()
-        user_verified = v.get('user_is_verified') is True
         
         return (
             kyc in ('verified', 'approved') or
             rev in ('verified', 'approved') or
             state == 'closed' or
-            is_verified or
             user_kyc in ('verified', 'approved') or
-            user_verified or
             not v.get('owner_id')
         )
 
@@ -9585,6 +9555,11 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
     
     update_data = data.dict(exclude_unset=True, exclude_none=True)
     
+    # Do not allow setting kyc_status to verified or approved directly by vendor owner
+    if 'kyc_status' in update_data:
+        if update_data['kyc_status'] in ['verified', 'approved']:
+            raise HTTPException(status_code=403, detail="Cannot directly set KYC status to verified or approved")
+    
     # Handle new categories
     if 'categories' in update_data:
         for category in update_data['categories']:
@@ -9636,7 +9611,7 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
         raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
 
     user = await db.get_document('users', user_id)
-    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
+    user_verified = bool(user and (user.get('kyc_status') == 'verified'))
     vendor_verified = vendor.get('kyc_status') == 'verified'
 
     if not (vendor_verified or user_verified):
@@ -9732,7 +9707,7 @@ async def upload_vendor_business_image(
         raise HTTPException(status_code=403, detail="Only the owner can upload business images")
 
     user = await db.get_document('users', user_id)
-    user_verified = bool(user and ((user.get('kyc_status') == 'verified') or user.get('is_verified')))
+    user_verified = bool(user and (user.get('kyc_status') == 'verified'))
     vendor_verified = vendor.get('kyc_status') == 'verified'
 
     if not (vendor_verified or user_verified):

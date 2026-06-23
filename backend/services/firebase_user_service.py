@@ -276,22 +276,15 @@ class FirebaseUserService:
             "full_name": full_name,
             "id_type": id_type,
             "id_number": id_number,
-            "status": "pending"
+            "status": "pending",
+            "created_at": datetime.utcnow()
         }
         
         await db.create_document('verifications', verification_data)
         
-        # Auto-approve for demo
-        from google.cloud import firestore
-        await db.client.collection('users').document(user_id).update({
-            'is_verified': True,
-            'verification_date': datetime.utcnow(),
-            'badges': firestore.ArrayUnion(['Verified Member'])
-        })
-        
         await cache_manager.invalidate_user(user_id)
         
-        return {"message": "Verification completed successfully", "status": "approved"}
+        return {"message": "Verification request submitted successfully", "status": "pending"}
     
     @staticmethod
     async def get_profile_completion(user_id: str) -> Dict[str, Any]:

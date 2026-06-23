@@ -189,7 +189,7 @@ export default function VendorScreen() {
   const userId = user?.id;
   const [kycStatus, setKycStatus] = useState<string | null>((user as any)?.kyc_status || null);
   const currentKycStatus = kycStatus || (user as any)?.kyc_status || null;
-  const isKycVerified = currentKycStatus === 'verified' || Boolean((user as any)?.is_verified);
+  const isKycVerified = currentKycStatus === 'verified';
   const isKycPending = currentKycStatus === 'pending' || currentKycStatus === 'manual_review';
   const { 
     vendors, 
@@ -262,7 +262,7 @@ export default function VendorScreen() {
   const loadKycStatus = useCallback(async (): Promise<string | null> => {
     try {
       const response = await getKYCStatus();
-      const serverStatus = response?.data?.kyc_status || (response?.data?.is_verified ? 'verified' : null);
+      const serverStatus = response?.data?.kyc_status || null;
       setKycStatus(serverStatus);
       updateUser({
         kyc_status: serverStatus,
@@ -280,7 +280,6 @@ export default function VendorScreen() {
     const isVerified =
       latestStatus === 'verified' ||
       (user as any)?.kyc_status === 'verified' ||
-      Boolean((user as any)?.is_verified) ||
       myVendor?.kyc_status === 'verified';
 
     if (isVerified) {
