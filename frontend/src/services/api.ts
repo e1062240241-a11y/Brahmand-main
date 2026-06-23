@@ -400,10 +400,9 @@ const uploadLargeVideoViaBunny = async (
           }
         }
       );
-
       const result = await uploadTask.uploadAsync();
 
-      if (!result || result.status !== 200) {
+      if (!result || result.status < 200 || result.status >= 300) {
         console.error(
           "[API] Native FileSystem direct Bunny upload failed:",
           result?.status,

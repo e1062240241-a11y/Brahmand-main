@@ -50,9 +50,8 @@ async def get_community_messages(
     before_timestamp: str = None,
     token_data: dict = Depends(verify_token)
 ):
-    """Get messages from community subgroup"""
     return await MessagingService.get_community_messages(
-        community_id, subgroup_type, limit, before_timestamp
+        community_id, subgroup_type, limit, before_timestamp, token_data["user_id"]
     )
 
 

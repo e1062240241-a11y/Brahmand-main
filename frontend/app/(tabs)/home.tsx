@@ -969,22 +969,27 @@ export default function HomeScreen() {
         AsyncStorage.setItem('home_communities', JSON.stringify(comms)).catch(e => console.log(e));
       }
 
-      // 3. Feed Posts
+      // 3. Feed Posts - only overwrite if we don't have posts yet, or if it's refreshing
       if (res.data.feed?.items && res.data.feed.items.length > 0) {
         const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
-        setTabFeed(tabToLoad, {
-          posts: res.data.feed.items,
-          offset: res.data.feed.items.length,
-          hasMore: res.data.feed.has_more,
-          lastFetched: Date.now(),
-        });
+        const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
+        const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
+        
+        if (!hasPosts || isRefreshing) {
+          setTabFeed(tabToLoad, {
+            posts: res.data.feed.items,
+            offset: res.data.feed.items.length,
+            hasMore: res.data.feed.has_more,
+            lastFetched: Date.now(),
+          });
+        }
       }
     } catch (err) {
       console.warn('Failed to init home data:', err);
     } finally {
       setIsHomeInitialized(true);
     }
-  }, [setUnreadCount, setTabFeed, fetchLocalCommunities]);
+  }, [setUnreadCount, setTabFeed, fetchLocalCommunities, isRefreshing]);
 
   const loadHomeCache = useCallback(async () => {
     try {

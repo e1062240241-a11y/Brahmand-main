@@ -65,12 +65,94 @@ class FirebaseMessagingService:
         if not user:
             raise ValueError("User not found")
         
+        # Resolve fallback community IDs
+        if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+            target_type = 'city'
+            if community_id == 'maharashtra-fallback':
+                target_type = 'state'
+            elif community_id == 'bharat-fallback':
+                target_type = 'country'
+                
+            user_loc = user.get('location') or user.get('home_location')
+            if user_loc:
+                from services.firebase_community_service import FirebaseCommunityService
+                try:
+                    community_ids = await FirebaseCommunityService.join_location_communities(user_id, user_loc)
+                    # Sync back to user document if missing
+                    user_comms = set(user.get('communities', []))
+                    missing_ids = [cid for cid in community_ids if cid not in user_comms]
+                    if missing_ids:
+                        await db.client.collection('users').document(user_id).update({
+                            'communities': firestore.ArrayUnion(missing_ids)
+                        })
+                        user['communities'] = user.get('communities', []) + missing_ids
+                    
+                    fetched = await db.get_documents_batch('communities', community_ids)
+                    for comm in fetched:
+                        if comm and comm.get('type') == target_type:
+                            community_id = comm.get('id')
+                            break
+                except Exception as ex:
+                    logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id}: {ex}")
+
         # Check membership
-        if community_id not in user.get('communities', []):
+        is_member = community_id in user.get('communities', [])
+        if not is_member:
+            # Check the community document directly to see if the user is in the members list
+            community = await db.get_document('communities', community_id)
+            if community:
+                if user_id in community.get('members', []):
+                    is_member = True
+                    # Sync back to user document so future checks are fast
+                    try:
+                        await db.client.collection('users').document(user_id).update({
+                            'communities': firestore.ArrayUnion([community_id])
+                        })
+                        from utils.cache import cache_manager
+                        await cache_manager.invalidate_user(user_id)
+                    except Exception as ex:
+                        logger.warning(f"Failed to sync community membership to user doc: {ex}")
+                else:
+                    comm_type = community.get('type')
+                    user_loc = user.get('location') or user.get('home_location') or {}
+                    if comm_type in ['city', 'state', 'country'] and user_loc:
+                        comm_loc = community.get('location') or {}
+                        match = False
+                        u_city = str(user_loc.get('city') or '').strip().lower()
+                        u_state = str(user_loc.get('state') or '').strip().lower()
+                        u_country = str(user_loc.get('country') or '').strip().lower()
+                        
+                        c_city = str(comm_loc.get('city') or '').strip().lower()
+                        c_state = str(comm_loc.get('state') or '').strip().lower()
+                        c_country = str(comm_loc.get('country') or '').strip().lower()
+                        
+                        if comm_type == 'city' and u_city and c_city == u_city:
+                            match = True
+                        elif comm_type == 'state' and u_state and c_state == u_state:
+                            match = True
+                        elif comm_type == 'country' and u_country and c_country == u_country:
+                            match = True
+                            
+                        if match:
+                            try:
+                                await db.add_member_to_community(community_id, user_id)
+                                await db.client.collection('users').document(user_id).update({
+                                    'communities': firestore.ArrayUnion([community_id])
+                                })
+                                from utils.cache import cache_manager
+                                await cache_manager.invalidate_user(user_id)
+                                is_member = True
+                            except Exception as ex:
+                                logger.warning(f"Failed to auto-join location community: {ex}")
+
+        if not is_member:
             raise ValueError("Not a community member")
         
-        # Check verification
-        if not user.get('is_verified', False):
+        # Check verification (state and country groups require verification; city groups do not)
+        community_doc = community if 'community' in locals() and community else await db.get_document('communities', community_id)
+        is_city_group = (community_doc.get('type') == 'city') if community_doc else False
+        
+        if not is_city_group and not user.get('is_verified', False):
             raise ValueError("Only verified members can post in community groups")
         
         # Moderate content
@@ -140,10 +222,43 @@ class FirebaseMessagingService:
         community_id: str,
         subgroup_type: str,
         limit: int = 50,
-        before_timestamp: Optional[str] = None
+        before_timestamp: Optional[str] = None,
+        user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get messages from community chat"""
         db = await FirebaseMessagingService.get_db()
+        
+        # Resolve fallback community IDs if user_id is provided
+        if user_id and community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+            target_type = 'city'
+            if community_id == 'maharashtra-fallback':
+                target_type = 'state'
+            elif community_id == 'bharat-fallback':
+                target_type = 'country'
+                
+            user = await db.get_document('users', user_id)
+            if user:
+                user_loc = user.get('location') or user.get('home_location')
+                if user_loc:
+                    from services.firebase_community_service import FirebaseCommunityService
+                    try:
+                        community_ids = await FirebaseCommunityService.join_location_communities(user_id, user_loc)
+                        # Sync back to user document if missing
+                        user_comms = set(user.get('communities', []))
+                        missing_ids = [cid for cid in community_ids if cid not in user_comms]
+                        if missing_ids:
+                            await db.client.collection('users').document(user_id).update({
+                                'communities': firestore.ArrayUnion(missing_ids)
+                            })
+                        
+                        fetched = await db.get_documents_batch('communities', community_ids)
+                        for comm in fetched:
+                            if comm and comm.get('type') == target_type:
+                                community_id = comm.get('id')
+                                break
+                    except Exception as ex:
+                        logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in get: {ex}")
+
         chat_id = FirebaseMessagingService._get_chat_id('community', community_id, subgroup_type)
         
         parsed_timestamp = None

@@ -458,15 +458,15 @@ export default function ProfileScreen() {
     }
   };
 
-  const loadPosts = useCallback(async (reset = false) => {
-    console.log('[Profile] loading posts for userId:', userId, 'reset:', reset);
+  const loadPosts = useCallback(async (reset = false, silent = false) => {
+    console.log('[Profile] loading posts for userId:', userId, 'reset:', reset, 'silent:', silent);
     if (!userId || (postsLoading && !reset)) {
       console.log('[Profile] skip loadPosts:', { userId, postsLoading, reset });
       return;
     }
 
     const currentOffset = reset ? 0 : offset;
-    if (reset) {
+    if (reset && !silent) {
       setPostsLoading(true);
       setHasMore(true);
     }
@@ -493,7 +493,9 @@ export default function ProfileScreen() {
     } catch (error) {
       console.warn('Failed to load user posts:', error);
     } finally {
-      setPostsLoading(false);
+      if (!silent) {
+        setPostsLoading(false);
+      }
       setRefreshing(false);
     }
   }, [userId, offset, postsLoading]);
@@ -523,22 +525,25 @@ export default function ProfileScreen() {
     });
   }, [userId]);
 
-  const uploadStatus = useUploadStore(state => state.status);
-  
+  // Listen for background video/post uploads to update list smoothly without flickering
   useEffect(() => {
-    if (uploadStatus === 'success') {
-      setOffset(0);
-      loadPosts(true);
-    }
-  }, [uploadStatus]);
-
-  useEffect(() => {
-    const sub = DeviceEventEmitter.addListener('post_uploaded', () => {
-      setOffset(0);
-      loadPosts(true);
+    const sub = DeviceEventEmitter.addListener('post_uploaded', (newPost: any) => {
+      console.log('[Profile] post_uploaded event received:', newPost?.id);
+      if (newPost) {
+        // Prepend newPost optimistically if it belongs to the current user
+        if (newPost.user_id === userId) {
+          setPosts(prev => {
+            if (prev.some(p => p.id === newPost.id)) return prev;
+            return [newPost, ...prev];
+          });
+          setPostsCount(prev => prev + 1);
+        }
+      }
+      // Trigger a silent background refresh to keep state and counts synced with the server
+      loadPosts(true, true);
     });
     return () => sub.remove();
-  }, [loadPosts]);
+  }, [userId, loadPosts]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -927,7 +932,7 @@ export default function ProfileScreen() {
       item.media_type === 'video' ||
       item.is_video ||
       item.isVideo;
-    const displayUrl = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || rawUrl;
+    const displayUrl = item.thumbnail_url || item.thumbnailUrl || item.image_url || item.image || (isVideo ? '' : rawUrl);
     const isGallery = !isVideo && (item.media_count > 1 || item.is_carousel || item.carousel);
 
     return (

@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import {
   ActivityIndicator,
   Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -578,6 +579,27 @@ export default function EditProfileScreen() {
                     </>
                   )}
 
+                  {myVendor.business_gallery_images && myVendor.business_gallery_images.filter(Boolean).length > 0 && (
+                    <>
+                      <View style={[styles.vendorRow, { marginTop: 12 }]}>
+                        <Ionicons name="images-outline" size={16} color={COLORS.primary} style={{ marginRight: 6 }} />
+                        <Text style={styles.vendorLabel}>{t('language') === 'hi' ? 'व्यवसाय की तस्वीरें' : 'Business Photos'}</Text>
+                      </View>
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false} 
+                        style={styles.photosScroll}
+                        contentContainerStyle={styles.photosContent}
+                      >
+                        {myVendor.business_gallery_images.filter(Boolean).map((photoUrl: string, idx: number) => (
+                          <View key={idx} style={styles.photoContainer}>
+                            <Image source={{ uri: photoUrl }} style={styles.photoImage} />
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </>
+                  )}
+
                   <TouchableOpacity
                     style={styles.editServiceBtn}
                     onPress={() => router.push('/vendor/dashboard')}
@@ -923,5 +945,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingVertical: 8,
     paddingHorizontal: 12,
+  },
+  photosScroll: {
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  photosContent: {
+    gap: 8,
+    paddingRight: 10,
+  },
+  photoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.divider,
+    overflow: 'hidden',
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
   },
 });

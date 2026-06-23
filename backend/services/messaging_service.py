@@ -34,12 +34,105 @@ class MessagingService:
         db = await get_database()
         user = await db.users.find_one({"_id": ObjectId(user_id)})
         
+        # Resolve fallback community IDs
+        if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+            target_type = 'city'
+            if community_id == 'maharashtra-fallback':
+                target_type = 'state'
+            elif community_id == 'bharat-fallback':
+                target_type = 'country'
+                
+            user_loc = user.get('location') or user.get('home_location')
+            if user_loc:
+                from services.community_service import CommunityService
+                community_service = CommunityService()
+                try:
+                    community_ids = await community_service.join_location_communities(user_id, user_loc)
+                    # Sync back to user document if missing
+                    user_comms = set(user.get('communities', []))
+                    missing_ids = [cid for cid in community_ids if cid not in user_comms]
+                    if missing_ids:
+                        await db.users.update_one(
+                            {"_id": ObjectId(user_id)},
+                            {"$addToSet": {"communities": {"$each": missing_ids}}}
+                        )
+                        user['communities'] = user.get('communities', []) + missing_ids
+                    
+                    # Find matching community
+                    matched = await db.communities.find_one({
+                        "_id": {"$in": [ObjectId(cid) for cid in community_ids if ObjectId.is_valid(cid)]},
+                        "type": target_type
+                    })
+                    if matched:
+                        community_id = str(matched["_id"])
+                except Exception as ex:
+                    logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id}: {ex}")
+
         # Check membership
-        if community_id not in user.get("communities", []):
+        is_member = community_id in user.get("communities", [])
+        if not is_member:
+            # Check the community document directly to see if the user is in the members list
+            if ObjectId.is_valid(community_id):
+                community = await db.communities.find_one({"_id": ObjectId(community_id)})
+                if community:
+                    if user_id in community.get('members', []):
+                        is_member = True
+                        # Sync back to user document
+                        try:
+                            await db.users.update_one(
+                                {"_id": ObjectId(user_id)},
+                                {"$addToSet": {"communities": community_id}}
+                            )
+                            from utils.cache import cache_manager
+                            await cache_manager.invalidate_user(user_id)
+                        except Exception as ex:
+                            logger.warning(f"Failed to sync community membership to user doc: {ex}")
+                    else:
+                        comm_type = community.get('type')
+                        user_loc = user.get('location') or user.get('home_location') or {}
+                        if comm_type in ['city', 'state', 'country'] and user_loc:
+                            comm_loc = community.get('location') or {}
+                            match = False
+                            u_city = str(user_loc.get('city') or '').strip().lower()
+                            u_state = str(user_loc.get('state') or '').strip().lower()
+                            u_country = str(user_loc.get('country') or '').strip().lower()
+                            
+                            c_city = str(comm_loc.get('city') or '').strip().lower()
+                            c_state = str(comm_loc.get('state') or '').strip().lower()
+                            c_country = str(comm_loc.get('country') or '').strip().lower()
+                            
+                            if comm_type == 'city' and u_city and c_city == u_city:
+                                match = True
+                            elif comm_type == 'state' and u_state and c_state == u_state:
+                                match = True
+                            elif comm_type == 'country' and u_country and c_country == u_country:
+                                match = True
+                                
+                            if match:
+                                try:
+                                    # Add member to community
+                                    await db.communities.update_one(
+                                        {"_id": ObjectId(community_id)},
+                                        {"$addToSet": {"members": user_id}, "$inc": {"member_count": 1}}
+                                    )
+                                    await db.users.update_one(
+                                        {"_id": ObjectId(user_id)},
+                                        {"$addToSet": {"communities": community_id}}
+                                    )
+                                    from utils.cache import cache_manager
+                                    await cache_manager.invalidate_user(user_id)
+                                    is_member = True
+                                except Exception as ex:
+                                    logger.warning(f"Failed to auto-join location community: {ex}")
+
+        if not is_member:
             raise ValueError("Not a community member")
         
-        # Check verification for posting
-        if not user.get("is_verified", False):
+        # Check verification for posting (state and country groups require verification; city groups do not)
+        community_doc = community if 'community' in locals() and community else (await db.communities.find_one({"_id": ObjectId(community_id)}) if ObjectId.is_valid(community_id) else None)
+        is_city_group = (community_doc.get('type') == 'city') if community_doc else False
+        
+        if not is_city_group and not user.get("is_verified", False):
             raise ValueError("Only verified members can post in community groups")
         
         # Content moderation
@@ -70,16 +163,50 @@ class MessagingService:
         logger.info(f"Message sent to community {community_id}/{subgroup_type}")
         return serialize_doc(msg)
     
-    @staticmethod
     async def get_community_messages(
         community_id: str,
         subgroup_type: str,
         limit: int = 50,
-        before_timestamp: Optional[str] = None
+        before_timestamp: Optional[str] = None,
+        user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get messages from community subgroup"""
         db = await get_database()
         
+        # Resolve fallback community IDs if user_id is provided
+        if user_id and community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
+            target_type = 'city'
+            if community_id == 'maharashtra-fallback':
+                target_type = 'state'
+            elif community_id == 'bharat-fallback':
+                target_type = 'country'
+                
+            user = await db.users.find_one({"_id": ObjectId(user_id)})
+            if user:
+                user_loc = user.get('location') or user.get('home_location')
+                if user_loc:
+                    from services.community_service import CommunityService
+                    community_service = CommunityService()
+                    try:
+                        community_ids = await community_service.join_location_communities(user_id, user_loc)
+                        # Sync back to user document if missing
+                        user_comms = set(user.get('communities', []))
+                        missing_ids = [cid for cid in community_ids if cid not in user_comms]
+                        if missing_ids:
+                            await db.users.update_one(
+                                {"_id": ObjectId(user_id)},
+                                {"$addToSet": {"communities": {"$each": missing_ids}}}
+                            )
+                        
+                        matched = await db.communities.find_one({
+                            "_id": {"$in": [ObjectId(cid) for cid in community_ids if ObjectId.is_valid(cid)]},
+                            "type": target_type
+                        })
+                        if matched:
+                            community_id = str(matched["_id"])
+                    except Exception as ex:
+                        logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in get: {ex}")
+
         query: Dict[str, Any] = {
             "community_id": community_id,
             "subgroup_type": subgroup_type
