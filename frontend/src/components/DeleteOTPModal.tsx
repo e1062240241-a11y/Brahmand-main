@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS, SPACING } from '../constants/theme';
 import { Input } from './Input';
 import { Button } from './Button';
-import { sendMsg91OTP } from '../services/api';
+import { sendNettyfishOTP } from '../services/api';
 import { useTranslation } from '../utils/i18n';
 
 interface DeleteOTPModalProps {
@@ -63,7 +63,7 @@ export const DeleteOTPModal: React.FC<DeleteOTPModalProps> = ({
     if (!phoneNumber) return;
     setSendingOTP(true);
     try {
-      await sendMsg91OTP(phoneNumber);
+      await sendNettyfishOTP(phoneNumber);
       setTimer(30);
     } catch (error: any) {
       console.warn('Failed to send OTP:', error);
