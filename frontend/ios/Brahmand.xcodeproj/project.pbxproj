@@ -11,11 +11,11 @@
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
-		B642FD7BD1164794A048244C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = EA092AD9E5984A81AA060FE3 /* GoogleService-Info.plist */; };
-		70CDD523AB23412B83F9207B /* bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 898C02F53A2D49A68F69D6F4 /* bell.mp3 */; };
-		69E69E086C9E401A8A39CE79 /* soundreality_mayday_166011.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 4172D77452794279BAF0DC9D /* soundreality_mayday_166011.mp3 */; };
-		CFE2F58BF3744350871861FB /* bell_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6519EA79FC2746149CDF99F7 /* bell_ios.caf */; };
-		DBA2F69A208C41469FCBAFD8 /* soundreality_mayday_166011_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = D77EC62849C34661A42B2001 /* soundreality_mayday_166011_ios.caf */; };
+		88BFE085D43D4ACA85986F71 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = C5F96631C6A8472084A8E415 /* GoogleService-Info.plist */; };
+		34D3111EFB4F4A6C97CA3DB7 /* bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3266EFCD923E4706AF5827C0 /* bell.mp3 */; };
+		B75B10AFB6EF483981E5DDF0 /* soundreality_mayday_166011.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6B5F80FD84974E05AFD76D26 /* soundreality_mayday_166011.mp3 */; };
+		1CFE98983AB04C8297BE96FB /* bell_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = B3F0125F109149099E2D7A8B /* bell_ios.caf */; };
+		EF5B3E6A05E84A9FA2A0F19E /* soundreality_mayday_166011_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = 6DB4C5ADE97E4DACA7D5EAFB /* soundreality_mayday_166011_ios.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,11 +27,11 @@
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Brahmand/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Brahmand-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Brahmand-Bridging-Header.h"; path = "Brahmand/Brahmand-Bridging-Header.h"; sourceTree = "<group>"; };
-		EA092AD9E5984A81AA060FE3 /* GoogleService-Info.plist */ = {isa = PBXFileReference; name = "GoogleService-Info.plist"; path = "Brahmand/GoogleService-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
-		898C02F53A2D49A68F69D6F4 /* bell.mp3 */ = {isa = PBXFileReference; name = "bell.mp3"; path = "Brahmand/bell.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		4172D77452794279BAF0DC9D /* soundreality_mayday_166011.mp3 */ = {isa = PBXFileReference; name = "soundreality_mayday_166011.mp3"; path = "Brahmand/soundreality_mayday_166011.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		6519EA79FC2746149CDF99F7 /* bell_ios.caf */ = {isa = PBXFileReference; name = "bell_ios.caf"; path = "Brahmand/bell_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
-		D77EC62849C34661A42B2001 /* soundreality_mayday_166011_ios.caf */ = {isa = PBXFileReference; name = "soundreality_mayday_166011_ios.caf"; path = "Brahmand/soundreality_mayday_166011_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		C5F96631C6A8472084A8E415 /* GoogleService-Info.plist */ = {isa = PBXFileReference; name = "GoogleService-Info.plist"; path = "Brahmand/GoogleService-Info.plist"; sourceTree = "<group>"; fileEncoding = 4; lastKnownFileType = text.plist.xml; explicitFileType = undefined; includeInIndex = 0; };
+		3266EFCD923E4706AF5827C0 /* bell.mp3 */ = {isa = PBXFileReference; name = "bell.mp3"; path = "Brahmand/bell.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		6B5F80FD84974E05AFD76D26 /* soundreality_mayday_166011.mp3 */ = {isa = PBXFileReference; name = "soundreality_mayday_166011.mp3"; path = "Brahmand/soundreality_mayday_166011.mp3"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		B3F0125F109149099E2D7A8B /* bell_ios.caf */ = {isa = PBXFileReference; name = "bell_ios.caf"; path = "Brahmand/bell_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		6DB4C5ADE97E4DACA7D5EAFB /* soundreality_mayday_166011_ios.caf */ = {isa = PBXFileReference; name = "soundreality_mayday_166011_ios.caf"; path = "Brahmand/soundreality_mayday_166011_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,11 +54,11 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				EA092AD9E5984A81AA060FE3 /* GoogleService-Info.plist */,
-				898C02F53A2D49A68F69D6F4 /* bell.mp3 */,
-				4172D77452794279BAF0DC9D /* soundreality_mayday_166011.mp3 */,
-				6519EA79FC2746149CDF99F7 /* bell_ios.caf */,
-				D77EC62849C34661A42B2001 /* soundreality_mayday_166011_ios.caf */,
+				C5F96631C6A8472084A8E415 /* GoogleService-Info.plist */,
+				3266EFCD923E4706AF5827C0 /* bell.mp3 */,
+				6B5F80FD84974E05AFD76D26 /* soundreality_mayday_166011.mp3 */,
+				B3F0125F109149099E2D7A8B /* bell_ios.caf */,
+				6DB4C5ADE97E4DACA7D5EAFB /* soundreality_mayday_166011_ios.caf */,
 			);
 			name = Brahmand;
 			sourceTree = "<group>";
@@ -121,7 +121,7 @@
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				8BBB8E2357AE4F3CAD3E5CE9 /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
+				D83616D8DC694DA9B9CBBB7F /* [Expo Dev Launcher] Strip Local Network Keys for Release */,
 			);
 			buildRules = (
 			);
@@ -171,11 +171,11 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				B642FD7BD1164794A048244C /* GoogleService-Info.plist in Resources */,
-				70CDD523AB23412B83F9207B /* bell.mp3 in Resources */,
-				69E69E086C9E401A8A39CE79 /* soundreality_mayday_166011.mp3 in Resources */,
-				CFE2F58BF3744350871861FB /* bell_ios.caf in Resources */,
-				DBA2F69A208C41469FCBAFD8 /* soundreality_mayday_166011_ios.caf in Resources */,
+				88BFE085D43D4ACA85986F71 /* GoogleService-Info.plist in Resources */,
+				34D3111EFB4F4A6C97CA3DB7 /* bell.mp3 in Resources */,
+				B75B10AFB6EF483981E5DDF0 /* soundreality_mayday_166011.mp3 in Resources */,
+				1CFE98983AB04C8297BE96FB /* bell_ios.caf in Resources */,
+				EF5B3E6A05E84A9FA2A0F19E /* soundreality_mayday_166011_ios.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -243,7 +243,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Brahmand/Pods-Brahmand-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		8BBB8E2357AE4F3CAD3E5CE9 /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
+		D83616D8DC694DA9B9CBBB7F /* [Expo Dev Launcher] Strip Local Network Keys for Release */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
