@@ -790,7 +790,11 @@ export default function HomeScreen() {
                     record.likesCount = item.likes_count || 0;
                     record.commentsCount = item.comments_count || 0;
                     record.likedByMe = !!item.liked_by_me;
-                    record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    if (Platform.OS === 'android') {
+                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    } else {
+                      record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    }
                   });
                 } else {
                   await feedsCollection.create((record: any) => {
@@ -804,8 +808,13 @@ export default function HomeScreen() {
                     record.likesCount = item.likes_count || 0;
                     record.commentsCount = item.comments_count || 0;
                     record.likedByMe = !!item.liked_by_me;
-                    record.createdAt = item.created_at ? new Date(item.created_at).getTime() : Date.now();
-                    record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    if (Platform.OS === 'android') {
+                      record._raw.created_at = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    } else {
+                      record.createdAt = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+                      record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    }
                   });
                 }
               }
@@ -2075,8 +2084,19 @@ export default function HomeScreen() {
   const handleUploadPostSuccess = (post: any) => {
     const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
     const currentOffset = useFeedStore.getState().tabFeeds[activeTab]?.offset || 0;
+    
+    const normalizedPost = post ? {
+      ...post,
+      mediaUrl: post.mediaUrl || post.media_url,
+      media_url: post.media_url || post.mediaUrl,
+      mediaType: post.mediaType || post.media_type,
+      media_type: post.media_type || post.mediaType,
+      thumbnailUrl: post.thumbnailUrl || post.thumbnail_url || post.metadata?.thumbnail_url,
+      thumbnail_url: post.thumbnail_url || post.thumbnailUrl || post.metadata?.thumbnail_url,
+    } : post;
+
     setTabFeed(activeTab, {
-      posts: [post, ...currentPosts],
+      posts: [normalizedPost, ...currentPosts],
       offset: currentOffset + 1
     });
   };
@@ -2108,7 +2128,9 @@ export default function HomeScreen() {
   };
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
-    const postKey = `feed-${index}-${String(item.id || item.media_url || index)}`;
+    const postKey = Platform.OS === 'android'
+      ? String(item.id || item.media_url || index)
+      : `feed-${index}-${String(item.id || item.media_url || index)}`;
     return (
       <View
         onLayout={(event) => {
@@ -3940,7 +3962,9 @@ export default function HomeScreen() {
             ) : feedPosts.length > 0 ? (
               <>
                 {feedPosts.map((post, index) => {
-                  const postKey = `feed-${index}-${String(post.id || post.media_url || index)}`;
+                  const postKey = Platform.OS === 'android'
+                    ? String(post.id || post.media_url || index)
+                    : `feed-${index}-${String(post.id || post.media_url || index)}`;
                   const postId = String(post?.id || post?.media_url || index);
                   return (
                     <View
@@ -4937,8 +4961,8 @@ const styles = StyleSheet.create({
   },
   communityCardMini: {
     flex: 1,
-    minHeight: 75,
-    paddingVertical: 10,
+    minHeight: Platform.OS === 'android' ? 62 : 75,
+    paddingVertical: Platform.OS === 'android' ? 6 : 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
     flexDirection: 'row',
@@ -4971,16 +4995,16 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   communityCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    marginRight: 8,
+    width: Platform.OS === 'android' ? 38 : 44,
+    height: Platform.OS === 'android' ? 38 : 44,
+    borderRadius: 10,
+    marginRight: Platform.OS === 'android' ? 6 : 8,
   },
   communityCardIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    marginRight: 8,
+    width: Platform.OS === 'android' ? 38 : 44,
+    height: Platform.OS === 'android' ? 38 : 44,
+    borderRadius: 10,
+    marginRight: Platform.OS === 'android' ? 6 : 8,
     overflow: 'hidden',
   },
   communityCardIconRound: {
@@ -4992,7 +5016,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   communityCardTextBlock: {
-    marginTop: 6,
+    marginTop: Platform.OS === 'android' ? 3 : 6,
   },
   miniCardType: {
     fontFamily: 'Inter_600SemiBold',
@@ -5003,7 +5027,7 @@ const styles = StyleSheet.create({
   },
   communityCardLabel: {
     color: '#9F45FF',
-    fontSize: 10,
+    fontSize: Platform.OS === 'android' ? 8.5 : 10,
     letterSpacing: 0,
     marginBottom: 2,
   },
@@ -5015,9 +5039,9 @@ const styles = StyleSheet.create({
   },
   communityCardTitle: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 12.5,
+    fontSize: Platform.OS === 'android' ? 11 : 12.5,
     color: '#000',
-    lineHeight: 15,
+    lineHeight: Platform.OS === 'android' ? 13 : 15,
   },
   miniCardMembers: {
     fontFamily: 'Inter_500Medium',
@@ -5026,20 +5050,20 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   communityCardMembers: {
-    fontSize: 10,
+    fontSize: Platform.OS === 'android' ? 8.5 : 10,
     color: '#000',
-    marginTop: 2,
+    marginTop: Platform.OS === 'android' ? 1 : 2,
   },
   miniCardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 6,
+    marginTop: Platform.OS === 'android' ? 3 : 6,
   },
   sevaBadgeMini: {
-    width: 30,
-    height: 15,
-    borderRadius: 7.5,
+    width: Platform.OS === 'android' ? 26 : 30,
+    height: Platform.OS === 'android' ? 13 : 15,
+    borderRadius: Platform.OS === 'android' ? 6.5 : 7.5,
     borderWidth: 1,
     borderColor: '#365F35',
     backgroundColor: '#FFF',
@@ -5048,7 +5072,7 @@ const styles = StyleSheet.create({
   },
   sevaBadgeTextMini: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 8.5,
+    fontSize: Platform.OS === 'android' ? 7.5 : 8.5,
     color: '#397339',
   },
   stickyFeedTabsShell: {

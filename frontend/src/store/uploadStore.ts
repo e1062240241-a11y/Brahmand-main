@@ -78,7 +78,17 @@ export const useUploadStore = create<UploadState>((set) => ({
         params.muteAudio,
       );
 
-      const newPost = response.data;
+      const rawPost = response.data;
+      const newPost = rawPost ? {
+        ...rawPost,
+        mediaUrl: rawPost.mediaUrl || rawPost.media_url,
+        media_url: rawPost.media_url || rawPost.mediaUrl,
+        mediaType: rawPost.mediaType || rawPost.media_type || (params.mediaType === "video" ? "video" : "image"),
+        media_type: rawPost.media_type || rawPost.mediaType || (params.mediaType === "video" ? "video" : "image"),
+        thumbnailUrl: rawPost.thumbnailUrl || rawPost.thumbnail_url || rawPost.metadata?.thumbnail_url,
+        thumbnail_url: rawPost.thumbnail_url || rawPost.thumbnailUrl || rawPost.metadata?.thumbnail_url,
+      } : null;
+
       if (newPost) {
         const activeTab = useFeedStore.getState().activeTab;
         const category = params.uploadCategory || "feed";

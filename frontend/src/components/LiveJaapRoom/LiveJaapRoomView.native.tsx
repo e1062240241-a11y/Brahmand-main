@@ -295,13 +295,21 @@ export default function LiveJaapRoomView() {
   // Load personal count and accumulated progress from AsyncStorage
   useEffect(() => {
     AsyncStorage.getItem(countKey).then(val => {
-      if (val) setPersonalCount(parseInt(val, 10));
-      else setPersonalCount(0);
+      if (val) {
+        const parsed = parseInt(val, 10);
+        setPersonalCount(isNaN(parsed) ? 0 : parsed);
+      } else {
+        setPersonalCount(0);
+      }
     });
 
     AsyncStorage.getItem(accKey).then(val => {
-      if (val) accumulatedTimeRef.current = parseFloat(val);
-      else accumulatedTimeRef.current = 0;
+      if (val) {
+        const parsed = parseFloat(val);
+        accumulatedTimeRef.current = isNaN(parsed) ? 0 : parsed;
+      } else {
+        accumulatedTimeRef.current = 0;
+      }
     });
   }, [countKey, accKey]);
 
@@ -371,6 +379,7 @@ export default function LiveJaapRoomView() {
   
   const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
   const agoraJoinedRef = useRef(false);
+  const agoraInitializedRef = useRef(false);
   
   const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 50 });
   const audioStatus = useAudioPlayerStatus(bgPlayer);
@@ -923,6 +932,7 @@ export default function LiveJaapRoomView() {
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
       });
+      agoraInitializedRef.current = true;
       engine.current.registerEventHandler({
         onJoinChannelSuccess: (connection: RtcConnection) => {
           agoraJoinedRef.current = true;
@@ -975,10 +985,22 @@ export default function LiveJaapRoomView() {
   };
 
   const cleanupAgora = async () => {
-    if (agoraJoinedRef.current) {
-      await engine.current.leaveChannel();
-      await engine.current.release();
+    try {
+      if (agoraJoinedRef.current) {
+        await engine.current.leaveChannel();
+      }
+    } catch (e) {
+      console.warn('[Agora] leaveChannel error:', e);
     }
+    try {
+      if (agoraInitializedRef.current) {
+        await engine.current.release();
+        agoraInitializedRef.current = false;
+      }
+    } catch (e) {
+      console.warn('[Agora] release error:', e);
+    }
+    agoraJoinedRef.current = false;
   };
 
   const toggleMic = async () => {

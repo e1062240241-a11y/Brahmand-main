@@ -202,7 +202,7 @@ export const usePassportStore = create<PassportState>((set, get) => ({
             if (mediaUrl) {
               try {
                 const fileExtension = mediaUrl.split('.').pop() || 'jpg';
-                const fileMime = firstMedia.type === 'video' ? `video/${fileExtension}` : `image/${fileExtension}`;
+                const fileMime = firstMedia?.type === 'video' ? `video/${fileExtension}` : `image/${fileExtension}`;
                 const uploadRes = await uploadChatMedia({
                   uri: mediaUrl,
                   name: `passport_journey_${Date.now()}.${fileExtension}`,
