@@ -319,15 +319,19 @@ class FirebaseCommunityService:
         # Add user to community
         members = community.get('members', [])
         new_members = list(members) + [user_id] if user_id not in members else members
-        await db.client.collection('communities').document(community['id']).update({
-            'members': new_members,
-            'member_count': len(new_members)
-        })
+        await db._run_sync(
+            db.client.collection('communities').document(community['id']).update,
+            {
+                'members': new_members,
+                'member_count': len(new_members)
+            }
+        )
         
         # Add community to user
-        await db.client.collection('users').document(user_id).update({
-            'communities': firestore.ArrayUnion([community['id']])
-        })
+        await db._run_sync(
+            db.client.collection('users').document(user_id).update,
+            {'communities': firestore.ArrayUnion([community['id']])}
+        )
         
         await cache_manager.invalidate_user_communities(user_id)
         
@@ -339,9 +343,10 @@ class FirebaseCommunityService:
         db = await FirebaseCommunityService.get_db()
         
         from google.cloud import firestore
-        await db.client.collection('users').document(user_id).update({
-            'agreed_rules': firestore.ArrayUnion([f"{community_id}_{subgroup_type}"])
-        })
+        await db._run_sync(
+            db.client.collection('users').document(user_id).update,
+            {'agreed_rules': firestore.ArrayUnion([f"{community_id}_{subgroup_type}"])}
+        )
         
         await cache_manager.invalidate_user(user_id)
         return {"message": "Rules agreed"}

@@ -120,12 +120,16 @@ const normalizeNativeUploadFile = async (file: {
 }) => {
   const fileName = file.name || "upload.jpg";
   const fileType = normalizeMimeType(file.type, fileName);
+  let fileUri = file.uri || "";
+  if (Platform.OS === "android" && fileUri.startsWith("/")) {
+    fileUri = `file://${fileUri}`;
+  }
 
   if (
     Platform.OS !== "web" &&
-    (file.uri?.startsWith("content://") ||
-      file.uri?.startsWith("ph://") ||
-      file.uri?.startsWith("assets-library://"))
+    (fileUri.startsWith("content://") ||
+      fileUri.startsWith("ph://") ||
+      fileUri.startsWith("assets-library://"))
   ) {
     try {
       const fileSystem = FileSystem as any;
@@ -133,9 +137,9 @@ const normalizeNativeUploadFile = async (file: {
         fileSystem.cacheDirectory || fileSystem.documentDirectory || "";
       const localUri = `${cacheDir}upload-${Date.now()}-${fileName}`;
       if (typeof fileSystem.copyAsync === "function") {
-        await fileSystem.copyAsync({ from: file.uri, to: localUri });
+        await fileSystem.copyAsync({ from: fileUri, to: localUri });
       } else {
-        await FileSystem.downloadAsync(file.uri, localUri);
+        await FileSystem.downloadAsync(fileUri, localUri);
       }
       return {
         uri: localUri,
@@ -145,7 +149,7 @@ const normalizeNativeUploadFile = async (file: {
     } catch (error) {
       console.warn("[API] Failed to convert content URI to local file:", error);
       return {
-        uri: file.uri,
+        uri: fileUri,
         name: fileName,
         type: fileType,
       };
@@ -153,7 +157,7 @@ const normalizeNativeUploadFile = async (file: {
   }
 
   return {
-    uri: file.uri,
+    uri: fileUri,
     name: fileName,
     type: fileType,
   };

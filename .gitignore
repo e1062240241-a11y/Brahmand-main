@@ -171,3 +171,7 @@ test_result.md
 /backend/data/bhavykhatri DharmicData bhavykhatri-AddTransForGita Ramcharitmanas/*╬*
 /backend/data/bhavykhatri DharmicData bhavykhatri-AddTransForGita Ramcharitmanas/*Γ*
 /backend/data/bhavykhatri DharmicData bhavykhatri-AddTransForGita Ramcharitmanas/*┬*
+
+# Local gradle and settings
+.gradle/
+local.properties

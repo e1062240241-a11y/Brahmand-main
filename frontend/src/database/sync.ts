@@ -61,7 +61,10 @@ export async function syncDatabase() {
               'library_progress',
               'passport_journeys',
               'passport_badges',
-              'passport_certificates'
+              'passport_certificates',
+              'vendors',
+              'temples',
+              'sync_queue'
             ];
             requiredTables.forEach(table => {
               if (!changes[table]) {

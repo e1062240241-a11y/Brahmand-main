@@ -723,7 +723,17 @@ export const UploadPostModal = ({
         selectedMedia.height,
         mutedAudio,
       );
-      onUploadSuccess(response.data);
+      const uploadedPost = response.data;
+      const normalizedPost = uploadedPost ? {
+        ...uploadedPost,
+        mediaUrl: uploadedPost.mediaUrl || uploadedPost.media_url,
+        media_url: uploadedPost.media_url || uploadedPost.mediaUrl,
+        mediaType: uploadedPost.mediaType || uploadedPost.media_type || (selectedMedia.mediaType === "video" ? "video" : "image"),
+        media_type: uploadedPost.media_type || uploadedPost.mediaType || (selectedMedia.mediaType === "video" ? "video" : "image"),
+        thumbnailUrl: uploadedPost.thumbnailUrl || uploadedPost.thumbnail_url || uploadedPost.metadata?.thumbnail_url,
+        thumbnail_url: uploadedPost.thumbnail_url || uploadedPost.thumbnailUrl || uploadedPost.metadata?.thumbnail_url,
+      } : uploadedPost;
+      onUploadSuccess(normalizedPost);
       resetAndClose();
     } catch (error: any) {
       console.warn("Upload post failed:", error);

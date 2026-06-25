@@ -70,6 +70,7 @@ export const LiveMantraRoom = () => {
 
   const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
   const agoraJoinedRef = useRef(false);
+  const agoraInitializedRef = useRef(false);
   const agoraUidRef = useRef(0);
 
   const insets = useSafeAreaInsets();
@@ -163,7 +164,7 @@ export const LiveMantraRoom = () => {
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
       });
-
+      agoraInitializedRef.current = true;
       engine.current.registerEventHandler({
         onJoinChannelSuccess: (connection: RtcConnection, elapsed: number) => {
           console.log('[Agora] Joined channel successfully:', connection.channelId, 'UID:', connection.localUid);
@@ -246,16 +247,23 @@ export const LiveMantraRoom = () => {
   };
 
   const cleanupAgora = async () => {
-    if (agoraJoinedRef.current) {
-      console.log('[Agora] Cleaning up engine...');
-      try {
+    try {
+      if (agoraJoinedRef.current) {
+        console.log('[Agora] Cleaning up engine...');
         await engine.current.leaveChannel();
-        await engine.current.release();
-      } catch (error) {
-        console.warn('[Agora] Cleanup error', error);
       }
-      agoraJoinedRef.current = false;
+    } catch (error) {
+      console.warn('[Agora] leaveChannel error', error);
     }
+    try {
+      if (agoraInitializedRef.current) {
+        await engine.current.release();
+        agoraInitializedRef.current = false;
+      }
+    } catch (error) {
+      console.warn('[Agora] release error', error);
+    }
+    agoraJoinedRef.current = false;
   };
 
   const startVoiceLoop = async () => {

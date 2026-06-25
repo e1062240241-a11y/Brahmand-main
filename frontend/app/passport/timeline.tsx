@@ -1,6 +1,6 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
@@ -209,6 +209,73 @@ function PassportTimelineScreen({
     }
   };
 
+  const handleDeleteAllJourneys = () => {
+    Alert.alert(
+      "Clear All Journeys",
+      "Are you sure you want to permanently clear all journeys? This will also remove them from the Home feed.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Clear", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              const { database } = require('../../src/database');
+              const { useFeedStore } = require('../../src/store/feedStore');
+              const { usePassportStore } = require('../../src/store/passportStore');
+              const { syncDatabase } = require('../../src/database/sync');
+              
+              await database.write(async () => {
+                const journeysCollection = database.get('passport_journeys');
+                const feedsCollection = database.get('feeds');
+                
+                const journeys = await journeysCollection.query().fetch();
+                const feeds = await feedsCollection.query().fetch();
+                
+                const ops = [];
+                const deletedFeedIds: string[] = [];
+                
+                for (const journey of journeys) {
+                  ops.push(journey.prepareDestroyPermanently());
+                }
+                
+                for (const feed of feeds) {
+                  if (feed.id.startsWith('post_journey_')) {
+                    ops.push(feed.prepareDestroyPermanently());
+                    deletedFeedIds.push(feed.id);
+                  }
+                }
+                
+                if (ops.length > 0) {
+                  await database.batch(...ops);
+                }
+                
+                // Clear from Zustand stores
+                usePassportStore.setState({ journeys: [] });
+                
+                // Clear from Feed Zustand store
+                const currentTabFeed = useFeedStore.getState().tabFeeds['for_you'] || { posts: [] };
+                const filteredPosts = currentTabFeed.posts.filter((p: any) => !deletedFeedIds.includes(p.id));
+                useFeedStore.getState().setTabFeed('for_you', {
+                  posts: filteredPosts,
+                  offset: Math.max(0, filteredPosts.length)
+                });
+                
+                // Trigger sync to notify backend of deletion
+                syncDatabase().catch((err: any) => console.warn('[Timeline] Sync failed:', err));
+              });
+              
+              Alert.alert("Success", "All journeys have been cleared.");
+            } catch (err) {
+              console.error("[Timeline] Failed to clear journeys:", err);
+              Alert.alert("Error", "Could not clear journeys.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const renderJourneyCard = (journey: PassportJourney) => {
     const firstPhoto = journey.media && journey.media.find((m: any) => m.type === 'photo');
 
@@ -266,7 +333,13 @@ function PassportTimelineScreen({
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.pageTitle}>Passport Timeline</Text>
-        <View style={{ width: 40 }} />
+        {observedJourneys.length > 0 ? (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteAllJourneys} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="trash-outline" size={22} color="#000" />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -431,13 +504,6 @@ function PassportTimelineScreen({
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>Certificates</Text>
-            <TouchableOpacity onPress={() => {
-              if (observedCertificates.length > 0) {
-                router.push(`/passport/certificate/${observedCertificates[0].id}` as any);
-              }
-            }}>
-              <Text style={styles.viewAllText}>View Gallery</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.certificatesCard}>
@@ -675,6 +741,12 @@ const styles = StyleSheet.create({
   backButton: {
     padding: 8,
     marginLeft: -8,
+  },
+  deleteButton: {
+    padding: 8,
+    marginRight: -8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     paddingHorizontal: 20,

@@ -82,9 +82,10 @@ class FirebaseMessagingService:
                     user_comms = set(user.get('communities', []))
                     missing_ids = [cid for cid in community_ids if cid not in user_comms]
                     if missing_ids:
-                        await db.client.collection('users').document(user_id).update({
-                            'communities': firestore.ArrayUnion(missing_ids)
-                        })
+                        await db._run_sync(
+                            db.client.collection('users').document(user_id).update,
+                            {'communities': firestore.ArrayUnion(missing_ids)}
+                        )
                         user['communities'] = user.get('communities', []) + missing_ids
                     
                     fetched = await db.get_documents_batch('communities', community_ids)
@@ -105,9 +106,10 @@ class FirebaseMessagingService:
                     is_member = True
                     # Sync back to user document so future checks are fast
                     try:
-                        await db.client.collection('users').document(user_id).update({
-                            'communities': firestore.ArrayUnion([community_id])
-                        })
+                        await db._run_sync(
+                            db.client.collection('users').document(user_id).update,
+                            {'communities': firestore.ArrayUnion([community_id])}
+                        )
                         from utils.cache import cache_manager
                         await cache_manager.invalidate_user(user_id)
                     except Exception as ex:
@@ -136,9 +138,10 @@ class FirebaseMessagingService:
                         if match:
                             try:
                                 await db.add_member_to_community(community_id, user_id)
-                                await db.client.collection('users').document(user_id).update({
-                                    'communities': firestore.ArrayUnion([community_id])
-                                })
+                                await db._run_sync(
+                                    db.client.collection('users').document(user_id).update,
+                                    {'communities': firestore.ArrayUnion([community_id])}
+                                )
                                 from utils.cache import cache_manager
                                 await cache_manager.invalidate_user(user_id)
                                 is_member = True
@@ -164,14 +167,17 @@ class FirebaseMessagingService:
         
         # Ensure chat document exists
         chat_ref = db.client.collection('chats').document(chat_id)
-        chat_doc = await chat_ref.get()
+        chat_doc = await db._run_sync(chat_ref.get)
         if not chat_doc.exists:
-            await chat_ref.set({
-                'type': 'community',
-                'community_id': community_id,
-                'subgroup_type': subgroup_type,
-                'created_at': datetime.utcnow()
-            })
+            await db._run_sync(
+                chat_ref.set,
+                {
+                    'type': 'community',
+                    'community_id': community_id,
+                    'subgroup_type': subgroup_type,
+                    'created_at': datetime.utcnow()
+                }
+            )
         
         # Create message in subcollection
         message_data = {
@@ -200,11 +206,14 @@ class FirebaseMessagingService:
         message_data['chat_id'] = chat_id
         
         # Update chat's last message
-        await chat_ref.update({
-            'last_message': content,
-            'last_message_at': datetime.utcnow(),
-            'last_sender_id': user_id
-        })
+        await db._run_sync(
+            chat_ref.update,
+            {
+                'last_message': content,
+                'last_message_at': datetime.utcnow(),
+                'last_sender_id': user_id
+            }
+        )
         
         # Emit via Socket.IO
         if FirebaseMessagingService.sio:
@@ -247,9 +256,10 @@ class FirebaseMessagingService:
                         user_comms = set(user.get('communities', []))
                         missing_ids = [cid for cid in community_ids if cid not in user_comms]
                         if missing_ids:
-                            await db.client.collection('users').document(user_id).update({
-                                'communities': firestore.ArrayUnion(missing_ids)
-                            })
+                            await db._run_sync(
+                                db.client.collection('users').document(user_id).update,
+                                {'communities': firestore.ArrayUnion(missing_ids)}
+                            )
                         
                         fetched = await db.get_documents_batch('communities', community_ids)
                         for comm in fetched:
@@ -314,13 +324,16 @@ class FirebaseMessagingService:
         
         # Ensure chat exists
         chat_ref = db.client.collection('chats').document(chat_id)
-        chat_doc = await chat_ref.get()
+        chat_doc = await db._run_sync(chat_ref.get)
         if not chat_doc.exists:
-            await chat_ref.set({
-                'type': 'circle',
-                'circle_id': circle_id,
-                'created_at': datetime.utcnow()
-            })
+            await db._run_sync(
+                chat_ref.set,
+                {
+                    'type': 'circle',
+                    'circle_id': circle_id,
+                    'created_at': datetime.utcnow()
+                }
+            )
         
         message_data = {
             'sender_id': user_id,
@@ -337,10 +350,13 @@ class FirebaseMessagingService:
         message_data['id'] = message_id
         message_data['chat_id'] = chat_id
         
-        await chat_ref.update({
-            'last_message': content,
-            'last_message_at': datetime.utcnow()
-        })
+        await db._run_sync(
+            chat_ref.update,
+            {
+                'last_message': content,
+                'last_message_at': datetime.utcnow()
+            }
+        )
         
         if FirebaseMessagingService.sio:
             await FirebaseMessagingService.sio.emit('new_message', message_data, room=chat_id)
@@ -394,13 +410,16 @@ class FirebaseMessagingService:
         
         # Ensure chat exists
         chat_ref = db.client.collection('chats').document(chat_id)
-        chat_doc = await chat_ref.get()
+        chat_doc = await db._run_sync(chat_ref.get)
         if not chat_doc.exists:
-            await chat_ref.set({
-                'type': 'dm',
-                'participants': sorted([sender_id, recipient_id]),
-                'created_at': datetime.utcnow()
-            })
+            await db._run_sync(
+                chat_ref.set,
+                {
+                    'type': 'dm',
+                    'participants': sorted([sender_id, recipient_id]),
+                    'created_at': datetime.utcnow()
+                }
+            )
         
         message_data = {
             'sender_id': sender_id,
@@ -419,11 +438,14 @@ class FirebaseMessagingService:
         message_data['id'] = message_id
         message_data['chat_id'] = chat_id
         
-        await chat_ref.update({
-            'last_message': content,
-            'last_message_at': datetime.utcnow(),
-            'last_sender_id': sender_id
-        })
+        await db._run_sync(
+            chat_ref.update,
+            {
+                'last_message': content,
+                'last_message_at': datetime.utcnow(),
+                'last_sender_id': sender_id
+            }
+        )
         
         if FirebaseMessagingService.sio:
             await FirebaseMessagingService.sio.emit('new_dm', message_data, room=chat_id)

@@ -5591,9 +5591,10 @@ async def send_community_message(
                 user_comms = set(user.get('communities', []))
                 missing_ids = [cid for cid in community_ids if cid not in user_comms]
                 if missing_ids:
-                    await db.client.collection('users').document(user_id).update({
-                        'communities': firestore.ArrayUnion(missing_ids)
-                    })
+                    await db._run_sync(
+                        db.client.collection('users').document(user_id).update,
+                        {'communities': firestore.ArrayUnion(missing_ids)}
+                    )
                     user['communities'] = user.get('communities', []) + missing_ids
                 
                 fetched = await db.get_documents_batch('communities', community_ids)
@@ -5615,9 +5616,10 @@ async def send_community_message(
                 # Sync back to user document
                 try:
                     from google.cloud import firestore
-                    await db.client.collection('users').document(user_id).update({
-                        'communities': firestore.ArrayUnion([community_id])
-                    })
+                    await db._run_sync(
+                        db.client.collection('users').document(user_id).update,
+                        {'communities': firestore.ArrayUnion([community_id])}
+                    )
                 except Exception as ex:
                     logger.warning(f"Failed to sync community membership to user doc in main.py: {ex}")
             else:
@@ -5645,9 +5647,10 @@ async def send_community_message(
                         try:
                             await db.add_member_to_community(community_id, user_id)
                             from google.cloud import firestore
-                            await db.client.collection('users').document(user_id).update({
-                                'communities': firestore.ArrayUnion([community_id])
-                            })
+                            await db._run_sync(
+                                db.client.collection('users').document(user_id).update,
+                                {'communities': firestore.ArrayUnion([community_id])}
+                            )
                             is_member = True
                         except Exception as ex:
                             logger.warning(f"Failed to auto-join location community in main.py: {ex}")
@@ -5784,9 +5787,10 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
                 user_comms = set(user.get('communities', []))
                 missing_ids = [cid for cid in community_ids if cid not in user_comms]
                 if missing_ids:
-                    await db.client.collection('users').document(user_id).update({
-                        'communities': firestore.ArrayUnion(missing_ids)
-                    })
+                    await db._run_sync(
+                        db.client.collection('users').document(user_id).update,
+                        {'communities': firestore.ArrayUnion(missing_ids)}
+                    )
                 
                 fetched = await db.get_documents_batch('communities', community_ids)
                 for comm in fetched:
@@ -10797,7 +10801,8 @@ async def get_vendor_review_queue(
     token_data: dict = Depends(verify_token)
 ):
     """Admin: list vendor review queue snapshots."""
-    with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+    log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'debug_admin.log')
+    with open(log_path, 'a') as f:
         f.write(f"\n--- API CALL: get_vendor_review_queue status={status} limit={limit} ---\n")
     
     db, _ = await _ensure_admin_user(token_data)
@@ -10808,7 +10813,7 @@ async def get_vendor_review_queue(
 
     records = []
     try:
-        with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+        with open(log_path, 'a') as f:
             f.write("Attempting query with ordering...\n")
         records = await db.query_documents(
             'vendor_admin_reviews',
@@ -10817,17 +10822,17 @@ async def get_vendor_review_queue(
             order_direction='DESCENDING',
             limit=limit,
         )
-        with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+        with open(log_path, 'a') as f:
             f.write(f"Ordered query success: {len(records)} records found.\n")
     except Exception as exc:
-        with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+        with open(log_path, 'a') as f:
             f.write(f"Ordered query failed: {exc}\nAttempting fallback query...\n")
         try:
             records = await db.query_documents(
                 'vendor_admin_reviews',
                 filters=filters if filters else None,
             )
-            with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+            with open(log_path, 'a') as f:
                 f.write(f"Fallback query fetched {len(records)} records. Types of updated_at:\n")
                 for r in records:
                     up_at = r.get('updated_at')
@@ -10844,10 +10849,10 @@ async def get_vendor_review_queue(
                 
             records.sort(key=get_sort_key, reverse=True)
             records = records[:max(1, limit)]
-            with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+            with open(log_path, 'a') as f:
                 f.write("Fallback sorting succeeded.\n")
         except Exception as fallback_exc:
-            with open('/Users/developer/Desktop/Brahmand-main/debug_admin.log', 'a') as f:
+            with open(log_path, 'a') as f:
                 f.write(f"Fallback query or sort failed: {fallback_exc}\n")
 
     return records
@@ -13075,7 +13080,7 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
         feeds = changes['feeds']
         for post_data in feeds.get('created', []):
             try:
-                await db.client.collection('posts').document(post_data['id']).set({
+                db.client.collection('posts').document(post_data['id']).set({
                     "user_id": user_id,
                     "username": post_data.get('username', 'User'),
                     "user_photo": post_data.get('user_photo'),
@@ -13084,6 +13089,7 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
                     "caption": post_data.get('caption', ''),
                     "likes_count": post_data.get('likes_count', 0),
                     "comments_count": post_data.get('comments_count', 0),
+                    "visibility": post_data.get('visibility', 'public'),
                     "created_at": datetime.utcnow(),
                     "updated_at": datetime.utcnow()
                 })
@@ -13092,18 +13098,35 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
 
         for post_data in feeds.get('updated', []):
             try:
-                await db.client.collection('posts').document(post_data['id']).update({
-                    "caption": post_data.get('caption'),
-                    "likes_count": post_data.get('likes_count'),
-                    "comments_count": post_data.get('comments_count'),
-                    "updated_at": datetime.utcnow()
-                })
+                post_ref = db.client.collection('posts').document(post_data['id'])
+                post_snapshot = post_ref.get()
+                if post_snapshot.exists:
+                    post_ref.update({
+                        "caption": post_data.get('caption'),
+                        "likes_count": post_data.get('likes_count'),
+                        "comments_count": post_data.get('comments_count'),
+                        "updated_at": datetime.utcnow()
+                    })
+                else:
+                    post_ref.set({
+                        "user_id": user_id,
+                        "username": post_data.get('username', 'User'),
+                        "user_photo": post_data.get('user_photo'),
+                        "media_url": post_data.get('media_url'),
+                        "media_type": post_data.get('media_type', 'image'),
+                        "caption": post_data.get('caption', ''),
+                        "likes_count": post_data.get('likes_count', 0),
+                        "comments_count": post_data.get('comments_count', 0),
+                        "visibility": post_data.get('visibility', 'public'),
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow()
+                    })
             except Exception as e:
                 logger.error("Error pushing feed updated: %s", e)
 
         for post_id in feeds.get('deleted', []):
             try:
-                await db.client.collection('posts').document(post_id).delete()
+                db.client.collection('posts').document(post_id).delete()
             except Exception as e:
                 logger.error("Error pushing feed deleted: %s", e)
 
@@ -13113,13 +13136,16 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
             try:
                 chat_id = msg_data.get('chat_id')
                 if chat_id:
-                    await db.client.collection('chats').document(chat_id).collection('messages').document(msg_data['id']).set({
-                        "sender_id": user_id,
-                        "sender_name": msg_data.get('sender_name', 'User'),
-                        "content": msg_data.get('content', ''),
-                        "message_type": msg_data.get('message_type', 'text'),
-                        "created_at": datetime.utcnow(),
-                    })
+                    await db._run_sync(
+                        db.client.collection('chats').document(chat_id).collection('messages').document(msg_data['id']).set,
+                        {
+                            "sender_id": user_id,
+                            "sender_name": msg_data.get('sender_name', 'User'),
+                            "content": msg_data.get('content', ''),
+                            "message_type": msg_data.get('message_type', 'text'),
+                            "created_at": datetime.utcnow(),
+                        }
+                    )
             except Exception as e:
                 logger.error("Error pushing message created: %s", e)
 
@@ -13129,13 +13155,16 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
             try:
                 chat_id = msg_data.get('community_id')
                 if chat_id:
-                    await db.client.collection('chats').document(chat_id).collection('messages').document(msg_data['id']).set({
-                        "sender_id": user_id,
-                        "sender_name": msg_data.get('sender_name', 'User'),
-                        "content": msg_data.get('content', ''),
-                        "message_type": msg_data.get('message_type', 'text'),
-                        "created_at": datetime.utcnow().isoformat() + 'Z',
-                    })
+                    await db._run_sync(
+                        db.client.collection('chats').document(chat_id).collection('messages').document(msg_data['id']).set,
+                        {
+                            "sender_id": user_id,
+                            "sender_name": msg_data.get('sender_name', 'User'),
+                            "content": msg_data.get('content', ''),
+                            "message_type": msg_data.get('message_type', 'text'),
+                            "created_at": datetime.utcnow().isoformat() + 'Z',
+                        }
+                    )
             except Exception as e:
                 logger.error("Error pushing community message created: %s", e)
 

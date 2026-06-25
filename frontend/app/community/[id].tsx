@@ -58,23 +58,77 @@ const localPostCategories = new Map<string, string>();
 
 // Persists across full reloads via localStorage (web) / AsyncStorage (native)
 const POST_CACHE_KEY = 'brahmand_local_posts';
+let isCategoriesLoaded = false;
+let categoryLoadingPromise: Promise<void> | null = null;
+
+function ensureCategoriesLoaded(): Promise<void> {
+  if (isCategoriesLoaded) return Promise.resolve();
+  if (categoryLoadingPromise) return categoryLoadingPromise;
+
+  if (Platform.OS === 'web') {
+    isCategoriesLoaded = true;
+    return Promise.resolve();
+  }
+
+  categoryLoadingPromise = new Promise((resolve) => {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.getItem(POST_CACHE_KEY).then((raw: string | null) => {
+        if (raw) {
+          const map: Record<string, string> = JSON.parse(raw);
+          Object.entries(map).forEach(([content, category]) => {
+            localPostCategories.set(content.trim(), category);
+          });
+        }
+        isCategoriesLoaded = true;
+        resolve();
+      }).catch((err: any) => {
+        console.warn('[CommunityScreen] Failed to load local categories:', err);
+        isCategoriesLoaded = true;
+        resolve();
+      });
+    } catch (e) {
+      console.warn('[CommunityScreen] AsyncStorage error:', e);
+      isCategoriesLoaded = true;
+      resolve();
+    }
+  });
+
+  return categoryLoadingPromise;
+}
+
 function saveLocalPost(content: string, category: string) {
-  localPostCategories.set(content, category);
+  const key = content.trim();
+  localPostCategories.set(key, category);
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
-    const map: Record<string, string> = raw ? JSON.parse(raw) : {};
-    map[content] = category;
-    if (typeof localStorage !== 'undefined') localStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(POST_CACHE_KEY);
+      const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+      map[key] = category;
+      localStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
+    } else {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      AsyncStorage.getItem(POST_CACHE_KEY).then((raw: string | null) => {
+        const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+        map[key] = category;
+        AsyncStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
+      }).catch((e: any) => console.warn('[saveLocalPost] AsyncStorage error:', e));
+    }
   } catch { }
 }
+
 function getLocalCategory(content: string): string | undefined {
-  const fromMap = localPostCategories.get(content);
+  if (!content) return undefined;
+  const key = content.trim();
+  const fromMap = localPostCategories.get(key);
   if (fromMap) return fromMap;
   try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(POST_CACHE_KEY) : null;
-    if (raw) {
-      const map: Record<string, string> = JSON.parse(raw);
-      return map[content];
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(POST_CACHE_KEY);
+      if (raw) {
+        const map: Record<string, string> = JSON.parse(raw);
+        return map[key];
+      }
     }
   } catch { }
   return undefined;
@@ -619,6 +673,12 @@ export default function CommunityDetailScreen() {
       setTick(t => t + 1);
     }, 15000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      ensureCategoriesLoaded();
+    }
   }, []);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
@@ -1350,7 +1410,7 @@ export default function CommunityDetailScreen() {
     }
 
     return [];
-  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests]);
+  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -1375,6 +1435,9 @@ export default function CommunityDetailScreen() {
 
   const fetchCommunity = async (force = false) => {
     try {
+      if (Platform.OS === 'android') {
+        await ensureCategoriesLoaded();
+      }
       const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
       if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 900000) {
         console.log('[Community] Using fresh cache, skipping fetchCommunity');
@@ -1631,8 +1694,43 @@ export default function CommunityDetailScreen() {
           ...olderNationalMsgs.map((p: any) => p.id)
         ]);
 
-        // Keep local optimistic posts (either pending with 'post-' ID, or completed but not yet in server fetch)
-        const localPosts = prev.filter((p: any) => (String(p.id).startsWith('post-') || p.isUniversal) && !serverIds.has(p.id) && !deletedIds.has(String(p.id)));
+        const serverPosts = [
+          ...formattedMsgs,
+          ...recentStateMsgs,
+          ...olderStateMsgs,
+          ...recentNationalMsgs,
+          ...olderNationalMsgs
+        ];
+
+        // Keep local optimistic posts (either pending with 'post-' ID, user's own posts, or marked as isUniversal)
+        const localPosts = prev.filter((p: any) => {
+          const isDeleted = deletedIds.has(String(p.id));
+          if (isDeleted) return false;
+
+          const isLocal = String(p.id).startsWith('post-') || 
+            p.isUniversal || 
+            (p.sender_id && user?.id && String(p.sender_id) === String(user?.id)) ||
+            (p.user_id && user?.id && String(p.user_id) === String(user?.id));
+
+          if (!isLocal) return false;
+
+          // If the post is already in the server response by ID, don't keep local version
+          if (serverIds.has(p.id)) return false;
+
+          // If it's a local pending post (starts with 'post-'), also check if the server has already returned it by content matching
+          if (String(p.id).startsWith('post-')) {
+            const hasServerMatch = serverPosts.some((sp: any) => {
+              const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
+              const senderMatches = (sp.sender_id && user?.id && String(sp.sender_id) === String(user?.id)) ||
+                (sp.user_id && user?.id && String(sp.user_id) === String(user?.id)) ||
+                (sp.user?.name && user?.name && sp.user.name === user.name);
+              return contentMatches && senderMatches;
+            });
+            if (hasServerMatch) return false;
+          }
+
+          return true;
+        });
         const seenIds = new Set(localPosts.map((p: any) => p.id));
 
         // Filter fresh server posts — exclude any that were locally deleted

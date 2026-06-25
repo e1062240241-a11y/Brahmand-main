@@ -140,6 +140,20 @@ export const PostFeedCard = memo(({
 
   const [imageUri, setImageUri] = useState(mediaUrl);
   const [videoPosterUrl, setVideoPosterUrl] = useState(posterUrl);
+  const [showFallback, setShowFallback] = useState(Platform.OS !== 'android');
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (mediaUrl) {
+        setShowFallback(false);
+      } else {
+        const timer = setTimeout(() => {
+          setShowFallback(true);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [mediaUrl]);
 
   useEffect(() => {
     setImageUri(mediaUrl);
@@ -198,6 +212,18 @@ export const PostFeedCard = memo(({
   const mediaType = rawMediaType ? String(rawMediaType).toLowerCase() : '';
 
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
+
+  if (Platform.OS === 'android') {
+    console.log('[PostFeedCard LOG Android] Post:', {
+      id: post?.id,
+      media_url: post?.media_url,
+      mediaUrl: post?.mediaUrl,
+      rawMediaUrl,
+      mediaUrlVal: mediaUrl,
+      mediaType,
+      isVideo
+    });
+  }
 
   const displayRatio = dynamicRatio;
   const feedHeight = SCREEN_WIDTH / displayRatio;
@@ -636,10 +662,14 @@ export const PostFeedCard = memo(({
               )}
             </Pressable>
           )
-        ) : (
+        ) : showFallback ? (
           <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
             <Ionicons name="image-outline" size={40} color="rgba(0,0,0,0.05)" />
             <Text style={{ color: '#888', fontSize: 12, marginTop: 8 }}>{t('language') === 'hi' ? 'सामग्री हटा दी गई है या गायब है' : 'Content removed or missing'}</Text>
+          </View>
+        ) : (
+          <View style={[styles.media, { backgroundColor: theme === 'light' ? '#FAFAFA' : '#1A1A1A', justifyContent: 'center', alignItems: 'center' }]}>
+            <ActivityIndicator color={theme === 'light' ? '#FF8F00' : '#FFD26C'} />
           </View>
         )}
 

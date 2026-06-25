@@ -121,7 +121,129 @@ export const usePassportStore = create<PassportState>((set, get) => ({
             answersList: newJourney.answers,
           });
         });
+
+        // Create a public feed post if the journey is public
+        if (newJourney.visibility === 'public') {
+          const currentUser = useAuthStore.getState().user;
+          const userPhoto = currentUser?.photo || null;
+          const username = currentUser?.name || 'User';
+
+          // Get first media uri if present
+          const firstMedia = Array.isArray(newJourney.media) && newJourney.media.length > 0 ? newJourney.media[0] : null;
+          const mediaUrl = firstMedia?.uri || null;
+          const mediaType = firstMedia?.type === 'video' ? 'video' : (mediaUrl ? 'image' : 'text');
+          const caption = newJourney.generated_story || `${newJourney.title} at ${newJourney.location}`;
+          const recordId = `post_journey_${newJourney.id.split('_').pop() || Date.now()}`;
+
+          await database.get('feeds').create((record: any) => {
+            record._raw.id = recordId;
+            record.userId = currentUser?.id || '';
+            record.username = username;
+            record.userPhoto = userPhoto;
+            record.mediaUrl = mediaUrl;
+            record.mediaType = mediaType;
+            record.caption = caption;
+            record.likesCount = 0;
+            record.commentsCount = 0;
+            record.likedByMe = false;
+          });
+
+          // Optimistically inject into feed store and notify components
+          try {
+            const { useFeedStore } = require('./feedStore');
+            const { DeviceEventEmitter } = require('react-native');
+            const newPost = {
+              id: recordId,
+              user_id: currentUser?.id || '',
+              username: username,
+              user_photo: userPhoto,
+              media_url: mediaUrl,
+              media_type: mediaType,
+              caption: caption,
+              likes_count: 0,
+              comments_count: 0,
+              liked_by_me: false,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              views_count: 0,
+              top_comments: []
+            };
+
+            const currentPosts = useFeedStore.getState().tabFeeds['for_you']?.posts || [];
+            const currentOffset = useFeedStore.getState().tabFeeds['for_you']?.offset || 0;
+            useFeedStore.getState().setTabFeed('for_you', {
+              posts: [newPost, ...currentPosts],
+              offset: currentOffset + 1,
+            });
+
+            DeviceEventEmitter.emit("post_uploaded", newPost);
+          } catch (feedErr) {
+            console.warn('[PassportStore] Optimistic feed update failed:', feedErr);
+          }
+        }
       });
+
+      // Post to community chat if visibility is public (Shared in Community)
+      if (newJourney.visibility === 'public') {
+        // Run asynchronously to avoid blocking the main UI redirect thread
+        (async () => {
+          try {
+            const { sendCommunityMessage, uploadChatMedia } = require('../services/api');
+            const currentUser = useAuthStore.getState().user;
+            const username = currentUser?.name || 'User';
+            const userPhoto = currentUser?.photo || null;
+
+            // Get first media uri if present
+            const firstMedia = Array.isArray(newJourney.media) && newJourney.media.length > 0 ? newJourney.media[0] : null;
+            const mediaUrl = firstMedia?.uri || null;
+            const caption = newJourney.generated_story || `${newJourney.title} at ${newJourney.location}`;
+
+            let uploadedMediaUrl = null;
+            if (mediaUrl) {
+              try {
+                const fileExtension = mediaUrl.split('.').pop() || 'jpg';
+                const fileMime = firstMedia?.type === 'video' ? `video/${fileExtension}` : `image/${fileExtension}`;
+                const uploadRes = await uploadChatMedia({
+                  uri: mediaUrl,
+                  name: `passport_journey_${Date.now()}.${fileExtension}`,
+                  type: fileMime
+                });
+                uploadedMediaUrl = uploadRes?.data?.media_url || null;
+                console.log('[PassportStore] Successfully uploaded journey media for chat share:', uploadedMediaUrl);
+              } catch (uploadErr) {
+                console.warn('[PassportStore] Failed to upload media for community post, sending text-only fallback:', uploadErr);
+              }
+            }
+
+            // Find the city community, fallback to 'mumbai-fallback'
+            let communityId = 'mumbai-fallback';
+            try {
+              const localComms = await database.get('communities').query().fetch();
+              const cityComm = localComms.find((c: any) => c.type === 'city');
+              if (cityComm && cityComm.id) {
+                communityId = cityComm.id;
+              }
+            } catch (dbErr) {
+              console.warn('[PassportStore] Failed to query local communities for chat share:', dbErr);
+            }
+
+            const subgroupType = 'city';
+            const content = `🚩 *Recorded a new Journey!* 🚩\n\nI just added a new journey to my Brahmand Passport: *${newJourney.title}* at *${newJourney.location}*.\n\n"${caption}"`;
+
+            await sendCommunityMessage(
+              communityId,
+              subgroupType,
+              content,
+              uploadedMediaUrl ? (firstMedia?.type === 'video' ? 'video' : 'image') : 'text',
+              undefined,
+              uploadedMediaUrl || undefined
+            );
+            console.log(`[PassportStore] Successfully shared journey to community group ${communityId}`);
+          } catch (chatErr) {
+            console.warn('[PassportStore] Failed to share journey in community group chat:', chatErr);
+          }
+        })();
+      }
     } catch (e) {
       console.warn('[PassportStore] DB write journey failed:', e);
     }

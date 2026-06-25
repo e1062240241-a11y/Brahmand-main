@@ -38,6 +38,27 @@ import {
   adminDeleteVendor,
 } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
+import { Ionicons } from '@expo/vector-icons';
+
+// UI Helper Component for Metadata rows
+const InfoRow = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+  <View style={styles.infoRow}>
+    <Ionicons name={icon as any} size={14} color={COLORS.textSecondary} style={styles.infoIcon} />
+    <Text style={styles.infoLabel}>{label}:</Text>
+    <Text style={styles.infoValue} numberOfLines={1} adjustsFontSizeToFit>{value}</Text>
+  </View>
+);
+
+// UI Helper Component for Section Header
+const SectionHeader = ({ title, count }: { title: string; count: number }) => (
+  <View style={styles.sectionHeaderContainer}>
+    <View style={styles.sectionHeaderIndicator} />
+    <Text style={styles.sectionTitle}>{title}</Text>
+    <View style={styles.countBadge}>
+      <Text style={styles.countBadgeText}>{count}</Text>
+    </View>
+  </View>
+);
 
 export default function AdminPanelScreen() {
   const router = useRouter();
@@ -75,52 +96,75 @@ export default function AdminPanelScreen() {
   };
 
   const pendingKycRequests = useMemo(
-    () => vendorRequests.filter((record) => (record.review_status || 'pending') === 'pending' && isKycCompleted(record)),
+    () => vendorRequests
+      .filter((record) => (record.review_status || 'pending') === 'pending' && isKycCompleted(record))
+      .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()),
     [vendorRequests]
   );
 
   const approvedKycRequests = useMemo(
-    () => (verifiedVendorRequests || []).filter((record) => record.review_status === 'approved'),
+    () => (verifiedVendorRequests || [])
+      .filter((record) => record.review_status === 'approved')
+      .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()),
     [verifiedVendorRequests]
   );
 
   const pendingUserKycRequests = useMemo(
-    () => (userKycRequests || []).filter((record) => !!record?.id),
+    () => (userKycRequests || [])
+      .filter((record) => !!record?.id)
+      .sort((a, b) => new Date(b.kyc_submitted_at || 0).getTime() - new Date(a.kyc_submitted_at || 0).getTime()),
     [userKycRequests]
   );
 
   const approvedUserKycRequests = useMemo(
-    () => (verifiedUserKycRequests || []).filter((record) => !!record?.id),
+    () => (verifiedUserKycRequests || [])
+      .filter((record) => !!record?.id)
+      .sort((a, b) => new Date(b.kyc_submitted_at || 0).getTime() - new Date(a.kyc_submitted_at || 0).getTime()),
     [verifiedUserKycRequests]
   );
 
   const pendingPostReports = useMemo(
-    () => (reportedPosts || []).filter((record) => (record?.status || 'pending') === 'pending'),
+    () => (reportedPosts || [])
+      .filter((record) => (record?.status || 'pending') === 'pending')
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()),
     [reportedPosts]
   );
 
   const activeAnonymousUsers = useMemo(
-    () => (anonymousUsers || []).filter((user) => !user.anonymous_disabled),
+    () => (anonymousUsers || [])
+      .filter((user) => !user.anonymous_disabled)
+      .sort((a, b) => new Date(b.anonymous_created_at || 0).getTime() - new Date(a.anonymous_created_at || 0).getTime()),
     [anonymousUsers]
   );
 
   const disabledAnonymousUsers = useMemo(
-    () => (anonymousUsers || []).filter((user) => !!user.anonymous_disabled),
+    () => (anonymousUsers || [])
+      .filter((user) => !!user.anonymous_disabled)
+      .sort((a, b) => new Date(b.anonymous_created_at || 0).getTime() - new Date(a.anonymous_created_at || 0).getTime()),
     [anonymousUsers]
   );
 
   const pendingPersonalityRequests = useMemo(
-    () => (personalityRequests || []).filter((req) => req.status === 'pending'),
+    () => (personalityRequests || [])
+      .filter((req) => req.status === 'pending')
+      .sort((a, b) => new Date(b.submitted_at || 0).getTime() - new Date(a.submitted_at || 0).getTime()),
     [personalityRequests]
   );
 
   const approvedPersonalityRequests = useMemo(
-    () => (verifiedPersonalityRequests || []).filter((req) => req.status === 'approved'),
+    () => (verifiedPersonalityRequests || [])
+      .filter((req) => req.status === 'approved')
+      .sort((a, b) => new Date(b.submitted_at || 0).getTime() - new Date(a.submitted_at || 0).getTime()),
     [verifiedPersonalityRequests]
   );
 
+  const sortedMisuseReports = useMemo(
+    () => (misuseReports || [])
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()),
+    [misuseReports]
+  );
+
   const loadRequests = async () => {
-    // Triggering fast refresh
     if (!adminToken) return;
     try {
       const [
@@ -373,70 +417,124 @@ export default function AdminPanelScreen() {
     const isExpanded = expandedId === item.vendor_id;
 
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.vendor_id)} style={styles.card}>
-        <Text style={styles.businessName}>{item.business_name || 'Unnamed Business'}</Text>
-        <Text style={styles.meta}>Owner: {item.owner_name || 'N/A'}</Text>
-        <Text style={styles.meta}>Phone: {item.phone_number || 'N/A'}</Text>
-        
-        {isExpanded ? (
-          <View style={styles.expandedContent}>
-            <Text style={styles.meta}>Address: {item.full_address || 'N/A'}</Text>
-            <Text style={styles.meta}>Categories: {(item.categories || []).join(', ') || 'N/A'}</Text>
-            <Text style={styles.meta}>Aadhaar OTP Verified: {item.aadhaar_otp_verified_at || 'No'}</Text>
-            <Text style={styles.meta}>Review Status: {item.review_status || 'pending'}</Text>
-
-            <Text style={styles.sectionSub}>Submitted Documents</Text>
-            <View style={styles.docRow}>
-              {item.aadhar_url ? (
-                <TouchableOpacity onPress={() => Alert.alert('Aadhaar Document', item.aadhar_url || undefined)}>
-                  <Image source={{ uri: item.aadhar_url }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>Aadhaar</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.pan_url ? (
-                <TouchableOpacity onPress={() => Alert.alert('PAN Document', item.pan_url || undefined)}>
-                  <Image source={{ uri: item.pan_url }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>PAN</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.face_scan_url ? (
-                <TouchableOpacity onPress={() => Alert.alert('Face Scan / Selfie', item.face_scan_url || undefined)}>
-                  <Image source={{ uri: item.face_scan_url }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>Selfie</Text>
-                </TouchableOpacity>
-              ) : null}
-              {!item.aadhar_url && !item.pan_url && !item.face_scan_url && (
-                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
-              )}
+      <TouchableOpacity activeOpacity={0.9} onPress={() => toggleExpand(item.vendor_id)} style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(255, 102, 0, 0.08)' }]}>
+              <Ionicons name="business" size={18} color={COLORS.primary} />
             </View>
+            <Text style={styles.businessName}>{item.business_name || 'Unnamed Business'}</Text>
           </View>
-        ) : (
-          <Text style={styles.expandHint}>Tap to view details & documents</Text>
-        )}
+          <Ionicons 
+            name={isExpanded ? "chevron-up" : "chevron-down"} 
+            size={18} 
+            color={COLORS.textSecondary} 
+          />
+        </View>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="person-outline" label="Owner" value={item.owner_name || 'N/A'} />
+          <InfoRow icon="phone-portrait-outline" label="Phone" value={item.phone_number || 'N/A'} />
+
+          {isExpanded ? (
+            <View style={styles.expandedContent}>
+              <InfoRow icon="location-outline" label="Address" value={item.full_address || 'N/A'} />
+              <InfoRow icon="pricetags-outline" label="Categories" value={(item.categories || []).join(', ') || 'N/A'} />
+              <InfoRow icon="shield-checkmark-outline" label="Aadhaar OTP" value={item.aadhaar_otp_verified_at ? `Verified at ${item.aadhaar_otp_verified_at}` : 'No'} />
+              <InfoRow icon="alert-circle-outline" label="Status" value={item.review_status || 'pending'} />
+
+              <Text style={styles.sectionSub}>Submitted Documents</Text>
+              <View style={styles.docRow}>
+                {item.aadhar_url ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('Aadhaar Document', item.aadhar_url || undefined)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.aadhar_url }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>Aadhaar</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {item.pan_url ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('PAN Document', item.pan_url || undefined)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.pan_url }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>PAN</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {item.face_scan_url ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('Face Scan / Selfie', item.face_scan_url || undefined)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.face_scan_url }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>Selfie</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {!item.aadhar_url && !item.pan_url && !item.face_scan_url && (
+                  <View style={styles.noDocsContainer}>
+                    <Ionicons name="document-text-outline" size={20} color={COLORS.textLight} />
+                    <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.expandHintContainer}>
+              <Text style={styles.expandHint}>Tap to view details & documents</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.button, styles.approveButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleApprove(item.vendor_id)}
+            activeOpacity={0.8}
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Approve</Text>}
+            {busy ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Approve</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.warningButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleDeny(item.vendor_id)}
+            activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Deny</Text>
+            <View style={styles.buttonInner}>
+              <Ionicons name="close-circle-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Deny</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.deleteButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleDeleteVendor(item.vendor_id)}
+            activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Delete</Text>
+            <View style={styles.buttonInner}>
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Delete</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -448,55 +546,99 @@ export default function AdminPanelScreen() {
     const isExpanded = expandedId === item.id;
 
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.id)} style={styles.card}>
-        <Text style={styles.businessName}>{item.name || 'Unnamed User'}</Text>
-        <Text style={styles.meta}>SL ID: {item.sl_id || 'N/A'}</Text>
-        <Text style={styles.meta}>Role: {item.kyc_role || 'N/A'}</Text>
-
-        {isExpanded ? (
-          <View style={styles.expandedContent}>
-            <Text style={styles.meta}>ID Type: {item.kyc_id_type || 'N/A'}</Text>
-            <Text style={styles.meta}>ID Number: {item.kyc_id_number || 'N/A'}</Text>
-            <Text style={styles.meta}>Submitted: {item.kyc_submitted_at || 'N/A'}</Text>
-
-            <Text style={styles.sectionSub}>Submitted Documents</Text>
-            <View style={styles.docRow}>
-              {item.kyc_id_photo ? (
-                <TouchableOpacity onPress={() => Alert.alert('ID Photo', item.kyc_id_photo)}>
-                  <Image source={{ uri: item.kyc_id_photo }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>ID Photo</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.kyc_selfie_photo ? (
-                <TouchableOpacity onPress={() => Alert.alert('Selfie Photo', item.kyc_selfie_photo)}>
-                  <Image source={{ uri: item.kyc_selfie_photo }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>Selfie</Text>
-                </TouchableOpacity>
-              ) : null}
-              {!item.kyc_id_photo && !item.kyc_selfie_photo && (
-                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
-              )}
+      <TouchableOpacity activeOpacity={0.9} onPress={() => toggleExpand(item.id)} style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(33, 150, 243, 0.08)' }]}>
+              <Ionicons name="person" size={18} color="#2196F3" />
             </View>
+            <Text style={styles.businessName}>{item.name || 'Unnamed User'}</Text>
           </View>
-        ) : (
-          <Text style={styles.expandHint}>Tap to view details & documents</Text>
-        )}
+          <Ionicons 
+            name={isExpanded ? "chevron-up" : "chevron-down"} 
+            size={18} 
+            color={COLORS.textSecondary} 
+          />
+        </View>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="finger-print-outline" label="SL ID" value={item.sl_id || 'N/A'} />
+          <InfoRow icon="briefcase-outline" label="Role" value={item.kyc_role || 'N/A'} />
+
+          {isExpanded ? (
+            <View style={styles.expandedContent}>
+              <InfoRow icon="card-outline" label="ID Type" value={item.kyc_id_type || 'N/A'} />
+              <InfoRow icon="barcode-outline" label="ID Number" value={item.kyc_id_number || 'N/A'} />
+              <InfoRow icon="time-outline" label="Submitted" value={item.kyc_submitted_at || 'N/A'} />
+
+              <Text style={styles.sectionSub}>Submitted Documents</Text>
+              <View style={styles.docRow}>
+                {item.kyc_id_photo ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('ID Photo', item.kyc_id_photo)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.kyc_id_photo }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>ID Photo</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {item.kyc_selfie_photo ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('Selfie Photo', item.kyc_selfie_photo)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.kyc_selfie_photo }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>Selfie</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {!item.kyc_id_photo && !item.kyc_selfie_photo && (
+                  <View style={styles.noDocsContainer}>
+                    <Ionicons name="document-text-outline" size={20} color={COLORS.textLight} />
+                    <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.expandHintContainer}>
+              <Text style={styles.expandHint}>Tap to view details & documents</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.button, styles.approveButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleApproveUserKyc(item.id)}
+            activeOpacity={0.8}
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Approve</Text>}
+            {busy ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Approve</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleDenyUserKyc(item.id)}
+            activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Deny</Text>
+            <View style={styles.buttonInner}>
+              <Ionicons name="close-circle-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Deny</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -509,52 +651,67 @@ export default function AdminPanelScreen() {
 
     return (
       <View style={styles.card}>
-        <Text style={styles.businessName}>Reported Post</Text>
-        <Text style={styles.meta}>Reported user: {snapshot.post_username || snapshot.post_user_id || item.reported_user_id || 'N/A'}</Text>
-        <Text style={styles.meta}>Category: {item.category || 'other'}</Text>
-        {!!item.description && <Text style={styles.meta}>Reason: {item.description}</Text>}
-        {!!snapshot.caption && <Text style={styles.meta}>Caption: {snapshot.caption}</Text>}
-        {!!snapshot.media_url && (
-          <>
-            <Text style={styles.meta}>Media: {snapshot.media_type || 'unknown'}</Text>
-            {snapshot.media_type === 'image' ? (
-              <Image source={{ uri: snapshot.media_url }} style={styles.reportImage} resizeMode="cover" />
-            ) : (
-              <Text style={styles.linkText}>{snapshot.media_url}</Text>
-            )}
-          </>
-        )}
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(229, 57, 53, 0.08)' }]}>
+              <Ionicons name="warning" size={18} color={COLORS.error} />
+            </View>
+            <Text style={styles.businessName}>Reported Post</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="person-outline" label="Reporter Creator" value={snapshot.post_username || snapshot.post_user_id || item.reported_user_id || 'N/A'} />
+          <InfoRow icon="flag-outline" label="Category" value={item.category || 'other'} />
+          {!!item.description && <InfoRow icon="chatbubble-ellipses-outline" label="Reason" value={item.description} />}
+          {!!snapshot.caption && <InfoRow icon="document-text-outline" label="Caption" value={snapshot.caption} />}
+          
+          {!!snapshot.media_url && (
+            <View style={styles.reportedMediaContainer}>
+              <Text style={styles.reportedMediaTitle}>
+                <Ionicons name="image-outline" size={12} color={COLORS.textSecondary} /> Media Preview ({snapshot.media_type || 'unknown'}):
+              </Text>
+              {snapshot.media_type === 'image' ? (
+                <Image source={{ uri: snapshot.media_url }} style={styles.reportImage} resizeMode="cover" />
+              ) : (
+                <Text style={styles.linkText} numberOfLines={1}>{snapshot.media_url}</Text>
+              )}
+            </View>
+          )}
+        </View>
 
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.button, styles.approveButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleApprovePost(item.id)}
+            activeOpacity={0.8}
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Approve</Text>}
+            {busy ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Keep Post</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleDeletePost(item.id)}
+            activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Delete</Text>
+            <View style={styles.buttonInner}>
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Delete Post</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
     );
   };
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   const renderMisuseReportItem = ({ item }: { item: AdminSOSMisuseReport }) => {
     const isBlocking = processingKey === `block:${item.creator_id}`;
@@ -562,28 +719,54 @@ export default function AdminPanelScreen() {
     
     return (
       <View style={styles.card} key={item.id}>
-        <Text style={styles.businessName}>SOS Misuse Report</Text>
-        <Text style={styles.meta}>Report ID: {item.id}</Text>
-        <Text style={styles.meta}>Creator: {item.creator_name || 'N/A'} (ID: {item.creator_id})</Text>
-        <Text style={styles.meta}>Reporter: {item.reporter_name || 'N/A'} (ID: {item.reporter_id})</Text>
-        <Text style={styles.meta}>Reason: {item.reason || 'N/A'}</Text>
-        <Text style={styles.meta}>Timestamp: {item.created_at || 'N/A'}</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(229, 57, 53, 0.12)' }]}>
+              <Ionicons name="alert-circle" size={18} color={COLORS.error} />
+            </View>
+            <Text style={styles.businessName}>SOS Misuse Report</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="barcode-outline" label="Report ID" value={item.id} />
+          <InfoRow icon="person-outline" label="Creator" value={`${item.creator_name || 'N/A'} (ID: ${item.creator_id})`} />
+          <InfoRow icon="flag-outline" label="Reporter" value={`${item.reporter_name || 'N/A'} (ID: ${item.reporter_id})`} />
+          <InfoRow icon="chatbubble-outline" label="Reason" value={item.reason || 'N/A'} />
+          <InfoRow icon="time-outline" label="Timestamp" value={item.created_at || 'N/A'} />
+        </View>
         
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.button, styles.denyButton, isBlocking && styles.buttonDisabled]}
             disabled={isBlocking || isUnblocking}
             onPress={() => handleBlockUserSOS(item.creator_id)}
+            activeOpacity={0.8}
           >
-            {isBlocking ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Block Creator</Text>}
+            {isBlocking ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Ionicons name="ban-outline" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Block SOS</Text>
+              </View>
+            )}
           </TouchableOpacity>
           
           <TouchableOpacity
             style={[styles.button, styles.approveButton, isUnblocking && styles.buttonDisabled]}
             disabled={isBlocking || isUnblocking}
             onPress={() => handleUnblockUserSOS(item.creator_id)}
+            activeOpacity={0.8}
           >
-            {isUnblocking ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Unblock Creator</Text>}
+            {isUnblocking ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Ionicons name="checkmark-done-circle-outline" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Unblock SOS</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -595,18 +778,46 @@ export default function AdminPanelScreen() {
     const displayName = item.name || item.phone || item.id;
     return (
       <View style={styles.card}>
-        <Text style={styles.businessName}>{displayName}</Text>
-        <Text style={styles.meta}>Phone: {item.phone || 'N/A'}</Text>
-        <Text style={styles.meta}>Status: {item.anonymous_disabled ? 'Disabled' : 'Active'}</Text>
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
-            disabled={busy || item.anonymous_disabled}
-            onPress={() => handleDisableAnonymousUser(item.id)}
-          >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Disable</Text>}
-          </TouchableOpacity>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(156, 39, 176, 0.08)' }]}>
+              <Ionicons name="eye-off-outline" size={18} color="#9C27B0" />
+            </View>
+            <Text style={styles.businessName}>{displayName}</Text>
+          </View>
+          <View style={[
+            styles.miniStatusBadge, 
+            item.anonymous_disabled ? styles.miniStatusBadgeDisabled : styles.miniStatusBadgeActive
+          ]}>
+            <Text style={styles.miniStatusBadgeText}>
+              {item.anonymous_disabled ? 'DISABLED' : 'ACTIVE'}
+            </Text>
+          </View>
         </View>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="phone-portrait-outline" label="Phone" value={item.phone || 'N/A'} />
+        </View>
+
+        {!item.anonymous_disabled && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
+              disabled={busy || item.anonymous_disabled}
+              onPress={() => handleDisableAnonymousUser(item.id)}
+              activeOpacity={0.8}
+            >
+              {busy ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <View style={styles.buttonInner}>
+                  <Ionicons name="ban-outline" size={16} color="#fff" />
+                  <Text style={styles.buttonText}>Disable Access</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   };
@@ -622,26 +833,53 @@ export default function AdminPanelScreen() {
             {level.toUpperCase()}
           </Text>
         </View>
-        <Text style={styles.businessName}>{item.full_name || 'Anonymous'}</Text>
-        <Text style={styles.meta}>Profession: {item.profession}</Text>
-        <Text style={styles.meta}>Org: {item.organization || 'N/A'}</Text>
-        <Text style={styles.meta}>City: {item.city || 'N/A'}</Text>
-        <Text style={styles.meta}>Areas: {Array.isArray(item.areas) ? item.areas.join(', ') : 'None'}</Text>
-        <Text style={styles.meta}>Experience: {item.experience || 'N/A'}</Text>
-        <Text style={styles.bioMeta}>Bio: {item.bio || 'No bio provided'}</Text>
 
-        <Text style={styles.sectionSub}>Documents ({item.doc_type})</Text>
-        <View style={styles.docRow}>
-          <TouchableOpacity onPress={() => Alert.alert('View Document', item.front_url)}>
-             <Image source={{ uri: item.front_url }} style={styles.docThumbnail} />
-             <Text style={styles.docLabel}>Front</Text>
-          </TouchableOpacity>
-          {item.back_url && (
-            <TouchableOpacity onPress={() => Alert.alert('View Document', item.back_url)}>
-              <Image source={{ uri: item.back_url }} style={styles.docThumbnail} />
-              <Text style={styles.docLabel}>Back</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(255, 215, 0, 0.1)' }]}>
+              <Ionicons name="ribbon-outline" size={18} color="#FFD700" />
+            </View>
+            <Text style={styles.businessName}>{item.full_name || 'Anonymous'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="star-outline" label="Profession" value={item.profession} />
+          <InfoRow icon="business-outline" label="Organization" value={item.organization || 'N/A'} />
+          <InfoRow icon="location-outline" label="City" value={item.city || 'N/A'} />
+          <InfoRow icon="earth-outline" label="Areas" value={Array.isArray(item.areas) ? item.areas.join(', ') : 'None'} />
+          <InfoRow icon="calendar-outline" label="Experience" value={item.experience || 'N/A'} />
+          
+          <View style={styles.bioContainer}>
+            <Ionicons name="document-text-outline" size={14} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
+            <Text style={styles.bioText} numberOfLines={3}>"{item.bio || 'No bio provided'}"</Text>
+          </View>
+
+          <Text style={styles.sectionSub}>Submitted Documents ({item.doc_type})</Text>
+          <View style={styles.docRow}>
+            <TouchableOpacity 
+              style={styles.docItem}
+              onPress={() => Alert.alert('View Document', item.front_url)}
+              activeOpacity={0.7}
+            >
+              <Image source={{ uri: item.front_url }} style={styles.docThumbnail} />
+              <View style={styles.docBadge}>
+                <Text style={styles.docBadgeText}>Front</Text>
+              </View>
             </TouchableOpacity>
-          )}
+            {item.back_url && (
+              <TouchableOpacity 
+                style={styles.docItem}
+                onPress={() => Alert.alert('View Document', item.back_url)}
+                activeOpacity={0.7}
+              >
+                <Image source={{ uri: item.back_url }} style={styles.docThumbnail} />
+                <View style={styles.docBadge}>
+                  <Text style={styles.docBadgeText}>Back</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
         <View style={styles.actionRow}>
@@ -649,78 +887,130 @@ export default function AdminPanelScreen() {
             style={[styles.button, styles.approveButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handlePersonalityAction(item.id, 'approve')}
+            activeOpacity={0.8}
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Approve</Text>}
+            {busy ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Approve</Text>
+              </View>
+            )}
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handlePersonalityAction(item.id, 'reject')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Reject</Text>
+            <View style={styles.buttonInner}>
+              <Ionicons name="close-circle-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Reject</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
     );
   };
+
   const renderApprovedVendorItem = ({ item }: { item: AdminVendorReview }) => {
     const busy = processingKey === `vendor:${item.vendor_id}`;
     const isExpanded = expandedId === item.vendor_id;
 
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.vendor_id)} style={styles.card}>
-        <View style={styles.badgeRow}>
-          <Text style={styles.businessName}>{item.business_name || 'Unnamed Business'}</Text>
+      <TouchableOpacity activeOpacity={0.9} onPress={() => toggleExpand(item.vendor_id)} style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(76, 175, 80, 0.08)' }]}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+            </View>
+            <Text style={styles.businessName}>{item.business_name || 'Unnamed Business'}</Text>
+          </View>
           <View style={[styles.statusBadge, styles.successBadge]}>
             <Text style={styles.statusBadgeText}>APPROVED</Text>
           </View>
         </View>
-        <Text style={styles.meta}>Owner: {item.owner_name || 'N/A'}</Text>
-        <Text style={styles.meta}>Phone: {item.phone_number || 'N/A'}</Text>
 
-        {isExpanded ? (
-          <View style={styles.expandedContent}>
-            <Text style={styles.meta}>Address: {item.full_address || 'N/A'}</Text>
-            <Text style={styles.meta}>Categories: {(item.categories || []).join(', ') || 'N/A'}</Text>
-            <Text style={styles.meta}>Aadhaar OTP Verified: {item.aadhaar_otp_verified_at || 'No'}</Text>
+        <View style={styles.cardBody}>
+          <InfoRow icon="person-outline" label="Owner" value={item.owner_name || 'N/A'} />
+          <InfoRow icon="phone-portrait-outline" label="Phone" value={item.phone_number || 'N/A'} />
 
-            <Text style={styles.sectionSub}>Submitted Documents</Text>
-            <View style={styles.docRow}>
-              {item.aadhar_url ? (
-                <TouchableOpacity onPress={() => Alert.alert('Aadhaar Document', item.aadhar_url || undefined)}>
-                  <Image source={{ uri: item.aadhar_url }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>Aadhaar</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.pan_url ? (
-                <TouchableOpacity onPress={() => Alert.alert('PAN Document', item.pan_url || undefined)}>
-                  <Image source={{ uri: item.pan_url }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>PAN</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.face_scan_url ? (
-                <TouchableOpacity onPress={() => Alert.alert('Face Scan / Selfie', item.face_scan_url || undefined)}>
-                  <Image source={{ uri: item.face_scan_url }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>Selfie</Text>
-                </TouchableOpacity>
-              ) : null}
-              {!item.aadhar_url && !item.pan_url && !item.face_scan_url && (
-                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
-              )}
+          {isExpanded ? (
+            <View style={styles.expandedContent}>
+              <InfoRow icon="location-outline" label="Address" value={item.full_address || 'N/A'} />
+              <InfoRow icon="pricetags-outline" label="Categories" value={(item.categories || []).join(', ') || 'N/A'} />
+              <InfoRow icon="shield-checkmark-outline" label="Aadhaar OTP" value={item.aadhaar_otp_verified_at || 'No'} />
+
+              <Text style={styles.sectionSub}>Submitted Documents</Text>
+              <View style={styles.docRow}>
+                {item.aadhar_url ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('Aadhaar Document', item.aadhar_url || undefined)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.aadhar_url }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>Aadhaar</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {item.pan_url ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('PAN Document', item.pan_url || undefined)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.pan_url }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>PAN</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {item.face_scan_url ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('Face Scan / Selfie', item.face_scan_url || undefined)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.face_scan_url }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>Selfie</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {!item.aadhar_url && !item.pan_url && !item.face_scan_url && (
+                  <View style={styles.noDocsContainer}>
+                    <Ionicons name="document-text-outline" size={20} color={COLORS.textLight} />
+                    <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        ) : (
-          <Text style={styles.expandHint}>Tap to view details & documents</Text>
-        )}
+          ) : (
+            <View style={styles.expandHintContainer}>
+              <Text style={styles.expandHint}>Tap to view details & documents</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={[styles.button, styles.deleteButton, busy && styles.buttonDisabled]}
             disabled={busy}
             onPress={() => handleDeleteVendor(item.vendor_id)}
+            activeOpacity={0.8}
           >
-            {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Delete Vendor</Text>}
+            {busy ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <View style={styles.buttonInner}>
+                <Ionicons name="trash-outline" size={16} color="#fff" />
+                <Text style={styles.buttonText}>Delete Vendor</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -731,44 +1021,69 @@ export default function AdminPanelScreen() {
     const isExpanded = expandedId === item.id;
 
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={() => toggleExpand(item.id)} style={styles.card}>
-        <View style={styles.badgeRow}>
-          <Text style={styles.businessName}>{item.name || 'Unnamed User'}</Text>
+      <TouchableOpacity activeOpacity={0.9} onPress={() => toggleExpand(item.id)} style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(76, 175, 80, 0.08)' }]}>
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
+            </View>
+            <Text style={styles.businessName}>{item.name || 'Unnamed User'}</Text>
+          </View>
           <View style={[styles.statusBadge, styles.successBadge]}>
             <Text style={styles.statusBadgeText}>VERIFIED</Text>
           </View>
         </View>
-        <Text style={styles.meta}>SL ID: {item.sl_id || 'N/A'}</Text>
-        <Text style={styles.meta}>Role: {item.kyc_role || 'N/A'}</Text>
 
-        {isExpanded ? (
-          <View style={styles.expandedContent}>
-            <Text style={styles.meta}>ID Type: {item.kyc_id_type || 'N/A'}</Text>
-            <Text style={styles.meta}>ID Number: {item.kyc_id_number || 'N/A'}</Text>
-            <Text style={styles.meta}>Submitted: {item.kyc_submitted_at || 'N/A'}</Text>
+        <View style={styles.cardBody}>
+          <InfoRow icon="finger-print-outline" label="SL ID" value={item.sl_id || 'N/A'} />
+          <InfoRow icon="briefcase-outline" label="Role" value={item.kyc_role || 'N/A'} />
 
-            <Text style={styles.sectionSub}>Submitted Documents</Text>
-            <View style={styles.docRow}>
-              {item.kyc_id_photo ? (
-                <TouchableOpacity onPress={() => Alert.alert('ID Photo', item.kyc_id_photo)}>
-                  <Image source={{ uri: item.kyc_id_photo }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>ID Photo</Text>
-                </TouchableOpacity>
-              ) : null}
-              {item.kyc_selfie_photo ? (
-                <TouchableOpacity onPress={() => Alert.alert('Selfie Photo', item.kyc_selfie_photo)}>
-                  <Image source={{ uri: item.kyc_selfie_photo }} style={styles.docThumbnail} />
-                  <Text style={styles.docLabel}>Selfie</Text>
-                </TouchableOpacity>
-              ) : null}
-              {!item.kyc_id_photo && !item.kyc_selfie_photo && (
-                <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
-              )}
+          {isExpanded ? (
+            <View style={styles.expandedContent}>
+              <InfoRow icon="card-outline" label="ID Type" value={item.kyc_id_type || 'N/A'} />
+              <InfoRow icon="barcode-outline" label="ID Number" value={item.kyc_id_number || 'N/A'} />
+              <InfoRow icon="time-outline" label="Submitted" value={item.kyc_submitted_at || 'N/A'} />
+
+              <Text style={styles.sectionSub}>Submitted Documents</Text>
+              <View style={styles.docRow}>
+                {item.kyc_id_photo ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('ID Photo', item.kyc_id_photo)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.kyc_id_photo }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>ID Photo</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {item.kyc_selfie_photo ? (
+                  <TouchableOpacity 
+                    style={styles.docItem}
+                    onPress={() => Alert.alert('Selfie Photo', item.kyc_selfie_photo)}
+                    activeOpacity={0.7}
+                  >
+                    <Image source={{ uri: item.kyc_selfie_photo }} style={styles.docThumbnail} />
+                    <View style={styles.docBadge}>
+                      <Text style={styles.docBadgeText}>Selfie</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : null}
+                {!item.kyc_id_photo && !item.kyc_selfie_photo && (
+                  <View style={styles.noDocsContainer}>
+                    <Ionicons name="document-text-outline" size={20} color={COLORS.textLight} />
+                    <Text style={styles.emptyTextCompact}>No documents uploaded.</Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        ) : (
-          <Text style={styles.expandHint}>Tap to view details & documents</Text>
-        )}
+          ) : (
+            <View style={styles.expandHintContainer}>
+              <Text style={styles.expandHint}>Tap to view details & documents</Text>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
@@ -783,39 +1098,74 @@ export default function AdminPanelScreen() {
             {level.toUpperCase()}
           </Text>
         </View>
-        <View style={styles.badgeRow}>
-          <Text style={styles.businessName}>{item.full_name || 'Anonymous'}</Text>
+        <View style={styles.cardHeader}>
+          <View style={styles.titleIconGroup}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(76, 175, 80, 0.08)' }]}>
+              <Ionicons name="star" size={18} color={COLORS.success} />
+            </View>
+            <Text style={styles.businessName}>{item.full_name || 'Anonymous'}</Text>
+          </View>
           <View style={[styles.statusBadge, styles.successBadge]}>
             <Text style={styles.statusBadgeText}>APPROVED</Text>
           </View>
         </View>
-        <Text style={styles.meta}>Profession: {item.profession}</Text>
-        <Text style={styles.meta}>Org: {item.organization || 'N/A'}</Text>
-        <Text style={styles.meta}>City: {item.city || 'N/A'}</Text>
-        <Text style={styles.meta}>Areas: {Array.isArray(item.areas) ? item.areas.join(', ') : 'None'}</Text>
-        <Text style={styles.meta}>Experience: {item.experience || 'N/A'}</Text>
-        <Text style={styles.bioMeta}>Bio: {item.bio || 'No bio provided'}</Text>
+
+        <View style={styles.cardBody}>
+          <InfoRow icon="star-outline" label="Profession" value={item.profession} />
+          <InfoRow icon="business-outline" label="Organization" value={item.organization || 'N/A'} />
+          <InfoRow icon="location-outline" label="City" value={item.city || 'N/A'} />
+          <InfoRow icon="earth-outline" label="Areas" value={Array.isArray(item.areas) ? item.areas.join(', ') : 'None'} />
+          <InfoRow icon="calendar-outline" label="Experience" value={item.experience || 'N/A'} />
+          
+          <View style={styles.bioContainer}>
+            <Ionicons name="document-text-outline" size={14} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
+            <Text style={styles.bioText} numberOfLines={3}>"{item.bio || 'No bio provided'}"</Text>
+          </View>
+        </View>
       </View>
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Fetching system queues...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Admin Panel</Text>
-        <TouchableOpacity onPress={handleLogout}>
+        <View style={styles.headerTitleGroup}>
+          <Text style={styles.title}>Brahmand Control</Text>
+          <View style={styles.adminBadge}>
+            <Ionicons name="ribbon" size={11} color="#FFF" style={{ marginRight: 3 }} />
+            <Text style={styles.adminBadgeText}>{adminUser?.name || 'Admin'}</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.7}>
+          <Ionicons name="log-out-outline" size={18} color={COLORS.primary} style={{ marginRight: 4 }} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
-
-      <Text style={styles.adminName}>Logged in as {adminUser?.name || 'Admin'}</Text>
 
       {/* Tab Switcher */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'pending' && styles.activeTabButton]}
           onPress={() => setActiveTab('pending')}
+          activeOpacity={0.8}
         >
+          <Ionicons 
+            name="hourglass-outline" 
+            size={16} 
+            color={activeTab === 'pending' ? '#fff' : COLORS.textSecondary} 
+            style={{ marginRight: 6 }} 
+          />
           <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
             Pending Review
           </Text>
@@ -823,9 +1173,16 @@ export default function AdminPanelScreen() {
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'verified' && styles.activeTabButton]}
           onPress={() => setActiveTab('verified')}
+          activeOpacity={0.8}
         >
+          <Ionicons 
+            name="checkbox-outline" 
+            size={16} 
+            color={activeTab === 'verified' ? '#fff' : COLORS.textSecondary} 
+            style={{ marginRight: 6 }} 
+          />
           <Text style={[styles.tabText, activeTab === 'verified' && styles.activeTabText]}>
-            Verified & Approved
+            Approved & Verified
           </Text>
         </TouchableOpacity>
       </View>
@@ -836,92 +1193,106 @@ export default function AdminPanelScreen() {
           keyExtractor={(item) => item.vendor_id}
           renderItem={renderVendorItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
           ListEmptyComponent={
             <View style={styles.centered}>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="briefcase-outline" size={40} color={COLORS.textLight} />
+              </View>
               <Text style={styles.emptyText}>No pending KYC approval requests.</Text>
+              <Text style={styles.emptySubtext}>All vendor registration requests are up to date.</Text>
             </View>
           }
           ListHeaderComponent={
-            <View style={{ marginBottom: 20 }}>
-              <Text style={styles.subtitle}>Pending Personality Verifications ({pendingPersonalityRequests.length})</Text>
+            <View style={{ marginBottom: 12 }}>
+              <SectionHeader title="Personality Verifications" count={pendingPersonalityRequests.length} />
               {pendingPersonalityRequests.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No pending requests found.</Text>
+                  <Text style={styles.emptyTextCompact}>No pending personality requests.</Text>
                 </View>
               ) : (
                 pendingPersonalityRequests.map((item) => (
-                  <View key={item.id} style={{ marginVertical: 8 }}>
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderPersonalityRequestItem({ item })}
                   </View>
                 ))
               )}
-              <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 15 }} />
-              <Text style={styles.subtitle}>Pending Vendor KYC requests ({pendingKycRequests.length})</Text>
+              <View style={styles.divider} />
+              <SectionHeader title="Vendor KYC Queue" count={pendingKycRequests.length} />
             </View>
           }
           ListFooterComponent={
             <View style={styles.footerSection}>
-              <Text style={styles.subtitle}>Pending user/jobs KYC requests ({pendingUserKycRequests.length})</Text>
+              <View style={styles.divider} />
+              
+              <SectionHeader title="User KYC Queue" count={pendingUserKycRequests.length} />
               {pendingUserKycRequests.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No pending user KYC approval requests.</Text>
+                  <Text style={styles.emptyTextCompact}>No pending user KYC requests.</Text>
                 </View>
               ) : (
                 pendingUserKycRequests.map((item) => (
-                  <View key={item.id}>
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderUserKycItem({ item })}
                   </View>
                 ))
               )}
 
-              <Text style={styles.subtitle}>Active anonymous predefined users ({activeAnonymousUsers.length})</Text>
+              <View style={styles.divider} />
+
+              <SectionHeader title="Active Anonymous Users" count={activeAnonymousUsers.length} />
               {activeAnonymousUsers.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No active anonymous predefined users.</Text>
+                  <Text style={styles.emptyTextCompact}>No active anonymous users.</Text>
                 </View>
               ) : (
                 activeAnonymousUsers.map((item) => (
-                  <View key={item.id}>
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderAnonymousUserItem({ item })}
                   </View>
                 ))
               )}
 
-              <Text style={styles.subtitle}>Disabled anonymous predefined users ({disabledAnonymousUsers.length})</Text>
+              <View style={styles.divider} />
+
+              <SectionHeader title="Disabled Anonymous Users" count={disabledAnonymousUsers.length} />
               {disabledAnonymousUsers.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No disabled anonymous predefined users.</Text>
+                  <Text style={styles.emptyTextCompact}>No disabled anonymous users.</Text>
                 </View>
               ) : (
                 disabledAnonymousUsers.map((item) => (
-                  <View key={item.id}>
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderAnonymousUserItem({ item })}
                   </View>
                 ))
               )}
 
-              <Text style={styles.subtitle}>Pending reported posts ({pendingPostReports.length})</Text>
+              <View style={styles.divider} />
+
+              <SectionHeader title="Reported Community Posts" count={pendingPostReports.length} />
               {pendingPostReports.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No pending post reports.</Text>
+                  <Text style={styles.emptyTextCompact}>No pending reports.</Text>
                 </View>
               ) : (
                 pendingPostReports.map((item) => (
-                  <View key={item.id}>
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderReportedPostItem({ item })}
                   </View>
                 ))
               )}
 
-              <Text style={styles.subtitle}>SOS Misuse Reports ({misuseReports.length})</Text>
-              {misuseReports.length === 0 ? (
+              <View style={styles.divider} />
+
+              <SectionHeader title="SOS Misuse Reports" count={sortedMisuseReports.length} />
+              {sortedMisuseReports.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No SOS misuse reports.</Text>
+                  <Text style={styles.emptyTextCompact}>No SOS misuse reports.</Text>
                 </View>
               ) : (
-                misuseReports.map((item) => (
-                  <View key={item.id}>
+                sortedMisuseReports.map((item) => (
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderMisuseReportItem({ item })}
                   </View>
                 ))
@@ -935,40 +1306,45 @@ export default function AdminPanelScreen() {
           keyExtractor={(item) => item.vendor_id}
           renderItem={renderApprovedVendorItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
           ListEmptyComponent={
             <View style={styles.centered}>
-              <Text style={styles.emptyText}>No approved/verified vendor requests.</Text>
+              <View style={styles.emptyIconCircle}>
+                <Ionicons name="checkmark-done" size={40} color={COLORS.textLight} />
+              </View>
+              <Text style={styles.emptyText}>No approved vendor requests.</Text>
+              <Text style={styles.emptySubtext}>Approved vendors will appear here once verified.</Text>
             </View>
           }
           ListHeaderComponent={
-            <View style={{ marginBottom: 20 }}>
-              <Text style={styles.subtitle}>Approved Personality Verifications ({approvedPersonalityRequests.length})</Text>
+            <View style={{ marginBottom: 12 }}>
+              <SectionHeader title="Verified Personalities" count={approvedPersonalityRequests.length} />
               {approvedPersonalityRequests.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No approved requests found.</Text>
+                  <Text style={styles.emptyTextCompact}>No verified personality requests found.</Text>
                 </View>
               ) : (
                 approvedPersonalityRequests.map((item) => (
-                  <View key={item.id} style={{ marginVertical: 8 }}>
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderApprovedPersonalityRequestItem({ item })}
                   </View>
                 ))
               )}
-              <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 15 }} />
-              <Text style={styles.subtitle}>Approved Vendor KYC requests ({approvedKycRequests.length})</Text>
+              <View style={styles.divider} />
+              <SectionHeader title="Verified Vendor Queue" count={approvedKycRequests.length} />
             </View>
           }
           ListFooterComponent={
             <View style={styles.footerSection}>
-              <Text style={styles.subtitle}>Approved user/jobs KYC requests ({approvedUserKycRequests.length})</Text>
+              <View style={styles.divider} />
+              <SectionHeader title="Verified User KYC Requests" count={approvedUserKycRequests.length} />
               {approvedUserKycRequests.length === 0 ? (
                 <View style={styles.centeredCompact}>
-                  <Text style={styles.emptyText}>No approved/verified user KYC requests.</Text>
+                  <Text style={styles.emptyTextCompact}>No verified user KYC requests found.</Text>
                 </View>
               ) : (
                 approvedUserKycRequests.map((item) => (
-                  <View key={item.id}>
+                  <View key={item.id} style={{ marginVertical: 6 }}>
                     {renderApprovedUserKycItem({ item })}
                   </View>
                 ))
@@ -989,126 +1365,269 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.md,
-    paddingBottom: SPACING.sm,
+    paddingBottom: SPACING.xs,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(232, 224, 216, 0.4)',
+    backgroundColor: COLORS.surface,
+  },
+  headerTitleGroup: {
+    flexDirection: 'column',
+    gap: 2,
+    marginBottom: 6,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.text,
+    letterSpacing: 0.2,
+  },
+  adminBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 99,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  adminBadgeText: {
+    fontSize: 10,
     fontWeight: '700',
-    color: COLORS.text,
+    color: '#FFF',
   },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-    paddingHorizontal: SPACING.md,
-    marginTop: SPACING.xs,
-  },
-  adminName: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 102, 0, 0.08)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 102, 0, 0.15)',
   },
   logoutText: {
     color: COLORS.primary,
-    textDecorationLine: 'underline',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 13,
   },
   tabContainer: {
     flexDirection: 'row',
     marginHorizontal: SPACING.md,
-    marginBottom: SPACING.sm,
-    backgroundColor: COLORS.surface,
+    marginVertical: SPACING.md,
+    backgroundColor: '#FFF5EB',
     borderRadius: BORDER_RADIUS.md,
     padding: 4,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
   },
   tabButton: {
     flex: 1,
     paddingVertical: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: BORDER_RADIUS.md - 2,
   },
   activeTabButton: {
     backgroundColor: COLORS.primary,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     color: COLORS.textSecondary,
   },
   activeTabText: {
     color: '#fff',
   },
   listContent: {
-    padding: SPACING.md,
+    paddingHorizontal: SPACING.md,
     paddingBottom: SPACING.xl,
-    gap: SPACING.md,
   },
   footerSection: {
-    marginTop: SPACING.lg,
-    gap: SPACING.md,
+    marginTop: SPACING.md,
+    gap: SPACING.sm,
+  },
+  divider: {
+    height: 1.5,
+    backgroundColor: 'rgba(232, 224, 216, 0.6)',
+    marginVertical: SPACING.md,
+  },
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  sectionHeaderIndicator: {
+    width: 4,
+    height: 18,
+    backgroundColor: COLORS.primary,
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.text,
+    flex: 1,
+  },
+  countBadge: {
+    backgroundColor: 'rgba(255, 102, 0, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 99,
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.primary,
   },
   card: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.md,
     padding: SPACING.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
-    gap: 6,
+    marginBottom: SPACING.md,
+    shadowColor: '#CC5200',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: SPACING.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFF8F0',
+    marginBottom: SPACING.xs,
+  },
+  titleIconGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  iconWrapper: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   businessName: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '700',
     color: COLORS.text,
+    flex: 1,
   },
-  meta: {
-    fontSize: 13,
+  cardBody: {
+    gap: 5,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  infoIcon: {
+    marginRight: 6,
+    width: 14,
+  },
+  infoLabel: {
+    fontSize: 12.5,
     color: COLORS.textSecondary,
+    fontWeight: '500',
+    marginRight: 4,
   },
-  bioMeta: {
-    fontSize: 13,
+  infoValue: {
+    fontSize: 12.5,
     color: COLORS.text,
+    fontWeight: '600',
+    flex: 1,
+  },
+  bioContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFBF7',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#F5EBE1',
     marginTop: 4,
+  },
+  bioText: {
+    fontSize: 12.5,
+    color: COLORS.text,
     fontStyle: 'italic',
+    flex: 1,
+    lineHeight: 17,
   },
   sectionSub: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     color: COLORS.text,
     marginTop: 10,
     marginBottom: 6,
   },
   docRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 10,
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  docItem: {
+    position: 'relative',
+    borderRadius: BORDER_RADIUS.sm,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    width: 90,
+    height: 70,
+    backgroundColor: '#FAF5EF',
   },
   docThumbnail: {
-    width: 100,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: '#eee',
+    width: '100%',
+    height: '100%',
   },
-  docLabel: {
-    fontSize: 11,
+  docBadge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingVertical: 2,
+  },
+  docBadgeText: {
+    fontSize: 8.5,
     textAlign: 'center',
-    marginTop: 2,
-    color: COLORS.textSecondary,
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  noDocsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: SPACING.xs,
   },
   badgeContainer: {
     position: 'absolute',
     top: 12,
     right: 12,
+    zIndex: 10,
   },
   levelBadge: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     color: '#fff',
@@ -1120,38 +1639,63 @@ const styles = StyleSheet.create({
   stateBadge: {
     backgroundColor: '#4169E1',
   },
-  badgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 4,
   },
   successBadge: {
-    backgroundColor: COLORS.success + '20',
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
     borderWidth: 1,
     borderColor: COLORS.success,
   },
   statusBadgeText: {
-    fontSize: 10,
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.success,
+  },
+  miniStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  miniStatusBadgeActive: {
+    backgroundColor: 'rgba(76, 175, 80, 0.08)',
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  miniStatusBadgeDisabled: {
+    backgroundColor: 'rgba(229, 57, 53, 0.08)',
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  miniStatusBadgeText: {
+    fontSize: 8.5,
     fontWeight: '800',
     color: COLORS.success,
   },
   actionRow: {
     marginTop: SPACING.sm,
     flexDirection: 'row',
-    gap: SPACING.sm,
+    gap: 8,
   },
   button: {
     flex: 1,
-    paddingVertical: SPACING.sm + 2,
-    borderRadius: BORDER_RADIUS.md,
+    paddingVertical: 8,
+    borderRadius: BORDER_RADIUS.sm,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  buttonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
   approveButton: {
     backgroundColor: COLORS.success,
@@ -1168,54 +1712,103 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: '700',
+    fontSize: 12,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   centered: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: SPACING.lg,
+    paddingVertical: SPACING.xl,
+    paddingHorizontal: SPACING.lg,
   },
   centeredCompact: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: SPACING.md,
+    backgroundColor: '#FFFBF7',
+    borderRadius: BORDER_RADIUS.sm,
+    borderWidth: 1,
+    borderColor: '#FAF0E6',
+    marginVertical: 4,
+  },
+  emptyIconCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#FFF0E0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
   },
   emptyText: {
     color: COLORS.textSecondary,
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '700',
     textAlign: 'center',
+    marginBottom: 4,
   },
-  reportImage: {
-    width: '100%',
-    height: 180,
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.xs,
-  },
-  linkText: {
-    color: COLORS.primary,
+  emptySubtext: {
+    color: COLORS.textLight,
     fontSize: 12,
-    marginTop: SPACING.xs,
-  },
-  expandedContent: {
-    marginTop: SPACING.xs,
-    paddingTop: SPACING.xs,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    gap: 4,
-  },
-  expandHint: {
-    fontSize: 11,
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginTop: 4,
     textAlign: 'center',
   },
   emptyTextCompact: {
     fontSize: 12,
     color: COLORS.textLight,
-    fontStyle: 'italic',
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  loadingText: {
+    marginTop: SPACING.sm,
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  reportedMediaContainer: {
+    marginTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#FFF8F0',
+    paddingTop: 6,
+  },
+  reportedMediaTitle: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  reportImage: {
+    width: '100%',
+    height: 150,
+    borderRadius: BORDER_RADIUS.sm,
+    marginTop: 2,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  linkText: {
+    color: COLORS.primary,
+    fontSize: 11,
+    fontWeight: '500',
+    textDecorationLine: 'underline',
+  },
+  expandedContent: {
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(232, 224, 216, 0.4)',
+    gap: 4,
+  },
+  expandHintContainer: {
+    alignItems: 'center',
+    paddingTop: 6,
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: '#FFF8F0',
+  },
+  expandHint: {
+    fontSize: 11,
+    color: COLORS.primary,
+    fontWeight: '700',
   },
 });

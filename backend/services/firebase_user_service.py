@@ -133,12 +133,15 @@ class FirebaseUserService:
         
         # Update user
         from google.cloud import firestore
-        await db.client.collection('users').document(user_id).update({
-            'location': location,
-            'home_location': location,
-            'communities': firestore.ArrayUnion(community_ids),
-            'updated_at': datetime.utcnow()
-        })
+        await db._run_sync(
+            db.client.collection('users').document(user_id).update,
+            {
+                'location': location,
+                'home_location': location,
+                'communities': firestore.ArrayUnion(community_ids),
+                'updated_at': datetime.utcnow()
+            }
+        )
         
         # Invalidate cache
         await cache_manager.invalidate_user(user_id)
@@ -178,10 +181,13 @@ class FirebaseUserService:
         community_ids = list(set(community_ids))
         
         from google.cloud import firestore
-        await db.client.collection('users').document(user_id).update({
-            **update_data,
-            'communities': firestore.ArrayUnion(community_ids)
-        })
+        await db._run_sync(
+            db.client.collection('users').document(user_id).update,
+            {
+                **update_data,
+                'communities': firestore.ArrayUnion(community_ids)
+            }
+        )
         
         await cache_manager.invalidate_user(user_id)
         
@@ -369,10 +375,13 @@ class FirebaseUserService:
         await db.create_document('personality_verifications', verification_request)
         
         # Update user status to indicate pending verification
-        await db.client.collection('users').document(user_id).update({
-            'personality_verification_status': 'pending',
-            'updated_at': datetime.utcnow()
-        })
+        await db._run_sync(
+            db.client.collection('users').document(user_id).update,
+            {
+                'personality_verification_status': 'pending',
+                'updated_at': datetime.utcnow()
+            }
+        )
         
         # Invalidate cache
         await cache_manager.invalidate_user(user_id)
