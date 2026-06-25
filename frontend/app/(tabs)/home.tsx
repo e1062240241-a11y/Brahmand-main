@@ -2129,7 +2129,7 @@ export default function HomeScreen() {
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
     const postKey = Platform.OS === 'android'
-      ? String(item.id || item.media_url || index)
+      ? `feed-android-${index}-${String(item.id || item.media_url || index)}`
       : `feed-${index}-${String(item.id || item.media_url || index)}`;
     return (
       <View
@@ -3963,7 +3963,7 @@ export default function HomeScreen() {
               <>
                 {feedPosts.map((post, index) => {
                   const postKey = Platform.OS === 'android'
-                    ? String(post.id || post.media_url || index)
+                    ? `feed-android-${index}-${String(post.id || post.media_url || index)}`
                     : `feed-${index}-${String(post.id || post.media_url || index)}`;
                   const postId = String(post?.id || post?.media_url || index);
                   return (

@@ -14,6 +14,7 @@ import {
   Alert,
   Pressable,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -125,6 +126,7 @@ export default function MyKrishnaChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(true);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -132,6 +134,24 @@ export default function MyKrishnaChat() {
   // without needing messages as a useCallback dependency (avoids stale closure).
   const messagesRef = useRef<Message[]>([]);
   useEffect(() => { messagesRef.current = messages; }, [messages]);
+
+  const scrollToBottom = useCallback(() => {
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
+  }, []);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+      scrollToBottom();
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [scrollToBottom]);
 
   // Load chat history from Firestore on mount
   useEffect(() => {
@@ -167,10 +187,6 @@ export default function MyKrishnaChat() {
 
     fetchHistory();
   }, [defaultWelcomeMessage]);
-
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
-  }, []);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -359,8 +375,8 @@ export default function MyKrishnaChat() {
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : insets.top + 60}
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
@@ -412,7 +428,7 @@ export default function MyKrishnaChat() {
           )}
 
           {/* ── Input Bar ── */}
-          <View style={[styles.inputWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 25 }]}>
+          <View style={[styles.inputWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : (keyboardVisible ? 8 : 25) }]}>
             <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
                 <TextInput
