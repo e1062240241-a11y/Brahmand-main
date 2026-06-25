@@ -78,6 +78,7 @@ export default function NewPassportJourneyScreen() {
   const [distance, setDistance] = useState('');
   const [isStayDropdownOpen, setIsStayDropdownOpen] = useState(false);
   const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [showLocationSuggestionsStep1, setShowLocationSuggestionsStep1] = useState(false);
   const [showStep1DatePicker, setShowStep1DatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
@@ -118,6 +119,10 @@ export default function NewPassportJourneyScreen() {
   const filteredLocations = startLocation.trim()
     ? indianCities.filter(city => city.toLowerCase().includes(startLocation.toLowerCase()))
     : [];
+
+  const filteredLocationsStep1 = location.trim()
+    ? indianCities.filter(city => city.toLowerCase().includes(location.toLowerCase()))
+    : indianCities;
 
   // Step 3 State
   const [firstFeeling, setFirstFeeling] = useState('');
@@ -293,6 +298,15 @@ export default function NewPassportJourneyScreen() {
       if (journeyCount === 0) {
         await awardBadge('First Journey', 'Created your first Brahmand Passport journey');
       }
+
+      // Trigger background sync to immediately push the new journey (and public feed post if visibility is public) to the backend
+      try {
+        const { syncDatabase } = require('../../../src/database/sync');
+        syncDatabase().catch((err: any) => console.warn('[Passport] Sync failed:', err));
+      } catch (e) {
+        console.warn('[Passport] Failed to trigger sync:', e);
+      }
+
       router.replace({
         pathname: `/passport/journey/${newJourneyId}`,
         params: { justRecorded: 'true' }
@@ -345,43 +359,76 @@ export default function NewPassportJourneyScreen() {
           </View>
 
           <Text style={styles.inputLabel}>LOCATION</Text>
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, (showLocationSuggestionsStep1 && filteredLocationsStep1.length > 0) && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginBottom: 0, borderBottomWidth: 0 }]}>
             <Ionicons name="location-outline" size={18} color="#E87030" style={{ marginRight: 8 }} />
             <TextInput
               value={location}
-              onChangeText={setLocation}
+              onChangeText={(text) => {
+                setLocation(text);
+                setShowLocationSuggestionsStep1(true);
+              }}
+              onFocus={() => setShowLocationSuggestionsStep1(true)}
+              onBlur={() => setTimeout(() => setShowLocationSuggestionsStep1(false), 250)}
               placeholder="Kedarnath, Uttarakhand"
               placeholderTextColor="#999"
               style={styles.inputText}
             />
           </View>
+          {showLocationSuggestionsStep1 && filteredLocationsStep1.length > 0 && (
+            <View style={styles.dropdownContainer}>
+              {filteredLocationsStep1.slice(0, 5).map((city, index) => (
+                <TouchableOpacity
+                  key={city}
+                  style={[
+                    styles.dropdownOption,
+                    index === Math.min(filteredLocationsStep1.length, 5) - 1 && { borderBottomWidth: 0 }
+                  ]}
+                  onPress={() => {
+                    setLocation(city);
+                    setShowLocationSuggestionsStep1(false);
+                  }}
+                >
+                  <Text style={styles.dropdownOptionText}>{city}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <Text style={styles.inputLabel}>DATE</Text>
-          <View style={styles.inputContainer}>
-            <TouchableOpacity onPress={() => setShowStep1DatePicker(true)} style={{ marginRight: 8 }} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="calendar-outline" size={18} color="#E87030" />
-            </TouchableOpacity>
+          <TouchableOpacity 
+            activeOpacity={0.9} 
+            onPress={() => setShowStep1DatePicker(true)} 
+            style={styles.inputContainer}
+          >
+            <Ionicons name="calendar-outline" size={18} color="#E87030" style={{ marginRight: 8 }} />
             <TextInput
               value={date}
-              onChangeText={setDate}
+              editable={false}
+              pointerEvents="none"
               placeholder="DD/MM/YYYY"
               placeholderTextColor="#999"
               style={styles.inputText}
             />
-          </View>
+          </TouchableOpacity>
 
           <Text style={styles.inputLabel}>PRIVACY</Text>
           <View style={styles.toggleContainer}>
             <TouchableOpacity
               style={[styles.toggleButton, visibility === 'private' && styles.toggleButtonActive]}
-              onPress={() => setVisibility('private')}
+              onPress={() => {
+                setVisibility('private');
+                setShareWithCommunity(false);
+              }}
               activeOpacity={0.8}
             >
               <Text style={[styles.toggleText, visibility === 'private' && styles.toggleTextActive]}>Private</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleButton, visibility === 'public' && styles.toggleButtonActive]}
-              onPress={() => setVisibility('public')}
+              onPress={() => {
+                setVisibility('public');
+                setShareWithCommunity(true);
+              }}
               activeOpacity={0.8}
             >
               <Text style={[styles.toggleText, visibility === 'public' && styles.toggleTextActive]}>Public</Text>
@@ -869,7 +916,11 @@ export default function NewPassportJourneyScreen() {
           </View>
           <TouchableOpacity
             style={[styles.toggleSwitch, shareWithCommunity && styles.toggleSwitchActive]}
-            onPress={() => setShareWithCommunity(!shareWithCommunity)}
+            onPress={() => {
+              const nextVal = !shareWithCommunity;
+              setShareWithCommunity(nextVal);
+              setVisibility(nextVal ? 'public' : 'private');
+            }}
             activeOpacity={0.9}
           >
             <View style={[styles.toggleSwitchThumb, shareWithCommunity && styles.toggleSwitchThumbActive]} />

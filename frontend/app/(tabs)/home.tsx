@@ -713,9 +713,52 @@ export default function HomeScreen() {
       const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
       console.log(`[HomeFeed] API response received for ${tabToLoad}`);
       const payload = response.data;
-      const incomingItems = Array.isArray(payload)
+      let incomingItems = Array.isArray(payload)
         ? payload
         : (Array.isArray(payload?.items) ? payload.items : []);
+
+      // Fetch local optimistic posts from WatermelonDB to keep them visible before/during sync
+      if (Platform.OS !== 'web') {
+        try {
+          const { Q } = require('@nozbe/watermelondb');
+          const { database } = require('../../src/database');
+          if (database) {
+            const userId = String((useAuthStore.getState().user as any)?.id || '');
+            const localFeeds = await database.get('feeds')
+              .query(
+                Q.where('user_id', userId),
+                Q.sortBy('created_at', Q.desc)
+              )
+              .fetch();
+            if (localFeeds && localFeeds.length > 0) {
+              const journeyFeeds = localFeeds.filter((post: any) => String(post.id).startsWith('post_journey_'));
+              const localOptimisticPosts = journeyFeeds.map((post: any) => ({
+                id: post.id,
+                user_id: post.userId,
+                username: post.username,
+                user_photo: post.userPhoto,
+                media_url: post.mediaUrl,
+                media_type: post.mediaType,
+                caption: post.caption,
+                likes_count: post.likesCount,
+                comments_count: post.commentsCount,
+                liked_by_me: post.likedByMe,
+                created_at: post.createdAt ? new Date(post.createdAt).toISOString() : new Date().toISOString(),
+                updated_at: post.updatedAt ? new Date(post.updatedAt).toISOString() : new Date().toISOString(),
+              }));
+
+              const incomingIds = new Set(incomingItems.map((item: any) => item?.id));
+              const missingLocalPosts = localOptimisticPosts.filter((lp: any) => !incomingIds.has(lp.id));
+              if (missingLocalPosts.length > 0) {
+                console.log(`[HomeFeed] Merged ${missingLocalPosts.length} local optimistic journey posts into feed`);
+                incomingItems = [...missingLocalPosts, ...incomingItems];
+              }
+            }
+          }
+        } catch (dbErr) {
+          console.warn('[HomeFeed] Failed to load local optimistic posts:', dbErr);
+        }
+      }
 
       console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
