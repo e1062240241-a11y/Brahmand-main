@@ -197,7 +197,6 @@ export type HanumanSession = {
 
 export const HANUMAN_SESSIONS: HanumanSession[] = [
   { name: 'Morning', startHour: 6, startMin: 0, endHour: 12, endMin: 0, reps: 26, startRoundOffset: 1 },
-  { name: 'Afternoon', startHour: 12, startMin: 0, endHour: 18, endMin: 0, reps: 26, startRoundOffset: 27 },
   { name: 'Evening', startHour: 18, startMin: 0, endHour: 0, endMin: 0, reps: 25, startRoundOffset: 27 },
 ];
 
