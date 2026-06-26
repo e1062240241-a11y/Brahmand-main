@@ -6,6 +6,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
 import CustomTabBar from '../../src/components/CustomTabBar';
 import { TabBarProvider } from '../../src/contexts/TabBarContext';
+import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
+
+const MyTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#FFF8F0',
+  },
+};
 
 const TabIcon = ({ IconComponent, name, color }: { IconComponent: any; name: any; color: string }) => (
   <View style={styles.iconContainer}>
@@ -19,14 +28,15 @@ export default function TabLayout() {
   const { t } = useTranslation();
 
   return (
-    <TabBarProvider>
-      <Tabs
-        initialRouteName="home"
-        tabBar={(props) => <CustomTabBar {...props} />}
-        screenOptions={{
-          headerShown: false,
-        }}
-    >
+    <ThemeProvider value={MyTheme}>
+      <TabBarProvider>
+        <Tabs
+          initialRouteName="home"
+          tabBar={(props) => <CustomTabBar {...props} />}
+          screenOptions={{
+            headerShown: false,
+          }}
+      >
       {/* 1. Home */}
       <Tabs.Screen
         name="home"
@@ -95,7 +105,8 @@ export default function TabLayout() {
       <Tabs.Screen name="jobs" options={{ href: null }} />
       <Tabs.Screen name="discover" options={{ href: null }} />
     </Tabs>
-    </TabBarProvider>
+      </TabBarProvider>
+    </ThemeProvider>
   );
 }
 
