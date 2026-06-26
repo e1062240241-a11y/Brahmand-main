@@ -23,7 +23,7 @@ graph TD
     end
 
     subgraph Services ["💼 Background & External Services"]
-        TwilioNetty["SMS Providers <br> (Nettyfish / MSG91 / Twilio)"]
+        FirebaseAuth["Firebase Auth Verify ID Token"]
         FFmpegComp["FFmpeg Compression <br> (Video Processing)"]
         BunnyCDN["BunnyCDN Storage <br> (Media Pull Zone)"]
     end
@@ -41,7 +41,7 @@ graph TD
     Router --> RedisCache
     
     SocketServer --> FirestoreDB
-    Router --> TwilioNetty
+    Router --> FirebaseAuth
     Router --> FFmpegComp
     Router --> BunnyCDN
 ```
@@ -54,16 +54,16 @@ Here is a detailed breakdown of the functional modules that power Brahmand, mapp
 
 ### 1. Authentication & Digital Identity (Sanatan Passport)
 
-The identity system is built on **Firebase Phone Auth** combined with local SMS gateway fallback integrations. Each verified user is assigned a unique, auto-generated **SL ID** (Sanatan Lok ID), which acts as their universal handle.
+The identity system is built on **Firebase Phone Auth** directly. The React Native mobile client triggers the OTP verification using the client-side Firebase SDK. Once the OTP is successfully verified, the client sends the Firebase ID Token to the backend API. The backend verifies the token directly against the Firebase Admin SDK to log in or register the user profile.
 
 > **Note:** All subsequent authenticated calls are guarded by the `verify_token` middleware, which expects a standard HTTP `Authorization: Bearer <JWT>` header.
 
 | Feature / Action | Client-Side Screens | Backend Router / Service | Description |
 | :--- | :--- | :--- | :--- |
-| **Twilio SMS Flow** | `frontend/app/auth/*` | `routes/auth_routes.py` | Sends and verifies 6-digit OTPs using Twilio API. |
-| **Nettyfish Gateway** | `frontend/app/auth/*` | `routes/nettyfish_auth_routes.py` | DLT-registered message templates fallback for Indian phone numbers. |
-| **Firebase Auth** | `frontend/app/auth/*` | `services/firebase_auth_service.py` | Verifies Firebase ID Token directly after client-side login. |
-| **Anonymous Mode** | `frontend/app/index.tsx` | `/api/auth/login-anonymous` | Allows guests to browse scriptures and basic feeds without signing up. |
+| **Verify ID Token** | `frontend/app/auth/*` | `verify_firebase_token` | Validates client-side Firebase ID tokens on the server. |
+| **Register User** | `frontend/app/auth/*` | `/api/auth/register` | Creates a new user profile document after token verification. |
+| **Anonymous Mode** | `frontend/app/index.tsx` | `/api/auth/login-anonymous` | Allows guest login via test/anonymous credentials (bypassing OTP). |
+| **Logout** | `frontend/app/settings/*` | `/api/auth/logout` | Disables current session and clears FCM push notification tokens. |
 | **Digital Passport** | `frontend/app/passport/*` | `routes/user_routes.py` | Displays the user profile card containing badge progress and Gotra. |
 
 ---
