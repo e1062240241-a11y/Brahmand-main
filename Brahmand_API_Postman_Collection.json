@@ -1,0 +1,3848 @@
+{
+  "info": {
+    "_postman_id": "8b51d8b6-9bb2-411a-8cfa-553641b6bbdb",
+    "name": "Brahmand Complete API Collection",
+    "description": "Complete Postman Collection covering all endpoints of the Brahmand FastAPI backend, structured logically by module.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Send OTP (Twilio)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"purpose\": \"kyc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/send-otp",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "send-otp"
+              ]
+            },
+            "description": "Send OTP verification SMS via Twilio provider."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP (Twilio)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otp\": \"123456\",\n  \"purpose\": \"kyc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/verify-otp",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-otp"
+              ]
+            },
+            "description": "Verify Twilio OTP and register or log in user."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Firebase ID Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"FIREBASE_TOKEN_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/verify-firebase-token",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-firebase-token"
+              ]
+            },
+            "description": "Verify Firebase ID token on backend for authenticated users."
+          },
+          "response": []
+        },
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"name\": \"Jane Doe\",\n  \"photo\": \"https://example.com/avatar.jpg\",\n  \"language\": \"Hindi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/register",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Create a new user profile after verification."
+          },
+          "response": []
+        },
+        {
+          "name": "Send OTP (Nettyfish)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"purpose\": \"kyc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/nettyfish/send",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "nettyfish",
+                "send"
+              ]
+            },
+            "description": "Generate and send a 4-digit OTP via Nettyfish provider."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP (Nettyfish)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otp\": \"1234\",\n  \"purpose\": \"kyc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/nettyfish/verify",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "nettyfish",
+                "verify"
+              ]
+            },
+            "description": "Verify the 4-digit Nettyfish OTP."
+          },
+          "response": []
+        },
+        {
+          "name": "Send OTP (MSG91)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"purpose\": \"kyc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/msg91/send",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "msg91",
+                "send"
+              ]
+            },
+            "description": "Generate and send an OTP via MSG91."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify OTP (MSG91)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otp\": \"123456\",\n  \"purpose\": \"kyc\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/msg91/verify",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "msg91",
+                "verify"
+              ]
+            },
+            "description": "Verify OTP via MSG91."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Token (MSG91 Custom)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"access_token\": \"ACCESS_TOKEN_HERE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/verify-msg91",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "verify-msg91"
+              ]
+            },
+            "description": "Verify MSG91 custom auth token."
+          },
+          "response": []
+        },
+        {
+          "name": "Login Anonymous",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/login-anonymous",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login-anonymous"
+              ]
+            },
+            "description": "Login anonymously to obtain a guest JWT access token."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/logout",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Logout user and invalidate authentication."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users & Profiles",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/profile",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "profile"
+              ]
+            },
+            "description": "Get current logged in user profile details."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"bio\": \"Pragmatic developer\",\n  \"photo\": \"https://example.com/avatar.jpg\",\n  \"cover_photo\": \"https://example.com/cover.jpg\",\n  \"language\": \"Hindi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/profile",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "profile"
+              ]
+            },
+            "description": "Update basic profile info."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile (Extended)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane Doe\",\n  \"bio\": \"Developer\",\n  \"photo\": \"https://example.com/avatar.jpg\",\n  \"cover_photo\": \"https://example.com/cover.jpg\",\n  \"language\": \"Hindi\",\n  \"kuldevi\": \"Laxmi Devi\",\n  \"kuldevi_temple_area\": \"Pune\",\n  \"gotra\": \"Kashyap\",\n  \"date_of_birth\": \"1995-05-15\",\n  \"place_of_birth\": \"Mumbai\",\n  \"time_of_birth\": \"10:30\",\n  \"gender\": \"female\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/profile/extended",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "profile",
+                "extended"
+              ]
+            },
+            "description": "Update extended/astrological user details."
+          },
+          "response": []
+        },
+        {
+          "name": "Save Kundli Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Jane\",\n  \"gender\": \"female\",\n  \"date_of_birth\": \"1995-05-15\",\n  \"place_of_birth\": \"Mumbai\",\n  \"time_of_birth\": \"10:30\",\n  \"place_of_birth_latitude\": 19.076,\n  \"place_of_birth_longitude\": 72.877\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/saved-kundlis",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "saved-kundlis"
+              ]
+            },
+            "description": "Save a kundli profile under the user account."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Saved Kundlis",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/saved-kundlis",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "saved-kundlis"
+              ]
+            },
+            "description": "Retrieve all saved kundlis for the user."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Saved Kundli",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/saved-kundlis/{{PROFILE_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "saved-kundlis",
+                "{{PROFILE_ID}}"
+              ]
+            },
+            "description": "Delete a saved kundli profile by ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Setup User Location",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"country\": \"India\",\n  \"state\": \"Maharashtra\",\n  \"city\": \"Mumbai\",\n  \"area\": \"Dadar\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/location",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "location"
+              ]
+            },
+            "description": "Setup user home/primary location."
+          },
+          "response": []
+        },
+        {
+          "name": "Save Current Location Coordinates",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"latitude\": 19.076,\n  \"longitude\": 72.877\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/current-location",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "current-location"
+              ]
+            },
+            "description": "Post current latitude and longitude coordinates for location updates."
+          },
+          "response": []
+        },
+        {
+          "name": "Setup Dual Location (Home/Office)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"home_location\": {\n    \"country\": \"India\",\n    \"state\": \"Maharashtra\",\n    \"city\": \"Mumbai\",\n    \"area\": \"Dadar\"\n  },\n  \"office_location\": {\n    \"country\": \"India\",\n    \"state\": \"Maharashtra\",\n    \"city\": \"Mumbai\",\n    \"area\": \"Bandra\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/dual-location",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "dual-location"
+              ]
+            },
+            "description": "Configure dual locations for personalized content/notifications."
+          },
+          "response": []
+        },
+        {
+          "name": "Search User by SL ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/search/{{SL_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "search",
+                "{{SL_ID}}"
+              ]
+            },
+            "description": "Search user public info using their unique Sanatan Lok (SL) ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/users?limit=50&skip=0",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get list of all users."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Users (Batch)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_ids\": [\n    \"sample_user_id_1\",\n    \"sample_user_id_2\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/users/batch",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "batch"
+              ]
+            },
+            "description": "Get multiple user profiles at once using batch query."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Public Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/users/{{USER_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{USER_ID}}"
+              ]
+            },
+            "description": "Get public info of another user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Posts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/users/{{USER_ID}}/posts?limit=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{USER_ID}}",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Get feed posts published by a specific user."
+          },
+          "response": []
+        },
+        {
+          "name": "Follow User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/users/{{USER_ID}}/follow",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{USER_ID}}",
+                "follow"
+              ]
+            },
+            "description": "Follow another user."
+          },
+          "response": []
+        },
+        {
+          "name": "Unfollow User",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/users/{{USER_ID}}/unfollow",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{USER_ID}}",
+                "unfollow"
+              ]
+            },
+            "description": "Unfollow a user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Verification Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/verification-status",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "verification-status"
+              ]
+            },
+            "description": "Check status of user profile verification."
+          },
+          "response": []
+        },
+        {
+          "name": "Request Verification (KYC)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Jane Doe\",\n  \"id_type\": \"aadhaar\",\n  \"id_number\": \"1234-5678-9012\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/request-verification",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "request-verification"
+              ]
+            },
+            "description": "Submit ID verification request."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile Completion Score",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/profile-completion",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "profile-completion"
+              ]
+            },
+            "description": "Get user profile completion progress percentage."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Horoscope Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/user/horoscope",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "user",
+                "horoscope"
+              ]
+            },
+            "description": "Retrieve astrology horoscope information."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Communities",
+      "item": [
+        {
+          "name": "Get User Communities",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/communities",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "communities"
+              ]
+            },
+            "description": "Get all communities the logged-in user belongs to."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Community",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Mumbai Bhakt Sangha\",\n  \"type\": \"user_group\",\n  \"description\": \"Weekly bhajans and satsangs in Mumbai\",\n  \"short_name\": \"MBS\",\n  \"city\": \"Mumbai\",\n  \"area\": \"Bandra\",\n  \"category\": \"Devotional\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/communities",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "communities"
+              ]
+            },
+            "description": "Create a custom subgroup or community."
+          },
+          "response": []
+        },
+        {
+          "name": "Discover Communities",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/communities/discover",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "communities",
+                "discover"
+              ]
+            },
+            "description": "Find and discover trending/popular public communities."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Community Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/communities/{{COMMUNITY_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "communities",
+                "{{COMMUNITY_ID}}"
+              ]
+            },
+            "description": "Get details of a specific community group."
+          },
+          "response": []
+        },
+        {
+          "name": "Join Community by Code",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"JOINCODE123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/communities/join",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "communities",
+                "join"
+              ]
+            },
+            "description": "Join a community group using its invite code."
+          },
+          "response": []
+        },
+        {
+          "name": "Agree to Rules",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subgroup_type\": \"chat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/communities/{{COMMUNITY_ID}}/agree-rules",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "communities",
+                "{{COMMUNITY_ID}}",
+                "agree-rules"
+              ]
+            },
+            "description": "Acknowledge and agree to community chat rules to unlock chat features."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Community Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/communities/{{COMMUNITY_ID}}/stats",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "communities",
+                "{{COMMUNITY_ID}}",
+                "stats"
+              ]
+            },
+            "description": "Fetch members count and active messaging statistics."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Circles",
+      "item": [
+        {
+          "name": "Create Circle",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Family Circle\",\n  \"description\": \"Inner family members circle\",\n  \"privacy\": \"private\",\n  \"photo\": \"https://example.com/circle.jpg\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/circles",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "circles"
+              ]
+            },
+            "description": "Create a new private/invite circle for close friends or family."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Circles",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/circles",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "circles"
+              ]
+            },
+            "description": "Retrieve list of all circles current user is part of."
+          },
+          "response": []
+        },
+        {
+          "name": "Join Circle by Code",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"CIRCLECODE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/circles/join",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "circles",
+                "join"
+              ]
+            },
+            "description": "Join a circle using invite code."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Circle Joining Requests",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/circles/{{CIRCLE_ID}}/requests",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "circles",
+                "{{CIRCLE_ID}}",
+                "requests"
+              ]
+            },
+            "description": "Get pending member requests for approval (Admins only)."
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Joining Request",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"requester_user_id_here\",\n  \"approve\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/circles/{{CIRCLE_ID}}/approve",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "circles",
+                "{{CIRCLE_ID}}",
+                "approve"
+              ]
+            },
+            "description": "Approve or decline a pending circle access request."
+          },
+          "response": []
+        },
+        {
+          "name": "Invite User to Circle",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sl_id\": \"TARGET_USER_SL_ID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/circles/{{CIRCLE_ID}}/invite",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "circles",
+                "{{CIRCLE_ID}}",
+                "invite"
+              ]
+            },
+            "description": "Send circle invitation to another user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Community Help Requests",
+      "item": [
+        {
+          "name": "Create Help Request",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"request_type\": \"medical\",\n  \"visibility_level\": \"city\",\n  \"title\": \"Urgent Medical Assistance needed\",\n  \"description\": \"Need blood donor or financial help for emergency surgery.\",\n  \"contact_number\": \"+919876543210\",\n  \"urgency_level\": \"high\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/community-requests",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "community-requests"
+              ]
+            },
+            "description": "Post a community request seeking blood donation, financial help, etc."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Help Requests",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/community-requests?limit=20&request_type=medical&urgency_level=high",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "community-requests"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "request_type",
+                  "value": "medical"
+                },
+                {
+                  "key": "urgency_level",
+                  "value": "high"
+                }
+              ]
+            },
+            "description": "List all active requests filtering by type and urgency level."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Help Requests",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/community-requests/my",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "community-requests",
+                "my"
+              ]
+            },
+            "description": "Retrieve requests submitted by the logged-in user."
+          },
+          "response": []
+        },
+        {
+          "name": "Resolve Help Request",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/community-requests/{{REQUEST_ID}}/resolve",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "community-requests",
+                "{{REQUEST_ID}}",
+                "resolve"
+              ]
+            },
+            "description": "Mark a help request as resolved/fulfilled."
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Interest / Support Request",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/community-requests/{{REQUEST_ID}}/interest",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "community-requests",
+                "{{REQUEST_ID}}",
+                "interest"
+              ]
+            },
+            "description": "Express interest or support for a request."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Help Request",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/community-requests/{{REQUEST_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "community-requests",
+                "{{REQUEST_ID}}"
+              ]
+            },
+            "description": "Remove a posted help request."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Messaging & DMs",
+      "item": [
+        {
+          "name": "Send Community Message",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Jai Shree Ram!\",\n  \"message_type\": \"text\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/messages/community/{{COMMUNITY_ID}}/{{SUBGROUP_TYPE}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "messages",
+                "community",
+                "{{COMMUNITY_ID}}",
+                "{{SUBGROUP_TYPE}}"
+              ]
+            },
+            "description": "Send message to community subgroup."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Community Messages",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/messages/community/{{COMMUNITY_ID}}/{{SUBGROUP_TYPE}}?limit=50&before_timestamp=",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "messages",
+                "community",
+                "{{COMMUNITY_ID}}",
+                "{{SUBGROUP_TYPE}}"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "before_timestamp",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "List messages from community subgroup."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Circle Message",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello circle members!\",\n  \"message_type\": \"text\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/messages/circle/{{CIRCLE_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "messages",
+                "circle",
+                "{{CIRCLE_ID}}"
+              ]
+            },
+            "description": "Send message in a private circle."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Circle Messages",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/messages/circle/{{CIRCLE_ID}}?limit=50",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "messages",
+                "circle",
+                "{{CIRCLE_ID}}"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "List circle messages."
+          },
+          "response": []
+        },
+        {
+          "name": "Send Direct Message",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipient_sl_id\": \"RECIPIENT_SL_ID\",\n  \"content\": \"Hello friend!\",\n  \"text\": \"Hello friend!\",\n  \"message_type\": \"text\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/messages/dm",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "messages",
+                "dm"
+              ]
+            },
+            "description": "Send direct message (DM) to user by SL ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get DM Conversations",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/messages/dm/conversations",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "messages",
+                "dm",
+                "conversations"
+              ]
+            },
+            "description": "Retrieve all active DM chat logs."
+          },
+          "response": []
+        },
+        {
+          "name": "Get DM Chat History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/messages/dm/{{CONVERSATION_ID}}?limit=50",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "messages",
+                "dm",
+                "{{CONVERSATION_ID}}"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Get messages from a specific conversation."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Feed Uploads & Posts",
+      "item": [
+        {
+          "name": "Upload Post (Multipart Form)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "File upload key: file"
+                },
+                {
+                  "key": "caption",
+                  "value": "Beautiful view",
+                  "type": "text"
+                },
+                {
+                  "key": "source",
+                  "value": "camera_roll",
+                  "type": "text"
+                },
+                {
+                  "key": "filter_name",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "announcement",
+                  "type": "text"
+                },
+                {
+                  "key": "community_level",
+                  "value": "city",
+                  "type": "text"
+                },
+                {
+                  "key": "media_width",
+                  "value": "1080",
+                  "type": "text"
+                },
+                {
+                  "key": "media_height",
+                  "value": "1920",
+                  "type": "text"
+                },
+                {
+                  "key": "crop_offset_x",
+                  "value": "0.0",
+                  "type": "text"
+                },
+                {
+                  "key": "crop_offset_y",
+                  "value": "0.0",
+                  "type": "text"
+                },
+                {
+                  "key": "original_width",
+                  "value": "1080",
+                  "type": "text"
+                },
+                {
+                  "key": "original_height",
+                  "value": "1920",
+                  "type": "text"
+                },
+                {
+                  "key": "mute_audio",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/posts/upload",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "upload"
+              ]
+            },
+            "description": "Upload post with media file."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Post from Storage",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "storage_path",
+                  "value": "temp_uploads/user_123.jpg",
+                  "type": "text"
+                },
+                {
+                  "key": "caption",
+                  "value": "Uploaded from storage path",
+                  "type": "text"
+                },
+                {
+                  "key": "source",
+                  "value": "camera_roll",
+                  "type": "text"
+                },
+                {
+                  "key": "filter_name",
+                  "value": "",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "event",
+                  "type": "text"
+                },
+                {
+                  "key": "community_level",
+                  "value": "city",
+                  "type": "text"
+                },
+                {
+                  "key": "media_width",
+                  "value": "1080",
+                  "type": "text"
+                },
+                {
+                  "key": "media_height",
+                  "value": "1920",
+                  "type": "text"
+                },
+                {
+                  "key": "crop_offset_x",
+                  "value": "0.0",
+                  "type": "text"
+                },
+                {
+                  "key": "crop_offset_y",
+                  "value": "0.0",
+                  "type": "text"
+                },
+                {
+                  "key": "mute_audio",
+                  "value": "false",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/posts/upload-from-storage",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "upload-from-storage"
+              ]
+            },
+            "description": "Upload post using a file path already present in Firebase storage."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Media",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "File upload key: file"
+                },
+                {
+                  "key": "purpose",
+                  "value": "chat_attachment",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/media/upload",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "media",
+                "upload"
+              ]
+            },
+            "description": "Upload media attachment for chat or messages."
+          },
+          "response": []
+        },
+        {
+          "name": "Upload Video Reels",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "",
+                  "description": "File upload key: file"
+                },
+                {
+                  "key": "caption",
+                  "value": "Bhajan Reel",
+                  "type": "text"
+                },
+                {
+                  "key": "duration",
+                  "value": "30.0",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/videos/upload",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "videos",
+                "upload"
+              ]
+            },
+            "description": "Upload video reels status endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Feed Posts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/posts/feed?limit=20&before_post_id=",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "before_post_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get user feeds post feed."
+          },
+          "response": []
+        },
+        {
+          "name": "Watch Post (Reel/Video)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/posts/{{POST_ID}}/watch",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "{{POST_ID}}",
+                "watch"
+              ]
+            },
+            "description": "Record post watching session/duration metric."
+          },
+          "response": []
+        },
+        {
+          "name": "Increment View Count",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/posts/{{POST_ID}}/view",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "{{POST_ID}}",
+                "view"
+              ]
+            },
+            "description": "Register a unique post impression/view count."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Posts by Hashtag",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/posts/hashtag?tag=krishna&limit=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "hashtag"
+              ],
+              "query": [
+                {
+                  "key": "tag",
+                  "value": "krishna"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Retrieve posts matching a specific tag."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Feed Preferences",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/users/me/feed-preferences",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "me",
+                "feed-preferences"
+              ]
+            },
+            "description": "Retrieve user content recommendation preferences."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Temples",
+      "item": [
+        {
+          "name": "Create Temple Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Shree Siddhivinayak Mandir\",\n  \"location\": {\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"area\": \"Prabhadevi\"\n  },\n  \"deity\": \"Ganesha\",\n  \"description\": \"Famous Ganesha temple\",\n  \"coords\": {\n    \"latitude\": 19.0169,\n    \"longitude\": 72.8304\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples"
+              ]
+            },
+            "description": "Add a new temple profile."
+          },
+          "response": []
+        },
+        {
+          "name": "Seed Default Temples",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/seed",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "seed"
+              ]
+            },
+            "description": "Initialize/seed list of default temples."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Temples",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples?limit=20&skip=0",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "skip",
+                  "value": "0"
+                }
+              ]
+            },
+            "description": "Get list of all registered temples."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Nearby Temples",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/nearby?latitude=19.076&longitude=72.877&radius_km=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "19.076"
+                },
+                {
+                  "key": "longitude",
+                  "value": "72.877"
+                },
+                {
+                  "key": "radius_km",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Find temples near specific coordinate radius."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Temple by ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/{{TEMPLE_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "{{TEMPLE_ID}}"
+              ]
+            },
+            "description": "Fetch detailed profile of a temple."
+          },
+          "response": []
+        },
+        {
+          "name": "Follow Temple",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/{{TEMPLE_ID}}/follow",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "{{TEMPLE_ID}}",
+                "follow"
+              ]
+            },
+            "description": "Follow temple updates and notifications."
+          },
+          "response": []
+        },
+        {
+          "name": "Unfollow Temple",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/{{TEMPLE_ID}}/unfollow",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "{{TEMPLE_ID}}",
+                "unfollow"
+              ]
+            },
+            "description": "Unfollow temple updates."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Temple Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Ganesh Chaturthi Utsav\",\n  \"content\": \"Live aarti timings and details.\",\n  \"post_type\": \"event\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/{{TEMPLE_ID}}/posts",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "{{TEMPLE_ID}}",
+                "posts"
+              ]
+            },
+            "description": "Publish a temple announcement/event post (Admins only)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Temple Posts",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/{{TEMPLE_ID}}/posts?limit=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "{{TEMPLE_ID}}",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "List posts published by a temple."
+          },
+          "response": []
+        },
+        {
+          "name": "React to Temple Post",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reaction_type\": \"like\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/temples/{{TEMPLE_ID}}/posts/{{POST_ID}}/react",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "temples",
+                "{{TEMPLE_ID}}",
+                "posts",
+                "{{POST_ID}}",
+                "react"
+              ]
+            },
+            "description": "React to a temple announcement/post."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "item": [
+        {
+          "name": "Create Event",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Janmashtami Celebration\",\n  \"description\": \"Satsang and dahi handi celebration\",\n  \"event_type\": \"satsang\",\n  \"location\": {\n    \"city\": \"Mumbai\",\n    \"state\": \"Maharashtra\",\n    \"venue\": \"Temple Ground\"\n  },\n  \"date\": \"2026-08-15\",\n  \"time\": \"19:00\",\n  \"organizer_name\": \"Siddhivinayak Trust\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/events",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ]
+            },
+            "description": "Register a new public devotional event."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Events",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/events?limit=20",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "List all upcoming events."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Nearby Events",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/events/nearby?latitude=19.076&longitude=72.877&radius_km=15",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "nearby"
+              ],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "19.076"
+                },
+                {
+                  "key": "longitude",
+                  "value": "72.877"
+                },
+                {
+                  "key": "radius_km",
+                  "value": "15"
+                }
+              ]
+            },
+            "description": "Get events happening within distance of coordinates."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event Details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/events/{{EVENT_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{EVENT_ID}}"
+              ]
+            },
+            "description": "Get details of a specific event."
+          },
+          "response": []
+        },
+        {
+          "name": "Attend Event",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/events/{{EVENT_ID}}/attend",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{EVENT_ID}}",
+                "attend"
+              ]
+            },
+            "description": "RSVP to attend the event."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Attendance RSVP",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/events/{{EVENT_ID}}/cancel-attendance",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "events",
+                "{{EVENT_ID}}",
+                "cancel-attendance"
+              ]
+            },
+            "description": "Cancel attendance RSVP for an event."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Jaap (Chanting)",
+      "item": [
+        {
+          "name": "Record Jaap Chant Session",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mantra_type\": \"krishna\",\n  \"count\": 108,\n  \"duration_seconds\": 600,\n  \"session_name\": \"Morning Jaap\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/jaap/record",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "jaap",
+                "record"
+              ]
+            },
+            "description": "Post jaap count completion details to database."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Jaap Certificates",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/jaap/certificates",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "jaap",
+                "certificates"
+              ]
+            },
+            "description": "Download or fetch earned jaap performance/achievement certificates."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Jaap Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/jaap/stats",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "jaap",
+                "stats"
+              ]
+            },
+            "description": "Retrieve overall jaap counting statistics."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Active Chanting Count",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/jaap/active-count",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "jaap",
+                "active-count"
+              ]
+            },
+            "description": "Get current live active chanter counts in real-time."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Scriptures & Wisdom",
+      "item": [
+        {
+          "name": "Bhagavad Gita Verse",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/bhagavad_gita/chapter/{chapter_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "bhagavad_gita",
+                "chapter",
+                "{chapter_number}"
+              ]
+            },
+            "description": "Read verses of Bhagavad Gita by chapter."
+          },
+          "response": []
+        },
+        {
+          "name": "Atharvaveda Kand",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/atharvaved/chapter/{kaanda_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "atharvaved",
+                "chapter",
+                "{kaanda_number}"
+              ]
+            },
+            "description": "Read Atharvaveda chapters."
+          },
+          "response": []
+        },
+        {
+          "name": "Mahabharata Book",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/mahabharata/book/{book_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "mahabharata",
+                "book",
+                "{book_number}"
+              ]
+            },
+            "description": "Read Mahabharata parvas/books."
+          },
+          "response": []
+        },
+        {
+          "name": "Rigveda Mandala",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/rigveda/chapter/{mandala_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "rigveda",
+                "chapter",
+                "{mandala_number}"
+              ]
+            },
+            "description": "Read Rigveda mandalas."
+          },
+          "response": []
+        },
+        {
+          "name": "Ramayana Chapter",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/ramayan/chapter/{kaanda_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ramayan",
+                "chapter",
+                "{kaanda_number}"
+              ]
+            },
+            "description": "Read Ramayana chapters."
+          },
+          "response": []
+        },
+        {
+          "name": "Yajurveda Chapter",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/yajurveda/chapter/{chapter_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "yajurveda",
+                "chapter",
+                "{chapter_number}"
+              ]
+            },
+            "description": "Read Yajurveda chapters."
+          },
+          "response": []
+        },
+        {
+          "name": "Ramcharitmanas Kand",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/ramcharitmanas/chapter/{kand_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "ramcharitmanas",
+                "chapter",
+                "{kand_number}"
+              ]
+            },
+            "description": "Read Ramcharitmanas parts."
+          },
+          "response": []
+        },
+        {
+          "name": "Upanishad Chapter",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{ACCESS_TOKEN}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/upanishads/chapter/{chapter_number}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "upanishads",
+                "chapter",
+                "{chapter_number}"
+              ]
+            },
+            "description": "Read Upanishads chapters."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:8002",
+      "type": "string",
+      "description": "FastAPI Server URL"
+    },
+    {
+      "key": "ACCESS_TOKEN",
+      "value": "Bearer_Token_From_OTP_Verify_Or_Login",
+      "type": "string",
+      "description": "JWT Access Token"
+    },
+    {
+      "key": "COMMUNITY_ID",
+      "value": "sample_community_id",
+      "type": "string"
+    },
+    {
+      "key": "SUBGROUP_TYPE",
+      "value": "chat",
+      "type": "string"
+    },
+    {
+      "key": "CONVERSATION_ID",
+      "value": "sample_conversation_id",
+      "type": "string"
+    },
+    {
+      "key": "CIRCLE_ID",
+      "value": "sample_circle_id",
+      "type": "string"
+    },
+    {
+      "key": "REQUEST_ID",
+      "value": "sample_request_id",
+      "type": "string"
+    },
+    {
+      "key": "EVENT_ID",
+      "value": "sample_event_id",
+      "type": "string"
+    },
+    {
+      "key": "TEMPLE_ID",
+      "value": "sample_temple_id",
+      "type": "string"
+    },
+    {
+      "key": "POST_ID",
+      "value": "sample_post_id",
+      "type": "string"
+    },
+    {
+      "key": "PROFILE_ID",
+      "value": "sample_profile_id",
+      "type": "string"
+    },
+    {
+      "key": "SL_ID",
+      "value": "sample_sl_id",
+      "type": "string"
+    }
+  ]
+}
