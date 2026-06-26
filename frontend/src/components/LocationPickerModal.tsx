@@ -187,7 +187,9 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
   return (
     <Modal
       visible={visible}
-      animationType="slide"
+      animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+      hardwareAccelerated={Platform.OS === 'android'}
+      statusBarTranslucent={Platform.OS === 'android'}
       transparent={false}
       onRequestClose={onClose}
     >

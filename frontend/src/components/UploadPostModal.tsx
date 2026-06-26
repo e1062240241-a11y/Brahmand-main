@@ -749,7 +749,9 @@ export const UploadPostModal = ({
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+      hardwareAccelerated={Platform.OS === 'android'}
+      statusBarTranslucent={Platform.OS === 'android'}
       onRequestClose={resetAndClose}
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>

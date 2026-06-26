@@ -730,7 +730,8 @@ export default function RootLayout() {
             headerShown: false,
             animation: 'slide_from_right',
             gestureEnabled: true,
-            gestureDirection: 'horizontal'
+            gestureDirection: 'horizontal',
+            contentStyle: { backgroundColor: COLORS.background }
           }}>
             {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
             <Stack.Screen

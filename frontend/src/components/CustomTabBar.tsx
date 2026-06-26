@@ -109,6 +109,86 @@ const getBackgroundRects = (activeIndex: number) => {
   return rects;
 };
 
+const getBackgroundViews = (activeIndex: number) => {
+  const safeIndex = activeIndex >= 0 && activeIndex < 5 ? activeIndex : 0;
+  const GAP = 6;
+  
+  const getTabWidthForBg = (index: number) => {
+    if (index === 0 || index === 4) return 126;
+    if (index === 1) return 126;
+    if (index === 2) return 100;
+    if (index === 3) return 104;
+    return 100;
+  };
+
+  const tabWidth = getTabWidthForBg(safeIndex);
+  const centerX = getIconPositions(safeIndex)[safeIndex];
+  const L_active = centerX - tabWidth / 2;
+  const R_active = centerX + tabWidth / 2;
+
+  const views = [];
+
+  // Left Inactive Group
+  if (L_active > 20) {
+    const x = 0.75;
+    const w = L_active - GAP - x;
+    views.push(
+      <View
+        key="left-view"
+        style={{
+          position: 'absolute',
+          left: x,
+          top: 0.75,
+          width: w,
+          height: 67.5,
+          borderRadius: 33.75,
+          backgroundColor: CAPSULE_BG,
+        }}
+      />
+    );
+  }
+
+  // Right Inactive Group
+  if (R_active < 353) {
+    const x = R_active + GAP;
+    const w = 373 - 0.75 - x;
+    views.push(
+      <View
+        key="right-view"
+        style={{
+          position: 'absolute',
+          left: x,
+          top: 0.75,
+          width: w,
+          height: 67.5,
+          borderRadius: 33.75,
+          backgroundColor: CAPSULE_BG,
+        }}
+      />
+    );
+  }
+
+  // Active Tab Capsule
+  const activeX = Math.max(0.75, L_active);
+  const activeW = Math.min(373 - 0.75, R_active) - activeX;
+  views.push(
+    <View
+      key="active-view"
+      style={{
+        position: 'absolute',
+        left: activeX,
+        top: 0.75,
+        width: activeW,
+        height: 67.5,
+        borderRadius: 33.75,
+        backgroundColor: CAPSULE_BG,
+      }}
+    />
+  );
+
+  return views;
+};
+
 export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { tabBarTranslateY } = useTabBar();
@@ -242,9 +322,15 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     <Animated.View style={[styles.outerContainer, { bottom: bottomPosition }, animatedStyle]}>
       <View style={styles.tabBarContainer}>
         {/* Dynamic Separate Background */}
-        <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>
-          {getBackgroundRects(safeActiveIndex)}
-        </Svg>
+        {Platform.OS === 'android' ? (
+          <View style={styles.svgBackground}>
+            {getBackgroundViews(safeActiveIndex)}
+          </View>
+        ) : (
+          <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>
+            {getBackgroundRects(safeActiveIndex)}
+          </Svg>
+        )}
 
         {/* Dynamic Slotted Tab Items */}
         {visibleRoutes.map((route: any, index: number) => {

@@ -153,7 +153,14 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+      hardwareAccelerated={Platform.OS === 'android'}
+      statusBarTranslucent={Platform.OS === 'android'}
+      onRequestClose={onClose}
+    >
       <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
         <View style={styles.container} onStartShouldSetResponder={() => true}>
           <View style={styles.handle} />

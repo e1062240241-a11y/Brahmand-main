@@ -450,7 +450,13 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
 
   return (
     <>
-      <Modal visible={visible} transparent animationType="slide">
+      <Modal
+        visible={visible}
+        transparent
+        animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+        hardwareAccelerated={Platform.OS === 'android'}
+        statusBarTranslucent={Platform.OS === 'android'}
+      >
         <View style={styles.overlay}>
           <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.sheetHandle} />

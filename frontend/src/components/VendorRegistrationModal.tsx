@@ -674,7 +674,14 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+      hardwareAccelerated={Platform.OS === 'android'}
+      statusBarTranslucent={Platform.OS === 'android'}
+      transparent
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.overlay}
@@ -1029,7 +1036,14 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       </KeyboardAvoidingView>
 
       {/* Map Picker Modal */}
-      <Modal visible={mapPickerVisible} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setMapPickerVisible(false)}>
+      <Modal
+        visible={mapPickerVisible}
+        animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+        hardwareAccelerated={Platform.OS === 'android'}
+        statusBarTranslucent={Platform.OS === 'android'}
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : undefined}
+        onRequestClose={() => setMapPickerVisible(false)}
+      >
         <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }} edges={["top", "bottom"]}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
@@ -1122,7 +1136,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       {/* Full-Screen Category Selector Modal */}
       <Modal
         visible={showCategorySelector}
-        animationType="slide"
+        animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+        hardwareAccelerated={Platform.OS === 'android'}
+        statusBarTranslucent={Platform.OS === 'android'}
         transparent={false}
         onRequestClose={() => {
           setCustomCategoryQuery('');
