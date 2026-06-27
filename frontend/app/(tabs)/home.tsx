@@ -368,6 +368,14 @@ try {
   console.warn('expo-file-system unavailable for media sharing:', error);
 }
 
+const ACTION_CARD_WIDTH = 120;
+const ACTION_CARD_HEIGHT = 180;
+const ACTION_CARD_SNAP_INTERVAL = 130;
+
+const FEATURE_CARD_WIDTH = Platform.OS === 'android' ? 185 : 175;
+const FEATURE_CARD_HEIGHT = Platform.OS === 'android' ? 82 : 75;
+const FEATURE_SNAP_INTERVAL = FEATURE_CARD_WIDTH + 10;
+
 const baseQuickAccess = [
   { label: 'My Krishn', subtitle: 'AI Dharma Guidance', color: '#FFF' },
   { label: 'SOS', subtitle: 'Quick help\nfrom Sanatan', color: '#FFF', urgent: true },
@@ -3133,13 +3141,13 @@ export default function HomeScreen() {
                           ref={topFeaturesScrollRef}
                           horizontal
                           showsHorizontalScrollIndicator={false}
-                          snapToInterval={185}
+                          snapToInterval={FEATURE_SNAP_INTERVAL}
                           decelerationRate="fast"
                           contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
                           style={{ width: '100%' }}
                           onScroll={(e) => {
                             const x = e.nativeEvent.contentOffset.x;
-                            const idx = Math.round(x / 185);
+                            const idx = Math.round(x / FEATURE_SNAP_INTERVAL);
                             const clampedIdx = Math.max(0, Math.min(idx, baseQuickAccess.length - 1));
                             setActiveFeatureIndex(clampedIdx);
                             topFeaturesAutoScrollIndex.current = clampedIdx;
@@ -3567,7 +3575,7 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 nestedScrollEnabled={true}
-                snapToInterval={Platform.OS === 'ios' ? 130 : 120}
+                snapToInterval={ACTION_CARD_SNAP_INTERVAL}
                 decelerationRate="fast"
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
@@ -3575,7 +3583,7 @@ export default function HomeScreen() {
                 {/* Urgent Blood Request */}
                 {bloodRequests.length > 0 ? (
                   bloodRequests.map((req, idx) => (
-                    <View key={req.id || idx} style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View key={req.id || idx} style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="rose">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -3624,7 +3632,7 @@ export default function HomeScreen() {
                     </View>
                   ))
                 ) : (
-                  <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                  <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="rose">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -3669,7 +3677,7 @@ export default function HomeScreen() {
 
                 {/* Register Business */}
                 {!myVendor && (
-                  <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                  <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="peach">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -3721,7 +3729,7 @@ export default function HomeScreen() {
                     : 'Flower Decor\nAndheri West';
 
                   return (
-                    <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="mint">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -3770,7 +3778,7 @@ export default function HomeScreen() {
                 })()}
 
                 {/* Live Aarti */}
-                <View style={{ width: Platform.OS === 'ios' ? 120 : 110, height: Platform.OS === 'ios' ? 180 : 172, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                   <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                     <HomeCardTextureBg texture="lavender">
                       <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
@@ -4505,6 +4513,7 @@ const styles = StyleSheet.create({
     height: 55,
     borderRadius: 28,
     position: 'relative',
+    overflow: 'hidden',
   },
   headerOnlineDot: {
     position: 'absolute',
@@ -4561,8 +4570,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    width: 175,
-    height: 75,
+    width: FEATURE_CARD_WIDTH,
+    height: FEATURE_CARD_HEIGHT,
   },
   featureIconWrap: {
     width: 50,
@@ -4717,10 +4726,10 @@ const styles = StyleSheet.create({
     gap: Platform.OS === 'ios' ? 8 : 10,
   },
   actionCard: {
-    width: Platform.OS === 'ios' ? 120 : 110,
-    height: Platform.OS === 'ios' ? 180 : 172,
+    width: ACTION_CARD_WIDTH,
+    height: ACTION_CARD_HEIGHT,
     borderRadius: 15,
-    padding: Platform.OS === 'ios' ? 10 : 12,
+    padding: 10,
     justifyContent: 'space-between',
     position: 'relative',
     overflow: 'hidden',
@@ -4737,8 +4746,8 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgeYellow: {
     backgroundColor: '#FFF5E0',
-    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
-    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -4748,8 +4757,8 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgeTeal: {
     backgroundColor: '#E8F5E9',
-    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
-    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -4759,8 +4768,8 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgeEmerald: {
     backgroundColor: '#E6F4F1',
-    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
-    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -4770,8 +4779,8 @@ const styles = StyleSheet.create({
   },
   cardHeaderBadgeCyan: {
     backgroundColor: '#E0F7FA',
-    paddingHorizontal: Platform.OS === 'ios' ? 8 : 12,
-    paddingVertical: Platform.OS === 'ios' ? 4 : 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 10,
     alignSelf: 'flex-start',
     borderWidth: 1,
@@ -4961,8 +4970,8 @@ const styles = StyleSheet.create({
   },
   communityCardMini: {
     flex: 1,
-    minHeight: Platform.OS === 'android' ? 62 : 75,
-    paddingVertical: Platform.OS === 'android' ? 6 : 10,
+    minHeight: 75,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 15,
     flexDirection: 'row',
@@ -4995,16 +5004,16 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   communityCardIcon: {
-    width: Platform.OS === 'android' ? 38 : 44,
-    height: Platform.OS === 'android' ? 38 : 44,
+    width: 44,
+    height: 44,
     borderRadius: 10,
-    marginRight: Platform.OS === 'android' ? 6 : 8,
+    marginRight: 8,
   },
   communityCardIconBox: {
-    width: Platform.OS === 'android' ? 38 : 44,
-    height: Platform.OS === 'android' ? 38 : 44,
+    width: 44,
+    height: 44,
     borderRadius: 10,
-    marginRight: Platform.OS === 'android' ? 6 : 8,
+    marginRight: 8,
     overflow: 'hidden',
   },
   communityCardIconRound: {
@@ -5016,7 +5025,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   communityCardTextBlock: {
-    marginTop: Platform.OS === 'android' ? 3 : 6,
+    marginTop: 6,
   },
   miniCardType: {
     fontFamily: 'Inter_600SemiBold',
@@ -5027,7 +5036,7 @@ const styles = StyleSheet.create({
   },
   communityCardLabel: {
     color: '#9F45FF',
-    fontSize: Platform.OS === 'android' ? 8.5 : 10,
+    fontSize: 10,
     letterSpacing: 0,
     marginBottom: 2,
   },
@@ -5039,9 +5048,9 @@ const styles = StyleSheet.create({
   },
   communityCardTitle: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: Platform.OS === 'android' ? 11 : 12.5,
+    fontSize: 12.5,
     color: '#000',
-    lineHeight: Platform.OS === 'android' ? 13 : 15,
+    lineHeight: 15,
   },
   miniCardMembers: {
     fontFamily: 'Inter_500Medium',
@@ -5050,20 +5059,20 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   communityCardMembers: {
-    fontSize: Platform.OS === 'android' ? 8.5 : 10,
+    fontSize: 10,
     color: '#000',
-    marginTop: Platform.OS === 'android' ? 1 : 2,
+    marginTop: 2,
   },
   miniCardBottomRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: Platform.OS === 'android' ? 3 : 6,
+    marginTop: 6,
   },
   sevaBadgeMini: {
-    width: Platform.OS === 'android' ? 26 : 30,
-    height: Platform.OS === 'android' ? 13 : 15,
-    borderRadius: Platform.OS === 'android' ? 6.5 : 7.5,
+    width: 30,
+    height: 15,
+    borderRadius: 7.5,
     borderWidth: 1,
     borderColor: '#365F35',
     backgroundColor: '#FFF',
@@ -5072,7 +5081,7 @@ const styles = StyleSheet.create({
   },
   sevaBadgeTextMini: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: Platform.OS === 'android' ? 7.5 : 8.5,
+    fontSize: 8.5,
     color: '#397339',
   },
   stickyFeedTabsShell: {

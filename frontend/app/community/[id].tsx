@@ -55,6 +55,9 @@ interface User {
 
 // Persists across navigation (module-level cache) — survives tab switches but NOT full reloads
 const localPostCategories = new Map<string, string>();
+// module-level cache for iOS to track posts created in this session
+const iosUserCreatedPostIds = new Set<string>();
+
 
 // Persists across full reloads via localStorage (web) / AsyncStorage (native)
 const POST_CACHE_KEY = 'brahmand_local_posts';
@@ -1435,7 +1438,7 @@ export default function CommunityDetailScreen() {
 
   const fetchCommunity = async (force = false) => {
     try {
-      if (Platform.OS === 'android') {
+      if (Platform.OS === 'android' || Platform.OS === 'ios') {
         await ensureCategoriesLoaded();
       }
       const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
@@ -1685,14 +1688,10 @@ export default function CommunityDetailScreen() {
       const deletedIds = new Set<string>(currentCache?.deletedPostIds || []);
 
       let finalPosts: any[] = [];
-      setCommunityPosts((prev: any[]) => {
-        const serverIds = new Set([
-          ...formattedMsgs.map((p: any) => p.id),
-          ...recentStateMsgs.map((p: any) => p.id),
-          ...olderStateMsgs.map((p: any) => p.id),
-          ...recentNationalMsgs.map((p: any) => p.id),
-          ...olderNationalMsgs.map((p: any) => p.id)
-        ]);
+      if (Platform.OS === 'ios') {
+        const currentUser = useAuthStore.getState().user;
+        const currentUserIdStr = currentUser?.id ? String(currentUser.id) : null;
+        const currentUserName = currentUser?.name || null;
 
         const serverPosts = [
           ...formattedMsgs,
@@ -1701,44 +1700,59 @@ export default function CommunityDetailScreen() {
           ...recentNationalMsgs,
           ...olderNationalMsgs
         ];
+        const serverIds = new Set(serverPosts.map((p: any) => String(p.id)));
+        const prevPosts = currentCache?.communityPosts || [];
 
-        // Keep local optimistic posts (either pending with 'post-' ID, user's own posts, or marked as isUniversal)
-        const localPosts = prev.filter((p: any) => {
-          const isDeleted = deletedIds.has(String(p.id));
+        console.log('[iOS Community] prevPosts IDs:', prevPosts.map(p => p.id));
+        console.log('[iOS Community] serverPosts IDs:', serverPosts.map(p => p.id));
+
+        const localPosts = prevPosts.filter((p: any) => {
+          const pIdStr = String(p.id);
+          const isDeleted = deletedIds.has(pIdStr);
           if (isDeleted) return false;
 
-          const isLocal = String(p.id).startsWith('post-') || 
-            p.isUniversal || 
-            (p.sender_id && user?.id && String(p.sender_id) === String(user?.id)) ||
-            (p.user_id && user?.id && String(p.user_id) === String(user?.id));
-
-          if (!isLocal) return false;
-
           // If the post is already in the server response by ID, don't keep local version
-          if (serverIds.has(p.id)) return false;
-
-          // If it's a local pending post (starts with 'post-'), also check if the server has already returned it by content matching
-          if (String(p.id).startsWith('post-')) {
-            const hasServerMatch = serverPosts.some((sp: any) => {
-              const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
-              const senderMatches = (sp.sender_id && user?.id && String(sp.sender_id) === String(user?.id)) ||
-                (sp.user_id && user?.id && String(sp.user_id) === String(user?.id)) ||
-                (sp.user?.name && user?.name && sp.user.name === user.name);
-              return contentMatches && senderMatches;
-            });
-            if (hasServerMatch) return false;
+          if (serverIds.has(pIdStr)) {
+            console.log(`[iOS Community] Discarding local post ${pIdStr} because server has it by ID`);
+            return false;
           }
 
-          return true;
-        });
-        const seenIds = new Set(localPosts.map((p: any) => p.id));
+          // If it's a local pending post (starts with 'post-'), also check if the server has already returned it by content matching
+          if (pIdStr.startsWith('post-')) {
+            const hasServerMatch = serverPosts.some((sp: any) => {
+              const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
+              const senderMatches = (sp.sender_id && currentUserIdStr && String(sp.sender_id) === currentUserIdStr) ||
+                (sp.user_id && currentUserIdStr && String(sp.user_id) === currentUserIdStr) ||
+                (sp.user?.name && currentUserName && sp.user.name === currentUserName);
+              return contentMatches && senderMatches;
+            });
+            if (hasServerMatch) {
+              console.log(`[iOS Community] Discarding local post ${pIdStr} because server has it by content match`);
+              return false;
+            }
+          }
 
-        // Filter fresh server posts — exclude any that were locally deleted
-        const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-        const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-        const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-        const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
-        const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+          const isLocal = pIdStr.startsWith('post-') || 
+            p.isUniversal || 
+            iosUserCreatedPostIds.has(pIdStr) ||
+            (p.sender_id && currentUserIdStr && String(p.sender_id) === currentUserIdStr) ||
+            (p.user_id && currentUserIdStr && String(p.user_id) === currentUserIdStr);
+
+          if (isLocal) {
+            console.log(`[iOS Community] Keeping local post ${pIdStr} (isUniversal: ${p.isUniversal}, createdInSession: ${iosUserCreatedPostIds.has(pIdStr)})`);
+          }
+
+          return isLocal;
+        });
+
+        const seenIds = new Set(localPosts.map((p: any) => String(p.id)));
+
+        // Filter fresh server posts — exclude any that were locally deleted or are already local
+        const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
+        const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
+        const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
+        const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
+        const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(String(p.id)) && !deletedIds.has(String(p.id)));
 
         const getPostTimeMs = (p: any) => {
           const ts = p.timestamp || p.created_at;
@@ -1763,8 +1777,10 @@ export default function CommunityDetailScreen() {
           ...olderCombined
         ];
 
-        // CRITICAL FIX: The cache must be updated with the newly computed array.
-        // Doing this outside setCommunityPosts was caching an empty array due to async React state!
+        console.log('[iOS Community] finalPosts IDs:', finalPosts.map(p => p.id));
+
+        setCommunityPosts(finalPosts);
+
         useChatStore.getState().setCommunityScreenCache(cacheKey, {
           community: nextCommunity,
           requests: nextRequests,
@@ -1773,9 +1789,100 @@ export default function CommunityDetailScreen() {
           communityPosts: finalPosts,
           lastFetched: Date.now()
         });
+      } else {
+        // ORIGINAL reconciliation logic for Android/Web
+        setCommunityPosts((prev: any[]) => {
+          const serverIds = new Set([
+            ...formattedMsgs.map((p: any) => p.id),
+            ...recentStateMsgs.map((p: any) => p.id),
+            ...olderStateMsgs.map((p: any) => p.id),
+            ...recentNationalMsgs.map((p: any) => p.id),
+            ...olderNationalMsgs.map((p: any) => p.id)
+          ]);
 
-        return finalPosts;
-      });
+          const serverPosts = [
+            ...formattedMsgs,
+            ...recentStateMsgs,
+            ...olderStateMsgs,
+            ...recentNationalMsgs,
+            ...olderNationalMsgs
+          ];
+
+          // Keep local optimistic posts (either pending with 'post-' ID, user's own posts, or marked as isUniversal)
+          const localPosts = prev.filter((p: any) => {
+            const isDeleted = deletedIds.has(String(p.id));
+            if (isDeleted) return false;
+
+            const isLocal = String(p.id).startsWith('post-') || 
+              p.isUniversal || 
+              (p.sender_id && user?.id && String(p.sender_id) === String(user?.id)) ||
+              (p.user_id && user?.id && String(p.user_id) === String(user?.id));
+
+            if (!isLocal) return false;
+
+            // If the post is already in the server response by ID, don't keep local version
+            if (serverIds.has(p.id)) return false;
+
+            // If it's a local pending post (starts with 'post-'), also check if the server has already returned it by content matching
+            if (String(p.id).startsWith('post-')) {
+              const hasServerMatch = serverPosts.some((sp: any) => {
+                const contentMatches = (p.content || '').trim() === (sp.content || '').trim();
+                const senderMatches = (sp.sender_id && user?.id && String(sp.sender_id) === String(user?.id)) ||
+                  (sp.user_id && user?.id && String(sp.user_id) === String(user?.id)) ||
+                  (sp.user?.name && user?.name && sp.user.name === user.name);
+                return contentMatches && senderMatches;
+              });
+              if (hasServerMatch) return false;
+            }
+
+            return true;
+          });
+          const seenIds = new Set(localPosts.map((p: any) => p.id));
+
+          // Filter fresh server posts — exclude any that were locally deleted
+          const uniqueCityMsgs = formattedMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+          const uniqueRecentStateMsgs = recentStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+          const uniqueRecentNationalMsgs = recentNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+          const uniqueOlderStateMsgs = olderStateMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+          const uniqueOlderNationalMsgs = olderNationalMsgs.filter((p: any) => !seenIds.has(p.id) && !deletedIds.has(String(p.id)));
+
+          const getPostTimeMs = (p: any) => {
+            const ts = p.timestamp || p.created_at;
+            if (!ts || ts === 'Just now') return Date.now();
+            const parsed = parseUTCDate(ts).getTime();
+            return Number.isNaN(parsed) ? Date.now() : parsed;
+          };
+
+          const sortedRecentNationalMsgs = [...uniqueRecentNationalMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
+          const sortedRecentStateMsgs = [...uniqueRecentStateMsgs].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
+
+          const olderCombined = [
+            ...localPosts,
+            ...uniqueCityMsgs,
+            ...uniqueOlderStateMsgs,
+            ...uniqueOlderNationalMsgs
+          ].sort((a, b) => getPostTimeMs(b) - getPostTimeMs(a));
+
+          finalPosts = [
+            ...sortedRecentNationalMsgs,
+            ...sortedRecentStateMsgs,
+            ...olderCombined
+          ];
+
+          // CRITICAL FIX: The cache must be updated with the newly computed array.
+          // Doing this outside setCommunityPosts was caching an empty array due to async React state!
+          useChatStore.getState().setCommunityScreenCache(cacheKey, {
+            community: nextCommunity,
+            requests: nextRequests,
+            events: nextEvents,
+            allFestivals: nextFestivals,
+            communityPosts: finalPosts,
+            lastFetched: Date.now()
+          });
+
+          return finalPosts;
+        });
+      }
     } catch (error) {
       console.error('Error fetching community data:', error);
     } finally {
@@ -3175,6 +3282,9 @@ export default function CommunityDetailScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            if (Platform.OS === 'ios') {
+              iosUserCreatedPostIds.delete(String(postId));
+            }
             setDiscussionPosts(prev => prev.filter(post => post.id !== postId));
             setCommunityPosts(prev => {
               const updated = prev.filter(post => post.id !== postId);
@@ -3321,6 +3431,11 @@ export default function CommunityDetailScreen() {
       communityId: id as string,
     }));
 
+    if (Platform.OS === 'ios') {
+      newPosts.forEach(p => {
+        iosUserCreatedPostIds.add(String(p.id));
+      });
+    }
     setCommunityPosts(prev => {
       const updated = [...newPosts, ...prev];
       useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
@@ -3388,6 +3503,9 @@ export default function CommunityDetailScreen() {
             // Deduplicate by updating the optimistic post with the real server ID and URL
             const realId = res?.data?.id || (res as any)?.id;
             if (realId) {
+              if (Platform.OS === 'ios') {
+                iosUserCreatedPostIds.add(String(realId));
+              }
               setCommunityPosts(prev => {
                 const updated = prev.map(p => p.id === newPosts[i].id ? { 
                   ...p, 
@@ -3403,7 +3521,18 @@ export default function CommunityDetailScreen() {
             const errMsg = parseApiError(error);
             Alert.alert('Post Failed', errMsg);
             // Remove the optimistic post on failure
-            setCommunityPosts(prev => prev.filter(p => !newPosts.some(np => np.id === p.id)));
+            if (Platform.OS === 'ios') {
+              newPosts.forEach(np => {
+                iosUserCreatedPostIds.delete(String(np.id));
+              });
+            }
+            setCommunityPosts(prev => {
+              const updated = prev.filter(p => !newPosts.some(np => np.id === p.id));
+              if (Platform.OS === 'ios') {
+                useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: updated });
+              }
+              return updated;
+            });
             break;
           }
         }

@@ -42,6 +42,10 @@ const UPCOMING_CARD_WIDTH = 115;
 const UPCOMING_CARD_HEIGHT = 180;
 const UPCOMING_GRID_PADDING = Math.max(10, (SCREEN_WIDTH - 361) / 2);
 
+const JAAP_CARD_WIDTH = Platform.OS === 'android' ? 125 : 115;
+const JAAP_CARD_HEIGHT = Platform.OS === 'android' ? 190 : 180;
+const JAAP_CARD_MARGIN_RIGHT = Platform.OS === 'android' ? 12 : 16;
+
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -374,7 +378,7 @@ export default function JaapLandingScreen() {
   const jaapScrollRef = useRef<ScrollView>(null);
   const jaapScrollOffset = useRef(0);
   const jaapScrollDir = useRef(1); // 1 = forward, -1 = backward
-  const CARD_WIDTH = 131; // approx card (115) + gap (16)
+  const CARD_WIDTH = JAAP_CARD_WIDTH + JAAP_CARD_MARGIN_RIGHT; // approx card width + gap
 
   // Temple State
   const [temples, setTemples] = useState<any[]>([]);
@@ -1326,11 +1330,11 @@ const styles = StyleSheet.create({
   },
   viewAllSaffronRefined: { color: '#FF6600', fontSize: 16, fontWeight: '800' },
   miniCardsRowPadding: { paddingLeft: 25 },
-  jaapCardContainer: { width: 115, height: 180, marginRight: 16, borderRadius: 20, overflow: 'hidden' },
+  jaapCardContainer: { width: JAAP_CARD_WIDTH, height: JAAP_CARD_HEIGHT, marginRight: JAAP_CARD_MARGIN_RIGHT, borderRadius: 20, overflow: 'hidden' },
   jaapCardOverlayExact: { flex: 1, padding: 10, justifyContent: 'space-between' },
   jaapCardTopRow: { flexDirection: 'row', justifyContent: 'space-between' },
   exactLiveBadge: { backgroundColor: '#E31E24', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 8, flexDirection: 'row', alignItems: 'center' },
-  exactLiveText: { color: '#FFF', fontSize: 9, fontWeight: '900' },
+  exactLiveText: { color: '#FFF', fontSize: Platform.OS === 'android' ? 9.5 : 9, fontWeight: '900' },
   exactCountBadge: {
     backgroundColor: 'rgba(0,0,0,0.55)',
     paddingHorizontal: 6,
