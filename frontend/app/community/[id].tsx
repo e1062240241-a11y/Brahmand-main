@@ -10,6 +10,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  InteractionManager,
   RefreshControl,
   ScrollView,
   Alert,
@@ -672,9 +673,11 @@ export default function CommunityDetailScreen() {
   const [tick, setTick] = useState(0);
   const [rsvpStates, setRsvpStates] = useState<Record<string, 'yes' | 'no'>>({});
   useEffect(() => {
+    // ⚡ Android: Increase polling interval to 60s to reduce unnecessary re-renders on Android
+    const pollInterval = Platform.OS === 'android' ? 60000 : 15000;
     const timer = setInterval(() => {
       setTick(t => t + 1);
-    }, 15000);
+    }, pollInterval);
     return () => clearInterval(timer);
   }, []);
 
@@ -1415,9 +1418,26 @@ export default function CommunityDetailScreen() {
     return [];
   }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id]);
 
+  // ⚡ Android: Build an O(1) index map so renderDiscussionItem does not need findIndex (O(n)) per render
+  const combinedDataIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    combinedData.forEach((item, i) => {
+      map.set(String(item.id), i);
+    });
+    return map;
+  }, [combinedData]);
+
   useFocusEffect(
     useCallback(() => {
-      fetchCommunity();
+      if (Platform.OS === 'android') {
+        // ⚡ Android: Defer heavy data fetch until after screen transition animation completes
+        const task = InteractionManager.runAfterInteractions(() => {
+          fetchCommunity();
+        });
+        return () => task.cancel();
+      } else {
+        fetchCommunity();
+      }
     }, [id])
   );
 
@@ -1513,23 +1533,29 @@ export default function CommunityDetailScreen() {
       const { getCommunityRequests, getEvents, getCommunityMessages, getFestivalList, getCommunities } = require('../../src/services/api');
 
       if (nextCommunity.type === 'city') {
-        try {
-          const allJoinedRes = await getCommunities().catch(() => ({ data: [] }));
-          const joinedList = allJoinedRes.data || [];
+        // ⚡ Android: Reuse cached community IDs from refs to skip blocking sequential API call
+        if (Platform.OS === 'android' && stateCommunityIdRef.current) {
+          stateCommunityId = stateCommunityIdRef.current;
+          countryCommunityId = countryCommunityIdRef.current;
+        } else {
+          try {
+            const allJoinedRes = await getCommunities().catch(() => ({ data: [] }));
+            const joinedList = allJoinedRes.data || [];
 
-          const stateCommunity = joinedList.find((c: any) => c.type === 'state');
-          const countryCommunity = joinedList.find((c: any) => c.type === 'country' || c.type === 'national');
+            const stateCommunity = joinedList.find((c: any) => c.type === 'state');
+            const countryCommunity = joinedList.find((c: any) => c.type === 'country' || c.type === 'national');
 
-          if (stateCommunity) {
-            stateCommunityId = stateCommunity.id;
-            stateCommunityIdRef.current = stateCommunity.id;
+            if (stateCommunity) {
+              stateCommunityId = stateCommunity.id;
+              stateCommunityIdRef.current = stateCommunity.id;
+            }
+            if (countryCommunity) {
+              countryCommunityId = countryCommunity.id;
+              countryCommunityIdRef.current = countryCommunity.id;
+            }
+          } catch (e) {
+            console.warn('[Community] Failed to fetch joined communities:', e);
           }
-          if (countryCommunity) {
-            countryCommunityId = countryCommunity.id;
-            countryCommunityIdRef.current = countryCommunity.id;
-          }
-        } catch (e) {
-          console.warn('[Community] Failed to fetch joined communities:', e);
         }
       }
 
@@ -2074,7 +2100,10 @@ export default function CommunityDetailScreen() {
   };
 
   const renderDiscussionItem = ({ item }: { item: DiscussionPost }) => {
-    const index = combinedData.findIndex(p => p.id === item.id);
+    // ⚡ Android: Use O(1) map lookup instead of O(n) findIndex to prevent slow rendering on large lists
+    const index = Platform.OS === 'android'
+      ? (combinedDataIndexMap.get(String(item.id)) ?? -1)
+      : combinedData.findIndex(p => p.id === item.id);
     const nextItem = index !== -1 && index < combinedData.length - 1 ? combinedData[index + 1] : null;
 
     const hasNextThreadConnection = nextItem && (
@@ -3719,6 +3748,48 @@ export default function CommunityDetailScreen() {
 
 
   if (loading) {
+    if (Platform.OS === 'android') {
+      // ⚡ Android: Show skeleton UI with header so screen feels responsive immediately
+      return (
+        <View style={styles.container}>
+          <LinearGradient
+            colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']}
+            locations={[0, 0.25, 0.55, 0.8, 1]}
+            style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
+          >
+            <View style={styles.headerTopRow}>
+              <TouchableOpacity onPress={() => router.replace('/(tabs)/messages')} style={styles.headerBackButton}>
+                <Ionicons name="chevron-back" size={26} color="#000" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitleText} numberOfLines={1}>
+                {community?.name || 'Community'}
+              </Text>
+              <View style={[styles.headerCreateBtn, { opacity: 0.4 }]}>
+                <Ionicons name="add" size={16} color="#FFF" />
+              </View>
+            </View>
+            <Text style={styles.headerMembersText}> </Text>
+            <Text style={styles.headerTaglineText}> </Text>
+          </LinearGradient>
+          <View style={{ flex: 1, backgroundColor: '#FFF', padding: 16 }}>
+            {[1, 2, 3, 4].map(k => (
+              <View key={k} style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 16, marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0E0E0' }} />
+                  <View style={{ marginLeft: 10, flex: 1 }}>
+                    <View style={{ width: '45%', height: 11, backgroundColor: '#E0E0E0', borderRadius: 6, marginBottom: 6 }} />
+                    <View style={{ width: '25%', height: 9, backgroundColor: '#EBEBEB', borderRadius: 5 }} />
+                  </View>
+                </View>
+                <View style={{ width: '90%', height: 10, backgroundColor: '#E8E8E8', borderRadius: 5, marginBottom: 6 }} />
+                <View style={{ width: '70%', height: 10, backgroundColor: '#EFEFEF', borderRadius: 5 }} />
+              </View>
+            ))}
+            <ActivityIndicator size="small" color="#FF8C3A" style={{ marginTop: 8 }} />
+          </View>
+        </View>
+      );
+    }
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF3B30" />
@@ -3742,11 +3813,11 @@ export default function CommunityDetailScreen() {
         }}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        initialNumToRender={10}
-        maxToRenderPerBatch={5}
-        windowSize={5}
+        initialNumToRender={Platform.OS === 'android' ? 5 : 10}
+        maxToRenderPerBatch={Platform.OS === 'android' ? 3 : 5}
+        windowSize={Platform.OS === 'android' ? 3 : 5}
         removeClippedSubviews={Platform.OS === 'android'}
-        updateCellsBatchingPeriod={50}
+        updateCellsBatchingPeriod={Platform.OS === 'android' ? 100 : 50}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (

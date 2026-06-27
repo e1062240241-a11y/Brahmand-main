@@ -375,8 +375,8 @@ export default function MyKrishnaChat() {
 
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : insets.top + 60}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
@@ -428,7 +428,7 @@ export default function MyKrishnaChat() {
           )}
 
           {/* ── Input Bar ── */}
-          <View style={[styles.inputWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : (keyboardVisible ? 8 : 25) }]}>
+          <View style={[styles.inputWrapper, { paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 12) : 24 }]}>
             <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
                 <TextInput

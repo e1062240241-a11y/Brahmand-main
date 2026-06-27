@@ -100,7 +100,14 @@ export default function CommunityRequestHub() {
 
   return (
     <View style={styles.mainContainer}>
-      <LinearGradient colors={['#FDFBFB', '#EBEDEE']} style={styles.gradientBg} />
+      <LinearGradient
+        colors={Platform.OS === 'android'
+          ? ['#FF8D57', '#EA9B76', '#FFEEE5', '#FFEEE5']
+          : ['#FDFBFB', '#EBEDEE']
+        }
+        locations={Platform.OS === 'android' ? [0, 0.1058, 0.2212, 1] : undefined}
+        style={styles.gradientBg}
+      />
 
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topHeader}>
@@ -134,9 +141,11 @@ export default function CommunityRequestHub() {
                   {renderIcon(cat)}
                 </View>
                 <Text style={styles.catName} numberOfLines={2}>{t(cat.key)}</Text>
-                <View style={styles.arrowCircle}>
-                  <Ionicons name="arrow-forward" size={14} color="#BBB" />
-                </View>
+                {Platform.OS !== 'android' && (
+                  <View style={styles.arrowCircle}>
+                    <Ionicons name="arrow-forward" size={14} color="#BBB" />
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -165,9 +174,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.03)'
+    ...Platform.select({
+      android: {
+        backgroundColor: 'transparent',
+        borderBottomWidth: 0,
+      },
+      default: {
+        backgroundColor: '#FFF',
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(0,0,0,0.03)',
+      },
+    }),
   },
   topHeaderBack: {
     width: 40,
@@ -218,6 +235,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
+    ...Platform.select({
+      android: {
+        alignSelf: 'center',
+      },
+    }),
   },
   catName: {
     fontSize: 15,
@@ -225,6 +247,12 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
     paddingRight: 10,
+    ...Platform.select({
+      android: {
+        textAlign: 'center',
+        paddingRight: 0,
+      },
+    }),
   },
   arrowCircle: {
     position: 'absolute',

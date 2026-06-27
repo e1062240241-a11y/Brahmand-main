@@ -1,9 +1,72 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { User } from '../types';
 import { initializePushNotifications } from '../services/pushNotifications';
 import { getFirebaseAuth } from '../services/firebase/config';
 
 import { secureStorage } from '../utils/secureStorage';
+
+export const sanitizeUserProfile = (user: any): any => {
+  if (Platform.OS !== 'android' || !user) return user;
+  const cleaned = { ...user };
+  const invalidStrings = new Set(['nan', 'none', 'undefined']);
+  
+  const cleanValue = (val: any): any => {
+    if (typeof val === 'string') {
+      const trimmed = val.toLowerCase().trim();
+      if (invalidStrings.has(trimmed)) {
+        return null;
+      }
+      return val;
+    }
+    if (val && typeof val === 'object' && !Array.isArray(val)) {
+      const obj: any = {};
+      for (const k of Object.keys(val)) {
+        obj[k] = cleanValue(val[k]);
+      }
+      return obj;
+    }
+    return val;
+  };
+
+  for (const key of Object.keys(cleaned)) {
+    cleaned[key] = cleanValue(cleaned[key]);
+  }
+  return cleaned;
+};
+
+export const mergeUserProfiles = (current: any, updates: any): any => {
+  if (Platform.OS !== 'android') {
+    return { ...current, ...updates };
+  }
+  if (!current) return sanitizeUserProfile(updates);
+  if (!updates) return sanitizeUserProfile(current);
+
+  const cleanCurrent = sanitizeUserProfile(current);
+  const cleanUpdates = sanitizeUserProfile(updates);
+
+  const merged = { ...cleanCurrent };
+
+  for (const key of Object.keys(cleanUpdates)) {
+    const newVal = cleanUpdates[key];
+    const currentVal = cleanCurrent[key];
+
+    // If new value is null/undefined but current value is valid, keep current
+    if ((newVal === null || newVal === undefined) && (currentVal !== null && currentVal !== undefined)) {
+      continue;
+    }
+    
+    // For objects (like home_location), recursively merge or update
+    if (newVal && typeof newVal === 'object' && !Array.isArray(newVal) && 
+        currentVal && typeof currentVal === 'object' && !Array.isArray(currentVal)) {
+      merged[key] = mergeUserProfiles(currentVal, newVal);
+    } else {
+      merged[key] = newVal;
+    }
+  }
+
+  return merged;
+};
 
 interface AuthState {
   user: User | null;
@@ -32,15 +95,19 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   fcmToken: null,
   pendingDeepLink: null,
 
-  setUser: (user) => set({ user, isAuthenticated: !!user }),
+  setUser: (user) => {
+    const cleanedUser = Platform.OS === 'android' ? sanitizeUserProfile(user) : user;
+    set({ user: cleanedUser, isAuthenticated: !!cleanedUser });
+  },
   setToken: (token) => set({ token }),
   setLoading: (isLoading) => set({ isLoading }),
   setPendingDeepLink: (pendingDeepLink) => set({ pendingDeepLink }),
 
   login: async (user, token) => {
+    const cleanedUser = Platform.OS === 'android' ? sanitizeUserProfile(user) : user;
     await secureStorage.setItem('auth_token', token);
-    await secureStorage.setItem('user', JSON.stringify(user));
-    set({ user, token, isAuthenticated: true, isLoading: false });
+    await secureStorage.setItem('user', JSON.stringify(cleanedUser));
+    set({ user: cleanedUser, token, isAuthenticated: true, isLoading: false });
     initializePushNotifications()
       .then((fcmToken) => {
         if (fcmToken) {
@@ -232,7 +299,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const userStr = await secureStorage.getItem('user');
 
       if (token && userStr) {
-        const user = JSON.parse(userStr);
+        let user = JSON.parse(userStr);
+        if (Platform.OS === 'android') {
+          user = sanitizeUserProfile(user);
+        }
         // Restore cached user first so the app is unblocked immediately
         set({ user, token, isAuthenticated: true, isLoading: false });
 
@@ -242,7 +312,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const { getProfile } = require('../services/api');
           const res = await getProfile();
           if (res?.data) {
-            const updatedUser = { ...user, ...res.data };
+            const updatedUser = Platform.OS === 'android'
+              ? mergeUserProfiles(user, res.data)
+              : { ...user, ...res.data };
             set({ user: updatedUser });
             secureStorage.setItem('user', JSON.stringify(updatedUser));
           }
@@ -262,7 +334,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   updateUser: (updates) => {
     const currentUser = get().user;
     if (currentUser) {
-      const updatedUser = { ...currentUser, ...updates };
+      const updatedUser = Platform.OS === 'android'
+        ? mergeUserProfiles(currentUser, updates)
+        : { ...currentUser, ...updates };
       set({ user: updatedUser });
       secureStorage.setItem('user', JSON.stringify(updatedUser));
 

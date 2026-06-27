@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: Platform.OS === 'android' ? 'transparent' : '#FFF',
   },
   activatingText: {
     marginTop: 40,

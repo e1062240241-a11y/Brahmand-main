@@ -11,6 +11,7 @@ import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { chariotBase64 } from './chariotBase64';
+import { krishnaArjunaChariotBase64 } from './krishnaArjunaChariotBase64';
 
 function CertificateDetailScreen({ observedCertificates = [] }: { observedCertificates?: any[] }) {
   const router = useRouter();
@@ -80,7 +81,8 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
     }
 
     body {
-      background: radial-gradient(circle at 20% 30%, #0a0a1a 0%, #1a1525 50%, #0d0d1a 100%);
+      background: ${Platform.OS === 'android' ? `url('${chariotBase64}') no-repeat center center fixed` : 'radial-gradient(circle at 20% 30%, #0a0a1a 0%, #1a1525 50%, #0d0d1a 100%)'};
+      background-size: cover;
       font-family: 'Georgia', 'Times New Roman', serif;
       padding: 40px 20px;
       min-height: 100vh;
@@ -172,37 +174,14 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
 
     /* Certificate with Visible Krishna Background Image */
     .certificate-inner {
-      background: linear-gradient(145deg, rgba(255,253,245,0.92) 0%, rgba(254,248,232,0.92) 50%, rgba(255,246,224,0.92) 100%);
+      background: transparent;
       border-radius: 24px;
       padding: 3rem 3rem 3.5rem;
       position: relative;
-      box-shadow: 
-        0 35px 65px rgba(0,0,0,0.4),
-        0 0 0 2px rgba(255,248,231,0.9),
-        0 0 0 6px #b8860b,
-        0 0 0 8px #ffd700,
-        inset 0 0 30px rgba(255,215,0,0.2);
       transition: all 0.4s ease;
       overflow: hidden;
     }
 
-    /* VISIBLE KRISHNA BACKGROUND IMAGE - Using uploaded Gitamritam background */
-    .certificate-inner::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-image: url('${chariotBase64}');
-      background-size: cover;
-      background-position: center 85%;
-      background-repeat: no-repeat;
-      opacity: 0.45;
-      pointer-events: none;
-      z-index: 0;
-      border-radius: 24px;
-    }
 
     .krishna-divine-art {
       display: none;
@@ -233,41 +212,7 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
       z-index: 2;
     }
 
-    /* Premium Corner Embellishments */
-    .premium-corner {
-      position: absolute;
-      width: 100px;
-      height: 100px;
-      z-index: 5;
-    }
 
-    .corner-tl {
-      top: 20px;
-      left: 20px;
-      background: radial-gradient(circle at 0 0, #ffd700, transparent 70%);
-      border-top-left-radius: 50px;
-    }
-
-    .corner-tr {
-      top: 20px;
-      right: 20px;
-      background: radial-gradient(circle at 100% 0, #ffd700, transparent 70%);
-      border-top-right-radius: 50px;
-    }
-
-    .corner-bl {
-      bottom: 20px;
-      left: 20px;
-      background: radial-gradient(circle at 0 100%, #ffd700, transparent 70%);
-      border-bottom-left-radius: 50px;
-    }
-
-    .corner-br {
-      bottom: 20px;
-      right: 20px;
-      background: radial-gradient(circle at 100% 100%, #ffd700, transparent 70%);
-      border-bottom-right-radius: 50px;
-    }
 
     /* Divine Symbols */
     .flute-decoration {
@@ -324,13 +269,11 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
 
     .tagline {
       font-size: 0.9rem;
-      letter-spacing: 5px;
-      background: linear-gradient(135deg, #daa520, #ffd700);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      margin-top: 10px;
-      font-weight: 600;
+      letter-spacing: 2px;
+      color: #e8c97a;
+      margin-top: 8px;
+      font-weight: 400;
+      font-style: italic;
     }
 
     /* Certificate Title */
@@ -370,29 +313,19 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
     }
 
     .user-name {
-      font-size: 3rem;
-      font-weight: 800;
-      background: linear-gradient(135deg, #8B0000, #c41e3a, #ff6b6b);
+      font-size: 2.4rem;
+      font-weight: 700;
+      font-style: italic;
+      background: linear-gradient(135deg, #daa520, #ffd700, #b8860b);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      font-family: 'Times New Roman', serif;
-      padding: 15px 50px;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      padding: 10px 20px;
       display: inline-block;
       position: relative;
+      border-bottom: 2px solid #daa520;
     }
-
-    .user-name::before, .user-name::after {
-      content: '✦';
-      position: absolute;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 25px;
-      color: #daa520;
-    }
-
-    .user-name::before { left: 5px; }
-    .user-name::after { right: 5px; }
 
     /* Book Name */
     .book-name {
@@ -410,16 +343,12 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
     /* Wisdom Message */
     .wisdom-message {
       text-align: center;
-      font-size: 1rem;
-      line-height: 1.9;
-      color: #3e2a1f;
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: #e8d9b0;
       font-style: italic;
       max-width: 85%;
-      margin: 35px auto;
-      background: rgba(255,250,240,0.7);
-      padding: 20px;
-      border-radius: 20px;
-      backdrop-filter: blur(5px);
+      margin: 20px auto;
     }
 
     /* Date Box */
@@ -686,67 +615,31 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
     appRoot.innerHTML = \`
       <div class="certificate-card" id="certificateForDownload">
         <div class="certificate-inner">
-          <div class="shine-effect"></div>
-          <div class="premium-corner corner-tl"></div>
-          <div class="premium-corner corner-tr"></div>
-          <div class="premium-corner corner-bl"></div>
-          <div class="premium-corner corner-br"></div>
-          
-          <div class="flute-decoration">🎵🦚🎵</div>
-          <div class="peacock-decoration">🦚✨🦚</div>
+
           
           <div class="certificate-content">
             <div class="brand-header">
               <div class="brahmand-title">BRAHMAND</div>
-              <div class="tagline">EXPLORE. EXPERIENCE. EVOLVE.</div>
+              <div class="tagline">The Daily Sanatan Community</div>
             </div>
             
             <div class="certificate-title-section">
               <div class="cert-heading">CERTIFICATE</div>
               <div class="cert-subheading">OF COMPLETION</div>
-              <div class="ornament">⬟ ◇ ◆ ◇ ⬟</div>
             </div>
             
-            <div style="text-align:center; font-size:0.9rem; letter-spacing:2px; color:#8B6914;">THIS IS TO CERTIFY THAT</div>
+            <div style="text-align:center; font-size:0.85rem; letter-spacing:2px; color:#e8d9b0; margin: 12px 0;">THIS IS TO CERTIFY THAT</div>
             
             <div class="user-wrapper">
               <div class="user-name">\${escapeHtml(state.profile.fullName)}</div>
             </div>
             
-            <div style="text-align:center; font-size:0.95rem; color:#4a3728;">HAS SUCCESSFULLY COMPLETED READING</div>
+            <div style="text-align:center; font-size:0.85rem; letter-spacing:2px; color:#e8d9b0; margin: 12px 0;">HAS SUCCESSFULLY COMPLETED READING</div>
             
             <div class="book-name">\${escapeHtml(state.book.title.toUpperCase())}</div>
             
             <div class="wisdom-message">
-              🕉 You have taken a profound step on the path of wisdom,<br>
-              self-realization and dharma.<br>
-              <strong>May Lord Krishna's divine teachings illuminate your life always.</strong> 🕉
-            </div>
-            
-            <div class="date-row">
-              <div class="date-box">
-                <div class="date-label">DATE</div>
-                <div class="date-value">\${state.currentDate}</div>
-              </div>
-            </div>
-            
-            <div class="app-signature">
-              <div class="app-name">BRAHMAND</div>
-              <div class="app-label">APP</div>
-            </div>
-            
-            <div class="shloka-section">
-              <div class="sanskrit-text">
-                " यदा यदा हि धर्मस्य<br>
-                ग्लानिर्भवति भारत ।<br>
-                अभ्युत्थानमधर्मस्य<br>
-                तदात्मानं सृजाम्यहम् ॥ "
-              </div>
-              <div class="sanskrit-ref">— Bhagavad Gita 4.7 (Lord Krishna)</div>
-            </div>
-            
-            <div class="certificate-footer">
-              KEEP EXPLORING. KEEP EVOLVING. | हरे कृष्णा 🙏
+              You have taken a profound step on the path of<br>wisdom, self-realization and dharma.
             </div>
           </div>
         </div>
@@ -801,7 +694,7 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a1a',
+    backgroundColor: '#FF8D57',
   },
   header: {
     flexDirection: 'row',
@@ -809,9 +702,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     height: 56,
-    backgroundColor: '#0a0a1a',
+    backgroundColor: '#FF8D57',
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1525',
+    borderBottomColor: '#e6783e',
   },
   backButton: {
     padding: 8,
@@ -820,7 +713,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#ffd700',
+    color: '#ffffff',
     letterSpacing: 0.5,
     textAlign: 'center',
   },

@@ -22,7 +22,7 @@ import { Button } from '../../src/components/Button';
 import { Input } from '../../src/components/Input';
 import { BORDER_RADIUS, COLORS, SPACING } from '../../src/constants/theme';
 import { getUserProfile, updateExtendedProfile, deleteUserProfile } from '../../src/services/api';
-import { useAuthStore } from '../../src/store/authStore';
+import { useAuthStore, sanitizeUserProfile } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { useTranslation } from '../../src/utils/i18n';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
@@ -77,7 +77,10 @@ export default function EditProfileScreen() {
     const loadProfile = async () => {
       try {
         const response = await getUserProfile();
-        const data = response.data || {};
+        let data = response.data || {};
+        if (Platform.OS === 'android') {
+          data = sanitizeUserProfile(data);
+        }
         const homeLocation = data.home_location || data.location || {};
 
         setName(data.name || '');

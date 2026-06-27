@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 interface JyotishState {
   dob: string | null;
@@ -14,6 +15,17 @@ export const useJyotishStore = create<JyotishState>((set) => ({
   tob: null,
   pob: null,
   setBirthDetails: async (dob, tob, pob) => {
+    if (Platform.OS === 'android') {
+      const invalidStrings = new Set(['nan', 'none', 'undefined']);
+      const cleanInput = (val: string) => {
+        if (!val) return '';
+        if (invalidStrings.has(val.toLowerCase().trim())) return '';
+        return val;
+      };
+      dob = cleanInput(dob);
+      tob = cleanInput(tob);
+      pob = cleanInput(pob);
+    }
     let dobStr = dob;
     if (dob) {
       const parsedDate = new Date(dob);
@@ -84,21 +96,42 @@ export const useJyotishStore = create<JyotishState>((set) => ({
       let tob: string | null = null;
       let pob: string | null = null;
 
+      const clean = (val: any) => {
+        if (!val || typeof val !== 'string') return null;
+        const invalidStrings = new Set(['nan', 'none', 'undefined']);
+        if (invalidStrings.has(val.toLowerCase().trim())) return null;
+        return val;
+      };
+
       // Primary source of truth: backend-synced authStore user (kept fresh by loadStoredAuth)
       if (user && user.date_of_birth && user.time_of_birth && user.place_of_birth) {
         dob = user.date_of_birth;
         tob = user.time_of_birth;
         pob = user.place_of_birth;
 
+        if (Platform.OS === 'android') {
+          dob = clean(dob);
+          tob = clean(tob);
+          pob = clean(pob);
+        }
+
         // Keep AsyncStorage in sync for offline access
-        await AsyncStorage.setItem('jyotish:dob', dob!);
-        await AsyncStorage.setItem('jyotish:tob', tob!);
-        await AsyncStorage.setItem('jyotish:pob', pob!);
+        if (dob && tob && pob) {
+          await AsyncStorage.setItem('jyotish:dob', dob!);
+          await AsyncStorage.setItem('jyotish:tob', tob!);
+          await AsyncStorage.setItem('jyotish:pob', pob!);
+        }
       } else {
         // Fallback: AsyncStorage (handles offline / session-restore before network call completes)
         dob = await AsyncStorage.getItem('jyotish:dob');
         tob = await AsyncStorage.getItem('jyotish:tob');
         pob = await AsyncStorage.getItem('jyotish:pob');
+
+        if (Platform.OS === 'android') {
+          dob = clean(dob);
+          tob = clean(tob);
+          pob = clean(pob);
+        }
       }
 
       set({ dob, tob, pob });

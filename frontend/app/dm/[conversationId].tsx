@@ -39,6 +39,7 @@ import {
   getUserProfile,
   muteConversation,
   unmuteConversation,
+  reportContent,
 } from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChatMessage } from '../../src/services/firebase/chatService';
@@ -201,6 +202,7 @@ type DMMessageItemProps = {
   formatChatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
   showDateSeparator: boolean;
+  showSenderChangeDivider: boolean;
 };
 
 const DMMessageItem = React.memo(({
@@ -211,6 +213,7 @@ const DMMessageItem = React.memo(({
   formatChatDate,
   formatTime,
   showDateSeparator,
+  showSenderChangeDivider,
 }: DMMessageItemProps) => {
   const isOwnMessage = item.sender_id === userId;
   const rawContent = item.content ?? item.text ?? '';
@@ -250,7 +253,12 @@ const DMMessageItem = React.memo(({
         {!isOwnMessage && (
           <Avatar name={item.sender_name} photo={item.sender_photo} size={36} />
         )}
-        <View style={{ flexDirection: 'column', alignItems: isOwnMessage ? 'flex-end' : 'flex-start', flexShrink: 1 }}>
+        <View style={{
+          flexDirection: 'column',
+          alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
+          flexShrink: 1,
+          maxWidth: '78%'
+        }}>
           <View
             style={[
               styles.messageBubble,
@@ -269,9 +277,22 @@ const DMMessageItem = React.memo(({
           )}
         </View>
       </View>
+      {showSenderChangeDivider && (
+        <View style={styles.senderChangeDivider} />
+      )}
     </>
   );
 });
+
+const deduplicateMessages = (msgs: Message[]) => {
+  const seen = new Set<string>();
+  return msgs.filter((m) => {
+    if (!m.id) return true;
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+};
 
 const DirectMessageScreen = () => {
   const { conversationId, userId, userName, userSL } = useLocalSearchParams<{
@@ -319,6 +340,7 @@ const DirectMessageScreen = () => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sharingContact, setSharingContact] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const attachmentAnim = useRef(new Animated.Value(0)).current;
 
   // Get picker media types function
@@ -417,6 +439,101 @@ const DirectMessageScreen = () => {
     setMuteLoading(false);
   };
 
+  const checkBlockStatus = useCallback(async () => {
+    if (!conversation?.user?.id) return;
+    try {
+      const blockedListRaw = await AsyncStorage.getItem('blocked_users_list');
+      const blockedList = blockedListRaw ? JSON.parse(blockedListRaw) : [];
+      setIsBlocked(blockedList.includes(conversation.user.id));
+    } catch (e) {
+      console.error('Error checking block status:', e);
+    }
+  }, [conversation?.user?.id]);
+
+  useEffect(() => {
+    checkBlockStatus();
+  }, [conversation?.user?.id, checkBlockStatus]);
+
+  const handleToggleBlock = async () => {
+    if (!conversation?.user?.id) return;
+    try {
+      const blockedListRaw = await AsyncStorage.getItem('blocked_users_list');
+      let blockedList = blockedListRaw ? JSON.parse(blockedListRaw) : [];
+      
+      if (isBlocked) {
+        // Unblock
+        blockedList = blockedList.filter((id: string) => id !== conversation.user.id);
+        await AsyncStorage.setItem('blocked_users_list', JSON.stringify(blockedList));
+        setIsBlocked(false);
+        Alert.alert('Success', `${conversation.user.name} has been unblocked.`);
+        closeChatOptions();
+      } else {
+        // Confirm block
+        Alert.alert(
+          'Block User',
+          `Are you sure you want to block ${conversation.user.name}? You will no longer receive messages from them.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Block',
+              style: 'destructive',
+              onPress: async () => {
+                blockedList.push(conversation.user.id);
+                await AsyncStorage.setItem('blocked_users_list', JSON.stringify(blockedList));
+                setIsBlocked(true);
+                Alert.alert('Blocked', `${conversation.user.name} has been blocked.`);
+                closeChatOptions();
+              }
+            }
+          ]
+        );
+      }
+    } catch (e) {
+      console.error('Error toggling block status:', e);
+    }
+  };
+
+  const submitReport = async (category: 'spam' | 'abuse' | 'other' | 'disrespectful' | 'religious_attack') => {
+    if (!conversation?.user?.id) return;
+    try {
+      await reportContent({
+        content_type: 'user',
+        content_id: conversation.user.id,
+        category,
+        description: `User reported via direct message options menu.`
+      });
+      Alert.alert('Report Submitted', 'Thank you for reporting. We will review this user.');
+      closeChatOptions();
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      Alert.alert('Error', 'Unable to submit report. Please try again.');
+    }
+  };
+
+  const handleReportUser = () => {
+    if (!conversation?.user?.id) return;
+    
+    Alert.alert(
+      'Report User',
+      'Please select a reason for reporting this user:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Spam',
+          onPress: () => submitReport('spam')
+        },
+        {
+          text: 'Abuse / Harassment',
+          onPress: () => submitReport('abuse')
+        },
+        {
+          text: 'Other',
+          onPress: () => submitReport('other')
+        }
+      ]
+    );
+  };
+
   const parseDateOrNull = (value?: string) => {
     if (!value) return null;
     const parsed = new Date(value);
@@ -465,9 +582,13 @@ const DirectMessageScreen = () => {
   const needsRecipientDecision = requestStatus === 'pending' && !isRequester;
   const isInputLocked =
     requestStatus === 'pending' ||
-    (requestStatus === 'rejected' && isRequester && cooldownActive);
+    (requestStatus === 'rejected' && isRequester && cooldownActive) ||
+    isBlocked;
 
   const inputLockReason = (() => {
+    if (isBlocked) {
+      return 'You have blocked this user. Unblock them to resume chat.';
+    }
     if (requestStatus === 'pending') {
       return isRequester
         ? 'Waiting for the other user to approve your message request.'
@@ -611,7 +732,7 @@ const DirectMessageScreen = () => {
                 is_verified: false,
               };
             });
-            setMessages(mapped);
+            setMessages(deduplicateMessages(mapped));
             setLoading(false);
           }
         }
@@ -623,7 +744,7 @@ const DirectMessageScreen = () => {
       if (messages.length === 0) {
         const cached = await getCachedMessages(conversationId);
         if (cached.length > 0) {
-          setMessages(cached);
+          setMessages(deduplicateMessages(cached));
           setLoading(false);
         }
       }
@@ -659,7 +780,7 @@ const DirectMessageScreen = () => {
           const sending = prev.filter(m => m.status === 'sending');
           const apiIds = new Set(apiMessages.map(m => m.id));
           const stillSending = sending.filter(m => !apiIds.has(m.id));
-          return [...apiMessages, ...stillSending];
+          return deduplicateMessages([...apiMessages, ...stillSending]);
         });
         setCachedMessages(conversationId, apiMessages);
       }
@@ -737,10 +858,10 @@ const DirectMessageScreen = () => {
               if (tempIndex !== -1) {
                 const updated = [...prev];
                 updated[tempIndex] = { ...message, status: 'sent' };
-                return updated;
+                return deduplicateMessages(updated);
               }
               
-              return [...prev, message];
+              return deduplicateMessages([...prev, message]);
             });
             const cached = await getCachedMessages(conversationId);
             if (!cached.some((m) => m.id === message.id)) {
@@ -867,19 +988,19 @@ const DirectMessageScreen = () => {
       status: 'sending',
     };
     
-    setMessages(prev => [...prev, optimisticMessage]);
+    setMessages(prev => deduplicateMessages([...prev, optimisticMessage]));
     
     try {
       const response = await sendDirectMessage(conversation.user.sl_id, messageText);
       const serverMsg = response?.data?.message || response?.data;
       const realId = serverMsg?.id || response?.data?.id || tempId;
-      setMessages(prev => prev.map(m => 
+      setMessages(prev => deduplicateMessages(prev.map(m => 
         m.id === tempId ? { ...m, id: realId, status: 'sent' } : m
-      ));
+      )));
       const cached = await getCachedMessages(conversationId);
       await setCachedMessages(conversationId, [...cached, { ...optimisticMessage, id: realId, status: 'sent' }]);
     } catch (error: any) {
-      setMessages(prev => prev.filter(m => m.id !== tempId));
+      setMessages(prev => deduplicateMessages(prev.filter(m => m.id !== tempId)));
       setNewMessage(messageText);
       Alert.alert('Send failed', error.response?.data?.detail || 'Failed to send message');
     }
@@ -1437,6 +1558,10 @@ const DirectMessageScreen = () => {
 
   const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
     const showDateSeparator = index === 0 || !isSameDay(new Date(item.created_at), new Date(messages[index - 1]?.created_at || ''));
+    const showSenderChangeDivider = !!(
+      messages[index + 1] && 
+      messages[index + 1].sender_id !== item.sender_id
+    );
     return (
       <DMMessageItem
         item={item}
@@ -1446,6 +1571,7 @@ const DirectMessageScreen = () => {
         formatChatDate={formatChatDate}
         formatTime={formatTime}
         showDateSeparator={showDateSeparator}
+        showSenderChangeDivider={showSenderChangeDivider}
       />
     );
   }, [user?.id, renderMessageContent, formatChatDate, formatTime, messages]);
@@ -1508,16 +1634,26 @@ const DirectMessageScreen = () => {
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
             <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
-                <Ionicons name={isMuted ? 'notifications-off' : 'notifications'} size={20} color="#333" style={{ marginRight: 10 }} />
+                <Ionicons name={isMuted ? "notifications-outline" : "notifications-off-outline"} size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
+              
               <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
-                <Text style={[styles.modalItemText, styles.modalItemDestructive]}>Clear Chat</Text>
+                <Ionicons name="trash-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
+                <Text style={styles.modalItemText}>Clear Chat</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
-              <TouchableOpacity style={styles.modalItem} onPress={closeChatOptions}>
-                <Text style={styles.modalItemText}>Cancel</Text>
+              
+              <TouchableOpacity style={styles.modalItem} onPress={handleToggleBlock}>
+                <Ionicons name="ban-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
+                <Text style={styles.modalItemText}>{isBlocked ? 'Unblock User' : 'Block User'}</Text>
+              </TouchableOpacity>
+              <View style={styles.modalDivider} />
+              
+              <TouchableOpacity style={styles.modalItem} onPress={handleReportUser}>
+                <Ionicons name="warning-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
+                <Text style={styles.modalItemText}>Report User</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -1573,7 +1709,7 @@ const DirectMessageScreen = () => {
               ref={flatListRef}
               data={messages}
               renderItem={renderMessage}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => `${item.id || index}_${index}`}
               contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 8 }]}
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
               onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
@@ -1631,7 +1767,7 @@ const DirectMessageScreen = () => {
               disabled={(!newMessage.trim() && !selectedMedia) || sending || uploadingMedia || isInputLocked}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="send-outline" size={22} color="#000" style={{ marginLeft: 2 }} />
+              <Ionicons name="send-outline" size={25} color="#000" style={{ marginLeft: 2 }} />
             </TouchableOpacity>
           </View>
           
@@ -1701,7 +1837,7 @@ const DirectMessageScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
         {renderContent()}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -1724,12 +1860,33 @@ const styles = StyleSheet.create({
   realtimeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,107,0,0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 12, marginRight: 6 },
   realtimeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF6B00', marginRight: 4 },
   realtimeText: { fontSize: 11, fontWeight: '700', color: '#FF6B00' },
-  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.35)' },
-  modalContent: { backgroundColor: COLORS.surface, padding: SPACING.md, borderTopLeftRadius: BORDER_RADIUS.lg, borderTopRightRadius: BORDER_RADIUS.lg, borderTopWidth: 1, borderTopColor: COLORS.divider },
-  modalItem: { paddingVertical: SPACING.sm },
-  modalItemText: { fontSize: 16, fontWeight: '600', color: COLORS.text },
+  modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
+  modalContent: { 
+    backgroundColor: COLORS.surface, 
+    borderTopLeftRadius: 32, 
+    borderTopRightRadius: 32, 
+    paddingHorizontal: 24, 
+    paddingTop: 24,
+    borderTopWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 20
+  },
+  modalItem: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 18 
+  },
+  modalItemText: { 
+    fontSize: 16, 
+    fontWeight: '500', 
+    fontFamily: 'Inter_500Medium', 
+    color: '#1A1A1A' 
+  },
   modalItemDestructive: { color: COLORS.error },
-  modalDivider: { height: 1, backgroundColor: COLORS.divider, marginVertical: SPACING.xs },
+  modalDivider: { height: 1, backgroundColor: '#F2F2F2', marginVertical: 0 },
   requestCard: { marginHorizontal: SPACING.md, marginTop: SPACING.sm, padding: SPACING.md, borderRadius: BORDER_RADIUS.md, backgroundColor: COLORS.card, borderWidth: 1, borderColor: COLORS.divider },
   requestTitle: { fontSize: 15, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
   requestText: { fontSize: 13, color: COLORS.textSecondary },
@@ -1747,11 +1904,28 @@ const styles = StyleSheet.create({
   dateSeparatorText: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
   messageContainer: { flexDirection: 'row', marginBottom: SPACING.xs, alignItems: 'flex-end', paddingHorizontal: SPACING.md },
   ownMessageContainer: { justifyContent: 'flex-end' },
-  messageBubble: { maxWidth: '85%', backgroundColor: '#EFE1D8', borderRadius: 22, borderBottomLeftRadius: 8, paddingHorizontal: 16, paddingVertical: 12, marginLeft: 8, borderWidth: 0 },
-  ownMessageBubble: { backgroundColor: '#EFE1D8', borderRadius: 22, borderBottomRightRadius: 8, paddingHorizontal: 16, paddingVertical: 12, marginRight: 8, marginLeft: 0 },
+  messageBubble: { 
+    maxWidth: '100%', 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 22, 
+    borderBottomLeftRadius: 8, 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    marginLeft: 8, 
+    borderWidth: 0 
+  },
+  ownMessageBubble: { 
+    backgroundColor: '#FFD5C2', 
+    borderRadius: 22, 
+    borderBottomRightRadius: 8, 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    marginRight: 8, 
+    marginLeft: 0 
+  },
   sharedPostMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderRadius: 0, shadowOpacity: 0, elevation: 0, borderWidth: 0, marginLeft: 0, width: '100%', maxWidth: 340, alignSelf: 'flex-start' },
   messageText: { fontSize: 15, fontFamily: 'Inter_400Regular', color: '#000000', lineHeight: 21 },
-  ownMessageText: { color: '#000000' },
+  ownMessageText: { color: '#1A1A1A' },
   timeText: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
   ownTimeText: { color: '#8E8E8E' },
   messageFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', marginTop: 4, marginLeft: 8 },
@@ -1761,7 +1935,17 @@ const styles = StyleSheet.create({
   emptyText: { marginTop: SPACING.md, fontSize: 16, fontWeight: '500', color: COLORS.textSecondary },
   inputWrapperContainer: { backgroundColor: '#E4E4E4', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, borderTopWidth: 0, zIndex: 20, elevation: 20 },
   inputContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingBottom: 8 },
-  inputFieldContainer: { flex: 1, flexDirection: 'row', alignItems: 'flex-end', backgroundColor: 'transparent', borderRadius: 24, borderWidth: 1, borderColor: '#737373', paddingHorizontal: 12, paddingVertical: Platform.OS === 'ios' ? 8 : 4 },
+  inputFieldContainer: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'flex-end', 
+    backgroundColor: '#FFFFFF', 
+    borderRadius: 22, 
+    borderWidth: 1, 
+    borderColor: 'rgba(0, 0, 0, 0.15)', 
+    paddingHorizontal: 12, 
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4 
+  },
   inlineIcon: { padding: 4, marginLeft: 4 },
   sendButtonDisabled: { opacity: 0.5 },
   attachmentOverlay: { position: 'absolute', bottom: 60, left: SPACING.sm, width: 160, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, shadowColor: '#000', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 8, paddingVertical: SPACING.xs, zIndex: 20 },
@@ -1805,7 +1989,29 @@ const styles = StyleSheet.create({
   mediaPreviewClose: { padding: SPACING.xs },
   mediaPreviewImage: { width: '100%', height: 120 },
   mediaPreviewVideo: { width: '100%', height: 120 },
-  sendButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#3C3C3C', justifyContent: 'center', alignItems: 'center', shadowOpacity: 0, elevation: 0 },
+  sendButton: { 
+    width: 48, 
+    height: 48, 
+    borderRadius: 24, 
+    backgroundColor: '#FFFFFF', 
+    borderWidth: 1, 
+    borderColor: 'rgba(0, 0, 0, 0.15)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    shadowOpacity: 0.08, 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 2,
+    elevation: 2,
+    marginLeft: 8
+  },
+  senderChangeDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    marginVertical: 14,
+    width: '92%',
+    alignSelf: 'center',
+  },
 });
 
 export default DirectMessageScreen;

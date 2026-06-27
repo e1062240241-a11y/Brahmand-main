@@ -11,7 +11,7 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '../../src/store/authStore';
+import { useAuthStore, sanitizeUserProfile } from '../../src/store/authStore';
 import { usePassportStore } from '../../src/store/passportStore';
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import { getUserProfile } from '../../src/services/api';
@@ -37,7 +37,9 @@ function PassportInnerScreen({
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const personalityData = usePersonalityStore((state) => state.data);
 
-  const [localUser, setLocalUser] = React.useState<any>(user);
+  const [localUser, setLocalUser] = React.useState<any>(
+    Platform.OS === 'android' ? sanitizeUserProfile(user) : user
+  );
 
   useEffect(() => {
     loadPassport();
@@ -45,8 +47,9 @@ function PassportInnerScreen({
       try {
         const res = await getUserProfile();
         if (res.data) {
-          setLocalUser(res.data);
-          updateUser(res.data);
+          const sanitized = Platform.OS === 'android' ? sanitizeUserProfile(res.data) : res.data;
+          setLocalUser(sanitized);
+          updateUser(sanitized);
         }
       } catch (err) {
         console.warn('[PassportInner] Profile fetch failed:', err);
@@ -97,8 +100,16 @@ function PassportInnerScreen({
 
   // Date of birth
   const getDob = () => {
-    if (!localUser?.date_of_birth) return 'N/A';
-    const dob = String(localUser.date_of_birth);
+    const dobVal = localUser?.date_of_birth;
+    if (!dobVal) return 'N/A';
+    const dob = String(dobVal);
+
+    if (Platform.OS === 'android') {
+      if (dob === 'nan' || dob === 'NaN' || dob === 'None' || dob === 'undefined') {
+        return 'N/A';
+      }
+    }
+
     if (/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
       const parts = dob.split('-');
       const y = parts[0] || '';
@@ -111,10 +122,15 @@ function PassportInnerScreen({
   const dobFormatted = getDob();
 
   // Sex
-  const userGender = String(localUser?.gender || personalityData?.gender || '');
+  const rawGender = localUser?.gender || personalityData?.gender || '';
+  const userGender = String(
+    Platform.OS === 'android' && (rawGender === 'nan' || rawGender === 'NaN' || rawGender === 'None' || rawGender === 'undefined')
+      ? ''
+      : rawGender
+  );
   const isFemale =
     userGender.toLowerCase().includes('female') || userGender.toLowerCase() === 'f';
-  const sexLabel = isFemale ? 'F' : 'M';
+  const sexLabel = Platform.OS === 'android' ? (userGender ? (isFemale ? 'F' : 'M') : 'N/A') : (isFemale ? 'F' : 'M');
 
   // Nationality
   const nationalityEnglish =
