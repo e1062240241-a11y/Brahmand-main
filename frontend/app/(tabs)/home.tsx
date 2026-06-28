@@ -4214,8 +4214,9 @@ export default function HomeScreen() {
 
                 // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
                 return (
-                  <FlatList
-                    data={parentComments}
+                  {/* ⚡ Bolt: Added FlatList performance props — Prevents memory leaks and heavy JS thread load on Android for long lists. Expected impact: smoother scrolling and fewer crashes on Android. */}
+              <FlatList
+                data={parentComments}
                     keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
                     initialNumToRender={10}
                     maxToRenderPerBatch={5}
