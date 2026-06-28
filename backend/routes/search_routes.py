@@ -48,8 +48,10 @@ async def global_search(
     # Fetch user location for localized ranking
     current_user = await db.get_document("users", current_user_id)
     user_loc = {}
+    user_communities = []
     if current_user:
         user_loc = current_user.get("location") or current_user.get("home_location") or {}
+        user_communities = current_user.get("communities", [])
 
     async def search_users(q_start, q_end, lmt):
         try:
@@ -143,7 +145,8 @@ async def global_search(
                     "is_verified": u.get("is_verified", False),
                     "kyc_status": u.get("kyc_status"),
                     "followers_count": u.get("followers_count", len(u.get("followers", []))),
-                    "badges": u.get("badges", [])
+                    "badges": u.get("badges", []),
+                    "communities": u.get("communities", [])
                 })
 
         for c in comms_res:
@@ -182,10 +185,12 @@ async def global_search(
 
     # Apply intelligent ranking
     ranked_results = rank_search_results(
+        query=query_str,
         users=all_users,
         communities=all_communities,
         posts=all_posts,
-        current_user_loc=user_loc
+        current_user_loc=user_loc,
+        current_user_communities=user_communities
     )
 
     # Enforce final limits after ranking
