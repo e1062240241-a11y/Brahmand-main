@@ -13,7 +13,7 @@ def _calculate_similarity(query: str, target: str) -> float:
 def rank_search_results(query, users, communities, posts, current_user_loc=None, current_user_communities=None):
     """
     Ranks search results intelligently using:
-    1. Jaccard/Levenshtein Similarity (Typo Tolerance)
+    1. Gestalt Pattern Matching (Typo Tolerance via SequenceMatcher)
     2. Social Graph Weighting (Mutual Connections)
     3. Hacker News Gravity (Time Decay for Posts)
     """
@@ -28,7 +28,7 @@ def rank_search_results(query, users, communities, posts, current_user_loc=None,
         score = 0
         name = user.get("name") or user.get("sl_id") or ""
 
-        # 🌟 Jaccard/Levenshtein Similarity Boost
+        # 🌟 Gestalt Pattern Matching (Typo Tolerance) Boost
         sim_ratio = _calculate_similarity(query, name)
         score += (sim_ratio * 100000) # Heavy weight on exact/close name match
 
@@ -58,7 +58,7 @@ def rank_search_results(query, users, communities, posts, current_user_loc=None,
         score = 0
         name = comm.get("name", "")
 
-        # 🌟 Jaccard/Levenshtein Similarity Boost
+        # 🌟 Gestalt Pattern Matching (Typo Tolerance) Boost
         sim_ratio = _calculate_similarity(query, name)
         score += (sim_ratio * 100000)
 
@@ -81,19 +81,21 @@ def rank_search_results(query, users, communities, posts, current_user_loc=None,
 
     # 3. Rank Posts
     # Factors: Typo similarity (caption), Hacker News Gravity (Time Decay), Engagement
-    now_ts = datetime.now(timezone.utc).timestamp()
+    now_utc = datetime.now(timezone.utc)
+    now_ts = now_utc.timestamp()
 
     def post_score(post):
         score = 0
-        caption = post.get("caption", "")
+        # Truncate caption to ~200 chars to prevent O(N^2) slowdown in SequenceMatcher
+        caption = str(post.get("caption", ""))[:200]
 
-        # 🌟 Jaccard/Levenshtein Similarity Boost
+        # 🌟 Gestalt Pattern Matching (Typo Tolerance) Boost
         sim_ratio = _calculate_similarity(query, caption)
         score += (sim_ratio * 50000)
 
         # Base Engagement
-        eng_score = post.get("engagement_score", 0)
-        if eng_score:
+        eng_score = post.get("engagement_score")
+        if eng_score is not None:
             base_points = (eng_score * 1000)
         else:
             base_points = (post.get("likes_count", 0) * 10) + (post.get("comments_count", 0) * 20) + (post.get("views_count", 0) * 1)
@@ -102,10 +104,17 @@ def rank_search_results(query, users, communities, posts, current_user_loc=None,
         c_at = post.get('created_at')
         post_ts = now_ts
         if hasattr(c_at, 'timestamp'):
-            post_ts = c_at.timestamp()
+            # If native python datetime, force UTC if tzinfo is missing
+            if isinstance(c_at, datetime) and c_at.tzinfo is None:
+                post_ts = c_at.replace(tzinfo=timezone.utc).timestamp()
+            else:
+                post_ts = c_at.timestamp()
         elif isinstance(c_at, str):
             try:
-                post_ts = datetime.fromisoformat(c_at.replace('Z', '+00:00')).timestamp()
+                dt = datetime.fromisoformat(c_at.replace('Z', '+00:00'))
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                post_ts = dt.timestamp()
             except Exception:
                 pass
 
