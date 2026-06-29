@@ -213,7 +213,7 @@ export const PostFeedCard = memo(({
 
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
-  if (Platform.OS === 'android') {
+  if (__DEV__ && Platform.OS === 'android') {
     console.log('[PostFeedCard LOG Android] Post:', {
       id: post?.id,
       media_url: post?.media_url,

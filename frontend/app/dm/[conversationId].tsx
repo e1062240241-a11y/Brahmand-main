@@ -17,11 +17,15 @@ import {
   BackHandler,
   Alert,
   Animated,
+  Linking,
+  AppState,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import type * as ImageManipulatorType from 'expo-image-manipulator';
 import type * as ContactsType from 'expo-contacts';
@@ -205,6 +209,14 @@ type DMMessageItemProps = {
   showSenderChangeDivider: boolean;
 };
 
+const isMediaUrl = (url: string, type: 'image' | 'video') => {
+  const normalized = url.split('?')[0].toLowerCase();
+  if (type === 'image') {
+    return normalized.endsWith('.png') || normalized.endsWith('.jpg') || normalized.endsWith('.jpeg') || normalized.endsWith('.webp');
+  }
+  return normalized.endsWith('.mp4') || normalized.endsWith('.mov') || normalized.endsWith('.webm') || normalized.endsWith('.mkv');
+};
+
 const DMMessageItem = React.memo(({
   item,
   index,
@@ -240,6 +252,11 @@ const DMMessageItem = React.memo(({
     hasSharedKeys ||
     looksLikeSharedPost;
 
+  const isMediaMessage =
+    itemMessageType === 'image' ||
+    itemMessageType === 'video' ||
+    (typeof rawString === 'string' && (isMediaUrl(rawString, 'image') || isMediaUrl(rawString, 'video')));
+
   return (
     <>
       {showDateSeparator && (
@@ -264,6 +281,7 @@ const DMMessageItem = React.memo(({
               styles.messageBubble,
               isOwnMessage && styles.ownMessageBubble,
               isSharedPost && styles.sharedPostMessageBubble,
+              isMediaMessage && styles.mediaMessageBubble,
             ]}
           >
             {renderMessageContent(item)}
@@ -277,9 +295,6 @@ const DMMessageItem = React.memo(({
           )}
         </View>
       </View>
-      {showSenderChangeDivider && (
-        <View style={styles.senderChangeDivider} />
-      )}
     </>
   );
 });
@@ -301,6 +316,7 @@ const DirectMessageScreen = () => {
     userName?: string;
     userSL?: string;
   }>();
+  const isFocused = useIsFocused();
   const router = useRouter();
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
@@ -353,6 +369,10 @@ const DirectMessageScreen = () => {
   // Mark messages as read
   const markMessagesAsRead = useCallback(async () => {
     if (!conversationId || hasMarkedRead) return;
+    if (!isFocused || AppState.currentState !== 'active') {
+      console.log('[Chat] Skipping mark read: screen not focused or app in background');
+      return;
+    }
     
     try {
       await markDirectMessagesRead(conversationId);
@@ -366,7 +386,7 @@ const DirectMessageScreen = () => {
         console.error('[Chat] Error marking messages as read:', error);
       }
     }
-  }, [conversationId, hasMarkedRead]);
+  }, [conversationId, hasMarkedRead, isFocused]);
 
   const handleBackNavigation = useCallback(() => {
     try {
@@ -453,6 +473,27 @@ const DirectMessageScreen = () => {
   useEffect(() => {
     checkBlockStatus();
   }, [conversation?.user?.id, checkBlockStatus]);
+
+  // Reset hasMarkedRead and mark read when screen is focused
+  useEffect(() => {
+    if (isFocused) {
+      setHasMarkedRead(false);
+      setTimeout(() => markMessagesAsRead(), 500);
+    }
+  }, [isFocused]);
+
+  // Reset hasMarkedRead and mark read when AppState transitions to active
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && isFocused) {
+        setHasMarkedRead(false);
+        setTimeout(() => markMessagesAsRead(), 500);
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [isFocused, markMessagesAsRead]);
 
   const handleToggleBlock = async () => {
     if (!conversation?.user?.id) return;
@@ -783,6 +824,8 @@ const DirectMessageScreen = () => {
           return deduplicateMessages([...apiMessages, ...stillSending]);
         });
         setCachedMessages(conversationId, apiMessages);
+        setHasMarkedRead(false);
+        setTimeout(() => markMessagesAsRead(), 100);
       }
       
       setLoading(false);
@@ -792,7 +835,7 @@ const DirectMessageScreen = () => {
       setLoading(false);
       return true;
     }
-  }, [conversationId, messages.length]);
+  }, [conversationId, messages.length, markMessagesAsRead]);
 
   useEffect(() => {
     fetchConversation();
@@ -867,9 +910,11 @@ const DirectMessageScreen = () => {
             if (!cached.some((m) => m.id === message.id)) {
               await setCachedMessages(conversationId, [...cached, message]);
             }
+            setHasMarkedRead(false);
             markMessagesAsRead();
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
           } else {
+            setHasMarkedRead(false);
             await fetchMessagesViaAPI();
             await fetchConversation();
           }
@@ -1139,28 +1184,40 @@ const DirectMessageScreen = () => {
 
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.status !== 'granted') {
-      Alert.alert('Permission Denied', 'Camera access is required.');
+      Alert.alert(
+        'Permission Denied',
+        'Camera access is required. Please enable it in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: false,
-      quality: 0.7,
-    });
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsEditing: false,
+        quality: 0.7,
+      });
 
-    if (result.canceled || !result.assets?.length) return;
-    const asset = result.assets[0];
-    const mediaType = asset.type === 'video' ? 'video' : 'image';
-    const fileName = (asset as any).fileName || `chat-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'jpg' : 'mp4'}`;
-    const mimeType = inferUploadMimeType(asset, mediaType);
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+      const mediaType = asset.type === 'video' ? 'video' : 'image';
+      const fileName = (asset as any).fileName || `chat-${mediaType}-${Date.now()}.${mediaType === 'image' ? 'jpg' : 'mp4'}`;
+      const mimeType = inferUploadMimeType(asset, mediaType);
 
-    setSelectedMedia({
-      uri: asset.uri,
-      name: fileName,
-      type: mimeType,
-      mediaType,
-    });
+      setSelectedMedia({
+        uri: asset.uri,
+        name: fileName,
+        type: mimeType,
+        mediaType,
+      });
+    } catch (error: any) {
+      console.warn('Error launching camera:', error);
+      Alert.alert('Camera Error', error?.message || 'Camera is not available on this device/simulator.');
+    }
   };
 
   const handlePickMedia = async (mediaType: 'image' | 'video') => {
@@ -1169,7 +1226,14 @@ const DirectMessageScreen = () => {
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permission.status !== 'granted') {
-      Alert.alert('Permission Denied', 'Media library access is required.');
+      Alert.alert(
+        'Permission Denied',
+        'Media library access is required. Please enable it in Settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => Linking.openSettings() },
+        ]
+      );
       return;
     }
 
@@ -1193,13 +1257,6 @@ const DirectMessageScreen = () => {
     return formatTimeIST(date);
   }, []);
 
-  const isMediaUrl = (url: string, type: 'image' | 'video') => {
-    const normalized = url.split('?')[0].toLowerCase();
-    if (type === 'image') {
-      return normalized.endsWith('.png') || normalized.endsWith('.jpg') || normalized.endsWith('.jpeg') || normalized.endsWith('.webp');
-    }
-    return normalized.endsWith('.mp4') || normalized.endsWith('.mov') || normalized.endsWith('.webm') || normalized.endsWith('.mkv');
-  };
 
   const normalizeSharedPostKeys = (source: any) => {
     const normalized: any = {};
@@ -1590,7 +1647,9 @@ const DirectMessageScreen = () => {
       
       <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 12 : 0) }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          <Svg width={12} height={20} viewBox="0 0 12 20" fill="none">
+            <Path d="M10 20L0 10L10 0L11.775 1.775L3.55 10L11.775 18.225L10 20Z" fill="#291715" />
+          </Svg>
         </TouchableOpacity>
         {conversation && (
           <TouchableOpacity style={styles.headerInfo} onPress={() => {
@@ -1625,7 +1684,7 @@ const DirectMessageScreen = () => {
           </TouchableOpacity>
         )}
         <TouchableOpacity style={styles.moreButton} onPress={openChatOptions} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
+          <Ionicons name="ellipsis-vertical" size={24} color="#000000" />
         </TouchableOpacity>
       </View>
 
@@ -1727,17 +1786,14 @@ const DirectMessageScreen = () => {
         <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           {selectedMedia && (
             <View style={styles.mediaPreviewContainer}>
-              <View style={styles.mediaPreviewHeader}>
-                <Text style={styles.mediaPreviewLabel}>{selectedMedia.mediaType === 'image' ? 'Image ready' : 'Video ready'}</Text>
-                <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewClose}>
-                  <Ionicons name="close" size={18} color={COLORS.textWhite} />
-                </TouchableOpacity>
-              </View>
               {selectedMedia.mediaType === 'image' ? (
-                <Image source={{ uri: getSafeUri(selectedMedia.uri) || '' }} style={styles.mediaPreviewImage} resizeMode="cover" />
+                <Image source={{ uri: selectedMedia.uri }} style={styles.mediaPreviewImage} resizeMode="cover" />
               ) : (
                 <ChatVideo uri={selectedMedia.uri} style={styles.mediaPreviewVideo} useNativeControls resizeMode="contain" isLooping={false} />
               )}
+              <TouchableOpacity onPress={() => setSelectedMedia(null)} style={styles.mediaPreviewCloseButton} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={16} color="#FFF" />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -1767,7 +1823,12 @@ const DirectMessageScreen = () => {
               disabled={(!newMessage.trim() && !selectedMedia) || sending || uploadingMedia || isInputLocked}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="send-outline" size={25} color="#000" style={{ marginLeft: 2 }} />
+              <Svg width={20} height={18} viewBox="0 0 20 18" fill="none">
+                <Path 
+                  d="M19.7218 0.196948C19.4963 0.00063171 19.1815 -0.0537551 18.904 0.0556532L0.809777 7.19361C-0.101125 7.55066 -0.287004 8.76782 0.475207 9.3845C0.6356 9.51427 0.824875 9.60282 1.02674 9.64254L5.71502 10.5704V15.84C5.71313 16.4273 6.067 16.9563 6.60786 17.1747C7.14793 17.397 7.76791 17.2639 8.17122 16.839L10.4319 14.4756L14.0184 17.64C14.2772 17.8714 14.6109 17.9994 14.9568 18C15.1083 17.9999 15.259 17.9759 15.4032 17.9289C15.8827 17.7755 16.2455 17.377 16.3559 16.8822L19.9799 0.989854C20.0459 0.697791 19.9467 0.392822 19.7218 0.196948ZM14.263 3.43698L6.26411 9.21143L1.83565 8.33572L14.263 3.43698ZM7.14356 15.84V11.5667L9.3569 13.5234L7.14356 15.84ZM14.9586 16.56L7.57659 10.0349L18.2013 2.35877L14.9586 16.56Z" 
+                  fill="#000" 
+                />
+              </Svg>
             </TouchableOpacity>
           </View>
           
@@ -1848,7 +1909,22 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   chatScreen: { flex: 1, backgroundColor: '#FFFFFF' },
   chatBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: '#F2ECE8', pointerEvents: 'none' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingBottom: 12, paddingTop: Platform.OS === 'android' ? 12 : undefined, paddingHorizontal: 16, backgroundColor: 'transparent', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3, borderBottomWidth: 0, zIndex: 10, flexShrink: 0 },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingBottom: 4, 
+    paddingHorizontal: 16, 
+    backgroundColor: 'rgba(255, 250, 248, 0.50)', 
+    height: 103,
+    shadowColor: 'rgba(0, 0, 0, 0.15)', 
+    shadowOffset: { width: 0, height: 6 }, 
+    shadowOpacity: 1, 
+    shadowRadius: 10, 
+    elevation: 10, 
+    borderBottomWidth: 0, 
+    zIndex: 10, 
+    flexShrink: 0 
+  },
   backButton: { marginRight: SPACING.md, padding: 4 },
   moreButton: { padding: 6, borderRadius: BORDER_RADIUS.full, marginLeft: 8 },
   headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
@@ -1924,6 +2000,7 @@ const styles = StyleSheet.create({
     marginLeft: 0 
   },
   sharedPostMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderRadius: 0, shadowOpacity: 0, elevation: 0, borderWidth: 0, marginLeft: 0, width: '100%', maxWidth: 340, alignSelf: 'flex-start' },
+  mediaMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderWidth: 0, shadowOpacity: 0, elevation: 0, shadowColor: 'transparent', shadowRadius: 0, shadowOffset: { width: 0, height: 0 } },
   messageText: { fontSize: 15, fontFamily: 'Inter_400Regular', color: '#000000', lineHeight: 21 },
   ownMessageText: { color: '#1A1A1A' },
   timeText: { fontSize: 11, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
@@ -1933,20 +2010,23 @@ const styles = StyleSheet.create({
   statusContainer: { marginLeft: 2 },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: SPACING.xl * 4 },
   emptyText: { marginTop: SPACING.md, fontSize: 16, fontWeight: '500', color: COLORS.textSecondary },
-  inputWrapperContainer: { backgroundColor: '#E4E4E4', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, borderTopWidth: 0, zIndex: 20, elevation: 20 },
+  inputWrapperContainer: { backgroundColor: 'transparent', paddingTop: 12, borderTopWidth: 0, zIndex: 20 },
   inputContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingBottom: 8 },
   inputFieldContainer: { 
     flex: 1, 
     flexDirection: 'row', 
-    alignItems: 'flex-end', 
-    backgroundColor: '#FFFFFF', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF', 
     borderRadius: 22, 
     borderWidth: 1, 
-    borderColor: 'rgba(0, 0, 0, 0.15)', 
-    paddingHorizontal: 12, 
-    paddingVertical: Platform.OS === 'ios' ? 8 : 4 
+    borderColor: 'rgba(0, 0, 0, 0.50)', 
+    paddingLeft: 16,
+    paddingRight: 17,
+    paddingTop: 10,
+    paddingBottom: 10,
+    height: 44
   },
-  inlineIcon: { padding: 4, marginLeft: 4 },
+  inlineIcon: { paddingHorizontal: 4, paddingVertical: 0, marginLeft: 4, justifyContent: 'center', alignItems: 'center' },
   sendButtonDisabled: { opacity: 0.5 },
   attachmentOverlay: { position: 'absolute', bottom: 60, left: SPACING.sm, width: 160, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, shadowColor: '#000', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 8, paddingVertical: SPACING.xs, zIndex: 20 },
   attachmentOption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
@@ -1976,33 +2056,29 @@ const styles = StyleSheet.create({
   phoneContactName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   phoneContactNumber: { fontSize: 13, color: COLORS.textSecondary, marginTop: SPACING.xs },
   modalBackdrop: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  input: { flex: 1, backgroundColor: 'transparent', borderRadius: 0, paddingHorizontal: 0, paddingVertical: 10, fontSize: 15, fontFamily: 'Inter_400Regular', color: '#1A1A1A', maxHeight: 120, minHeight: 40 },
+  input: { flex: 1, backgroundColor: 'transparent', borderRadius: 0, paddingHorizontal: 0, paddingVertical: 0, fontSize: 15, fontFamily: 'Inter_400Regular', color: '#1A1A1A', maxHeight: 120 },
   fullScreenMediaOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   fullScreenMediaClose: { position: 'absolute', top: Platform.OS === 'ios' ? 40 : 24, right: 20, zIndex: 2, padding: 10, borderRadius: BORDER_RADIUS.full, backgroundColor: 'rgba(0,0,0,0.35)' },
   fullScreenMediaImage: { width: '100%', height: '100%' },
   fullScreenMediaVideo: { width: '100%', height: '100%' },
   messageMedia: { width: 200, height: 140, borderRadius: 18, marginBottom: SPACING.xs },
   messageVideo: { width: 200, height: 140, borderRadius: 18, marginBottom: SPACING.xs },
-  mediaPreviewContainer: { marginHorizontal: SPACING.md, marginBottom: SPACING.xs, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, overflow: 'hidden' },
+  mediaPreviewContainer: { marginHorizontal: SPACING.md, marginBottom: SPACING.xs, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, overflow: 'hidden', position: 'relative', width: 120, height: 120 },
   mediaPreviewHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.xs, backgroundColor: COLORS.primary },
   mediaPreviewLabel: { color: COLORS.textWhite, fontSize: 13, fontWeight: '700' },
   mediaPreviewClose: { padding: SPACING.xs },
-  mediaPreviewImage: { width: '100%', height: 120 },
-  mediaPreviewVideo: { width: '100%', height: 120 },
+  mediaPreviewCloseButton: { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  mediaPreviewImage: { width: '100%', height: '100%' },
+  mediaPreviewVideo: { width: '100%', height: '100%' },
   sendButton: { 
-    width: 48, 
-    height: 48, 
-    borderRadius: 24, 
-    backgroundColor: '#FFFFFF', 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    backgroundColor: '#FFF', 
     borderWidth: 1, 
-    borderColor: 'rgba(0, 0, 0, 0.15)', 
+    borderColor: 'rgba(0, 0, 0, 0.50)', 
     justifyContent: 'center', 
     alignItems: 'center', 
-    shadowOpacity: 0.08, 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 2,
     marginLeft: 8
   },
   senderChangeDivider: {

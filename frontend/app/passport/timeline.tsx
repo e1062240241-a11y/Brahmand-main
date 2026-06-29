@@ -1,6 +1,6 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     fontStyle: 'normal',
     fontWeight: '400',
     lineHeight: 20,
-    width: 188,
+    width: Platform.OS === 'android' ? undefined : 188,
   },
   viewGalleryButton: {
     width: 105.05,
@@ -1104,7 +1104,7 @@ const styles = StyleSheet.create({
 
   certificatesTextContainer: {
     flex: 1,
-    paddingRight: 80,
+    paddingRight: Platform.OS === 'android' ? 8 : 80,
     flexDirection: 'column',
     alignItems: 'flex-start',
     gap: 8,

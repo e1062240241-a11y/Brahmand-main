@@ -75,6 +75,66 @@ const setCachedData = async (key: string, data: any) => {
   } catch { }
 };
 
+const formatLastMessage = (lastMessage: string | undefined, isHindi: boolean): string => {
+  if (!lastMessage) return '';
+  if (Platform.OS !== 'android') return lastMessage;
+
+  const trimmed = lastMessage.trim();
+
+  // 1. Check if it looks like a JSON string
+  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.postId || parsed.post_id || parsed.mediaUrl || parsed.media_url || parsed.media_type) {
+        if (parsed.media_type === 'video' || parsed.mediaType === 'video') {
+          return isHindi ? '🎥 वीडियो' : '🎥 Video';
+        }
+        if (parsed.media_type === 'image' || parsed.mediaType === 'image') {
+          return isHindi ? '📷 फोटो' : '📷 Photo';
+        }
+        return isHindi ? 'साझा की गई पोस्ट' : 'Shared Post';
+      }
+      if (parsed.phone || parsed.name) {
+        return isHindi ? '👤 संपर्क' : '👤 Contact';
+      }
+    } catch (e) {
+      // JSON parse error, fallback to regex check below
+    }
+  }
+
+  // 2. Regex check for stringified JSON or shared post structure
+  const rawString = trimmed.toLowerCase();
+  if (rawString.includes('post_id') || rawString.includes('postid') || rawString.includes('media_url') || rawString.includes('mediaurl')) {
+    return isHindi ? 'साझा की गई पोस्ट' : 'Shared Post';
+  }
+
+  // 3. Check if it's a URL
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    const cleanUrl = trimmed.split('?')[0].toLowerCase();
+    const isImage = cleanUrl.endsWith('.png') || cleanUrl.endsWith('.jpg') || cleanUrl.endsWith('.jpeg') || cleanUrl.endsWith('.webp') || cleanUrl.includes('/images/') || cleanUrl.includes('/photo/') || cleanUrl.includes('image');
+    const isVideo = cleanUrl.endsWith('.mp4') || cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.webm') || cleanUrl.endsWith('.mkv') || cleanUrl.includes('/videos/') || cleanUrl.includes('video');
+
+    if (isImage) {
+      return isHindi ? '📷 फोटो' : '📷 Photo';
+    }
+    if (isVideo) {
+      return isHindi ? '🎥 वीडियो' : '🎥 Video';
+    }
+    return isHindi ? 'लिंक' : 'Link';
+  }
+
+  // 4. Check for contact format "Name\nPhone"
+  const lines = trimmed.split('\n');
+  if (lines.length >= 2) {
+    const possiblePhone = lines[lines.length - 1].replace(/[\s\-\(\)\+]/g, '');
+    if (/^\d+$/.test(possiblePhone) && possiblePhone.length >= 7) {
+      return isHindi ? '👤 संपर्क' : '👤 Contact';
+    }
+  }
+
+  return lastMessage;
+};
+
 interface Circle {
   id: string;
   name: string;
@@ -1628,7 +1688,7 @@ function MessagesScreen({
                     <View style={styles.chatRowMiddle}>
                       <Text style={styles.chatRowTitle} numberOfLines={1}>{item.name}</Text>
                       <Text style={styles.chatRowSubtitle} numberOfLines={1}>
-                        {item.last_message || (t('language') === 'hi' ? 'बातचीत शुरू करें' : 'Start a conversation')}
+                        {formatLastMessage(item.last_message, t('language') === 'hi') || (t('language') === 'hi' ? 'बातचीत शुरू करें' : 'Start a conversation')}
                       </Text>
                     </View>
                     <View style={styles.chatRowRight}>
@@ -1678,7 +1738,7 @@ function MessagesScreen({
                             )}
                           </View>
                           <Text style={styles.chatRowSubtitle} numberOfLines={1}>
-                            {item.last_message || (t('language') === 'hi' ? 'एक संदेश भेजें' : 'Send a message')}
+                            {formatLastMessage(item.last_message, t('language') === 'hi') || (t('language') === 'hi' ? 'एक संदेश भेजें' : 'Send a message')}
                           </Text>
                         </View>
                         <View style={styles.chatRowRight}>

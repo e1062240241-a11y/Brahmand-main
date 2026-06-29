@@ -341,7 +341,11 @@ export default function MyKrishnaChat() {
         style={styles.container}
       >
         <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar style="dark" translucent />
+        <StatusBar
+          style="dark"
+          translucent
+          backgroundColor="transparent"
+        />
 
         {/* ── Header ── */}
         <View style={[styles.header, { height: insets.top + 60, paddingTop: insets.top }]}>

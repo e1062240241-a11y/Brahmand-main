@@ -488,16 +488,16 @@ const styles = StyleSheet.create({
 
   // ── Spiritual Record Card ──────────────────────────────────
   spiritualRecordCard: {
-    width: 361,
+    width: Platform.OS === 'android' ? CARD_WIDTH : 361,
     height: 111,
     backgroundColor: '#FFF5F1',
     borderRadius: 15,
     paddingTop: 17,
-    paddingRight: 11,
+    paddingRight: Platform.OS === 'android' ? 16 : 11,
     paddingBottom: 22,
-    paddingLeft: 0,
+    paddingLeft: Platform.OS === 'android' ? 16 : 0,
     flexDirection: 'column',
-    alignItems: 'flex-start',
+    alignItems: Platform.OS === 'android' ? 'center' : 'flex-start',
     gap: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 0 },
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 0, 0, 0.10)',
   },
   recordTitle: {
-    width: 147,
+    width: Platform.OS === 'android' ? undefined : 147,
     height: 14,
     fontSize: 12,
     fontWeight: '700',
@@ -520,6 +520,7 @@ const styles = StyleSheet.create({
   recordGrid: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: Platform.OS === 'android' ? '100%' : undefined,
   },
   recordCol: {
     flex: 1,

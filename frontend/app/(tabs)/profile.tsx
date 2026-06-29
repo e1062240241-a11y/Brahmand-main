@@ -1056,9 +1056,9 @@ export default function ProfileScreen() {
     const bioText = profile?.bio || user?.bio || 'Har Har Mahadev 🕉️';
     const locationVal = locationLabel || 'Mumbai, Maharashtra';
 
-    const followersVal = followersCount || 808;
-    const followingVal = followingCount || 376;
-    const postsVal = postsCount || 698;
+    const followersVal = Platform.OS === 'android' ? followersCount : (followersCount || 808);
+    const followingVal = Platform.OS === 'android' ? followingCount : (followingCount || 376);
+    const postsVal = Platform.OS === 'android' ? postsCount : (postsCount || 698);
 
     return (
       <View style={styles.headerContent}>

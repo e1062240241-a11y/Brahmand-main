@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking, Vibration, Animated, DeviceEventEmitter } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking, Vibration, Animated, DeviceEventEmitter, StatusBar } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -337,8 +337,8 @@ export default function SOSScreen() {
       locations={[0, 0.1058, 0.2212, 1.0]}
       style={styles.container}
     >
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <View style={styles.header}>
+      <SafeAreaView style={{ flex: 1 }} edges={Platform.OS === 'android' ? ['left', 'right'] : ['top', 'left', 'right']}>
+        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: (insets.top || StatusBar.currentHeight || 24) + 12 }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
           </TouchableOpacity>

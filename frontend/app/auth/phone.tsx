@@ -102,7 +102,7 @@ export default function PhoneScreen() {
   return (
     <View style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : (Platform.OS === 'android' ? undefined : 'height')}
         style={styles.keyboardView}
         keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
       >
@@ -187,7 +187,15 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    ...Platform.select({
+      android: {
+        justifyContent: 'flex-start',
+        paddingTop: 64,
+      },
+      default: {
+        justifyContent: 'center',
+      },
+    }),
     paddingHorizontal: 16,
   },
   inputsStack: {
@@ -237,7 +245,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     paddingLeft: 16,
-    paddingRight: 147,
+    paddingRight: Platform.OS === 'android' ? 16 : 147,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(245, 238, 220, 0.3)',
@@ -263,7 +271,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   sendButton: {
-    width: 359,
+    width: Platform.OS === 'android' ? '100%' : 359,
+    maxWidth: Platform.OS === 'android' ? 359 : undefined,
     height: 56,
     borderRadius: 28,
     backgroundColor: '#FF7B00',
