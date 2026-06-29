@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -109,35 +109,69 @@ export default function ProfileScreen() {
     }
   }, [section]);
 
-  const SETTINGS_SECTIONS: { id: string; title: string; items: SettingItem[] }[] = [
-    {
-      id: 'account',
-      title: t('account'),
-      items: [
-        { id: 'edit', icon: 'person-circle', label: t('manageProfile'), route: '/profile/edit', color: '#F97316' },
-        { id: 'kyc', icon: 'shield-checkmark', label: t('kycVerification'), route: '/kyc', color: '#FB923C' },
-        { id: 'personality_verification', icon: 'ribbon', label: t('personalityVerification'), route: '/profile/personality-verification', color: '#D4AF37' },
-        { id: 'notifications', icon: 'notifications', label: t('notifications'), route: '/settings/notifications', color: '#F59E0B' },
-        { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: true, subLabel: t('language') === 'hi' ? 'जल्द आ रहा है' : 'Coming soon', color: '#D97706' },
-      ],
-    },
-    {
-      id: 'preferences',
-      title: t('preferences'),
-      items: [
-        { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: false, color: '#EA580C' },
-        { id: 'language', icon: 'language', label: t('languageLabel'), value: language === 'en' ? t('english') : t('hindi'), disabled: false, color: '#B45309' },
-      ],
-    },
-    {
-      id: 'support',
-      title: t('support'),
-      items: [
-        { id: 'guidelines', icon: 'document-text', label: t('communityGuidelines'), route: '/settings/guidelines', color: '#92400E' },
-        { id: 'logout', icon: 'log-out', label: t('logout'), action: 'logout', color: '#B91C1C' },
-      ],
-    },
-  ];
+  const SETTINGS_SECTIONS = useMemo<{ id: string; title: string; items: SettingItem[] }[]>(() => {
+    if (Platform.OS === 'android') {
+      return [
+        {
+          id: 'account',
+          title: t('account'),
+          items: [
+            { id: 'edit', icon: 'person-circle-outline', label: t('manageProfile'), route: '/profile/edit' },
+            { id: 'kyc', icon: 'globe-outline', label: t('kycVerification'), route: '/kyc' },
+            { id: 'notifications', icon: 'notifications-outline', label: t('notifications'), route: '/settings/notifications' },
+            { id: 'privacy', icon: 'lock-closed-outline', label: t('privacy'), route: '/settings/privacy', disabled: true },
+          ],
+        },
+        {
+          id: 'preferences',
+          title: t('preferences'),
+          items: [
+            { id: 'about_us', icon: 'information-circle-outline', label: t('aboutUs'), route: '/settings/about' },
+            { id: 'location', icon: 'location-outline', label: t('location'), route: '/settings/location', disabled: true },
+            { id: 'language', icon: 'language-outline', label: t('languageLabel'), value: language === 'en' ? t('english') : t('hindi') },
+          ],
+        },
+        {
+          id: 'support',
+          title: t('support'),
+          items: [
+            { id: 'guidelines', icon: 'document-text-outline', label: t('communityGuidelines'), route: '/settings/guidelines' },
+            { id: 'logout', icon: 'log-out-outline', label: t('logout'), action: 'logout' },
+          ],
+        },
+      ];
+    }
+
+    return [
+      {
+        id: 'account',
+        title: t('account'),
+        items: [
+          { id: 'edit', icon: 'person-circle', label: t('manageProfile'), route: '/profile/edit', color: '#F97316' },
+          { id: 'kyc', icon: 'shield-checkmark', label: t('kycVerification'), route: '/kyc', color: '#FB923C' },
+          { id: 'personality_verification', icon: 'ribbon', label: t('personalityVerification'), route: '/profile/personality-verification', color: '#D4AF37' },
+          { id: 'notifications', icon: 'notifications', label: t('notifications'), route: '/settings/notifications', color: '#F59E0B' },
+          { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: true, subLabel: t('language') === 'hi' ? 'जल्द आ रहा है' : 'Coming soon', color: '#D97706' },
+        ],
+      },
+      {
+        id: 'preferences',
+        title: t('preferences'),
+        items: [
+          { id: 'location', icon: 'location', label: t('location'), route: '/settings/location', disabled: false, color: '#EA580C' },
+          { id: 'language', icon: 'language', label: t('languageLabel'), value: language === 'en' ? t('english') : t('hindi'), disabled: false, color: '#B45309' },
+        ],
+      },
+      {
+        id: 'support',
+        title: t('support'),
+        items: [
+          { id: 'guidelines', icon: 'document-text', label: t('communityGuidelines'), route: '/settings/guidelines', color: '#92400E' },
+          { id: 'logout', icon: 'log-out', label: t('logout'), action: 'logout', color: '#B91C1C' },
+        ],
+      },
+    ];
+  }, [language]);
 
   const [profile, setProfile] = useState<any>(user || null);
   const [loading, setLoading] = useState(!user);
@@ -1239,48 +1273,127 @@ export default function ProfileScreen() {
             activeOpacity={1} 
             onPress={() => setShowSettingsModal(false)} 
           />
-          <View style={[styles.settingsSheet, { paddingBottom: insets.bottom }]}>
+          <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
               <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
-              <TouchableOpacity 
-                style={styles.settingsClose} 
-                onPress={() => setShowSettingsModal(false)}
-                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-              >
-                <Ionicons name="close" size={24} color="#000000" />
-              </TouchableOpacity>
+              {Platform.OS !== 'android' && (
+                <TouchableOpacity 
+                  style={styles.settingsClose} 
+                  onPress={() => setShowSettingsModal(false)}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                  <Ionicons name="close" size={24} color="#000000" />
+                </TouchableOpacity>
+              )}
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {SETTINGS_SECTIONS.map((section) => (
-                <View key={section.id} style={styles.settingsSection}>
-                  <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
-                  {section.items.map((item, index) => (
-                    <View key={item.id}>
-                      <TouchableOpacity
-                        style={[
-                          styles.settingsRow,
-                          item.disabled && styles.settingsRowDisabled,
-                        ]}
-                        onPress={() => handleMenuPress(item)}
-                      >
-                        <Ionicons name={item.icon as any} size={20} color="#000" style={{ marginRight: 16 }} />
-                        <View style={styles.settingsLabelWrap}>
-                          <Text style={[styles.settingsLabel, item.action === 'logout' && { color: COLORS.error }]}>{item.label}</Text>
-                          {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+            {Platform.OS === 'android' ? (
+              <View>
+                {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                  <View key={section.id} style={styles.settingsSection}>
+                    <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                    {section.items.map((item: SettingItem, index: number) => {
+                      const iconColor = item.disabled ? '#A0A0A0' : '#000000';
+                      const textColor = item.disabled ? '#A0A0A0' : '#000000';
+                      const showChevron = item.id !== 'privacy' && item.id !== 'language';
+                      const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
+
+                      return (
+                        <View key={item.id}>
+                          <TouchableOpacity
+                            style={styles.settingsRow}
+                            onPress={() => handleMenuPress(item)}
+                            disabled={item.disabled && item.id !== 'location'}
+                          >
+                            <Ionicons 
+                              name={item.icon as any} 
+                              size={20} 
+                              color={iconColor} 
+                              style={{ marginRight: 16 }} 
+                            />
+                            <View style={styles.settingsLabelWrap}>
+                              <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                {item.label}
+                              </Text>
+                            </View>
+                            <View style={styles.settingsRowRight}>
+                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                              {showChevron && (
+                                <Ionicons 
+                                  name="chevron-forward" 
+                                  size={18} 
+                                  color={chevronColor} 
+                                />
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                          {index < section.items.length - 1 && (
+                            <View 
+                              style={[
+                                styles.settingsSeparator,
+                                { marginLeft: 56, backgroundColor: '#EAEAEA' }
+                              ]} 
+                            />
+                          )}
                         </View>
-                        <View style={styles.settingsRowRight}>
-                          {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                          {!item.disabled && <Ionicons name="chevron-forward" size={18} color="#000" />}
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                  <View key={section.id} style={styles.settingsSection}>
+                    <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                    {section.items.map((item: SettingItem, index: number) => {
+                      const textColor = item.action === 'logout' ? COLORS.error : '#000000';
+                      const showChevron = !item.disabled;
+
+                      return (
+                        <View key={item.id}>
+                          <TouchableOpacity
+                            style={[
+                              styles.settingsRow,
+                              item.disabled && styles.settingsRowDisabled,
+                            ]}
+                            onPress={() => handleMenuPress(item)}
+                            disabled={item.disabled}
+                          >
+                            <Ionicons 
+                              name={item.icon as any} 
+                              size={20} 
+                              color="#000" 
+                              style={{ marginRight: 16 }} 
+                            />
+                            <View style={styles.settingsLabelWrap}>
+                              <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                {item.label}
+                              </Text>
+                              {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                            </View>
+                            <View style={styles.settingsRowRight}>
+                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                              {showChevron && (
+                                <Ionicons 
+                                  name="chevron-forward" 
+                                  size={18} 
+                                  color="#000" 
+                                />
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                          {index < section.items.length - 1 && (
+                            <View style={styles.settingsSeparator} />
+                          )}
                         </View>
-                      </TouchableOpacity>
-                      {index < section.items.length - 1 && <View style={styles.settingsSeparator} />}
-                    </View>
-                  ))}
-                </View>
-              ))}
-              <View style={styles.bottomSpacer} />
-            </ScrollView>
+                      );
+                    })}
+                  </View>
+                ))}
+                <View style={styles.bottomSpacer} />
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -2145,7 +2258,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-    height: '65%',
+    height: Platform.OS === 'android' ? undefined : '65%',
     paddingTop: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },

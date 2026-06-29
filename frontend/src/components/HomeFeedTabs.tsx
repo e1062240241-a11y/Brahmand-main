@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../utils/i18n';
 
@@ -42,8 +42,6 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
         </Text>
       </TouchableOpacity>
 
-
-
       <TouchableOpacity activeOpacity={0.8} style={styles.newPostButton} onPress={onCreatePost}>
         <View style={styles.plusIconBg}>
           <Ionicons name="add" size={20} color="#FF6B00" />
@@ -70,7 +68,7 @@ const styles = StyleSheet.create({
   },
   activeTabBtn: {
     borderBottomWidth: 3,
-    borderBottomColor: '#000',
+    borderBottomColor: Platform.OS === 'android' ? '#FF6B00' : '#000',
   },
   tabText: {
     color: '#666',
@@ -78,7 +76,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activeTabText: {
-    color: '#000',
+    color: Platform.OS === 'android' ? '#FF6B00' : '#000',
     fontWeight: '900',
   },
   newPostButton: {

@@ -1406,7 +1406,10 @@ export default function HomeScreen() {
   const hanumanStatus = getCurrentHanumanStatus(now);
   const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
   const feedPostKeys = useMemo(
-    () => feedPosts.map((post, index) => `feed-${index}-${post.id || post.media_url || index}`),
+    () => feedPosts.map((post, index) => {
+      const prefix = Platform.OS === 'android' ? 'feed-android' : 'feed';
+      return `${prefix}-${index}-${post.id || post.media_url || index}`;
+    }),
     [feedPosts],
   );
 
@@ -1438,6 +1441,22 @@ export default function HomeScreen() {
       }
     }
   }, [activePostKey]);
+
+  // Auto-initialize activePostKey to the first post on Android to prevent loading failure of the first reel/video on startup.
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (feedPosts && feedPosts.length > 0) {
+        const firstPost = feedPosts[0];
+        const firstKey = `feed-android-0-${firstPost.id || firstPost.media_url || 0}`;
+        const keyExists = feedPosts.some((post, index) => `feed-android-${index}-${post.id || post.media_url || index}` === activePostKey);
+        if (!activePostKey || !keyExists) {
+          setActivePostKey(firstKey);
+        }
+      } else {
+        setActivePostKey(null);
+      }
+    }
+  }, [feedPosts, activeTab, activePostKey]);
 
   const lastScrollTimeRef = useRef(0);
 
@@ -4214,7 +4233,7 @@ export default function HomeScreen() {
 
                 // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
                 return (
-                  {/* ⚡ Bolt: Added FlatList performance props — Prevents memory leaks and heavy JS thread load on Android for long lists. Expected impact: smoother scrolling and fewer crashes on Android. */}
+                  // ⚡ Bolt: Added FlatList performance props — Prevents memory leaks and heavy JS thread load on Android for long lists. Expected impact: smoother scrolling and fewer crashes on Android.
               <FlatList
                 data={parentComments}
                     keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}

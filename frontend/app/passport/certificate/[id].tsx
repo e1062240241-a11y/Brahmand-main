@@ -10,8 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import { chariotBase64 } from './chariotBase64';
-import { krishnaArjunaChariotBase64 } from './krishnaArjunaChariotBase64';
+import { chariotBase64 } from '../../../src/constants/chariotBase64';
+import { krishnaArjunaChariotBase64 } from '../../../src/constants/krishnaArjunaChariotBase64';
 
 function CertificateDetailScreen({ observedCertificates = [] }: { observedCertificates?: any[] }) {
   const router = useRouter();
