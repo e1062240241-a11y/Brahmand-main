@@ -82,9 +82,43 @@ function useAppBackHandler() {
         return true; // Consume event, do nothing
       }
 
+      // Specific fix for my-krishna screen
+      if (pathname === '/my-krishna') {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/home');
+        }
+        return true;
+      }
+
+      // Specific fix for dm screen
+      if (pathname.startsWith('/dm/')) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/messages');
+        }
+        return true;
+      }
+
+      // Specific fix for chat screen
+      if (pathname.startsWith('/chat/')) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/messages');
+        }
+        return true;
+      }
+
       // 2. Specific fix for community pages
       if (pathname.startsWith('/community/')) {
-        router.replace('/(tabs)/messages');
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/messages');
+        }
         return true;
       }
 
@@ -94,8 +128,9 @@ function useAppBackHandler() {
         return true;
       }
 
-      // 4. Default: Return true to prevent hard exit from common screens
-      return true;
+      // 4. Default: Return false to let the system exit/handle normally if no history is present,
+      // rather than leaving the user stuck on the screen.
+      return false;
     };
 
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -550,11 +585,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      // Use 'absolute' (edge-to-edge) so the app draws behind the translucent
-      // nav bar. SafeAreaContext still reports correct insets for tab-bar
-      // positioning on both gesture-nav and 3-button-nav physical devices.
-      NavigationBar.setPositionAsync('absolute').catch((e) => {
-        console.warn('[NavigationBar] Failed to set absolute position:', e);
+      NavigationBar.setPositionAsync('relative').catch((e) => {
+        console.warn('[NavigationBar] Failed to set relative position:', e);
       });
     }
   }, []);
@@ -563,10 +595,9 @@ export default function RootLayout() {
     if (Platform.OS === 'android') {
       const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
       const buttonStyle = isDark ? 'light' : 'dark';
+      const navBgColor = isDark ? '#000000' : '#FFFFFF';
 
-      // In edge-to-edge mode the nav bar is always transparent; only the
-      // button/icon style needs to adapt so the icons are visible.
-      NavigationBar.setBackgroundColorAsync('transparent').catch((e) => {
+      NavigationBar.setBackgroundColorAsync(navBgColor).catch((e) => {
         console.warn('[NavigationBar] Failed to set background color:', e);
       });
       NavigationBar.setButtonStyleAsync(buttonStyle).catch((e) => {

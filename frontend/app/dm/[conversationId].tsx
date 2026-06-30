@@ -1798,7 +1798,7 @@ const DirectMessageScreen = () => {
           )}
         </View>
         
-        <View style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}>
           {selectedMedia && (
             <View style={styles.mediaPreviewContainer}>
               {selectedMedia.mediaType === 'image' ? (
@@ -1824,6 +1824,16 @@ const DirectMessageScreen = () => {
                 style={styles.input}
                 editable={!isInputLocked}
                 returnKeyType="default"
+                onFocus={() => {
+                  if (Platform.OS === 'android') {
+                    setKeyboardVisible(true);
+                  }
+                }}
+                onBlur={() => {
+                  if (Platform.OS === 'android') {
+                    setKeyboardVisible(false);
+                  }
+                }}
               />
               <TouchableOpacity onPress={handleOpenCamera} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="camera-outline" size={24} color="#000" />

@@ -436,7 +436,7 @@ export default function MyKrishnaChat() {
             styles.inputWrapper,
             {
               paddingBottom: Platform.OS === 'android'
-                ? (keyboardVisible ? 12 : 16)
+                ? (keyboardVisible ? 8 : Math.max(insets.bottom, 16))
                 : Platform.OS === 'ios'
                   ? Math.max(insets.bottom, 12)
                   : 24
@@ -458,6 +458,16 @@ export default function MyKrishnaChat() {
                   editable={!historyLoading}
                   disableFullscreenUI={true}
                   textAlignVertical="center"
+                  onFocus={() => {
+                    if (Platform.OS === 'android') {
+                      setKeyboardVisible(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (Platform.OS === 'android') {
+                      setKeyboardVisible(false);
+                    }
+                  }}
                 />
                 <View style={styles.inputIcons}>
                   <Ionicons name="mic-outline" size={20} color="rgba(0, 0, 0, 0.6)" style={styles.iconMargin} />

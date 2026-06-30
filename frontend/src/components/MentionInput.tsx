@@ -31,6 +31,8 @@ interface MentionInputProps {
   editable?: boolean;
   autoFocus?: boolean;
   disableMentions?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export const MentionInput = ({
@@ -44,6 +46,8 @@ export const MentionInput = ({
   editable = true,
   autoFocus = false,
   disableMentions = false,
+  onFocus,
+  onBlur,
 }: MentionInputProps) => {
   const [mentionQuery, setMentionQuery] = useState('');
   const [mentionResults, setMentionResults] = useState<MentionUser[]>([]);
@@ -134,6 +138,8 @@ export const MentionInput = ({
         multiline={multiline}
         editable={editable}
         autoFocus={autoFocus}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     </View>
   );
