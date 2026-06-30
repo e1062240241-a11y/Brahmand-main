@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { StyleSheet, Text, Pressable, View, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '../utils/i18n';
 
@@ -15,38 +15,60 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
   const { t } = useTranslation();
   return (
     <View style={styles.feedTabs}>
-      <TouchableOpacity 
-        style={[styles.tabBtn, activeTab === 'for_you' && styles.activeTabBtn]} 
+      <Pressable
+        style={({ pressed }) => [
+          styles.tabBtn,
+          activeTab === 'for_you' && styles.activeTabBtn,
+          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+        ]}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
         onPress={() => onTabChange('for_you')}
       >
         <Text style={[styles.tabText, activeTab === 'for_you' && styles.activeTabText]}>
           {t('language') === 'hi' ? 'आपके लिए' : 'For You'}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
       
-      <TouchableOpacity 
-        style={[styles.tabBtn, activeTab === 'following' && styles.activeTabBtn]} 
+      <Pressable
+        style={({ pressed }) => [
+          styles.tabBtn,
+          activeTab === 'following' && styles.activeTabBtn,
+          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+        ]}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
         onPress={() => onTabChange('following')}
       >
         <Text style={[styles.tabText, activeTab === 'following' && styles.activeTabText]}>
           {t('language') === 'hi' ? 'फ़ॉलो कर रहे हैं' : 'Following'}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
-      <TouchableOpacity 
-        style={[styles.tabBtn, activeTab === 'trending' && styles.activeTabBtn]} 
+      <Pressable
+        style={({ pressed }) => [
+          styles.tabBtn,
+          activeTab === 'trending' && styles.activeTabBtn,
+          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+        ]}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
         onPress={() => onTabChange('trending')}
       >
         <Text style={[styles.tabText, activeTab === 'trending' && styles.activeTabText]}>
           {t('language') === 'hi' ? 'ट्रेंडिंग' : 'Trending'}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
 
-      <TouchableOpacity activeOpacity={0.8} style={styles.newPostButton} onPress={onCreatePost}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.newPostButton,
+          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+        ]}
+        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
+        onPress={onCreatePost}
+      >
         <View style={styles.plusIconBg}>
           <Ionicons name="add" size={20} color="#FF6B00" />
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 });

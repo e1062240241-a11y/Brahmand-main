@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Image,
   Dimensions,
   Platform,
@@ -508,16 +509,20 @@ export default function JaapLandingScreen() {
   const renderTopTab = (section: 'jaap' | 'temple', label: string) => {
     const isActive = activeSection === section;
     return (
-      <TouchableOpacity
+      <Pressable
         key={section}
-        style={[styles.topTabButton, isActive && styles.topTabButtonActive]}
+        style={({ pressed }) => [
+          styles.topTabButton,
+          isActive && styles.topTabButtonActive,
+          pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+        ]}
+        android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
         onPress={() => switchSection(section)}
-        activeOpacity={1}
       >
         <Text style={[styles.topTabText, isActive && styles.topTabTextActive]}>
           {label}
         </Text>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
@@ -630,9 +635,12 @@ export default function JaapLandingScreen() {
                   </View>
 
                   <View style={styles.bannerFooter}>
-                    <TouchableOpacity
-                      style={styles.mockupJoinNowBtn}
-                      activeOpacity={0.9}
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.mockupJoinNowBtn,
+                        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                      ]}
+                      android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                       onPress={() =>
                         router.push({
                           pathname: '/live-jaap-welcome',
@@ -657,7 +665,7 @@ export default function JaapLandingScreen() {
                         </Text>
                         <Ionicons name="chevron-forward" size={15} color="#FFF" />
                       </LinearGradient>
-                    </TouchableOpacity>
+                    </Pressable>
 
                     <View style={styles.bannerDotsRow} pointerEvents="none">
                       {Array.from({ length: HERO_DOT_COUNT }).map((_, index) => (
@@ -678,14 +686,17 @@ export default function JaapLandingScreen() {
 
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>{t('moreLiveJaaps')}</Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
+              <Pressable
+                style={({ pressed }) => [
+                  { flexDirection: 'row', alignItems: 'center' },
+                  pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                ]}
+                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                 onPress={() => router.push('/all-live-jaaps' as any)}
-                style={{ flexDirection: 'row', alignItems: 'center' }}
               >
                 <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
                 <Ionicons name="chevron-forward" size={18} color="#FF6600" />
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <ScrollView
@@ -751,9 +762,14 @@ export default function JaapLandingScreen() {
                 }
 
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={jaap.id}
-                    style={[styles.jaapCardContainer, { backgroundColor: '#1A0A00' }]}
+                    style={({ pressed }) => [
+                      styles.jaapCardContainer,
+                      { backgroundColor: '#1A0A00' },
+                      pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
                     onPress={() => router.push({
                       pathname: '/live-jaap-welcome',
                       params: {
@@ -786,8 +802,13 @@ export default function JaapLandingScreen() {
                       <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
                       <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
                       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity
-                          style={[styles.exactJoinBtn, { flex: 1 }]}
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.exactJoinBtn,
+                            { flex: 1 },
+                            pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                          ]}
+                          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                           onPress={() => router.push({
                             pathname: '/live-jaap-welcome',
                             params: {
@@ -802,11 +823,11 @@ export default function JaapLandingScreen() {
                               <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00"/>
                             </Svg>
                           </View>
-                        </TouchableOpacity>
+                        </Pressable>
                       </View>
                     </View>
                   </LinearGradient>
-                </TouchableOpacity>
+                </Pressable>
               );
               })}
             </ScrollView>
@@ -816,14 +837,17 @@ export default function JaapLandingScreen() {
               <Text style={styles.sectionTitleText}>
                 {t('language') === 'hi' ? 'और आगामी जाप' : 'More Upcoming Jaaps'}
               </Text>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={{ flexDirection: 'row', alignItems: 'center' }}
+              <Pressable
+                style={({ pressed }) => [
+                  { flexDirection: 'row', alignItems: 'center' },
+                  pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                ]}
+                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                 onPress={() => router.push('/all-live-jaaps' as any)}
               >
                 <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
                 <Ionicons name="chevron-forward" size={18} color="#FF6600" />
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             <View style={[styles.upcomingGridContainer, { paddingHorizontal: UPCOMING_GRID_PADDING }]}>
@@ -831,10 +855,14 @@ export default function JaapLandingScreen() {
                 const isReminderActive = !!reminders[jaap.id];
                 const displayName = t('language') === 'hi' ? jaap.titleHi : jaap.title;
                 return (
-                  <TouchableOpacity
+                  <Pressable
                     key={jaap.id}
-                    style={[styles.upcomingCard, { width: UPCOMING_CARD_WIDTH, height: UPCOMING_CARD_HEIGHT }]}
-                    activeOpacity={0.9}
+                    style={({ pressed }) => [
+                      styles.upcomingCard,
+                      { width: UPCOMING_CARD_WIDTH, height: UPCOMING_CARD_HEIGHT },
+                      pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
                     onPress={() => handleUpcomingCardPress(jaap)}
                   >
                     <View style={[StyleSheet.absoluteFillObject, { borderRadius: 16, overflow: 'hidden' }]}>
@@ -863,12 +891,13 @@ export default function JaapLandingScreen() {
                           {displayName}
                         </Text>
 
-                        <TouchableOpacity
-                          style={[
+                        <Pressable
+                          style={({ pressed }) => [
                             styles.upcomingReminderBtn,
-                            isReminderActive && styles.upcomingReminderBtnActive
+                            isReminderActive && styles.upcomingReminderBtnActive,
+                            pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                           ]}
-                          activeOpacity={0.8}
+                          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                           onPress={() => handleSetReminder(jaap.id, jaap.mantraType, jaap.title)}
                         >
                           <Text style={[
@@ -878,10 +907,10 @@ export default function JaapLandingScreen() {
                             {t('reminder')}
                           </Text>
                           <BellIconSvg active={isReminderActive} />
-                        </TouchableOpacity>
+                        </Pressable>
                       </View>
                     </View>
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })}
             </View>
@@ -965,14 +994,20 @@ export default function JaapLandingScreen() {
                     </View>
                   </View>
                   <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
-                    <TouchableOpacity style={styles.mockupJoinNowBtn} activeOpacity={0.9}>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.mockupJoinNowBtn,
+                        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                      ]}
+                      android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                    >
                       <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
                         <Text style={styles.mockupJoinJaapText}>
                           {t('language') === 'hi' ? 'लाइव आरती में शामिल हों' : 'Join Live Aarti'}
                         </Text>
                         <Ionicons name="chevron-forward" size={15} color="#FFF" />
                       </LinearGradient>
-                    </TouchableOpacity>
+                    </Pressable>
                   </View>
                 </View>
               </ImageBackground>
@@ -990,9 +1025,15 @@ export default function JaapLandingScreen() {
                   placeholderTextColor="#999"
                 />
               </View>
-              <TouchableOpacity style={styles.filterIconBtn}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.filterIconBtn,
+                  pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                ]}
+                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 24 }}
+              >
                 <MaterialCommunityIcons name="text-search" size={28} color="#FF6600" />
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {/* Temple Category Pills (Restored) */}
@@ -1006,13 +1047,18 @@ export default function JaapLandingScreen() {
                     else if (cat === 'Sacred') displayCat = 'पवित्र';
                   }
                   return (
-                    <TouchableOpacity 
+                    <Pressable
                       key={cat} 
-                      style={[styles.templeCatPill, selectedCategory === cat && styles.templeCatPillActive]}
+                      style={({ pressed }) => [
+                        styles.templeCatPill,
+                        selectedCategory === cat && styles.templeCatPillActive,
+                        pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                      ]}
+                      android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                       onPress={() => setSelectedCategory(cat)}
                     >
                       <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
-                    </TouchableOpacity>
+                    </Pressable>
                   );
                 })}
               </ScrollView>
@@ -1025,10 +1071,13 @@ export default function JaapLandingScreen() {
                 <ActivityIndicator size="large" color="#FF6600" />
               ) : filteredTemples.length > 0 ? (
                 filteredTemples.map((item, idx) => (
-                  <TouchableOpacity 
+                  <Pressable
                     key={item.id} 
-                    style={styles.newTempleCard}
-                    activeOpacity={0.8}
+                    style={({ pressed }) => [
+                      styles.newTempleCard,
+                      pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                    ]}
+                    android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                     onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}
                   >
 
@@ -1057,7 +1106,7 @@ export default function JaapLandingScreen() {
                         <Text style={styles.newTempleCardLoc}>{getTranslatedTempleLocation(getTempleLocation(item), item.name)}</Text>
                       </View>
                     </View>
-                  </TouchableOpacity>
+                  </Pressable>
                 ))
               ) : (
                 <View style={styles.noTemplesFound}>

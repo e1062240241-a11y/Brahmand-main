@@ -1298,8 +1298,12 @@ export default function ProfileScreen() {
 
                       return (
                         <View key={item.id}>
-                          <TouchableOpacity
-                            style={styles.settingsRow}
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.settingsRow,
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                            ]}
+                            android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled && item.id !== 'location'}
                           >
@@ -1324,7 +1328,7 @@ export default function ProfileScreen() {
                                 />
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </Pressable>
                           {index < section.items.length - 1 && (
                             <View 
                               style={[
@@ -1351,11 +1355,13 @@ export default function ProfileScreen() {
 
                       return (
                         <View key={item.id}>
-                          <TouchableOpacity
-                            style={[
+                          <Pressable
+                            style={({ pressed }) => [
                               styles.settingsRow,
                               item.disabled && styles.settingsRowDisabled,
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                             ]}
+                            android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled}
                           >
@@ -1381,7 +1387,7 @@ export default function ProfileScreen() {
                                 />
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </Pressable>
                           {index < section.items.length - 1 && (
                             <View style={styles.settingsSeparator} />
                           )}
