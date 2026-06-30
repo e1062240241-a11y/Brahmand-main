@@ -32,7 +32,7 @@ const formatPhoneForDisplay = (rawPhone: string) => {
 
 export default function OTPScreen() {
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, mock } = useLocalSearchParams<{ phone: string; mock?: string }>();
   const { login } = useAuthStore();
 
   const handleBack = () => {
@@ -65,15 +65,39 @@ export default function OTPScreen() {
   }, [resendTimer]);
 
   const handleOtpChange = (value: string, index: number) => {
+    const cleanValue = value.replace(/[^0-9]/g, '');
+
+    if (Platform.OS === 'android' && cleanValue.length > 1) {
+      const digits = cleanValue.split('');
+      const newOtp = [...otp];
+      const startIdx = cleanValue.length === 6 ? 0 : index;
+      for (let i = 0; i < digits.length; i++) {
+        if (startIdx + i < 6) {
+          newOtp[startIdx + i] = digits[i];
+        }
+      }
+      setOtp(newOtp);
+      setError('');
+      
+      const lastFocusedIdx = Math.min(startIdx + digits.length - 1, 5);
+      inputRefs.current[lastFocusedIdx]?.focus();
+      
+      if (newOtp.every(digit => digit !== '')) {
+        verifyCode(newOtp.join(''));
+      }
+      return;
+    }
+
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = Platform.OS === 'android' ? cleanValue.slice(-1) : cleanValue;
     setOtp(newOtp);
     setError('');
 
-    if (value && index < 5) {
+    if (newOtp[index] && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
   };
+
 
   const handleKeyPress = (e: any, index: number) => {
     if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
@@ -86,14 +110,22 @@ export default function OTPScreen() {
     setError('');
 
     try {
-      // 1. Verify OTP via Firebase client SDK
-      console.log('[OTP] Verifying with Firebase...');
-      const idToken = await verifyFirebaseOTP(code);
+      let data;
+      if (Platform.OS === 'android' && mock === 'true') {
+        console.log('[OTP] Verifying mock OTP via backend on Android...');
+        const { verifyOTP } = require('../../src/services/api');
+        const response = await verifyOTP(phone, code);
+        data = response.data;
+      } else {
+        // 1. Verify OTP via Firebase client SDK
+        console.log('[OTP] Verifying with Firebase...');
+        const idToken = await verifyFirebaseOTP(code);
 
-      // 2. Exchange Firebase ID Token for backend session JWT
-      console.log('[OTP] Firebase verified, exchanging for backend token...');
-      const response = await verifyFirebaseToken(idToken);
-      const data = response.data;
+        // 2. Exchange Firebase ID Token for backend session JWT
+        console.log('[OTP] Firebase verified, exchanging for backend token...');
+        const response = await verifyFirebaseToken(idToken);
+        data = response.data;
+      }
 
       if (data.is_new_user) {
         // New user — go to profile setup
@@ -133,8 +165,13 @@ export default function OTPScreen() {
         return;
       }
 
-      // Resend via Firebase
-      await sendFirebaseOTP(phone as string);
+      if (Platform.OS === 'android' && mock === 'true') {
+        const { sendOTP } = require('../../src/services/api');
+        await sendOTP(phone);
+      } else {
+        // Resend via Firebase
+        await sendFirebaseOTP(phone as string);
+      }
 
       setResendTimer(30);
       setError('OTP resent. Enter the new code.');
@@ -183,14 +220,14 @@ export default function OTPScreen() {
                   }}
                   style={[styles.otpInput, digit && styles.otpInputFilled]}
                   value={digit}
-                  onChangeText={(value) => handleOtpChange(value.replace(/[^0-9]/g, ''), index)}
+                  onChangeText={(value) => handleOtpChange(value, index)}
                   onKeyPress={(e) => handleKeyPress(e, index)}
                   keyboardType="number-pad"
-                  maxLength={1}
+                  maxLength={Platform.OS === 'android' ? 6 : 1}
                   selectTextOnFocus
                   autoFocus={index === 0}
                   textContentType="oneTimeCode"
-                  autoComplete="one-time-code"
+                  autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
                 />
               ))}
             </View>

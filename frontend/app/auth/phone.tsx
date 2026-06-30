@@ -78,6 +78,16 @@ export default function PhoneScreen() {
         return;
       }
 
+      const isMockNumber = fullPhone.startsWith('+919999');
+
+      if (Platform.OS === 'android' && isMockNumber) {
+        console.log('[Phone Auth] Detected mock testing number on Android, using backend OTP service');
+        const { sendOTP } = require('../../src/services/api');
+        await sendOTP(fullPhone);
+        router.push({ pathname: '/auth/otp', params: { phone: fullPhone, mock: 'true' } });
+        return;
+      }
+
       // Use Firebase Phone Auth instead of backend API
       const { sendFirebaseOTP } = require('../../src/services/firebase/authService');
       await sendFirebaseOTP(fullPhone);

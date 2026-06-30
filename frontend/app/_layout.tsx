@@ -3,6 +3,7 @@ import { Slot, usePathname, useRouter, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../src/store/authStore';
@@ -546,6 +547,29 @@ export default function RootLayout() {
   useAppBackHandler();
   useNotificationResponseHandler();
   useMutedNotificationFilter();
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      NavigationBar.setPositionAsync('relative').catch((e) => {
+        console.warn('[NavigationBar] Failed to set relative position:', e);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
+      const bgColor = isDark ? '#000000' : '#FFF8F0';
+      const buttonStyle = isDark ? 'light' : 'dark';
+      
+      NavigationBar.setBackgroundColorAsync(bgColor).catch((e) => {
+        console.warn('[NavigationBar] Failed to set background color:', e);
+      });
+      NavigationBar.setButtonStyleAsync(buttonStyle).catch((e) => {
+        console.warn('[NavigationBar] Failed to set button style:', e);
+      });
+    }
+  }, [pathname, isDarkScreen]);
 
   useEffect(() => {
     const initAudio = async () => {

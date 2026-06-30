@@ -317,8 +317,30 @@ export default function KYCStatusScreen() {
   };
 
   const handleOtpChange = (value: string, index: number) => {
+    const cleanValue = value.replace(/[^0-9]/g, '');
+
+    if (Platform.OS === 'android' && cleanValue.length > 1) {
+      const digits = cleanValue.split('');
+      const newOtp = [...otp];
+      const startIdx = cleanValue.length === 4 ? 0 : index;
+      for (let i = 0; i < digits.length; i++) {
+        if (startIdx + i < 4) {
+          newOtp[startIdx + i] = digits[i];
+        }
+      }
+      setOtp(newOtp);
+      
+      const lastFocusedIdx = Math.min(startIdx + digits.length - 1, 3);
+      inputRefs.current[lastFocusedIdx]?.focus();
+      
+      if (newOtp.every((digit) => digit !== '')) {
+        verifyCode(newOtp.join(''));
+      }
+      return;
+    }
+
     const newOtp = [...otp];
-    newOtp[index] = value.replace(/[^0-9]/g, '');
+    newOtp[index] = Platform.OS === 'android' ? cleanValue.slice(-1) : cleanValue;
     setOtp(newOtp);
     
     if (newOtp[index] && index < 3) {
@@ -428,8 +450,10 @@ export default function KYCStatusScreen() {
                     onChangeText={(value) => handleOtpChange(value, index)}
                     onKeyPress={(e) => handleKeyPress(e, index)}
                     keyboardType="number-pad"
-                    maxLength={1}
+                    maxLength={Platform.OS === 'android' ? 4 : 1}
                     selectTextOnFocus
+                    textContentType="oneTimeCode"
+                    autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
                   />
                 ))}
               </View>

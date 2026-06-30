@@ -10,7 +10,7 @@ import {
   TextInput 
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -21,6 +21,8 @@ import { useAuthStore } from '../../src/store/authStore';
 export default function LocationSetupScreen() {
   const router = useRouter();
   const { updateUser } = useAuthStore();
+  const insets = useSafeAreaInsets();
+  const ScrollWrapper = Platform.OS === 'android' ? View : SafeAreaView;
 
   const [dob, setDob] = useState('');
   const [tob, setTob] = useState('');
@@ -119,9 +121,15 @@ export default function LocationSetupScreen() {
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
     >
-      <SafeAreaView style={styles.safeArea}>
+      <ScrollWrapper style={styles.safeArea}>
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            Platform.OS === 'android' && {
+              paddingTop: Math.max(insets.top, 16),
+              paddingBottom: Math.max(insets.bottom, 16),
+            }
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -156,24 +164,36 @@ export default function LocationSetupScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Inline Date Picker */}
+            {/* Date Picker */}
             {showDatePicker && (
-              <View style={styles.inlinePickerContainer}>
+              Platform.OS === 'ios' ? (
+                <View style={styles.inlinePickerContainer}>
+                  <DateTimePicker
+                    value={dobValue || new Date()}
+                    mode="date"
+                    display="inline"
+                    onChange={(event, selectedDate) => {
+                      if (selectedDate) {
+                        setDobValue(selectedDate);
+                        setDob(formatDate(selectedDate));
+                      }
+                    }}
+                  />
+                </View>
+              ) : (
                 <DateTimePicker
                   value={dobValue || new Date()}
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  display="default"
                   onChange={(event, selectedDate) => {
-                    if (Platform.OS === 'android') {
-                      setShowDatePicker(false);
-                    }
+                    setShowDatePicker(false);
                     if (selectedDate) {
                       setDobValue(selectedDate);
                       setDob(formatDate(selectedDate));
                     }
                   }}
                 />
-              </View>
+              )
             )}
 
             {/* Time of Birth Field */}
@@ -191,18 +211,56 @@ export default function LocationSetupScreen() {
               </Text>
             </TouchableOpacity>
 
-            {/* Inline Time Picker */}
+            {/* Time Picker */}
             {showTimePicker && (
-              <View style={styles.inlinePickerContainer}>
+              Platform.OS === 'ios' ? (
+                <View style={styles.inlinePickerContainer}>
+                  <DateTimePicker
+                    value={tobValue || new Date()}
+                    mode="time"
+                    display="spinner"
+                    is24Hour={true}
+                    onChange={(event, selectedTime) => {
+                      if (selectedTime) {
+                        const newTime = new Date(selectedTime);
+                        newTime.setSeconds(parseInt(seconds) || 0);
+                        setTobValue(newTime);
+                        setTob(formatTime(newTime));
+                      }
+                    }}
+                  />
+                  <View style={styles.secondsSelectorContainer}>
+                    <Text style={styles.secondsLabel}>Seconds:</Text>
+                    <TextInput
+                      style={styles.secondsInput}
+                      keyboardType="number-pad"
+                      maxLength={2}
+                      placeholder="00"
+                      placeholderTextColor="#C5B49F"
+                      value={seconds}
+                      onChangeText={(val) => {
+                        const cleanVal = val.replace(/[^0-9]/g, '');
+                        const secNum = Math.min(59, parseInt(cleanVal) || 0);
+                        const secStr = cleanVal ? secNum.toString().padStart(2, '0') : '';
+                        setSeconds(secStr);
+                        const activeSec = cleanVal ? secNum : 0;
+                        
+                        let baseTime = tobValue ? new Date(tobValue) : new Date();
+                        baseTime.setSeconds(activeSec);
+                        setTobValue(baseTime);
+                        setTob(formatTime(baseTime));
+                      }}
+                    />
+                  </View>
+                </View>
+              ) : (
                 <DateTimePicker
                   value={tobValue || new Date()}
                   mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  display="default"
                   is24Hour={true}
                   onChange={(event, selectedTime) => {
-                    if (Platform.OS === 'android') {
-                      setShowTimePicker(false);
-                    }
+                    setShowTimePicker(false);
                     if (selectedTime) {
                       const newTime = new Date(selectedTime);
                       newTime.setSeconds(parseInt(seconds) || 0);
@@ -211,31 +269,35 @@ export default function LocationSetupScreen() {
                     }
                   }}
                 />
-                <View style={styles.secondsSelectorContainer}>
-                  <Text style={styles.secondsLabel}>Seconds:</Text>
-                  <TextInput
-                    style={styles.secondsInput}
-                    keyboardType="number-pad"
-                    maxLength={2}
-                    placeholder="00"
-                    placeholderTextColor="#C5B49F"
-                    value={seconds}
-                    onChangeText={(val) => {
-                      const cleanVal = val.replace(/[^0-9]/g, '');
-                      const secNum = Math.min(59, parseInt(cleanVal) || 0);
-                      const secStr = cleanVal ? secNum.toString().padStart(2, '0') : '';
-                      setSeconds(secStr);
-                      const activeSec = cleanVal ? secNum : 0;
-                      
-                      let baseTime = tobValue ? new Date(tobValue) : new Date();
-                      baseTime.setSeconds(activeSec);
-                      setTobValue(baseTime);
-                      setTob(formatTime(baseTime));
-                    }}
-                  />
-                </View>
-              </View>
+              )
             )}
+
+            {/* Android Standalone Seconds Input */}
+            {Platform.OS === 'android' && tob ? (
+              <View style={styles.androidSecondsContainer}>
+                <Text style={styles.secondsLabel}>Seconds:</Text>
+                <TextInput
+                  style={styles.secondsInput}
+                  keyboardType="number-pad"
+                  maxLength={2}
+                  placeholder="00"
+                  placeholderTextColor="#C5B49F"
+                  value={seconds}
+                  onChangeText={(val) => {
+                    const cleanVal = val.replace(/[^0-9]/g, '');
+                    const secNum = Math.min(59, parseInt(cleanVal) || 0);
+                    const secStr = cleanVal ? secNum.toString().padStart(2, '0') : '';
+                    setSeconds(secStr);
+                    const activeSec = cleanVal ? secNum : 0;
+                    
+                    let baseTime = tobValue ? new Date(tobValue) : new Date();
+                    baseTime.setSeconds(activeSec);
+                    setTobValue(baseTime);
+                    setTob(formatTime(baseTime));
+                  }}
+                />
+              </View>
+            ) : null}
 
             {/* Place of Birth Field */}
             <View style={styles.labelRow}>
@@ -325,11 +387,11 @@ export default function LocationSetupScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </LinearGradient>
-  );
+            </View>
+          </ScrollView>
+        </ScrollWrapper>
+      </LinearGradient>
+    );
 }
 
 const styles = StyleSheet.create({
@@ -338,6 +400,19 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  androidSecondsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 50,
+    paddingHorizontal: 16,
+    alignSelf: 'stretch',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 10,
+    justifyContent: 'space-between',
   },
   scrollContent: {
     flexGrow: 1,
@@ -434,6 +509,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8B4F3B',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    ...Platform.select({
+      android: {
+        paddingVertical: 0,
+      }
+    })
   },
   errorText: {
     color: '#FF3B30',

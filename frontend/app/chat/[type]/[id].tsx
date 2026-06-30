@@ -1514,7 +1514,7 @@ const ChatScreen = ({
 
         {/* Input */}
         {isRestrictedGroup ? (
-          <View style={[styles.restrictedInputContainer, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+          <View style={[styles.restrictedInputContainer, { paddingBottom: Platform.OS === 'android' ? SPACING.md : Math.max(insets.bottom, SPACING.md) }]}>
             <View style={styles.restrictedInputInner}>
               <Ionicons name="alert-circle-outline" size={18} color={COLORS.textSecondary} />
               <Text style={styles.restrictedInputText}>You are not eligible to access this level group</Text>
@@ -1532,7 +1532,7 @@ const ChatScreen = ({
             <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
           </TouchableOpacity>
         ) : (
-          <View style={[styles.inputWrapperContainer, { paddingBottom: keyboardVisible ? 8 : Math.max(insets.bottom, 12) }]}>
+          <View style={[styles.inputWrapperContainer, { paddingBottom: keyboardVisible ? 8 : (Platform.OS === 'android' ? 16 : Math.max(insets.bottom, 12)) }]}>
             {selectedMedia && (
               <View style={styles.mediaPreviewContainer}>
                 <View style={styles.mediaPreviewHeader}>

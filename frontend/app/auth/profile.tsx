@@ -10,7 +10,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Image,
-  ScrollView
+  ScrollView,
+  Alert
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerUser } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS } from '../../src/constants/theme';
@@ -28,6 +30,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const { login } = useAuthStore();
+  const insets = useSafeAreaInsets();
   
   const [name, setName] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
@@ -90,10 +93,28 @@ export default function ProfileScreen() {
     }
   };
 
+  const isButtonDisabled = () => {
+    return !name.trim();
+  };
+
   const handleContinue = async () => {
-    if (!name.trim()) {
+    const trimmed = name.trim();
+    if (!trimmed) {
       setError('Please enter your name');
       return;
+    }
+
+    if (Platform.OS === 'android') {
+      const parts = trimmed.split(/\s+/).filter(Boolean);
+      if (parts.length < 2) {
+        Alert.alert(
+          "Full Name Required",
+          "Please enter your full name (first name and last name) to continue.",
+          [{ text: "OK" }]
+        );
+        setError('Please enter your full name (first name and last name)');
+        return;
+      }
     }
 
     setLoading(true);
@@ -102,7 +123,7 @@ export default function ProfileScreen() {
     try {
       const response = await registerUser({
         phone: phone || '',
-        name: name.trim(),
+        name: trimmed,
         photo,
         language,
       });
@@ -130,7 +151,13 @@ export default function ProfileScreen() {
         style={styles.keyboardView}
       >
         <ScrollView 
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            Platform.OS === 'android' && {
+              paddingTop: Math.max(insets.top, 30),
+              paddingBottom: Math.max(insets.bottom, 20) + 20,
+            }
+          ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -163,12 +190,24 @@ export default function ProfileScreen() {
                 placeholderTextColor="#C5B49F"
                 value={name}
                 onChangeText={(text) => {
-                  setName(text);
+                  let formattedText = text;
+                  if (Platform.OS === 'android') {
+                    formattedText = text
+                      .split(' ')
+                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                      .join(' ');
+                  }
+                  setName(formattedText);
                   setError('');
                 }}
                 autoCapitalize="words"
               />
             </View>
+            {Platform.OS === 'android' && name.trim() && name.trim().split(/\s+/).filter(Boolean).length < 2 ? (
+              <Text style={[styles.error, { color: '#8B4F3B', alignSelf: 'flex-start', marginTop: -8, marginBottom: 8 }]}>
+                Please enter your full name (first name and last name)
+              </Text>
+            ) : null}
 
             {/* Location */}
             <Text style={styles.label}>Location</Text>
@@ -235,18 +274,18 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={[
                 styles.continueButton,
-                !name.trim() && styles.continueButtonEmpty,
+                isButtonDisabled() && styles.continueButtonEmpty,
               ]}
               onPress={handleContinue}
-              disabled={!name.trim() || loading}
+              disabled={isButtonDisabled() || loading}
             >
               {loading ? (
                 <ActivityIndicator color="#FF7B00" />
               ) : (
                 <View style={styles.continueButtonContent}>
-                  <Text style={[styles.continueButtonText, !name.trim() && styles.continueButtonTextEmpty]}>Continue to My Journey </Text>
+                  <Text style={[styles.continueButtonText, isButtonDisabled() && styles.continueButtonTextEmpty]}>Continue to My Journey </Text>
                   <Svg width={22} height={22} viewBox="0 0 22 22" fill="none">
-                    <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill={!name.trim() ? '#FF7B00' : 'white'}/>
+                    <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill={isButtonDisabled() ? '#FF7B00' : 'white'}/>
                   </Svg>
                 </View>
               )}
@@ -359,9 +398,21 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'row',
     height: 56,
-    paddingTop: 16.5,
+    ...Platform.select({
+      ios: {
+        paddingTop: 16.5,
+        paddingBottom: 16.5,
+      },
+      android: {
+        paddingTop: 0,
+        paddingBottom: 0,
+      },
+      default: {
+        paddingTop: 16.5,
+        paddingBottom: 16.5,
+      }
+    }),
     paddingRight: 16,
-    paddingBottom: 16.5,
     paddingLeft: 48,
     justifyContent: 'center',
     alignItems: 'center',
@@ -383,6 +434,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8B4F3B',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    ...Platform.select({
+      android: {
+        paddingVertical: 0,
+      }
+    })
   },
   readOnlyText: {
     flex: 1,

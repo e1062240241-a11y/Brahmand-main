@@ -1277,18 +1277,16 @@ export default function ProfileScreen() {
             <View style={styles.settingsHeader}>
               <View style={styles.settingsHeaderBar} />
               <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
-              {Platform.OS !== 'android' && (
-                <TouchableOpacity 
-                  style={styles.settingsClose} 
-                  onPress={() => setShowSettingsModal(false)}
-                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                >
-                  <Ionicons name="close" size={24} color="#000000" />
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity 
+                style={styles.settingsClose} 
+                onPress={() => setShowSettingsModal(false)}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+              >
+                <Ionicons name="close" size={24} color="#000000" />
+              </TouchableOpacity>
             </View>
             {Platform.OS === 'android' ? (
-              <View>
+              <ScrollView showsVerticalScrollIndicator={false}>
                 {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
                   <View key={section.id} style={styles.settingsSection}>
                     <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
@@ -1340,7 +1338,8 @@ export default function ProfileScreen() {
                     })}
                   </View>
                 ))}
-              </View>
+                <View style={styles.bottomSpacer} />
+              </ScrollView>
             ) : (
               <ScrollView showsVerticalScrollIndicator={false}>
                 {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
@@ -2259,6 +2258,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
     height: Platform.OS === 'android' ? undefined : '65%',
+    maxHeight: Platform.OS === 'android' ? '85%' : undefined,
     paddingTop: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -12 },

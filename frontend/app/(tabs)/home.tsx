@@ -423,7 +423,7 @@ export default function HomeScreen() {
   const onHomeScrollTabBar = useScrollToHideTabBar();
   const navigation = useNavigation();
   const isFocused = useIsFocused();
-  const { user, updateUser } = useAuthStore();
+  const { user, updateUser, token, isAuthenticated } = useAuthStore();
 
   const { showCoachMarks, setShowCoachMarks, coachMarkStep, setCoachMarkStep, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [topFeaturesY, setTopFeaturesY] = useState(0);
@@ -1009,39 +1009,78 @@ export default function HomeScreen() {
   }, []);
 
   const initializeHome = useCallback(async () => {
+    if (Platform.OS === 'android') {
+      if (!token || !isAuthenticated) {
+        console.log('[Home] Skipping Android initialization: User is not authenticated');
+        setIsHomeInitialized(true);
+        return;
+      }
+    }
+
     try {
       fetchLocalCommunities();
       const res = await getHomeInit();
 
-      // 1. Unread count & Festival
-      if (res.data.unread_count !== undefined) setUnreadCount(res.data.unread_count);
-      if (res.data.next_festival) setNextFestival(res.data.next_festival);
+      if (Platform.OS === 'android') {
+        if (res && res.data) {
+          if (res.data.unread_count !== undefined) setUnreadCount(res.data.unread_count);
+          if (res.data.next_festival) setNextFestival(res.data.next_festival);
 
-      // 2. Community Requests & Communities
-      if (res.data.community_requests) {
-        const reqs = res.data.community_requests;
-        setCommunityRequests(reqs);
-        AsyncStorage.setItem('home_community_requests', JSON.stringify(reqs)).catch(e => console.log(e));
-      }
-      if (res.data.communities) {
-        const comms = res.data.communities;
-        setCommunities(comms);
-        AsyncStorage.setItem('home_communities', JSON.stringify(comms)).catch(e => console.log(e));
-      }
+          if (res.data.community_requests) {
+            const reqs = res.data.community_requests;
+            setCommunityRequests(reqs);
+            AsyncStorage.setItem('home_community_requests', JSON.stringify(reqs)).catch(e => console.log(e));
+          }
+          if (res.data.communities) {
+            const comms = res.data.communities;
+            setCommunities(comms);
+            AsyncStorage.setItem('home_communities', JSON.stringify(comms)).catch(e => console.log(e));
+          }
 
-      // 3. Feed Posts - only overwrite if we don't have posts yet, or if it's refreshing
-      if (res.data.feed?.items && res.data.feed.items.length > 0) {
-        const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
-        const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
-        const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
-        
-        if (!hasPosts || isRefreshing) {
-          setTabFeed(tabToLoad, {
-            posts: res.data.feed.items,
-            offset: res.data.feed.items.length,
-            hasMore: res.data.feed.has_more,
-            lastFetched: Date.now(),
-          });
+          if (res.data.feed?.items && res.data.feed.items.length > 0) {
+            const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
+            const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
+            const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
+            
+            if (!hasPosts || isRefreshing) {
+              setTabFeed(tabToLoad, {
+                posts: res.data.feed.items,
+                offset: res.data.feed.items.length,
+                hasMore: res.data.feed.has_more,
+                lastFetched: Date.now(),
+              });
+            }
+          }
+        }
+      } else {
+        // Original iOS logic untouched
+        if (res.data.unread_count !== undefined) setUnreadCount(res.data.unread_count);
+        if (res.data.next_festival) setNextFestival(res.data.next_festival);
+
+        if (res.data.community_requests) {
+          const reqs = res.data.community_requests;
+          setCommunityRequests(reqs);
+          AsyncStorage.setItem('home_community_requests', JSON.stringify(reqs)).catch(e => console.log(e));
+        }
+        if (res.data.communities) {
+          const comms = res.data.communities;
+          setCommunities(comms);
+          AsyncStorage.setItem('home_communities', JSON.stringify(comms)).catch(e => console.log(e));
+        }
+
+        if (res.data.feed?.items && res.data.feed.items.length > 0) {
+          const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
+          const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
+          const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
+          
+          if (!hasPosts || isRefreshing) {
+            setTabFeed(tabToLoad, {
+              posts: res.data.feed.items,
+              offset: res.data.feed.items.length,
+              hasMore: res.data.feed.has_more,
+              lastFetched: Date.now(),
+            });
+          }
         }
       }
     } catch (err) {
@@ -1049,7 +1088,7 @@ export default function HomeScreen() {
     } finally {
       setIsHomeInitialized(true);
     }
-  }, [setUnreadCount, setTabFeed, fetchLocalCommunities, isRefreshing]);
+  }, [setUnreadCount, setTabFeed, fetchLocalCommunities, isRefreshing, token, isAuthenticated]);
 
   const loadHomeCache = useCallback(async () => {
     try {
@@ -1101,11 +1140,25 @@ export default function HomeScreen() {
     initializeHome();
 
     const fetchUnreadCount = async () => {
-      try {
-        const res = await getUnreadNotificationCount();
-        if (isMounted) setUnreadCount(res.data.unread_count || 0);
-      } catch (err) {
-        console.log('Failed to fetch unread count:', err);
+      if (Platform.OS === 'android') {
+        if (!token || !isAuthenticated) {
+          return;
+        }
+        try {
+          const res = await getUnreadNotificationCount();
+          if (res && res.data && isMounted) {
+            setUnreadCount(res.data.unread_count || 0);
+          }
+        } catch (err) {
+          console.log('Failed to fetch unread count on Android:', err);
+        }
+      } else {
+        try {
+          const res = await getUnreadNotificationCount();
+          if (isMounted) setUnreadCount(res.data.unread_count || 0);
+        } catch (err) {
+          console.log('Failed to fetch unread count:', err);
+        }
       }
     };
 
@@ -1114,7 +1167,7 @@ export default function HomeScreen() {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [isFocused, initializeHome, setUnreadCount]);
+  }, [isFocused, initializeHome, setUnreadCount, token, isAuthenticated]);
 
   const handleNotificationPress = () => {
     try {

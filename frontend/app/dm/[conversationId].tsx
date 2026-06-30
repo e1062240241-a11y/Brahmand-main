@@ -323,6 +323,21 @@ const DirectMessageScreen = () => {
   const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [otherUserPresence, setOtherUserPresence] = useState<{
     online_status?: boolean;
@@ -1633,7 +1648,7 @@ const DirectMessageScreen = () => {
     );
   }, [user?.id, renderMessageContent, formatChatDate, formatTime, messages]);
 
-  const bottomPadding = Platform.OS === 'web' ? 8 : Math.max(insets.bottom, 8);
+  const bottomPadding = Platform.OS === 'web' ? 8 : (Platform.OS === 'android' ? 8 : Math.max(insets.bottom, 8));
 
   const renderContent = () => (
     <View style={styles.chatScreen}>
@@ -1691,7 +1706,7 @@ const DirectMessageScreen = () => {
       <View style={{ flex: 1 }}>
         <Modal visible={showOptions} transparent animationType="fade" onRequestClose={closeChatOptions}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
-            <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+            <View style={[styles.modalContent, { paddingBottom: Platform.OS === 'android' ? SPACING.md : Math.max(insets.bottom, SPACING.md) }]}>
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
                 <Ionicons name={isMuted ? "notifications-outline" : "notifications-off-outline"} size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
@@ -1783,7 +1798,7 @@ const DirectMessageScreen = () => {
           )}
         </View>
         
-        <View style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : Math.max(insets.bottom, 12) }]}>
           {selectedMedia && (
             <View style={styles.mediaPreviewContainer}>
               {selectedMedia.mediaType === 'image' ? (
@@ -1898,7 +1913,7 @@ const DirectMessageScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
         {renderContent()}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -2022,9 +2037,10 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 0, 0, 0.50)', 
     paddingLeft: 16,
     paddingRight: 17,
-    paddingTop: 10,
-    paddingBottom: 10,
-    height: 44
+    paddingTop: Platform.OS === 'android' ? 4 : 10,
+    paddingBottom: Platform.OS === 'android' ? 4 : 10,
+    minHeight: 44,
+    height: Platform.OS === 'android' ? undefined : 44
   },
   inlineIcon: { paddingHorizontal: 4, paddingVertical: 0, marginLeft: 4, justifyContent: 'center', alignItems: 'center' },
   sendButtonDisabled: { opacity: 0.5 },
@@ -2056,7 +2072,18 @@ const styles = StyleSheet.create({
   phoneContactName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   phoneContactNumber: { fontSize: 13, color: COLORS.textSecondary, marginTop: SPACING.xs },
   modalBackdrop: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  input: { flex: 1, backgroundColor: 'transparent', borderRadius: 0, paddingHorizontal: 0, paddingVertical: 0, fontSize: 15, fontFamily: 'Inter_400Regular', color: '#1A1A1A', maxHeight: 120 },
+  input: { 
+    flex: 1, 
+    backgroundColor: 'transparent', 
+    borderRadius: 0, 
+    paddingHorizontal: 0, 
+    paddingTop: Platform.OS === 'android' ? 8 : 0,
+    paddingBottom: Platform.OS === 'android' ? 8 : 0,
+    fontSize: 15, 
+    fontFamily: 'Inter_400Regular', 
+    color: '#1A1A1A', 
+    maxHeight: 120 
+  },
   fullScreenMediaOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   fullScreenMediaClose: { position: 'absolute', top: Platform.OS === 'ios' ? 40 : 24, right: 20, zIndex: 2, padding: 10, borderRadius: BORDER_RADIUS.full, backgroundColor: 'rgba(0,0,0,0.35)' },
   fullScreenMediaImage: { width: '100%', height: '100%' },

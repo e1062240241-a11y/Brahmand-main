@@ -918,6 +918,8 @@ export default function VendorDashboardScreen() {
                 onChangeText={setDeleteOtpValue}
                 keyboardType="number-pad"
                 maxLength={6}
+                textContentType="oneTimeCode"
+                autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
               />
               <TouchableOpacity
                 style={{ backgroundColor: COLORS.error, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 8 }}
@@ -1058,6 +1060,9 @@ export default function VendorDashboardScreen() {
                             placeholder="Enter OTP"
                             placeholderTextColor="#9A897E"
                             keyboardType="phone-pad"
+                            maxLength={6}
+                            textContentType="oneTimeCode"
+                            autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
                           />
                           <TouchableOpacity
                             style={[styles.modalVerifyBtn, phoneVerifying && styles.modalVerifyBtnDisabled]}
