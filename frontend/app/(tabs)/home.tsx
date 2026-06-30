@@ -2251,9 +2251,15 @@ export default function HomeScreen() {
     const tabY = SCREEN_HEIGHT - bottomPosition - 69;
     const tabCenterY = SCREEN_HEIGHT - bottomPosition - 69 / 2;
     const tabCenterX = (idx: number) => {
-      const leftOffset = (SCREEN_WIDTH - 373) / 2;
-      const centers = [63, 160, 215, 270, 325];
-      return leftOffset + centers[idx];
+      // Scale design-space (373dp) positions to the actual bar width
+      const OUTER_H_PADDING = 14;
+      const DESIGN_BAR_WIDTH = 373;
+      const barWidth = Math.max(SCREEN_WIDTH - OUTER_H_PADDING * 2, 200);
+      const scaleX = barWidth / DESIGN_BAR_WIDTH;
+      const leftOffset = OUTER_H_PADDING; // outerContainer starts after padding
+      // Design-space home-active icon centers
+      const designCenters = [63, 160, 215, 270, 325];
+      return leftOffset + designCenters[idx] * scaleX;
     };
 
     let targetX = 0;

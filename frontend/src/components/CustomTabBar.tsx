@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Platform, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
@@ -11,211 +11,142 @@ const ACTIVE_ORANGE = '#FF8A00';
 const INACTIVE_COLOR = '#FFFFFF';
 const CAPSULE_BG = '#1C1C1C';
 
+// Horizontal padding applied to the outer wrapper on each side
+const OUTER_H_PADDING = 14;
+
+// The original design was authored against a 373dp tab-bar width.
+// All hard-coded positions below are in that coordinate system and are scaled
+// at runtime to fit the actual device screen width.
+const DESIGN_BAR_WIDTH = 373;
+
 const HIDDEN_ROUTES = new Set(['index', 'legacy_index', 'temple', 'circles', 'jobs', 'discover']);
 
 const TAB_META: Record<string, { label: string; activeIcon: string; inactiveIcon: string }> = {
-  home: {
-    label: 'Home',
-    activeIcon: 'home',
-    inactiveIcon: 'home-outline',
-  },
-  messages: {
-    label: 'Community',
-    activeIcon: 'people',
-    inactiveIcon: 'people-outline',
-  },
-  vendor: {
-    label: 'Service',
-    activeIcon: 'accessibility',
-    inactiveIcon: 'accessibility-outline',
-  },
-  jaap: {
-    label: 'Temple',
-    activeIcon: 'temple',
-    inactiveIcon: 'temple',
-  },
-  profile: {
-    label: 'Profile',
-    activeIcon: 'person',
-    inactiveIcon: 'person-outline',
-  },
+  home:     { label: 'Home',      activeIcon: 'home',          inactiveIcon: 'home-outline'          },
+  messages: { label: 'Community', activeIcon: 'people',        inactiveIcon: 'people-outline'        },
+  vendor:   { label: 'Service',   activeIcon: 'accessibility', inactiveIcon: 'accessibility-outline' },
+  jaap:     { label: 'Temple',    activeIcon: 'temple',        inactiveIcon: 'temple'                },
+  profile:  { label: 'Profile',   activeIcon: 'person',        inactiveIcon: 'person-outline'        },
 };
 
-const getIconPositions = (activeIndex: number): number[] => {
-  if (activeIndex === 0) {
-    return [63, 160, 215, 270, 325];
-  }
-  if (activeIndex === 1) {
-    return [31, 131, 224, 276, 328];
-  }
-  if (activeIndex === 2) {
-    // Left capsule (0-136.5) centers: 38, 94. Active: 186.5. Right capsule (236.5-373) centers: 279, 335.
-    return [38, 94, 186.5, 279, 335];
-  }
-  if (activeIndex === 3) {
-    // Left capsule (0-167) centers: 32, 84, 136. Active: 219. Right capsule (271-373) center: 325.
-    return [32, 84, 136, 219, 325];
-  }
-  if (activeIndex === 4) {
-    return [48, 103, 158, 213, 310];
-  }
-  return [38, 113.768, 186.5, 259.232, 335];
+// Icon centre-X positions in the 373dp design coordinate system.
+const DESIGN_ICON_POSITIONS: Record<number, number[]> = {
+  0: [63,  160,   215,   270,   325],
+  1: [31,  131,   224,   276,   328],
+  2: [38,   94, 186.5,   279,   335],
+  3: [32,   84,   136,   219,   325],
+  4: [48,  103,   158,   213,   310],
 };
+const DEFAULT_ICON_POSITIONS = [38, 113.768, 186.5, 259.232, 335];
 
-const getBackgroundRects = (activeIndex: number) => {
+const getDesignIconPositions = (activeIndex: number) =>
+  DESIGN_ICON_POSITIONS[activeIndex] ?? DEFAULT_ICON_POSITIONS;
+
+// Active-tab capsule widths (design space)
+const ACTIVE_TAB_WIDTHS: Record<number, number> = { 0: 126, 1: 126, 2: 100, 3: 104, 4: 126 };
+const getActiveTabWidth = (index: number) => ACTIVE_TAB_WIDTHS[index] ?? 100;
+
+// Inactive slot widths (design space)
+const getInactiveTabWidth = (index: number) => (index === 0 || index === 4 ? 68 : 60);
+
+// ─── Background capsule geometry (design space, 373-unit) ──────────────────────
+interface CapsuleGeometry {
+  leftRect: { x: number; w: number } | null;
+  rightRect: { x: number; w: number } | null;
+  activeRect: { x: number; w: number };
+}
+
+function getCapsuleGeometry(activeIndex: number): CapsuleGeometry {
   const safeIndex = activeIndex >= 0 && activeIndex < 5 ? activeIndex : 0;
   const GAP = 6;
-  
-  const getTabWidthForBg = (index: number) => {
-    if (index === 0 || index === 4) return 126;
-    if (index === 1) return 126;
-    if (index === 2) return 100;
-    if (index === 3) return 104;
-    return 100;
-  };
-
-  const tabWidth = getTabWidthForBg(safeIndex);
-  const centerX = getIconPositions(safeIndex)[safeIndex];
+  const tabWidth = getActiveTabWidth(safeIndex);
+  const centerX = getDesignIconPositions(safeIndex)[safeIndex];
   const L_active = centerX - tabWidth / 2;
   const R_active = centerX + tabWidth / 2;
 
-  const rects = [];
-
-  // Left Inactive Group
-  if (L_active > 20) {
-    const x = 0.75;
-    const w = L_active - GAP - x;
-    rects.push(
-      <Rect key="left" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} />
-    );
-  }
-
-  // Right Inactive Group
-  if (R_active < 353) {
-    const x = R_active + GAP;
-    const w = 373 - 0.75 - x;
-    rects.push(
-      <Rect key="right" x={x} y={0.75} width={w} height={67.5} rx={33.75} fill={CAPSULE_BG} />
-    );
-  }
-
-  // Active Tab Capsule
-  const activeX = Math.max(0.75, L_active);
-  const activeW = Math.min(373 - 0.75, R_active) - activeX;
-  rects.push(
-    <Rect key="active" x={activeX} y={0.75} width={activeW} height={67.5} rx={33.75} fill={CAPSULE_BG} />
-  );
-
-  return rects;
-};
-
-const getBackgroundViews = (activeIndex: number) => {
-  const safeIndex = activeIndex >= 0 && activeIndex < 5 ? activeIndex : 0;
-  const GAP = 6;
-  
-  const getTabWidthForBg = (index: number) => {
-    if (index === 0 || index === 4) return 126;
-    if (index === 1) return 126;
-    if (index === 2) return 100;
-    if (index === 3) return 104;
-    return 100;
+  return {
+    leftRect:  L_active > 20  ? { x: 0.75,        w: L_active - GAP - 0.75                    } : null,
+    rightRect: R_active < 353 ? { x: R_active + GAP, w: DESIGN_BAR_WIDTH - 0.75 - (R_active + GAP) } : null,
+    activeRect: {
+      x: Math.max(0.75, L_active),
+      w: Math.min(DESIGN_BAR_WIDTH - 0.75, R_active) - Math.max(0.75, L_active),
+    },
   };
+}
 
-  const tabWidth = getTabWidthForBg(safeIndex);
-  const centerX = getIconPositions(safeIndex)[safeIndex];
-  const L_active = centerX - tabWidth / 2;
-  const R_active = centerX + tabWidth / 2;
-
-  const views = [];
-
-  // Left Inactive Group
-  if (L_active > 20) {
-    const x = 0.75;
-    const w = L_active - GAP - x;
-    views.push(
-      <View
-        key="left-view"
-        style={{
-          position: 'absolute',
-          left: x,
-          top: 0.75,
-          width: w,
-          height: 67.5,
-          borderRadius: 33.75,
-          backgroundColor: CAPSULE_BG,
-        }}
-      />
-    );
-  }
-
-  // Right Inactive Group
-  if (R_active < 353) {
-    const x = R_active + GAP;
-    const w = 373 - 0.75 - x;
-    views.push(
-      <View
-        key="right-view"
-        style={{
-          position: 'absolute',
-          left: x,
-          top: 0.75,
-          width: w,
-          height: 67.5,
-          borderRadius: 33.75,
-          backgroundColor: CAPSULE_BG,
-        }}
-      />
-    );
-  }
-
-  // Active Tab Capsule
-  const activeX = Math.max(0.75, L_active);
-  const activeW = Math.min(373 - 0.75, R_active) - activeX;
-  views.push(
-    <View
-      key="active-view"
-      style={{
-        position: 'absolute',
-        left: activeX,
-        top: 0.75,
-        width: activeW,
-        height: 67.5,
-        borderRadius: 33.75,
-        backgroundColor: CAPSULE_BG,
-      }}
-    />
+// Renders background as plain Views (Android – avoids SVG rendering glitches on some devices)
+function BackgroundViews({ geom, scaleX }: { geom: CapsuleGeometry; scaleX: number }) {
+  const capsuleH = 67.5;
+  const radius = 33.75;
+  const rects = [geom.leftRect, geom.rightRect, geom.activeRect].filter(Boolean) as { x: number; w: number }[];
+  const keys = ['left', 'right', 'active'];
+  return (
+    <>
+      {rects.map((r, i) => (
+        <View
+          key={keys[i]}
+          style={{
+            position: 'absolute',
+            left: r.x * scaleX,
+            top: 0.75,
+            width: r.w * scaleX,
+            height: capsuleH,
+            borderRadius: radius,
+            backgroundColor: CAPSULE_BG,
+          }}
+        />
+      ))}
+    </>
   );
+}
 
-  return views;
-};
+// Renders background as SVG (iOS – crisper on iOS Retina screens)
+function BackgroundSvg({ geom, barWidth }: { geom: CapsuleGeometry; barWidth: number }) {
+  const scaleX = barWidth / DESIGN_BAR_WIDTH;
+  const capsuleH = 67.5;
+  const radius = 33.75;
+  const rects = [geom.leftRect, geom.rightRect, geom.activeRect].filter(Boolean) as { x: number; w: number }[];
+  const keys = ['left', 'right', 'active'];
+  return (
+    <Svg width={barWidth} height={69} viewBox={`0 0 ${barWidth} 69`} style={{ position: 'absolute', top: 0, left: 0 }}>
+      {rects.map((r, i) => (
+        <Rect
+          key={keys[i]}
+          x={r.x * scaleX}
+          y={0.75}
+          width={r.w * scaleX}
+          height={capsuleH}
+          rx={radius}
+          fill={CAPSULE_BG}
+        />
+      ))}
+    </Svg>
+  );
+}
 
 export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { tabBarTranslateY } = useTabBar();
 
+  // ── Responsive geometry ────────────────────────────────────────────────────
+  const screenWidth = Dimensions.get('window').width;
+  // Real pixel width the tab bar may occupy (subtract outer padding on both sides)
+  const barWidth = Math.max(screenWidth - OUTER_H_PADDING * 2, 200);
+  // Scale factor to map design-space (373) coordinates to real device pixels
+  const scaleX = barWidth / DESIGN_BAR_WIDTH;
+  // ──────────────────────────────────────────────────────────────────────────
+
   const animatedStyle = useAnimatedStyle(() => {
-    const scale = interpolate(
-      tabBarTranslateY.value,
-      [0, 150],
-      [1, 0.85],
-      'clamp'
-    );
-    
-    // When shrinking, we move it down a bit so it looks like it sticks to the bottom
+    const scale = interpolate(tabBarTranslateY.value, [0, 150], [1, 0.85], 'clamp');
     const translateY = interpolate(
       tabBarTranslateY.value,
       [0, 150],
       [0, Platform.OS === 'android' ? 15 : 20],
       'clamp'
     );
-
-    return {
-      transform: [{ translateY }, { scale }],
-    };
+    return { transform: [{ translateY }, { scale }] };
   });
 
-  // Move the tab-bar above the system navigation bar on Android,
-  // and above the home indicator on iOS.
   const bottomPosition = Platform.OS === 'android'
     ? insets.bottom + 5
     : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
@@ -241,12 +172,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   }
 
   const onTabPress = (route: any, isFocused: boolean) => {
-    const event = navigation.emit({
-      type: 'tabPress',
-      target: route.key,
-      canPreventDefault: true,
-    });
-
+    const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
     if (!isFocused && !event.defaultPrevented) {
       navigation.navigate(route.name);
     }
@@ -258,33 +184,32 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
     switch (routeName) {
       case 'home':
-        activeSrc = require('../../assets/images/tab-bar/hoe.png');
+        activeSrc   = require('../../assets/images/tab-bar/hoe.png');
         inactiveSrc = require('../../assets/images/tab-bar/home_outline.png');
         break;
-      case 'messages': // Community
-        activeSrc = require('../../assets/images/tab-bar/comunity2.png');
+      case 'messages':
+        activeSrc   = require('../../assets/images/tab-bar/comunity2.png');
         inactiveSrc = require('../../assets/images/tab-bar/community.png');
         break;
-      case 'vendor': // Service
-        activeSrc = require('../../assets/images/tab-bar/ser.png');
+      case 'vendor':
+        activeSrc   = require('../../assets/images/tab-bar/ser.png');
         inactiveSrc = require('../../assets/images/tab-bar/service.png');
         break;
-      case 'jaap': // Temple
-        activeSrc = require('../../assets/images/tab-bar/temp.png');
+      case 'jaap':
+        activeSrc   = require('../../assets/images/tab-bar/temp.png');
         inactiveSrc = require('../../assets/images/tab-bar/temple.png');
         break;
       case 'profile':
-        activeSrc = require('../../assets/images/tab-bar/profile2.png');
+        activeSrc   = require('../../assets/images/tab-bar/profile2.png');
         inactiveSrc = require('../../assets/images/tab-bar/profile.png');
         break;
       default:
-        // Fallback if needed
         return (
           <Ionicons
             name={TAB_META[routeName]?.[focused ? 'activeIcon' : 'inactiveIcon'] as any}
             size={22}
             color={focused ? ACTIVE_ORANGE : INACTIVE_COLOR}
-            style={focused ? styles.activeIconGlow : null}
+            style={focused ? styles.activeIconGlow : undefined}
           />
         );
     }
@@ -292,52 +217,39 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     return (
       <Image
         source={focused ? activeSrc : inactiveSrc}
-        style={[
-          { width: 22, height: 22 },
-          { tintColor: focused ? ACTIVE_ORANGE : INACTIVE_COLOR }
-        ]}
+        style={{ width: 22, height: 22, tintColor: focused ? ACTIVE_ORANGE : INACTIVE_COLOR }}
         resizeMode="contain"
       />
     );
   };
 
   const safeActiveIndex = activeIndex >= 0 && activeIndex < 5 ? activeIndex : 0;
-  const iconPositions = getIconPositions(safeActiveIndex);
+  const geom = getCapsuleGeometry(safeActiveIndex);
 
-  // Dynamic slot width based on active and inactive state
-  const getTabWidth = (index: number, isFocused: boolean) => {
-    if (isFocused) {
-      if (index === 0 || index === 4) return 126;
-      if (index === 1) return 126;
-      if (index === 2) return 100;
-      if (index === 3) return 104;
-      return 100;
-    } else {
-      // Inactive Home & Profile are exactly 68px circles (matching height)
-      if (index === 0 || index === 4) return 68;
-      return 60;
-    }
-  };
+  // Design-space icon positions for this active index
+  const designPositions = getDesignIconPositions(safeActiveIndex);
 
   return (
     <Animated.View style={[styles.outerContainer, { bottom: bottomPosition }, animatedStyle]}>
-      <View style={styles.tabBarContainer}>
-        {/* Dynamic Separate Background */}
+      <View style={{ width: barWidth, height: 69, position: 'relative' }}>
+
+        {/* Background capsules */}
         {Platform.OS === 'android' ? (
-          <View style={styles.svgBackground}>
-            {getBackgroundViews(safeActiveIndex)}
-          </View>
+          <BackgroundViews geom={geom} scaleX={scaleX} />
         ) : (
-          <Svg width={373} height={69} viewBox="0 0 373 69" style={styles.svgBackground}>
-            {getBackgroundRects(safeActiveIndex)}
-          </Svg>
+          <BackgroundSvg geom={geom} barWidth={barWidth} />
         )}
 
-        {/* Dynamic Slotted Tab Items */}
+        {/* Tab slots – positions mapped from design space to real pixels */}
         {visibleRoutes.map((route: any, index: number) => {
           const isFocused = activeRoute.key === route.key;
-          const centerX = iconPositions[index];
-          const tabWidth = getTabWidth(index, isFocused);
+          // Convert design-space centre to real pixel centre
+          const realCenterX = designPositions[index] * scaleX;
+          // Convert design-space width to real pixel width
+          const designW = isFocused
+            ? getActiveTabWidth(index)
+            : getInactiveTabWidth(index);
+          const realW = designW * scaleX;
 
           return (
             <Pressable
@@ -348,21 +260,14 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
               testID={descriptors[route.key]?.options?.tabBarTestID}
               onPress={() => onTabPress(route, isFocused)}
               style={[
-                styles.slotContainer, 
-                { 
-                  left: centerX - tabWidth / 2,
-                  width: tabWidth,
-                }
+                styles.slotContainer,
+                { left: realCenterX - realW / 2, width: realW },
               ]}
             >
               {isFocused ? (
                 <View style={styles.activeSlotContent}>
                   {renderTabIcon(route.name, true)}
-                  <Text 
-                    style={styles.activeLabel}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
+                  <Text style={styles.activeLabel} numberOfLines={1} adjustsFontSizeToFit>
                     {TAB_META[route.name]?.label ?? ''}
                   </Text>
                 </View>
@@ -384,18 +289,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     alignItems: 'center',
-    paddingHorizontal: 14,
-  },
-  tabBarContainer: {
-    width: 373,
-    height: 69,
-    position: 'relative',
-  },
-  svgBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 1,
+    paddingHorizontal: OUTER_H_PADDING,
   },
   slotContainer: {
     position: 'absolute',
@@ -427,9 +321,5 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255, 138, 0, 0.7)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
-  },
-  jaapIcon: {
-    width: 22,
-    height: 22,
   },
 });

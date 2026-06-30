@@ -550,8 +550,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      NavigationBar.setPositionAsync('relative').catch((e) => {
-        console.warn('[NavigationBar] Failed to set relative position:', e);
+      // Use 'absolute' (edge-to-edge) so the app draws behind the translucent
+      // nav bar. SafeAreaContext still reports correct insets for tab-bar
+      // positioning on both gesture-nav and 3-button-nav physical devices.
+      NavigationBar.setPositionAsync('absolute').catch((e) => {
+        console.warn('[NavigationBar] Failed to set absolute position:', e);
       });
     }
   }, []);
@@ -559,10 +562,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'android') {
       const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
-      const bgColor = isDark ? '#000000' : '#FFF8F0';
       const buttonStyle = isDark ? 'light' : 'dark';
-      
-      NavigationBar.setBackgroundColorAsync(bgColor).catch((e) => {
+
+      // In edge-to-edge mode the nav bar is always transparent; only the
+      // button/icon style needs to adapt so the icons are visible.
+      NavigationBar.setBackgroundColorAsync('transparent').catch((e) => {
         console.warn('[NavigationBar] Failed to set background color:', e);
       });
       NavigationBar.setButtonStyleAsync(buttonStyle).catch((e) => {
@@ -570,6 +574,7 @@ export default function RootLayout() {
       });
     }
   }, [pathname, isDarkScreen]);
+
 
   useEffect(() => {
     const initAudio = async () => {
