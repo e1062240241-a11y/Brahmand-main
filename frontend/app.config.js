@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { withInfoPlist } = require('@expo/config-plugins');
 
 // Dynamically generate google-services.json and GoogleService-Info.plist at build time
 const firebaseApiKeyAndroid = process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID || 'AIzaSyBqj-JGtJNoRBE-5Brl0p_NALobh_PWPxE';
@@ -107,9 +108,9 @@ module.exports = ({ config }) => {
   // EAS Build sets EAS_BUILD_PLATFORM (either 'android' or 'ios')
   // For local prebuilds, we check process.argv
   const isAndroid = process.env.EAS_BUILD_PLATFORM === 'android' || 
-                    process.argv.some(arg => arg.includes('android') || arg.includes('run:android'));
-  const isIos = process.env.EAS_BUILD_PLATFORM === 'ios' || 
-                process.argv.some(arg => arg.includes('ios') || arg.includes('run:ios'));
+                    process.argv.some(arg => arg.includes('android') || arg.includes('run:android')) ||
+                    (!process.env.EAS_BUILD_PLATFORM && !process.argv.some(arg => arg.includes('ios') || arg.includes('run:ios')));
+  const isIos = !isAndroid;
 
   console.log(`[app.config.js] Detecting build platform: isAndroid=${isAndroid}, isIos=${isIos}`);
 
@@ -149,9 +150,36 @@ module.exports = ({ config }) => {
         }
         return [plugin[0], options];
       }
+
+      // Handle background playback for expo-video
+      if (Array.isArray(plugin) && plugin[0] === 'expo-video') {
+        const options = plugin[1] || {};
+        options.supportsBackgroundPlayback = !isIos;
+        return [plugin[0], options];
+      }
+
+      // Handle background playback for expo-audio
+      if (Array.isArray(plugin) && plugin[0] === 'expo-audio') {
+        const options = plugin[1] || {};
+        options.enableBackgroundPlayback = !isIos;
+        return [plugin[0], options];
+      }
+
       return plugin;
     });
   }
 
-  return config;
+  // Extra guard: explicitly strip "audio" from UIBackgroundModes in Info.plist during the iOS mod build phase
+  const withRemoveAudioBackgroundMode = (config) => {
+    return withInfoPlist(config, (config) => {
+      if (config.modResults.UIBackgroundModes) {
+        config.modResults.UIBackgroundModes = config.modResults.UIBackgroundModes.filter(
+          (mode) => mode !== 'audio'
+        );
+      }
+      return config;
+    });
+  };
+
+  return withRemoveAudioBackgroundMode(config);
 };

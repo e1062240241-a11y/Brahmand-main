@@ -24,7 +24,8 @@ import { usePassportStore } from '../../../src/store/passportStore';
 import { PassportAnswer, PassportMediaItem, PassportJourneyVisibility } from '../../../src/types/passport';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const isSmallAndroid = Platform.OS === 'android' && height < 820;
 
 const inspirations = ['Faith', 'Gratitude', 'Seeking blessings', 'Family tradition', 'Personal reflection', 'Other'];
 const travelWithOptions = [
@@ -2139,7 +2140,7 @@ const styles = StyleSheet.create({
     maxWidth: 350,
     alignSelf: 'center',
     paddingHorizontal: 21,
-    paddingTop: 20,
+    paddingTop: isSmallAndroid ? 10 : 20,
     paddingBottom: 0,
   },
   taglineBgWrapper: {
@@ -2147,11 +2148,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF8F1',
     paddingLeft: 28.11,
     paddingRight: 28.12,
-    paddingTop: 13,
-    paddingBottom: 13,
+    paddingTop: isSmallAndroid ? 8 : 13,
+    paddingBottom: isSmallAndroid ? 8 : 13,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: isSmallAndroid ? 10 : 16,
   },
   introBottomActionsContainer: {
     alignSelf: 'stretch',
@@ -2162,41 +2163,41 @@ const styles = StyleSheet.create({
   },
   introHero: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: isSmallAndroid ? 8 : 12,
     width: '100%',
   },
   introTitle: {
     color: '#1E1B17',
     fontFamily: 'SF Pro',
-    fontSize: 24,
+    fontSize: isSmallAndroid ? 20 : 24,
     fontStyle: 'normal',
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: isSmallAndroid ? 28 : 32,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: isSmallAndroid ? 8 : 12,
   },
   introSubtitle: {
     color: '#564337',
     fontFamily: 'SF Pro',
-    fontSize: 16,
+    fontSize: isSmallAndroid ? 14 : 16,
     fontStyle: 'normal',
     fontWeight: '400',
-    lineHeight: 24,
+    lineHeight: isSmallAndroid ? 20 : 24,
     textAlign: 'center',
   },
   bentoContainer: {
     width: '100%',
-    marginBottom: 20,
-    gap: 8,
+    marginBottom: isSmallAndroid ? 12 : 20,
+    gap: isSmallAndroid ? 6 : 8,
   },
   bentoRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: isSmallAndroid ? 6 : 8,
     width: '100%',
   },
   bentoCard: {
     flex: 1,
-    height: 58,
+    height: isSmallAndroid ? 48 : 58,
     backgroundColor: 'rgba(255, 255, 255, 0.70)',
     borderRadius: 8,
     borderWidth: 1,
@@ -2216,29 +2217,29 @@ const styles = StyleSheet.create({
   },
   bentoCardText: {
     fontFamily: 'SF Pro',
-    fontSize: 14,
+    fontSize: isSmallAndroid ? 12 : 14,
     fontWeight: '400',
-    lineHeight: 20,
+    lineHeight: isSmallAndroid ? 16 : 20,
     textAlign: 'center',
   },
   shareableCard: {
     width: '100%',
-    height: 79,
+    height: isSmallAndroid ? 68 : 79,
     backgroundColor: 'rgba(255, 255, 255, 0.70)',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: 'rgba(255, 140, 50, 0.30)',
     borderStyle: 'dashed',
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: isSmallAndroid ? 10 : 16,
   },
   shareableBlur: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: isSmallAndroid ? 8 : 12,
     paddingHorizontal: 20,
-    gap: 20,
+    gap: isSmallAndroid ? 12 : 20,
   },
   shareableIconWrap: {
     width: 40,
@@ -2255,45 +2256,44 @@ const styles = StyleSheet.create({
   shareableTitle: {
     color: '#964900',
     fontFamily: 'SF Pro',
-    fontSize: 18,
+    fontSize: isSmallAndroid ? 15 : 18,
     fontStyle: 'normal',
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: isSmallAndroid ? 20 : 24,
   },
   shareableSubtitle: {
     color: '#564337',
     fontFamily: 'SF Pro',
-    fontSize: 14,
+    fontSize: isSmallAndroid ? 12 : 14,
     fontStyle: 'normal',
     fontWeight: '400',
-    lineHeight: 20,
+    lineHeight: isSmallAndroid ? 16 : 20,
   },
-
   taglineText: {
     color: '#964900',
     fontFamily: 'SF Pro',
-    fontSize: 16,
+    fontSize: isSmallAndroid ? 14 : 16,
     fontWeight: '400',
     fontStyle: 'italic',
-    lineHeight: 24,
+    lineHeight: isSmallAndroid ? 20 : 24,
     textAlign: 'center',
   },
   noteText: {
     color: 'rgba(86, 67, 55, 0.8)',
     fontFamily: 'SF Pro',
-    fontSize: 14,
+    fontSize: isSmallAndroid ? 12 : 14,
     fontWeight: '400',
-    lineHeight: 20,
+    lineHeight: isSmallAndroid ? 18 : 20,
     textAlign: 'center',
   },
   actionWrapper: {
     width: '100%',
-    gap: 16,
-    marginTop: 16,
+    gap: isSmallAndroid ? 10 : 16,
+    marginTop: isSmallAndroid ? 10 : 16,
   },
   continueToCardBtn: {
     width: 350,
-    height: 64,
+    height: isSmallAndroid ? 52 : 64,
     backgroundColor: '#FF8C32',
     borderRadius: 9999,
     alignSelf: 'center',
@@ -2308,13 +2308,13 @@ const styles = StyleSheet.create({
   continueToCardText: {
     color: '#FFF',
     fontFamily: 'SF Pro',
-    fontSize: 18,
+    fontSize: isSmallAndroid ? 16 : 18,
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: isSmallAndroid ? 22 : 24,
   },
   maybeLaterBtn: {
     width: 350,
-    height: 64,
+    height: isSmallAndroid ? 52 : 64,
     borderColor: '#FF7B00',
     borderWidth: 1,
     borderRadius: 9999,
@@ -2326,9 +2326,9 @@ const styles = StyleSheet.create({
   maybeLaterText: {
     color: '#964900',
     fontFamily: 'SF Pro',
-    fontSize: 18,
+    fontSize: isSmallAndroid ? 16 : 18,
     fontWeight: '400',
-    lineHeight: 24,
+    lineHeight: isSmallAndroid ? 22 : 24,
   },
 });
 

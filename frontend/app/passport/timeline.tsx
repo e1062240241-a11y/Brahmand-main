@@ -694,19 +694,21 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   certificatesCardTitle: {
-    alignSelf: 'stretch',
     color: '#410000',
     fontSize: 18,
     fontStyle: 'normal',
     fontWeight: '700',
     lineHeight: 28,
+    flexShrink: 1,
   },
   certificatesCardDesc: {
     color: '#564337',
-    fontSize: 14,
+    fontSize: Platform.OS === 'android' ? 13 : 14,
     fontStyle: 'normal',
     fontWeight: '400',
     lineHeight: 20,
+    flexShrink: 1,
+    flexWrap: 'wrap',
     width: Platform.OS === 'android' ? undefined : 188,
   },
   viewGalleryButton: {
@@ -1104,10 +1106,12 @@ const styles = StyleSheet.create({
 
   certificatesTextContainer: {
     flex: 1,
-    paddingRight: Platform.OS === 'android' ? 8 : 80,
+    flexShrink: 1,
+    paddingRight: Platform.OS === 'android' ? 8 : 12,
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 8,
+    gap: Platform.OS === 'android' ? 6 : 8,
+    minWidth: 0,
   },
 });
 

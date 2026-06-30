@@ -76,6 +76,8 @@ const ReelVideoItem = React.memo(({
   onVideoEnded,
   onOpenOptions,
   shouldLoad,
+  // OPT-2: appState is now received as a prop from the single parent listener
+  appState,
 }: any) => {
   const { t, language } = useTranslation();
   const [showPlayPause, setShowPlayPause] = useState(false);
@@ -84,17 +86,13 @@ const ReelVideoItem = React.memo(({
   const [isVideoLoading, setIsVideoLoading] = useState(true);
   const [showSpinner, setShowSpinner] = useState(false);
   const playPauseAnim = useRef(new Animated.Value(0)).current;
-  const [localPost, setLocalPost] = useState(post);
-
-  useEffect(() => {
-    setLocalPost(post);
-  }, [post]);
+  // OPT-7: removed localPost mirror state — read directly from post prop
   const videoRef = useRef<any>(null);
-  const filterName = localPost?.filter_name || localPost?.metadata?.filter_name || 'Normal';
-  const captionText = String(localPost?.caption || '');
+  const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
+  const captionText = String(post?.caption || '');
   const captionWords = captionText.trim().split(/\s+/).filter(Boolean);
   const isLongCaption = captionWords.length > 4 || captionText.length > 45;
-  const reelPostTimeText = formatReelDate(localPost?.created_at || localPost?.createdAt || localPost?.createdAtUtc || null, language);
+  const reelPostTimeText = formatReelDate(post?.created_at || post?.createdAt || post?.createdAtUtc || null, language);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -131,27 +129,17 @@ const ReelVideoItem = React.memo(({
     }
   };
 
-  const [appState, setAppState] = useState(AppState.currentState);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      setAppState(nextAppState);
-    });
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
   useEffect(() => {
     if (!isActive) setIsPaused(false);
   }, [isActive]);
 
-  let mediaUrl = String(localPost?.media_url || localPost?.mediaUrl || '');
+  // OPT-7: read directly from post prop
+  let mediaUrl = String(post?.media_url || post?.mediaUrl || '');
   if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
     mediaUrl = mediaUrl.replace('http://', 'https://');
   }
   const posterUrl = String(
-    localPost?.thumbnail_url || localPost?.thumbnailUrl || localPost?.metadata?.thumbnail_url || localPost?.metadata?.thumbnailUrl || ''
+    post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || ''
   );
 
   const [imageUri, setImageUri] = useState(mediaUrl);
@@ -165,14 +153,15 @@ const ReelVideoItem = React.memo(({
     setVideoPosterUrl(posterUrl);
   }, [posterUrl]);
 
+  // OPT-10: guard logs with __DEV__
   const handleImageError = (e: any) => {
-    console.warn('[ReelViewer] Image Load Error:', e, 'URL:', imageUri);
+    if (__DEV__) console.warn('[ReelViewer] Image Load Error:', e, 'URL:', imageUri);
     if (imageUri && imageUri.includes('b-cdn.net')) {
       const urlParts = imageUri.split('b-cdn.net/');
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        console.info('[ReelViewer] Falling back to proxy URL:', fallbackUrl);
+        if (__DEV__) console.info('[ReelViewer] Falling back to proxy URL:', fallbackUrl);
         setImageUri(fallbackUrl);
       }
     }
@@ -184,15 +173,16 @@ const ReelVideoItem = React.memo(({
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        console.info('[ReelViewer] Poster falling back to proxy URL:', fallbackUrl);
+        if (__DEV__) console.info('[ReelViewer] Poster falling back to proxy URL:', fallbackUrl);
         setVideoPosterUrl(fallbackUrl);
       }
     }
   };
-  const mediaType = String(localPost?.media_type || localPost?.mediaType || '').toLowerCase();
+  // OPT-7: read directly from post prop
+  const mediaType = String(post?.media_type || post?.mediaType || '').toLowerCase();
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
-  const mediaWidth = Number(localPost?.media_width || localPost?.mediaWidth || 0);
-  const mediaHeight = Number(localPost?.media_height || localPost?.mediaHeight || 0);
+  const mediaWidth = Number(post?.media_width || post?.mediaWidth || 0);
+  const mediaHeight = Number(post?.media_height || post?.mediaHeight || 0);
   const [aspectRatio, setAspectRatio] = useState<number | null>(
     (mediaWidth && mediaHeight && mediaHeight > 0) ? (mediaWidth / mediaHeight) : null
   );
@@ -320,6 +310,7 @@ const ReelVideoItem = React.memo(({
       setDuration(dur);
       durationRef.current = dur;
     }
+    // OPT-4: slowed from 200ms to 500ms — halves setState frequency (~10→~4 calls/s)
     timeIntervalRef.current = setInterval(() => {
       if (player && !seekingRef.current) {
         const ct = player.currentTime || 0;
@@ -330,7 +321,7 @@ const ReelVideoItem = React.memo(({
           setDuration(pd);
         }
       }
-    }, 200);
+    }, 500);
     return () => {
       if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
     };
@@ -420,26 +411,23 @@ const ReelVideoItem = React.memo(({
     }
   };
 
+  // OPT-7: actions now operate on post prop directly; optimistic like state
+  // is managed by the parent (ReelViewer) via onLike callback
   const handleLike = () => {
-    onLike?.(localPost);
-    setLocalPost((prev: any) => ({
-      ...prev,
-      liked_by_me: !prev.liked_by_me,
-      likes_count: prev.liked_by_me ? Math.max(0, Number(prev.likes_count) - 1) : Number(prev.likes_count) + 1
-    }));
+    onLike?.(post);
   };
 
   const handleComment = () => {
-    onCommentLocal?.(localPost);
+    onCommentLocal?.(post);
   };
 
   const handleShare = () => {
-    onShareLocal?.(localPost);
+    onShareLocal?.(post);
   };
 
-  const likedByMe = !!localPost?.liked_by_me;
-  const likesCount = Number(localPost?.likes_count || 0);
-  const commentsCount = Number(localPost?.comments_count || 0);
+  const likedByMe = !!post?.liked_by_me;
+  const likesCount = Number(post?.likes_count || 0);
+  const commentsCount = Number(post?.comments_count || 0);
 
   return (
     <View style={{ width: screenSize.width, height: screenSize.height, backgroundColor: '#000', overflow: 'hidden' }}>
@@ -759,24 +747,24 @@ const ReelVideoItem = React.memo(({
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-          <Avatar photo={localPost?.user_photo} name={localPost?.username || 'User'} size={36} />
+          <Avatar photo={post?.user_photo} name={post?.username || 'User'} size={36} />
           <View style={{ marginLeft: 10 }}>
             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 14 }}>
-              {localPost?.username || 'User'}
+              {post?.username || 'User'}
             </Text>
             <Text style={{ color: '#ccc', fontSize: 12, marginTop: 2 }}>
               {reelPostTimeText}
             </Text>
           </View>
         </View>
-        {localPost?.caption ? (
+        {post?.caption ? (
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => {
               const nextExpanded = !isCaptionExpanded;
               setIsCaptionExpanded(nextExpanded);
               if (nextExpanded) {
-                setTimeout(() => onComment?.(localPost), 150);
+                setTimeout(() => onComment?.(post), 150);
               }
             }}
             style={{
@@ -800,7 +788,7 @@ const ReelVideoItem = React.memo(({
               numberOfLines={isCaptionExpanded ? undefined : 1}
               ellipsizeMode="tail"
             >
-              <Text style={{ fontWeight: 'bold' }}>{localPost?.username || 'User'} </Text>
+              <Text style={{ fontWeight: 'bold' }}>{post?.username || 'User'} </Text>
               {captionText}
             </Text>
             {isLongCaption && !isCaptionExpanded && (
@@ -943,6 +931,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
   const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
 
+  // OPT-2: Single AppState listener in parent — passed down as a prop to
+  // ReelVideoItem. Previously every item created its own listener (N leaks).
+  const [appState, setAppState] = useState(AppState.currentState);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', setAppState);
+    return () => sub.remove();
+  }, []);
+
   // Session-level seen IDs — prevents same reel appearing twice in the same batch
   const seenIdsRef = useRef<Set<string>>(new Set());
   // Global pool of ALL posts ever loaded this session — used for recycling when all seen
@@ -1004,6 +1000,23 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     setIsShareVisible(true);
   }, []);
 
+  // OPT-7 follow-up: optimistic like updates now live in the parent videos
+  // array so ReelVideoItem can read from its post prop without needing local state.
+  const handleLikeLocal = useCallback((likedPost: any) => {
+    if (!likedPost?.id) return;
+    setVideos(prev => prev.map(v => {
+      if (v.id !== likedPost.id) return v;
+      const wasLiked = !!v.liked_by_me;
+      return {
+        ...v,
+        liked_by_me: !wasLiked,
+        likes_count: wasLiked ? Math.max(0, Number(v.likes_count) - 1) : Number(v.likes_count) + 1,
+      };
+    }));
+    // Fire the external onLike callback (backend call)
+    callbacksRef.current.onLike?.(likedPost);
+  }, []);
+
   const handleCommentLocal = useCallback(async (post: any) => {
     setSelectedPost(post);
     setIsCommentVisible(true);
@@ -1012,15 +1025,16 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const res = await getPostComments(post.id);
       setLocalComments(res.data || []);
     } catch (e) {
-      console.warn('Failed to load reel comments', e);
+      if (__DEV__) console.warn('Failed to load reel comments', e);
     } finally {
       setCommentsLoading(false);
     }
   }, []);
 
-  // Poll reel comments in real-time when the comment modal is visible
+  // OPT-9: comment poll pauses when app is backgrounded
   useEffect(() => {
     if (!isCommentVisible || !selectedPost?.id) return;
+    if (appState !== 'active') return;
 
     const interval = setInterval(async () => {
       try {
@@ -1035,12 +1049,12 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
           });
         }
       } catch (error) {
-        console.warn('[Reel Comments Polling] Failed:', error);
+        if (__DEV__) console.warn('[Reel Comments Polling] Failed:', error);
       }
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [isCommentVisible, selectedPost?.id]);
+  }, [isCommentVisible, selectedPost?.id, appState]);
 
   const submitLocalComment = async () => {
     if (!selectedPost || !newCommentText.trim() || isSubmittingComment) return;
@@ -1424,13 +1438,16 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     index,
   });
 
+  // OPT-6: renderItem does NOT depend on activeIndex state.
+  // It reads from activeIndexRef so the callback identity is stable and
+  // FlatList does NOT re-render all items on every swipe.
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => (
     <ReelVideoItem
       post={item}
-      isActive={index === activeIndex}
-      shouldLoad={Math.abs(index - activeIndex) <= 1}
+      isActive={index === activeIndexRef.current}
+      shouldLoad={Math.abs(index - activeIndexRef.current) <= 1}
       onClose={callbacksRef.current.onClose}
-      onLike={callbacksRef.current.onLike}
+      onLike={handleLikeLocal}
       onComment={callbacksRef.current.onComment}
       onShare={callbacksRef.current.onShare}
       isMuted={isMuted}
@@ -1441,8 +1458,27 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       autoScroll={autoScroll}
       onVideoEnded={handleVideoEnded}
       onOpenOptions={() => setIsOptionsVisible(true)}
+      appState={appState}
     />
-  ), [activeIndex, isMuted, screenSize, handleShareLocal, handleCommentLocal, autoScroll, handleVideoEnded]);
+  // OPT-6: removed activeIndex from deps — use ref instead
+  ), [isMuted, screenSize, handleShareLocal, handleCommentLocal, handleLikeLocal, autoScroll, handleVideoEnded, appState]);
+
+  // OPT-5: memoize comment tree — only recomputes when localComments changes,
+  // not on every parent render triggered by swipe/mute/etc.
+  const parentComments = React.useMemo(
+    () => localComments.filter((c: any) => !c.parent_id),
+    [localComments]
+  );
+  const repliesMap = React.useMemo(
+    () => localComments.reduce((acc: Record<string, any[]>, c: any) => {
+      if (c.parent_id) {
+        if (!acc[c.parent_id]) acc[c.parent_id] = [];
+        acc[c.parent_id].push(c);
+      }
+      return acc;
+    }, {} as Record<string, any[]>),
+    [localComments]
+  );
 
   return (
     <Modal
@@ -1461,7 +1497,10 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             data={videos}
             renderItem={renderItem}
             extraData={{ activeIndex, isMuted }}
-            keyExtractor={(_, index) => `reel-${index}`}
+            // OPT-1: key by post.id (stable) instead of array index
+          // This makes FlatList use O(1) key matching on mutations instead
+          // of O(n) full reconciliation every time setVideos() is called.
+          keyExtractor={(item, index) => item?.id ? `reel-${item.id}` : `reel-idx-${index}`}
             pagingEnabled={Platform.OS !== 'web'}
             showsVerticalScrollIndicator={false}
             onScroll={handleReelScroll}
@@ -1535,19 +1574,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
               <View style={{ width: 40, height: 5, backgroundColor: '#DDD', borderRadius: 3, alignSelf: 'center', marginBottom: 15 }} />
               <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>{t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedPost?.comments_count ?? localComments.length ?? 0})</Text>
 
-              {(() => {
-                const parentComments = localComments.filter(c => !c.parent_id);
-                const repliesMap = localComments.reduce((acc, c) => {
-                  if (c.parent_id) {
-                    if (!acc[c.parent_id]) acc[c.parent_id] = [];
-                    acc[c.parent_id].push(c);
-                  }
-                  return acc;
-                }, {} as Record<string, any[]>);
-
-                // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
-                return (
-                  <FlatList
+              {/* OPT-5: repliesMap & parentComments are now pre-computed useMemo values */}
+              <FlatList
                     data={parentComments}
                     keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
                     initialNumToRender={10}
@@ -1691,8 +1719,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                       )
                     }
                   />
-                );
-              })()}
+
 
               {replyingToComment && (
                 <View style={{

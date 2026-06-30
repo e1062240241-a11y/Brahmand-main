@@ -14,7 +14,10 @@ import { LocationPickerModal, LocationData } from '../src/components/LocationPic
 import { useAuthStore } from '../src/store/authStore';
 import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } from '../src/services/api';
 
-const { width } = Dimensions.get('window');
+const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
+// On Android physical devices the effective screen area is smaller due to status bar + nav bar
+// Use a proportional map height so all content fits without scrolling
+const MAP_HEIGHT = Platform.OS === 'android' ? Math.min(180, SCREEN_HEIGHT * 0.22) : 200;
 
 // Robust Promise wrappers with hard Javascript timeouts to prevent native Expo hanging bugs
 const getCurrentPositionWithTimeout = async (options: any, timeoutMs: number): Promise<Location.LocationObject> => {
@@ -438,10 +441,10 @@ export default function SOSScreen() {
               showsVerticalScrollIndicator={false} 
               contentContainerStyle={{ 
                 flexGrow: 1, 
-                paddingBottom: Math.max(insets.bottom, 20) 
+                paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 8) : Math.max(insets.bottom, 20)
               }}
             >
-              <View style={styles.mapContainer}>
+              <View style={[styles.mapContainer, Platform.OS === 'android' && { height: MAP_HEIGHT }]}>
                 {location ? (
                   <SOSMap 
                     latitude={location.coords.latitude} 
@@ -639,7 +642,7 @@ export default function SOSScreen() {
                 />
               </View>
 
-              <View style={{ flex: 1 }} />
+              <View style={{ height: Platform.OS === 'android' ? 8 : 16 }} />
 
               <TouchableOpacity 
                 style={[styles.primaryButton, !location && styles.primaryButtonDisabled]} 
@@ -657,7 +660,7 @@ export default function SOSScreen() {
           )}
 
           {stage === 'countdown' && (
-            <View style={styles.countdownContainer}>
+            <View style={[styles.countdownContainer, Platform.OS === 'android' && { paddingBottom: insets.bottom > 0 ? insets.bottom + 16 : 36 }]}>
               <View style={[styles.warningIconBg, { backgroundColor: '#FFF0F0' }]}>
                 <Ionicons name="warning" size={40} color="#FF3B30" />
               </View>
@@ -669,7 +672,7 @@ export default function SOSScreen() {
               
               <View style={{ flex: 1 }} />
               
-              <TouchableOpacity style={styles.secondaryButton} onPress={handleCancelCountdown}>
+              <TouchableOpacity style={[styles.secondaryButton, { width: '100%' }]} onPress={handleCancelCountdown}>
                 <Text style={styles.secondaryButtonText}>Cancel SOS</Text>
               </TouchableOpacity>
             </View>
@@ -699,7 +702,7 @@ export default function SOSScreen() {
           )}
 
           {stage === 'active' && (
-            <View style={styles.activeContainer}>
+            <View style={[styles.activeContainer, Platform.OS === 'android' && { paddingBottom: insets.bottom > 0 ? insets.bottom + 16 : 36 }]}>
               <Ionicons name="checkmark-circle" size={80} color="#34C759" />
               <Text style={styles.activeTitle}>SOS Active</Text>
               <Text style={styles.activeText}>
@@ -710,7 +713,7 @@ export default function SOSScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={[styles.primaryButton, { backgroundColor: '#FF3B30', marginTop: 16 }]} 
+                style={[styles.primaryButton, { backgroundColor: '#FF3B30', marginTop: 16, width: '100%' }]} 
                 onPress={async () => {
                   const success = await handleCancelExistingSOS();
                   if (success) {
@@ -994,8 +997,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   inputContainer: {
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: Platform.OS === 'android' ? 6 : 10,
+    marginBottom: Platform.OS === 'android' ? 10 : 20,
   },
   inputLabel: {
     fontSize: 16,
@@ -1008,7 +1011,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 10,
+    marginBottom: Platform.OS === 'android' ? 6 : 10,
     borderWidth: 1,
     borderColor: '#F0F0F0',
   },

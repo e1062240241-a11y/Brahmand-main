@@ -81,7 +81,7 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
     }
 
     body {
-      background: ${Platform.OS === 'android' ? `url('${chariotBase64}') no-repeat center center fixed` : 'radial-gradient(circle at 20% 30%, #0a0a1a 0%, #1a1525 50%, #0d0d1a 100%)'};
+      background: ${Platform.OS === 'android' ? 'radial-gradient(circle at 20% 30%, #0a0a1a 0%, #1a1525 50%, #0d0d1a 100%)' : `url('${chariotBase64}') no-repeat center center fixed`};
       background-size: cover;
       font-family: 'Georgia', 'Times New Roman', serif;
       padding: 40px 20px;
@@ -550,29 +550,43 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
     if (!element) return;
     const filename = \`Brahmand_Krishna_Certificate_\${state.profile?.fullName || 'Reader'}.pdf\`;
     
+    // On Android, html2canvas cannot process large base64 background images.
+    // Temporarily swap to a solid background for the capture, then restore.
+    const originalBodyBg = document.body.style.background;
+    const originalBodyBgSize = document.body.style.backgroundSize;
+    document.body.style.background = '#faf5e8';
+    document.body.style.backgroundSize = 'auto';
+
     const opt = {
       margin: [0.5, 0.5, 0.5, 0.5],
       filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 3, useCORS: true, backgroundColor: '#fefaf0' },
+      image: { type: 'jpeg', quality: 0.92 },
+      html2canvas: { scale: 2, useCORS: false, backgroundColor: '#fefaf0', logging: false },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape' }
     };
 
     if (window.ReactNativeWebView) {
       html2pdf().from(element).set(opt).outputPdf('datauristring').then(function(pdfBase64) {
+        document.body.style.background = originalBodyBg;
+        document.body.style.backgroundSize = originalBodyBgSize;
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'download',
           base64: pdfBase64,
           filename: filename
         }));
       }).catch(function(err) {
+        document.body.style.background = originalBodyBg;
+        document.body.style.backgroundSize = originalBodyBgSize;
         window.ReactNativeWebView.postMessage(JSON.stringify({
           type: 'error',
           message: err.toString()
         }));
       });
     } else {
-      html2pdf().from(element).set(opt).save();
+      html2pdf().from(element).set(opt).save().then(function() {
+        document.body.style.background = originalBodyBg;
+        document.body.style.backgroundSize = originalBodyBgSize;
+      });
     }
   }
 
@@ -685,6 +699,9 @@ function CertificateDetailScreen({ observedCertificates = [] }: { observedCertif
           onMessage={handleMessage}
           javaScriptEnabled={true}
           domStorageEnabled={true}
+          allowFileAccess={true}
+          allowUniversalAccessFromFileURLs={Platform.OS === 'android'}
+          mixedContentMode={Platform.OS === 'android' ? 'always' : undefined}
         />
       )}
     </SafeAreaView>

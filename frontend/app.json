@@ -37,7 +37,6 @@
         ],
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
         "UIBackgroundModes": [
-          "audio",
           "fetch",
           "remote-notification"
         ],
@@ -168,14 +167,14 @@
       [
         "expo-video",
         {
-          "supportsBackgroundPlayback": true
+          "supportsBackgroundPlayback": false
         }
       ],
       "expo-web-browser",
       [
         "expo-audio",
         {
-          "enableBackgroundPlayback": true
+          "enableBackgroundPlayback": false
         }
       ],
       "expo-sharing",
