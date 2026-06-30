@@ -214,9 +214,10 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
     };
   });
 
-  // Move the tab-bar down slightly by default, taking Android into account
-  const bottomPosition = Platform.OS === 'android' 
-    ? 5 
+  // Move the tab-bar above the system navigation bar on Android,
+  // and above the home indicator on iOS.
+  const bottomPosition = Platform.OS === 'android'
+    ? insets.bottom + 5
     : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
 
   const visibleRoutes = state.routes.filter((route: any) => !HIDDEN_ROUTES.has(route.name));
