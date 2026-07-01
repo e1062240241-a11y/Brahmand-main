@@ -71,7 +71,12 @@ export function GlobalFAB() {
     }
   }, []);
 
+  const isCheckingSOSRef = useRef(false);
+
   const checkSOSStatus = useCallback(async (options?: { forceLocation?: boolean }) => {
+    if (AppState.currentState !== 'active') return;
+    if (isCheckingSOSRef.current) return;
+    isCheckingSOSRef.current = true;
     try {
       const res = await getMySOSAlert();
 
@@ -111,6 +116,8 @@ export function GlobalFAB() {
       } else {
         console.warn('Failed to check SOS status:', e?.message || e);
       }
+    } finally {
+      isCheckingSOSRef.current = false;
     }
   }, [fabExpanded, setActiveSOSIfChanged, setNearbySOSAlertsIfChanged]);
 
@@ -204,15 +211,19 @@ export function GlobalFAB() {
     const handleSOSResponse = () => {
       checkSOSStatus();
     };
+    const handleSOSResolved = () => {
+      checkSOSStatus();
+    };
 
     socketService.onEvent('sos_alert', handleSOSAlert);
     socketService.onEvent('sos_response', handleSOSResponse);
+    socketService.onEvent('sos_resolved', handleSOSResolved);
 
     const interval = setInterval(() => {
       if (AppState.currentState === 'active' && !keyboardVisibleRef.current) {
         checkSOSStatus();
       }
-    }, 30000);
+    }, 180000); // 3 minutes
 
     const appStateSub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active' && !keyboardVisibleRef.current) {
@@ -225,6 +236,7 @@ export function GlobalFAB() {
       appStateSub.remove();
       socketService.offEvent('sos_alert', handleSOSAlert);
       socketService.offEvent('sos_response', handleSOSResponse);
+      socketService.offEvent('sos_resolved', handleSOSResolved);
     };
   }, [checkSOSStatus, user?.id]);
 

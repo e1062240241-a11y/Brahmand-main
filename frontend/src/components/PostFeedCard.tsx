@@ -163,10 +163,10 @@ export const PostFeedCard = memo(({
     setVideoPosterUrl(posterUrl);
   }, [posterUrl]);
 
-  // Preload the first 1MB of video content so ReelViewer opens instantly when tapped
+  // Preload the first 1MB of video content so ReelViewer opens instantly when tapped (Web/iOS only)
   useEffect(() => {
     const isVideoPost = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
-    if (!mediaUrl || !isVideoPost) return;
+    if (Platform.OS === 'android' || !mediaUrl || !isVideoPost) return;
     const ctrl = new AbortController();
     fetch(mediaUrl, {
       method: 'GET',
@@ -212,18 +212,6 @@ export const PostFeedCard = memo(({
   const mediaType = rawMediaType ? String(rawMediaType).toLowerCase() : '';
 
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
-
-  if (__DEV__ && Platform.OS === 'android') {
-    console.log('[PostFeedCard LOG Android] Post:', {
-      id: post?.id,
-      media_url: post?.media_url,
-      mediaUrl: post?.mediaUrl,
-      rawMediaUrl,
-      mediaUrlVal: mediaUrl,
-      mediaType,
-      isVideo
-    });
-  }
 
   const displayRatio = dynamicRatio;
   const feedHeight = SCREEN_WIDTH / displayRatio;
