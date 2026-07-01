@@ -3775,7 +3775,7 @@ DEPENDENCIES:
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-agora (from `../node_modules/react-native-agora`)
-  - react-native-maps/Google (from `/Users/Developer/Desktop/Brahmand-main/frontend/node_modules/react-native-maps`)
+  - react-native-maps/Google (from `/Users/Developer/Desktop/Brahmand-main 2/frontend/node_modules/react-native-maps`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - react-native-webview (from `../node_modules/react-native-webview`)
@@ -4043,7 +4043,7 @@ EXTERNAL SOURCES:
   react-native-agora:
     :path: "../node_modules/react-native-agora"
   react-native-maps:
-    :path: "/Users/Developer/Desktop/Brahmand-main/frontend/node_modules/react-native-maps"
+    :path: "/Users/Developer/Desktop/Brahmand-main 2/frontend/node_modules/react-native-maps"
   react-native-netinfo:
     :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
@@ -4151,7 +4151,7 @@ SPEC CHECKSUMS:
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   EXApplication: d46329846d04eee29ddda7cd4c9a342243e0f830
-  EXConstants: 255fd9f72f94bfccaed1d161edac04a552baa8d9
+  EXConstants: e7a4724ea519f929043c4977e6d13bc68714a703
   EXJSONUtils: 04bc3807d351331a5fe154ce1da596ec15d99169
   EXManifests: dbe9ab95b592bd75588bde030aeaba57db62e948
   Expo: f95956106e0cdf789ce1d02dcdf56b902ff79242
@@ -4215,7 +4215,7 @@ SPEC CHECKSUMS:
   GoogleMaps: 0608099d4870cac8754bdba9b6953db543432438
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMSessionFetcher: 127211aeec0b1e904fc49f4f6f895dcc535b0ecf
-  hermes-engine: e4c7ecdc5f64eb0a5d11c9d5060b310f5f2d7e38
+  hermes-engine: 08e44c8a5030c78ddc3e67b03beb49ebd80c5f56
   libavif: 5f8e715bea24debec477006f21ef9e95432e254d
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
