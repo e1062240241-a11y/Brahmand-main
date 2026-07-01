@@ -79,6 +79,7 @@ import {
   getPostsFeed,
   repostPost,
   reportPost,
+  reportComment,
   searchByHashtag,
   togglePostLike,
   unfollowUser,
@@ -4388,6 +4389,11 @@ export default function HomeScreen() {
         reportedUserUid={pendingReportComment?.user_id || ''}
         contentId={pendingReportComment?.id || ''}
         contentType="comment"
+        apiFallback={async (reason, description) => {
+          if (pendingReportComment?.id) {
+            await reportComment(pendingReportComment.id, reason, description || '');
+          }
+        }}
       />
 
       <Modal

@@ -612,11 +612,16 @@ export interface AdminPostReport {
     media_type?: string;
     post_user_id?: string;
     post_username?: string;
+    comment_id?: string;
+    text?: string;
+    comment_user_id?: string;
+    comment_username?: string;
   };
   moderation_result?: {
     post_deleted?: boolean;
     media_deleted?: boolean;
     comments_deleted?: number;
+    comment_deleted?: boolean;
   };
 }
 
@@ -706,11 +711,15 @@ export const adminVerifyUserKyc = (
 export const getAdminReports = (
   adminToken: string,
   status: string = "pending",
-  contentType: string = "post",
+  contentType?: string,
   limit: number = 100,
 ) =>
   adminApi.get<AdminPostReport[]>("/admin/reports", {
-    params: { status, content_type: contentType, limit },
+    params: { 
+      status, 
+      ...(contentType ? { content_type: contentType } : {}), 
+      limit 
+    },
     headers: { Authorization: `Bearer ${adminToken}` },
   });
 
@@ -1338,6 +1347,12 @@ export const reportPost = (
   category: string = "other",
   description: string = "",
 ) => api.post(`/posts/${postId}/report`, { category, description });
+
+export const reportComment = (
+  commentId: string,
+  category: string = "other",
+  description: string = "",
+) => api.post("/report", { content_type: "comment", content_id: commentId, category, description });
 
 export const updatePost = (postId: string, data: { caption?: string }) =>
   api.put(`/posts/${postId}`, data);

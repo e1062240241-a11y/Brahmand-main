@@ -51,6 +51,7 @@ export interface ReportPayload {
   contentId: string;
   contentType: ContentType;
   reason: ReportReason;
+  description?: string;
 }
 
 function getDB() {
@@ -71,6 +72,7 @@ export async function submitReport(payload: ReportPayload): Promise<string> {
     contentId: payload.contentId,
     contentType: payload.contentType,
     reason: payload.reason,
+    description: payload.description || '',
     status: 'pending' as ModerationStatus,
     createdAt: serverTimestamp(),
   });
@@ -86,19 +88,19 @@ import { blockUserApi, unblockUserApi, checkUserBlockedApi } from '../api';
  * Document ID: `${blockerUid}_${blockedUid}` for fast lookup.
  */
 export async function blockUser(blockerUid: string, blockedUid: string): Promise<void> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
-
-  await setDoc(doc(db, 'user_blocks', docId), {
-    blockerUid,
-    blockedUid,
-    createdAt: serverTimestamp(),
-  });
+  // Call backend API first to perform block, which also writes to Firestore securely.
+  await blockUserApi(blockedUid);
 
   try {
-    await blockUserApi(blockedUid);
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
+    await setDoc(doc(db, 'user_blocks', docId), {
+      blockerUid,
+      blockedUid,
+      createdAt: serverTimestamp(),
+    });
   } catch (error) {
-    console.error('[moderationService] blockUserApi failed:', error);
+    console.warn('[moderationService] Direct client Firebase block write failed (ignored):', error);
   }
 }
 
@@ -106,14 +108,15 @@ export async function blockUser(blockerUid: string, blockedUid: string): Promise
  * Unblock a user. Removes the block document from Firebase and backend.
  */
 export async function unblockUser(blockerUid: string, blockedUid: string): Promise<void> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
-  await deleteDoc(doc(db, 'user_blocks', docId));
+  // Call backend API first to perform unblock, which also deletes from Firestore securely.
+  await unblockUserApi(blockedUid);
 
   try {
-    await unblockUserApi(blockedUid);
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
+    await deleteDoc(doc(db, 'user_blocks', docId));
   } catch (error) {
-    console.error('[moderationService] unblockUserApi failed:', error);
+    console.warn('[moderationService] Direct client Firebase unblock write failed (ignored):', error);
   }
 }
 

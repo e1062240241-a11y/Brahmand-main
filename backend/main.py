@@ -2445,6 +2445,10 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if user_id == current_user_id:
         raise HTTPException(status_code=400, detail='Cannot follow yourself')
 
+    blocked_user_ids = await _get_blocked_user_ids(db, current_user_id)
+    if user_id in blocked_user_ids:
+        raise HTTPException(status_code=403, detail='Follow not allowed due to a block relationship')
+
     current_user = await db.get_document('users', current_user_id)
     if not current_user:
         raise HTTPException(status_code=404, detail='Current user not found')
@@ -3819,6 +3823,12 @@ async def repost_post(post_id: str, token_data: dict = Depends(verify_token)):
     if not original_post:
         raise HTTPException(status_code=404, detail='Post not found')
 
+    original_owner_id = original_post.get('user_id')
+    if original_owner_id:
+        blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+        if original_owner_id in blocked_user_ids:
+            raise HTTPException(status_code=403, detail='Repost not allowed due to a block relationship')
+
     user = await db.get_document('users', user_id)
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
@@ -3861,6 +3871,12 @@ async def toggle_post_like(post_id: str, token_data: dict = Depends(verify_token
     post = await db.get_document('posts', post_id)
     if not post:
         raise HTTPException(status_code=404, detail='Post not found')
+
+    post_owner_id = post.get('user_id')
+    if post_owner_id:
+        blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+        if post_owner_id in blocked_user_ids:
+            raise HTTPException(status_code=403, detail='Like not allowed due to a block relationship')
 
     liked_by = post.get('liked_by', []) or []
     liked = user_id in liked_by
@@ -4115,12 +4131,24 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
             detail=f"Offensive comment blocked: {offensive_check.get('reason', 'offensive content')}"
         )
 
+    post_owner_id = post.get('user_id')
+    if post_owner_id:
+        blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+        if post_owner_id in blocked_user_ids:
+            raise HTTPException(status_code=403, detail='Comment not allowed due to a block relationship')
+
     parent_id = data.get('parent_id')
     parent_comment = None
     if parent_id:
         parent_comment = await db.get_document('post_comments', parent_id)
         if not parent_comment or parent_comment.get('post_id') != post_id:
             raise HTTPException(status_code=400, detail='Parent comment not found')
+        
+        parent_comment_user_id = parent_comment.get('user_id')
+        if parent_comment_user_id:
+            blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+            if parent_comment_user_id in blocked_user_ids:
+                raise HTTPException(status_code=403, detail='Reply not allowed due to a block relationship')
 
     user = await db.get_document('users', user_id)
     if not user:
@@ -5133,6 +5161,15 @@ async def create_community(
         # 1. Validation: Ensure owner is not in either, and no duplicates
         admin_ids = list(set(data.admin_ids))
         member_ids = list(set(data.member_ids))
+
+        # Check block status for invited users
+        blocked_user_ids = await _get_blocked_user_ids(db, owner_id)
+        for invited_uid in admin_ids + member_ids:
+            if invited_uid in blocked_user_ids:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Cannot invite blocked users to create a community."
+                )
         
         if owner_id in admin_ids or owner_id in member_ids:
             raise HTTPException(
@@ -5326,6 +5363,12 @@ async def respond_to_community_request(
         if user_id not in invited_users:
             raise HTTPException(status_code=403, detail="You are not invited to this community group creation request.")
 
+        owner_id = request_doc.get('owner_id')
+        if owner_id:
+            blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+            if owner_id in blocked_user_ids:
+                raise HTTPException(status_code=403, detail="Responding not allowed due to a block relationship.")
+
         # 2. Fetch responder name
         responder_user = await db.get_document('users', user_id)
         responder_name = responder_user.get('name') or "A user"
@@ -5333,8 +5376,6 @@ async def respond_to_community_request(
 
         responses = request_doc.get('responses', {})
         responses[user_id] = status
-
-        owner_id = request_doc.get('owner_id')
 
         # 3. Handle 'declined' case (Consensus broken, group creation fails)
         if status == 'declined':
@@ -5545,6 +5586,11 @@ async def resend_community_invite(
         # 4. Check target user is invited
         if target_user_id not in invited_users:
             raise HTTPException(status_code=404, detail="User is not invited to this community group creation request.")
+
+        # Check block status
+        blocked_user_ids = await _get_blocked_user_ids(db, owner_id)
+        if target_user_id in blocked_user_ids:
+            raise HTTPException(status_code=403, detail="Resending invite not allowed due to a block relationship.")
 
         # 5. Check if the user has already responded (status must be pending)
         responses = request_doc.get('responses', {})
@@ -6241,6 +6287,11 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     
     sender_id = sender['id']
     recipient_id = recipient['id']
+
+    # Check block status
+    blocked_user_ids = await _get_blocked_user_ids(db, sender_id)
+    if recipient_id in blocked_user_ids:
+        raise HTTPException(status_code=403, detail="Messaging is not allowed due to a block relationship.")
     
     # Create deterministic chat_id from sorted user IDs
     sorted_members = sorted([sender_id, recipient_id])
@@ -6420,6 +6471,8 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
     
     result = []
     
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    
     # 1. Collect all other user IDs to fetch in batch
     other_user_ids = []
     chat_to_other_id = {}
@@ -6427,8 +6480,11 @@ async def get_dm_conversations(token_data: dict = Depends(verify_token)):
         members = chat.get('members', [])
         others = [m for m in members if m != user_id]
         if others:
-            other_user_ids.append(others[0])
-            chat_to_other_id[chat['id']] = others[0]
+            other_id = others[0]
+            if other_id in blocked_user_ids:
+                continue
+            other_user_ids.append(other_id)
+            chat_to_other_id[chat['id']] = other_id
             
     # 2. Batch fetch user profiles
     users_list = await db.get_documents_batch('users', list(set(other_user_ids)))
@@ -6513,6 +6569,12 @@ async def get_dm_metadata(chat_id: str, token_data: dict = Depends(verify_token)
     if user_id not in chat.get('members', []):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Check block status
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    for m in chat.get('members', []):
+        if m != user_id and m in blocked_user_ids:
+            raise HTTPException(status_code=403, detail="Access denied due to a block relationship.")
+
     members = chat.get('members', [])
     other_id = [m for m in members if m != user_id]
     other_id = other_id[0] if other_id else None
@@ -6556,6 +6618,12 @@ async def get_dm_messages(chat_id: str, request: Request, limit: int = 50, token
     if user_id not in chat.get('members', []):
         raise HTTPException(status_code=403, detail="Access denied")
 
+    # Check block status
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    for m in chat.get('members', []):
+        if m != user_id and m in blocked_user_ids:
+            raise HTTPException(status_code=403, detail="Access denied due to a block relationship.")
+
     messages = await db.get_chat_messages(chat_id, limit)
     
     # Dynamically decorate with current sender verification status
@@ -6590,6 +6658,12 @@ async def approve_dm_request(chat_id: str, token_data: dict = Depends(verify_tok
         raise HTTPException(status_code=400, detail="Only private chat requests can be approved")
     if user_id not in chat.get('members', []):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Check block status
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    for m in chat.get('members', []):
+        if m != user_id and m in blocked_user_ids:
+            raise HTTPException(status_code=403, detail="Access denied due to a block relationship.")
 
     request_status = chat.get('request_status', 'approved')
     request_by = chat.get('request_by')
@@ -6631,6 +6705,12 @@ async def deny_dm_request(chat_id: str, token_data: dict = Depends(verify_token)
         raise HTTPException(status_code=400, detail="Only private chat requests can be denied")
     if user_id not in chat.get('members', []):
         raise HTTPException(status_code=403, detail="Access denied")
+
+    # Check block status
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    for m in chat.get('members', []):
+        if m != user_id and m in blocked_user_ids:
+            raise HTTPException(status_code=403, detail="Access denied due to a block relationship.")
 
     request_status = chat.get('request_status', 'approved')
     request_by = chat.get('request_by')
@@ -7213,6 +7293,11 @@ async def invite_to_circle(circle_id: str, data: CircleInvite, token_data: dict 
         raise HTTPException(status_code=404, detail="User not found")
     
     target_user_id = target_user['id']
+
+    # Check block status
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    if target_user_id in blocked_user_ids:
+        raise HTTPException(status_code=403, detail="Invitation not allowed due to a block relationship.")
     
     # Check if already member
     if target_user_id in circle.get('members', []):
@@ -8135,36 +8220,107 @@ async def report_content(data: dict, token_data: dict = Depends(verify_token)):
     Report a message or content for moderation
     
     data:
-    - content_type: message/user/temple/post
+    - content_type: message/user/temple/post/comment
     - content_id: ID of the content being reported
     - chat_id: Chat ID (for messages)
-    - category: religious_attack/disrespectful/spam/abuse
+    - category: religious_attack/disrespectful/spam/abuse/other/etc
     - description: Optional description
     """
     db = await get_db()
     user_id = token_data["user_id"]
     
     content_type = data.get('content_type')
-    if content_type not in ['message', 'user', 'temple', 'post']:
+    if content_type not in ['message', 'user', 'temple', 'post', 'comment']:
         raise HTTPException(status_code=400, detail="Invalid content type")
     
     category = data.get('category')
-    valid_categories = ['religious_attack', 'disrespectful', 'spam', 'abuse', 'other']
+    valid_categories = [
+        'religious_attack', 'disrespectful', 'spam', 'abuse', 'other',
+        'harassment', 'hate_speech', 'violence', 'sexual_content',
+        'fake_profile', 'scam_fraud', 'misinformation', 'illegal_content'
+    ]
     if category not in valid_categories:
         raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {valid_categories}")
     
-    report_data = {
-        'reporter_id': user_id,
-        'content_type': content_type,
-        'content_id': data.get('content_id'),
-        'chat_id': data.get('chat_id'),
-        'category': category,
-        'description': data.get('description', ''),
-        'status': 'pending',  # pending/reviewed/resolved/dismissed
-        'created_at': datetime.utcnow()
-    }
-    
-    report_id = await db.create_document('reports', report_data)
+    content_id = data.get('content_id')
+    if not content_id:
+        raise HTTPException(status_code=400, detail="content_id is required")
+
+    # Duplicate check for comment reports
+    if content_type == 'comment':
+        existing_mod = await db.query_documents(
+            'moderation_reports',
+            filters=[
+                ('reporterUid', '==', user_id),
+                ('contentId', '==', content_id),
+                ('contentType', '==', 'comment')
+            ],
+            limit=1
+        )
+        if existing_mod:
+            logger.info(f"Duplicate comment report detected for comment {content_id} by user {user_id}")
+            return {"message": "Report submitted", "report_id": existing_mod[0]['id'], "duplicate": True}
+
+        existing_rep = await db.query_documents(
+            'reports',
+            filters=[
+                ('reporter_id', '==', user_id),
+                ('content_id', '==', content_id),
+                ('content_type', '==', 'comment')
+            ],
+            limit=1
+        )
+        if existing_rep:
+            logger.info(f"Duplicate comment report detected in legacy reports for comment {content_id} by user {user_id}")
+            return {"message": "Report submitted", "report_id": existing_rep[0]['id'], "duplicate": True}
+
+        # Resolve reported user ID and post ID from comment securely
+        comment = await db.get_document('post_comments', content_id)
+        if not comment:
+            raise HTTPException(status_code=404, detail="Comment not found")
+        
+        reported_user_id = comment.get('user_id')
+        post_id = comment.get('post_id')
+        
+        # Save to moderation_reports with required Apple Guideline 1.2 compliant fields
+        report_data = {
+            'reporterUid': user_id,
+            'reportedUserUid': reported_user_id,
+            'contentId': content_id,
+            'contentType': 'comment',
+            'reason': category,
+            'status': 'pending',
+            'createdAt': datetime.utcnow(),
+            
+            'reporterUserId': user_id,
+            'reportedUserId': reported_user_id,
+            'commentId': content_id,
+            'postId': post_id,
+            'reportReason': category,
+            'description': data.get('description', ''),
+            'timestamp': datetime.utcnow(),
+            
+            'snapshot': {
+                'comment_id': content_id,
+                'text': comment.get('text') or '',
+                'comment_user_id': comment.get('user_id'),
+                'comment_username': comment.get('username'),
+                'post_id': post_id,
+            }
+        }
+        report_id = await db.create_document('moderation_reports', report_data)
+    else:
+        report_data = {
+            'reporter_id': user_id,
+            'content_type': content_type,
+            'content_id': content_id,
+            'chat_id': data.get('chat_id'),
+            'category': category,
+            'description': data.get('description', ''),
+            'status': 'pending',  # pending/reviewed/resolved/dismissed
+            'created_at': datetime.utcnow()
+        }
+        report_id = await db.create_document('reports', report_data)
     
     logger.info(f"Report submitted: {content_type} - {category} by {user_id}")
     return {"message": "Report submitted", "report_id": report_id}
@@ -8179,6 +8335,16 @@ async def get_reports(
 ):
     """Get reports queue from both reports and moderation_reports collections (admin only)."""
     db, _ = await _ensure_admin_user(token_data)
+
+    def clean_datetime(dt):
+        if not dt:
+            return datetime.min
+        if isinstance(dt, datetime):
+            return dt.replace(tzinfo=None)
+        try:
+            return datetime.fromisoformat(str(dt).replace('Z', '+00:00')).replace(tzinfo=None)
+        except:
+            return datetime.min
 
     filters = []
     if status:
@@ -8206,7 +8372,7 @@ async def get_reports(
             exc,
         )
         reports = await db.query_documents('reports', filters=filters if filters else None)
-        reports.sort(key=lambda item: item.get('created_at') or datetime.min, reverse=True)
+        reports.sort(key=lambda item: clean_datetime(item.get('created_at')), reverse=True)
         reports = reports[:max(1, min(limit, 300))]
 
     for r in reports:
@@ -8224,6 +8390,19 @@ async def get_reports(
                     }
             except Exception as e:
                 logger.warning("Failed to populate dynamic snapshot for reports: %s", e)
+        elif not r.get('snapshot') and r.get('content_type') == 'comment' and r.get('content_id'):
+            try:
+                comment = await db.get_document('post_comments', r.get('content_id'))
+                if comment:
+                    r['snapshot'] = {
+                        'comment_id': r.get('content_id'),
+                        'text': comment.get('text') or '',
+                        'comment_user_id': comment.get('user_id'),
+                        'comment_username': comment.get('username'),
+                        'post_id': comment.get('post_id'),
+                    }
+            except Exception as e:
+                logger.warning("Failed to populate dynamic comment snapshot for reports: %s", e)
 
     try:
         mod_reports = await db.query_documents(
@@ -8239,18 +8418,7 @@ async def get_reports(
             exc,
         )
         mod_reports = await db.query_documents('moderation_reports', filters=mod_filters if mod_filters else None)
-        # Parse timestamp or iso format dates
-        def parse_date(x):
-            d = x.get('createdAt')
-            if not d:
-                return datetime.min
-            if isinstance(d, datetime):
-                return d
-            try:
-                return datetime.fromisoformat(str(d).replace('Z', '+00:00'))
-            except:
-                return datetime.min
-        mod_reports.sort(key=parse_date, reverse=True)
+        mod_reports.sort(key=lambda item: clean_datetime(item.get('createdAt')), reverse=True)
         mod_reports = mod_reports[:max(1, min(limit, 300))]
 
     standardized_mod = []
@@ -8276,6 +8444,19 @@ async def get_reports(
                     }
             except Exception as e:
                 logger.warning("Failed to populate dynamic snapshot for moderation_reports: %s", e)
+        elif not snapshot and content_type == 'comment' and content_id:
+            try:
+                comment = await db.get_document('post_comments', content_id)
+                if comment:
+                    snapshot = {
+                        'comment_id': content_id,
+                        'text': comment.get('text') or '',
+                        'comment_user_id': comment.get('user_id'),
+                        'comment_username': comment.get('username'),
+                        'post_id': comment.get('post_id'),
+                    }
+            except Exception as e:
+                logger.warning("Failed to populate dynamic comment snapshot: %s", e)
 
         standardized_mod.append({
             'id': r.get('id'),
@@ -8291,18 +8472,7 @@ async def get_reports(
         })
 
     all_reports = reports + standardized_mod
-    def parse_any_date(x):
-        d = x.get('created_at')
-        if not d:
-            return datetime.min
-        if isinstance(d, datetime):
-            return d
-        try:
-            return datetime.fromisoformat(str(d).replace('Z', '+00:00'))
-        except:
-            return datetime.min
-
-    all_reports.sort(key=parse_any_date, reverse=True)
+    all_reports.sort(key=lambda item: clean_datetime(item.get('created_at')), reverse=True)
     return all_reports[:limit]
 
 

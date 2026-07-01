@@ -16,6 +16,7 @@ import {
   ScrollView,
   SafeAreaView,
   Platform,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
@@ -33,7 +34,7 @@ interface ReportModalProps {
   contentId: string;
   contentType: ContentType;
   /** Optional fallback API call if Firebase fails */
-  apiFallback?: (reason: ReportReason) => Promise<void>;
+  apiFallback?: (reason: ReportReason, description?: string) => Promise<void>;
 }
 
 const REASONS: { key: ReportReason; label: string; icon: string }[] = [
@@ -60,11 +61,13 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 }) => {
   const [step, setStep] = useState<Step>('select');
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
+  const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setStep('select');
     setSelectedReason(null);
+    setDescription('');
     setError(null);
   };
 
@@ -85,13 +88,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         contentId,
         contentType,
         reason: selectedReason,
+        description,
       });
     } catch (firebaseErr: any) {
       console.warn('[ReportModal] Firebase write failed, trying API fallback:', firebaseErr);
       // Try API fallback if provided
       if (apiFallback) {
         try {
-          await apiFallback(selectedReason);
+          await apiFallback(selectedReason, description);
         } catch (apiErr: any) {
           console.warn('[ReportModal] API fallback also failed:', apiErr);
           const errMsg = apiErr?.response?.data?.detail || apiErr?.message || 'Could not submit report. Please check your connection and try again.';
@@ -168,6 +172,17 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                     )}
                   </TouchableOpacity>
                 ))}
+
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Additional comments (optional)"
+                  placeholderTextColor="#999"
+                  value={description}
+                  onChangeText={setDescription}
+                  multiline
+                  numberOfLines={3}
+                  maxLength={200}
+                />
               </ScrollView>
 
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -348,5 +363,17 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  textInput: {
+    borderWidth: 1.5,
+    borderColor: '#DDD',
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 80,
+    fontSize: 14,
+    color: '#333',
+    marginVertical: 12,
+    textAlignVertical: 'top',
+    backgroundColor: '#F9F9F9',
   },
 });

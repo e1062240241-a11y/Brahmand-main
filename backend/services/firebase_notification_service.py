@@ -189,6 +189,20 @@ class FirebaseNotificationService:
         
         if not user:
             raise ValueError("User not found")
+
+        # Check block status
+        try:
+            actor_id = None
+            if data:
+                actor_id = data.get('actor_id') or data.get('follower_id') or data.get('actor_user_id') or data.get('sender_id') or data.get('actor_uid')
+            
+            if actor_id:
+                blocked_user_ids = await FirebaseNotificationService._get_blocked_user_ids(db, user_id)
+                if actor_id in blocked_user_ids:
+                    logger.info(f"Skipping push notification for user {user_id} due to block relationship with actor {actor_id}")
+                    return {"message": "Blocked", "sent": 0}
+        except Exception as e:
+            logger.warning(f"Error checking block status for push notification: {e}")
         
         # Prioritize primary fcm_token to prevent duplicate notifications on a single device
         primary_token = user.get('fcm_token')
