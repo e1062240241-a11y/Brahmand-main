@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
-  Alert
+  Alert,
+  Modal
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,11 +34,52 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   
   const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [surname, setSurname] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
   const [language, setLanguage] = useState('English');
   const [location, setLocation] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Android location search modal states
+  const [isCityModalVisible, setIsCityModalVisible] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
+  const [isSearchingCity, setIsSearchingCity] = useState(false);
+
+  const handleSearchCity = async (query: string) => {
+    setCitySearchQuery(query);
+    if (!query || query.length < 3) {
+      setCitySuggestions([]);
+      return;
+    }
+
+    setIsSearchingCity(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`,
+        {
+          headers: {
+            'User-Agent': 'BrahmandApp/1.0',
+          },
+        }
+      );
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setCitySuggestions(data);
+      }
+    } catch (err) {
+      console.warn('Error fetching city suggestions:', err);
+    } finally {
+      setIsSearchingCity(false);
+    }
+  };
+
+  const handleModalAutoDetect = async () => {
+    setIsCityModalVisible(false);
+    await handleFetchLocation();
+  };
 
   const handleFetchLocation = async () => {
     try {
@@ -94,25 +136,27 @@ export default function ProfileScreen() {
   };
 
   const isButtonDisabled = () => {
+    if (Platform.OS === 'android') {
+      return !firstName.trim() || !surname.trim() || !location.trim();
+    }
     return !name.trim();
   };
 
   const handleContinue = async () => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError('Please enter your name');
-      return;
-    }
-
+    let trimmed = name.trim();
     if (Platform.OS === 'android') {
-      const parts = trimmed.split(/\s+/).filter(Boolean);
-      if (parts.length < 2) {
-        Alert.alert(
-          "Full Name Required",
-          "Please enter your full name (first name and last name) to continue.",
-          [{ text: "OK" }]
-        );
-        setError('Please enter your full name (first name and last name)');
+      trimmed = `${firstName.trim()} ${surname.trim()}`.trim();
+      if (!firstName.trim() || !surname.trim()) {
+        setError('Please enter your full name');
+        return;
+      }
+      if (!location.trim()) {
+        setError('Please enter your current city');
+        return;
+      }
+    } else {
+      if (!trimmed) {
+        setError('Please enter your name');
         return;
       }
     }
@@ -178,51 +222,99 @@ export default function ProfileScreen() {
 
             <Text style={styles.caption}>Awaken your visual essence</Text>
 
-            {/* Full Name */}
-            <Text style={styles.label}>Full Name</Text>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputIconContainer}>
-                <Ionicons name="person-outline" size={22} color="#C5B49F" />
-              </View>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Soul name or legal name"
-                placeholderTextColor="#C5B49F"
-                value={name}
-                onChangeText={(text) => {
-                  let formattedText = text;
-                  if (Platform.OS === 'android') {
-                    formattedText = text
-                      .split(' ')
-                      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                      .join(' ');
-                  }
-                  setName(formattedText);
-                  setError('');
-                }}
-                autoCapitalize="words"
-              />
-            </View>
-            {Platform.OS === 'android' && name.trim() && name.trim().split(/\s+/).filter(Boolean).length < 2 ? (
-              <Text style={[styles.error, { color: '#8B4F3B', alignSelf: 'flex-start', marginTop: -8, marginBottom: 8 }]}>
-                Please enter your full name (first name and last name)
-              </Text>
-            ) : null}
+            {Platform.OS === 'android' ? (
+              <>
+                {/* Full Name */}
+                <Text style={styles.label}>
+                  Full Name <Text style={{ color: '#E53935' }}>*</Text>
+                </Text>
+                <View style={styles.sideBySideContainer}>
+                  <View style={styles.halfInputContainer}>
+                    <TextInput
+                      style={styles.androidTextInput}
+                      placeholder="First name"
+                      placeholderTextColor="#C5B49F"
+                      value={firstName}
+                      onChangeText={(text) => {
+                        const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+                        setFirstName(formattedText);
+                        setError('');
+                      }}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                  <View style={styles.halfInputContainer}>
+                    <TextInput
+                      style={styles.androidTextInput}
+                      placeholder="Surname"
+                      placeholderTextColor="#C5B49F"
+                      value={surname}
+                      onChangeText={(text) => {
+                        const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+                        setSurname(formattedText);
+                        setError('');
+                      }}
+                      autoCapitalize="words"
+                    />
+                  </View>
+                </View>
 
-            {/* Location */}
-            <Text style={styles.label}>Location</Text>
-            <View style={styles.inputContainer}>
-              <TouchableOpacity onPress={handleFetchLocation} style={styles.inputIconContainer} disabled={loading}>
-                <Ionicons name="location-outline" size={22} color="#C5B49F" />
-              </TouchableOpacity>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Your current coordinates..."
-                placeholderTextColor="#C5B49F"
-                value={location}
-                onChangeText={(text) => setLocation(text)}
-              />
-            </View>
+                {/* Current City Dropdown */}
+                <Text style={styles.label}>
+                  Current City <Text style={{ color: '#E53935' }}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={styles.dropdownContainer}
+                  onPress={() => setIsCityModalVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.dropdownLeft}>
+                    <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
+                    <Text style={location ? styles.dropdownText : styles.dropdownPlaceholder}>
+                      {location || 'City'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down-outline" size={20} color="#C5B49F" />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* Full Name */}
+                <Text style={styles.label}>Full Name</Text>
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputIconContainer}>
+                    <Ionicons name="person-outline" size={22} color="#C5B49F" />
+                  </View>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Soul name or legal name"
+                    placeholderTextColor="#C5B49F"
+                    value={name}
+                    onChangeText={(text) => {
+                      let formattedText = text;
+                      setName(formattedText);
+                      setError('');
+                    }}
+                    autoCapitalize="words"
+                  />
+                </View>
+
+                {/* Location */}
+                <Text style={styles.label}>Location</Text>
+                <View style={styles.inputContainer}>
+                  <TouchableOpacity onPress={handleFetchLocation} style={styles.inputIconContainer} disabled={loading}>
+                    <Ionicons name="location-outline" size={22} color="#C5B49F" />
+                  </TouchableOpacity>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Your current coordinates..."
+                    placeholderTextColor="#C5B49F"
+                    value={location}
+                    onChangeText={(text) => setLocation(text)}
+                  />
+                </View>
+              </>
+            )}
 
             {/* Information Card */}
             <View style={styles.infoCard}>
@@ -298,6 +390,94 @@ export default function ProfileScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* City Search Modal */}
+      {Platform.OS === 'android' && (
+        <Modal
+          visible={isCityModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsCityModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Current City</Text>
+                <TouchableOpacity onPress={() => setIsCityModalVisible(false)}>
+                  <Ionicons name="close" size={24} color="#8B4F3B" />
+                </TouchableOpacity>
+              </View>
+
+              {/* GPS Auto-detect Button */}
+              <TouchableOpacity
+                style={styles.gpsButton}
+                onPress={handleModalAutoDetect}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="locate-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.gpsButtonText}>Detect Automatically (GPS)</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.dividerContainer}>
+                <View style={styles.modalDivider} />
+                <Text style={styles.dividerText}>or search manually</Text>
+                <View style={styles.modalDivider} />
+              </View>
+
+              {/* Manual Search Input */}
+              <View style={styles.modalSearchContainer}>
+                <Ionicons name="search-outline" size={20} color="#C5B49F" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.modalSearchInput}
+                  placeholder="Enter city name..."
+                  placeholderTextColor="#C5B49F"
+                  value={citySearchQuery}
+                  onChangeText={handleSearchCity}
+                  autoFocus={true}
+                />
+              </View>
+
+              {/* Suggestions List */}
+              <ScrollView style={styles.modalSuggestionsList} keyboardShouldPersistTaps="handled">
+                {isSearchingCity ? (
+                  <ActivityIndicator color="#FF7B00" style={{ marginTop: 20 }} />
+                ) : citySuggestions.length > 0 ? (
+                  citySuggestions.map((item, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.modalSuggestionItem}
+                      onPress={() => {
+                        const cityName = item.address.city || 
+                                          item.address.town || 
+                                          item.address.village || 
+                                          item.address.suburb || 
+                                          item.display_name.split(',')[0];
+                        setLocation(cityName);
+                        setIsCityModalVisible(false);
+                        setCitySearchQuery('');
+                        setCitySuggestions([]);
+                      }}
+                    >
+                      <Ionicons name="location-outline" size={18} color="#FF7B00" style={{ marginRight: 10 }} />
+                      <Text style={styles.modalSuggestionText} numberOfLines={1}>
+                        {item.display_name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                ) : citySearchQuery.length >= 3 ? (
+                  <Text style={styles.noResultsText}>No cities found</Text>
+                ) : null}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
     </LinearGradient>
   );
 }
@@ -582,5 +762,149 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontWeight: '500',
     fontStyle: 'normal',
+  },
+  sideBySideContainer: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    gap: 12,
+    marginBottom: 16,
+  },
+  halfInputContainer: {
+    flex: 1,
+    height: 56,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+  },
+  androidTextInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 16,
+    color: '#8B4F3B',
+    fontFamily: 'System',
+    paddingHorizontal: 16,
+    paddingVertical: 0,
+  },
+  dropdownContainer: {
+    flexDirection: 'row',
+    height: 56,
+    alignSelf: 'stretch',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    marginBottom: 16,
+  },
+  dropdownLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#8B4F3B',
+    fontFamily: 'System',
+  },
+  dropdownPlaceholder: {
+    fontSize: 16,
+    color: '#C5B49F',
+    fontFamily: 'System',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFEEE5',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    minHeight: 400,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#5A4136',
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    height: 48,
+    backgroundColor: '#FF7B00',
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  gpsButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalDivider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0C0AF',
+  },
+  dividerText: {
+    fontSize: 12,
+    color: '#8B4F3B',
+    marginHorizontal: 10,
+    fontWeight: '500',
+  },
+  modalSearchContainer: {
+    flexDirection: 'row',
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 15,
+    color: '#8B4F3B',
+  },
+  modalSuggestionsList: {
+    flex: 1,
+  },
+  modalSuggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0C0AF',
+  },
+  modalSuggestionText: {
+    fontSize: 15,
+    color: '#5A4136',
+    flex: 1,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    color: '#8B4F3B',
+    marginTop: 20,
+    fontSize: 14,
   },
 });
