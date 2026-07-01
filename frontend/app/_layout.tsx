@@ -788,7 +788,7 @@ export default function RootLayout() {
         <MuteProvider>
           <Stack screenOptions={{
             headerShown: false,
-            animation: 'slide_from_right',
+            animation: 'ios_from_right',
             gestureEnabled: true,
             gestureDirection: 'horizontal',
             contentStyle: { backgroundColor: COLORS.background }
@@ -815,7 +815,7 @@ export default function RootLayout() {
               key="community-request/blood"
               name="community-request/blood"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -823,7 +823,7 @@ export default function RootLayout() {
               key="community-request/food"
               name="community-request/food"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -831,7 +831,7 @@ export default function RootLayout() {
               key="community-request/gau-seva"
               name="community-request/gau-seva"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -839,7 +839,7 @@ export default function RootLayout() {
               key="community-request/animal-care"
               name="community-request/animal-care"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -847,7 +847,7 @@ export default function RootLayout() {
               key="community-request/temple-help"
               name="community-request/temple-help"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -855,7 +855,7 @@ export default function RootLayout() {
               key="community-request/emergency"
               name="community-request/emergency"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -863,7 +863,7 @@ export default function RootLayout() {
               key="community-request/other"
               name="community-request/other"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -871,7 +871,7 @@ export default function RootLayout() {
               key="sos"
               name="sos"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
                 gestureDirection: 'vertical'
               }}
             />
@@ -879,7 +879,7 @@ export default function RootLayout() {
               key="kyc-submit"
               name="kyc-submit"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
                 gestureDirection: 'vertical'
               }}
             />
@@ -887,7 +887,7 @@ export default function RootLayout() {
               key="kyc-success"
               name="kyc-success"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
                 gestureDirection: 'vertical'
               }}
             />
@@ -895,7 +895,7 @@ export default function RootLayout() {
               key="live-jaap-welcome"
               name="live-jaap-welcome"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -903,7 +903,7 @@ export default function RootLayout() {
               key="circle/create"
               name="circle/create"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -911,7 +911,7 @@ export default function RootLayout() {
               key="community/create"
               name="community/create"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -919,7 +919,7 @@ export default function RootLayout() {
               key="community-tweets"
               name="community-tweets"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
               }}
             />
             <Stack.Screen
@@ -934,17 +934,17 @@ export default function RootLayout() {
               key="my-krishna"
               name="my-krishna"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
               }}
             />
             <Stack.Screen
               key="library/index"
               name="library/index"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
               }}
             />
-            {/* Other standard stack navigations will inherit default slide_from_right */}
+            {/* Other standard stack navigations will inherit default ios sliding */}
           </Stack>
           <GlobalFAB />
           <UploadProgressBanner />

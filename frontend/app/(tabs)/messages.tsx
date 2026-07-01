@@ -7,6 +7,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   FlatList,
   RefreshControl,
   ActivityIndicator,
@@ -1280,10 +1281,13 @@ function MessagesScreen({
     const theme = getRequestTheme(item);
 
     return (
-      <TouchableOpacity
+      <Pressable
         key={item.id ? `${item.id}-${index}` : `request-${index}`}
+        style={({ pressed }) => [
+          pressed && Platform.OS === 'ios' && { opacity: 0.9 }
+        ]}
+        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
         onPress={() => setSelectedRequest(item)}
-        activeOpacity={0.9}
       >
         <LinearGradient
           colors={theme.gradColors}
@@ -1309,7 +1313,7 @@ function MessagesScreen({
             <Text style={[styles.figmaRequestBtnText, { color: theme.btnBorderColor }]}>View &gt;</Text>
           </View>
         </LinearGradient>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
@@ -1325,9 +1329,9 @@ function MessagesScreen({
     const isPending = (item as any).is_pending;
 
     return (
-      <TouchableOpacity
+      <Pressable
         key={`${item.id}-${index}`}
-        style={[
+        style={({ pressed }) => [
           styles.localCommCard,
           Platform.OS === 'android' ? {
             borderRadius: 10,
@@ -1339,8 +1343,10 @@ function MessagesScreen({
           } : {
             backgroundColor: cardBg,
           },
-          isPending && { opacity: 0.8 }
+          isPending && { opacity: 0.8 },
+          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
         ]}
+        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
         onPress={() => isPending ? Alert.alert('Pending', 'This community is awaiting activation from other team members.') : router.push(`/community/${item.id}`)}
       >
         <View style={styles.localCommAvatarWrapper}>
@@ -1387,7 +1393,7 @@ function MessagesScreen({
             </View>
           )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
@@ -1510,10 +1516,14 @@ function MessagesScreen({
       >
         <SafeAreaView edges={['top']}>
           <View style={styles.segmentedTrack}>
-            <TouchableOpacity
-              style={[styles.segmentPill, activeTopTab === 'Community' && styles.segmentPillActive]}
+            <Pressable
+              style={({ pressed }) => [
+                styles.segmentPill,
+                activeTopTab === 'Community' && styles.segmentPillActive,
+                pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+              ]}
+              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
               onPress={() => setActiveTopTab('Community')}
-              activeOpacity={0.9}
             >
               <Text
                 style={[
@@ -1523,12 +1533,16 @@ function MessagesScreen({
               >
                 {t('language') === 'hi' ? 'समुदाय' : 'Community'}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
 
-            <TouchableOpacity
-              style={[styles.segmentPill, activeTopTab === 'Private Chat' && styles.segmentPillActive]}
+            <Pressable
+              style={({ pressed }) => [
+                styles.segmentPill,
+                activeTopTab === 'Private Chat' && styles.segmentPillActive,
+                pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+              ]}
+              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
               onPress={() => setActiveTopTab('Private Chat')}
-              activeOpacity={0.9}
             >
               <Text
                 style={[
@@ -1538,7 +1552,7 @@ function MessagesScreen({
               >
                 {t('language') === 'hi' ? 'व्यक्तिगत चैट' : 'Private Chat'}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </SafeAreaView>
       </View>
@@ -1676,13 +1690,16 @@ function MessagesScreen({
               <View style={styles.chatSection}>
                 <Text style={styles.privateChatSectionTitle}>Group Chats</Text>
                 {filteredGroups.map((item, index) => (
-                  <TouchableOpacity
+                  <Pressable
                     key={item.id ? `${item.id}-${index}` : `group-${index}`}
-                    style={styles.chatRow}
+                    style={({ pressed }) => [
+                      styles.chatRow,
+                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push(`/chat/circle/${item.id}`);
                     }}
-                    activeOpacity={0.7}
                   >
                     <Avatar name={item.name} photo={item.photo} size={52} />
                     <View style={styles.chatRowMiddle}>
@@ -1702,7 +1719,7 @@ function MessagesScreen({
                         />
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </Pressable>
                 ))}
               </View>
             ) : !searchQuery && (
@@ -1722,12 +1739,15 @@ function MessagesScreen({
                   const itemKey = conversationId ? `${conversationId}-${index}` : `dm-${index}`;
                   return (
                     <View key={itemKey}>
-                      <TouchableOpacity
-                        style={styles.chatRow}
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.chatRow,
+                          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                        ]}
+                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                         onPress={() => {
                           router.push(`/dm/${conversationId}`);
                         }}
-                        activeOpacity={0.7}
                       >
                         <Avatar name={item.user?.name || '?'} photo={item.user?.photo} size={52} />
                         <View style={styles.chatRowMiddle}>
@@ -1752,7 +1772,7 @@ function MessagesScreen({
                             />
                           )}
                         </View>
-                      </TouchableOpacity>
+                      </Pressable>
                       {index < filteredAll.length - 1 && <View style={styles.chatSeparator} />}
                     </View>
                   );

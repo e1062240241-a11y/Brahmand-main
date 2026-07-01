@@ -8,6 +8,7 @@ import {
   ScrollView,
   FlatList,
   TouchableOpacity,
+  Pressable,
   Image,
   ImageBackground,
   Dimensions,
@@ -3932,9 +3933,13 @@ export default function HomeScreen() {
                 const cityId = resolvedCityComm.id;
                 const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
                 return (
-                  <TouchableOpacity
-                    style={styles.communityCardMini}
-                    activeOpacity={0.9}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.communityCardMini,
+                      Platform.OS === 'android' && { overflow: 'hidden' },
+                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push({
                         pathname: '/community/[id]',
@@ -3951,7 +3956,7 @@ export default function HomeScreen() {
                       <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityMembers} {t('members')}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })()}
 
@@ -3971,9 +3976,13 @@ export default function HomeScreen() {
                 const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
                 const localSubgroup = resolvedLocalComm.type || 'city';
                 return (
-                  <TouchableOpacity
-                    style={styles.communityCardMini}
-                    activeOpacity={0.9}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.communityCardMini,
+                      Platform.OS === 'android' && { overflow: 'hidden' },
+                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push({
                         pathname: '/community/[id]',
@@ -3997,7 +4006,7 @@ export default function HomeScreen() {
                       </View>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })()}
             </View>
