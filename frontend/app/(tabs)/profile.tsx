@@ -1185,6 +1185,148 @@ export default function ProfileScreen() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={styles.container}>
 
+
+
+
+
+      {/* Settings Menu Modal */}
+      <Modal visible={showSettingsModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity 
+            style={StyleSheet.absoluteFill} 
+            activeOpacity={1} 
+            onPress={() => setShowSettingsModal(false)} 
+          />
+          <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+            <View style={styles.settingsHeader}>
+              <View style={styles.settingsHeaderBar} />
+              <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
+              <TouchableOpacity 
+                style={styles.settingsClose} 
+                onPress={() => setShowSettingsModal(false)}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+              >
+                <Ionicons name="close" size={24} color="#000000" />
+              </TouchableOpacity>
+            </View>
+            {Platform.OS === 'android' ? (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                  <View key={section.id} style={styles.settingsSection}>
+                    <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                    {section.items.map((item: SettingItem, index: number) => {
+                      const iconColor = item.disabled ? '#A0A0A0' : '#000000';
+                      const textColor = item.disabled ? '#A0A0A0' : '#000000';
+                      const showChevron = item.id !== 'privacy' && item.id !== 'language';
+                      const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
+
+                      return (
+                        <View key={item.id}>
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.settingsRow,
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                            ]}
+                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                            onPress={() => handleMenuPress(item)}
+                            disabled={item.disabled && item.id !== 'location'}
+                          >
+                            <Ionicons 
+                              name={item.icon as any} 
+                              size={20} 
+                              color={iconColor} 
+                              style={{ marginRight: 16 }} 
+                            />
+                            <View style={styles.settingsLabelWrap}>
+                              <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                {item.label}
+                              </Text>
+                            </View>
+                            <View style={styles.settingsRowRight}>
+                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                              {showChevron && (
+                                <Ionicons 
+                                  name="chevron-forward" 
+                                  size={18} 
+                                  color={chevronColor} 
+                                />
+                              )}
+                            </View>
+                          </Pressable>
+                          {index < section.items.length - 1 && (
+                            <View 
+                              style={[
+                                styles.settingsSeparator,
+                                { marginLeft: 56, backgroundColor: '#EAEAEA' }
+                              ]} 
+                            />
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+                <View style={styles.bottomSpacer} />
+              </ScrollView>
+            ) : (
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                  <View key={section.id} style={styles.settingsSection}>
+                    <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                    {section.items.map((item: SettingItem, index: number) => {
+                      const textColor = item.action === 'logout' ? COLORS.error : '#000000';
+                      const showChevron = !item.disabled;
+
+                      return (
+                        <View key={item.id}>
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.settingsRow,
+                              item.disabled && styles.settingsRowDisabled,
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                            ]}
+                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                            onPress={() => handleMenuPress(item)}
+                            disabled={item.disabled}
+                          >
+                            <Ionicons 
+                              name={item.icon as any} 
+                              size={20} 
+                              color="#000" 
+                              style={{ marginRight: 16 }} 
+                            />
+                            <View style={styles.settingsLabelWrap}>
+                              <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                {item.label}
+                              </Text>
+                              {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                            </View>
+                            <View style={styles.settingsRowRight}>
+                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                              {showChevron && (
+                                <Ionicons 
+                                  name="chevron-forward" 
+                                  size={18} 
+                                  color="#000" 
+                                />
+                              )}
+                            </View>
+                          </Pressable>
+                          {index < section.items.length - 1 && (
+                            <View style={styles.settingsSeparator} />
+                          )}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+                <View style={styles.bottomSpacer} />
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
         <View
           style={[styles.stickyNav, { paddingTop: insets.top + 8, height: insets.top + NAV_BAR_HEIGHT + 8 }]}
         >

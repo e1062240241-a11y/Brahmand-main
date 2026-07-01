@@ -318,7 +318,7 @@ export default function VendorProfileScreen() {
         )}
 
         {/* Address Section */}
-        {vendor.full_address && (
+        {!!vendor.full_address && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Address</Text>
             <Text style={styles.addressText}>{vendor.full_address}</Text>
@@ -326,7 +326,7 @@ export default function VendorProfileScreen() {
         )}
 
         {/* Business Hours Section */}
-        {vendor.business_hours && (
+        {!!vendor.business_hours && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderInline}>
               <Ionicons name="time-outline" size={18} color="#FF6600" style={{ marginRight: 8 }} />
@@ -343,7 +343,7 @@ export default function VendorProfileScreen() {
         )}
 
         {/* Offers & Deals Section */}
-        {vendor.offers && (
+        {!!vendor.offers && (
           <View style={styles.section}>
             <View style={styles.sectionHeaderInline}>
               <Svg width={15.363} height={15.398} viewBox="0 0 24 24" fill="none" style={{ marginRight: 8 }}>
@@ -359,18 +359,18 @@ export default function VendorProfileScreen() {
         )}
 
         {/* Connect Section */}
-        {(vendor.website_link || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
+        {!!(vendor.website_link || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Connect</Text>
             
-            {vendor.website_link && (
+            {!!vendor.website_link && (
               <TouchableOpacity style={styles.connectRow} onPress={() => vendor.website_link && openExternalUrl(vendor.website_link)}>
                 <Ionicons name="globe-outline" size={18} color="#FF6600" />
                 <Text style={styles.connectLinkText}>{vendor.website_link}</Text>
               </TouchableOpacity>
             )}
             
-            {vendor.social_media?.instagram && (
+            {!!vendor.social_media?.instagram && (
               <TouchableOpacity style={styles.connectRow} onPress={() => {
                 const handle = vendor.social_media?.instagram?.replace('@', '');
                 Linking.openURL(`https://instagram.com/${handle}`);
@@ -380,7 +380,7 @@ export default function VendorProfileScreen() {
               </TouchableOpacity>
             )}
             
-            {vendor.social_media?.whatsapp && (
+            {!!vendor.social_media?.whatsapp && (
               <TouchableOpacity style={styles.connectRow} onPress={() => vendor.social_media?.whatsapp && Linking.openURL(`https://wa.me/${vendor.social_media.whatsapp}`)}>
                 <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
                 <Text style={styles.connectLinkText}>{vendor.social_media.whatsapp}</Text>

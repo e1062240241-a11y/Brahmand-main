@@ -42,6 +42,17 @@ import * as Location from 'expo-location';
 const VSCREEN_WIDTH = Dimensions.get('window').width;
 const VSCREEN_HEIGHT = Dimensions.get('window').height;
 
+// Responsive variables for Android to prevent horizontal scroll/layout cuts
+const wrapperWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 24 : 394;
+const gridPadding = 16;
+const gap = 8;
+const cardWidth = Platform.OS === 'android' ? (wrapperWidth - (gridPadding * 2) - (gap * 2) - 4) / 3 : 110;
+const rightColWidth = Platform.OS === 'android' ? cardWidth * 2 + gap : 228;
+
+const businessGridWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 32 : 347;
+const businessRightColWidth = Platform.OS === 'android' ? (businessGridWidth - 12) / 3.13 : 107;
+const businessLeftColWidth = Platform.OS === 'android' ? businessRightColWidth * 2.13 : 228;
+
 const TABS = ['Nearby'];
 const MAIN_SECTIONS = ['Services', 'Jobs'];
 const TOP_SKILL_SUGGESTIONS = ['Carpenter', 'Housemaid', 'Plumber', 'Electrician', 'Cook', 'Teacher', 'Painter', 'Beautician'];
@@ -1204,7 +1215,7 @@ export default function VendorScreen() {
           </TouchableOpacity>
 
           {/* KYC Banner and Services Grid Wrapper */}
-          <View style={{ width: 394, height: 360, backgroundColor: '#FCECD1', alignSelf: 'center', borderRadius: 20, paddingTop: 24, marginTop: -10, paddingBottom: 20 }}>
+          <View style={{ width: wrapperWidth, height: 360, backgroundColor: '#FCECD1', alignSelf: 'center', borderRadius: 20, paddingTop: 24, marginTop: -10, paddingBottom: 20 }}>
             {/* KYC Banner */}
             <View style={styles.figmaCapsuleContainer}>
               <View style={styles.figmaKycCapsule}>
@@ -1223,13 +1234,13 @@ export default function VendorScreen() {
             <View style={[styles.figmaServicesGrid, { marginTop: 24 }]}>
               {/* Left Column (Astrologer spans 2 rows) */}
               <TouchableOpacity 
-                style={[styles.figmaServiceCard, { height: 208, alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 }]} 
+                style={[styles.figmaServiceCard, { width: cardWidth, height: 208, alignItems: 'flex-start', paddingBottom: 8, paddingLeft: 8 }]} 
                 onPress={() => router.push('/vendor/category/Astrologer' as any)}
               >
                 {/* Manual crop offset for landscape Astrologer image */}
                 <Image 
                   source={require('../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg')} 
-                  style={{ position: 'absolute', width: 331, height: 210, left: -110, top: -1, borderRadius: 11 }} 
+                  style={{ position: 'absolute', width: cardWidth * 3.01, height: 210, left: -cardWidth, top: -1, borderRadius: 11 }} 
                   resizeMode="cover" 
                 />
                 <View style={styles.figmaServiceBadge}>
@@ -1249,10 +1260,10 @@ export default function VendorScreen() {
               </TouchableOpacity>
 
               {/* Right Columns (2x2 grid) */}
-              <View style={{ width: 228, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              <View style={{ width: rightColWidth, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {/* Electrician */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/lightning.png')} 
@@ -1269,8 +1280,8 @@ export default function VendorScreen() {
                   </View>
                 </TouchableOpacity>
                 {/* Panditji */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.png')} 
@@ -1287,8 +1298,8 @@ export default function VendorScreen() {
                   </View>
                 </TouchableOpacity>
                 {/* Carpenter */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/carpener.png')} style={{ position: 'absolute', width: 150, height: 102, left: -20, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/carpener.png')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/hammer_custom.png')} 
@@ -1305,8 +1316,8 @@ export default function VendorScreen() {
                   </View>
                 </TouchableOpacity>
                 {/* Plumber */}
-                <TouchableOpacity style={[styles.figmaServiceCard, { width: 110, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/plumber.png')} style={{ position: 'absolute', width: 157, height: 102, left: -23, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/plumber.png')} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/plumber_icon.png')} 
@@ -1343,8 +1354,8 @@ export default function VendorScreen() {
           <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
             <Image 
               source={require('../../assets/images/tab-bar/rashi/vendor/background.png')} 
-              style={{ position: 'absolute', width: 487, height: 364, top: 0 }} 
-              resizeMode="stretch" 
+              style={{ position: 'absolute', width: Platform.OS === 'android' ? VSCREEN_WIDTH : 487, height: 364, top: 0 }} 
+              resizeMode={Platform.OS === 'android' ? 'cover' : 'stretch'} 
             />
             
             {/* Business Header */}
@@ -1362,9 +1373,9 @@ export default function VendorScreen() {
 
             {/* Business Grid */}
             <View style={styles.figmaBusinessGrid}>
-              <View style={styles.figmaBusinessLeftCol}>
+              <View style={[styles.figmaBusinessLeftCol, { width: businessLeftColWidth }]}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => router.push('/vendor/category/General Store' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/generalstore.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/generalstore.jpg')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/general_store.png')} 
@@ -1381,7 +1392,7 @@ export default function VendorScreen() {
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => router.push('/vendor/category/Dairy' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/dairy.jpg')} style={{ position: 'absolute', width: 228, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/dairy.jpg')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/cow.png')} 
@@ -1398,9 +1409,9 @@ export default function VendorScreen() {
                   </View>
                 </TouchableOpacity>
               </View>
-              <View style={styles.figmaBusinessRightCol}>
+              <View style={[styles.figmaBusinessRightCol, { width: businessRightColWidth }]}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => router.push('/vendor/category/Salon' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/salon.png')} style={{ position: 'absolute', width: 345, height: 197, left: -119, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/salon.png')} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/salon_icon.png')} 
@@ -1983,7 +1994,7 @@ const styles = StyleSheet.create({
   },
   figmaRegisterBtn: {
     flexDirection: 'row',
-    width: 361,
+    width: Platform.OS === 'android' ? VSCREEN_WIDTH - 32 : 361,
     paddingVertical: 12,
     paddingHorizontal: 16,
     justifyContent: 'center',
@@ -2129,11 +2140,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   figmaBusinessLeftCol: {
-    width: 228,
+    width: Platform.OS === 'android' ? undefined : 228,
     justifyContent: 'space-between',
   },
   figmaBusinessRightCol: {
-    width: 107,
+    width: Platform.OS === 'android' ? undefined : 107,
   },
   figmaBusinessCard: {
     borderRadius: 11,
