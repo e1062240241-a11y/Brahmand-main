@@ -196,7 +196,12 @@ export const FloatingUtilityButton = () => {
   const [respondedSOSIds, setRespondedSOSIds] = useState<Set<string>>(new Set());
   const [dismissedSOSIds, setDismissedSOSIds] = useState<Set<string>>(new Set());
 
+  const isCheckingSOSRef = useRef(false);
+
   const checkSOSStatus = useCallback(async () => {
+    if (AppState.currentState !== 'active') return;
+    if (isCheckingSOSRef.current) return;
+    isCheckingSOSRef.current = true;
     try {
       const mySOSRes = await getMySOSAlert();
       setActiveSOS(mySOSRes.data);
@@ -213,7 +218,10 @@ export const FloatingUtilityButton = () => {
         setNearbySOSCount(visibleSOS.length);
         setNearbySOSAlerts(visibleSOS);
       }
-    } catch (error) { }
+    } catch (error) { 
+    } finally {
+      isCheckingSOSRef.current = false;
+    }
   }, [dismissedSOSIds]);
 
   useEffect(() => {
@@ -243,6 +251,10 @@ export const FloatingUtilityButton = () => {
   const [locationFetched, setLocationFetched] = useState(false);
   const [sosFlowVisible, setSosFlowVisible] = useState(false);
   const [incomingSOS, setIncomingSOS] = useState<any>(null);
+  const incomingSOSRef = useRef<any>(null);
+  useEffect(() => {
+    incomingSOSRef.current = incomingSOS;
+  }, [incomingSOS]);
   const [sosResponderModalVisible, setSosResponderModalVisible] = useState(false);
   const [isResponding, setIsResponding] = useState(false);
   const [fetchedCoordinates, setFetchedCoordinates] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -547,7 +559,19 @@ export const FloatingUtilityButton = () => {
       }
     };
 
+    const handleSOSResolved = (data: any) => {
+      console.log('[Socket] Real-time SOS resolved:', data);
+      const currentIncoming = incomingSOSRef.current;
+      if (currentIncoming && (currentIncoming.id === data.sos_id || currentIncoming.sos_id === data.sos_id)) {
+        setIncomingSOS(null);
+        setSosResponderModalVisible(false);
+        Vibration.cancel();
+      }
+      checkSOSStatus();
+    };
+
     socketService.onEvent('sos_alert', handleSOSAlert);
+    socketService.onEvent('sos_resolved', handleSOSResolved);
 
     // Check for pending SOS from push notifications
     const checkPendingSOS = setInterval(() => {
@@ -564,12 +588,13 @@ export const FloatingUtilityButton = () => {
       if (AppState.currentState !== 'active') return;
       checkSOSStatus();
       fetchMyCommunityRequests();
-    }, 60000);
+    }, 180000); // 3 minutes fallback
 
     return () => {
       if (sosRefreshTimerRef.current) clearInterval(sosRefreshTimerRef.current);
       clearInterval(checkPendingSOS);
       socketService.offEvent('sos_alert', handleSOSAlert);
+      socketService.offEvent('sos_resolved', handleSOSResolved);
     };
   }, [checkSOSStatus, user?.id]);
 

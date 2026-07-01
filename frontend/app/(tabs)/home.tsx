@@ -54,6 +54,48 @@ import {
   getLastTopPostId,
 } from '../../src/utils/feedRanker';
 
+import SharePostModal from '../../src/components/SharePostModal';
+import UploadPostModal from '../../src/components/UploadPostModal';
+import { BlurView } from 'expo-blur';
+import { RequestFormModal } from '../../src/components/RequestFormModal';
+import { MentionInput } from '../../src/components/MentionInput';
+import { MentionText } from '../../src/components/MentionText';
+import { SirenIcon } from '../../src/components/SirenIcon';
+import { SacredIcon } from '../../src/components/SacredIcon';
+import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
+import {
+  api,
+  addPostComment,
+  createCommunityRequest,
+  deletePost,
+  deletePostComment,
+  discoverCommunities,
+  followUser,
+  getAllUsers,
+  getCommunities,
+  getCommunityRequests,
+  getHomeInit,
+  getPostComments,
+  getPostsFeed,
+  repostPost,
+  reportPost,
+  searchByHashtag,
+  togglePostLike,
+  unfollowUser,
+  updateProfile,
+  uploadUserPost,
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
+  getNextFestival,
+  reverseGeocode,
+  markPostAsSeen,
+} from '../../src/services/api';
+import * as Location from 'expo-location';
+import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
+import { formatTimeAgo } from '../../src/utils/dateUtils';
+import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
+
 function KundliSirenIcon() {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -263,49 +305,7 @@ function ShopIcon() {
   );
 }
 
-import SharePostModal from '../../src/components/SharePostModal';
-import UploadPostModal from '../../src/components/UploadPostModal';
 import { ReportModal } from '../../src/components/ReportModal';
-import { BlurView } from 'expo-blur';
-import { RequestFormModal } from '../../src/components/RequestFormModal';
-import { MentionInput } from '../../src/components/MentionInput';
-import { MentionText } from '../../src/components/MentionText';
-import { SirenIcon } from '../../src/components/SirenIcon';
-import { SacredIcon } from '../../src/components/SacredIcon';
-import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
-import {
-  api,
-  addPostComment,
-  createCommunityRequest,
-  deletePost,
-  deletePostComment,
-  discoverCommunities,
-  followUser,
-  getAllUsers,
-  getCommunities,
-  getCommunityRequests,
-  getHomeInit,
-  getPostComments,
-  getPostsFeed,
-  repostPost,
-  reportPost,
-  searchByHashtag,
-  togglePostLike,
-  unfollowUser,
-  updateProfile,
-  uploadUserPost,
-  getUnreadNotificationCount,
-  markAllNotificationsRead,
-  getNextFestival,
-  reverseGeocode,
-  markPostAsSeen,
-} from '../../src/services/api';
-import * as Location from 'expo-location';
-import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import { formatTimeAgo } from '../../src/utils/dateUtils';
-import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
-import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
-
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
@@ -517,7 +517,11 @@ export default function HomeScreen() {
   const currentUserId = (user as any)?.id;
   const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
   const [isEditingBio, setIsEditingBio] = useState(false);
-  const { activeTab, setActiveTab, tabFeeds, setTabFeed, viewHistory, sessionShownIds, loadHistory, markViewed, addSessionShown } = useFeedStore();
+  const activeTab = useFeedStore(state => state.activeTab);
+  const setActiveTab = useFeedStore(state => state.setActiveTab);
+  const tabFeeds = useFeedStore(state => state.tabFeeds);
+  const setTabFeed = useFeedStore(state => state.setTabFeed);
+  const loadHistory = useFeedStore(state => state.loadHistory);
   const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
   const feedPosts = currentFeed.posts;
   const feedOffset = currentFeed.offset;

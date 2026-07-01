@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -60,6 +60,107 @@ const formatTime = (seconds: number): string => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
+const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const durationRef = useRef(0);
+  const timeIntervalRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!player || !isActive) return;
+    const dur = player.duration || player.currentTime || 120;
+    if (dur > 0) {
+      setDuration(dur);
+      durationRef.current = dur;
+    }
+    timeIntervalRef.current = setInterval(() => {
+      if (player) {
+        const ct = player.currentTime || 0;
+        setCurrentTime(ct);
+        const pd = player.duration || durationRef.current;
+        if (pd > 0 && pd !== durationRef.current) {
+          durationRef.current = pd;
+          setDuration(pd);
+        }
+      }
+    }, 500);
+    return () => {
+      if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
+    };
+  }, [player, isActive]);
+
+  const seekPlayerRef = useRef<(pageX: number) => void>(() => { });
+
+  seekPlayerRef.current = (pageX: number) => {
+    if (!player) return;
+    const dur = duration || durationRef.current || player.duration || 0;
+    if (!dur) return;
+    const barWidth = screenSize.width - 32;
+    const x = Math.max(0, Math.min(pageX - 16, barWidth));
+    const ratio = x / barWidth;
+    player.currentTime = ratio * dur;
+    setCurrentTime(player.currentTime || 0);
+  };
+
+  const seekBarPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => {
+      setIsScrubbing(true);
+      seekPlayerRef.current(evt.nativeEvent.pageX);
+    },
+    onPanResponderMove: (evt) => {
+      setIsScrubbing(true);
+      seekPlayerRef.current(evt.nativeEvent.pageX);
+    },
+    onPanResponderRelease: () => setIsScrubbing(false),
+    onPanResponderTerminate: () => setIsScrubbing(false),
+  })).current;
+
+  return (
+    <View
+      {...seekBarPan.panHandlers}
+      style={{
+        position: 'absolute',
+        bottom: Platform.OS === 'ios' ? 40 : 30,
+        left: 16,
+        right: 16,
+        height: isScrubbing ? 40 : 20,
+        zIndex: 20,
+        justifyContent: 'flex-end',
+        paddingBottom: 4,
+      }}
+    >
+      <View style={{
+        width: '100%',
+        height: isScrubbing ? 6 : 2,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        borderRadius: 3,
+        overflow: 'visible',
+      }}>
+        <View style={{
+          width: `${duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0}%`,
+          height: '100%',
+          backgroundColor: '#FFF',
+          borderRadius: 3,
+        }} />
+      </View>
+      {isScrubbing && (
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          marginTop: 4,
+        }}>
+          <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 'bold' }}>{formatTime(currentTime)}</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 'bold' }}>{duration > 0 ? formatTime(duration) : '--:--'}</Text>
+        </View>
+      )}
+    </View>
+  );
+});
+ReelProgressBar.displayName = 'ReelProgressBar';
+
 const ReelVideoItem = React.memo(({
   post,
   isActive,
@@ -94,13 +195,9 @@ const ReelVideoItem = React.memo(({
   const isLongCaption = captionWords.length > 4 || captionText.length > 45;
   const reelPostTimeText = formatReelDate(post?.created_at || post?.createdAt || post?.createdAtUtc || null, language);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [showSpeedBadge, setShowSpeedBadge] = useState(false);
-  const [isScrubbing, setIsScrubbing] = useState(false);
   const seekingRef = useRef<'left' | 'right' | null>(null);
   const seekIntervalRef = useRef<any>(null);
-  const timeIntervalRef = useRef<any>(null);
   const durationRef = useRef(0);
   const lastTapRef = useRef<number>(0);
   const heartScale = useRef(new Animated.Value(0)).current;
@@ -307,24 +404,8 @@ const ReelVideoItem = React.memo(({
     if (!player || !isActive || !isVideo) return;
     const dur = player.duration || player.currentTime || 120;
     if (dur > 0) {
-      setDuration(dur);
       durationRef.current = dur;
     }
-    // OPT-4: slowed from 200ms to 500ms — halves setState frequency (~10→~4 calls/s)
-    timeIntervalRef.current = setInterval(() => {
-      if (player && !seekingRef.current) {
-        const ct = player.currentTime || 0;
-        setCurrentTime(ct);
-        const pd = player.duration || durationRef.current;
-        if (pd > 0 && pd !== durationRef.current) {
-          durationRef.current = pd;
-          setDuration(pd);
-        }
-      }
-    }, 500);
-    return () => {
-      if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
-    };
   }, [player, isActive, isVideo]);
 
   const cycleSpeed = () => {
@@ -335,59 +416,34 @@ const ReelVideoItem = React.memo(({
     setTimeout(() => setShowSpeedBadge(false), 1200);
   };
 
+  const [seekingDirection, setSeekingDirection] = useState<'left' | 'right' | null>(null);
+  const [seekTime, setSeekTime] = useState(0);
+
   const startSeek = (direction: 'left' | 'right') => {
     if (!player) return;
     seekingRef.current = direction;
+    setSeekingDirection(direction);
     setIsPaused(true);
     const step = direction === 'left' ? -SEEK_STEP : SEEK_STEP;
     player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
-    setCurrentTime(player.currentTime || 0);
+    setSeekTime(player.currentTime || 0);
     seekIntervalRef.current = setInterval(() => {
       if (player && seekingRef.current) {
         player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
-        setCurrentTime(player.currentTime || 0);
+        setSeekTime(player.currentTime || 0);
       }
     }, 300);
   };
 
   const stopSeek = () => {
     seekingRef.current = null;
+    setSeekingDirection(null);
     if (seekIntervalRef.current) {
       clearInterval(seekIntervalRef.current);
       seekIntervalRef.current = null;
     }
     setIsPaused(false);
   };
-
-  const seekBarRef = useRef<any>(null);
-
-  const seekPlayerRef = useRef<(pageX: number) => void>(() => { });
-
-  seekPlayerRef.current = (pageX: number) => {
-    if (!player) return;
-    const dur = duration || durationRef.current || player.duration || 0;
-    if (!dur) return;
-    const barWidth = screenSize.width - 32;
-    const x = Math.max(0, Math.min(pageX - 16, barWidth));
-    const ratio = x / barWidth;
-    player.currentTime = ratio * dur;
-    setCurrentTime(player.currentTime || 0);
-  };
-
-  const seekBarPan = useRef(PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (evt) => {
-      setIsScrubbing(true);
-      seekPlayerRef.current(evt.nativeEvent.pageX);
-    },
-    onPanResponderMove: (evt) => {
-      setIsScrubbing(true);
-      seekPlayerRef.current(evt.nativeEvent.pageX);
-    },
-    onPanResponderRelease: () => setIsScrubbing(false),
-    onPanResponderTerminate: () => setIsScrubbing(false),
-  })).current;
 
   const handleTapVideo = () => {
     const now = Date.now();
@@ -624,7 +680,7 @@ const ReelVideoItem = React.memo(({
       )}
 
       {/* Seek badge - shows when holding left/right */}
-      {seekingRef.current && isVideo && (
+      {seekingDirection && isVideo && (
         <View style={{
           position: 'absolute',
           top: '45%',
@@ -638,9 +694,9 @@ const ReelVideoItem = React.memo(({
           alignItems: 'center',
           gap: 8,
         }}>
-          <Ionicons name={seekingRef.current === 'left' ? 'play-back' : 'play-forward'} size={22} color="#FFF" />
+          <Ionicons name={seekingDirection === 'left' ? 'play-back' : 'play-forward'} size={22} color="#FFF" />
           <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
-            {formatTime(currentTime)} / {formatTime(duration)}
+            {formatTime(seekTime)} / {formatTime(durationRef.current || (player ? player.duration : 120))}
           </Text>
         </View>
       )}
@@ -680,45 +736,8 @@ const ReelVideoItem = React.memo(({
       </View>
 
       {/* Seek bar at bottom */}
-      {isVideo && (
-        <View
-          {...seekBarPan.panHandlers}
-          style={{
-            position: 'absolute',
-            bottom: Platform.OS === 'ios' ? 40 : 30,
-            left: 16,
-            right: 16,
-            height: isScrubbing ? 40 : 20,
-            zIndex: 20,
-            justifyContent: 'flex-end',
-            paddingBottom: 4,
-          }}
-        >
-          <View style={{
-            width: '100%',
-            height: isScrubbing ? 6 : 2,
-            backgroundColor: 'rgba(255,255,255,0.3)',
-            borderRadius: 3,
-            overflow: 'visible',
-          }}>
-            <View style={{
-              width: `${duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0}%`,
-              height: '100%',
-              backgroundColor: '#FFF',
-              borderRadius: 3,
-            }} />
-          </View>
-          {isScrubbing && (
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              marginTop: 4,
-            }}>
-              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 'bold' }}>{formatTime(currentTime)}</Text>
-              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 11, fontWeight: 'bold' }}>{duration > 0 ? formatTime(duration) : '--:--'}</Text>
-            </View>
-          )}
-        </View>
+      {isVideo && player && (
+        <ReelProgressBar player={player} isActive={isActive} screenSize={screenSize} />
       )}
 
       {/* Bottom Gradient Overlay for caption readability */}
@@ -929,7 +948,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const videosRef = useRef<any[]>([]);
   const activeIndexRef = useRef(0);
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
-  const callbacksRef = useRef({ onClose, onLike, onComment, onShare });
+  const callbacksRef = useRef({ onClose, onLike, onComment, onShare, toggleMute });
 
   // OPT-2: Single AppState listener in parent — passed down as a prop to
   // ReelVideoItem. Previously every item created its own listener (N leaks).
@@ -958,6 +977,26 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   const [autoScroll, setAutoScroll] = useState(true);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
+
+  const handleCloseWrapper = useCallback(() => {
+    callbacksRef.current.onClose?.();
+  }, []);
+
+  const handleCommentWrapper = useCallback((post: any) => {
+    callbacksRef.current.onComment?.(post);
+  }, []);
+
+  const handleShareWrapper = useCallback((post: any) => {
+    callbacksRef.current.onShare?.(post);
+  }, []);
+
+  const handleOpenOptions = useCallback(() => {
+    setIsOptionsVisible(true);
+  }, []);
+
+  const handleToggleMuteWrapper = useCallback(() => {
+    callbacksRef.current.toggleMute?.();
+  }, []);
 
   useEffect(() => {
     const loadAutoScrollPref = async () => {
@@ -1242,7 +1281,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   hasMoreRef.current = hasMore;
   videosRef.current = videos;
   activeIndexRef.current = activeIndex;
-  callbacksRef.current = { onClose, onLike, onComment, onShare };
+  callbacksRef.current = { onClose, onLike, onComment, onShare, toggleMute };
 
   const loadMoreReels = useCallback(async () => {
     if (loadingRef.current) return;
@@ -1427,8 +1466,11 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const nextUrl = String(nextPost?.media_url || nextPost?.mediaUrl || '');
     const isNextVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(nextUrl);
     if (isNextVideo && nextUrl) {
-      // Pre-warm the cache for the next reel
-      fetch(nextUrl, { method: 'GET', headers: { Range: 'bytes=0-1048576' } }).catch(() => { });
+      // Delay pre-warming by 1500ms to allow the active video to start playing smoothly first
+      const timer = setTimeout(() => {
+        fetch(nextUrl, { method: 'GET', headers: { Range: 'bytes=0-1048576' } }).catch(() => { });
+      }, 1500);
+      return () => clearTimeout(timer);
     }
   }, [activeIndex, videos]);
 
@@ -1446,22 +1488,22 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       post={item}
       isActive={index === activeIndexRef.current}
       shouldLoad={Math.abs(index - activeIndexRef.current) <= 1}
-      onClose={callbacksRef.current.onClose}
+      onClose={handleCloseWrapper}
       onLike={handleLikeLocal}
-      onComment={callbacksRef.current.onComment}
-      onShare={callbacksRef.current.onShare}
+      onComment={handleCommentWrapper}
+      onShare={handleShareWrapper}
       isMuted={isMuted}
-      toggleMute={toggleMute}
+      toggleMute={handleToggleMuteWrapper}
       screenSize={screenSize}
       onShareLocal={handleShareLocal}
       onCommentLocal={handleCommentLocal}
       autoScroll={autoScroll}
       onVideoEnded={handleVideoEnded}
-      onOpenOptions={() => setIsOptionsVisible(true)}
+      onOpenOptions={handleOpenOptions}
       appState={appState}
     />
   // OPT-6: removed activeIndex from deps — use ref instead
-  ), [isMuted, screenSize, handleShareLocal, handleCommentLocal, handleLikeLocal, autoScroll, handleVideoEnded, appState]);
+  ), [isMuted, screenSize, handleShareLocal, handleCommentLocal, handleLikeLocal, autoScroll, handleVideoEnded, appState, handleCloseWrapper, handleCommentWrapper, handleShareWrapper, handleOpenOptions, handleToggleMuteWrapper]);
 
   // OPT-5: memoize comment tree — only recomputes when localComments changes,
   // not on every parent render triggered by swipe/mute/etc.
@@ -1480,6 +1522,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     [localComments]
   );
 
+  const flatListExtraData = useMemo(() => ({ activeIndex, isMuted }), [activeIndex, isMuted]);
+
   return (
     <Modal
       visible={isVisible}
@@ -1496,7 +1540,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             ref={flatListRef}
             data={videos}
             renderItem={renderItem}
-            extraData={{ activeIndex, isMuted }}
+            extraData={flatListExtraData}
             // OPT-1: key by post.id (stable) instead of array index
           // This makes FlatList use O(1) key matching on mutations instead
           // of O(n) full reconciliation every time setVideos() is called.
