@@ -590,9 +590,14 @@ export default function HomeScreen() {
     return url.replace('www.youtube.com', 'm.youtube.com');
   };
 
+  const [activeVendorIndex, setActiveVendorIndex] = useState(0);
+  const [activeRequestIndex, setActiveRequestIndex] = useState(0);
+
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveAartiIndex(prev => (prev + 1) % ROTATING_AARTIS.length);
+      setActiveVendorIndex(prev => prev + 1);
+      setActiveRequestIndex(prev => prev + 1);
     }, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -3704,18 +3709,29 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
               >
-                {/* Urgent Blood Request */}
-                {bloodRequests.length > 0 ? (
-                  bloodRequests.map((req, idx) => (
-                    <View key={req.id || idx} style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                {/* Urgent Blood/Community Request */}
+                {safeCommunityRequests.length > 0 ? (() => {
+                  const req = safeCommunityRequests[activeRequestIndex % safeCommunityRequests.length];
+                  const requestTitle = req.type === 'blood' 
+                    ? `${req.blood_group || 'Blood'} ${t('bloodRequired')}`
+                    : (req.title || 'Community Help');
+                  const requestDetails = req.type === 'blood'
+                    ? `${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`
+                    : (req.description || req.location || 'Nearby');
+                  return (
+                    <View key={req.id || 0} style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="rose">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                              <BloodDropIcon />
+                              {req.type === 'blood' ? (
+                                <BloodDropIcon />
+                              ) : (
+                                <Ionicons name="people-outline" size={20} color="#FF0022" />
+                              )}
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{`${req.blood_group || 'Blood'} ${t('bloodRequired')}`}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{`${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
                           </View>
                           <TouchableOpacity
                             style={{
@@ -3735,11 +3751,11 @@ export default function HomeScreen() {
                             }}
                             onPress={() => {
                               router.push({
-                                pathname: '/community-request/list',
-                                params: {
-                                  requestId: req.id,
-                                  community_id: req.community_id
-                                }
+                                  pathname: '/community-request/list',
+                                  params: {
+                                    requestId: req.id,
+                                    community_id: req.community_id
+                                  }
                               });
                             }}
                           >
@@ -3754,8 +3770,8 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     </View>
-                  ))
-                ) : (
+                  );
+                })() : (
                   <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="rose">
@@ -3844,9 +3860,10 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {/* Verified Vendor */}
                 {(() => {
-                  const displayVendor = vendors.find(v => v.kyc_status === 'verified') || vendors[0];
+                  const verifiedVendors = vendors.filter(v => v.kyc_status === 'verified');
+                  const targetList = verifiedVendors.length > 0 ? verifiedVendors : (vendors.length > 0 ? vendors : []);
+                  const displayVendor = targetList.length > 0 ? targetList[activeVendorIndex % targetList.length] : null;
                   const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
                   const categoryAndLoc = displayVendor
                     ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
