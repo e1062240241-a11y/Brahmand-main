@@ -4526,6 +4526,16 @@ export default function CommunityDetailScreen() {
                 placeholder={t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...'}
                 placeholderTextColor="#888"
                 inputStyle={styles.commentInput}
+                onFocus={() => {
+                  if (Platform.OS === 'android') {
+                    setKeyboardVisible(true);
+                  }
+                }}
+                onBlur={() => {
+                  if (Platform.OS === 'android') {
+                    setKeyboardVisible(false);
+                  }
+                }}
               />
               <TouchableOpacity onPress={handleAddComment} disabled={!commentText.trim()}>
                 <Text style={[styles.postCommentBtn, !commentText.trim() && { opacity: 0.5 }]}>

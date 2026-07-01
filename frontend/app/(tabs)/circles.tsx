@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getCircles } from '../../src/services/api';
@@ -35,10 +35,14 @@ export default function CirclesScreen() {
   };
 
   const renderCircle = ({ item }: { item: Circle }) => (
-    <TouchableOpacity
-      style={styles.circleCard}
+    <Pressable
+      style={({ pressed }) => [
+        styles.circleCard,
+        Platform.OS === 'android' && { overflow: 'hidden' },
+        pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+      ]}
+      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
       onPress={() => router.push(`/chat/circle/${item.id}`)}
-      activeOpacity={0.7}
     >
       <View style={styles.iconContainer}>
         <Ionicons name="ellipse" size={24} color={COLORS.primary} />
@@ -74,7 +78,7 @@ export default function CirclesScreen() {
         </View>
       </View>
       <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-    </TouchableOpacity>
+    </Pressable>
   );
 
   if (loading) {
@@ -89,20 +93,29 @@ export default function CirclesScreen() {
     <View style={styles.container}>
       {/* Action Buttons */}
       <View style={styles.actionRow}>
-        <TouchableOpacity
-          style={styles.actionButton}
+        <Pressable
+          style={({ pressed }) => [
+            styles.actionButton,
+            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+          ]}
+          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
           onPress={() => router.push('/circle/create')}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.textWhite} />
           <Text style={styles.actionText}>Create Circle</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.actionButtonOutline]}
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.actionButton,
+            styles.actionButtonOutline,
+            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+          ]}
+          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
           onPress={() => router.push('/circle/join')}
         >
           <Ionicons name="enter" size={20} color={COLORS.primary} />
           <Text style={[styles.actionText, styles.actionTextOutline]}>Join Circle</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {circles.length === 0 ? (

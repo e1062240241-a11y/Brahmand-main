@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "f72c2038-7e68-41b0-8836-2988290afe9a"
+      }
+    },
+    "android": {
+      "package": "com.virralpatel.brahmandmain"
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Platform, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Image, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated';
 import { useTabBar } from '../contexts/TabBarContext';
@@ -81,7 +81,7 @@ function BackgroundViews({ geom, scaleX }: { geom: CapsuleGeometry; scaleX: numb
   const rects = [geom.leftRect, geom.rightRect, geom.activeRect].filter(Boolean) as { x: number; w: number }[];
   const keys = ['left', 'right', 'active'];
   return (
-    <>
+    <View style={StyleSheet.absoluteFill}>
       {rects.map((r, i) => (
         <View
           key={keys[i]}
@@ -96,7 +96,7 @@ function BackgroundViews({ geom, scaleX }: { geom: CapsuleGeometry; scaleX: numb
           }}
         />
       ))}
-    </>
+    </View>
   );
 }
 
@@ -129,9 +129,13 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const { tabBarTranslateY } = useTabBar();
 
   // ── Responsive geometry ────────────────────────────────────────────────────
-  const screenWidth = Dimensions.get('window').width;
+  const { width: screenWidth } = useWindowDimensions();
   // Real pixel width the tab bar may occupy (subtract outer padding on both sides)
-  const barWidth = Math.max(screenWidth - OUTER_H_PADDING * 2, 200);
+  const rawBarWidth = Math.max(screenWidth - OUTER_H_PADDING * 2, 200);
+  // Capped at the design width of 373 only on Android to prevent stretching/sizing anomalies on wider devices
+  const barWidth = Platform.OS === 'android'
+    ? Math.min(rawBarWidth, DESIGN_BAR_WIDTH)
+    : rawBarWidth;
   // Scale factor to map design-space (373) coordinates to real device pixels
   const scaleX = barWidth / DESIGN_BAR_WIDTH;
   // ──────────────────────────────────────────────────────────────────────────
@@ -293,6 +297,9 @@ const styles = StyleSheet.create({
   },
   slotContainer: {
     position: 'absolute',
+    ...Platform.select({
+      android: { top: 0 },
+    }),
     height: 69,
     alignItems: 'center',
     justifyContent: 'center',

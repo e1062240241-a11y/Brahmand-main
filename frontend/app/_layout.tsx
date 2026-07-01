@@ -82,9 +82,43 @@ function useAppBackHandler() {
         return true; // Consume event, do nothing
       }
 
+      // Specific fix for my-krishna screen
+      if (pathname === '/my-krishna') {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/home');
+        }
+        return true;
+      }
+
+      // Specific fix for dm screen
+      if (pathname.startsWith('/dm/')) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/messages');
+        }
+        return true;
+      }
+
+      // Specific fix for chat screen
+      if (pathname.startsWith('/chat/')) {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/messages');
+        }
+        return true;
+      }
+
       // 2. Specific fix for community pages
       if (pathname.startsWith('/community/')) {
-        router.replace('/(tabs)/messages');
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)/messages');
+        }
         return true;
       }
 
@@ -94,8 +128,9 @@ function useAppBackHandler() {
         return true;
       }
 
-      // 4. Default: Return true to prevent hard exit from common screens
-      return true;
+      // 4. Default: Return false to let the system exit/handle normally if no history is present,
+      // rather than leaving the user stuck on the screen.
+      return false;
     };
 
     const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -550,11 +585,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      // Use 'absolute' (edge-to-edge) so the app draws behind the translucent
-      // nav bar. SafeAreaContext still reports correct insets for tab-bar
-      // positioning on both gesture-nav and 3-button-nav physical devices.
-      NavigationBar.setPositionAsync('absolute').catch((e) => {
-        console.warn('[NavigationBar] Failed to set absolute position:', e);
+      NavigationBar.setPositionAsync('relative').catch((e) => {
+        console.warn('[NavigationBar] Failed to set relative position:', e);
       });
     }
   }, []);
@@ -563,10 +595,9 @@ export default function RootLayout() {
     if (Platform.OS === 'android') {
       const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
       const buttonStyle = isDark ? 'light' : 'dark';
+      const navBgColor = isDark ? '#000000' : '#FFFFFF';
 
-      // In edge-to-edge mode the nav bar is always transparent; only the
-      // button/icon style needs to adapt so the icons are visible.
-      NavigationBar.setBackgroundColorAsync('transparent').catch((e) => {
+      NavigationBar.setBackgroundColorAsync(navBgColor).catch((e) => {
         console.warn('[NavigationBar] Failed to set background color:', e);
       });
       NavigationBar.setButtonStyleAsync(buttonStyle).catch((e) => {
@@ -757,7 +788,7 @@ export default function RootLayout() {
         <MuteProvider>
           <Stack screenOptions={{
             headerShown: false,
-            animation: 'slide_from_right',
+            animation: 'ios_from_right',
             gestureEnabled: true,
             gestureDirection: 'horizontal',
             contentStyle: { backgroundColor: COLORS.background }
@@ -784,7 +815,7 @@ export default function RootLayout() {
               key="community-request/blood"
               name="community-request/blood"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -792,7 +823,7 @@ export default function RootLayout() {
               key="community-request/food"
               name="community-request/food"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -800,7 +831,7 @@ export default function RootLayout() {
               key="community-request/gau-seva"
               name="community-request/gau-seva"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -808,7 +839,7 @@ export default function RootLayout() {
               key="community-request/animal-care"
               name="community-request/animal-care"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -816,7 +847,7 @@ export default function RootLayout() {
               key="community-request/temple-help"
               name="community-request/temple-help"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -824,7 +855,7 @@ export default function RootLayout() {
               key="community-request/emergency"
               name="community-request/emergency"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -832,7 +863,7 @@ export default function RootLayout() {
               key="community-request/other"
               name="community-request/other"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -840,7 +871,7 @@ export default function RootLayout() {
               key="sos"
               name="sos"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
                 gestureDirection: 'vertical'
               }}
             />
@@ -848,7 +879,7 @@ export default function RootLayout() {
               key="kyc-submit"
               name="kyc-submit"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
                 gestureDirection: 'vertical'
               }}
             />
@@ -856,7 +887,7 @@ export default function RootLayout() {
               key="kyc-success"
               name="kyc-success"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
                 gestureDirection: 'vertical'
               }}
             />
@@ -864,7 +895,7 @@ export default function RootLayout() {
               key="live-jaap-welcome"
               name="live-jaap-welcome"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -872,7 +903,7 @@ export default function RootLayout() {
               key="circle/create"
               name="circle/create"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -880,7 +911,7 @@ export default function RootLayout() {
               key="community/create"
               name="community/create"
               options={{
-                animation: 'slide_from_right',
+                animation: 'slide_from_bottom',
                 gestureDirection: 'vertical'
               }}
             />
@@ -888,7 +919,7 @@ export default function RootLayout() {
               key="community-tweets"
               name="community-tweets"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
               }}
             />
             <Stack.Screen
@@ -903,17 +934,17 @@ export default function RootLayout() {
               key="my-krishna"
               name="my-krishna"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
               }}
             />
             <Stack.Screen
               key="library/index"
               name="library/index"
               options={{
-                animation: 'slide_from_right',
+                animation: 'fade',
               }}
             />
-            {/* Other standard stack navigations will inherit default slide_from_right */}
+            {/* Other standard stack navigations will inherit default ios sliding */}
           </Stack>
           <GlobalFAB />
           <UploadProgressBanner />

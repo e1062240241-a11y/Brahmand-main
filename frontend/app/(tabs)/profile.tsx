@@ -19,7 +19,7 @@ import {
   Keyboard,
   Pressable,
   StatusBar
-} from 'react-native';
+, DeviceEventEmitter , KeyboardAvoidingView, Share } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -32,7 +32,6 @@ import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
 import { useUploadStore } from '../../src/store/uploadStore';
-import { DeviceEventEmitter } from 'react-native';
 import api, {
   getUserPosts,
   getUserProfile,
@@ -52,7 +51,6 @@ import api, {
 } from '../../src/services/api';
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
-import { KeyboardAvoidingView, Share } from 'react-native';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { MentionInput } from '../../src/components/MentionInput';
@@ -181,7 +179,7 @@ export default function ProfileScreen() {
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const [postsCount, setPostsCount] = useState(0);
-  const LIMIT = 30;
+  const LIMIT = 15;
 
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [avatarModalVisible, setAvatarModalVisible] = useState(false);
@@ -321,8 +319,8 @@ export default function ProfileScreen() {
     if (!url) throw new Error('Upload failed');
     await updateProfile({ [field]: url } as any);
     await fetchProfile(false);
-    showToast(field === 'photo' 
-      ? (t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो अपडेट हो गई!' : 'Profile photo updated!') 
+    showToast(field === 'photo'
+      ? (t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो अपडेट हो गई!' : 'Profile photo updated!')
       : (t('language') === 'hi' ? 'कवर फ़ोटो अपडेट हो गई!' : 'Cover photo updated!')
     );
   };
@@ -333,7 +331,7 @@ export default function ProfileScreen() {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
           Alert.alert(
-            t('language') === 'hi' ? 'अनुमति की आवश्यकता है' : 'Permission needed', 
+            t('language') === 'hi' ? 'अनुमति की आवश्यकता है' : 'Permission needed',
             t('language') === 'hi' ? 'फ़ोटो लेने के लिए कैमरा एक्सेस की अनुमति दें।' : 'Allow camera access to take a photo.'
           );
           return;
@@ -359,16 +357,16 @@ export default function ProfileScreen() {
   };
 
   const showImageSourcePicker = (field: 'photo' | 'cover_photo') => {
-    const title = field === 'photo' 
-      ? (t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo') 
+    const title = field === 'photo'
+      ? (t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo')
       : (t('language') === 'hi' ? 'कवर फ़ोटो' : 'Cover photo');
     if (Platform.OS === 'web') {
       pickProfileImage(field, 'library');
       return;
     }
     Alert.alert(
-      title, 
-      t('language') === 'hi' ? 'स्रोत चुनें' : 'Choose a source', 
+      title,
+      t('language') === 'hi' ? 'स्रोत चुनें' : 'Choose a source',
       [
         { text: t('language') === 'hi' ? 'गैलरी' : 'Gallery', onPress: () => pickProfileImage(field, 'library') },
         { text: t('language') === 'hi' ? 'कैमरा' : 'Camera', onPress: () => pickProfileImage(field, 'camera') },
@@ -401,8 +399,8 @@ export default function ProfileScreen() {
       return;
     }
     Alert.alert(
-      t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo', 
-      undefined, 
+      t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo',
+      undefined,
       [
         ...(hasPhoto
           ? [{ text: t('language') === 'hi' ? 'फ़ोटो देखें' : 'View photo', onPress: () => setAvatarModalVisible(true) }]
@@ -421,7 +419,7 @@ export default function ProfileScreen() {
     const username = profile?.sl_id || user?.sl_id || 'profile';
     const displayName = profile?.name || user?.name || 'User';
     const profileUrl = `https://brahmand.app/profile/${userId}`;
-    const message = t('language') === 'hi' 
+    const message = t('language') === 'hi'
       ? `ब्रह्मांड पर ${displayName} (@${username}) को देखें!\n\n${profileUrl}`
       : `Check out ${displayName} (@${username}) on Brahmand!\n\n${profileUrl}`;
     try {
@@ -467,7 +465,7 @@ export default function ProfileScreen() {
     const parts = locationDraft.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length < 2) {
       Alert.alert(
-        t('language') === 'hi' ? 'स्थान' : 'Location', 
+        t('language') === 'hi' ? 'स्थान' : 'Location',
         t('language') === 'hi' ? 'स्थान को शहर, राज्य के रूप में दर्ज करें' : 'Enter location as City, State'
       );
       return;
@@ -515,13 +513,12 @@ export default function ProfileScreen() {
 
       if (reset) {
         setPosts(items);
-        AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => {});
+        AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => { });
       } else {
         setPosts(prev => [...prev, ...items]);
       }
 
-      const totalCount = payload?.total_count || items.length;
-      setPostsCount(totalCount);
+      setPostsCount(prev => payload?.total_count !== undefined ? payload.total_count : (reset ? items.length : prev + items.length));
       setOffset(currentOffset + items.length);
       setHasMore(payload?.has_more ?? (items.length === LIMIT));
     } catch (error) {
@@ -676,7 +673,7 @@ export default function ProfileScreen() {
       setPosts((prev) => (prev.some((item) => item.id === postId) ? prev : [removedPost, ...prev]));
       setPostsCount((prev) => prev + 1);
       Alert.alert(
-        t('language') === 'hi' ? 'पोस्ट हटाने में असमर्थ' : 'Unable to delete post', 
+        t('language') === 'hi' ? 'पोस्ट हटाने में असमर्थ' : 'Unable to delete post',
         t('language') === 'hi' ? 'कृपया बाद में पुनः प्रयास करें।' : 'Please try again later.'
       );
     }
@@ -803,7 +800,7 @@ export default function ProfileScreen() {
       const response = await addPostComment(selectedCommentPost.id, commentText.trim(), parentId);
       const updatedPost = response.data?.post || response.data;
       const serverComment = response.data?.comment;
-      
+
       if (updatedPost) {
         if (selectedPost?.id === selectedCommentPost.id) setSelectedPost((prev: any) => ({ ...prev, ...updatedPost }));
         setPosts((prev) =>
@@ -1090,9 +1087,9 @@ export default function ProfileScreen() {
     const bioText = profile?.bio || user?.bio || 'Har Har Mahadev 🕉️';
     const locationVal = locationLabel || 'Mumbai, Maharashtra';
 
-    const followersVal = Platform.OS === 'android' ? followersCount : (followersCount || 808);
-    const followingVal = Platform.OS === 'android' ? followingCount : (followingCount || 376);
-    const postsVal = Platform.OS === 'android' ? postsCount : (postsCount || 698);
+    const followersVal = Platform.OS === 'android' ? followersCount : (followersCount || 0);
+    const followingVal = Platform.OS === 'android' ? followingCount : (followingCount || 0);
+    const postsVal = Platform.OS === 'android' ? postsCount : (postsCount || 0);
 
     return (
       <View style={styles.headerContent}>
@@ -1188,82 +1185,9 @@ export default function ProfileScreen() {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <View style={styles.container}>
 
-      <View
-        style={[styles.stickyNav, { paddingTop: insets.top + 8, height: insets.top + NAV_BAR_HEIGHT + 8 }]}
-      >
-        <TouchableOpacity style={styles.navLeftGroup} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#FFF" />
-          <Text style={styles.navUsername}>
-            {(profile?.sl_id || user?.sl_id || 'virralpatel').toLowerCase()}
-          </Text>
-        </TouchableOpacity>
-        <View style={styles.navRightGroup}>
-          <TouchableOpacity style={styles.navRightBtn} onPress={() => showImageSourcePicker('cover_photo')}>
-            <Svg width={16} height={16} viewBox="0 0 16 17" fill="none">
-              <Path d="M15.5625 4.12027L12.0589 0.617491C11.5691 0.127503 10.7747 0.127503 10.2848 0.617491L0.617688 10.2846C0.381388 10.5191 0.248944 10.8384 0.250006 11.1713V14.6749C0.250006 15.3676 0.811619 15.9292 1.50436 15.9292H14.675C15.1579 15.9287 15.4591 15.4058 15.2173 14.9879C15.1053 14.7944 14.8987 14.6751 14.675 14.6749H6.78204L15.5625 5.89439C16.0525 5.40452 16.0525 4.61015 15.5625 4.12027ZM5.00792 14.6749H1.50436V11.1713L8.40329 4.27236L11.9069 7.77592L5.00792 14.6749ZM12.7935 6.88925L9.29075 3.38569L11.1723 1.50416L14.6751 5.00772L12.7935 6.88925Z" fill="#FFF" stroke="#FFF" strokeWidth="0.5"/>
-            </Svg>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navRightBtn} onPress={() => setShowSettingsModal(true)}>
-            <Svg width={16} height={16} viewBox="24 0 16 17" fill="none">
-              <Path d="M39.9314 8.28457C39.9314 8.80415 39.5102 9.22535 38.9906 9.22537H25.1922C24.468 9.22534 24.0153 8.44132 24.3775 7.81413C24.5455 7.52307 24.8561 7.34377 25.1922 7.34377H38.9906C39.5102 7.3438 39.9314 7.765 39.9314 8.28457ZM25.1922 4.20777H38.9906C39.7148 4.20777 40.1675 3.42377 39.8054 2.79657C39.6373 2.5055 39.3267 2.32618 38.9906 2.32617H25.1922C24.468 2.3262 24.0153 3.11022 24.3775 3.73741C24.5455 4.02847 24.8561 4.20777 25.1922 4.20777ZM38.9906 12.3614H25.1922C24.468 12.3614 24.0153 13.1454 24.3775 13.7726C24.5455 14.0637 24.8561 14.243 25.1922 14.243H38.9906C39.7148 14.243 40.1675 13.459 39.8054 12.8318C39.6373 12.5407 39.3267 12.3614 38.9906 12.3614Z" fill="#FFF"/>
-            </Svg>
-          </TouchableOpacity>
-        </View>
-      </View>
 
-      {renderHeader()}
-      <Animated.FlatList
-        style={{ flex: 1 }}
-        data={posts}
-        renderItem={renderPost}
-        keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
-        numColumns={3}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          {
-            useNativeDriver: true,
-            listener: (event: any) => {
-              onProfileScrollTabBar(event);
-            },
-          }
-        )}
-        scrollEventThrottle={16}
-        ListFooterComponent={
-          postsLoading ? (
-            <View style={styles.footerLoader}>
-              <ActivityIndicator size="small" color={COLORS.textLight} />
-            </View>
-          ) : !hasMore && posts.length > 0 ? (
-            <View style={styles.endOfFeed}>
-              <Text style={styles.endOfFeedText}>
-                {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You've reached the end"}
-              </Text>
-            </View>
-          ) : null
-        }
-        ListEmptyComponent={
-          !loading && !postsLoading ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIconCircle}>
-                <Ionicons name="camera-outline" size={40} color="#FFFFFF" />
-              </View>
-              <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>
-                {t('language') === 'hi' ? 'अभी तक कोई पोस्ट नहीं' : 'No Posts Yet'}
-              </Text>
-            </View>
-          ) : null
-        }
-        onEndReached={() => {
-          if (hasMore && !postsLoading) {
-            loadPosts();
-          }
-        }}
-        onEndReachedThreshold={0.8}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.textLight} />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+
+
 
       {/* Settings Menu Modal */}
       <Modal visible={showSettingsModal} animationType="slide" transparent>
@@ -1298,8 +1222,12 @@ export default function ProfileScreen() {
 
                       return (
                         <View key={item.id}>
-                          <TouchableOpacity
-                            style={styles.settingsRow}
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.settingsRow,
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                            ]}
+                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled && item.id !== 'location'}
                           >
@@ -1324,7 +1252,7 @@ export default function ProfileScreen() {
                                 />
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </Pressable>
                           {index < section.items.length - 1 && (
                             <View 
                               style={[
@@ -1351,11 +1279,13 @@ export default function ProfileScreen() {
 
                       return (
                         <View key={item.id}>
-                          <TouchableOpacity
-                            style={[
+                          <Pressable
+                            style={({ pressed }) => [
                               styles.settingsRow,
                               item.disabled && styles.settingsRowDisabled,
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                             ]}
+                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled}
                           >
@@ -1381,7 +1311,7 @@ export default function ProfileScreen() {
                                 />
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </Pressable>
                           {index < section.items.length - 1 && (
                             <View style={styles.settingsSeparator} />
                           )}
@@ -1397,481 +1327,696 @@ export default function ProfileScreen() {
         </View>
       </Modal>
 
-      {/* Avatar Modal */}
-      <Modal visible={avatarModalVisible} transparent animationType="fade">
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setAvatarModalVisible(false)}
+        <View
+          style={[styles.stickyNav, { paddingTop: insets.top + 8, height: insets.top + NAV_BAR_HEIGHT + 8 }]}
         >
-          <Image
-            source={{
-              uri:
-                profile?.photo &&
-                profile.photo !== 'nan' &&
-                profile.photo !== 'NaN' &&
-                profile.photo !== 'None' &&
-                profile.photo !== ''
-                  ? profile.photo
-                  : user?.photo &&
-                    user.photo !== 'nan' &&
-                    user.photo !== 'NaN' &&
-                    user.photo !== 'None' &&
-                    user.photo !== ''
-                  ? user.photo
-                  : '',
-            }}
-            style={styles.fullImage}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </Modal>
-
-      {/* Post Detail Modal */}
-      <Modal 
-        visible={postModalVisible} 
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        <View style={styles.postDetailContainer}>
-          <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
-            <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.postDetailTitle}>
-              {t('language') === 'hi' ? 'पोस्ट' : 'Posts'}
+          <TouchableOpacity style={styles.navLeftGroup} onPress={() => router.back()}>
+            <Ionicons name="chevron-back" size={24} color="#FFF" />
+            <Text style={styles.navUsername}>
+              {(profile?.sl_id || user?.sl_id || 'virralpatel').toLowerCase()}
             </Text>
+          </TouchableOpacity>
+          <View style={styles.navRightGroup}>
+            <TouchableOpacity style={styles.navRightBtn} onPress={() => showImageSourcePicker('cover_photo')}>
+              <Svg width={16} height={16} viewBox="0 0 16 17" fill="none">
+                <Path d="M15.5625 4.12027L12.0589 0.617491C11.5691 0.127503 10.7747 0.127503 10.2848 0.617491L0.617688 10.2846C0.381388 10.5191 0.248944 10.8384 0.250006 11.1713V14.6749C0.250006 15.3676 0.811619 15.9292 1.50436 15.9292H14.675C15.1579 15.9287 15.4591 15.4058 15.2173 14.9879C15.1053 14.7944 14.8987 14.6751 14.675 14.6749H6.78204L15.5625 5.89439C16.0525 5.40452 16.0525 4.61015 15.5625 4.12027ZM5.00792 14.6749H1.50436V11.1713L8.40329 4.27236L11.9069 7.77592L5.00792 14.6749ZM12.7935 6.88925L9.29075 3.38569L11.1723 1.50416L14.6751 5.00772L12.7935 6.88925Z" fill="#FFF" stroke="#FFF" strokeWidth="0.5" />
+              </Svg>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navRightBtn} onPress={() => setShowSettingsModal(true)}>
+              <Svg width={16} height={16} viewBox="24 0 16 17" fill="none">
+                <Path d="M39.9314 8.28457C39.9314 8.80415 39.5102 9.22535 38.9906 9.22537H25.1922C24.468 9.22534 24.0153 8.44132 24.3775 7.81413C24.5455 7.52307 24.8561 7.34377 25.1922 7.34377H38.9906C39.5102 7.3438 39.9314 7.765 39.9314 8.28457ZM25.1922 4.20777H38.9906C39.7148 4.20777 40.1675 3.42377 39.8054 2.79657C39.6373 2.5055 39.3267 2.32618 38.9906 2.32617H25.1922C24.468 2.3262 24.0153 3.11022 24.3775 3.73741C24.5455 4.02847 24.8561 4.20777 25.1922 4.20777ZM38.9906 12.3614H25.1922C24.468 12.3614 24.0153 13.1454 24.3775 13.7726C24.5455 14.0637 24.8561 14.243 25.1922 14.243H38.9906C39.7148 14.243 40.1675 13.459 39.8054 12.8318C39.6373 12.5407 39.3267 12.3614 38.9906 12.3614Z" fill="#FFF" />
+              </Svg>
+            </TouchableOpacity>
           </View>
-          {posts.length > 0 ? (
-            <FlatList
-              ref={postListRef}
-              data={posts}
-              renderItem={({ item }) => {
-                const postKey = String(item.id || item.media_url || 0);
-                return (
-                  <View
-                    onLayout={(event) => {
-                      const y = event.nativeEvent.layout.y;
-                      const h = event.nativeEvent.layout.height;
-                      postOffsetsRef.current[postKey] = y;
-                      postHeightsRef.current[postKey] = h;
-                    }}
-                  >
-                    <PostFeedCard
-                      post={item}
-                      onLike={handleLikePost}
-                      onComment={handleOpenComment}
-                      onShare={handleSharePost}
-                      onRepost={handleRepost}
-                      isActive={activePostKey === postKey}
-                      onUserPress={() => setPostModalVisible(false)}
-                      postMenuType="delete"
-                      onEdit={handleEditPost}
-                      onPostMenuPress={confirmDeletePost}
-                      theme="dark"
-                      isBlackBackground={true}
-                    />
-                    {editingPostId === item.id ? (
-                      <View style={styles.editPostInline}>
-                        <TextInput
-                          value={editedCaption}
-                          onChangeText={setEditedCaption}
-                          style={styles.editCaptionInput}
-                          multiline
-                          placeholder={t('language') === 'hi' ? 'कैप्शन संपादित करें...' : 'Edit caption...'}
-                          placeholderTextColor="rgba(255,255,255,0.4)"
-                        />
-                        <View style={styles.editPostActions}>
-                          <TouchableOpacity style={styles.cancelEditBtn} onPress={cancelEdit}>
-                            <Text style={styles.cancelEditText}>{t('cancel')}</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity style={styles.saveEditBtn} onPress={savePostEdit}>
-                            <Text style={styles.saveEditBtnText}>
-                              {t('language') === 'hi' ? 'सहेजें' : 'Save'}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ) : null}
-                  </View>
-                );
-              }}
-              keyExtractor={(item, idx) => String(item.id || idx)}
-              onScroll={(event) => {
-                const y = event.nativeEvent.contentOffset.y;
-                let closestKey: string | null = null;
-                let maxVisible = 0;
-                const screenH = Dimensions.get('window').height;
-                for (const key of Object.keys(postOffsetsRef.current)) {
-                  const offset = postOffsetsRef.current[key];
-                  const height = postHeightsRef.current[key];
-                  if (typeof offset === 'number' && typeof height === 'number') {
-                    const visibleTop = Math.max(0, offset - y);
-                    const visibleBottom = Math.min(screenH, offset + height - y);
-                    const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-                    if (visibleAmount > maxVisible) {
-                      maxVisible = visibleAmount;
-                      closestKey = key;
-                    }
-                  }
-                }
-                setActivePostKey(prev => closestKey ?? prev);
-              }}
-              scrollEventThrottle={16}
-              onLayout={() => {
-                if (selectedPost && posts.length > 0 && !hasScrolledToPost.current) {
-                  const idx = posts.findIndex(p => p.id === selectedPost.id);
-                  if (idx >= 0) {
-                    setTimeout(() => {
-                      postListRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
-                      hasScrolledToPost.current = true;
-                      setActivePostKey(String(selectedPost.id || selectedPost.media_url || 0));
-                    }, 200);
-                  }
-                }
-              }}
-            />
-          ) : (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
-            </View>
+        </View>
+
+        {renderHeader()}
+        <Animated.FlatList
+          style={{ flex: 1 }}
+          data={posts}
+          renderItem={renderPost}
+          keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
+          numColumns={3}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            {
+              useNativeDriver: true,
+              listener: (event: any) => {
+                onProfileScrollTabBar(event);
+              },
+            }
           )}
-
-          {/* Comment Modal nested inside Post Detail Modal */}
-          <Modal 
-            visible={commentModalVisible} 
-            transparent 
-            animationType="slide" 
-            onRequestClose={() => {
-              setCommentModalVisible(false);
-              setReplyingToComment(null);
-            }}
-          >
-            <KeyboardAvoidingView 
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              style={styles.sheetOverlay}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-            >
-              <TouchableOpacity 
-                style={styles.sheetDismiss} 
-                activeOpacity={1} 
-                onPress={() => {
-                  setCommentModalVisible(false);
-                  setReplyingToComment(null);
-                }} 
-              />
-              <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
-                <View style={styles.sheetHandle} />
-                <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetTitle}>
-                    {t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})
-                  </Text>
-                  <TouchableOpacity onPress={() => { setCommentModalVisible(false); setReplyingToComment(null); }}>
-                    <Ionicons name="close" size={24} color="#333" />
-                  </TouchableOpacity>
+          scrollEventThrottle={16}
+          ListFooterComponent={
+            postsLoading ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color={COLORS.textLight} />
+              </View>
+            ) : !hasMore && posts.length > 0 ? (
+              <View style={styles.endOfFeed}>
+                <Text style={styles.endOfFeedText}>
+                  {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You've reached the end"}
+                </Text>
+              </View>
+            ) : null
+          }
+          ListEmptyComponent={
+            !loading && !postsLoading ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.emptyIconCircle}>
+                  <Ionicons name="camera-outline" size={40} color="#FFFFFF" />
                 </View>
+                <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>
+                  {t('language') === 'hi' ? 'अभी तक कोई पोस्ट नहीं' : 'No Posts Yet'}
+                </Text>
+              </View>
+            ) : null
+          }
+          onEndReached={() => {
+            if (hasMore && !postsLoading) {
+              loadPosts();
+            }
+          }}
+          onEndReachedThreshold={0.8}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.textLight} />
+          }
+          showsVerticalScrollIndicator={false}
+        />
 
-                {commentsLoading ? (
-                  <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
-                ) : postComments.length === 0 ? (
-                  <View style={styles.emptyComments}>
-                    <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-                    <Text style={styles.emptyCommentsText}>
-                      {t('language') === 'hi' ? 'अभी तक कोई टिप्पणी नहीं। पहले बनें!' : 'No comments yet. Be the first!'}
-                    </Text>
-                  </View>
-                ) : (() => {
-                  const parentComments = postComments.filter(c => !c.parent_id);
-                  const repliesMap = postComments.reduce((acc, c) => {
-                    if (c.parent_id) {
-                      if (!acc[c.parent_id]) acc[c.parent_id] = [];
-                      acc[c.parent_id].push(c);
-                    }
-                    return acc;
-                  }, {} as Record<string, any[]>);
+        {/* Settings Menu Modal */}
+        <Modal visible={showSettingsModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setShowSettingsModal(false)}
+            />
+            <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+              <View style={styles.settingsHeader}>
+                <View style={styles.settingsHeaderBar} />
+                <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
+                <TouchableOpacity
+                  style={styles.settingsClose}
+                  onPress={() => setShowSettingsModal(false)}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                  <Ionicons name="close" size={24} color="#000000" />
+                </TouchableOpacity>
+              </View>
+              {Platform.OS === 'android' ? (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                    <View key={section.id} style={styles.settingsSection}>
+                      <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                      {section.items.map((item: SettingItem, index: number) => {
+                        const iconColor = item.disabled ? '#A0A0A0' : '#000000';
+                        const textColor = item.disabled ? '#A0A0A0' : '#000000';
+                        const showChevron = item.id !== 'privacy' && item.id !== 'language';
+                        const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
 
-                  return (
-                    <FlatList
-                      data={parentComments}
-                      keyExtractor={(item, index) => item.id || String(index)}
-                      renderItem={({ item }) => {
-                        const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                        const replies = repliesMap[item.id] || [];
                         return (
-                          <View style={{ marginBottom: 12, paddingHorizontal: 16 }}>
-                            <View style={styles.commentItem}>
-                              <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
-                              <View style={styles.commentContent}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <Text style={styles.commentUser}>{item.username || 'User'}</Text>
-                                  {canDelete && (
-                                    <TouchableOpacity
-                                      style={{ padding: 4, marginRight: -4 }}
-                                      onPress={() => handleDeleteComment(item)}
-                                    >
-                                      <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                                    </TouchableOpacity>
-                                  )}
-                                </View>
-                                <MentionText style={styles.commentText} text={item.text || ''} />
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      setReplyingToComment(item);
-                                      setCommentText(`@${item.username || 'User'} `);
-                                    }}
-                                  >
-                                    <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>
-                                      {t('language') === 'hi' ? 'उत्तर दें' : 'Reply'}
-                                    </Text>
-                                  </TouchableOpacity>
-                                </View>
+                          <View key={item.id}>
+                            <TouchableOpacity
+                              style={styles.settingsRow}
+                              onPress={() => handleMenuPress(item)}
+                              disabled={item.disabled && item.id !== 'location'}
+                            >
+                              <Ionicons
+                                name={item.icon as any}
+                                size={20}
+                                color={iconColor}
+                                style={{ marginRight: 16 }}
+                              />
+                              <View style={styles.settingsLabelWrap}>
+                                <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                  {item.label}
+                                </Text>
                               </View>
-                            </View>
-
-                            {/* Render replies */}
-                            {replies.length > 0 && (
-                              <View style={{
-                                marginLeft: 44,
-                                paddingLeft: 16,
-                                borderLeftWidth: 1.5,
-                                borderLeftColor: '#E6E1E8',
-                                marginTop: 8,
-                              }}>
-                                {replies.map((reply: any) => {
-                                  const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                                  return (
-                                    <View key={reply.id} style={[styles.commentItem, { position: 'relative', paddingLeft: 4, marginBottom: 10 }]}>
-                                      {/* Horizontal connection branch */}
-                                      <View style={{
-                                        position: 'absolute',
-                                        left: -16,
-                                        top: 18,
-                                        width: 12,
-                                        height: 1.5,
-                                        backgroundColor: '#E6E1E8',
-                                      }} />
-
-                                      <Avatar name={reply.username || 'User'} photo={reply.user_photo} size={28} />
-                                      <View style={styles.commentContent}>
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                          <Text style={[styles.commentUser, { fontSize: 13 }]}>{reply.username || 'User'}</Text>
-                                          {canDeleteReply && (
-                                            <TouchableOpacity
-                                              style={{ padding: 4, marginRight: -4 }}
-                                              onPress={() => handleDeleteComment(reply)}
-                                            >
-                                              <Ionicons name="trash-outline" size={14} color="#FF3B30" />
-                                            </TouchableOpacity>
-                                          )}
-                                        </View>
-                                        <MentionText style={[styles.commentText, { fontSize: 13 }]} text={reply.text || ''} />
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                          <TouchableOpacity
-                                            onPress={() => {
-                                              setReplyingToComment(item);
-                                              setCommentText(`@${reply.username} `);
-                                            }}
-                                          >
-                                            <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>
-                                              {t('language') === 'hi' ? 'उत्तर दें' : 'Reply'}
-                                            </Text>
-                                          </TouchableOpacity>
-                                        </View>
-                                      </View>
-                                    </View>
-                                  );
-                                })}
+                              <View style={styles.settingsRowRight}>
+                                {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                                {showChevron && (
+                                  <Ionicons
+                                    name="chevron-forward"
+                                    size={18}
+                                    color={chevronColor}
+                                  />
+                                )}
                               </View>
+                            </TouchableOpacity>
+                            {index < section.items.length - 1 && (
+                              <View
+                                style={[
+                                  styles.settingsSeparator,
+                                  { marginLeft: 56, backgroundColor: '#EAEAEA' }
+                                ]}
+                              />
                             )}
                           </View>
                         );
-                      }}
-                      contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
-                    />
-                  );
-                })()}
+                      })}
+                    </View>
+                  ))}
+                  <View style={styles.bottomSpacer} />
+                </ScrollView>
+              ) : (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                    <View key={section.id} style={styles.settingsSection}>
+                      <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                      {section.items.map((item: SettingItem, index: number) => {
+                        const textColor = item.action === 'logout' ? COLORS.error : '#000000';
+                        const showChevron = !item.disabled;
 
-                {replyingToComment && (
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    backgroundColor: COLORS.background,
-                    paddingVertical: 8,
-                    paddingHorizontal: 16,
-                    borderTopWidth: 0.5,
-                    borderTopColor: COLORS.divider,
-                    width: '100%',
-                  }}>
-                    <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
-                      {t('language') === 'hi' ? 'को उत्तर दे रहे हैं' : 'Replying to'} <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
+                        return (
+                          <View key={item.id}>
+                            <TouchableOpacity
+                              style={[
+                                styles.settingsRow,
+                                item.disabled && styles.settingsRowDisabled,
+                              ]}
+                              onPress={() => handleMenuPress(item)}
+                              disabled={item.disabled}
+                            >
+                              <Ionicons
+                                name={item.icon as any}
+                                size={20}
+                                color="#000"
+                                style={{ marginRight: 16 }}
+                              />
+                              <View style={styles.settingsLabelWrap}>
+                                <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                  {item.label}
+                                </Text>
+                                {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                              </View>
+                              <View style={styles.settingsRowRight}>
+                                {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                                {showChevron && (
+                                  <Ionicons
+                                    name="chevron-forward"
+                                    size={18}
+                                    color="#000"
+                                  />
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                            {index < section.items.length - 1 && (
+                              <View style={styles.settingsSeparator} />
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                  <View style={styles.bottomSpacer} />
+                </ScrollView>
+              )}
+            </View>
+          </View>
+        </Modal>
+
+        {/* Avatar Modal */}
+        <Modal visible={avatarModalVisible} transparent animationType="fade">
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setAvatarModalVisible(false)}
+          >
+            <Image
+              source={{
+                uri:
+                  profile?.photo &&
+                    profile.photo !== 'nan' &&
+                    profile.photo !== 'NaN' &&
+                    profile.photo !== 'None' &&
+                    profile.photo !== ''
+                    ? profile.photo
+                    : user?.photo &&
+                      user.photo !== 'nan' &&
+                      user.photo !== 'NaN' &&
+                      user.photo !== 'None' &&
+                      user.photo !== ''
+                      ? user.photo
+                      : '',
+              }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </Modal>
+
+        {/* Post Detail Modal */}
+        <Modal
+          visible={postModalVisible}
+          animationType="slide"
+          presentationStyle="fullScreen"
+        >
+          <View style={styles.postDetailContainer}>
+            <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
+              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.postDetailTitle}>
+                {t('language') === 'hi' ? 'पोस्ट' : 'Posts'}
+              </Text>
+            </View>
+            {posts.length > 0 ? (
+              <FlatList
+                ref={postListRef}
+                data={posts}
+                renderItem={({ item }) => {
+                  const postKey = String(item.id || item.media_url || 0);
+                  return (
+                    <View
+                      onLayout={(event) => {
+                        const y = event.nativeEvent.layout.y;
+                        const h = event.nativeEvent.layout.height;
+                        postOffsetsRef.current[postKey] = y;
+                        postHeightsRef.current[postKey] = h;
+                      }}
+                    >
+                      <PostFeedCard
+                        post={item}
+                        onLike={handleLikePost}
+                        onComment={handleOpenComment}
+                        onShare={handleSharePost}
+                        onRepost={handleRepost}
+                        isActive={activePostKey === postKey}
+                        onUserPress={() => setPostModalVisible(false)}
+                        postMenuType="delete"
+                        onEdit={handleEditPost}
+                        onPostMenuPress={confirmDeletePost}
+                        theme="dark"
+                        isBlackBackground={true}
+                      />
+                      {editingPostId === item.id ? (
+                        <View style={styles.editPostInline}>
+                          <TextInput
+                            value={editedCaption}
+                            onChangeText={setEditedCaption}
+                            style={styles.editCaptionInput}
+                            multiline
+                            placeholder={t('language') === 'hi' ? 'कैप्शन संपादित करें...' : 'Edit caption...'}
+                            placeholderTextColor="rgba(255,255,255,0.4)"
+                          />
+                          <View style={styles.editPostActions}>
+                            <TouchableOpacity style={styles.cancelEditBtn} onPress={cancelEdit}>
+                              <Text style={styles.cancelEditText}>{t('cancel')}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.saveEditBtn} onPress={savePostEdit}>
+                              <Text style={styles.saveEditBtnText}>
+                                {t('language') === 'hi' ? 'सहेजें' : 'Save'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+                  );
+                }}
+                keyExtractor={(item, idx) => String(item.id || idx)}
+                onScroll={(event) => {
+                  const y = event.nativeEvent.contentOffset.y;
+                  let closestKey: string | null = null;
+                  let maxVisible = 0;
+                  const screenH = Dimensions.get('window').height;
+                  for (const key of Object.keys(postOffsetsRef.current)) {
+                    const offset = postOffsetsRef.current[key];
+                    const height = postHeightsRef.current[key];
+                    if (typeof offset === 'number' && typeof height === 'number') {
+                      const visibleTop = Math.max(0, offset - y);
+                      const visibleBottom = Math.min(screenH, offset + height - y);
+                      const visibleAmount = Math.max(0, visibleBottom - visibleTop);
+                      if (visibleAmount > maxVisible) {
+                        maxVisible = visibleAmount;
+                        closestKey = key;
+                      }
+                    }
+                  }
+                  setActivePostKey(prev => closestKey ?? prev);
+                }}
+                scrollEventThrottle={16}
+                onScrollToIndexFailed={(info) => {
+                  const wait = new Promise(resolve => setTimeout(resolve, 500));
+                  wait.then(() => {
+                    postListRef.current?.scrollToIndex({ index: info.index, animated: false, viewPosition: 0 });
+                  });
+                }}
+                onLayout={() => {
+                  if (selectedPost && posts.length > 0 && !hasScrolledToPost.current) {
+                    const idx = posts.findIndex(p => p.id === selectedPost.id);
+                    if (idx >= 0) {
+                      setTimeout(() => {
+                        postListRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
+                        hasScrolledToPost.current = true;
+                        setActivePostKey(String(selectedPost.id || selectedPost.media_url || 0));
+                      }, 200);
+                    }
+                  }
+                }}
+              />
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+              </View>
+            )}
+
+            {/* Comment Modal nested inside Post Detail Modal */}
+            <Modal
+              visible={commentModalVisible}
+              transparent
+              animationType="slide"
+              onRequestClose={() => {
+                setCommentModalVisible(false);
+                setReplyingToComment(null);
+              }}
+            >
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                style={styles.sheetOverlay}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+              >
+                <TouchableOpacity
+                  style={styles.sheetDismiss}
+                  activeOpacity={1}
+                  onPress={() => {
+                    setCommentModalVisible(false);
+                    setReplyingToComment(null);
+                  }}
+                />
+                <View style={[styles.sheetContent, { paddingBottom: insets.bottom }]}>
+                  <View style={styles.sheetHandle} />
+                  <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>
+                      {t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})
                     </Text>
-                    <TouchableOpacity onPress={() => setReplyingToComment(null)}>
-                      <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+                    <TouchableOpacity onPress={() => { setCommentModalVisible(false); setReplyingToComment(null); }}>
+                      <Ionicons name="close" size={24} color="#333" />
                     </TouchableOpacity>
                   </View>
-                )}
 
-                <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-                  <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
-                  <MentionInput
-                    value={commentText}
-                    onChangeText={setCommentText}
-                    placeholder={replyingToComment ? (t('language') === 'hi' ? `@${replyingToComment.username} को उत्तर दें...` : `Reply to @${replyingToComment.username}...`) : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
-                    multiline
-                    inputStyle={styles.commentInput}
-                  />
-                  <TouchableOpacity
-                    onPress={handleSubmitComment}
-                    disabled={!commentText.trim() || commentSubmitting}
-                  >
-                    <Text style={[
-                      styles.commentPostButton,
-                      (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
-                    ]}>
-                      {t('language') === 'hi' ? 'पोस्ट करें' : 'Post'}
-                    </Text>
-                  </TouchableOpacity>
+                  {commentsLoading ? (
+                    <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
+                  ) : postComments.length === 0 ? (
+                    <View style={styles.emptyComments}>
+                      <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
+                      <Text style={styles.emptyCommentsText}>
+                        {t('language') === 'hi' ? 'अभी तक कोई टिप्पणी नहीं। पहले बनें!' : 'No comments yet. Be the first!'}
+                      </Text>
+                    </View>
+                  ) : (() => {
+                    const parentComments = postComments.filter(c => !c.parent_id);
+                    const repliesMap = postComments.reduce((acc, c) => {
+                      if (c.parent_id) {
+                        if (!acc[c.parent_id]) acc[c.parent_id] = [];
+                        acc[c.parent_id].push(c);
+                      }
+                      return acc;
+                    }, {} as Record<string, any[]>);
+
+                    return (
+                      <FlatList
+                        data={parentComments}
+                        keyExtractor={(item, index) => item.id || String(index)}
+                        renderItem={({ item }) => {
+                          const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                          const replies = repliesMap[item.id] || [];
+                          return (
+                            <View style={{ marginBottom: 12, paddingHorizontal: 16 }}>
+                              <View style={styles.commentItem}>
+                                <Avatar name={item.username || 'User'} photo={item.user_photo} size={36} />
+                                <View style={styles.commentContent}>
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Text style={styles.commentUser}>{item.username || 'User'}</Text>
+                                    {canDelete && (
+                                      <TouchableOpacity
+                                        style={{ padding: 4, marginRight: -4 }}
+                                        onPress={() => handleDeleteComment(item)}
+                                      >
+                                        <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                      </TouchableOpacity>
+                                    )}
+                                  </View>
+                                  <MentionText style={styles.commentText} text={item.text || ''} />
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                    <TouchableOpacity
+                                      onPress={() => {
+                                        setReplyingToComment(item);
+                                        setCommentText(`@${item.username || 'User'} `);
+                                      }}
+                                    >
+                                      <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>
+                                        {t('language') === 'hi' ? 'उत्तर दें' : 'Reply'}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                              </View>
+
+                              {/* Render replies */}
+                              {replies.length > 0 && (
+                                <View style={{
+                                  marginLeft: 44,
+                                  paddingLeft: 16,
+                                  borderLeftWidth: 1.5,
+                                  borderLeftColor: '#E6E1E8',
+                                  marginTop: 8,
+                                }}>
+                                  {replies.map((reply: any) => {
+                                    const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                                    return (
+                                      <View key={reply.id} style={[styles.commentItem, { position: 'relative', paddingLeft: 4, marginBottom: 10 }]}>
+                                        {/* Horizontal connection branch */}
+                                        <View style={{
+                                          position: 'absolute',
+                                          left: -16,
+                                          top: 18,
+                                          width: 12,
+                                          height: 1.5,
+                                          backgroundColor: '#E6E1E8',
+                                        }} />
+
+                                        <Avatar name={reply.username || 'User'} photo={reply.user_photo} size={28} />
+                                        <View style={styles.commentContent}>
+                                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Text style={[styles.commentUser, { fontSize: 13 }]}>{reply.username || 'User'}</Text>
+                                            {canDeleteReply && (
+                                              <TouchableOpacity
+                                                style={{ padding: 4, marginRight: -4 }}
+                                                onPress={() => handleDeleteComment(reply)}
+                                              >
+                                                <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                              </TouchableOpacity>
+                                            )}
+                                          </View>
+                                          <MentionText style={[styles.commentText, { fontSize: 13 }]} text={reply.text || ''} />
+                                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                            <TouchableOpacity
+                                              onPress={() => {
+                                                setReplyingToComment(item);
+                                                setCommentText(`@${reply.username} `);
+                                              }}
+                                            >
+                                              <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>
+                                                {t('language') === 'hi' ? 'उत्तर दें' : 'Reply'}
+                                              </Text>
+                                            </TouchableOpacity>
+                                          </View>
+                                        </View>
+                                      </View>
+                                    );
+                                  })}
+                                </View>
+                              )}
+                            </View>
+                          );
+                        }}
+                        contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
+                      />
+                    );
+                  })()}
+
+                  {replyingToComment && (
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      backgroundColor: COLORS.background,
+                      paddingVertical: 8,
+                      paddingHorizontal: 16,
+                      borderTopWidth: 0.5,
+                      borderTopColor: COLORS.divider,
+                      width: '100%',
+                    }}>
+                      <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
+                        {t('language') === 'hi' ? 'को उत्तर दे रहे हैं' : 'Replying to'} <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
+                      </Text>
+                      <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                        <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+
+                  <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                    <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
+                    <MentionInput
+                      value={commentText}
+                      onChangeText={setCommentText}
+                      placeholder={replyingToComment ? (t('language') === 'hi' ? `@${replyingToComment.username} को उत्तर दें...` : `Reply to @${replyingToComment.username}...`) : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
+                      multiline
+                      inputStyle={styles.commentInput}
+                    />
+                    <TouchableOpacity
+                      onPress={handleSubmitComment}
+                      disabled={!commentText.trim() || commentSubmitting}
+                    >
+                      <Text style={[
+                        styles.commentPostButton,
+                        (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
+                      ]}>
+                        {t('language') === 'hi' ? 'पोस्ट करें' : 'Post'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
+              </KeyboardAvoidingView>
+            </Modal>
+          </View>
+        </Modal>
+
+        {/* Language Selection Modal */}
+        <Modal visible={showLanguageModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={styles.cgModalContent}>
+              <View style={styles.cgModalHeader}>
+                <Text style={styles.cgModalTitle}>{t('selectLanguage')}</Text>
+                <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
+                  <Ionicons name="close" size={24} color={COLORS.text} />
+                </TouchableOpacity>
               </View>
-            </KeyboardAvoidingView>
-          </Modal>
-        </View>
-      </Modal>
 
-      {/* Language Selection Modal */}
-      <Modal visible={showLanguageModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.cgModalContent}>
-            <View style={styles.cgModalHeader}>
-              <Text style={styles.cgModalTitle}>{t('selectLanguage')}</Text>
-              <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
-                <Ionicons name="close" size={24} color={COLORS.text} />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.cgItem}
-              onPress={async () => {
-                await setLanguage('en');
-                setShowLanguageModal(false);
-              }}
-            >
-              <Text style={[styles.cgItemText, language === 'en' && styles.cgItemTextSelected]}>
-                {t('english')}
-              </Text>
-              {language === 'en' && (
-                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.cgItem}
-              onPress={async () => {
-                await setLanguage('hi');
-                setShowLanguageModal(false);
-              }}
-            >
-              <Text style={[styles.cgItemText, language === 'hi' && styles.cgItemTextSelected]}>
-                {t('hindi')}
-              </Text>
-              {language === 'hi' && (
-                <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Toast Notice */}
-      {toastVisible && (
-        <View style={styles.toastContainer}>
-          <View style={styles.toastContent}>
-            <Ionicons name="information-circle" size={20} color="#FFF" />
-            <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
-        </View>
-      )}
-
-
-
-      <SharePostModal
-        visible={shareModalVisible}
-        onClose={() => setShareModalVisible(false)}
-        post={selectedSharePost}
-        onShareExternal={handleShareExternal}
-      />
-
-      <UploadPostModal
-        visible={showUploadModal}
-        onClose={() => setShowUploadModal(false)}
-        onUploadStart={handleUploadStart}
-        onUploadSuccess={() => {
-          setOffset(0);
-          loadPosts(true);
-        }}
-      />
-
-      <Modal visible={showBioModal} transparent animationType="fade">
-        <View style={styles.editFieldOverlay}>
-          <View style={styles.editFieldCard}>
-            <Text style={styles.editFieldTitle}>
-              {t('language') === 'hi' ? 'बायो संपादित करें' : 'Edit bio'}
-            </Text>
-            <TextInput
-              value={bioDraft}
-              onChangeText={setBioDraft}
-              style={styles.editFieldInput}
-              placeholder={t('language') === 'hi' ? 'अपने बारे में कुछ लिखें...' : 'Write something about you...'}
-              placeholderTextColor="#888"
-              multiline
-              maxLength={500}
-            />
-            <View style={styles.editFieldActions}>
-              <TouchableOpacity onPress={() => setShowBioModal(false)}>
-                <Text style={styles.editFieldCancel}>{t('cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={saveBio} disabled={savingProfileField}>
-                <Text style={styles.editFieldSave}>
-                  {savingProfileField 
-                    ? (t('language') === 'hi' ? 'सहेज रहे हैं...' : 'Saving...') 
-                    : (t('language') === 'hi' ? 'सहेजें' : 'Save')}
+              <TouchableOpacity
+                style={styles.cgItem}
+                onPress={async () => {
+                  await setLanguage('en');
+                  setShowLanguageModal(false);
+                }}
+              >
+                <Text style={[styles.cgItemText, language === 'en' && styles.cgItemTextSelected]}>
+                  {t('english')}
                 </Text>
+                {language === 'en' && (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                )}
               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
-      <Modal visible={showLocationModal} transparent animationType="fade">
-        <View style={styles.editFieldOverlay}>
-          <View style={styles.editFieldCard}>
-            <Text style={styles.editFieldTitle}>
-              {t('language') === 'hi' ? 'स्थान संपादित करें' : 'Edit location'}
-            </Text>
-            <TextInput
-              value={locationDraft}
-              onChangeText={setLocationDraft}
-              style={styles.editFieldInputSingle}
-              placeholder="Mumbai, Maharashtra"
-              placeholderTextColor="#888"
-            />
-            <View style={styles.editFieldActions}>
-              <TouchableOpacity onPress={() => setShowLocationModal(false)}>
-                <Text style={styles.editFieldCancel}>{t('cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={saveLocation} disabled={savingProfileField}>
-                <Text style={styles.editFieldSave}>
-                  {savingProfileField 
-                    ? (t('language') === 'hi' ? 'सहेज रहे हैं...' : 'Saving...') 
-                    : (t('language') === 'hi' ? 'सहेजें' : 'Save')}
+              <TouchableOpacity
+                style={styles.cgItem}
+                onPress={async () => {
+                  await setLanguage('hi');
+                  setShowLanguageModal(false);
+                }}
+              >
+                <Text style={[styles.cgItemText, language === 'hi' && styles.cgItemTextSelected]}>
+                  {t('hindi')}
                 </Text>
+                {language === 'hi' && (
+                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                )}
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+
+        {/* Toast Notice */}
+        {toastVisible && (
+          <View style={styles.toastContainer}>
+            <View style={styles.toastContent}>
+              <Ionicons name="information-circle" size={20} color="#FFF" />
+              <Text style={styles.toastText}>{toastMessage}</Text>
+            </View>
+          </View>
+        )}
+
+
+
+        <SharePostModal
+          visible={shareModalVisible}
+          onClose={() => setShareModalVisible(false)}
+          post={selectedSharePost}
+          onShareExternal={handleShareExternal}
+        />
+
+        <UploadPostModal
+          visible={showUploadModal}
+          onClose={() => setShowUploadModal(false)}
+          onUploadStart={handleUploadStart}
+          onUploadSuccess={() => {
+            setOffset(0);
+            loadPosts(true);
+          }}
+        />
+
+        <Modal visible={showBioModal} transparent animationType="fade">
+          <View style={styles.editFieldOverlay}>
+            <View style={styles.editFieldCard}>
+              <Text style={styles.editFieldTitle}>
+                {t('language') === 'hi' ? 'बायो संपादित करें' : 'Edit bio'}
+              </Text>
+              <TextInput
+                value={bioDraft}
+                onChangeText={setBioDraft}
+                style={styles.editFieldInput}
+                placeholder={t('language') === 'hi' ? 'अपने बारे में कुछ लिखें...' : 'Write something about you...'}
+                placeholderTextColor="#888"
+                multiline
+                maxLength={500}
+              />
+              <View style={styles.editFieldActions}>
+                <TouchableOpacity onPress={() => setShowBioModal(false)}>
+                  <Text style={styles.editFieldCancel}>{t('cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveBio} disabled={savingProfileField}>
+                  <Text style={styles.editFieldSave}>
+                    {savingProfileField
+                      ? (t('language') === 'hi' ? 'सहेज रहे हैं...' : 'Saving...')
+                      : (t('language') === 'hi' ? 'सहेजें' : 'Save')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        <Modal visible={showLocationModal} transparent animationType="fade">
+          <View style={styles.editFieldOverlay}>
+            <View style={styles.editFieldCard}>
+              <Text style={styles.editFieldTitle}>
+                {t('language') === 'hi' ? 'स्थान संपादित करें' : 'Edit location'}
+              </Text>
+              <TextInput
+                value={locationDraft}
+                onChangeText={setLocationDraft}
+                style={styles.editFieldInputSingle}
+                placeholder="Mumbai, Maharashtra"
+                placeholderTextColor="#888"
+              />
+              <View style={styles.editFieldActions}>
+                <TouchableOpacity onPress={() => setShowLocationModal(false)}>
+                  <Text style={styles.editFieldCancel}>{t('cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={saveLocation} disabled={savingProfileField}>
+                  <Text style={styles.editFieldSave}>
+                    {savingProfileField
+                      ? (t('language') === 'hi' ? 'सहेज रहे हैं...' : 'Saving...')
+                      : (t('language') === 'hi' ? 'सहेजें' : 'Save')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </View>
   );

@@ -1532,7 +1532,7 @@ const ChatScreen = ({
             <Ionicons name="chevron-forward" size={16} color={COLORS.warning} />
           </TouchableOpacity>
         ) : (
-          <View style={[styles.inputWrapperContainer, { paddingBottom: keyboardVisible ? 8 : (Platform.OS === 'android' ? 16 : Math.max(insets.bottom, 12)) }]}>
+          <View style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}>
             {selectedMedia && (
               <View style={styles.mediaPreviewContainer}>
                 <View style={styles.mediaPreviewHeader}>
@@ -1565,6 +1565,16 @@ const ChatScreen = ({
                   placeholderTextColor={COLORS.textSecondary}
                   multiline
                   inputStyle={styles.input}
+                  onFocus={() => {
+                    if (Platform.OS === 'android') {
+                      setKeyboardVisible(true);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (Platform.OS === 'android') {
+                      setKeyboardVisible(false);
+                    }
+                  }}
                 />
                 <TouchableOpacity
                    style={styles.attachButton}

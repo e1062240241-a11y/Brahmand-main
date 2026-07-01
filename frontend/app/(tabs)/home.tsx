@@ -8,6 +8,7 @@ import {
   ScrollView,
   FlatList,
   TouchableOpacity,
+  Pressable,
   Image,
   ImageBackground,
   Dimensions,
@@ -21,6 +22,7 @@ import {
   RefreshControl,
   Animated,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -557,6 +559,55 @@ export default function HomeScreen() {
 
   const [hanumanChantCount, setHanumanChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
   const [shivaChantCount, setShivaChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
+
+  const ROTATING_AARTIS = [
+    { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Aarti' },
+    { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Aarti' },
+    { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakal Aarti' },
+    { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Aarti' }
+  ];
+  const [activeAartiIndex, setActiveAartiIndex] = useState(0);
+
+  const AARTI_YOUTUBE_URLS: Record<string, string> = {
+    'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/live/9gC4O6-9oCc?si=AQKFTRQ8OmEx2TD9',
+    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/live/58NWbwkGrG0?si=u3rstcuQc5dbUiWC',
+    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/TLqrhY3bRp8?si=4sPKpeWVFnAtxPY2',
+    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/embed?listType=playlist&list=UUdMj2twWfMHXrWgX5oVdoyA&autoplay=1'
+  };
+
+  const [isAartiModalVisible, setIsAartiModalVisible] = useState(false);
+  const [selectedAartiUrl, setSelectedAartiUrl] = useState('');
+  const [selectedAartiTitle, setSelectedAartiTitle] = useState('');
+
+  const getAartiEmbedUrl = (url: string) => {
+    const match = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]+)/);
+    if (match) return `https://www.youtube.com/embed/${match[1]}?autoplay=1`;
+    const match2 = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
+    if (match2) return `https://www.youtube.com/embed/${match2[1]}?autoplay=1`;
+    return url;
+  };
+
+  const getAartiMobileUrl = (url: string) => {
+    if (url.includes('embed?listType=playlist&list=')) {
+      const listId = url.split('&list=')[1].split('&')[0];
+      return `https://m.youtube.com/playlist?list=${listId}`;
+    }
+    const match = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
+    if (match) return `https://m.youtube.com/watch?v=${match[1]}`;
+    return url.replace('www.youtube.com', 'm.youtube.com');
+  };
+
+  const [activeVendorIndex, setActiveVendorIndex] = useState(0);
+  const [activeRequestIndex, setActiveRequestIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveAartiIndex(prev => (prev + 1) % ROTATING_AARTIS.length);
+      setActiveVendorIndex(prev => prev + 1);
+      setActiveRequestIndex(prev => prev + 1);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -3655,18 +3706,29 @@ export default function HomeScreen() {
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
               >
-                {/* Urgent Blood Request */}
-                {bloodRequests.length > 0 ? (
-                  bloodRequests.map((req, idx) => (
-                    <View key={req.id || idx} style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                {/* Urgent Blood/Community Request */}
+                {safeCommunityRequests.length > 0 ? (() => {
+                  const req = safeCommunityRequests[activeRequestIndex % safeCommunityRequests.length];
+                  const requestTitle = req.type === 'blood' 
+                    ? `${req.blood_group || 'Blood'} ${t('bloodRequired')}`
+                    : (req.title || 'Community Help');
+                  const requestDetails = req.type === 'blood'
+                    ? `${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`
+                    : (req.description || req.location || 'Nearby');
+                  return (
+                    <View key={req.id || 0} style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="rose">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                              <BloodDropIcon />
+                              {req.type === 'blood' ? (
+                                <BloodDropIcon />
+                              ) : (
+                                <Ionicons name="people-outline" size={20} color="#FF0022" />
+                              )}
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{`${req.blood_group || 'Blood'} ${t('bloodRequired')}`}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{`${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
                           </View>
                           <TouchableOpacity
                             style={{
@@ -3686,11 +3748,11 @@ export default function HomeScreen() {
                             }}
                             onPress={() => {
                               router.push({
-                                pathname: '/community-request/list',
-                                params: {
-                                  requestId: req.id,
-                                  community_id: req.community_id
-                                }
+                                  pathname: '/community-request/list',
+                                  params: {
+                                    requestId: req.id,
+                                    community_id: req.community_id
+                                  }
                               });
                             }}
                           >
@@ -3705,8 +3767,8 @@ export default function HomeScreen() {
                         </View>
                       </View>
                     </View>
-                  ))
-                ) : (
+                  );
+                })() : (
                   <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="rose">
@@ -3795,9 +3857,10 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                {/* Verified Vendor */}
                 {(() => {
-                  const displayVendor = vendors.find(v => v.kyc_status === 'verified') || vendors[0];
+                  const verifiedVendors = vendors.filter(v => v.kyc_status === 'verified');
+                  const targetList = verifiedVendors.length > 0 ? verifiedVendors : (vendors.length > 0 ? vendors : []);
+                  const displayVendor = targetList.length > 0 ? targetList[activeVendorIndex % targetList.length] : null;
                   const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
                   const categoryAndLoc = displayVendor
                     ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
@@ -3852,64 +3915,127 @@ export default function HomeScreen() {
                   );
                 })()}
 
-                {/* Live Aarti */}
-                <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                  <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="lavender">
-                      <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
-                        <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                          <TempleIcon />
-                        </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{t('liveKedarnathAarti')}</Text>
-                        <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
-                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
-                            <TouchableOpacity
-                              onPress={() => Alert.alert('Notification Set', "We'll notify you when Kedarnath Aarti starts.")}
-                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                              style={{ marginLeft: 3 }}
-                            >
-                              <Ionicons name="notifications-outline" size={18} color="#000" />
-                            </TouchableOpacity>
+                {/* Live Aarti Card 1 */}
+                {(() => {
+                  const aarti1 = ROTATING_AARTIS[activeAartiIndex];
+                  return (
+                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                      <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                        <HomeCardTextureBg texture="lavender">
+                          <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
+                            <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                              <TempleIcon />
+                            </View>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
+                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
+                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
+                                <TouchableOpacity
+                                  onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
+                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                  style={{ marginLeft: 3 }}
+                                >
+                                  <Ionicons name="notifications-outline" size={18} color="#000" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
                           </View>
+                          <TouchableOpacity
+                            style={{
+                              width: '85%',
+                              height: 28,
+                              borderRadius: 14,
+                              backgroundColor: '#8C36DB',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              alignSelf: 'center',
+                              shadowColor: '#8C36DB',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.3,
+                              shadowRadius: 3,
+                              elevation: 4,
+                              marginBottom: 6,
+                            }}
+                            onPress={() => {
+                              setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti1.id] || '');
+                              setSelectedAartiTitle(aarti1.name);
+                              setIsAartiModalVisible(true);
+                            }}
+                          >
+                            <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                          </TouchableOpacity>
+                        </HomeCardTextureBg>
+                      </View>
+                      <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                        <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                          <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                         </View>
                       </View>
-                      <TouchableOpacity
-                        style={{
-                          width: '85%',
-                          height: 28,
-                          borderRadius: 14,
-                          backgroundColor: '#8C36DB',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          alignSelf: 'center',
-                          shadowColor: '#8C36DB',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 3,
-                          elevation: 4,
-                          marginBottom: 6,
-                        }}
-                        onPress={() => router.push({
-                          pathname: '/live-jaap-welcome',
-                          params: {
-                            mantraType: 'kedarnath',
-                            title: 'Kedarnath Aarti'
-                          }
-                        })}
-                      >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
-                      </TouchableOpacity>
-                    </HomeCardTextureBg>
-                  </View>
-                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
-                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                      <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
                     </View>
-                  </View>
-                </View>
+                  );
+                })()}
+
+                {/* Live Aarti Card 2 */}
+                {(() => {
+                  const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
+                  return (
+                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                      <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                        <HomeCardTextureBg texture="lavender">
+                          <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
+                            <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                              <TempleIcon />
+                            </View>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
+                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
+                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
+                                <TouchableOpacity
+                                  onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
+                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                  style={{ marginLeft: 3 }}
+                                >
+                                  <Ionicons name="notifications-outline" size={18} color="#000" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            style={{
+                              width: '85%',
+                              height: 28,
+                              borderRadius: 14,
+                              backgroundColor: '#8C36DB',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              alignSelf: 'center',
+                              shadowColor: '#8C36DB',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.3,
+                              shadowRadius: 3,
+                              elevation: 4,
+                              marginBottom: 6,
+                            }}
+                            onPress={() => {
+                              setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti2.id] || '');
+                              setSelectedAartiTitle(aarti2.name);
+                              setIsAartiModalVisible(true);
+                            }}
+                          >
+                            <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                          </TouchableOpacity>
+                        </HomeCardTextureBg>
+                      </View>
+                      <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                        <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                          <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })()}
               </ScrollView>
             </View>
 
@@ -3929,9 +4055,13 @@ export default function HomeScreen() {
                 const cityId = resolvedCityComm.id;
                 const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
                 return (
-                  <TouchableOpacity
-                    style={styles.communityCardMini}
-                    activeOpacity={0.9}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.communityCardMini,
+                      Platform.OS === 'android' && { overflow: 'hidden' },
+                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push({
                         pathname: '/community/[id]',
@@ -3948,7 +4078,7 @@ export default function HomeScreen() {
                       <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityMembers} {t('members')}</Text>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })()}
 
@@ -3968,9 +4098,13 @@ export default function HomeScreen() {
                 const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
                 const localSubgroup = resolvedLocalComm.type || 'city';
                 return (
-                  <TouchableOpacity
-                    style={styles.communityCardMini}
-                    activeOpacity={0.9}
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.communityCardMini,
+                      Platform.OS === 'android' && { overflow: 'hidden' },
+                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push({
                         pathname: '/community/[id]',
@@ -3994,7 +4128,7 @@ export default function HomeScreen() {
                       </View>
                     </View>
                     <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
-                  </TouchableOpacity>
+                  </Pressable>
                 );
               })()}
             </View>
@@ -4514,6 +4648,47 @@ export default function HomeScreen() {
       title="Choose Your Location"
       initialCoords={liveCoords}
     />
+
+    <Modal
+      visible={isAartiModalVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setIsAartiModalVisible(false)}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
+        <View style={{ width: '92%', height: 320, backgroundColor: '#FFF', borderRadius: 20, overflow: 'hidden', elevation: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' }}>
+            <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: '#000' }}>{selectedAartiTitle}</Text>
+            <TouchableOpacity onPress={() => setIsAartiModalVisible(false)} style={{ padding: 5 }}>
+              <Ionicons name="close" size={24} color="#000" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            {Platform.OS === 'web' ? (
+              <iframe
+                title="Live Aarti"
+                src={selectedAartiUrl ? getAartiEmbedUrl(selectedAartiUrl) : ''}
+                style={{ width: '100%', height: '100%', border: 0 }}
+                frameBorder="0"
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+              />
+            ) : (
+              <WebView
+                source={{ uri: selectedAartiUrl ? getAartiMobileUrl(selectedAartiUrl) : 'about:blank' }}
+                style={{ width: '100%', height: '100%' }}
+                javaScriptEnabled
+                domStorageEnabled
+                allowsFullscreenVideo
+                allowsInlineMediaPlayback
+                mediaPlaybackRequiresUserAction={false}
+              />
+            )}
+          </View>
+        </View>
+      </View>
+    </Modal>
+
     {showCoachMarks && coachMarkStep >= 1 && coachMarkStep <= 5 && renderCoachMarks()}
     </View >
   );
