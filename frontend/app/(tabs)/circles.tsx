@@ -78,7 +78,7 @@ export default function CirclesScreen() {
         </View>
       </View>
       <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-    </TouchableOpacity>
+    </Pressable>
   );
 
   if (loading) {
