@@ -742,6 +742,20 @@ async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
             await db.delete_document('post_comments', comment_id)
 
     await db.delete_document('posts', post_id)
+    try:
+        await db.create_document('deleted_records', {
+            'record_id': post_id,
+            'table_name': 'feeds',
+            'deleted_at': datetime.utcnow()
+        })
+    except Exception as e:
+        logger.error("Failed to write to deleted_records: %s", e)
+
+    try:
+        await sio.emit('post_deleted', {'post_id': post_id})
+        logger.info("Emitted post_deleted socket event for post_id: %s", post_id)
+    except Exception as e:
+        logger.error("Failed to emit post_deleted socket event: %s", e)
 
     media_deleted = False
     if media_path:
@@ -2214,6 +2228,16 @@ async def get_user_posts(
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
 
+    blocked_user_ids = await _get_blocked_user_ids(db, viewer_user_id)
+    if user_id in blocked_user_ids:
+        return {
+            'items': [],
+            'total_count': 0,
+            'limit': safe_limit,
+            'offset': safe_offset,
+            'has_more': False,
+        }
+
     candidate_posts = await db.query_documents(
         'posts', 
         filters=[('user_id', '==', user_id)], 
@@ -2282,6 +2306,7 @@ async def get_user_posts(
                     filters=[('post_id', '==', post.get('id'))],
                     limit=200,
                 )
+                top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
                 top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
                 post['top_comments'] = top_comments[:5]
             except Exception:
@@ -2300,6 +2325,117 @@ async def get_user_posts(
         'offset': safe_offset,
         'has_more': has_more,
     }
+
+
+async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
+    """Returns a set of all user IDs that are blocked by user_id OR have blocked user_id."""
+    blocked_ids = set()
+    try:
+        # Users blocked by user_id
+        blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+        for b in blocks_by_me:
+            b_uid = b.get('blockedUid')
+            if b_uid:
+                blocked_ids.add(b_uid)
+        
+        # Users who blocked user_id
+        blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+        for b in blocks_of_me:
+            b_uid = b.get('blockerUid')
+            if b_uid:
+                blocked_ids.add(b_uid)
+    except Exception as e:
+        logger.error("Error retrieving blocked users list: %s", e)
+    return blocked_ids
+
+
+def _filter_post_blocked_content(post: dict, blocked_user_ids: set) -> dict:
+    """Filter out top comments created by blocked users from a post object."""
+    if 'top_comments' in post and isinstance(post['top_comments'], list):
+        post['top_comments'] = [
+            c for c in post['top_comments']
+            if c.get('user_id') not in blocked_user_ids
+        ]
+    return post
+
+
+@api_router.post('/users/{user_id}/block')
+async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    if user_id == current_user_id:
+        raise HTTPException(status_code=400, detail='Cannot block yourself')
+
+    # Document ID is blockerUid_blockedUid
+    doc_id = f"{current_user_id}_{user_id}"
+    block_data = {
+        'blockerUid': current_user_id,
+        'blockedUid': user_id,
+        'createdAt': datetime.utcnow()
+    }
+    await db.set_document('user_blocks', doc_id, block_data)
+    
+    # Also unfollow each other if they follow each other!
+    try:
+        # Remove current user from target's followers
+        await db.array_remove_update('users', user_id, 'followers', [current_user_id])
+        # Remove target user from current's following
+        await db.array_remove_update('users', current_user_id, 'following', [user_id])
+        
+        # Remove target user from current's followers
+        await db.array_remove_update('users', current_user_id, 'followers', [user_id])
+        # Remove current user from target's following
+        await db.array_remove_update('users', user_id, 'following', [current_user_id])
+        
+        # Update counts
+        u1 = await db.get_document('users', current_user_id)
+        if u1:
+            await db.update_document('users', current_user_id, {
+                'followers_count': len(u1.get('followers', []) or []),
+                'following_count': len(u1.get('following', []) or [])
+            })
+        u2 = await db.get_document('users', user_id)
+        if u2:
+            await db.update_document('users', user_id, {
+                'followers_count': len(u2.get('followers', []) or []),
+                'following_count': len(u2.get('following', []) or [])
+            })
+    except Exception as e:
+        logger.warning(f"Error updating follows during block: {e}")
+
+    # Emit socket events to instantly delete posts ofblocked user from blocker UI, and vice versa
+    try:
+        # Let current user know they should remove the blocked user's posts
+        await sio.emit('user_blocked', {'blocker_id': current_user_id, 'blocked_id': user_id}, room=f"user_{current_user_id}")
+        # Let blocked user know they should remove the blocker's posts
+        await sio.emit('user_blocked', {'blocker_id': current_user_id, 'blocked_id': user_id}, room=f"user_{user_id}")
+    except Exception as e:
+        logger.error(f"Failed to emit user_blocked socket event: {e}")
+
+    return {'message': 'User blocked successfully', 'user_id': user_id}
+
+
+@api_router.post('/users/{user_id}/unblock')
+async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    doc_id = f"{current_user_id}_{user_id}"
+    await db.delete_document('user_blocks', doc_id)
+    return {'message': 'User unblocked successfully', 'user_id': user_id}
+
+
+@api_router.get('/users/{user_id}/is_blocked')
+async def check_user_blocked_endpoint(user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    doc_id = f"{current_user_id}_{user_id}"
+    block_doc = await db.get_document('user_blocks', doc_id)
+    # Check reverse block too
+    doc_id_reverse = f"{user_id}_{current_user_id}"
+    block_doc_reverse = await db.get_document('user_blocks', doc_id_reverse)
+    
+    is_blocked = (block_doc is not None) or (block_doc_reverse is not None)
+    return {'is_blocked': is_blocked}
 
 
 @api_router.post('/users/{user_id}/follow')
@@ -3135,12 +3271,16 @@ async def get_posts_feed(
     # Filter out already-seen posts and non-public posts
     public_posts = []
     
+    blocked_user_ids = await _get_blocked_user_ids(db, current_user_id)
+    
     # Pre-calculate user location for performance
     u_city = str(user_loc.get('city') or '').strip().lower()
     u_state = str(user_loc.get('state') or '').strip().lower()
     u_country = str(user_loc.get('country') or '').strip().lower()
 
     for p in posts:
+        if p.get('user_id') in blocked_user_ids:
+            continue
         if p.get('visibility', 'public') != 'public':
             continue
         if tab == 'reels' and p.get('category') != 'reels':
@@ -3415,6 +3555,7 @@ async def get_posts_feed(
                     filters=[('post_id', '==', post.get('id'))],
                     limit=200,
                 )
+                top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
                 top_comments.sort(key=_comment_sort_key, reverse=True)
                 post['top_comments'] = top_comments[:5]
             except Exception:
@@ -3545,7 +3686,11 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
             for token in caption.split()
         )
 
-    visible_posts = [post for post in posts if _matches_hashtag(post)]
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    visible_posts = [
+        post for post in posts 
+        if _matches_hashtag(post) and post.get('user_id') not in blocked_user_ids
+    ]
 
     def _created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -3599,6 +3744,7 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
             filters=[('post_id', '==', post.get('id'))],
             limit=200,
         )
+        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
         top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
         post['top_comments'] = top_comments[:5]
         normalized.append(post)
@@ -3619,6 +3765,11 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post = await db.get_document('posts', post_id)
     if not post:
         raise HTTPException(status_code=404, detail='Post not found')
+
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    post_author_id = post.get('user_id')
+    if post_author_id in blocked_user_ids:
+        raise HTTPException(status_code=403, detail='You do not have permission to view this post')
 
     author = None
     if post.get('user_id'):
@@ -3641,6 +3792,7 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
         filters=[('post_id', '==', post.get('id'))],
         limit=200,
     )
+    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -4067,6 +4219,10 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
         filters=[('post_id', '==', post_id)],
         limit=500,
     )
+
+    user_id = token_data['user_id']
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
+    comments = [c for c in comments if c.get('user_id') not in blocked_user_ids]
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -8053,6 +8209,22 @@ async def get_reports(
         reports.sort(key=lambda item: item.get('created_at') or datetime.min, reverse=True)
         reports = reports[:max(1, min(limit, 300))]
 
+    for r in reports:
+        if not r.get('snapshot') and r.get('content_type') == 'post' and r.get('content_id'):
+            try:
+                post = await db.get_document('posts', r.get('content_id'))
+                if post:
+                    r['snapshot'] = {
+                        'post_id': r.get('content_id'),
+                        'caption': post.get('caption') or '',
+                        'media_url': post.get('media_url'),
+                        'media_type': post.get('media_type'),
+                        'post_user_id': post.get('user_id'),
+                        'post_username': post.get('username'),
+                    }
+            except Exception as e:
+                logger.warning("Failed to populate dynamic snapshot for reports: %s", e)
+
     try:
         mod_reports = await db.query_documents(
             'moderation_reports',
@@ -8086,16 +8258,36 @@ async def get_reports(
         created_at_val = r.get('createdAt')
         if isinstance(created_at_val, datetime):
             created_at_val = created_at_val.isoformat() + 'Z'
+        
+        content_type = r.get('contentType')
+        content_id = r.get('contentId')
+        snapshot = r.get('snapshot') or {}
+        if not snapshot and content_type == 'post' and content_id:
+            try:
+                post = await db.get_document('posts', content_id)
+                if post:
+                    snapshot = {
+                        'post_id': content_id,
+                        'caption': post.get('caption') or '',
+                        'media_url': post.get('media_url'),
+                        'media_type': post.get('media_type'),
+                        'post_user_id': post.get('user_id'),
+                        'post_username': post.get('username'),
+                    }
+            except Exception as e:
+                logger.warning("Failed to populate dynamic snapshot for moderation_reports: %s", e)
+
         standardized_mod.append({
             'id': r.get('id'),
             'reporter_id': r.get('reporterUid'),
             'reported_user_id': r.get('reportedUserUid'),
-            'content_id': r.get('contentId'),
-            'content_type': r.get('contentType'),
+            'content_id': content_id,
+            'content_type': content_type,
             'category': r.get('reason'),
             'description': r.get('description', ''),
             'status': r.get('status'),
             'created_at': created_at_val,
+            'snapshot': snapshot,
         })
 
     all_reports = reports + standardized_mod
@@ -12994,6 +13186,7 @@ async def get_astrology_profile(token_data: dict = Depends(verify_token)):
 async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data['user_id']
+    blocked_user_ids = await _get_blocked_user_ids(db, user_id)
     
     if last_pulled_at > 1e11:
         last_pulled_dt = datetime.utcfromtimestamp(last_pulled_at / 1000.0)
@@ -13054,9 +13247,12 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
             updated_at = data.get('updated_at')
             created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
             updated_ts = int(updated_at.timestamp() * 1000) if isinstance(updated_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+            post_author_id = data.get('user_id', '')
+            if post_author_id in blocked_user_ids:
+                continue
             changes["feeds"]["updated"].append({
                 "id": doc.id,
-                "user_id": data.get('user_id', ''),
+                "user_id": post_author_id,
                 "username": data.get('username', 'User'),
                 "user_photo": data.get('user_photo'),
                 "media_url": data.get('media_url'),
@@ -13068,6 +13264,14 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                 "created_at": created_ts,
                 "updated_at": updated_ts
             })
+        
+        # Add posts from blocked users to deleted sync so they are cleaned up locally
+        for b_uid in blocked_user_ids:
+            blocked_posts = await db.query_documents('posts', filters=[('user_id', '==', b_uid)])
+            for bp in blocked_posts:
+                bp_id = bp.get('id')
+                if bp_id:
+                    changes["feeds"]["deleted"].append(bp_id)
     except Exception as e:
         logger.error("Error pulling feeds in sync: %s", e)
 
@@ -13242,6 +13446,21 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                 })
     except Exception as e:
         logger.error("Error pulling library/passport in sync: %s", e)
+
+    # 6. Pull deletions
+    try:
+        if last_pulled_at > 0:
+            deleted_ref = db.client.collection('deleted_records')
+            query = deleted_ref.where('deleted_at', '>', last_pulled_dt)
+            docs = query.stream()
+            for doc in docs:
+                data = doc.to_dict()
+                table = data.get('table_name')
+                record_id = data.get('record_id')
+                if table in changes and record_id:
+                    changes[table]["deleted"].append(record_id)
+    except Exception as e:
+        logger.error("Error pulling deleted records in sync: %s", e)
 
     timestamp = int(datetime.utcnow().timestamp() * 1000)
     return {"changes": changes, "timestamp": timestamp}

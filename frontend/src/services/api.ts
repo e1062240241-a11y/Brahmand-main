@@ -852,6 +852,10 @@ export const getUserPosts = (
   offset: number = 0,
 ) => api.get(`/users/${userId}/posts`, { params: { limit, offset } });
 
+export const blockUserApi = (userId: string) => api.post(`/users/${userId}/block`);
+export const unblockUserApi = (userId: string) => api.post(`/users/${userId}/unblock`);
+export const checkUserBlockedApi = (userId: string) => api.get(`/users/${userId}/is_blocked`);
+
 export const getUsersBatch = (userIds: string[]) =>
   api.post("/users/batch", { user_ids: userIds });
 

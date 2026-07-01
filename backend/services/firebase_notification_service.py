@@ -26,6 +26,27 @@ class FirebaseNotificationService:
         return FirestoreDB(client)
     
     @staticmethod
+    async def _get_blocked_user_ids(db, user_id: str) -> set:
+        blocked_ids = set()
+        try:
+            # Users blocked by user_id
+            blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+            for b in blocks_by_me:
+                b_uid = b.get('blockedUid')
+                if b_uid:
+                    blocked_ids.add(b_uid)
+            
+            # Users who blocked user_id
+            blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+            for b in blocks_of_me:
+                b_uid = b.get('blockerUid')
+                if b_uid:
+                    blocked_ids.add(b_uid)
+        except Exception as e:
+            logger.error("Error retrieving blocked users list in notification service: %s", e)
+        return blocked_ids
+
+    @staticmethod
     async def create_notification(
         user_id: str,
         title: str,
@@ -38,6 +59,20 @@ class FirebaseNotificationService:
         """Create and store notification"""
         db = await FirebaseNotificationService.get_db()
         
+        # Check block status
+        try:
+            actor_id = None
+            if data:
+                actor_id = data.get('actor_id') or data.get('follower_id') or data.get('actor_user_id') or data.get('sender_id') or data.get('actor_uid')
+            
+            if actor_id:
+                blocked_user_ids = await FirebaseNotificationService._get_blocked_user_ids(db, user_id)
+                if actor_id in blocked_user_ids:
+                    logger.info(f"Skipping notification creation for user {user_id} due to block relationship with actor {actor_id}")
+                    return {"message": "Blocked"}
+        except Exception as e:
+            logger.warning(f"Error checking block status for notification creation: {e}")
+
         notification_data = {
             "user_id": user_id,
             "title": title,

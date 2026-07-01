@@ -24,7 +24,7 @@ const REQUIRED_TABLES = [
   'sync_queue',
 ];
 
-function buildEmptyChangeset(lastPulledAt: number | null) {
+function buildEmptyChangeset(lastPulledAt: number | null | undefined) {
   const changes: Record<string, { created: any[]; updated: any[]; deleted: string[] }> = {};
   REQUIRED_TABLES.forEach((t) => {
     changes[t] = { created: [], updated: [], deleted: [] };

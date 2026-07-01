@@ -86,20 +86,22 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         contentType,
         reason: selectedReason,
       });
-    } catch (firebaseErr) {
+    } catch (firebaseErr: any) {
       console.warn('[ReportModal] Firebase write failed, trying API fallback:', firebaseErr);
       // Try API fallback if provided
       if (apiFallback) {
         try {
           await apiFallback(selectedReason);
-        } catch (apiErr) {
+        } catch (apiErr: any) {
           console.warn('[ReportModal] API fallback also failed:', apiErr);
-          setError('Could not submit report. Please check your connection and try again.');
+          const errMsg = apiErr?.response?.data?.detail || apiErr?.message || 'Could not submit report. Please check your connection and try again.';
+          setError(errMsg);
           setStep('select');
           return;
         }
       } else {
-        setError('Could not submit report. Please check your connection and try again.');
+        const errMsg = firebaseErr?.message || 'Could not submit report. Please check your connection and try again.';
+        setError(errMsg);
         setStep('select');
         return;
       }

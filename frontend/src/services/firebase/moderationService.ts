@@ -78,8 +78,10 @@ export async function submitReport(payload: ReportPayload): Promise<string> {
   return docRef.id;
 }
 
+import { blockUserApi, unblockUserApi, checkUserBlockedApi } from '../api';
+
 /**
- * Block a user. Stores the block in Firebase.
+ * Block a user. Stores the block in Firebase and backend.
  * Collection: user_blocks
  * Document ID: `${blockerUid}_${blockedUid}` for fast lookup.
  */
@@ -92,15 +94,27 @@ export async function blockUser(blockerUid: string, blockedUid: string): Promise
     blockedUid,
     createdAt: serverTimestamp(),
   });
+
+  try {
+    await blockUserApi(blockedUid);
+  } catch (error) {
+    console.error('[moderationService] blockUserApi failed:', error);
+  }
 }
 
 /**
- * Unblock a user. Removes the block document from Firebase.
+ * Unblock a user. Removes the block document from Firebase and backend.
  */
 export async function unblockUser(blockerUid: string, blockedUid: string): Promise<void> {
   const db = getDB();
   const docId = `${blockerUid}_${blockedUid}`;
   await deleteDoc(doc(db, 'user_blocks', docId));
+
+  try {
+    await unblockUserApi(blockedUid);
+  } catch (error) {
+    console.error('[moderationService] unblockUserApi failed:', error);
+  }
 }
 
 /**
@@ -110,10 +124,16 @@ export async function isUserBlocked(
   blockerUid: string,
   blockedUid: string,
 ): Promise<boolean> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
-  const snap = await getDoc(doc(db, 'user_blocks', docId));
-  return snap.exists();
+  try {
+    const res = await checkUserBlockedApi(blockedUid);
+    return res.data?.is_blocked ?? false;
+  } catch (error) {
+    console.warn('[moderationService] checkUserBlockedApi failed, falling back to Firebase:', error);
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
+    const snap = await getDoc(doc(db, 'user_blocks', docId));
+    return snap.exists();
+  }
 }
 
 /**
