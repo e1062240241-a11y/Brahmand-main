@@ -53,6 +53,8 @@ import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { socketService } from '../../src/services/socket';
 import { isConversationMuted, muteConversationLocal, unmuteConversationLocal } from '../../src/services/mutedChats';
+import { ReportModal } from '../../src/components/ReportModal';
+import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
 
 const DM_MESSAGES_CACHE_KEY = 'dm_messages_cache';
 
@@ -372,6 +374,7 @@ const DirectMessageScreen = () => {
   const [sharingContact, setSharingContact] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [reportUserModalVisible, setReportUserModalVisible] = useState(false);
   const attachmentAnim = useRef(new Animated.Value(0)).current;
 
   // Get picker media types function
@@ -475,15 +478,20 @@ const DirectMessageScreen = () => {
   };
 
   const checkBlockStatus = useCallback(async () => {
-    if (!conversation?.user?.id) return;
+    if (!conversation?.user?.id || !user?.id) return;
     try {
-      const blockedListRaw = await AsyncStorage.getItem('blocked_users_list');
-      const blockedList = blockedListRaw ? JSON.parse(blockedListRaw) : [];
-      setIsBlocked(blockedList.includes(conversation.user.id));
+      // Firebase-backed block check
+      const blocked = await isUserBlocked(user.id, conversation.user.id);
+      setIsBlocked(blocked);
     } catch (e) {
-      console.error('Error checking block status:', e);
+      // Fallback to AsyncStorage
+      try {
+        const blockedListRaw = await AsyncStorage.getItem('blocked_users_list');
+        const blockedList = blockedListRaw ? JSON.parse(blockedListRaw) : [];
+        setIsBlocked(blockedList.includes(conversation.user.id));
+      } catch {}
     }
-  }, [conversation?.user?.id]);
+  }, [conversation?.user?.id, user?.id]);
 
   useEffect(() => {
     checkBlockStatus();
@@ -511,20 +519,21 @@ const DirectMessageScreen = () => {
   }, [isFocused, markMessagesAsRead]);
 
   const handleToggleBlock = async () => {
-    if (!conversation?.user?.id) return;
+    if (!conversation?.user?.id || !user?.id) return;
     try {
-      const blockedListRaw = await AsyncStorage.getItem('blocked_users_list');
-      let blockedList = blockedListRaw ? JSON.parse(blockedListRaw) : [];
-      
       if (isBlocked) {
         // Unblock
-        blockedList = blockedList.filter((id: string) => id !== conversation.user.id);
-        await AsyncStorage.setItem('blocked_users_list', JSON.stringify(blockedList));
+        await unblockUser(user.id, conversation.user.id);
+        // Also clear AsyncStorage for compatibility
+        try {
+          const raw = await AsyncStorage.getItem('blocked_users_list');
+          const list = raw ? JSON.parse(raw) : [];
+          await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list.filter((id: string) => id !== conversation.user.id)));
+        } catch {}
         setIsBlocked(false);
         Alert.alert('Success', `${conversation.user.name} has been unblocked.`);
         closeChatOptions();
       } else {
-        // Confirm block
         Alert.alert(
           'Block User',
           `Are you sure you want to block ${conversation.user.name}? You will no longer receive messages from them.`,
@@ -534,8 +543,14 @@ const DirectMessageScreen = () => {
               text: 'Block',
               style: 'destructive',
               onPress: async () => {
-                blockedList.push(conversation.user.id);
-                await AsyncStorage.setItem('blocked_users_list', JSON.stringify(blockedList));
+                await blockUser(user.id, conversation.user.id);
+                // Also store in AsyncStorage for compatibility
+                try {
+                  const raw = await AsyncStorage.getItem('blocked_users_list');
+                  const list = raw ? JSON.parse(raw) : [];
+                  if (!list.includes(conversation.user.id)) list.push(conversation.user.id);
+                  await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list));
+                } catch {}
                 setIsBlocked(true);
                 Alert.alert('Blocked', `${conversation.user.name} has been blocked.`);
                 closeChatOptions();
@@ -546,48 +561,15 @@ const DirectMessageScreen = () => {
       }
     } catch (e) {
       console.error('Error toggling block status:', e);
-    }
-  };
-
-  const submitReport = async (category: 'spam' | 'abuse' | 'other' | 'disrespectful' | 'religious_attack') => {
-    if (!conversation?.user?.id) return;
-    try {
-      await reportContent({
-        content_type: 'user',
-        content_id: conversation.user.id,
-        category,
-        description: `User reported via direct message options menu.`
-      });
-      Alert.alert('Report Submitted', 'Thank you for reporting. We will review this user.');
-      closeChatOptions();
-    } catch (error) {
-      console.error('Error submitting report:', error);
-      Alert.alert('Error', 'Unable to submit report. Please try again.');
+      Alert.alert('Error', 'Could not update block status. Please try again.');
     }
   };
 
   const handleReportUser = () => {
     if (!conversation?.user?.id) return;
-    
-    Alert.alert(
-      'Report User',
-      'Please select a reason for reporting this user:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Spam',
-          onPress: () => submitReport('spam')
-        },
-        {
-          text: 'Abuse / Harassment',
-          onPress: () => submitReport('abuse')
-        },
-        {
-          text: 'Other',
-          onPress: () => submitReport('other')
-        }
-      ]
-    );
+    closeChatOptions();
+    // Small delay so options panel closes before modal opens
+    setTimeout(() => setReportUserModalVisible(true), 300);
   };
 
   const parseDateOrNull = (value?: string) => {
@@ -1908,15 +1890,49 @@ const DirectMessageScreen = () => {
   );
 
   if (Platform.OS === 'web') {
-    return <View style={[styles.container, { height: viewHeight }]}>{renderContent()}</View>;
+    return (
+      <>
+        <View style={[styles.container, { height: viewHeight }]}>{renderContent()}</View>
+        {/* Apple Guideline 1.2 - Report User Modal */}
+        <ReportModal
+          visible={reportUserModalVisible}
+          onClose={() => setReportUserModalVisible(false)}
+          reporterUid={user?.id || ''}
+          reportedUserUid={conversation?.user?.id || ''}
+          contentId={conversation?.conversation_id || conversation?.chat_id || ''}
+          contentType="message"
+          apiFallback={async (reason) => {
+            if (conversation?.user?.id) {
+              await reportContent({ content_type: 'user', content_id: conversation.user.id, category: reason as any, description: `DM report: ${reason}` });
+            }
+          }}
+        />
+      </>
+    );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['left', 'right']}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
-        {renderContent()}
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    <>
+      <SafeAreaView style={styles.container} edges={['left', 'right']}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
+          {renderContent()}
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+      {/* Apple Guideline 1.2 - Report User Modal */}
+      <ReportModal
+        visible={reportUserModalVisible}
+        onClose={() => setReportUserModalVisible(false)}
+        reporterUid={user?.id || ''}
+        reportedUserUid={conversation?.user?.id || ''}
+        contentId={conversation?.conversation_id || conversation?.chat_id || ''}
+        contentType="message"
+        apiFallback={async (reason) => {
+          if (conversation?.user?.id) {
+            await reportContent({ content_type: 'user', content_id: conversation.user.id, category: reason as any, description: `DM report: ${reason}` });
+          }
+        }}
+      />
+    </>
   );
 };
 

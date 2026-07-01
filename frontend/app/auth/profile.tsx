@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerUser } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS } from '../../src/constants/theme';
+import { useLanguageStore } from '../../src/utils/i18n';
 
 const { width } = Dimensions.get('window');
 
@@ -32,24 +33,78 @@ export default function ProfileScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const { login } = useAuthStore();
   const insets = useSafeAreaInsets();
+
+  const storeLanguage = useLanguageStore((state) => state.language);
+  const storeSetLanguage = useLanguageStore((state) => state.setLanguage);
   
   const [name, setName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [surname, setSurname] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState(storeLanguage === 'hi' ? 'Hindi' : 'English');
   const [location, setLocation] = useState('');
+  const [city, setCity] = useState('');
+  const [currentCity, setCurrentCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Android location search modal states
-  const [isCityModalVisible, setIsCityModalVisible] = useState(false);
-  const [citySearchQuery, setCitySearchQuery] = useState('');
+  // Android autocomplete city states
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [isSearchingCity, setIsSearchingCity] = useState(false);
 
+  const getTranslation = (key: string) => {
+    if (Platform.OS === 'android') {
+      const isHi = storeLanguage === 'hi';
+      const dict: Record<string, { en: string; hi: string }> = {
+        beginYourJourney: { en: 'Begin Your Journey', hi: 'अपनी यात्रा शुरू करें' },
+        awakenVisualEssence: { en: 'Awaken your visual essence', hi: 'अपनी दृश्य सार को जगाएं' },
+        fullName: { en: 'Full Name', hi: 'पूरा नाम' },
+        firstName: { en: 'First name', hi: 'पहला नाम' },
+        surname: { en: 'Surname', hi: 'उपनाम' },
+        currentCity: { en: 'Current City', hi: 'वर्तमान शहर' },
+        enterCurrentCity: { en: 'Enter current city...', hi: 'वर्तमान शहर दर्ज करें...' },
+        location: { en: 'Location', hi: 'स्थान' },
+        locationNotDetected: { en: 'Location not detected', hi: 'स्थान का पता नहीं चला' },
+        detectingLocation: { en: 'Detecting Location...', hi: 'स्थान का पता लगाया जा रहा है...' },
+        detect: { en: 'Detect', hi: 'पता करें' },
+        infoText: { 
+          en: 'Your selected location will help us connect you with nearby devotees, temples, and your local Sanatan community. 🕉️🙏', 
+          hi: 'आपका चयनित स्थान हमें आपको आस-पास के भक्तों, मंदिरों और आपके स्थानीय सनातन समुदाय से जोड़ने में मदद करेगा। 🕉️🙏' 
+        },
+        sacredLanguage: { en: 'Sacred Language', hi: 'पवित्र भाषा' },
+        continueToMyJourney: { en: 'Continue to My Journey ', hi: 'मेरी यात्रा पर आगे बढ़ें ' },
+        footerText: { en: 'By beginning, you align with our Terms of Spiritual Connection and Privacy Sanctuary.', hi: 'शुरुआत करके, आप हमारे आध्यात्मिक जुड़ाव की शर्तों और गोपनीयता अभयारण्य के साथ संरेखित होते हैं।' },
+        pleaseEnterFullname: { en: 'Please enter your full name', hi: 'कृपया अपना पूरा नाम दर्ज करें' },
+        enterCityAndDetectLocation: { en: 'Please enter your current city and auto-detect your location', hi: 'कृपया अपना वर्तमान शहर दर्ज करें और अपना स्थान स्वचालित रूप से पता करें' },
+        cityLocationMustMatch: { en: 'Your current city and detected location must match', hi: 'आपका वर्तमान शहर और स्थान का मिलान होना चाहिए' }
+      };
+      return dict[key]?.[isHi ? 'hi' : 'en'] || key;
+    } else {
+      const dict: Record<string, string> = {
+        beginYourJourney: 'Begin Your Journey',
+        awakenVisualEssence: 'Awaken your visual essence',
+        fullName: 'Full Name',
+        firstName: 'First name',
+        surname: 'Surname',
+        currentCity: 'Current City',
+        enterCurrentCity: 'Enter current city...',
+        location: 'Location',
+        locationNotDetected: 'Location not detected',
+        detectingLocation: 'Detecting Location...',
+        detect: 'Detect',
+        infoText: 'Your selected location will help us connect you with nearby devotees, temples, and your local Sanatan community. 🕉️🙏',
+        sacredLanguage: 'Sacred Language',
+        continueToMyJourney: 'Continue to My Journey ',
+        footerText: 'By beginning, you align with our Terms of Spiritual Connection and Privacy Sanctuary.',
+        pleaseEnterFullname: 'Please enter your full name',
+        enterCityAndDetectLocation: 'Please enter your current city and auto-detect your location',
+        cityLocationMustMatch: 'Your current city and detected location must match'
+      };
+      return dict[key] || key;
+    }
+  };
+
   const handleSearchCity = async (query: string) => {
-    setCitySearchQuery(query);
     if (!query || query.length < 3) {
       setCitySuggestions([]);
       return;
@@ -76,11 +131,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleModalAutoDetect = async () => {
-    setIsCityModalVisible(false);
-    await handleFetchLocation();
-  };
-
   const handleFetchLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -103,9 +153,13 @@ export default function ProfileScreen() {
           address.region,
           address.country
         ].filter(Boolean).join(', ');
-        setLocation(readableLocation || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+        const finalLoc = readableLocation || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
+        setCurrentCity(finalLoc);
+        setLocation(finalLoc);
       } else {
-        setLocation(`${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`);
+        const fallbackLoc = `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
+        setCurrentCity(fallbackLoc);
+        setLocation(fallbackLoc);
       }
     } catch (err) {
       console.warn('Error fetching location:', err);
@@ -137,7 +191,10 @@ export default function ProfileScreen() {
 
   const isButtonDisabled = () => {
     if (Platform.OS === 'android') {
-      return !firstName.trim() || !surname.trim() || !location.trim();
+      const c = city.trim().toLowerCase();
+      const cc = currentCity.trim().toLowerCase();
+      const isMatching = c && cc && (cc.includes(c) || c.includes(cc));
+      return !firstName.trim() || !surname.trim() || !city.trim() || !currentCity.trim() || !isMatching;
     }
     return !name.trim();
   };
@@ -147,16 +204,23 @@ export default function ProfileScreen() {
     if (Platform.OS === 'android') {
       trimmed = `${firstName.trim()} ${surname.trim()}`.trim();
       if (!firstName.trim() || !surname.trim()) {
-        setError('Please enter your full name');
+        setError(getTranslation('pleaseEnterFullname'));
         return;
       }
-      if (!location.trim()) {
-        setError('Please enter your current city');
+      if (!city.trim() || !currentCity.trim()) {
+        setError(getTranslation('enterCityAndDetectLocation'));
+        return;
+      }
+      const c = city.trim().toLowerCase();
+      const cc = currentCity.trim().toLowerCase();
+      const isMatching = cc.includes(c) || c.includes(cc);
+      if (!isMatching) {
+        setError(getTranslation('cityLocationMustMatch'));
         return;
       }
     } else {
       if (!trimmed) {
-        setError('Please enter your name');
+        setError(getTranslation('pleaseEnterYourName'));
         return;
       }
     }
@@ -198,15 +262,15 @@ export default function ProfileScreen() {
           contentContainerStyle={[
             styles.scrollContent,
             Platform.OS === 'android' && {
-              paddingTop: Math.max(insets.top, 30),
-              paddingBottom: Math.max(insets.bottom, 20) + 20,
+              paddingTop: Math.max(insets.top, 16),
+              paddingBottom: Math.max(insets.bottom, 12) + 12,
             }
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-            <Text style={styles.title}>Begin Your Journey</Text>
+            <Text style={styles.title}>{getTranslation('beginYourJourney')}</Text>
 
             {/* Profile Photo */}
             <TouchableOpacity style={styles.photoContainer} onPress={pickImage}>
@@ -216,23 +280,23 @@ export default function ProfileScreen() {
                 <View style={styles.photoPlaceholder} />
               )}
               <View style={styles.photoEditBadge}>
-                <Ionicons name="camera" size={18} color="#FFFFFF" />
+                <Ionicons name="camera" size={Platform.OS === 'android' ? 16 : 18} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.caption}>Awaken your visual essence</Text>
+            <Text style={styles.caption}>{getTranslation('awakenVisualEssence')}</Text>
 
             {Platform.OS === 'android' ? (
               <>
                 {/* Full Name */}
                 <Text style={styles.label}>
-                  Full Name <Text style={{ color: '#E53935' }}>*</Text>
+                  {getTranslation('fullName')} <Text style={{ color: '#E53935' }}>*</Text>
                 </Text>
                 <View style={styles.sideBySideContainer}>
                   <View style={styles.halfInputContainer}>
                     <TextInput
                       style={styles.androidTextInput}
-                      placeholder="First name"
+                      placeholder={getTranslation('firstName')}
                       placeholderTextColor="#C5B49F"
                       value={firstName}
                       onChangeText={(text) => {
@@ -246,7 +310,7 @@ export default function ProfileScreen() {
                   <View style={styles.halfInputContainer}>
                     <TextInput
                       style={styles.androidTextInput}
-                      placeholder="Surname"
+                      placeholder={getTranslation('surname')}
                       placeholderTextColor="#C5B49F"
                       value={surname}
                       onChangeText={(text) => {
@@ -259,28 +323,87 @@ export default function ProfileScreen() {
                   </View>
                 </View>
 
-                {/* Current City Dropdown */}
+                {/* Current City Selection */}
                 <Text style={styles.label}>
-                  Current City <Text style={{ color: '#E53935' }}>*</Text>
+                  {getTranslation('currentCity')} <Text style={{ color: '#E53935' }}>*</Text>
                 </Text>
-                <TouchableOpacity
-                  style={styles.dropdownContainer}
-                  onPress={() => setIsCityModalVisible(true)}
-                  activeOpacity={0.7}
-                >
+                <View style={styles.dropdownContainer}>
                   <View style={styles.dropdownLeft}>
                     <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
-                    <Text style={location ? styles.dropdownText : styles.dropdownPlaceholder}>
-                      {location || 'City'}
+                    <TextInput
+                      style={styles.autocompleteInput}
+                      placeholder={getTranslation('enterCurrentCity')}
+                      placeholderTextColor="#C5B49F"
+                      value={city}
+                      onChangeText={(text) => {
+                        setCity(text);
+                        setLocation(text);
+                        handleSearchCity(text);
+                      }}
+                    />
+                  </View>
+                  {isSearchingCity && <ActivityIndicator size="small" color="#FF7B00" />}
+                </View>
+
+                {/* City Autocomplete Suggestions Dropdown */}
+                {citySuggestions.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+                      {citySuggestions.map((item, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.suggestionItem}
+                          onPress={() => {
+                            const cityName = item.address.city || 
+                                              item.address.town || 
+                                              item.address.village || 
+                                              item.address.suburb || 
+                                              item.display_name.split(',')[0];
+                            setCity(cityName);
+                            setLocation(cityName);
+                            setCitySuggestions([]);
+                          }}
+                        >
+                          <Ionicons name="location-outline" size={16} color="#FF7B00" style={{ marginRight: 8 }} />
+                          <Text style={styles.suggestionText} numberOfLines={1}>
+                            {item.display_name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Location Selection (GPS) */}
+                <Text style={styles.label}>
+                  {getTranslation('location')} <Text style={{ color: '#E53935' }}>*</Text>
+                </Text>
+                <View style={styles.dropdownContainer}>
+                  <View style={styles.dropdownLeft}>
+                    <Ionicons name="locate-outline" size={22} color="#FF7B00" style={{ marginRight: 8 }} />
+                    <Text style={currentCity ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
+                      {loading ? getTranslation('detectingLocation') : (currentCity || getTranslation('locationNotDetected'))}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-down-outline" size={20} color="#C5B49F" />
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.detectButtonInline}
+                    onPress={handleFetchLocation}
+                    disabled={loading}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    {loading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.detectButtonTextInline}>{getTranslation('detect')}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </>
             ) : (
               <>
                 {/* Full Name */}
-                <Text style={styles.label}>Full Name</Text>
+                <Text style={styles.label}>{getTranslation('fullName')}</Text>
                 <View style={styles.inputContainer}>
                   <View style={styles.inputIconContainer}>
                     <Ionicons name="person-outline" size={22} color="#C5B49F" />
@@ -300,7 +423,7 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Location */}
-                <Text style={styles.label}>Location</Text>
+                <Text style={styles.label}>{getTranslation('location')}</Text>
                 <View style={styles.inputContainer}>
                   <TouchableOpacity onPress={handleFetchLocation} style={styles.inputIconContainer} disabled={loading}>
                     <Ionicons name="location-outline" size={22} color="#C5B49F" />
@@ -320,19 +443,22 @@ export default function ProfileScreen() {
             <View style={styles.infoCard}>
               <Ionicons name="information-circle-outline" size={24} color="#FF7B00" />
               <Text style={styles.infoText}>
-                Your selected location will help us connect you with nearby devotees, temples, and your local Sanatan community. 🕉️🙏
+                {getTranslation('infoText')}
               </Text>
             </View>
 
             {/* Sacred Language */}
-            <Text style={styles.sacredLanguageLabel}>Sacred Language</Text>
+            <Text style={styles.sacredLanguageLabel}>{getTranslation('sacredLanguage')}</Text>
             <View style={styles.languageContainer}>
               <TouchableOpacity 
                 style={[
                   styles.languageButton, 
                   language === 'English' ? styles.languageButtonActive : styles.languageButtonInactive
                 ]}
-                onPress={() => setLanguage('English')}
+                onPress={() => {
+                  setLanguage('English');
+                  storeSetLanguage('en');
+                }}
               >
                 <Text 
                   style={
@@ -348,7 +474,10 @@ export default function ProfileScreen() {
                   styles.languageButton, 
                   language === 'Hindi' ? styles.languageButtonActive : styles.languageButtonInactive
                 ]}
-                onPress={() => setLanguage('Hindi')}
+                onPress={() => {
+                  setLanguage('Hindi');
+                  storeSetLanguage('hi');
+                }}
               >
                 <Text 
                   style={
@@ -375,7 +504,7 @@ export default function ProfileScreen() {
                 <ActivityIndicator color="#FF7B00" />
               ) : (
                 <View style={styles.continueButtonContent}>
-                  <Text style={[styles.continueButtonText, isButtonDisabled() && styles.continueButtonTextEmpty]}>Continue to My Journey </Text>
+                  <Text style={[styles.continueButtonText, isButtonDisabled() && styles.continueButtonTextEmpty]}>{getTranslation('continueToMyJourney')}</Text>
                   <Svg width={22} height={22} viewBox="0 0 22 22" fill="none">
                     <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill={isButtonDisabled() ? '#FF7B00' : 'white'}/>
                   </Svg>
@@ -385,99 +514,11 @@ export default function ProfileScreen() {
 
             {/* Footer Text */}
             <Text style={styles.footerText}>
-              By beginning, you align with our Terms of Spiritual Connection and Privacy Sanctuary.
+              {getTranslation('footerText')}
             </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* City Search Modal */}
-      {Platform.OS === 'android' && (
-        <Modal
-          visible={isCityModalVisible}
-          animationType="slide"
-          transparent={true}
-          onRequestClose={() => setIsCityModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Current City</Text>
-                <TouchableOpacity onPress={() => setIsCityModalVisible(false)}>
-                  <Ionicons name="close" size={24} color="#8B4F3B" />
-                </TouchableOpacity>
-              </View>
-
-              {/* GPS Auto-detect Button */}
-              <TouchableOpacity
-                style={styles.gpsButton}
-                onPress={handleModalAutoDetect}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="locate-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.gpsButtonText}>Detect Automatically (GPS)</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              <View style={styles.dividerContainer}>
-                <View style={styles.modalDivider} />
-                <Text style={styles.dividerText}>or search manually</Text>
-                <View style={styles.modalDivider} />
-              </View>
-
-              {/* Manual Search Input */}
-              <View style={styles.modalSearchContainer}>
-                <Ionicons name="search-outline" size={20} color="#C5B49F" style={{ marginRight: 8 }} />
-                <TextInput
-                  style={styles.modalSearchInput}
-                  placeholder="Enter city name..."
-                  placeholderTextColor="#C5B49F"
-                  value={citySearchQuery}
-                  onChangeText={handleSearchCity}
-                  autoFocus={true}
-                />
-              </View>
-
-              {/* Suggestions List */}
-              <ScrollView style={styles.modalSuggestionsList} keyboardShouldPersistTaps="handled">
-                {isSearchingCity ? (
-                  <ActivityIndicator color="#FF7B00" style={{ marginTop: 20 }} />
-                ) : citySuggestions.length > 0 ? (
-                  citySuggestions.map((item, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.modalSuggestionItem}
-                      onPress={() => {
-                        const cityName = item.address.city || 
-                                          item.address.town || 
-                                          item.address.village || 
-                                          item.address.suburb || 
-                                          item.display_name.split(',')[0];
-                        setLocation(cityName);
-                        setIsCityModalVisible(false);
-                        setCitySearchQuery('');
-                        setCitySuggestions([]);
-                      }}
-                    >
-                      <Ionicons name="location-outline" size={18} color="#FF7B00" style={{ marginRight: 10 }} />
-                      <Text style={styles.modalSuggestionText} numberOfLines={1}>
-                        {item.display_name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))
-                ) : citySearchQuery.length >= 3 ? (
-                  <Text style={styles.noResultsText}>No cities found</Text>
-                ) : null}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      )}
     </LinearGradient>
   );
 }
@@ -507,13 +548,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 28,
     textAlign: 'center',
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: Platform.OS === 'android' ? 10 : 12,
+    marginBottom: Platform.OS === 'android' ? 10 : 16,
   },
   photoContainer: {
     position: 'relative',
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: Platform.OS === 'android' ? 6 : 8,
+    marginBottom: Platform.OS === 'android' ? 8 : 12,
     shadowColor: 'rgba(139, 79, 59, 0.15)',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
@@ -521,13 +562,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   photo: {
-    width: 128,
-    height: 128,
+    width: Platform.OS === 'android' ? 100 : 128,
+    height: Platform.OS === 'android' ? 100 : 128,
     borderRadius: 9999,
   },
   photoPlaceholder: {
-    width: 128,
-    height: 128,
+    width: Platform.OS === 'android' ? 100 : 128,
+    height: Platform.OS === 'android' ? 100 : 128,
     borderRadius: 9999,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -539,10 +580,10 @@ const styles = StyleSheet.create({
   photoEditBadge: {
     position: 'absolute',
     bottom: 0,
-    right: 4,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    right: Platform.OS === 'android' ? 0 : 4,
+    width: Platform.OS === 'android' ? 32 : 36,
+    height: Platform.OS === 'android' ? 32 : 36,
+    borderRadius: Platform.OS === 'android' ? 16 : 18,
     backgroundColor: '#FF7B00',
     justifyContent: 'center',
     alignItems: 'center',
@@ -563,16 +604,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     letterSpacing: 0.14,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: Platform.OS === 'android' ? 12 : 20,
   },
   label: {
-    fontSize: 16,
+    fontSize: Platform.OS === 'android' ? 14 : 16,
     fontWeight: '600',
     color: '#8B4F3B',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     alignSelf: 'flex-start',
-    marginBottom: 8,
-    marginTop: 12,
+    marginBottom: Platform.OS === 'android' ? 6 : 8,
+    marginTop: Platform.OS === 'android' ? 8 : 12,
   },
   inputContainer: {
     display: 'flex',
@@ -656,11 +697,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'flex-start',
     gap: 12,
-    marginBottom: 24,
-    marginTop: 4,
+    marginBottom: Platform.OS === 'android' ? 12 : 24,
+    marginTop: Platform.OS === 'android' ? 2 : 4,
   },
   languageButton: {
-    height: 44,
+    height: Platform.OS === 'android' ? 36 : 44,
     borderRadius: 22,
     paddingHorizontal: 28,
     justifyContent: 'center',
@@ -704,8 +745,8 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     letterSpacing: 0.14,
     alignSelf: 'flex-start',
-    marginBottom: 4,
-    marginTop: 6,
+    marginBottom: Platform.OS === 'android' ? 2 : 4,
+    marginTop: Platform.OS === 'android' ? 4 : 6,
   },
   error: {
     color: '#FF3B30',
@@ -715,13 +756,13 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     width: '100%',
-    height: 56,
+    height: Platform.OS === 'android' ? 50 : 56,
     borderRadius: 28,
     backgroundColor: '#FF7B00',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 16,
+    marginTop: Platform.OS === 'android' ? 10 : 10,
+    marginBottom: Platform.OS === 'android' ? 12 : 16,
     shadowColor: 'rgba(143, 76, 56, 0.30)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
@@ -736,13 +777,13 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   continueButtonText: {
-    fontSize: 20,
+    fontSize: Platform.OS === 'android' ? 18 : 20,
     fontWeight: '600',
     color: '#FFFFFF',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontStyle: 'normal',
     textAlign: 'center',
-    lineHeight: 28,
+    lineHeight: Platform.OS === 'android' ? 24 : 28,
   },
   continueButtonTextEmpty: {
     color: '#FF7B00',
@@ -753,12 +794,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   footerText: {
-    fontSize: 12,
+    fontSize: Platform.OS === 'android' ? 11 : 12,
     color: '#584235',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: Platform.OS === 'android' ? 14 : 16,
     paddingHorizontal: 20,
-    marginTop: 8,
+    marginTop: Platform.OS === 'android' ? 4 : 8,
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontWeight: '500',
     fontStyle: 'normal',
@@ -767,11 +808,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignSelf: 'stretch',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: Platform.OS === 'android' ? 12 : 16,
   },
   halfInputContainer: {
     flex: 1,
-    height: 56,
+    height: Platform.OS === 'android' ? 50 : 56,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0C0AF',
@@ -789,7 +830,7 @@ const styles = StyleSheet.create({
   },
   dropdownContainer: {
     flexDirection: 'row',
-    height: 56,
+    height: Platform.OS === 'android' ? 50 : 56,
     alignSelf: 'stretch',
     borderRadius: 12,
     borderWidth: 1,
@@ -798,7 +839,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: Platform.OS === 'android' ? 12 : 16,
   },
   dropdownLeft: {
     flexDirection: 'row',
@@ -815,96 +856,63 @@ const styles = StyleSheet.create({
     color: '#C5B49F',
     fontFamily: 'System',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFEEE5',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    minHeight: 400,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#5A4136',
-  },
-  gpsButton: {
-    flexDirection: 'row',
-    height: 48,
-    backgroundColor: '#FF7B00',
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  gpsButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalDivider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E0C0AF',
-  },
-  dividerText: {
-    fontSize: 12,
-    color: '#8B4F3B',
-    marginHorizontal: 10,
+  autoDetectButtonText: {
+    fontSize: 16,
+    color: '#FF7B00',
+    fontFamily: 'System',
     fontWeight: '500',
   },
-  modalSearchContainer: {
-    flexDirection: 'row',
-    height: 48,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E0C0AF',
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    marginBottom: 16,
-  },
-  modalSearchInput: {
+  autocompleteInput: {
     flex: 1,
     height: '100%',
-    fontSize: 15,
+    fontSize: 16,
     color: '#8B4F3B',
+    fontFamily: 'System',
+    paddingLeft: 8,
+    paddingRight: 0,
+    paddingVertical: 0,
   },
-  modalSuggestionsList: {
-    flex: 1,
+  suggestionsContainer: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E0C0AF',
+    borderRadius: 12,
+    marginTop: -8,
+    marginBottom: 16,
+    maxHeight: 200,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    zIndex: 1000,
+    alignSelf: 'stretch',
   },
-  modalSuggestionItem: {
+  suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0C0AF',
+    borderBottomColor: '#FFEEE5',
   },
-  modalSuggestionText: {
-    fontSize: 15,
+  suggestionText: {
+    fontSize: 14,
     color: '#5A4136',
     flex: 1,
   },
-  noResultsText: {
-    textAlign: 'center',
-    color: '#8B4F3B',
-    marginTop: 20,
+  detectButtonInline: {
+    backgroundColor: '#FF7B00',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: Platform.OS === 'android' ? 32 : 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  detectButtonTextInline: {
+    color: '#FFFFFF',
     fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'System',
   },
 });

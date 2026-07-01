@@ -27,7 +27,9 @@ import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, delet
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
+import { ReportModal } from '../../src/components/ReportModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
 
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -106,6 +108,8 @@ const UserProfileScreen = () => {
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState('grid');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const loadComments = async (postId: string) => {
     setCommentsLoading(true);
@@ -535,17 +539,60 @@ const UserProfileScreen = () => {
 
   const handleReportUser = () => {
     setUserMenuVisible(false);
-    Alert.alert('Report User', 'Thank you for reporting. Our moderation team will review this profile shortly.');
+    // Small delay so the bottom sheet closes before the report modal opens
+    setTimeout(() => setReportModalVisible(true), 300);
   };
+
+  // Check block status when profile loads
+  useEffect(() => {
+    if (!currentUserId || !profileUserId || currentUserId === profileUserId) return;
+    isUserBlocked(currentUserId, profileUserId)
+      .then(setIsBlocked)
+      .catch(() => {});
+  }, [currentUserId, profileUserId]);
 
   const handleBlockUser = () => {
     setUserMenuVisible(false);
+    if (isBlocked) {
+      Alert.alert(
+        'Unblock User',
+        `Unblock @${profile?.sl_id}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Unblock',
+            onPress: async () => {
+              try {
+                await unblockUser(currentUserId!, profileUserId!);
+                setIsBlocked(false);
+                Alert.alert('Unblocked', `@${profile?.sl_id} has been unblocked.`);
+              } catch (e) {
+                Alert.alert('Error', 'Could not unblock user. Please try again.');
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
     Alert.alert(
       'Block User',
       `Are you sure you want to block @${profile?.sl_id}? They will no longer be able to see your posts or message you.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Block', style: 'destructive', onPress: () => Alert.alert('Blocked', 'User has been blocked.') }
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await blockUser(currentUserId!, profileUserId!);
+              setIsBlocked(true);
+              Alert.alert('Blocked', `@${profile?.sl_id} has been blocked.`);
+            } catch (e) {
+              Alert.alert('Error', 'Could not block user. Please try again.');
+            }
+          },
+        },
       ]
     );
   };
@@ -1087,7 +1134,7 @@ const UserProfileScreen = () => {
 
             <TouchableOpacity style={styles.userMenuItem} onPress={handleBlockUser}>
               <Ionicons name="ban-outline" size={22} color={COLORS.error} />
-              <Text style={[styles.userMenuText, { color: COLORS.error }]}>Block User</Text>
+              <Text style={[styles.userMenuText, { color: COLORS.error }]}>{isBlocked ? 'Unblock User' : 'Block User'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -1107,6 +1154,16 @@ const UserProfileScreen = () => {
         onClose={() => setShareModalVisible(false)}
         post={selectedSharePost}
         onShareExternal={handleShareExternal}
+      />
+
+      {/* Apple Guideline 1.2 - Report User Modal */}
+      <ReportModal
+        visible={reportModalVisible}
+        onClose={() => setReportModalVisible(false)}
+        reporterUid={currentUserId || ''}
+        reportedUserUid={profileUserId || ''}
+        contentId={profileUserId || ''}
+        contentType="user"
       />
     </SafeAreaView>
   );
