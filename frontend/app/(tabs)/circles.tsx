@@ -1,6 +1,6 @@
 // accessibility: placeholder
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Pressable, RefreshControl, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { getCircles } from '../../src/services/api';
@@ -38,6 +38,7 @@ export default function CirclesScreen() {
     <Pressable
       style={({ pressed }) => [
         styles.circleCard,
+        Platform.OS === 'android' && { overflow: 'hidden' },
         pressed && Platform.OS === 'ios' && { opacity: 0.7 }
       ]}
       android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}

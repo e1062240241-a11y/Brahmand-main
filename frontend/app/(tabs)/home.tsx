@@ -3936,6 +3936,7 @@ export default function HomeScreen() {
                   <Pressable
                     style={({ pressed }) => [
                       styles.communityCardMini,
+                      Platform.OS === 'android' && { overflow: 'hidden' },
                       pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                     ]}
                     android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
@@ -3978,6 +3979,7 @@ export default function HomeScreen() {
                   <Pressable
                     style={({ pressed }) => [
                       styles.communityCardMini,
+                      Platform.OS === 'android' && { overflow: 'hidden' },
                       pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                     ]}
                     android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
