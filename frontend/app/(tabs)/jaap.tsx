@@ -516,7 +516,7 @@ export default function JaapLandingScreen() {
           isActive && styles.topTabButtonActive,
           pressed && Platform.OS === 'ios' && { opacity: 0.8 }
         ]}
-        android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
         onPress={() => switchSection(section)}
       >
         <Text style={[styles.topTabText, isActive && styles.topTabTextActive]}>
@@ -640,7 +640,7 @@ export default function JaapLandingScreen() {
                         styles.mockupJoinNowBtn,
                         pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                       ]}
-                      android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                       onPress={() =>
                         router.push({
                           pathname: '/live-jaap-welcome',
@@ -691,7 +691,7 @@ export default function JaapLandingScreen() {
                   { flexDirection: 'row', alignItems: 'center' },
                   pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                 ]}
-                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                 onPress={() => router.push('/all-live-jaaps' as any)}
               >
                 <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
@@ -808,7 +808,7 @@ export default function JaapLandingScreen() {
                             { flex: 1 },
                             pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                           ]}
-                          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                           onPress={() => router.push({
                             pathname: '/live-jaap-welcome',
                             params: {
@@ -842,7 +842,7 @@ export default function JaapLandingScreen() {
                   { flexDirection: 'row', alignItems: 'center' },
                   pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                 ]}
-                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                 onPress={() => router.push('/all-live-jaaps' as any)}
               >
                 <Text style={styles.viewAllSaffronRefined}>{t('viewAll')}</Text>
@@ -897,7 +897,7 @@ export default function JaapLandingScreen() {
                             isReminderActive && styles.upcomingReminderBtnActive,
                             pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                           ]}
-                          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                           onPress={() => handleSetReminder(jaap.id, jaap.mantraType, jaap.title)}
                         >
                           <Text style={[
@@ -999,7 +999,7 @@ export default function JaapLandingScreen() {
                         styles.mockupJoinNowBtn,
                         pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                       ]}
-                      android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     >
                       <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
                         <Text style={styles.mockupJoinJaapText}>
@@ -1030,7 +1030,7 @@ export default function JaapLandingScreen() {
                   styles.filterIconBtn,
                   pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                 ]}
-                android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 24 }}
+                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: true, radius: 24 }}
               >
                 <MaterialCommunityIcons name="text-search" size={28} color="#FF6600" />
               </Pressable>
@@ -1054,7 +1054,7 @@ export default function JaapLandingScreen() {
                         selectedCategory === cat && styles.templeCatPillActive,
                         pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                       ]}
-                      android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                       onPress={() => setSelectedCategory(cat)}
                     >
                       <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
@@ -1077,7 +1077,7 @@ export default function JaapLandingScreen() {
                       styles.newTempleCard,
                       pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                     ]}
-                    android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}
                   >
 

@@ -40,7 +40,7 @@ export default function CirclesScreen() {
         styles.circleCard,
         pressed && Platform.OS === 'ios' && { opacity: 0.7 }
       ]}
-      android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
       onPress={() => router.push(`/chat/circle/${item.id}`)}
     >
       <View style={styles.iconContainer}>
@@ -97,7 +97,7 @@ export default function CirclesScreen() {
             styles.actionButton,
             pressed && Platform.OS === 'ios' && { opacity: 0.7 }
           ]}
-          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
           onPress={() => router.push('/circle/create')}
         >
           <Ionicons name="add-circle" size={20} color={COLORS.textWhite} />
@@ -109,7 +109,7 @@ export default function CirclesScreen() {
             styles.actionButtonOutline,
             pressed && Platform.OS === 'ios' && { opacity: 0.7 }
           ]}
-          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
           onPress={() => router.push('/circle/join')}
         >
           <Ionicons name="enter" size={20} color={COLORS.primary} />

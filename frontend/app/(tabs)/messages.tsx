@@ -1286,7 +1286,7 @@ function MessagesScreen({
         style={({ pressed }) => [
           pressed && Platform.OS === 'ios' && { opacity: 0.9 }
         ]}
-        android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
         onPress={() => setSelectedRequest(item)}
       >
         <LinearGradient
@@ -1346,7 +1346,7 @@ function MessagesScreen({
           isPending && { opacity: 0.8 },
           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
         ]}
-        android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
         onPress={() => isPending ? Alert.alert('Pending', 'This community is awaiting activation from other team members.') : router.push(`/community/${item.id}`)}
       >
         <View style={styles.localCommAvatarWrapper}>
@@ -1522,7 +1522,7 @@ function MessagesScreen({
                 activeTopTab === 'Community' && styles.segmentPillActive,
                 pressed && Platform.OS === 'ios' && { opacity: 0.8 }
               ]}
-              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
               onPress={() => setActiveTopTab('Community')}
             >
               <Text
@@ -1541,7 +1541,7 @@ function MessagesScreen({
                 activeTopTab === 'Private Chat' && styles.segmentPillActive,
                 pressed && Platform.OS === 'ios' && { opacity: 0.8 }
               ]}
-              android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
               onPress={() => setActiveTopTab('Private Chat')}
             >
               <Text
@@ -1696,7 +1696,7 @@ function MessagesScreen({
                       styles.chatRow,
                       pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                     ]}
-                    android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push(`/chat/circle/${item.id}`);
                     }}
@@ -1744,7 +1744,7 @@ function MessagesScreen({
                           styles.chatRow,
                           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                         ]}
-                        android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                         onPress={() => {
                           router.push(`/dm/${conversationId}`);
                         }}

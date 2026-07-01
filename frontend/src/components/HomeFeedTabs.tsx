@@ -21,7 +21,7 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
           activeTab === 'for_you' && styles.activeTabBtn,
           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
         ]}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
+        android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
         onPress={() => onTabChange('for_you')}
       >
         <Text style={[styles.tabText, activeTab === 'for_you' && styles.activeTabText]}>
@@ -35,7 +35,7 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
           activeTab === 'following' && styles.activeTabBtn,
           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
         ]}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
+        android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
         onPress={() => onTabChange('following')}
       >
         <Text style={[styles.tabText, activeTab === 'following' && styles.activeTabText]}>
@@ -49,7 +49,7 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
           activeTab === 'trending' && styles.activeTabBtn,
           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
         ]}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
+        android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
         onPress={() => onTabChange('trending')}
       >
         <Text style={[styles.tabText, activeTab === 'trending' && styles.activeTabText]}>
@@ -62,7 +62,7 @@ const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeF
           styles.newPostButton,
           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
         ]}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)', borderless: false }}
+        android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
         onPress={onCreatePost}
       >
         <View style={styles.plusIconBg}>

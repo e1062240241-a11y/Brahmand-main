@@ -3938,7 +3938,7 @@ export default function HomeScreen() {
                       styles.communityCardMini,
                       pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                     ]}
-                    android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push({
                         pathname: '/community/[id]',
@@ -3980,7 +3980,7 @@ export default function HomeScreen() {
                       styles.communityCardMini,
                       pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                     ]}
-                    android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: false }}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                     onPress={() => {
                       router.push({
                         pathname: '/community/[id]',
