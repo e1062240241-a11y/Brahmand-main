@@ -789,6 +789,7 @@ export default function RootLayout() {
           <Stack screenOptions={{
             headerShown: false,
             animation: 'slide_from_right',
+            animationDuration: 250,
             gestureEnabled: true,
             gestureDirection: 'horizontal',
             contentStyle: { backgroundColor: COLORS.background }
@@ -799,6 +800,7 @@ export default function RootLayout() {
               name="(tabs)"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
                 gestureEnabled: false
               }}
             />
@@ -807,6 +809,7 @@ export default function RootLayout() {
               name="index"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
                 gestureEnabled: false
               }}
             />
@@ -816,6 +819,7 @@ export default function RootLayout() {
               name="community-request/blood"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -824,6 +828,7 @@ export default function RootLayout() {
               name="community-request/food"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -832,6 +837,7 @@ export default function RootLayout() {
               name="community-request/gau-seva"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -840,6 +846,7 @@ export default function RootLayout() {
               name="community-request/animal-care"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -848,6 +855,7 @@ export default function RootLayout() {
               name="community-request/temple-help"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -856,6 +864,7 @@ export default function RootLayout() {
               name="community-request/emergency"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -864,6 +873,7 @@ export default function RootLayout() {
               name="community-request/other"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -872,6 +882,7 @@ export default function RootLayout() {
               name="sos"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
                 gestureDirection: 'vertical'
               }}
             />
@@ -880,6 +891,7 @@ export default function RootLayout() {
               name="kyc-submit"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
                 gestureDirection: 'vertical'
               }}
             />
@@ -888,6 +900,7 @@ export default function RootLayout() {
               name="kyc-success"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
                 gestureDirection: 'vertical'
               }}
             />
@@ -896,6 +909,7 @@ export default function RootLayout() {
               name="live-jaap-welcome"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -904,6 +918,7 @@ export default function RootLayout() {
               name="circle/create"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -912,6 +927,7 @@ export default function RootLayout() {
               name="community/create"
               options={{
                 animation: 'slide_from_bottom',
+                animationDuration: 300,
                 gestureDirection: 'vertical'
               }}
             />
@@ -920,6 +936,7 @@ export default function RootLayout() {
               name="community-tweets"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
               }}
             />
             <Stack.Screen
@@ -927,6 +944,7 @@ export default function RootLayout() {
               name="jaap-completed"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
                 gestureEnabled: false
               }}
             />
@@ -935,6 +953,7 @@ export default function RootLayout() {
               name="my-krishna"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
               }}
             />
             <Stack.Screen
@@ -942,6 +961,7 @@ export default function RootLayout() {
               name="library/index"
               options={{
                 animation: 'fade',
+                animationDuration: 200,
               }}
             />
             {/* Other standard stack navigations will inherit default slide_from_right */}
