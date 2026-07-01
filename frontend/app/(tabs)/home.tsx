@@ -4611,40 +4611,39 @@ export default function HomeScreen() {
 
     <Modal
       visible={isAartiModalVisible}
-      transparent={true}
+      transparent={false}
       animationType="slide"
+      statusBarTranslucent={true}
       onRequestClose={() => setIsAartiModalVisible(false)}
     >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' }}>
-        <View style={{ width: '92%', height: 320, backgroundColor: '#FFF', borderRadius: 20, overflow: 'hidden', elevation: 10 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#EEE' }}>
-            <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: '#000' }}>{selectedAartiTitle}</Text>
-            <TouchableOpacity onPress={() => setIsAartiModalVisible(false)} style={{ padding: 5 }}>
-              <Ionicons name="close" size={24} color="#000" />
-            </TouchableOpacity>
-          </View>
-          <View style={{ flex: 1, backgroundColor: '#000' }}>
-            {Platform.OS === 'web' ? (
-              <iframe
-                title="Live Aarti"
-                src={selectedAartiUrl ? getAartiEmbedUrl(selectedAartiUrl) : ''}
-                style={{ width: '100%', height: '100%', border: 0 }}
-                frameBorder="0"
-                allow="autoplay; encrypted-media"
-                allowFullScreen
-              />
-            ) : (
-              <WebView
-                source={{ uri: selectedAartiUrl ? getAartiMobileUrl(selectedAartiUrl) : 'about:blank' }}
-                style={{ width: '100%', height: '100%' }}
-                javaScriptEnabled
-                domStorageEnabled
-                allowsFullscreenVideo
-                allowsInlineMediaPlayback
-                mediaPlaybackRequiresUserAction={false}
-              />
-            )}
-          </View>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: insets.top + 10, paddingVertical: 15, backgroundColor: '#111' }}>
+          <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: '#FFF' }}>{selectedAartiTitle}</Text>
+          <TouchableOpacity onPress={() => setIsAartiModalVisible(false)} style={{ padding: 5 }}>
+            <Ionicons name="close" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        <View style={{ flex: 1, backgroundColor: '#000' }}>
+          {Platform.OS === 'web' ? (
+            <iframe
+              title="Live Aarti"
+              src={selectedAartiUrl ? getAartiEmbedUrl(selectedAartiUrl) : ''}
+              style={{ width: '100%', height: '100%', border: 0 }}
+              frameBorder="0"
+              allow="autoplay; encrypted-media"
+              allowFullScreen
+            />
+          ) : (
+            <WebView
+              source={{ uri: selectedAartiUrl ? getAartiMobileUrl(selectedAartiUrl) : 'about:blank' }}
+              style={{ width: '100%', height: '100%' }}
+              javaScriptEnabled
+              domStorageEnabled
+              allowsFullscreenVideo
+              allowsInlineMediaPlayback
+              mediaPlaybackRequiresUserAction={false}
+            />
+          )}
         </View>
       </View>
     </Modal>
