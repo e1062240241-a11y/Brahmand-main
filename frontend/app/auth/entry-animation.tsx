@@ -69,7 +69,7 @@ const IconItem = ({ icon: Icon, label, isWide, customWidth }: any) => (
 export default function EntryAnimationScreen() {
   const router = useRouter();
   const { token } = useAuthStore();
-  const [agreed, setAgreed] = useState(true);
+  const [agreed, setAgreed] = useState(false);
 
   const containerOpacity = useRef(new Animated.Value(0)).current;
 

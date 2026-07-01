@@ -41,6 +41,7 @@ import { COLORS, FONTS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
+import { ReportModal } from '../../src/components/ReportModal';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -724,6 +725,9 @@ export default function CommunityDetailScreen() {
   const [showAttendeesModal, setShowAttendeesModal] = useState<any | null>(null);
   const [attendeesList, setAttendeesList] = useState<User[]>([]);
   const [attendeesLoading, setAttendeesLoading] = useState(false);
+  // Apple Guideline 1.2 - community post report state
+  const [reportCommunityPostModalVisible, setReportCommunityPostModalVisible] = useState(false);
+  const [pendingReportCommunityPost, setPendingReportCommunityPost] = useState<any | null>(null);
 
   const openEventDatePicker = useCallback(() => {
     if (Platform.OS === 'android') {
@@ -2169,7 +2173,7 @@ export default function CommunityDetailScreen() {
                   </View>
                 )}
               </View>
-              {(item.sender_id === user?.id || item.user.name === user?.name || String(item.id).startsWith('d')) && (
+              {(item.sender_id === user?.id || item.user.name === user?.name || String(item.id).startsWith('d')) ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   {((item as any).isRequestInFeed || ['requests', 'seva', 'lost & found', 'temple updates'].includes((item as any).category?.toLowerCase()) || (item as any).request_type) && !isFulfilled && (
                     <TouchableOpacity
@@ -2186,6 +2190,17 @@ export default function CommunityDetailScreen() {
                     <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
                   </TouchableOpacity>
                 </View>
+              ) : (
+                // Non-owner: show Report button (Apple Guideline 1.2)
+                <TouchableOpacity
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={() => {
+                    setPendingReportCommunityPost(item);
+                    setReportCommunityPostModalVisible(true);
+                  }}
+                >
+                  <Ionicons name="flag-outline" size={16} color="#888" />
+                </TouchableOpacity>
               )}
             </View>
 
@@ -4704,6 +4719,19 @@ export default function CommunityDetailScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Apple Guideline 1.2 - Report Community Post Modal */}
+      <ReportModal
+        visible={reportCommunityPostModalVisible}
+        onClose={() => {
+          setReportCommunityPostModalVisible(false);
+          setPendingReportCommunityPost(null);
+        }}
+        reporterUid={user?.id || ''}
+        reportedUserUid={pendingReportCommunityPost?.sender_id || pendingReportCommunityPost?.user_id || ''}
+        contentId={String(pendingReportCommunityPost?.id || '')}
+        contentType="community"
+      />
     </KeyboardAvoidingView>
   );
 }

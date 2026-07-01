@@ -51,237 +51,300 @@ export default function PrivacyPolicyScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.mainTitle}>BRAHMAND TERMS OF SERVICE</Text>
+        <Text style={styles.lastUpdatedText}>Effective Date: 15 June 2026</Text>
         
         <Text style={styles.paragraph}>
           Welcome to Brahmand (“Platform”, “App”, “we”, “our”, or “us”).{'\n\n'}
-          These Terms of Service govern your access to and use of the Brahmand platform, including the mobile application, website, services, features, content, communities, messaging systems, vendor services, and related offerings available through brahmand.app.{'\n\n'}
-          By creating an account, accessing, or using Brahmand, you agree to be bound by these Terms of Service. If you do not agree, please do not use the Platform.
+          These Terms govern your access to and use of the Brahmand mobile application, website, communities, messaging services, vendor listings, AI features, digital services, and all related products available through brahmand.app.{'\n\n'}
+          By creating an account, signing in, or using Brahmand, you agree to these Terms of Service. If you do not agree, you must not use the Platform.
         </Text>
 
         <Text style={styles.sectionTitle}>1. Eligibility</Text>
         <Text style={styles.paragraph}>
-          You must be at least 18 years of age, or have the consent of a parent or legal guardian, to use the Platform.{'\n\n'}
-          You are responsible for ensuring that your use of Brahmand complies with all applicable laws and regulations.
+          You must be at least 18 years old or have permission from a parent or legal guardian.{'\n\n'}
+          You agree to comply with all applicable laws while using Brahmand.
         </Text>
 
         <Text style={styles.sectionTitle}>2. User Accounts</Text>
         <Text style={styles.paragraph}>
-          You agree to:{'\n'}
+          You agree to:{'\n\n'}
           • Provide accurate and complete information.{'\n'}
           • Keep your account information updated.{'\n'}
-          • Maintain the security of your account.{'\n'}
-          • Be responsible for all activities conducted through your account.{'\n\n'}
-          Brahmand may suspend, restrict, or terminate accounts that violate these Terms.
+          • Maintain the confidentiality of your account credentials.{'\n'}
+          • Be responsible for all activities performed using your account.{'\n\n'}
+          Brahmand may suspend, restrict, or permanently terminate accounts that violate these Terms.
         </Text>
 
         <Text style={styles.sectionTitle}>3. Community Standards</Text>
         <Text style={styles.paragraph}>
-          Users must not:{'\n'}
-          • Post unlawful content.{'\n'}
-          • Harass, threaten, intimidate, or abuse others.{'\n'}
-          • Spread harmful misinformation knowingly.{'\n'}
-          • Upload malicious software or harmful code.{'\n'}
-          • Impersonate another individual, organization, or entity.{'\n'}
-          • Engage in fraud, scams, or deceptive practices.{'\n'}
-          • Promote illegal activities.{'\n'}
-          • Attempt to bypass platform security measures.{'\n\n'}
-          Brahmand reserves the right to remove content and restrict accounts that violate these standards.
+          Brahmand is committed to maintaining a respectful, safe, and positive community.{'\n\n'}
+          Users must NOT post, upload, transmit, or promote any content that includes:{'\n\n'}
+          • Hate speech{'\n'}
+          • Religious hatred or incitement of violence{'\n'}
+          • Harassment or bullying{'\n'}
+          • Threats or intimidation{'\n'}
+          • Abusive behaviour{'\n'}
+          • Violence or graphic violence{'\n'}
+          • Sexually explicit or pornographic material{'\n'}
+          • Child sexual abuse or exploitation material{'\n'}
+          • Illegal activities{'\n'}
+          • Terrorism or extremist content{'\n'}
+          • Fraud or scams{'\n'}
+          • Spam{'\n'}
+          • Malware or malicious software{'\n'}
+          • False impersonation{'\n'}
+          • Copyright infringement{'\n'}
+          • Any content prohibited by applicable law
+        </Text>
+
+        <Text style={styles.subSectionTitle}>ZERO-TOLERANCE POLICY</Text>
+        <Text style={styles.paragraph}>
+          Brahmand maintains a strict zero-tolerance policy toward objectionable content and abusive users.{'\n\n'}
+          Content that violates these Terms may be removed immediately without notice.{'\n\n'}
+          Users who repeatedly or seriously violate these Terms may have their accounts suspended or permanently terminated.
         </Text>
 
         <Text style={styles.sectionTitle}>4. User Generated Content</Text>
         <Text style={styles.paragraph}>
-          Users retain ownership of content they create and upload.{'\n\n'}
-          By posting content on Brahmand, you grant Brahmand a worldwide, non-exclusive, royalty-free license to store, display, distribute, reproduce, and promote such content within the Platform.{'\n\n'}
-          You are solely responsible for any content you publish.
+          Users retain ownership of the content they create.{'\n\n'}
+          By posting content on Brahmand, you grant Brahmand a worldwide, non-exclusive, royalty-free license to:{'\n\n'}
+          • Store{'\n'}
+          • Display{'\n'}
+          • Reproduce{'\n'}
+          • Distribute{'\n'}
+          • Promote{'\n'}
+          • Moderate{'\n\n'}
+          your content solely for operating and improving the Platform.{'\n\n'}
+          You remain solely responsible for any content you publish.
         </Text>
 
-        <Text style={styles.sectionTitle}>5. Communities and User Groups</Text>
+        <Text style={styles.sectionTitle}>5. Reporting Objectionable Content</Text>
         <Text style={styles.paragraph}>
-          Brahmand provides local communities, regional communities, cultural communities, private groups, and other community features.{'\n\n'}
-          Brahmand does not guarantee:{'\n'}
-          • Accuracy of user information.{'\n'}
-          • Conduct of community members.{'\n'}
-          • Safety of offline interactions.{'\n'}
-          • Outcomes of community activities.{'\n\n'}
-          Users participate at their own risk.
+          Brahmand provides users with the ability to report:{'\n\n'}
+          • Posts{'\n'}
+          • Comments{'\n'}
+          • Profiles{'\n'}
+          • Messages{'\n'}
+          • Communities{'\n'}
+          • Other user-generated content{'\n\n'}
+          Users should report any content they reasonably believe violates these Terms or Community Standards.{'\n\n'}
+          False or malicious reporting may itself constitute a violation of these Terms.
         </Text>
 
-        <Text style={styles.sectionTitle}>6. Private Messaging</Text>
+        <Text style={styles.sectionTitle}>6. Content Moderation</Text>
         <Text style={styles.paragraph}>
-          Private messaging features are provided for communication purposes.{'\n\n'}
-          Users must not use messaging features for:{'\n'}
+          Brahmand uses a combination of:{'\n\n'}
+          • Automated moderation systems{'\n'}
+          • AI-assisted safety tools{'\n'}
+          • Human moderators{'\n'}
+          • Community reports{'\n\n'}
+          to identify objectionable content.{'\n\n'}
+          Reported content may be:{'\n\n'}
+          • Removed{'\n'}
+          • Hidden{'\n'}
+          • Restricted{'\n'}
+          • Investigated{'\n\n'}
+          Where appropriate, Brahmand aims to review reported content as quickly as reasonably possible and generally within 24 hours.{'\n\n'}
+          Brahmand reserves the right to suspend or permanently terminate accounts responsible for objectionable content.
+        </Text>
+
+        <Text style={styles.sectionTitle}>7. Blocking Users</Text>
+        <Text style={styles.paragraph}>
+          Users may block other users at any time.{'\n\n'}
+          When blocked, a user may no longer be able to:{'\n\n'}
+          • Send direct messages{'\n'}
+          • Interact with the blocking user's content{'\n'}
+          • Contact the blocking user through Platform features{'\n\n'}
+          Blocking is intended to improve user safety and prevent unwanted interactions.
+        </Text>
+
+        <Text style={styles.sectionTitle}>8. Communities</Text>
+        <Text style={styles.paragraph}>
+          Brahmand provides:{'\n\n'}
+          • Local Communities{'\n'}
+          • Regional Communities{'\n'}
+          • Cultural Communities{'\n'}
+          • Private Groups{'\n'}
+          • Volunteer Groups{'\n'}
+          • Spiritual Communities{'\n\n'}
+          Brahmand does not guarantee:{'\n\n'}
+          • Accuracy of member information{'\n'}
+          • Conduct of community members{'\n'}
+          • Safety of offline interactions{'\n'}
+          • Outcomes of community activities{'\n\n'}
+          Users participate entirely at their own risk.
+        </Text>
+
+        <Text style={styles.sectionTitle}>9. Private Messaging</Text>
+        <Text style={styles.paragraph}>
+          Private messaging exists solely for lawful communication.{'\n\n'}
+          Users must not use messaging features for:{'\n\n'}
           • Harassment{'\n'}
+          • Abuse{'\n'}
           • Spam{'\n'}
           • Fraud{'\n'}
-          • Unlawful activity{'\n'}
-          • Abuse of other users{'\n\n'}
-          Brahmand may utilize automated systems and moderation tools to detect abuse and maintain platform safety.
+          • Threats{'\n'}
+          • Illegal activity{'\n\n'}
+          Brahmand may use automated safety systems and moderation tools to detect abuse and maintain platform safety.
         </Text>
 
-        <Text style={styles.sectionTitle}>7. SOS Feature Disclaimer</Text>
+        <Text style={styles.sectionTitle}>10. SOS Feature Disclaimer</Text>
         <Text style={styles.paragraph}>
-          The SOS feature is a community assistance tool intended to help users seek support from nearby volunteers and community members.{'\n\n'}
-          Brahmand is NOT:{'\n'}
+          The SOS feature is intended only to help connect nearby volunteers and community members.{'\n\n'}
+          Brahmand is NOT:{'\n\n'}
           • Police{'\n'}
-          • Ambulance services{'\n'}
-          • Fire services{'\n'}
+          • Ambulance Services{'\n'}
+          • Fire Services{'\n'}
           • Hospitals{'\n'}
-          • Emergency response agencies{'\n'}
-          • Government authorities{'\n\n'}
-          Brahmand does not guarantee:{'\n'}
+          • Government Authorities{'\n\n'}
+          Brahmand does not guarantee:{'\n\n'}
           • Emergency response{'\n'}
           • Assistance{'\n'}
           • Rescue{'\n'}
-          • Availability of volunteers{'\n'}
-          • Response times{'\n'}
-          • Outcomes{'\n\n'}
+          • Volunteer availability{'\n'}
+          • Response times{'\n\n'}
           In emergencies, users should immediately contact official emergency services.
         </Text>
 
-        <Text style={styles.sectionTitle}>8. Vendor Listings and Marketplace Services</Text>
+        <Text style={styles.sectionTitle}>11. Vendor Listings</Text>
         <Text style={styles.paragraph}>
-          Brahmand may display businesses, professionals, service providers, vendors, and community organizations.{'\n\n'}
-          Vendor profiles, badges, KYC verification, ratings, or verification status do not constitute endorsement or guarantee.{'\n\n'}
+          Vendor profiles, KYC badges, ratings, reviews, or verification status do not constitute endorsement.{'\n\n'}
           Users are solely responsible for any interaction, agreement, purchase, payment, or transaction with vendors.{'\n\n'}
           Brahmand is not a party to transactions between users and vendors.
         </Text>
 
-        <Text style={styles.sectionTitle}>9. Vendor Verification and KYC</Text>
+        <Text style={styles.sectionTitle}>12. Vendor Verification</Text>
         <Text style={styles.paragraph}>
-          Brahmand may collect identification documents and other information for vendor verification purposes.{'\n\n'}
-          Verification does not guarantee:{'\n'}
+          Brahmand may request identification documents for verification purposes.{'\n\n'}
+          Verification does not guarantee:{'\n\n'}
           • Quality of service{'\n'}
           • Reliability{'\n'}
           • Honesty{'\n'}
           • Future conduct{'\n'}
           • Legitimacy of claims{'\n\n'}
-          Brahmand reserves the right to approve, reject, suspend, or remove vendors at its discretion.
+          Verification may be revoked at any time.
         </Text>
 
-        <Text style={styles.sectionTitle}>10. Religious, Spiritual, Panchang and Astrology Content</Text>
+        <Text style={styles.sectionTitle}>13. Religious, Spiritual & Astrology Content</Text>
         <Text style={styles.paragraph}>
-          Brahmand may provide content related to:{'\n'}
+          Brahmand may provide:{'\n\n'}
           • Panchang{'\n'}
           • Astrology{'\n'}
-          • Spiritual guidance{'\n'}
-          • Religious teachings{'\n'}
           • Festivals{'\n'}
           • Rituals{'\n'}
-          • Community traditions{'\n\n'}
-          Such content is provided solely for informational, educational, cultural, and spiritual purposes.{'\n\n'}
-          Brahmand does not guarantee accuracy, predictions, outcomes, or spiritual results.{'\n\n'}
-          Users should exercise independent judgment.
+          • Spiritual guidance{'\n'}
+          • Religious teachings{'\n\n'}
+          Such information is provided solely for educational, informational, cultural, and spiritual purposes.{'\n\n'}
+          No prediction, outcome, or spiritual result is guaranteed.
         </Text>
 
-        <Text style={styles.sectionTitle}>11. AI Features</Text>
+        <Text style={styles.sectionTitle}>14. Artificial Intelligence</Text>
         <Text style={styles.paragraph}>
-          Certain features may utilize artificial intelligence.{'\n\n'}
-          AI-generated content may contain inaccuracies or incomplete information.{'\n\n'}
-          AI responses:{'\n'}
-          • Are informational only.{'\n'}
-          • Do not constitute professional advice.{'\n'}
-          • Should not be relied upon exclusively for important decisions.{'\n\n'}
-          Users remain responsible for their actions and decisions.
+          Certain Platform features may use Artificial Intelligence.{'\n\n'}
+          AI-generated information:{'\n\n'}
+          • May contain inaccuracies{'\n'}
+          • Is informational only{'\n'}
+          • Does not constitute professional advice{'\n\n'}
+          Users remain responsible for their own decisions.
         </Text>
 
-        <Text style={styles.sectionTitle}>12. Brahmand Passport</Text>
+        <Text style={styles.sectionTitle}>15. Brahmand Passport</Text>
         <Text style={styles.paragraph}>
-          Brahmand may maintain a digital profile known as the Brahmand Passport.{'\n\n'}
-          The Passport may include:{'\n'}
-          • Community participation{'\n'}
+          The Brahmand Passport may include:{'\n\n'}
           • Volunteer activities{'\n'}
           • Achievements{'\n'}
-          • Service records{'\n'}
-          • Platform milestones{'\n'}
-          • Other activity records{'\n\n'}
-          Brahmand reserves the right to determine what information is displayed and maintained within the Passport system.
+          • Community participation{'\n'}
+          • Milestones{'\n'}
+          • Service history{'\n\n'}
+          Brahmand determines what information is displayed within the Passport.
         </Text>
 
-        <Text style={styles.sectionTitle}>13. Intellectual Property</Text>
+        <Text style={styles.sectionTitle}>16. Intellectual Property</Text>
         <Text style={styles.paragraph}>
-          All Platform software, branding, designs, logos, trademarks, graphics, content, and proprietary materials are protected by applicable intellectual property laws.{'\n\n'}
-          Users may not:{'\n'}
+          All software, branding, logos, graphics, artwork, trademarks, databases, and proprietary materials belong to Brahmand or its licensors.{'\n\n'}
+          Users may not:{'\n\n'}
           • Copy{'\n'}
           • Reproduce{'\n'}
-          • Distribute{'\n'}
-          • Modify{'\n'}
           • Reverse engineer{'\n'}
-          • Commercially exploit{'\n'}
-          any portion of the Platform without permission.
+          • Modify{'\n'}
+          • Distribute{'\n'}
+          • Commercially exploit{'\n\n'}
+          any portion of the Platform without written permission.
         </Text>
 
-        <Text style={styles.sectionTitle}>14. Copyright Complaints</Text>
+        <Text style={styles.sectionTitle}>17. Copyright Complaints</Text>
         <Text style={styles.paragraph}>
-          Users must only upload content they have the right to use.{'\n\n'}
-          Brahmand may remove content that is alleged to infringe intellectual property rights.{'\n\n'}
-          Repeated infringement may result in account suspension or termination.
+          Users must upload only content they have legal rights to use.{'\n\n'}
+          Content alleged to infringe intellectual property rights may be removed without notice.{'\n\n'}
+          Repeated infringement may result in permanent account termination.
         </Text>
 
-        <Text style={styles.sectionTitle}>15. Suspension and Termination</Text>
+        <Text style={styles.sectionTitle}>18. Suspension & Termination</Text>
         <Text style={styles.paragraph}>
-          Brahmand may suspend, restrict, disable, or terminate access to the Platform at any time for:{'\n'}
-          • Violations of these Terms{'\n'}
-          • Fraudulent activity{'\n'}
-          • Harmful conduct{'\n'}
+          Brahmand may suspend, restrict, disable, or permanently terminate accounts for:{'\n\n'}
+          • Violating these Terms{'\n'}
+          • Abusive behaviour{'\n'}
+          • Objectionable content{'\n'}
+          • Fraud{'\n'}
+          • Illegal activity{'\n'}
           • Security concerns{'\n'}
-          • Legal obligations
+          • Repeated reports of misconduct
         </Text>
 
-        <Text style={styles.sectionTitle}>16. Limitation of Liability</Text>
+        <Text style={styles.sectionTitle}>19. Limitation of Liability</Text>
         <Text style={styles.paragraph}>
-          To the maximum extent permitted by law, Brahmand shall not be liable for:{'\n'}
+          To the maximum extent permitted by law, Brahmand shall not be liable for:{'\n\n'}
           • User conduct{'\n'}
-          • User-generated content{'\n'}
           • Community interactions{'\n'}
           • Vendor transactions{'\n'}
-          • Loss of data{'\n'}
+          • User-generated content{'\n'}
           • Financial losses{'\n'}
           • Business losses{'\n'}
-          • Personal injury arising from user interactions{'\n'}
+          • Personal injury arising from interactions between users{'\n'}
           • Indirect or consequential damages{'\n\n'}
-          Use of the Platform is at your own risk.
+          Use of the Platform is entirely at your own risk.
         </Text>
 
-        <Text style={styles.sectionTitle}>17. Indemnification</Text>
+        <Text style={styles.sectionTitle}>20. Indemnification</Text>
         <Text style={styles.paragraph}>
-          You agree to indemnify and hold harmless Brahmand, its operators, administrators, volunteers, contractors, and affiliates from any claims, damages, liabilities, losses, or expenses arising from:{'\n'}
+          You agree to indemnify and hold harmless Brahmand, its owners, employees, moderators, volunteers, contractors, affiliates, and administrators from claims arising from:{'\n\n'}
           • Your use of the Platform{'\n'}
           • Your content{'\n'}
+          • Your conduct{'\n'}
           • Your violation of these Terms{'\n'}
-          • Your violation of applicable laws
+          • Your violation of applicable law
         </Text>
 
-        <Text style={styles.sectionTitle}>18. Privacy</Text>
+        <Text style={styles.sectionTitle}>21. Privacy</Text>
         <Text style={styles.paragraph}>
-          Your use of Brahmand is also governed by the Privacy Policy.{'\n\n'}
-          By using the Platform, you consent to the collection, use, processing, and storage of information as described in the Privacy Policy.
+          Your use of Brahmand is governed by the Privacy Policy.{'\n\n'}
+          By using the Platform, you consent to the collection, processing, and storage of information described therein.
         </Text>
 
-        <Text style={styles.sectionTitle}>19. Changes to Terms</Text>
+        <Text style={styles.sectionTitle}>22. Changes to Terms</Text>
         <Text style={styles.paragraph}>
-          Brahmand may update or modify these Terms at any time.{'\n\n'}
-          Updated versions become effective upon publication.{'\n\n'}
-          Continued use of the Platform constitutes acceptance of revised Terms.
+          Brahmand may update these Terms at any time.{'\n\n'}
+          Continued use of the Platform constitutes acceptance of the revised Terms.
         </Text>
 
-        <Text style={styles.sectionTitle}>20. Governing Law</Text>
+        <Text style={styles.sectionTitle}>23. Governing Law</Text>
         <Text style={styles.paragraph}>
-          These Terms shall be governed by the laws of India.{'\n\n'}
-          Any disputes arising from these Terms or use of the Platform shall be subject to the jurisdiction of the competent courts in India.
+          These Terms are governed by the laws of India.{'\n\n'}
+          Any disputes arising from these Terms or use of the Platform shall be subject to the exclusive jurisdiction of the competent courts in India.
         </Text>
 
-        <Text style={styles.sectionTitle}>21. Contact Information</Text>
+        <Text style={styles.sectionTitle}>24. Contact Information</Text>
         <Text style={styles.paragraph}>
-          For support, legal inquiries, policy questions, or requests related to these Terms, please contact:{'\n\n'}
-          Brahmand{'\n'}
-          Email: brahmandteam@gmail.com{'\n'}
-          Website: brahmand.app
+          Brahmand{'\n\n'}
+          Email: brahmandteam@gmail.com{'\n\n'}
+          Website: brahmand.app{'\n\n'}
+          For support, moderation requests, copyright claims, safety concerns, legal inquiries, or policy questions, please contact us using the details above.
         </Text>
 
-        <Text style={styles.sectionTitle}>22. Platform Operator Notice</Text>
+        <Text style={styles.sectionTitle}>25. Platform Operator</Text>
         <Text style={styles.paragraph}>
-          The Brahmand platform is currently operated by its owner(s) and authorized administrators.{'\n\n'}
-          References to any future corporate entity, if established, shall automatically apply upon such entity assuming operation, ownership, management, or control of the Platform.{'\n\n'}
+          The Brahmand Platform is currently operated by its owner(s) and authorised administrators.{'\n\n'}
+          If ownership or operation is transferred to a legal entity in the future, these Terms shall automatically apply to the successor operator.{'\n\n'}
           END OF TERMS OF SERVICE
         </Text>
 

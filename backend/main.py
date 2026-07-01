@@ -8021,7 +8021,7 @@ async def get_reports(
     limit: int = 100,
     token_data: dict = Depends(verify_token),
 ):
-    """Get reports queue for admin review."""
+    """Get reports queue from both reports and moderation_reports collections (admin only)."""
     db, _ = await _ensure_admin_user(token_data)
 
     filters = []
@@ -8029,6 +8029,12 @@ async def get_reports(
         filters.append(('status', '==', status))
     if content_type:
         filters.append(('content_type', '==', content_type))
+
+    mod_filters = []
+    if status:
+        mod_filters.append(('status', '==', status))
+    if content_type:
+        mod_filters.append(('contentType', '==', content_type))
 
     try:
         reports = await db.query_documents(
@@ -8047,7 +8053,65 @@ async def get_reports(
         reports.sort(key=lambda item: item.get('created_at') or datetime.min, reverse=True)
         reports = reports[:max(1, min(limit, 300))]
 
-    return reports
+    try:
+        mod_reports = await db.query_documents(
+            'moderation_reports',
+            filters=mod_filters if mod_filters else None,
+            order_by='createdAt',
+            order_direction='DESCENDING',
+            limit=max(1, min(limit, 300)),
+        )
+    except Exception as exc:
+        logger.warning(
+            "Firestore query failed in moderation_reports, using fallback scan. error=%s",
+            exc,
+        )
+        mod_reports = await db.query_documents('moderation_reports', filters=mod_filters if mod_filters else None)
+        # Parse timestamp or iso format dates
+        def parse_date(x):
+            d = x.get('createdAt')
+            if not d:
+                return datetime.min
+            if isinstance(d, datetime):
+                return d
+            try:
+                return datetime.fromisoformat(str(d).replace('Z', '+00:00'))
+            except:
+                return datetime.min
+        mod_reports.sort(key=parse_date, reverse=True)
+        mod_reports = mod_reports[:max(1, min(limit, 300))]
+
+    standardized_mod = []
+    for r in mod_reports:
+        created_at_val = r.get('createdAt')
+        if isinstance(created_at_val, datetime):
+            created_at_val = created_at_val.isoformat() + 'Z'
+        standardized_mod.append({
+            'id': r.get('id'),
+            'reporter_id': r.get('reporterUid'),
+            'reported_user_id': r.get('reportedUserUid'),
+            'content_id': r.get('contentId'),
+            'content_type': r.get('contentType'),
+            'category': r.get('reason'),
+            'description': r.get('description', ''),
+            'status': r.get('status'),
+            'created_at': created_at_val,
+        })
+
+    all_reports = reports + standardized_mod
+    def parse_any_date(x):
+        d = x.get('created_at')
+        if not d:
+            return datetime.min
+        if isinstance(d, datetime):
+            return d
+        try:
+            return datetime.fromisoformat(str(d).replace('Z', '+00:00'))
+        except:
+            return datetime.min
+
+    all_reports.sort(key=parse_any_date, reverse=True)
+    return all_reports[:limit]
 
 
 @api_router.post('/admin/reports/{report_id}/review')
@@ -8055,17 +8119,21 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
     """Review report with approve/deny actions (admin only)."""
     db, admin_user_id = await _ensure_admin_user(token_data)
 
+    collection_name = 'reports'
     report = await db.get_document('reports', report_id)
     if not report:
-        raise HTTPException(status_code=404, detail='Report not found')
+        report = await db.get_document('moderation_reports', report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail='Report not found')
+        collection_name = 'moderation_reports'
 
     action = str(data.get('action') or '').strip().lower()
     if action not in ['approve', 'deny']:
         raise HTTPException(status_code=400, detail='Invalid action. Use approve or deny')
 
-    if report.get('status') in ['approved', 'denied']:
+    if report.get('status') in ['approved', 'denied', 'resolved']:
         return {
-            'message': f"Report already {report.get('status')}",
+            'message': f"Report already reviewed",
             'report_id': report_id,
             'status': report.get('status'),
         }
@@ -8074,29 +8142,96 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
         'post_deleted': False,
         'media_deleted': False,
         'comments_deleted': 0,
+        'comment_deleted': False,
+        'community_post_deleted': False,
+        'message_deleted': False,
+        'user_banned': False,
     }
 
-    if action == 'approve' and report.get('content_type') == 'post':
-        content_id = report.get('content_id')
+    if action == 'approve':
+        content_type = report.get('content_type') or report.get('contentType')
+        content_id = report.get('content_id') or report.get('contentId')
+
         if content_id:
-            post = await db.get_document('posts', content_id)
-            if post:
-                delete_result = await _delete_post_with_dependencies(db, content_id)
-                moderation_result = {
-                    'post_deleted': True,
-                    'media_deleted': delete_result.get('media_deleted', False),
-                    'comments_deleted': delete_result.get('comments_deleted', 0),
-                }
+            if content_type == 'post':
+                post = await db.get_document('posts', content_id)
+                if post:
+                    delete_result = await _delete_post_with_dependencies(db, content_id)
+                    moderation_result['post_deleted'] = True
+                    moderation_result['media_deleted'] = delete_result.get('media_deleted', False)
+                    moderation_result['comments_deleted'] = delete_result.get('comments_deleted', 0)
+
+            elif content_type == 'comment':
+                comment = await db.get_document('post_comments', content_id)
+                if comment:
+                    await db.delete_document('post_comments', content_id)
+                    moderation_result['comment_deleted'] = True
+
+            elif content_type == 'community':
+                chats = await db.query_documents('chats')
+                for chat in chats:
+                    try:
+                        msg = await db.get_chat_message(chat['id'], content_id)
+                        if msg:
+                            def _delete():
+                                db.client.collection('chats').document(chat['id']).collection('messages').document(content_id).delete()
+                                return True
+                            await db._run_sync(_delete)
+                            moderation_result['community_post_deleted'] = True
+                            break
+                    except Exception:
+                        pass
+
+            elif content_type == 'message':
+                chats = await db.query_documents('chats')
+                for chat in chats:
+                    try:
+                        msg = await db.get_chat_message(chat['id'], content_id)
+                        if msg:
+                            def _delete():
+                                db.client.collection('chats').document(chat['id']).collection('messages').document(content_id).delete()
+                                return True
+                            await db._run_sync(_delete)
+                            moderation_result['message_deleted'] = True
+                            break
+                    except Exception:
+                        pass
+
+                if not moderation_result['message_deleted']:
+                    try:
+                        dm_msg = await db.get_document('direct_messages', content_id)
+                        if dm_msg:
+                            await db.update_document('direct_messages', content_id, {"deleted": True, "content": "[Content removed by moderator]"})
+                            moderation_result['message_deleted'] = True
+                    except Exception:
+                        pass
+
+            elif content_type == 'user':
+                target_user = await db.get_document('users', content_id)
+                if target_user:
+                    update_data = {
+                        'is_blocked': True,
+                        'blocked_until': 'forever',
+                        'status': 'blocked'
+                    }
+                    await db.update_document('users', content_id, update_data)
+                    moderation_result['user_banned'] = True
 
     updated_status = 'approved' if action == 'approve' else 'denied'
-    await db.update_document('reports', report_id, {
+    update_payload = {
         'status': updated_status,
         'reviewed_by': admin_user_id,
-        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
-        'review_note': str(data.get('note') or '').strip(),
         'admin_action': action,
         'moderation_result': moderation_result,
-    })
+    }
+    if collection_name == 'moderation_reports':
+        update_payload['reviewedAt'] = datetime.utcnow()
+        update_payload['reviewNote'] = str(data.get('note') or '').strip()
+    else:
+        update_payload['reviewed_at'] = datetime.utcnow().isoformat() + 'Z'
+        update_payload['review_note'] = str(data.get('note') or '').strip()
+
+    await db.update_document(collection_name, report_id, update_payload)
 
     return {
         'message': f'Report {updated_status}',
@@ -8112,6 +8247,46 @@ async def resolve_report(report_id: str, data: dict = Body(default={}), token_da
     raw_action = str(data.get('action') or '').strip().lower()
     mapped_action = 'approve' if raw_action == 'resolved' else ('deny' if raw_action == 'dismissed' else raw_action)
     return await review_report(report_id, {**data, 'action': mapped_action}, token_data)
+
+
+@api_router.post("/admin/users/{user_id}/ban")
+async def admin_ban_user(user_id: str, data: dict = Body(default={}), token_data: dict = Depends(verify_token)):
+    """Ban/suspend a user from the application (admin only)."""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    duration_hours = data.get('duration_hours')
+    if duration_hours:
+        blocked_until = (datetime.utcnow() + timedelta(hours=int(duration_hours))).isoformat() + 'Z'
+    else:
+        blocked_until = 'forever'
+
+    update_data = {
+        'is_blocked': True,
+        'blocked_until': blocked_until,
+        'status': 'blocked'
+    }
+    await db.update_document('users', user_id, update_data)
+    return {"message": "User banned successfully", "user_id": user_id, "blocked_until": blocked_until}
+
+
+@api_router.post("/admin/users/{user_id}/unban")
+async def admin_unban_user(user_id: str, token_data: dict = Depends(verify_token)):
+    """Remove a ban/suspension from a user (admin only)."""
+    db, _ = await _ensure_admin_user(token_data)
+    user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    update_data = {
+        'is_blocked': False,
+        'blocked_until': None,
+        'status': 'active'
+    }
+    await db.update_document('users', user_id, update_data)
+    return {"message": "User unbanned successfully", "user_id": user_id}
 
 
 @api_router.get("/admin/sos-misuse-reports")

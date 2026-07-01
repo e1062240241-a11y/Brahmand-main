@@ -54,6 +54,48 @@ import {
   getLastTopPostId,
 } from '../../src/utils/feedRanker';
 
+import SharePostModal from '../../src/components/SharePostModal';
+import UploadPostModal from '../../src/components/UploadPostModal';
+import { BlurView } from 'expo-blur';
+import { RequestFormModal } from '../../src/components/RequestFormModal';
+import { MentionInput } from '../../src/components/MentionInput';
+import { MentionText } from '../../src/components/MentionText';
+import { SirenIcon } from '../../src/components/SirenIcon';
+import { SacredIcon } from '../../src/components/SacredIcon';
+import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
+import {
+  api,
+  addPostComment,
+  createCommunityRequest,
+  deletePost,
+  deletePostComment,
+  discoverCommunities,
+  followUser,
+  getAllUsers,
+  getCommunities,
+  getCommunityRequests,
+  getHomeInit,
+  getPostComments,
+  getPostsFeed,
+  repostPost,
+  reportPost,
+  searchByHashtag,
+  togglePostLike,
+  unfollowUser,
+  updateProfile,
+  uploadUserPost,
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
+  getNextFestival,
+  reverseGeocode,
+  markPostAsSeen,
+} from '../../src/services/api';
+import * as Location from 'expo-location';
+import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
+import { formatTimeAgo } from '../../src/utils/dateUtils';
+import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
+
 function KundliSirenIcon() {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -263,48 +305,7 @@ function ShopIcon() {
   );
 }
 
-import SharePostModal from '../../src/components/SharePostModal';
-import UploadPostModal from '../../src/components/UploadPostModal';
-import { BlurView } from 'expo-blur';
-import { RequestFormModal } from '../../src/components/RequestFormModal';
-import { MentionInput } from '../../src/components/MentionInput';
-import { MentionText } from '../../src/components/MentionText';
-import { SirenIcon } from '../../src/components/SirenIcon';
-import { SacredIcon } from '../../src/components/SacredIcon';
-import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../../src/components/HomeFeedTabs';
-import {
-  api,
-  addPostComment,
-  createCommunityRequest,
-  deletePost,
-  deletePostComment,
-  discoverCommunities,
-  followUser,
-  getAllUsers,
-  getCommunities,
-  getCommunityRequests,
-  getHomeInit,
-  getPostComments,
-  getPostsFeed,
-  repostPost,
-  reportPost,
-  searchByHashtag,
-  togglePostLike,
-  unfollowUser,
-  updateProfile,
-  uploadUserPost,
-  getUnreadNotificationCount,
-  markAllNotificationsRead,
-  getNextFestival,
-  reverseGeocode,
-  markPostAsSeen,
-} from '../../src/services/api';
-import * as Location from 'expo-location';
-import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import { formatTimeAgo } from '../../src/utils/dateUtils';
-import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
-import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
-
+import { ReportModal } from '../../src/components/ReportModal';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
@@ -516,7 +517,11 @@ export default function HomeScreen() {
   const currentUserId = (user as any)?.id;
   const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
   const [isEditingBio, setIsEditingBio] = useState(false);
-  const { activeTab, setActiveTab, tabFeeds, setTabFeed, viewHistory, sessionShownIds, loadHistory, markViewed, addSessionShown } = useFeedStore();
+  const activeTab = useFeedStore(state => state.activeTab);
+  const setActiveTab = useFeedStore(state => state.setActiveTab);
+  const tabFeeds = useFeedStore(state => state.tabFeeds);
+  const setTabFeed = useFeedStore(state => state.setTabFeed);
+  const loadHistory = useFeedStore(state => state.loadHistory);
   const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
   const feedPosts = currentFeed.posts;
   const feedOffset = currentFeed.offset;
@@ -541,6 +546,12 @@ export default function HomeScreen() {
   const [showUploadPostModal, setShowUploadPostModal] = useState(false);
   const [showProfileActions, setShowProfileActions] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Apple Guideline 1.2 - report modal state
+  const [reportPostModalVisible, setReportPostModalVisible] = useState(false);
+  const [pendingReportPost, setPendingReportPost] = useState<any | null>(null);
+  // Apple Guideline 1.2 - report comment state
+  const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
+  const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [searchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [hashtagResults, setHashtagResults] = useState<any[]>([]);
@@ -2180,22 +2191,12 @@ export default function HomeScreen() {
     }
   }, [postComments, selectedCommentPostId, selectedCommentPost, activeTab, setTabFeed]);
 
-  const handleReportPost = useCallback(async (post: any) => {
+  const handleReportPost = useCallback((post: any) => {
     const postId = post?.id;
     if (!postId) return;
-
-    try {
-      await reportPost(postId, 'other', 'Reported from home feed menu');
-      alert('Report submitted. Admin will review this post.');
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail;
-      if (detail) {
-        alert(String(detail));
-        return;
-      }
-      console.warn('Failed to report post:', error);
-      alert('Could not submit report. Please try again.');
-    }
+    // Open the reason-selection modal (Apple Guideline 1.2)
+    setPendingReportPost(post);
+    setReportPostModalVisible(true);
   }, []);
 
   const handlePostMenuPress = useCallback((post: any) => {
@@ -4358,8 +4359,40 @@ export default function HomeScreen() {
         }}
       />
 
+      {/* Apple Guideline 1.2 - Report Post Modal */}
+      <ReportModal
+        visible={reportPostModalVisible}
+        onClose={() => {
+          setReportPostModalVisible(false);
+          setPendingReportPost(null);
+        }}
+        reporterUid={currentUserId || ''}
+        reportedUserUid={pendingReportPost?.user_id || ''}
+        contentId={pendingReportPost?.id || ''}
+        contentType="post"
+        apiFallback={async (reason) => {
+          if (pendingReportPost?.id) {
+            await reportPost(pendingReportPost.id, reason, `Reported from feed: ${reason}`);
+          }
+        }}
+      />
+
+      {/* Apple Guideline 1.2 - Report Comment Modal */}
+      <ReportModal
+        visible={reportCommentModalVisible}
+        onClose={() => {
+          setReportCommentModalVisible(false);
+          setPendingReportComment(null);
+        }}
+        reporterUid={currentUserId || ''}
+        reportedUserUid={pendingReportComment?.user_id || ''}
+        contentId={pendingReportComment?.id || ''}
+        contentType="comment"
+      />
+
       <Modal
         visible={commentModalVisible}
+
         transparent
         animationType="slide"
         onRequestClose={() => {
@@ -4476,6 +4509,17 @@ export default function HomeScreen() {
                                 >
                                   <Text style={{ fontSize: 12, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
                                 </TouchableOpacity>
+                                {!canDelete && (
+                                  <TouchableOpacity
+                                    style={{ marginLeft: 16 }}
+                                    onPress={() => {
+                                      setPendingReportComment(item);
+                                      setReportCommentModalVisible(true);
+                                    }}
+                                  >
+                                    <Text style={{ fontSize: 12, color: '#E53935', fontWeight: '600' }}>Report</Text>
+                                  </TouchableOpacity>
+                                )}
                               </View>
                             </View>
                           </View>
