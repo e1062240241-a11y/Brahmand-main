@@ -788,7 +788,7 @@ export default function RootLayout() {
         <MuteProvider>
           <Stack screenOptions={{
             headerShown: false,
-            animation: 'slide_from_right',
+            animation: 'ios_from_right',
             gestureEnabled: true,
             gestureDirection: 'horizontal',
             contentStyle: { backgroundColor: COLORS.background }

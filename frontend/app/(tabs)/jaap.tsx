@@ -1302,6 +1302,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 8,
     backgroundColor: '#FF6B00',
+    overflow: 'hidden',
   },
   mockupJoinGradient: {
     flexDirection: 'row',
