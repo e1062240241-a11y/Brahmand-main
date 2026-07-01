@@ -11,7 +11,7 @@ type HomeFeedTabsProps = {
   onCreatePost: () => void;
 };
 
-const HomeFeedTabs = React.memo(({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProps) => {
+const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProps) {
   const { t } = useTranslation();
   return (
     <View style={styles.feedTabs}>
