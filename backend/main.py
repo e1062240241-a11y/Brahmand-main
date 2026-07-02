@@ -8352,6 +8352,28 @@ async def report_content(data: dict, token_data: dict = Depends(verify_token)):
     return {"message": "Report submitted", "report_id": report_id}
 
 
+def _clean_datetime(dt):
+    from datetime import timezone
+    if not dt:
+        return datetime.min
+    if isinstance(dt, datetime):
+        if dt.tzinfo is not None:
+            return dt.astimezone(timezone.utc).replace(tzinfo=None)
+        return dt
+    try:
+        s = str(dt).strip()
+        if s.endswith('Z') and ('+' in s[:-1] or '-' in s[:-1]):
+            s = s.rstrip('Z')
+        if s.endswith('Z'):
+            s = s[:-1] + '+00:00'
+        parsed = datetime.fromisoformat(s)
+        if parsed.tzinfo is not None:
+            return parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
+    except Exception:
+        return datetime.min
+
+
 @api_router.get("/admin/reports")
 async def get_reports(
     status: str = 'pending',
@@ -8361,16 +8383,6 @@ async def get_reports(
 ):
     """Get reports queue from both reports and moderation_reports collections (admin only)."""
     db, _ = await _ensure_admin_user(token_data)
-
-    def clean_datetime(dt):
-        if not dt:
-            return datetime.min
-        if isinstance(dt, datetime):
-            return dt.replace(tzinfo=None)
-        try:
-            return datetime.fromisoformat(str(dt).replace('Z', '+00:00')).replace(tzinfo=None)
-        except:
-            return datetime.min
 
     filters = []
     if status:
@@ -8398,7 +8410,7 @@ async def get_reports(
             exc,
         )
         reports = await db.query_documents('reports', filters=filters if filters else None)
-        reports.sort(key=lambda item: clean_datetime(item.get('created_at')), reverse=True)
+        reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
         reports = reports[:max(1, min(limit, 300))]
 
     for r in reports:
@@ -8444,14 +8456,20 @@ async def get_reports(
             exc,
         )
         mod_reports = await db.query_documents('moderation_reports', filters=mod_filters if mod_filters else None)
-        mod_reports.sort(key=lambda item: clean_datetime(item.get('createdAt')), reverse=True)
+        mod_reports.sort(key=lambda item: _clean_datetime(item.get('createdAt')), reverse=True)
         mod_reports = mod_reports[:max(1, min(limit, 300))]
 
     standardized_mod = []
     for r in mod_reports:
         created_at_val = r.get('createdAt')
         if isinstance(created_at_val, datetime):
-            created_at_val = created_at_val.isoformat() + 'Z'
+            from datetime import timezone
+            utc_dt = created_at_val.astimezone(timezone.utc) if created_at_val.tzinfo else created_at_val
+            created_at_val = utc_dt.isoformat()
+            if created_at_val.endswith('+00:00'):
+                created_at_val = created_at_val[:-6] + 'Z'
+            elif not created_at_val.endswith('Z'):
+                created_at_val += 'Z'
         
         content_type = r.get('contentType')
         content_id = r.get('contentId')
@@ -8498,7 +8516,7 @@ async def get_reports(
         })
 
     all_reports = reports + standardized_mod
-    all_reports.sort(key=lambda item: clean_datetime(item.get('created_at')), reverse=True)
+    all_reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
     return all_reports[:limit]
 
 
@@ -8682,7 +8700,7 @@ async def get_admin_sos_misuse_reports(token_data: dict = Depends(verify_token))
     """Get all SOS misuse reports for admin review"""
     db, _ = await _ensure_admin_user(token_data)
     reports = await db.query_documents('sos_misuse_reports')
-    reports.sort(key=lambda item: item.get('created_at') or datetime.min, reverse=True)
+    reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
     return reports
 
 
