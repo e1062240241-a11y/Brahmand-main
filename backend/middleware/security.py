@@ -69,13 +69,17 @@ async def verify_token(
         return payload
 
     try:
-        from config.database import get_database
-        db = await get_database()
-        user_doc = db.collection('users').document(user_id).get()
-        if not user_doc.exists:
-            raise HTTPException(status_code=401, detail="User account not found")
-        
-        user_data = user_doc.to_dict()
+        from utils.cache import cache_manager
+        user_data = await cache_manager.get_user(user_id)
+        if not user_data:
+            from config.database import get_database
+            db = await get_database()
+            user_doc = await db.collection('users').document(user_id).get()
+            if not user_doc.exists:
+                raise HTTPException(status_code=401, detail="User account not found")
+            user_data = user_doc.to_dict()
+            await cache_manager.set_user(user_id, user_data)
+
         if user_data.get('is_blocked'):
             from datetime import datetime, timezone
             blocked_until_str = user_data.get('blocked_until')
@@ -100,6 +104,7 @@ async def verify_token(
         raise HTTPException(status_code=403, detail="User account verification failed")
         
     return payload
+
 
 
 async def optional_verify_token(
@@ -139,7 +144,7 @@ async def get_current_user(
     
     # Fetch from database
     db = await get_database()
-    user_doc = db.collection('users').document(user_id).get()
+    user_doc = await db.collection('users').document(user_id).get()
     if not user_doc.exists:
         raise HTTPException(status_code=404, detail="User not found")
     
