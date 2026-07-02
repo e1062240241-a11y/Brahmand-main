@@ -1737,7 +1737,9 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
                     raise HTTPException(status_code=400, detail='Invalid profile photo')
             update_data['photo'] = photo_data
         await db.update_document('users', token_data["user_id"], update_data)
-    return await db.get_document('users', token_data["user_id"])
+        from utils.cache import cache_manager
+        await cache_manager.invalidate_user(token_data['user_id'])
+        return await db.get_document('users', token_data["user_id"])
 
 
 @api_router.put("/user/profile/extended")
@@ -2329,6 +2331,11 @@ async def get_user_posts(
 
 async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
     """Returns a set of all user IDs that are blocked by user_id OR have blocked user_id."""
+    cache_key = f"blocked_users:{user_id}"
+    cached_ids = await cache_manager.get(cache_key)
+    if cached_ids is not None:
+        return set(cached_ids)
+
     blocked_ids = set()
     try:
         # Users blocked by user_id
@@ -2344,13 +2351,20 @@ async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
             b_uid = b.get('blockerUid')
             if b_uid:
                 blocked_ids.add(b_uid)
+
+        await cache_manager.set(cache_key, list(blocked_ids), ttl=300) # Cache for 5 minutes
     except Exception as e:
         logger.error("Error retrieving blocked users list: %s", e)
-    return blocked_ids
+    return set(blocked_ids)
 
 
 async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type: str) -> set:
     """Returns a set of content IDs of a specific type reported by the user to filter them out."""
+    cache_key = f"reported_content:{content_type}:{user_id}"
+    cached_ids = await cache_manager.get(cache_key)
+    if cached_ids is not None:
+        return set(cached_ids)
+
     reported_ids = set()
     try:
         # Query moderation_reports
@@ -2366,15 +2380,17 @@ async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type:
         # Query legacy reports
         legacy_reports = await db.query_documents(
             'reports',
-            filters=[('reporter_id', '==', user_id), ('content_type', '==', content_type)]
+            filters=[('reporterUid', '==', user_id), ('contentType', '==', content_type)]
         )
         for r in legacy_reports:
-            c_id = r.get('content_id')
+            c_id = r.get('contentId')
             if c_id:
                 reported_ids.add(str(c_id))
+
+        await cache_manager.set(cache_key, list(reported_ids), ttl=300) # Cache for 5 mins
     except Exception as e:
-        logger.error("Error retrieving reported content list: %s", e)
-    return reported_ids
+        logger.error("Error retrieving reported content: %s", e)
+    return set(reported_ids)
 
 
 def _filter_post_blocked_content(post: dict, blocked_user_ids: set) -> dict:
@@ -2402,6 +2418,10 @@ async def block_user_endpoint(user_id: str, token_data: dict = Depends(verify_to
         'createdAt': datetime.utcnow()
     }
     await db.set_document('user_blocks', doc_id, block_data)
+    # Invalidate block caches
+    await cache_manager.delete(f"blocked_users:{current_user_id}")
+    await cache_manager.delete(f"blocked_users:{user_id}")
+
     
     # Also unfollow each other if they follow each other!
     try:
@@ -2449,6 +2469,10 @@ async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_
     current_user_id = token_data['user_id']
     doc_id = f"{current_user_id}_{user_id}"
     await db.delete_document('user_blocks', doc_id)
+    # Invalidate block caches
+    await cache_manager.delete(f"blocked_users:{current_user_id}")
+    await cache_manager.delete(f"blocked_users:{user_id}")
+
     return {'message': 'User unblocked successfully', 'user_id': user_id}
 
 
@@ -2567,6 +2591,10 @@ async def api_block_user(target_user_id: str, token_data: dict = Depends(verify_
         'blockedUid': target_user_id,
         'createdAt': datetime.utcnow()
     })
+    # Invalidate block caches
+    await cache_manager.delete(f"blocked_users:{current_user_id}")
+    await cache_manager.delete(f"blocked_users:{target_user_id}")
+
     return {'message': 'User blocked successfully', 'blocked_user_id': target_user_id}
 
 
@@ -2577,6 +2605,10 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
 
     doc_id = f"{current_user_id}_{target_user_id}"
     await db.delete_document('user_blocks', doc_id)
+    # Invalidate block caches
+    await cache_manager.delete(f"blocked_users:{current_user_id}")
+    await cache_manager.delete(f"blocked_users:{target_user_id}")
+
     return {'message': 'User unblocked successfully', 'unblocked_user_id': target_user_id}
 
 
@@ -3276,7 +3308,7 @@ async def get_posts_feed(
             pool1 = await db.query_documents(
                 'posts',
                 filters=[('random_score', '>=', rand_start)],
-                limit=200,
+                limit=40,
                 order_by='random_score',
                 order_direction='ASCENDING'
             )
@@ -3290,7 +3322,7 @@ async def get_posts_feed(
             pool2 = await db.query_documents(
                 'posts',
                 filters=[('random_score', '<', rand_start)],
-                limit=200,
+                limit=40,
                 order_by='random_score',
                 order_direction='DESCENDING'
             )
@@ -3304,7 +3336,7 @@ async def get_posts_feed(
         try:
             latest_pool = await db.query_documents(
                 'posts',
-                limit=250,
+                limit=50,
                 order_by='created_at',
                 order_direction='DESCENDING'
             )
@@ -3316,7 +3348,7 @@ async def get_posts_feed(
             
         # Fallback if empty
         if not posts_dict:
-            fallback = await db.query_documents('posts', limit=300)
+            fallback = await db.query_documents('posts', limit=100)
             for p in fallback:
                 if p.get('id'):
                     posts_dict[p['id']] = p
@@ -13938,7 +13970,7 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
     async def _get_unread():
         try:
-            return await db.get_unread_notification_count(user_id)
+            return await get_unread_count(token_data=token_data)
         except Exception:
             return {"unread_count": 0}
 

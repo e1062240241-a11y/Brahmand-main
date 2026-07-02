@@ -213,7 +213,7 @@ class FirestoreDB:
                 attempts = 2
                 for attempt in range(attempts):
                     try:
-                        return sum(1 for _ in query.stream())
+                        return query.count().get()[0][0].value
                     except Exception as exc:
                         logger.warning(f"Firestore count error, attempt {attempt + 1}/{attempts}: {exc}")
                         if attempt + 1 == attempts:
