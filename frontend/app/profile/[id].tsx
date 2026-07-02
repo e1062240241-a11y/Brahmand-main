@@ -23,7 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment, reportPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
@@ -114,6 +114,8 @@ const UserProfileScreen = () => {
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [commentModalToRestore, setCommentModalToRestore] = useState(false);
+  const [reportPostModalVisible, setReportPostModalVisible] = useState(false);
+  const [pendingReportPost, setPendingReportPost] = useState<any | null>(null);
 
   // Global block store — shared across all screens
   const blockedUserIds = useBlockStore(state => state.blockedUserIds);
@@ -538,6 +540,84 @@ const UserProfileScreen = () => {
       ]
     );
   };
+
+  const handlePostMenuPress = useCallback((post: any) => {
+    if (!currentUserId) return;
+    if (profile?.id === currentUserId || post?.user_id === currentUserId) {
+      handleDeletePost(post);
+      return;
+    }
+
+    const targetUserId = post?.user_id || post?.userId || post?.user?.id || profile?.id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(currentUserId, targetUserId);
+          removeBlock(String(targetUserId));
+          Alert.alert('Success', `${post.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${post.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(currentUserId, targetUserId);
+                  addBlock(String(targetUserId));
+                  Alert.alert('Success', `${post.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in post menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      const { ActionSheetIOS } = require('react-native');
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Post', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Post Options'
+        },
+        async (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            setPendingReportPost(post);
+            setReportPostModalVisible(true);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Post Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Post', onPress: () => {
+            setPendingReportPost(post);
+            setReportPostModalVisible(true);
+          }},
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [profile?.id, currentUserId, blockedByMeUserIds, handleDeletePost]);
 
   const handleLikePost = useCallback(async (post: any) => {
     const postId = post?.id;
@@ -1006,8 +1086,8 @@ const UserProfileScreen = () => {
                 onRepost={handleRepost}
                 openCommentsOnCaptionPress
                 onUserPress={() => setPostModalVisible(false)}
-                postMenuType={profile?.id === currentUserId ? 'delete' : undefined}
-                onPostMenuPress={handleDeletePost}
+                postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
+                onPostMenuPress={handlePostMenuPress}
                 theme="dark"
                 isBlackBackground
               />
@@ -1263,6 +1343,27 @@ const UserProfileScreen = () => {
               // Keep reported comment visible
             }}
           />
+
+          {/* Apple Guideline 1.2 - Report Post Modal */}
+          <ReportModal
+            visible={reportPostModalVisible}
+            onClose={() => {
+              setReportPostModalVisible(false);
+              setPendingReportPost(null);
+            }}
+            reporterUid={currentUserId || ''}
+            reportedUserUid={pendingReportPost?.user_id || pendingReportPost?.userId || pendingReportPost?.user?.id || profile?.id || ''}
+            contentId={pendingReportPost?.id || ''}
+            contentType="post"
+            apiFallback={async (reason) => {
+              if (pendingReportPost?.id) {
+                await reportPost(pendingReportPost.id, reason, `Reported from profile posts: ${reason}`);
+              }
+            }}
+            onSuccess={() => {
+              // Keep it visible as per user's requirement: "remain it visible"
+            }}
+          />
         </View>
       </Modal>
 
@@ -1325,6 +1426,7 @@ const UserProfileScreen = () => {
         contentId={profileUserId || ''}
         contentType="user"
       />
+
 
 
     </SafeAreaView>

@@ -14,10 +14,10 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
-  SafeAreaView,
   Platform,
   TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import {
@@ -67,6 +67,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   const reset = () => {
     setStep('select');
@@ -130,7 +131,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       onRequestClose={handleClose}
     >
       <View style={styles.overlay}>
-        <SafeAreaView style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
           {/* Handle bar */}
           <View style={styles.handleBar} />
 
@@ -234,7 +235,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               </TouchableOpacity>
             </View>
           )}
-        </SafeAreaView>
+        </View>
       </View>
     </Modal>
   );
@@ -243,21 +244,25 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'android' ? 24 : 8,
-    maxHeight: '80%',
+    maxHeight: '85%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
   },
   handleBar: {
-    width: 40,
+    width: 36,
     height: 4,
-    backgroundColor: '#DDD',
+    backgroundColor: '#E5E7EB',
     borderRadius: 2,
     alignSelf: 'center',
     marginTop: 10,
@@ -267,46 +272,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#111',
+    color: '#1A1A1A',
   },
   closeBtn: {
-    padding: 4,
+    padding: 6,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 9999,
   },
   subtitle: {
     fontSize: 14,
-    color: '#555',
-    marginBottom: 12,
+    color: '#666666',
+    marginBottom: 16,
+    fontWeight: '500',
   },
   reasonList: {
-    paddingBottom: 8,
+    paddingTop: 4,
+    paddingBottom: 16,
   },
   reasonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 6,
-    backgroundColor: '#F7F7F7',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    marginBottom: 8,
+    backgroundColor: '#FDFBF7',
     borderWidth: 1.5,
-    borderColor: 'transparent',
+    borderColor: '#E8E0D8',
   },
   reasonRowSelected: {
     borderColor: COLORS.primary,
-    backgroundColor: '#FFF5EE',
+    backgroundColor: '#FFF5EB',
   },
   reasonIcon: {
-    marginRight: 12,
+    marginRight: 14,
   },
   reasonLabel: {
     flex: 1,
     fontSize: 15,
-    color: '#222',
+    color: '#333333',
     fontWeight: '500',
   },
   reasonLabelSelected: {
@@ -318,17 +328,25 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
     marginBottom: 8,
+    fontWeight: '500',
   },
   submitBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingVertical: 15,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 12,
-    marginBottom: 4,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   submitBtnDisabled: {
-    opacity: 0.4,
+    backgroundColor: '#E8E0D8',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   submitText: {
     color: '#FFF',
@@ -337,35 +355,44 @@ const styles = StyleSheet.create({
   },
   centerContent: {
     alignItems: 'center',
-    paddingVertical: 40,
-    paddingHorizontal: 16,
+    paddingVertical: 48,
+    paddingHorizontal: 24,
   },
   submittingText: {
     marginTop: 16,
-    fontSize: 15,
-    color: '#555',
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
   successIcon: {
-    marginBottom: 16,
+    marginBottom: 20,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 9999,
+    padding: 16,
   },
   successTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#111',
+    color: '#1A1A1A',
     marginBottom: 8,
   },
   successMessage: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 15,
+    color: '#666',
     textAlign: 'center',
     lineHeight: 22,
-    marginBottom: 24,
+    marginBottom: 28,
   },
   doneBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 14,
-    paddingHorizontal: 48,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingHorizontal: 54,
+    paddingVertical: 15,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   doneBtnText: {
     color: '#FFF',
@@ -374,14 +401,15 @@ const styles = StyleSheet.create({
   },
   textInput: {
     borderWidth: 1.5,
-    borderColor: '#DDD',
-    borderRadius: 12,
-    padding: 12,
-    minHeight: 80,
+    borderColor: '#E8E0D8',
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 90,
     fontSize: 14,
-    color: '#333',
-    marginVertical: 12,
+    color: '#1A1A1A',
+    marginTop: 8,
+    marginBottom: 16,
     textAlignVertical: 'top',
-    backgroundColor: '#F9F9F9',
+    backgroundColor: '#FCF9F6',
   },
 });

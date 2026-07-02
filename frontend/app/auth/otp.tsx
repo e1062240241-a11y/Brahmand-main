@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { verifyFirebaseToken } from '../../src/services/api';
 import { getCurrentUserToken, verifyFirebaseOTP, sendFirebaseOTP } from '../../src/services/firebase/authService';
 import { isAnonymousPhone } from '../../src/services/firebase/config';
@@ -34,6 +35,7 @@ export default function OTPScreen() {
   const router = useRouter();
   const { phone, mock } = useLocalSearchParams<{ phone: string; mock?: string }>();
   const { login } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -252,7 +254,12 @@ export default function OTPScreen() {
         </View>
 
         {/* Action Button at the bottom */}
-        <View style={styles.bottomContainer}>
+        <View style={[
+          styles.bottomContainer,
+          Platform.OS === 'android' && {
+            paddingBottom: Math.max(insets.bottom + 16, 24)
+          }
+        ]}>
           <TouchableOpacity
             style={[
               styles.actionButton,

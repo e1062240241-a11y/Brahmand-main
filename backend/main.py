@@ -8552,7 +8552,54 @@ async def get_reports(
 
     all_reports = reports + standardized_mod
     all_reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
-    return all_reports[:limit]
+    sliced_reports = all_reports[:limit]
+
+    # Resolve user details for all reports to return names/sl_ids
+    user_ids = set()
+    for r in sliced_reports:
+        rep_id = r.get('reporter_id')
+        rep_u_id = r.get('reported_user_id')
+        if rep_id:
+            user_ids.add(str(rep_id))
+        if rep_u_id:
+            user_ids.add(str(rep_u_id))
+
+    user_map = {}
+    if user_ids:
+        user_ids_list = list(user_ids)
+        for i in range(0, len(user_ids_list), 100):
+            chunk = user_ids_list[i:i+100]
+            try:
+                users_docs = await db.get_documents_batch('users', chunk)
+                for u in users_docs:
+                    if u.get('id'):
+                        user_map[str(u['id'])] = {
+                            'name': u.get('name') or 'N/A',
+                            'sl_id': u.get('sl_id') or 'N/A',
+                        }
+            except Exception as e:
+                logger.warning("Failed to batch fetch users in get_reports: %s", e)
+
+    # Attach names/sl_ids to sliced_reports
+    for r in sliced_reports:
+        rep_id = r.get('reporter_id')
+        rep_u_id = r.get('reported_user_id')
+        
+        if rep_id and str(rep_id) in user_map:
+            r['reporter_name'] = user_map[str(rep_id)]['name']
+            r['reporter_username'] = user_map[str(rep_id)]['sl_id']
+        else:
+            r['reporter_name'] = 'N/A'
+            r['reporter_username'] = 'N/A'
+            
+        if rep_u_id and str(rep_u_id) in user_map:
+            r['reported_user_name'] = user_map[str(rep_u_id)]['name']
+            r['reported_user_username'] = user_map[str(rep_u_id)]['sl_id']
+        else:
+            r['reported_user_name'] = 'N/A'
+            r['reported_user_username'] = 'N/A'
+
+    return sliced_reports
 
 
 @api_router.post('/admin/reports/{report_id}/review')

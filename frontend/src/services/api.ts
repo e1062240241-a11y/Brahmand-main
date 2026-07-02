@@ -597,7 +597,11 @@ export interface AdminUserKycRequest {
 export interface AdminPostReport {
   id: string;
   reporter_id?: string;
+  reporter_name?: string;
+  reporter_username?: string;
   reported_user_id?: string;
+  reported_user_name?: string;
+  reported_user_username?: string;
   content_type?: string;
   content_id?: string;
   category?: string;

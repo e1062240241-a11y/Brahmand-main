@@ -663,15 +663,16 @@ export default function AdminPanelScreen() {
 
         <View style={styles.cardBody}>
           <InfoRow 
+            icon="flag-outline" 
+            label="Reporter" 
+            value={`${item.reporter_name || 'N/A'} (ID: ${item.reporter_username || item.reporter_id || 'N/A'})`}
+          />
+          <InfoRow 
             icon="person-outline" 
             label="Content Creator" 
-            value={
-              isComment 
-                ? (snapshot.comment_username || snapshot.comment_user_id || item.reported_user_id || 'N/A')
-                : (snapshot.post_username || snapshot.post_user_id || item.reported_user_id || 'N/A')
-            } 
+            value={`${item.reported_user_name || (isComment ? snapshot.comment_username : snapshot.post_username) || 'N/A'} (ID: ${item.reported_user_username || (isComment ? snapshot.comment_user_id : snapshot.post_user_id) || item.reported_user_id || 'N/A'})`} 
           />
-          <InfoRow icon="flag-outline" label="Category" value={item.category || 'other'} />
+          <InfoRow icon="alert-circle-outline" label="Category" value={item.category || 'other'} />
           {!!item.description && <InfoRow icon="chatbubble-ellipses-outline" label="Reason" value={item.description} />}
           {isComment ? (
             !!snapshot.text && <InfoRow icon="chatbox-ellipses-outline" label="Comment Text" value={snapshot.text} />
