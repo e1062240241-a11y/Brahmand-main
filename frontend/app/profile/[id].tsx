@@ -29,7 +29,8 @@ import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import { ReportModal } from '../../src/components/ReportModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { blockUser, unblockUser, isUserBlocked, getBlockedUsers, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
+import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
+import { useBlockStore } from '../../src/store/blockStore';
 
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -113,25 +114,12 @@ const UserProfileScreen = () => {
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
   const [commentModalToRestore, setCommentModalToRestore] = useState(false);
-  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
 
-  const loadBlockedUsers = useCallback(async () => {
-    if (!currentUserId) return;
-    try {
-      const [blockedByMe, blockedMe] = await Promise.all([
-        getBlockedUsers(currentUserId),
-        getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[])
-      ]);
-      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
-      setBlockedUserIds(combined || []);
-    } catch (e) {
-      console.warn('[Profile] Failed to load blocked users:', e);
-    }
-  }, [currentUserId]);
-
-  useEffect(() => {
-    loadBlockedUsers();
-  }, [currentUserId, loadBlockedUsers]);
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
 
   const loadComments = async (postId: string) => {
     setCommentsLoading(true);
@@ -269,14 +257,14 @@ const UserProfileScreen = () => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
       try {
         if (isUserCurrentlyBlocked) {
           await unblockUser(currentUserId, targetUserId);
-          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          removeBlock(String(targetUserId));
           Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
         } else {
           Alert.alert(
@@ -289,7 +277,7 @@ const UserProfileScreen = () => {
                 style: 'destructive',
                 onPress: async () => {
                   await blockUser(currentUserId, targetUserId);
-                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  addBlock(String(targetUserId));
                   Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
                 }
               }
@@ -668,6 +656,7 @@ const UserProfileScreen = () => {
               try {
                 await unblockUser(currentUserId!, profileUserId!);
                 setIsBlocked(false);
+                removeBlock(String(profileUserId));
                 Alert.alert('Unblocked', `@${profile?.sl_id} has been unblocked.`);
               } catch (e) {
                 Alert.alert('Error', 'Could not unblock user. Please try again.');
@@ -690,6 +679,7 @@ const UserProfileScreen = () => {
             try {
               await blockUser(currentUserId!, profileUserId!);
               setIsBlocked(true);
+              addBlock(String(profileUserId));
               Alert.alert('Blocked', `@${profile?.sl_id} has been blocked.`);
             } catch (e) {
               Alert.alert('Error', 'Could not block user. Please try again.');
@@ -1270,10 +1260,7 @@ const UserProfileScreen = () => {
               }
             }}
             onSuccess={() => {
-              if (pendingReportComment?.id) {
-                const targetId = pendingReportComment.id;
-                setPostComments(prev => prev.filter(c => c.id !== targetId));
-              }
+              // Keep reported comment visible
             }}
           />
         </View>

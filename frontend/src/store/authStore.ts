@@ -214,6 +214,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     try {
+      const { useBlockStore } = require('./blockStore');
+      useBlockStore.getState().reset();
+    } catch (err) {
+      console.warn('[Auth] Failed to clear blockStore:', err);
+    }
+
+    try {
       const { useChatStore } = require('./chatStore');
       useChatStore.getState().clearCache();
     } catch (err) {

@@ -656,6 +656,21 @@ export default function RootLayout() {
       } catch (e) {
         console.warn('Failed to require jyotishStore on startup:', e);
       }
+
+      // Load blocked users into the global block store so all screens
+      // can react immediately without individual per-screen fetches.
+      try {
+        const { user } = useAuthStore.getState();
+        const userId = user?.id;
+        if (userId) {
+          const { useBlockStore } = require('../src/store/blockStore');
+          useBlockStore.getState().loadBlocked(userId).catch((e: any) => {
+            console.warn('Failed to load block list on startup:', e);
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to require blockStore on startup:', e);
+      }
     });
   }, [loadStoredAuth, loadStoredAdminAuth]);
 
@@ -791,6 +806,14 @@ export default function RootLayout() {
             
             if (currentUserId === blockerId || currentUserId === blockedId) {
               const otherId = currentUserId === blockerId ? blockedId : blockerId;
+
+              // 0. Update global block store immediately so all screens react
+              try {
+                const { useBlockStore } = require('../src/store/blockStore');
+                useBlockStore.getState().addBlock(otherId);
+              } catch (bsErr) {
+                console.warn('[Socket] Failed to update blockStore:', bsErr);
+              }
               
               // 1. Remove from feed store
               const { useFeedStore } = require('../src/store/feedStore');

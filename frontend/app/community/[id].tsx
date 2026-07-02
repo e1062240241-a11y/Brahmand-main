@@ -43,7 +43,8 @@ import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
 import { ReportModal } from '../../src/components/ReportModal';
-import { getBlockedUsers, getUsersWhoBlockedMe, blockUser, unblockUser } from '../../src/services/firebase/moderationService';
+import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
+import { useBlockStore } from '../../src/store/blockStore';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -742,31 +743,22 @@ export default function CommunityDetailScreen() {
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [commentModalToRestore, setCommentModalToRestore] = useState<any | null>(null);
-  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
 
-  const loadBlockedUsers = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const [blockedByMe, blockedMe] = await Promise.all([
-        getBlockedUsers(user.id),
-        getUsersWhoBlockedMe(user.id).catch(() => [] as string[])
-      ]);
-      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
-      setBlockedUserIds(combined || []);
-    } catch (e) {
-      console.warn('Failed to load blocked users:', e);
-    }
-  }, [user?.id]);
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
 
   const handleToggleBlockUser = useCallback(async (targetUid: string, targetName: string) => {
     if (!user?.id) return;
-    const isCurrentlyBlocked = blockedUserIds.includes(String(targetUid));
+    const isCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUid));
 
     try {
       if (isCurrentlyBlocked) {
         // Unblock
         await unblockUser(user.id, targetUid);
-        setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUid)));
+        removeBlock(String(targetUid));
         Alert.alert('Success', `${targetName} has been unblocked.`);
       } else {
         // Confirm block
@@ -780,7 +772,7 @@ export default function CommunityDetailScreen() {
               style: 'destructive',
               onPress: async () => {
                 await blockUser(user.id, targetUid);
-                setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUid)])));
+                addBlock(String(targetUid));
                 Alert.alert('Success', `${targetName} has been blocked.`);
               }
             }
@@ -791,13 +783,13 @@ export default function CommunityDetailScreen() {
       console.error('Error toggling block status:', error);
       Alert.alert('Error', 'Could not update block status. Please try again.');
     }
-  }, [user?.id, blockedUserIds]);
+  }, [user?.id, blockedByMeUserIds, addBlock, removeBlock]);
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     const targetUserId = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     if (Platform.OS === 'ios') {
@@ -1563,7 +1555,6 @@ export default function CommunityDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadBlockedUsers();
       if (Platform.OS === 'android') {
         // ⚡ Android: Defer heavy data fetch until after screen transition animation completes
         const task = InteractionManager.runAfterInteractions(() => {
@@ -1573,7 +1564,7 @@ export default function CommunityDetailScreen() {
       } else {
         fetchCommunity();
       }
-    }, [id, loadBlockedUsers])
+    }, [id])
   );
 
   useEffect(() => {
@@ -3196,7 +3187,7 @@ export default function CommunityDetailScreen() {
           const response = await sendDirectMessage(targetSlId, messageText);
           const conversationId = response.data?.chat_id || response.data?.conversation_id;
           if (conversationId) {
-            router.push(`/dm/${conversationId}`);
+            router.push(`/dm/${conversationId}?userId=${item.user_id || ''}&userName=${encodeURIComponent(item.user_name || '')}&userSL=${encodeURIComponent(targetSlId || '')}`);
           } else {
             router.push('/(tabs)/messages');
           }
@@ -3227,7 +3218,7 @@ export default function CommunityDetailScreen() {
                     const response = await sendDirectMessage(targetSlId, messageText);
                     const conversationId = response.data?.chat_id || response.data?.conversation_id;
                     if (conversationId) {
-                      router.push(`/dm/${conversationId}`);
+                      router.push(`/dm/${conversationId}?userId=${item.user_id || ''}&userName=${encodeURIComponent(item.user_name || '')}&userSL=${encodeURIComponent(targetSlId || '')}`);
                     } else {
                       router.push('/(tabs)/messages');
                     }
@@ -4920,10 +4911,7 @@ export default function CommunityDetailScreen() {
           }
         }}
         onSuccess={() => {
-          if (pendingReportComment?.id) {
-            const targetId = pendingReportComment.id;
-            setActiveComments(prev => prev.filter(c => c.id !== targetId));
-          }
+          // Keep reported comment visible
         }}
       />
     </KeyboardAvoidingView>

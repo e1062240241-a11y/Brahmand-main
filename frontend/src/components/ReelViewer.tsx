@@ -24,10 +24,9 @@ import {
   submitReport,
   blockUser,
   unblockUser,
-  getBlockedUsers,
-  getUsersWhoBlockedMe,
 } from '../services/firebase/moderationService';
 import { reportComment } from '../services/api';
+import { useBlockStore } from '../store/blockStore';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -1035,28 +1034,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const [replyingToComment, setReplyingToComment] = useState<any | null>(null);
 
   // Apple Guideline 1.2 - report comment state & blocked users
-  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [commentModalToRestore, setCommentModalToRestore] = useState(false);
-
-  const loadBlockedUsers = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const [blockedByMe, blockedMe] = await Promise.all([
-        getBlockedUsers(user.id),
-        getUsersWhoBlockedMe(user.id).catch(() => [] as string[])
-      ]);
-      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
-      setBlockedUserIds(combined || []);
-    } catch (e) {
-      console.warn('[ReelViewer] Failed to load blocked users:', e);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadBlockedUsers();
-  }, [user?.id, loadBlockedUsers]);
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     if (!comment || !user?.id) return;
@@ -1064,14 +1049,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
       try {
         if (isUserCurrentlyBlocked) {
           await unblockUser(user.id, targetUserId);
-          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          removeBlock(String(targetUserId));
           Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
         } else {
           Alert.alert(
@@ -1084,7 +1069,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 style: 'destructive',
                 onPress: async () => {
                   await blockUser(user.id, targetUserId);
-                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  addBlock(String(targetUserId));
                   Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
                 }
               }
@@ -1137,7 +1122,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
         { cancelable: true }
       );
     }
-  }, [user?.id, blockedUserIds, isCommentVisible]);
+  }, [user?.id, blockedByMeUserIds, isCommentVisible]);
 
   const [autoScroll, setAutoScroll] = useState(true);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
@@ -2024,30 +2009,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             }
           }}
           onSuccess={() => {
-            if (pendingReportComment?.id) {
-              const commentIdStr = String(pendingReportComment.id);
-              // 1. Filter out reported comment from local comments list
-              setLocalComments(prev => prev.filter(c => String(c.id) !== commentIdStr));
-              
-              // 2. Decrement comment count on selectedPost
-              setSelectedPost((prev: any) => prev ? {
-                ...prev,
-                comments_count: Math.max(0, (Number(prev.comments_count) || 1) - 1),
-              } : null);
-
-              // 3. Decrement comment count in videos feed list
-              if (selectedPost?.id) {
-                setVideos(prev => prev.map(v => {
-                  if (v.id === selectedPost.id) {
-                    return {
-                      ...v,
-                      comments_count: Math.max(0, (Number(v.comments_count) || 1) - 1),
-                    };
-                  }
-                  return v;
-                }));
-              }
-            }
+            // Keep reported comment visible
           }}
         />
 

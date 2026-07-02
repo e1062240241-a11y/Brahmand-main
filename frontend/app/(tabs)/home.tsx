@@ -37,6 +37,7 @@ import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
 import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
+import { useBlockStore } from '../../src/store/blockStore';
 import { useCoachMarkStore, getNextStep } from '../../src/utils/coachMarkState';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
@@ -309,7 +310,7 @@ function ShopIcon() {
 }
 
 import { ReportModal } from '../../src/components/ReportModal';
-import { getBlockedUsers, getUsersWhoBlockedMe, blockUser, unblockUser } from '../../src/services/firebase/moderationService';
+import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
@@ -519,25 +520,12 @@ export default function HomeScreen() {
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
   const currentUserId = (user as any)?.id;
-  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
 
-  const loadBlockedUsers = useCallback(async () => {
-    if (!currentUserId) return;
-    try {
-      const [blockedByMe, blockedMe] = await Promise.all([
-        getBlockedUsers(currentUserId),
-        getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[])
-      ]);
-      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
-      setBlockedUserIds(combined || []);
-    } catch (e) {
-      console.warn('Failed to load blocked users:', e);
-    }
-  }, [currentUserId]);
-
-  useEffect(() => {
-    loadBlockedUsers();
-  }, [currentUserId, loadBlockedUsers]);
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
   const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
   const [isEditingBio, setIsEditingBio] = useState(false);
   const activeTab = useFeedStore(state => state.activeTab);
@@ -2239,14 +2227,14 @@ export default function HomeScreen() {
     const targetUserId = post?.user_id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
       try {
         if (isUserCurrentlyBlocked) {
           await unblockUser(currentUserId, targetUserId);
-          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          removeBlock(String(targetUserId));
           Alert.alert('Success', `${post.username || 'User'} has been unblocked.`);
         } else {
           Alert.alert(
@@ -2259,7 +2247,7 @@ export default function HomeScreen() {
                 style: 'destructive',
                 onPress: async () => {
                   await blockUser(currentUserId, targetUserId);
-                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  addBlock(String(targetUserId));
                   Alert.alert('Success', `${post.username || 'User'} has been blocked.`);
                 }
               }
@@ -2300,20 +2288,20 @@ export default function HomeScreen() {
         { cancelable: true }
       );
     }
-  }, [currentUserId, blockedUserIds, handleDeletePost, handleReportPost]);
+  }, [currentUserId, blockedByMeUserIds, handleDeletePost, handleReportPost]);
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
       try {
         if (isUserCurrentlyBlocked) {
           await unblockUser(currentUserId, targetUserId);
-          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          removeBlock(String(targetUserId));
           Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
         } else {
           Alert.alert(
@@ -2326,7 +2314,7 @@ export default function HomeScreen() {
                 style: 'destructive',
                 onPress: async () => {
                   await blockUser(currentUserId, targetUserId);
-                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  addBlock(String(targetUserId));
                   Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
                 }
               }
@@ -2379,7 +2367,7 @@ export default function HomeScreen() {
         { cancelable: true }
       );
     }
-  }, [currentUserId, blockedUserIds, commentModalVisible]);
+  }, [currentUserId, blockedByMeUserIds, commentModalVisible]);
 
   const handleOpenPostUserProfile = useCallback((post: any) => {
     if (post?.user_id) {
@@ -4590,9 +4578,7 @@ export default function HomeScreen() {
           }
         }}
         onSuccess={() => {
-          if (pendingReportComment?.id) {
-            setPostComments(prev => prev.filter(c => c.id !== pendingReportComment.id));
-          }
+          // Keep reported comment visible
         }}
       />
 

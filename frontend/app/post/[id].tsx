@@ -6,12 +6,13 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { getPostsFeed, getPostById, getPostComments, addPostComment, repostPost, deletePostComment } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { useBlockStore } from '../../src/store/blockStore';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import { ReportModal } from '../../src/components/ReportModal';
-import { blockUser, unblockUser, getBlockedUsers, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
+import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const FEED_PAGE_SIZE = 7;
@@ -63,27 +64,15 @@ const PostScreen = () => {
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
 
   const [commentModalToRestore, setCommentModalToRestore] = useState(false);
-  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
+
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
+
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
-
-  const loadBlockedUsers = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      const [blockedByMe, blockedMe] = await Promise.all([
-        getBlockedUsers(user.id),
-        getUsersWhoBlockedMe(user.id).catch(() => [] as string[])
-      ]);
-      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
-      setBlockedUserIds(combined || []);
-    } catch (e) {
-      console.warn('[Post] Failed to load blocked users:', e);
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadBlockedUsers();
-  }, [user?.id, loadBlockedUsers]);
 
   const listRef = useRef<FlatList>(null);
   const hasScrolled = useRef(false);
@@ -323,14 +312,14 @@ const PostScreen = () => {
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
 
-    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
       try {
         if (isUserCurrentlyBlocked) {
           await unblockUser(user.id, targetUserId);
-          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          removeBlock(String(targetUserId));
           Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
         } else {
           Alert.alert(
@@ -343,7 +332,7 @@ const PostScreen = () => {
                 style: 'destructive',
                 onPress: async () => {
                   await blockUser(user.id, targetUserId);
-                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  addBlock(String(targetUserId));
                   Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
                 }
               }
@@ -397,7 +386,7 @@ const PostScreen = () => {
         { cancelable: true }
       );
     }
-  }, [user?.id, blockedUserIds, commentModalVisible]);
+  }, [user?.id, blockedByMeUserIds, commentModalVisible]);
 
   const handleShareExternal = useCallback(async (post: any) => {
     if (!post) return;
@@ -816,27 +805,7 @@ const PostScreen = () => {
           }
         }}
         onSuccess={() => {
-          if (pendingReportComment?.id) {
-            const targetId = pendingReportComment.id;
-            setPostComments(prev => prev.filter(c => c.id !== targetId));
-            
-            // Decrement comments count on current post
-            if (commentPost?.id) {
-              setCommentPost((prev: any) => prev ? {
-                ...prev,
-                comments_count: Math.max(0, (Number(prev.comments_count) || 1) - 1),
-              } : null);
-              setFeedPosts(prev => prev.map(p => {
-                if (p.id === commentPost.id) {
-                  return {
-                    ...p,
-                    comments_count: Math.max(0, (Number(p.comments_count) || 1) - 1),
-                  };
-                }
-                return p;
-              }));
-            }
-          }
+          // Keep reported comment visible
         }}
       />
     </SafeAreaView>

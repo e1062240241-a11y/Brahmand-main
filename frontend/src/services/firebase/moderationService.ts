@@ -158,14 +158,18 @@ export async function isUserBlocked(
   blockedUid: string,
 ): Promise<boolean> {
   try {
-    const res = await checkUserBlockedApi(blockedUid);
-    return res.data?.is_blocked ?? false;
-  } catch (error) {
-    console.warn('[moderationService] checkUserBlockedApi failed, falling back to Firebase:', error);
     const db = getDB();
     const docId = `${blockerUid}_${blockedUid}`;
     const snap = await getDoc(doc(db, 'user_blocks', docId));
     return snap.exists();
+  } catch (error) {
+    console.warn('[moderationService] Firebase one-way check failed, falling back to bidirectional checkUserBlockedApi:', error);
+    try {
+      const res = await checkUserBlockedApi(blockedUid);
+      return res.data?.is_blocked ?? false;
+    } catch {
+      return false;
+    }
   }
 }
 
