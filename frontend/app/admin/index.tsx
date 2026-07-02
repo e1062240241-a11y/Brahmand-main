@@ -182,7 +182,7 @@ export default function AdminPanelScreen() {
         getAdminVendorReviewQueue(adminToken, 'approved'),
         getAdminPendingKyc(adminToken, 'pending'),
         getAdminPendingKyc(adminToken, 'verified'),
-        getAdminReports(adminToken, 'pending', 'post', 150),
+        getAdminReports(adminToken, 'pending', undefined, 150),
         getAdminAnonymousUsers(adminToken),
         adminListPersonalityVerifications(adminToken, 'pending'),
         adminListPersonalityVerifications(adminToken, 'approved'),
@@ -317,7 +317,7 @@ export default function AdminPanelScreen() {
     try {
       await adminReviewReport(adminToken, reportId, 'deny', 'Approved by admin');
       await loadRequests();
-      Alert.alert('Success', 'Post approved and kept.');
+      Alert.alert('Success', 'Content approved and kept.');
     } catch (error: any) {
       const detail = error?.response?.data?.detail || 'Approve failed';
       Alert.alert('Error', detail);
@@ -332,7 +332,7 @@ export default function AdminPanelScreen() {
     try {
       await adminReviewReport(adminToken, reportId, 'approve');
       await loadRequests();
-      Alert.alert('Success', 'Post deleted successfully.');
+      Alert.alert('Success', 'Content deleted successfully.');
     } catch (error: any) {
       const detail = error?.response?.data?.detail || 'Delete failed';
       Alert.alert('Error', detail);
@@ -648,25 +648,38 @@ export default function AdminPanelScreen() {
   const renderReportedPostItem = ({ item }: { item: AdminPostReport }) => {
     const busy = processingKey === `report:${item.id}`;
     const snapshot = item.snapshot || {};
+    const isComment = item.content_type === 'comment';
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View style={styles.titleIconGroup}>
-            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(229, 57, 53, 0.08)' }]}>
-              <Ionicons name="warning" size={18} color={COLORS.error} />
+            <View style={[styles.iconWrapper, { backgroundColor: isComment ? 'rgba(156, 39, 176, 0.08)' : 'rgba(229, 57, 53, 0.08)' }]}>
+              <Ionicons name={isComment ? "chatbubble-outline" : "warning"} size={18} color={isComment ? "#9C27B0" : COLORS.error} />
             </View>
-            <Text style={styles.businessName}>Reported Post</Text>
+            <Text style={styles.businessName}>{isComment ? 'Reported Comment' : 'Reported Post'}</Text>
           </View>
         </View>
 
         <View style={styles.cardBody}>
-          <InfoRow icon="person-outline" label="Reporter Creator" value={snapshot.post_username || snapshot.post_user_id || item.reported_user_id || 'N/A'} />
+          <InfoRow 
+            icon="person-outline" 
+            label="Content Creator" 
+            value={
+              isComment 
+                ? (snapshot.comment_username || snapshot.comment_user_id || item.reported_user_id || 'N/A')
+                : (snapshot.post_username || snapshot.post_user_id || item.reported_user_id || 'N/A')
+            } 
+          />
           <InfoRow icon="flag-outline" label="Category" value={item.category || 'other'} />
           {!!item.description && <InfoRow icon="chatbubble-ellipses-outline" label="Reason" value={item.description} />}
-          {!!snapshot.caption && <InfoRow icon="document-text-outline" label="Caption" value={snapshot.caption} />}
+          {isComment ? (
+            !!snapshot.text && <InfoRow icon="chatbox-ellipses-outline" label="Comment Text" value={snapshot.text} />
+          ) : (
+            !!snapshot.caption && <InfoRow icon="document-text-outline" label="Caption" value={snapshot.caption} />
+          )}
           
-          {!!snapshot.media_url && (
+          {!isComment && !!snapshot.media_url && (
             <View style={styles.reportedMediaContainer}>
               <Text style={styles.reportedMediaTitle}>
                 <Ionicons name="image-outline" size={12} color={COLORS.textSecondary} /> Media Preview ({snapshot.media_type || 'unknown'}):
@@ -692,7 +705,7 @@ export default function AdminPanelScreen() {
             ) : (
               <View style={styles.buttonInner}>
                 <Ionicons name="checkmark-circle-outline" size={16} color="#fff" />
-                <Text style={styles.buttonText}>Keep Post</Text>
+                <Text style={styles.buttonText}>{isComment ? 'Keep Comment' : 'Keep Post'}</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -705,7 +718,7 @@ export default function AdminPanelScreen() {
           >
             <View style={styles.buttonInner}>
               <Ionicons name="trash-outline" size={16} color="#fff" />
-              <Text style={styles.buttonText}>Delete Post</Text>
+              <Text style={styles.buttonText}>{isComment ? 'Delete Comment' : 'Delete Post'}</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -1270,7 +1283,7 @@ export default function AdminPanelScreen() {
 
               <View style={styles.divider} />
 
-              <SectionHeader title="Reported Community Posts" count={pendingPostReports.length} />
+              <SectionHeader title="Reported Content (Posts & Comments)" count={pendingPostReports.length} />
               {pendingPostReports.length === 0 ? (
                 <View style={styles.centeredCompact}>
                   <Text style={styles.emptyTextCompact}>No pending reports.</Text>

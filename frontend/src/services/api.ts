@@ -612,11 +612,16 @@ export interface AdminPostReport {
     media_type?: string;
     post_user_id?: string;
     post_username?: string;
+    comment_id?: string;
+    text?: string;
+    comment_user_id?: string;
+    comment_username?: string;
   };
   moderation_result?: {
     post_deleted?: boolean;
     media_deleted?: boolean;
     comments_deleted?: number;
+    comment_deleted?: boolean;
   };
 }
 
@@ -706,11 +711,15 @@ export const adminVerifyUserKyc = (
 export const getAdminReports = (
   adminToken: string,
   status: string = "pending",
-  contentType: string = "post",
+  contentType?: string,
   limit: number = 100,
 ) =>
   adminApi.get<AdminPostReport[]>("/admin/reports", {
-    params: { status, content_type: contentType, limit },
+    params: { 
+      status, 
+      ...(contentType ? { content_type: contentType } : {}), 
+      limit 
+    },
     headers: { Authorization: `Bearer ${adminToken}` },
   });
 
@@ -851,6 +860,10 @@ export const getUserPosts = (
   limit: number = 20,
   offset: number = 0,
 ) => api.get(`/users/${userId}/posts`, { params: { limit, offset } });
+
+export const blockUserApi = (userId: string) => api.post(`/users/${userId}/block`);
+export const unblockUserApi = (userId: string) => api.post(`/users/${userId}/unblock`);
+export const checkUserBlockedApi = (userId: string) => api.get(`/users/${userId}/is_blocked`);
 
 export const getUsersBatch = (userIds: string[]) =>
   api.post("/users/batch", { user_ids: userIds });
@@ -1335,6 +1348,12 @@ export const reportPost = (
   description: string = "",
 ) => api.post(`/posts/${postId}/report`, { category, description });
 
+export const reportComment = (
+  commentId: string,
+  category: string = "other",
+  description: string = "",
+) => api.post("/report", { content_type: "comment", content_id: commentId, category, description });
+
 export const updatePost = (postId: string, data: { caption?: string }) =>
   api.put(`/posts/${postId}`, data);
 
@@ -1782,12 +1801,6 @@ export const reportContent = (data: {
   category: "religious_attack" | "disrespectful" | "spam" | "abuse" | "other" | "harassment" | "hate_speech" | "violence" | "sexual_content" | "fake_profile" | "scam_fraud";
   description?: string;
 }) => api.post("/report", data);
-
-export const blockUserApi = (userId: string) =>
-  api.post(`/users/${userId}/block`);
-
-export const unblockUserApi = (userId: string) =>
-  api.post(`/users/${userId}/unblock`);
 
 // Temple Channel APIs
 export const createTemple = (data: {

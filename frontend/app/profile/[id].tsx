@@ -670,21 +670,23 @@ const UserProfileScreen = () => {
 
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalPosts}</Text>
+            <Text style={styles.statValue}>{isBlocked ? '0' : totalPosts}</Text>
             <Text style={styles.statLabel}>Posts</Text>
           </View>
           <TouchableOpacity 
             style={styles.statItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers', userId: profile?.id } })}
+            onPress={() => !isBlocked && router.push({ pathname: '/follow-connections', params: { tab: 'followers', userId: profile?.id } })}
+            disabled={isBlocked}
           >
-            <Text style={styles.statValue}>{profile?.followers_count ?? (profile?.followers?.length || 0)}</Text>
+            <Text style={styles.statValue}>{isBlocked ? '0' : (profile?.followers_count ?? (profile?.followers?.length || 0))}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.statItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following', userId: profile?.id } })}
+            onPress={() => !isBlocked && router.push({ pathname: '/follow-connections', params: { tab: 'following', userId: profile?.id } })}
+            disabled={isBlocked}
           >
-            <Text style={styles.statValue}>{profile?.following_count ?? (profile?.following?.length || 0)}</Text>
+            <Text style={styles.statValue}>{isBlocked ? '0' : (profile?.following_count ?? (profile?.following?.length || 0))}</Text>
             <Text style={styles.statLabel}>Following</Text>
           </TouchableOpacity>
         </View>
@@ -699,11 +701,11 @@ const UserProfileScreen = () => {
           )}
         </View>
         <Text style={styles.slId}>@{profile?.sl_id || ''}</Text>
-        {profile?.bio ? (
+        {profile?.bio && !isBlocked ? (
           <Text style={styles.bioText}>{profile.bio}</Text>
         ) : null}
         
-        {profile?.home_location && (
+        {profile?.home_location && !isBlocked && (
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
             <Text style={styles.locationText}>
@@ -721,6 +723,13 @@ const UserProfileScreen = () => {
             onPress={() => router.push('/profile/edit')}
           >
             <Text style={styles.editProfileText}>Edit Profile</Text>
+          </TouchableOpacity>
+        ) : isBlocked ? (
+          <TouchableOpacity 
+            style={styles.editProfileButton}
+            onPress={handleBlockUser}
+          >
+            <Text style={styles.editProfileText}>Unblock</Text>
           </TouchableOpacity>
         ) : (
           <>
@@ -813,7 +822,7 @@ const UserProfileScreen = () => {
       </View>
 
       <Animated.FlatList
-        data={posts}
+        data={isBlocked ? [] : posts}
         renderItem={renderPost}
         keyExtractor={(item, index) => item.id ? `profile-post-${item.id}` : `profile-post-idx-${index}`}
         numColumns={3}
@@ -829,14 +838,24 @@ const UserProfileScreen = () => {
             <View style={styles.footerLoader}>
               <ActivityIndicator size="small" color={COLORS.textLight} />
             </View>
-          ) : !hasMore && posts.length > 0 ? (
+          ) : !hasMore && posts.length > 0 && !isBlocked ? (
             <View style={styles.endOfFeed}>
               <Text style={styles.endOfFeedText}>You've reached the end</Text>
             </View>
           ) : null
         }
         ListEmptyComponent={
-          !loading && !postsLoading ? (
+          isBlocked ? (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconCircle, { borderColor: COLORS.error }]}>
+                <Ionicons name="ban-outline" size={40} color={COLORS.error} />
+              </View>
+              <Text style={styles.emptyTitle}>Blocked</Text>
+              <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32 }}>
+                You have blocked this user or they have blocked you. Unblock to view posts and interact.
+              </Text>
+            </View>
+          ) : !loading && !postsLoading ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
                 <Ionicons name="camera-outline" size={40} color={COLORS.text} />
