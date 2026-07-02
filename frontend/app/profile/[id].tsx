@@ -474,6 +474,13 @@ const UserProfileScreen = () => {
   }, [profileUserId, offset, postsLoading]);
 
   useEffect(() => {
+    // Clear state immediately to avoid cross-user/stale leakage during navigation
+    setPosts([]);
+    setTotalPosts(0);
+    setOffset(0);
+    setHasMore(true);
+    setPostsLoading(true);
+
     loadProfile(true);
     loadPosts(true);
   }, [profileUserId]);

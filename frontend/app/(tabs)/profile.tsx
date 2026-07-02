@@ -538,7 +538,18 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
-    if (!userId) return;
+    // Clear state immediately to prevent cross-account display/leakage
+    setPosts([]);
+    setPostsCount(0);
+    setOffset(0);
+    setHasMore(true);
+    setPostsLoading(true);
+
+    if (!userId) {
+      setPostsLoading(false);
+      return;
+    }
+
     // Attempt to load cached posts immediately
     AsyncStorage.getItem(`profile_posts_${userId}`).then(cached => {
       if (cached) {
@@ -562,7 +573,7 @@ export default function ProfileScreen() {
       console.log('[Profile] post_uploaded event received:', newPost?.id);
       if (newPost) {
         // Prepend newPost optimistically if it belongs to the current user
-        if (newPost.user_id === userId) {
+        if (userId && newPost.user_id === userId) {
           setPosts(prev => {
             if (prev.some(p => p.id === newPost.id)) return prev;
             return [newPost, ...prev];
