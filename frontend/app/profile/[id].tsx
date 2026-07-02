@@ -29,7 +29,7 @@ import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import { ReportModal } from '../../src/components/ReportModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
+import { blockUser, unblockUser, isUserBlocked, getBlockedUsers, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
 
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -112,6 +112,26 @@ const UserProfileScreen = () => {
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [commentModalToRestore, setCommentModalToRestore] = useState(false);
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
+
+  const loadBlockedUsers = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const [blockedByMe, blockedMe] = await Promise.all([
+        getBlockedUsers(currentUserId),
+        getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[])
+      ]);
+      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
+      setBlockedUserIds(combined || []);
+    } catch (e) {
+      console.warn('[Profile] Failed to load blocked users:', e);
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    loadBlockedUsers();
+  }, [currentUserId, loadBlockedUsers]);
 
   const loadComments = async (postId: string) => {
     setCommentsLoading(true);
@@ -245,21 +265,62 @@ const UserProfileScreen = () => {
   };
 
   const handleCommentMenuPress = useCallback((comment: any) => {
+    if (!comment || !currentUserId) return;
     const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
     if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(currentUserId, targetUserId);
+          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${comment.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(currentUserId, targetUserId);
+                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in comment menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
 
     if (Platform.OS === 'ios') {
       const { ActionSheetIOS } = require('react-native');
       ActionSheetIOS.showActionSheetWithOptions(
         {
-          options: ['Cancel', 'Report Comment'],
+          options: ['Cancel', 'Report Comment', blockLabel],
+          destructiveButtonIndex: 2,
           cancelButtonIndex: 0,
           title: 'Comment Options'
         },
         async (buttonIndex: number) => {
           if (buttonIndex === 1) {
             setPendingReportComment(comment);
-            setReportCommentModalVisible(true);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
           }
         }
       );
@@ -271,13 +332,18 @@ const UserProfileScreen = () => {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Report Comment', onPress: () => {
             setPendingReportComment(comment);
-            setReportCommentModalVisible(true);
-          }}
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          }},
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
         ],
         { cancelable: true }
       );
     }
-  }, []);
+  }, [currentUserId, blockedUserIds, commentModalVisible]);
 
   const loadProfile = useCallback(async (showLoading = true) => {
     if (!profileUserId) return;
@@ -1007,9 +1073,15 @@ const UserProfileScreen = () => {
                       <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
                     </View>
                   ) : (() => {
-                    const parentComments = postComments.filter(c => !c.parent_id);
+                    const parentComments = postComments.filter(c => {
+                      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                      const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                      return !c.parent_id && !isBlockedUser;
+                    });
                     const repliesMap = postComments.reduce((acc, c) => {
-                      if (c.parent_id) {
+                      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                      const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                      if (c.parent_id && !isBlockedUser) {
                         if (!acc[c.parent_id]) acc[c.parent_id] = [];
                         acc[c.parent_id].push(c);
                       }
@@ -1242,6 +1314,12 @@ const UserProfileScreen = () => {
         onClose={() => {
           setReportCommentModalVisible(false);
           setPendingReportComment(null);
+          if (commentModalToRestore) {
+            setTimeout(() => {
+              setCommentModalVisible(true);
+              setCommentModalToRestore(false);
+            }, 300);
+          }
         }}
         reporterUid={currentUserId || ''}
         reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}

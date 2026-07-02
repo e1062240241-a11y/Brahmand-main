@@ -474,16 +474,24 @@ const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media:
 
   useEffect(() => {
     if (player) {
-      player.muted = isMuted;
+      try {
+        player.muted = isMuted;
+      } catch (e) {
+        console.warn('[CommunityVideo] Muted state change failed:', e);
+      }
     }
   }, [isMuted, player]);
 
   useEffect(() => {
     if (player) {
-      if (shouldPlay) {
-        player.play();
-      } else {
-        player.pause();
+      try {
+        if (shouldPlay) {
+          player.play();
+        } else {
+          player.pause();
+        }
+      } catch (e) {
+        console.warn('[CommunityVideo] Play/pause state change failed:', e);
       }
     }
   }, [shouldPlay, player]);
@@ -733,6 +741,7 @@ export default function CommunityDetailScreen() {
   // Apple Guideline 1.2 - community comment report state
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+  const [commentModalToRestore, setCommentModalToRestore] = useState<any | null>(null);
   const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
 
   const loadBlockedUsers = useCallback(async () => {
@@ -802,7 +811,11 @@ export default function CommunityDetailScreen() {
         async (buttonIndex) => {
           if (buttonIndex === 1) {
             setPendingReportComment(comment);
-            setReportCommentModalVisible(true);
+            setCommentModalToRestore(showCommentModal);
+            setShowCommentModal(null);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
           } else if (buttonIndex === 2) {
             await handleToggleBlockUser(targetUserId, comment.userName || 'User');
           }
@@ -816,7 +829,11 @@ export default function CommunityDetailScreen() {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Report Comment', onPress: () => {
             setPendingReportComment(comment);
-            setReportCommentModalVisible(true);
+            setCommentModalToRestore(showCommentModal);
+            setShowCommentModal(null);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
           }},
           {
             text: blockLabel,
@@ -827,7 +844,7 @@ export default function CommunityDetailScreen() {
         { cancelable: true }
       );
     }
-  }, [blockedUserIds, handleToggleBlockUser]);
+  }, [blockedUserIds, handleToggleBlockUser, showCommentModal]);
 
   const openEventDatePicker = useCallback(() => {
     if (Platform.OS === 'android') {
@@ -4885,12 +4902,18 @@ export default function CommunityDetailScreen() {
         onClose={() => {
           setReportCommentModalVisible(false);
           setPendingReportComment(null);
+          if (commentModalToRestore) {
+            setTimeout(() => {
+              setShowCommentModal(commentModalToRestore);
+              setCommentModalToRestore(null);
+            }, 300);
+          }
         }}
         reporterUid={user?.id || ''}
         reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
         contentId={String(pendingReportComment?.id || '')}
         contentType="comment"
-        postId={pendingReportComment?.post_id || showCommentModal?.id || ''}
+        postId={pendingReportComment?.post_id || showCommentModal?.id || commentModalToRestore?.id || ''}
         apiFallback={async (reason, description) => {
           if (pendingReportComment?.id) {
             await reportComment(String(pendingReportComment.id), reason, description || '');

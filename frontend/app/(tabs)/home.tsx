@@ -581,6 +581,7 @@ export default function HomeScreen() {
   // Apple Guideline 1.2 - report comment state
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+  const [commentModalToRestore, setCommentModalToRestore] = useState(false);
 
   const [searchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -2349,7 +2350,11 @@ export default function HomeScreen() {
         async (buttonIndex) => {
           if (buttonIndex === 1) {
             setPendingReportComment(comment);
-            setReportCommentModalVisible(true);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
           } else if (buttonIndex === 2) {
             await handleToggleBlock();
           }
@@ -2363,14 +2368,18 @@ export default function HomeScreen() {
           { text: 'Cancel', style: 'cancel' },
           { text: 'Report Comment', onPress: () => {
             setPendingReportComment(comment);
-            setReportCommentModalVisible(true);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
           }},
           { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
         ],
         { cancelable: true }
       );
     }
-  }, [currentUserId, blockedUserIds]);
+  }, [currentUserId, blockedUserIds, commentModalVisible]);
 
   const handleOpenPostUserProfile = useCallback((post: any) => {
     if (post?.user_id) {
@@ -4563,9 +4572,15 @@ export default function HomeScreen() {
         onClose={() => {
           setReportCommentModalVisible(false);
           setPendingReportComment(null);
+          if (commentModalToRestore) {
+            setTimeout(() => {
+              setCommentModalVisible(true);
+              setCommentModalToRestore(false);
+            }, 300);
+          }
         }}
         reporterUid={currentUserId || ''}
-        reportedUserUid={pendingReportComment?.user_id || ''}
+        reportedUserUid={pendingReportComment?.user_id || pendingReportComment?.userId || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
         contentId={pendingReportComment?.id || ''}
         contentType="comment"
         postId={pendingReportComment?.post_id || selectedCommentPostId || ''}

@@ -10,6 +10,8 @@ import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
+import { ReportModal } from '../../src/components/ReportModal';
+import { blockUser, unblockUser, getBlockedUsers, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const FEED_PAGE_SIZE = 7;
@@ -59,6 +61,29 @@ const PostScreen = () => {
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
+
+  const [commentModalToRestore, setCommentModalToRestore] = useState(false);
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
+  const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
+  const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+
+  const loadBlockedUsers = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const [blockedByMe, blockedMe] = await Promise.all([
+        getBlockedUsers(user.id),
+        getUsersWhoBlockedMe(user.id).catch(() => [] as string[])
+      ]);
+      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
+      setBlockedUserIds(combined || []);
+    } catch (e) {
+      console.warn('[Post] Failed to load blocked users:', e);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadBlockedUsers();
+  }, [user?.id, loadBlockedUsers]);
 
   const listRef = useRef<FlatList>(null);
   const hasScrolled = useRef(false);
@@ -293,6 +318,87 @@ const PostScreen = () => {
     }
   }, [postComments, commentPost]);
 
+  const handleCommentMenuPress = useCallback((comment: any) => {
+    if (!comment || !user?.id) return;
+    const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(user.id, targetUserId);
+          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${comment.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(user.id, targetUserId);
+                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in comment menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      const { ActionSheetIOS } = require('react-native');
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Comment', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Comment Options'
+        },
+        async (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Comment Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Comment', onPress: () => {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          }},
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [user?.id, blockedUserIds, commentModalVisible]);
+
   const handleShareExternal = useCallback(async (post: any) => {
     if (!post) return;
     const mediaUrl = post.media_url || post.mediaUrl || post.image_url || post.imageUrl || '';
@@ -502,9 +608,15 @@ const PostScreen = () => {
               ) : postComments.length === 0 ? (
                 <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment.</Text>
               ) : (() => {
-                const parentComments = postComments.filter(c => !c.parent_id);
+                const parentComments = postComments.filter(c => {
+                  const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                  const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                  return !c.parent_id && !isBlockedUser;
+                });
                 const repliesMap = postComments.reduce((acc, c) => {
-                  if (c.parent_id) {
+                  const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                  const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                  if (c.parent_id && !isBlockedUser) {
                     if (!acc[c.parent_id]) acc[c.parent_id] = [];
                     acc[c.parent_id].push(c);
                   }
@@ -523,12 +635,19 @@ const PostScreen = () => {
                           <View style={styles.commentItem}>
                             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                              {canDelete && (
+                              {canDelete ? (
                                 <TouchableOpacity
                                   style={{ padding: 4, marginRight: -4 }}
                                   onPress={() => handleDeleteComment(item)}
                                 >
                                   <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                </TouchableOpacity>
+                              ) : (
+                                <TouchableOpacity
+                                  style={{ padding: 4, marginRight: -4 }}
+                                  onPress={() => handleCommentMenuPress(item)}
+                                >
+                                  <Ionicons name="ellipsis-horizontal" size={16} color={COLORS.textLight} />
                                 </TouchableOpacity>
                               )}
                             </View>
@@ -571,12 +690,19 @@ const PostScreen = () => {
                                     <View style={{ flex: 1 }}>
                                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Text style={[styles.commentItemUser, { fontSize: 13 }]}>{reply?.username || 'User'}</Text>
-                                        {canDeleteReply && (
+                                        {canDeleteReply ? (
                                           <TouchableOpacity
                                             style={{ padding: 4, marginRight: -4 }}
                                             onPress={() => handleDeleteComment(reply)}
                                           >
                                             <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                          </TouchableOpacity>
+                                        ) : (
+                                          <TouchableOpacity
+                                            style={{ padding: 4, marginRight: -4 }}
+                                            onPress={() => handleCommentMenuPress(reply)}
+                                          >
+                                            <Ionicons name="ellipsis-horizontal" size={14} color={COLORS.textLight} />
                                           </TouchableOpacity>
                                         )}
                                       </View>
@@ -663,6 +789,55 @@ const PostScreen = () => {
         }}
         onCopyLink={handleCopyLink}
         onDownload={handleDownload}
+      />
+
+      {/* Apple Guideline 1.2 - Report Comment Modal */}
+      <ReportModal
+        visible={reportCommentModalVisible}
+        onClose={() => {
+          setReportCommentModalVisible(false);
+          setPendingReportComment(null);
+          if (commentModalToRestore) {
+            setTimeout(() => {
+              setCommentModalVisible(true);
+              setCommentModalToRestore(false);
+            }, 300);
+          }
+        }}
+        reporterUid={user?.id || ''}
+        reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+        contentId={String(pendingReportComment?.id || '')}
+        contentType="comment"
+        postId={pendingReportComment?.post_id || commentPost?.id || ''}
+        apiFallback={async (reason, description) => {
+          if (pendingReportComment?.id) {
+            const { reportComment } = require('../../src/services/api');
+            await reportComment(String(pendingReportComment.id), reason, description || '');
+          }
+        }}
+        onSuccess={() => {
+          if (pendingReportComment?.id) {
+            const targetId = pendingReportComment.id;
+            setPostComments(prev => prev.filter(c => c.id !== targetId));
+            
+            // Decrement comments count on current post
+            if (commentPost?.id) {
+              setCommentPost((prev: any) => prev ? {
+                ...prev,
+                comments_count: Math.max(0, (Number(prev.comments_count) || 1) - 1),
+              } : null);
+              setFeedPosts(prev => prev.map(p => {
+                if (p.id === commentPost.id) {
+                  return {
+                    ...p,
+                    comments_count: Math.max(0, (Number(p.comments_count) || 1) - 1),
+                  };
+                }
+                return p;
+              }));
+            }
+          }
+        }}
       />
     </SafeAreaView>
   );

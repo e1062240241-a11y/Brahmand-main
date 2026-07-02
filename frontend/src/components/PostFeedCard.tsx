@@ -287,7 +287,9 @@ export const PostFeedCard = memo(({
 
   useEffect(() => {
     if (player) {
-      player.muted = isMuted;
+      try {
+        player.muted = isMuted;
+      } catch (e) {}
     }
     if (Platform.OS === 'web' && videoRef.current) {
       videoRef.current.muted = isMuted;
@@ -317,10 +319,14 @@ export const PostFeedCard = memo(({
         }
       }
     } else if (player) {
-      if (shouldPlay) {
-        player.play();
-      } else {
-        player.pause();
+      try {
+        if (shouldPlay) {
+          player.play();
+        } else {
+          player.pause();
+        }
+      } catch (e) {
+        console.warn('[PostFeedCard] player play/pause error:', e);
       }
     }
   }, [shouldPlay, player]);

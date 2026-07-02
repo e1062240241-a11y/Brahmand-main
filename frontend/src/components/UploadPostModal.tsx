@@ -283,10 +283,14 @@ export const UploadPostModal = ({
 
   useEffect(() => {
     if (!previewPlayer) return;
-    if (visible && previewVideoSource) {
-      previewPlayer.play();
-    } else {
-      previewPlayer.pause();
+    try {
+      if (visible && previewVideoSource) {
+        previewPlayer.play();
+      } else {
+        previewPlayer.pause();
+      }
+    } catch (e) {
+      console.warn('[UploadPostModal] previewPlayer control failed:', e);
     }
   }, [previewPlayer, previewVideoSource, visible]);
 

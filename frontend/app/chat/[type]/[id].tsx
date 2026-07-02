@@ -58,7 +58,11 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
 
   useEffect(() => {
     if (player && isPlaying) {
-      player.play();
+      try {
+        player.play();
+      } catch (e) {
+        console.warn('[ChatVideo] play failed:', e);
+      }
     }
   }, [player, isPlaying]);
 

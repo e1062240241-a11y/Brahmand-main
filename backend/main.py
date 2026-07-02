@@ -2349,6 +2349,34 @@ async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
     return blocked_ids
 
 
+async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type: str) -> set:
+    """Returns a set of content IDs of a specific type reported by the user to filter them out."""
+    reported_ids = set()
+    try:
+        # Query moderation_reports
+        mod_reports = await db.query_documents(
+            'moderation_reports',
+            filters=[('reporterUid', '==', user_id), ('contentType', '==', content_type)]
+        )
+        for r in mod_reports:
+            c_id = r.get('contentId')
+            if c_id:
+                reported_ids.add(str(c_id))
+                
+        # Query legacy reports
+        legacy_reports = await db.query_documents(
+            'reports',
+            filters=[('reporter_id', '==', user_id), ('content_type', '==', content_type)]
+        )
+        for r in legacy_reports:
+            c_id = r.get('content_id')
+            if c_id:
+                reported_ids.add(str(c_id))
+    except Exception as e:
+        logger.error("Error retrieving reported content list: %s", e)
+    return reported_ids
+
+
 def _filter_post_blocked_content(post: dict, blocked_user_ids: set) -> dict:
     """Filter out top comments created by blocked users from a post object."""
     if 'top_comments' in post and isinstance(post['top_comments'], list):
@@ -3302,6 +3330,7 @@ async def get_posts_feed(
     public_posts = []
     
     blocked_user_ids = await _get_blocked_user_ids(db, current_user_id)
+    reported_post_ids = await _get_reported_content_ids(db, current_user_id, 'post')
     
     # Pre-calculate user location for performance
     u_city = str(user_loc.get('city') or '').strip().lower()
@@ -3310,6 +3339,8 @@ async def get_posts_feed(
 
     for p in posts:
         if p.get('user_id') in blocked_user_ids:
+            continue
+        if p.get('id') in reported_post_ids:
             continue
         if p.get('visibility', 'public') != 'public':
             continue
@@ -4276,7 +4307,11 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
 
     user_id = token_data['user_id']
     blocked_user_ids = await _get_blocked_user_ids(db, user_id)
-    comments = [c for c in comments if c.get('user_id') not in blocked_user_ids]
+    reported_comment_ids = await _get_reported_content_ids(db, user_id, 'comment')
+    comments = [
+        c for c in comments 
+        if c.get('user_id') not in blocked_user_ids and c.get('id') not in reported_comment_ids
+    ]
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')

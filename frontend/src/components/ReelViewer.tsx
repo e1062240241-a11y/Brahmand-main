@@ -15,9 +15,19 @@ import {
   PanResponder,
   Alert,
   AppState,
+  ActionSheetIOS,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { ReportModal } from './ReportModal';
+import {
+  submitReport,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
+  getUsersWhoBlockedMe,
+} from '../services/firebase/moderationService';
+import { reportComment } from '../services/api';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -69,19 +79,27 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
 
   useEffect(() => {
     if (!player || !isActive) return;
-    const dur = player.duration || player.currentTime || 120;
-    if (dur > 0) {
-      setDuration(dur);
-      durationRef.current = dur;
+    try {
+      const dur = player.duration || player.currentTime || 120;
+      if (dur > 0) {
+        setDuration(dur);
+        durationRef.current = dur;
+      }
+    } catch (e) {
+      console.warn('[ReelProgressBar] Initial player state check failed:', e);
     }
     timeIntervalRef.current = setInterval(() => {
       if (player) {
-        const ct = player.currentTime || 0;
-        setCurrentTime(ct);
-        const pd = player.duration || durationRef.current;
-        if (pd > 0 && pd !== durationRef.current) {
-          durationRef.current = pd;
-          setDuration(pd);
+        try {
+          const ct = player.currentTime || 0;
+          setCurrentTime(ct);
+          const pd = player.duration || durationRef.current;
+          if (pd > 0 && pd !== durationRef.current) {
+            durationRef.current = pd;
+            setDuration(pd);
+          }
+        } catch (e) {
+          // Silent catch to prevent UI crash if player is unmounted/un-associated
         }
       }
     }, 500);
@@ -94,13 +112,17 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
 
   seekPlayerRef.current = (pageX: number) => {
     if (!player) return;
-    const dur = duration || durationRef.current || player.duration || 0;
-    if (!dur) return;
-    const barWidth = screenSize.width - 32;
-    const x = Math.max(0, Math.min(pageX - 16, barWidth));
-    const ratio = x / barWidth;
-    player.currentTime = ratio * dur;
-    setCurrentTime(player.currentTime || 0);
+    try {
+      const dur = duration || durationRef.current || player.duration || 0;
+      if (!dur) return;
+      const barWidth = screenSize.width - 32;
+      const x = Math.max(0, Math.min(pageX - 16, barWidth));
+      const ratio = x / barWidth;
+      player.currentTime = ratio * dur;
+      setCurrentTime(player.currentTime || 0);
+    } catch (e) {
+      console.warn('[ReelProgressBar] seek failed:', e);
+    }
   };
 
   const seekBarPan = useRef(PanResponder.create({
@@ -354,17 +376,27 @@ const ReelVideoItem = React.memo(({
         }
       }
     } else if (player) {
-      player.playbackRate = playbackSpeed;
-      if (isActive && !isPaused && appState === 'active') {
-        player.play();
-      } else {
-        player.pause();
+      try {
+        player.playbackRate = playbackSpeed;
+        if (isActive && !isPaused && appState === 'active') {
+          player.play();
+        } else {
+          player.pause();
+        }
+      } catch (e) {
+        console.warn('[ReelViewer] Playback speed / play / pause state change failed:', e);
       }
     }
   }, [isActive, isPaused, player, playbackSpeed, appState]);
 
   useEffect(() => {
-    if (player) player.muted = isMuted;
+    if (player) {
+      try {
+        player.muted = isMuted;
+      } catch (e) {
+        console.warn('[ReelViewer] Muted state change failed:', e);
+      }
+    }
   }, [isMuted, player]);
 
   // Clean up player on unmount to prevent audio leaks
@@ -386,25 +418,44 @@ const ReelVideoItem = React.memo(({
 
   useEffect(() => {
     if (player) {
-      player.loop = !autoScroll;
+      try {
+        player.loop = !autoScroll;
+      } catch (e) {
+        console.warn('[ReelViewer] Loop state change failed:', e);
+      }
     }
   }, [player, autoScroll]);
 
   useEffect(() => {
     if (!player) return;
-    const subscription = player.addListener('playToEnd', () => {
-      onVideoEnded?.();
-    });
+    let subscription: any;
+    try {
+      subscription = player.addListener('playToEnd', () => {
+        onVideoEnded?.();
+      });
+    } catch (e) {
+      console.warn('[ReelViewer] Failed to add listener:', e);
+    }
     return () => {
-      subscription.remove();
+      if (subscription) {
+        try {
+          subscription.remove();
+        } catch (e) {
+          console.warn('[ReelViewer] Failed to remove listener:', e);
+        }
+      }
     };
   }, [player, onVideoEnded]);
 
   useEffect(() => {
     if (!player || !isActive || !isVideo) return;
-    const dur = player.duration || player.currentTime || 120;
-    if (dur > 0) {
-      durationRef.current = dur;
+    try {
+      const dur = player.duration || player.currentTime || 120;
+      if (dur > 0) {
+        durationRef.current = dur;
+      }
+    } catch (e) {
+      console.warn('[ReelViewer] Duration fetch failed:', e);
     }
   }, [player, isActive, isVideo]);
 
@@ -421,18 +472,26 @@ const ReelVideoItem = React.memo(({
 
   const startSeek = (direction: 'left' | 'right') => {
     if (!player) return;
-    seekingRef.current = direction;
-    setSeekingDirection(direction);
-    setIsPaused(true);
-    const step = direction === 'left' ? -SEEK_STEP : SEEK_STEP;
-    player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
-    setSeekTime(player.currentTime || 0);
-    seekIntervalRef.current = setInterval(() => {
-      if (player && seekingRef.current) {
-        player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
-        setSeekTime(player.currentTime || 0);
-      }
-    }, 300);
+    try {
+      seekingRef.current = direction;
+      setSeekingDirection(direction);
+      setIsPaused(true);
+      const step = direction === 'left' ? -SEEK_STEP : SEEK_STEP;
+      player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
+      setSeekTime(player.currentTime || 0);
+      seekIntervalRef.current = setInterval(() => {
+        if (player && seekingRef.current) {
+          try {
+            player.currentTime = Math.max(0, Math.min((player.currentTime || 0) + step, player.duration || Infinity));
+            setSeekTime(player.currentTime || 0);
+          } catch (e) {
+            console.warn('[ReelViewer] seek interval step failed:', e);
+          }
+        }
+      }, 300);
+    } catch (e) {
+      console.warn('[ReelViewer] startSeek failed:', e);
+    }
   };
 
   const stopSeek = () => {
@@ -975,6 +1034,111 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [replyingToComment, setReplyingToComment] = useState<any | null>(null);
 
+  // Apple Guideline 1.2 - report comment state & blocked users
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
+  const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
+  const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+  const [commentModalToRestore, setCommentModalToRestore] = useState(false);
+
+  const loadBlockedUsers = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const [blockedByMe, blockedMe] = await Promise.all([
+        getBlockedUsers(user.id),
+        getUsersWhoBlockedMe(user.id).catch(() => [] as string[])
+      ]);
+      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
+      setBlockedUserIds(combined || []);
+    } catch (e) {
+      console.warn('[ReelViewer] Failed to load blocked users:', e);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadBlockedUsers();
+  }, [user?.id, loadBlockedUsers]);
+
+  const handleCommentMenuPress = useCallback((comment: any) => {
+    if (!comment || !user?.id) return;
+    
+    const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(user.id, targetUserId);
+          setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUserId)));
+          Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${comment.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(user.id, targetUserId);
+                  setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUserId)])));
+                  Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in comment menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Comment', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Comment Options'
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === 1) {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(isCommentVisible);
+            setIsCommentVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Comment Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Comment', onPress: () => {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(isCommentVisible);
+            setIsCommentVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          }},
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [user?.id, blockedUserIds, isCommentVisible]);
+
   const [autoScroll, setAutoScroll] = useState(true);
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
 
@@ -1124,7 +1288,8 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     try {
       const res = await addPostComment(selectedPost.id, textToPost, parentId || undefined);
       // Replace temporary comment with real one from server
-      setLocalComments(prev => prev.map(c => c.id === tempId ? res.data : c));
+      const serverComment = res.data?.comment || res.data;
+      setLocalComments(prev => prev.map(c => c.id === tempId ? serverComment : c));
 
       // Update comment count on post
       setSelectedPost((prev: any) => prev ? {
@@ -1507,19 +1672,26 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   // OPT-5: memoize comment tree — only recomputes when localComments changes,
   // not on every parent render triggered by swipe/mute/etc.
+  // Filters out comments from blocked users.
   const parentComments = React.useMemo(
-    () => localComments.filter((c: any) => !c.parent_id),
-    [localComments]
+    () => localComments.filter((c: any) => {
+      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+      const isBlocked = uid && blockedUserIds.includes(String(uid));
+      return !c.parent_id && !isBlocked;
+    }),
+    [localComments, blockedUserIds]
   );
   const repliesMap = React.useMemo(
     () => localComments.reduce((acc: Record<string, any[]>, c: any) => {
-      if (c.parent_id) {
+      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+      const isBlocked = uid && blockedUserIds.includes(String(uid));
+      if (c.parent_id && !isBlocked) {
         if (!acc[c.parent_id]) acc[c.parent_id] = [];
         acc[c.parent_id].push(c);
       }
       return acc;
     }, {} as Record<string, any[]>),
-    [localComments]
+    [localComments, blockedUserIds]
   );
 
   const flatListExtraData = useMemo(() => ({ activeIndex, isMuted }), [activeIndex, isMuted]);
@@ -1654,12 +1826,19 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                             }}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#3F2C20' }}>{item?.username || 'User'}</Text>
-                                {canDelete && (
+                                {canDelete ? (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
                                     onPress={() => handleDeleteComment(item)}
                                   >
                                     <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                  </TouchableOpacity>
+                                ) : (
+                                  <TouchableOpacity
+                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                    onPress={() => handleCommentMenuPress(item)}
+                                  >
+                                    <Ionicons name="ellipsis-horizontal" size={16} color="#A88876" />
                                   </TouchableOpacity>
                                 )}
                               </View>
@@ -1722,12 +1901,19 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                       <Text style={{ fontWeight: 'bold', fontSize: 12, color: '#222' }}>{reply.username}</Text>
                                       <Text style={{ fontSize: 10, color: '#999', marginLeft: 8 }}>{formatTimeAgo(reply.created_at)}</Text>
                                     </View>
-                                    {canDeleteReply && (
+                                    {canDeleteReply ? (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4 }}
                                         onPress={() => handleDeleteComment(reply)}
                                       >
                                         <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                      </TouchableOpacity>
+                                    ) : (
+                                      <TouchableOpacity
+                                        style={{ padding: 4, marginRight: -4 }}
+                                        onPress={() => handleCommentMenuPress(reply)}
+                                      >
+                                        <Ionicons name="ellipsis-horizontal" size={14} color="#A88876" />
                                       </TouchableOpacity>
                                     )}
                                   </View>
@@ -1813,6 +1999,57 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             </View>
           </KeyboardAvoidingView>
         </Modal>
+
+        {/* Apple Guideline 1.2 - Report Comment Modal */}
+        <ReportModal
+          visible={reportCommentModalVisible}
+          onClose={() => {
+            setReportCommentModalVisible(false);
+            setPendingReportComment(null);
+            if (commentModalToRestore) {
+              setTimeout(() => {
+                setIsCommentVisible(true);
+                setCommentModalToRestore(false);
+              }, 300);
+            }
+          }}
+          reporterUid={user?.id || ''}
+          reportedUserUid={pendingReportComment?.user_id || pendingReportComment?.userId || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+          contentId={pendingReportComment?.id || ''}
+          contentType="comment"
+          postId={pendingReportComment?.post_id || selectedPost?.id || ''}
+          apiFallback={async (reason, description) => {
+            if (pendingReportComment?.id) {
+              await reportComment(String(pendingReportComment.id), reason, description || '');
+            }
+          }}
+          onSuccess={() => {
+            if (pendingReportComment?.id) {
+              const commentIdStr = String(pendingReportComment.id);
+              // 1. Filter out reported comment from local comments list
+              setLocalComments(prev => prev.filter(c => String(c.id) !== commentIdStr));
+              
+              // 2. Decrement comment count on selectedPost
+              setSelectedPost((prev: any) => prev ? {
+                ...prev,
+                comments_count: Math.max(0, (Number(prev.comments_count) || 1) - 1),
+              } : null);
+
+              // 3. Decrement comment count in videos feed list
+              if (selectedPost?.id) {
+                setVideos(prev => prev.map(v => {
+                  if (v.id === selectedPost.id) {
+                    return {
+                      ...v,
+                      comments_count: Math.max(0, (Number(v.comments_count) || 1) - 1),
+                    };
+                  }
+                  return v;
+                }));
+              }
+            }
+          }}
+        />
 
         {/* Options Settings Modal */}
         <Modal
