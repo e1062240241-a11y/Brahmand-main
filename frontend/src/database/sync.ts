@@ -117,7 +117,7 @@ export async function syncDatabase() {
               // Return empty changeset so WatermelonDB sync completes cleanly
               // and the local DB is left completely untouched.
               console.warn('[Sync] Pull skipped — network unavailable');
-              return buildEmptyChangeset(lastPulledAt);
+              return buildEmptyChangeset(lastPulledAt ?? null);
             }
 
             console.error('[Sync] Pull changes failed:', error);

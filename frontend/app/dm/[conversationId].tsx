@@ -54,7 +54,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { socketService } from '../../src/services/socket';
 import { isConversationMuted, muteConversationLocal, unmuteConversationLocal } from '../../src/services/mutedChats';
 import { ReportModal } from '../../src/components/ReportModal';
-import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
+import { blockUser, unblockUser, isUserBlocked, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
 
 const DM_MESSAGES_CACHE_KEY = 'dm_messages_cache';
 
@@ -373,7 +373,9 @@ const DirectMessageScreen = () => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sharingContact, setSharingContact] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockedByMe, setIsBlockedByMe] = useState(false);
+  const [isBlockedByThem, setIsBlockedByThem] = useState(false);
+  const isBlocked = isBlockedByMe || isBlockedByThem;
   const [reportUserModalVisible, setReportUserModalVisible] = useState(false);
   const attachmentAnim = useRef(new Animated.Value(0)).current;
 
@@ -480,15 +482,18 @@ const DirectMessageScreen = () => {
   const checkBlockStatus = useCallback(async () => {
     if (!conversation?.user?.id || !user?.id) return;
     try {
-      // Firebase-backed block check
-      const blocked = await isUserBlocked(user.id, conversation.user.id);
-      setIsBlocked(blocked);
+      const [blockedByMeRes, blockedByThemRes] = await Promise.all([
+        isUserBlocked(user.id, conversation.user.id),
+        isUserBlocked(conversation.user.id, user.id).catch(() => false)
+      ]);
+      setIsBlockedByMe(blockedByMeRes);
+      setIsBlockedByThem(blockedByThemRes);
     } catch (e) {
-      // Fallback to AsyncStorage
       try {
         const blockedListRaw = await AsyncStorage.getItem('blocked_users_list');
         const blockedList = blockedListRaw ? JSON.parse(blockedListRaw) : [];
-        setIsBlocked(blockedList.includes(conversation.user.id));
+        setIsBlockedByMe(blockedList.includes(conversation.user.id));
+        setIsBlockedByThem(false);
       } catch {}
     }
   }, [conversation?.user?.id, user?.id]);
@@ -521,7 +526,7 @@ const DirectMessageScreen = () => {
   const handleToggleBlock = async () => {
     if (!conversation?.user?.id || !user?.id) return;
     try {
-      if (isBlocked) {
+      if (isBlockedByMe) {
         // Unblock
         await unblockUser(user.id, conversation.user.id);
         // Also clear AsyncStorage for compatibility
@@ -530,7 +535,7 @@ const DirectMessageScreen = () => {
           const list = raw ? JSON.parse(raw) : [];
           await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list.filter((id: string) => id !== conversation.user.id)));
         } catch {}
-        setIsBlocked(false);
+        setIsBlockedByMe(false);
         Alert.alert('Success', `${conversation.user.name} has been unblocked.`);
         closeChatOptions();
       } else {
@@ -551,7 +556,7 @@ const DirectMessageScreen = () => {
                   if (!list.includes(conversation.user.id)) list.push(conversation.user.id);
                   await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list));
                 } catch {}
-                setIsBlocked(true);
+                setIsBlockedByMe(true);
                 Alert.alert('Blocked', `${conversation.user.name} has been blocked.`);
                 closeChatOptions();
               }
@@ -624,7 +629,10 @@ const DirectMessageScreen = () => {
     isBlocked;
 
   const inputLockReason = (() => {
-    if (isBlocked) {
+    if (isBlockedByThem) {
+      return 'You cannot send messages to this user.';
+    }
+    if (isBlockedByMe) {
       return 'You have blocked this user. Unblock them to resume chat.';
     }
     if (requestStatus === 'pending') {
@@ -1703,7 +1711,7 @@ const DirectMessageScreen = () => {
               
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleBlock}>
                 <Ionicons name="ban-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
-                <Text style={styles.modalItemText}>{isBlocked ? 'Unblock User' : 'Block User'}</Text>
+                <Text style={styles.modalItemText}>{isBlockedByMe ? 'Unblock User' : 'Block User'}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
               

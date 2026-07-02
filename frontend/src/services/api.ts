@@ -1776,12 +1776,18 @@ export const verifyUserAadhaarOtp = (data: {
 
 // Report APIs
 export const reportContent = (data: {
-  content_type: "message" | "user" | "temple" | "post";
+  content_type: "message" | "user" | "temple" | "post" | "community" | "comment";
   content_id: string;
   chat_id?: string;
-  category: "religious_attack" | "disrespectful" | "spam" | "abuse" | "other";
+  category: "religious_attack" | "disrespectful" | "spam" | "abuse" | "other" | "harassment" | "hate_speech" | "violence" | "sexual_content" | "fake_profile" | "scam_fraud";
   description?: string;
 }) => api.post("/report", data);
+
+export const blockUserApi = (userId: string) =>
+  api.post(`/users/${userId}/block`);
+
+export const unblockUserApi = (userId: string) =>
+  api.post(`/users/${userId}/unblock`);
 
 // Temple Channel APIs
 export const createTemple = (data: {

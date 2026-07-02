@@ -2386,6 +2386,32 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     return {'message': 'Unfollowed user', 'user_id': user_id}
 
 
+@api_router.post('/users/{target_user_id}/block')
+async def api_block_user(target_user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    if target_user_id == current_user_id:
+        raise HTTPException(status_code=400, detail='Cannot block yourself')
+
+    doc_id = f"{current_user_id}_{target_user_id}"
+    await db.set_document('user_blocks', doc_id, {
+        'blockerUid': current_user_id,
+        'blockedUid': target_user_id,
+        'createdAt': datetime.utcnow()
+    })
+    return {'message': 'User blocked successfully', 'blocked_user_id': target_user_id}
+
+
+@api_router.post('/users/{target_user_id}/unblock')
+async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    current_user_id = token_data['user_id']
+
+    doc_id = f"{current_user_id}_{target_user_id}"
+    await db.delete_document('user_blocks', doc_id)
+    return {'message': 'User unblocked successfully', 'unblocked_user_id': target_user_id}
+
+
 @api_router.post('/posts/{post_id}/view')
 async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -7989,13 +8015,17 @@ async def report_content(data: dict, token_data: dict = Depends(verify_token)):
     user_id = token_data["user_id"]
     
     content_type = data.get('content_type')
-    if content_type not in ['message', 'user', 'temple', 'post']:
+    if content_type not in ['message', 'user', 'temple', 'post', 'community', 'comment']:
         raise HTTPException(status_code=400, detail="Invalid content type")
     
     category = data.get('category')
-    valid_categories = ['religious_attack', 'disrespectful', 'spam', 'abuse', 'other']
-    if category not in valid_categories:
-        raise HTTPException(status_code=400, detail=f"Invalid category. Must be one of: {valid_categories}")
+    valid_categories = [
+        'religious_attack', 'disrespectful', 'spam', 'abuse', 'other',
+        'harassment', 'hate_speech', 'violence', 'sexual_content',
+        'fake_profile', 'scam_fraud'
+    ]
+    if not category or category not in valid_categories:
+        category = 'other'
     
     report_data = {
         'reporter_id': user_id,

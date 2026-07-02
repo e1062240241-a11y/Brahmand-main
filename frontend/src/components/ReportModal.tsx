@@ -34,6 +34,8 @@ interface ReportModalProps {
   contentType: ContentType;
   /** Optional fallback API call if Firebase fails */
   apiFallback?: (reason: ReportReason) => Promise<void>;
+  /** Optional success callback called after report is submitted */
+  onSuccess?: (reason: ReportReason) => void;
 }
 
 const REASONS: { key: ReportReason; label: string; icon: string }[] = [
@@ -57,6 +59,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   contentId,
   contentType,
   apiFallback,
+  onSuccess,
 }) => {
   const [step, setStep] = useState<Step>('select');
   const [selectedReason, setSelectedReason] = useState<ReportReason | null>(null);
@@ -106,6 +109,9 @@ export const ReportModal: React.FC<ReportModalProps> = ({
     }
 
     setStep('success');
+    if (onSuccess) {
+      onSuccess(selectedReason);
+    }
   };
 
   return (

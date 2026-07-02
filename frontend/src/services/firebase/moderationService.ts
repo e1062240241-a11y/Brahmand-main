@@ -20,6 +20,7 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
+import { blockUserApi, unblockUserApi } from '../api';
 import { initializeFirebase } from './config';
 
 export type ReportReason =
@@ -51,6 +52,7 @@ export interface ReportPayload {
   contentId: string;
   contentType: ContentType;
   reason: ReportReason;
+  description?: string;
 }
 
 function getDB() {
@@ -65,12 +67,29 @@ function getDB() {
 export async function submitReport(payload: ReportPayload): Promise<string> {
   const db = getDB();
 
+  // Prevent duplicate reports by the same user for the same content
+  try {
+    const q = query(
+      collection(db, 'moderation_reports'),
+      where('reporterUid', '==', payload.reporterUid),
+      where('contentId', '==', payload.contentId)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      console.warn('[moderationService] Report already submitted for this content.');
+      return snap.docs[0].id;
+    }
+  } catch (err) {
+    console.warn('[moderationService] Duplicate check failed, proceeding with submit:', err);
+  }
+
   const docRef = await addDoc(collection(db, 'moderation_reports'), {
     reporterUid: payload.reporterUid,
     reportedUserUid: payload.reportedUserUid,
     contentId: payload.contentId,
     contentType: payload.contentType,
     reason: payload.reason,
+    description: payload.description || '',
     status: 'pending' as ModerationStatus,
     createdAt: serverTimestamp(),
   });
@@ -84,23 +103,43 @@ export async function submitReport(payload: ReportPayload): Promise<string> {
  * Document ID: `${blockerUid}_${blockedUid}` for fast lookup.
  */
 export async function blockUser(blockerUid: string, blockedUid: string): Promise<void> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
+  try {
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
 
-  await setDoc(doc(db, 'user_blocks', docId), {
-    blockerUid,
-    blockedUid,
-    createdAt: serverTimestamp(),
-  });
+    await setDoc(doc(db, 'user_blocks', docId), {
+      blockerUid,
+      blockedUid,
+      createdAt: serverTimestamp(),
+    });
+  } catch (firebaseErr) {
+    console.warn('[moderationService] Firebase block failed, trying API fallback:', firebaseErr);
+    try {
+      await blockUserApi(blockedUid);
+    } catch (apiErr) {
+      console.error('[moderationService] API block fallback also failed:', apiErr);
+      throw apiErr;
+    }
+  }
 }
 
 /**
  * Unblock a user. Removes the block document from Firebase.
  */
 export async function unblockUser(blockerUid: string, blockedUid: string): Promise<void> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
-  await deleteDoc(doc(db, 'user_blocks', docId));
+  try {
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
+    await deleteDoc(doc(db, 'user_blocks', docId));
+  } catch (firebaseErr) {
+    console.warn('[moderationService] Firebase unblock failed, trying API fallback:', firebaseErr);
+    try {
+      await unblockUserApi(blockedUid);
+    } catch (apiErr) {
+      console.error('[moderationService] API unblock fallback also failed:', apiErr);
+      throw apiErr;
+    }
+  }
 }
 
 /**
@@ -127,4 +166,17 @@ export async function getBlockedUsers(blockerUid: string): Promise<string[]> {
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data().blockedUid as string);
+}
+
+/**
+ * Get all UIDs of users who have blocked this user.
+ */
+export async function getUsersWhoBlockedMe(blockedUid: string): Promise<string[]> {
+  const db = getDB();
+  const q = query(
+    collection(db, 'user_blocks'),
+    where('blockedUid', '==', blockedUid),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data().blockerUid as string);
 }

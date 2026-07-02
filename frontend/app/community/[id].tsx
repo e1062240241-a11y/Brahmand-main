@@ -14,6 +14,7 @@ import {
   RefreshControl,
   ScrollView,
   Alert,
+  ActionSheetIOS,
   Share,
   Modal,
   Image,
@@ -29,7 +30,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch, reportContent } from '../../src/services/api';
 import { scheduleEventReminderNotification } from '../../src/services/pushNotifications';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
@@ -42,6 +43,7 @@ import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
 import { ReportModal } from '../../src/components/ReportModal';
+import { getBlockedUsers, getUsersWhoBlockedMe, blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -728,6 +730,104 @@ export default function CommunityDetailScreen() {
   // Apple Guideline 1.2 - community post report state
   const [reportCommunityPostModalVisible, setReportCommunityPostModalVisible] = useState(false);
   const [pendingReportCommunityPost, setPendingReportCommunityPost] = useState<any | null>(null);
+  // Apple Guideline 1.2 - community comment report state
+  const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
+  const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+  const [blockedUserIds, setBlockedUserIds] = useState<string[]>([]);
+
+  const loadBlockedUsers = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const [blockedByMe, blockedMe] = await Promise.all([
+        getBlockedUsers(user.id),
+        getUsersWhoBlockedMe(user.id).catch(() => [] as string[])
+      ]);
+      const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
+      setBlockedUserIds(combined || []);
+    } catch (e) {
+      console.warn('Failed to load blocked users:', e);
+    }
+  }, [user?.id]);
+
+  const handleToggleBlockUser = useCallback(async (targetUid: string, targetName: string) => {
+    if (!user?.id) return;
+    const isCurrentlyBlocked = blockedUserIds.includes(String(targetUid));
+
+    try {
+      if (isCurrentlyBlocked) {
+        // Unblock
+        await unblockUser(user.id, targetUid);
+        setBlockedUserIds(prev => prev.filter(uid => uid !== String(targetUid)));
+        Alert.alert('Success', `${targetName} has been unblocked.`);
+      } else {
+        // Confirm block
+        Alert.alert(
+          'Block User',
+          `Are you sure you want to block ${targetName}? You will no longer see their posts, comments, or messages.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Block',
+              style: 'destructive',
+              onPress: async () => {
+                await blockUser(user.id, targetUid);
+                setBlockedUserIds(prev => Array.from(new Set([...prev, String(targetUid)])));
+                Alert.alert('Success', `${targetName} has been blocked.`);
+              }
+            }
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error toggling block status:', error);
+      Alert.alert('Error', 'Could not update block status. Please try again.');
+    }
+  }, [user?.id, blockedUserIds]);
+
+  const handleCommentMenuPress = useCallback((comment: any) => {
+    const targetUserId = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Comment', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Comment Options'
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === 1) {
+            setPendingReportComment(comment);
+            setReportCommentModalVisible(true);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlockUser(targetUserId, comment.userName || 'User');
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Comment Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Comment', onPress: () => {
+            setPendingReportComment(comment);
+            setReportCommentModalVisible(true);
+          }},
+          {
+            text: blockLabel,
+            style: 'destructive',
+            onPress: () => handleToggleBlockUser(targetUserId, comment.userName || 'User')
+          }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [blockedUserIds, handleToggleBlockUser]);
 
   const openEventDatePicker = useCallback(() => {
     if (Platform.OS === 'android') {
@@ -1008,11 +1108,24 @@ export default function CommunityDetailScreen() {
   };
 
   const combinedData = useMemo(() => {
+    const isUserBlocked = (item: any) => {
+      const uid = item?.user_id || item?.creator_id || item?.creator?.id || item?.sender_id || item?.user?.id;
+      return uid && blockedUserIds.includes(String(uid));
+    };
+
+    const filteredRequestsList = requests.filter(item => !isUserBlocked(item));
+    const filteredEventsList = events.filter(item => !isUserBlocked(item));
+    const filteredDiscussionPostsList = discussionPosts.filter(item => !isUserBlocked(item));
+    const filteredCommunityPostsList = communityPosts.filter(item => !isUserBlocked(item));
+    const filteredApiRequests = filteredRequests.filter(item => !isUserBlocked(item));
+    const filteredApiSevaRequests = filteredSevaRequests.filter(item => !isUserBlocked(item));
+    const filteredAllFestivalsList = allFestivals.filter(item => !isUserBlocked(item));
+
     if (activeTab === 'My Posts') {
       const itemMap = new Map();
 
       // All chat messages (community posts)
-      communityPosts.forEach(p => {
+      filteredCommunityPostsList.forEach(p => {
         const cleanPost = { ...p };
         if (cleanPost.id && !String(cleanPost.id).startsWith('post-')) {
           delete cleanPost.threadParentId;
@@ -1021,14 +1134,14 @@ export default function CommunityDetailScreen() {
       });
 
       // Discussion posts
-      discussionPosts.forEach(p => {
+      filteredDiscussionPostsList.forEach(p => {
         if (!itemMap.has(p.id)) {
           itemMap.set(p.id, p);
         }
       });
 
       // Include Community Requests
-      requests.forEach(req => {
+      filteredRequestsList.forEach(req => {
         if (!itemMap.has(req.id)) {
           itemMap.set(req.id, {
             ...req,
@@ -1062,8 +1175,8 @@ export default function CommunityDetailScreen() {
     }
 
     if (activeTab === 'Requests') {
-      const apiList = filteredRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
-      const localList = communityPosts
+      const apiList = filteredApiRequests.filter((item: any) => !isLostFoundRequest(item) && !isTempleUpdateRequest(item));
+      const localList = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'requests')
         .map((p: any) => ({ 
           ...p, 
@@ -1088,8 +1201,8 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Events') {
-      const apiList = events;
-      const localList = communityPosts
+      const apiList = filteredEventsList;
+      const localList = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'events')
         .map((p: any) => ({ 
           ...p, 
@@ -1111,7 +1224,7 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Festivals') {
-      const userFestivals = communityPosts
+      const userFestivals = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'festivals')
         .map((p: any) => {
           let eventImage = p.image || p.image_url || p.media_url;
@@ -1195,8 +1308,8 @@ export default function CommunityDetailScreen() {
       ];
     }
     if (activeTab === 'Lost & Found') {
-      const apiList = requests.filter((item: any) => isLostFoundRequest(item));
-      const localList = communityPosts
+      const apiList = filteredRequestsList.filter((item: any) => isLostFoundRequest(item));
+      const localList = filteredCommunityPostsList
         .filter((p: any) => isLostFoundRequest(p))
         .map((p: any) => ({ 
           ...p, 
@@ -1218,8 +1331,8 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Temple Updates') {
-      const apiList = requests.filter((item: any) => isTempleUpdateRequest(item));
-      const localList = communityPosts
+      const apiList = filteredRequestsList.filter((item: any) => isTempleUpdateRequest(item));
+      const localList = filteredCommunityPostsList
         .filter((p: any) => isTempleUpdateRequest(p))
         .map((p: any) => ({ 
           ...p, 
@@ -1241,8 +1354,8 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Seva') {
-      const apiSeva = filteredSevaRequests.map((r: any) => ({ ...r, isSevaPost: true, isRequestItem: true }));
-      const localSeva = communityPosts
+      const apiSeva = filteredApiSevaRequests.map((r: any) => ({ ...r, isSevaPost: true, isRequestItem: true }));
+      const localSeva = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'seva')
         .map((p: any) => ({ 
           ...p, 
@@ -1270,7 +1383,7 @@ export default function CommunityDetailScreen() {
       const itemMap = new Map();
 
       // All chat messages (community posts) only show in Feed section
-      communityPosts.forEach(p => {
+      filteredCommunityPostsList.forEach(p => {
         // Clear any old/stale threadParentId from raw API messages to recompute cleanly
         const cleanPost = { ...p };
         if (cleanPost.id && !String(cleanPost.id).startsWith('post-')) {
@@ -1280,14 +1393,14 @@ export default function CommunityDetailScreen() {
       });
 
       // Discussion posts are always chat posts in Feed
-      discussionPosts.forEach(p => {
+      filteredDiscussionPostsList.forEach(p => {
         if (!itemMap.has(p.id)) {
           itemMap.set(p.id, p);
         }
       });
 
       // Include Community Requests in Feed
-      requests.forEach(req => {
+      filteredRequestsList.forEach(req => {
         if (!itemMap.has(req.id)) {
           itemMap.set(req.id, {
             ...req,
@@ -1420,7 +1533,7 @@ export default function CommunityDetailScreen() {
     }
 
     return [];
-  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id]);
+  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id, blockedUserIds]);
 
   // ⚡ Android: Build an O(1) index map so renderDiscussionItem does not need findIndex (O(n)) per render
   const combinedDataIndexMap = useMemo(() => {
@@ -1433,6 +1546,7 @@ export default function CommunityDetailScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      loadBlockedUsers();
       if (Platform.OS === 'android') {
         // ⚡ Android: Defer heavy data fetch until after screen transition animation completes
         const task = InteractionManager.runAfterInteractions(() => {
@@ -1442,7 +1556,7 @@ export default function CommunityDetailScreen() {
       } else {
         fetchCommunity();
       }
-    }, [id])
+    }, [id, loadBlockedUsers])
   );
 
   useEffect(() => {
@@ -4477,11 +4591,19 @@ export default function CommunityDetailScreen() {
             </View>
 
             <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
-              {activeComments.length > 0 ? (
-                activeComments.map((comment, index) => (
-                  <View key={comment.id} style={{ flexDirection: 'row', marginBottom: 20, position: 'relative' }}>
-                    {/* Thread connector line for replies */}
-                    {index < activeComments.length - 1 && (
+              {activeComments.filter(comment => {
+                const uid = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
+                return !uid || !blockedUserIds.includes(String(uid));
+              }).length > 0 ? (
+                activeComments
+                  .filter(comment => {
+                    const uid = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
+                    return !uid || !blockedUserIds.includes(String(uid));
+                  })
+                  .map((comment, index, filteredArray) => (
+                    <View key={comment.id} style={{ flexDirection: 'row', marginBottom: 20, position: 'relative' }}>
+                      {/* Thread connector line for replies */}
+                      {index < filteredArray.length - 1 && (
                       <View style={{ position: 'absolute', left: 16, top: 36, bottom: -20, width: 2, backgroundColor: '#CFD9DE', zIndex: -1 }} />
                     )}
                     <View style={{ marginRight: 12 }}>
@@ -4493,12 +4615,19 @@ export default function CommunityDetailScreen() {
                           <Text style={{ fontWeight: '700', fontSize: 14, color: '#0F1419' }} numberOfLines={1}>{comment.userName}</Text>
                           {comment.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
                         </View>
-                        {comment.userId === user?.id && (
+                        {comment.userId === user?.id ? (
                           <TouchableOpacity
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                             onPress={() => handleDeleteComment(comment.id)}
                           >
                             <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                          </TouchableOpacity>
+                        ) : (
+                          <TouchableOpacity
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            onPress={() => handleCommentMenuPress(comment)}
+                          >
+                            <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
                           </TouchableOpacity>
                         )}
                       </View>
@@ -4731,6 +4860,52 @@ export default function CommunityDetailScreen() {
         reportedUserUid={pendingReportCommunityPost?.sender_id || pendingReportCommunityPost?.user_id || ''}
         contentId={String(pendingReportCommunityPost?.id || '')}
         contentType="community"
+        apiFallback={async (reason) => {
+          if (pendingReportCommunityPost?.id) {
+            await reportContent({
+              content_type: 'community',
+              content_id: String(pendingReportCommunityPost.id),
+              category: reason as any,
+              description: `Reported community post for: ${reason}`
+            });
+          }
+        }}
+        onSuccess={() => {
+          if (pendingReportCommunityPost?.id) {
+            const targetId = pendingReportCommunityPost.id;
+            setCommunityPosts(prev => prev.filter(post => post.id !== targetId));
+            setDiscussionPosts(prev => prev.filter(post => post.id !== targetId));
+          }
+        }}
+      />
+
+      {/* Apple Guideline 1.2 - Report Comment Modal */}
+      <ReportModal
+        visible={reportCommentModalVisible}
+        onClose={() => {
+          setReportCommentModalVisible(false);
+          setPendingReportComment(null);
+        }}
+        reporterUid={user?.id || ''}
+        reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+        contentId={String(pendingReportComment?.id || '')}
+        contentType="comment"
+        apiFallback={async (reason) => {
+          if (pendingReportComment?.id) {
+            await reportContent({
+              content_type: 'comment',
+              content_id: String(pendingReportComment.id),
+              category: reason as any,
+              description: `Reported comment: ${reason}`
+            });
+          }
+        }}
+        onSuccess={() => {
+          if (pendingReportComment?.id) {
+            const targetId = pendingReportComment.id;
+            setActiveComments(prev => prev.filter(c => c.id !== targetId));
+          }
+        }}
       />
     </KeyboardAvoidingView>
   );
