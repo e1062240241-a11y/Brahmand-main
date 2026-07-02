@@ -183,6 +183,23 @@ class FirestoreDB:
             })
         
         await self._run_sync(_add)
+
+    async def batch_add_member_to_communities(self, community_ids: list[str], user_id: str):
+        """Add a member to multiple communities efficiently using a single batch update"""
+        if not community_ids:
+            return
+
+        def _batch_add():
+            from google.cloud import firestore
+            batch = self.client.batch()
+            for cid in community_ids:
+                doc_ref = self.client.collection('communities').document(cid)
+                batch.update(doc_ref, {
+                    'members': firestore.ArrayUnion([user_id])
+                })
+            batch.commit()
+
+        await self._run_sync(_batch_add)
     
     async def array_union_update(self, collection: str, doc_id: str, field: str, values: list):
         """Update a document field with ArrayUnion"""

@@ -699,8 +699,7 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     community_ids.append(country_id)
     
     # Add user to communities
-    for cid in community_ids:
-        await db.add_member_to_community(cid, user_id)
+    await db.batch_add_member_to_communities(community_ids, user_id)
     
     # Update user with location and communities
     await db.update_document('users', user_id, {
@@ -834,8 +833,7 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
             unique_community_ids.append(cid)
     
     # Add user to all communities
-    for cid in unique_community_ids:
-        await db.add_member_to_community(cid, user_id)
+    await db.batch_add_member_to_communities(unique_community_ids, user_id)
     
     # Update user with locations and default communities
     update_data['default_communities'] = unique_community_ids  # Store IDs of default communities (cannot leave)

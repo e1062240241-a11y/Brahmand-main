@@ -91,8 +91,7 @@ class FirebaseCommunityService:
         community_ids.append(country_community['id'])
         
         # Add user to each community
-        for cid in community_ids:
-            await db.add_member_to_community(cid, user_id)
+        await db.batch_add_member_to_communities(community_ids, user_id)
         
         return community_ids
     
