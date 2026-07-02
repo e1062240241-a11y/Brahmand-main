@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { blockUserApi, unblockUserApi, checkUserBlockedApi } from '../api';
 import { initializeFirebase } from './config';
+import { getAuth } from 'firebase/auth';
 
 export type ReportReason =
   | 'spam'
@@ -158,12 +159,36 @@ export async function isUserBlocked(
   blockedUid: string,
 ): Promise<boolean> {
   try {
+    const auth = getAuth();
+    const currentUserId = auth.currentUser?.uid;
+
+    if (blockerUid === currentUserId) {
+      // One-way check: Am I blocking them? Safe to read Firestore document we own.
+      const db = getDB();
+      const docId = `${blockerUid}_${blockedUid}`;
+      const snap = await getDoc(doc(db, 'user_blocks', docId));
+      return snap.exists();
+    } else if (blockedUid === currentUserId) {
+      // One-way check: Are they blocking me? Firestore read would fail with permission error.
+      // Call bidirectional API check first.
+      const res = await checkUserBlockedApi(blockerUid);
+      const isBidirectionalBlocked = res.data?.is_blocked ?? false;
+      if (!isBidirectionalBlocked) {
+        return false;
+      }
+      // If bidirectional block exists, check if I blocked them.
+      // If I did not block them, they must have blocked me.
+      const amIBlockingThem = await isUserBlocked(currentUserId, blockerUid);
+      return !amIBlockingThem;
+    }
+
+    // Default fallback
     const db = getDB();
     const docId = `${blockerUid}_${blockedUid}`;
     const snap = await getDoc(doc(db, 'user_blocks', docId));
     return snap.exists();
   } catch (error) {
-    console.warn('[moderationService] Firebase one-way check failed, falling back to bidirectional checkUserBlockedApi:', error);
+    console.warn('[moderationService] isUserBlocked error:', error);
     try {
       const res = await checkUserBlockedApi(blockedUid);
       return res.data?.is_blocked ?? false;
