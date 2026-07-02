@@ -53,6 +53,7 @@ export interface ReportPayload {
   contentType: ContentType;
   reason: ReportReason;
   description?: string;
+  postId?: string;
 }
 
 function getDB() {
@@ -83,7 +84,7 @@ export async function submitReport(payload: ReportPayload): Promise<string> {
     console.warn('[moderationService] Duplicate check failed, proceeding with submit:', err);
   }
 
-  const docRef = await addDoc(collection(db, 'moderation_reports'), {
+  const reportData: any = {
     reporterUid: payload.reporterUid,
     reportedUserUid: payload.reportedUserUid,
     contentId: payload.contentId,
@@ -92,7 +93,19 @@ export async function submitReport(payload: ReportPayload): Promise<string> {
     description: payload.description || '',
     status: 'pending' as ModerationStatus,
     createdAt: serverTimestamp(),
-  });
+  };
+
+  // Apple Guideline 1.2 Compliance - strict field requirements for comment reporting
+  if (payload.contentType === 'comment') {
+    reportData.commentId = payload.contentId;
+    reportData.postId = payload.postId || '';
+    reportData.commentOwnerId = payload.reportedUserUid;
+    reportData.reporterUserId = payload.reporterUid;
+    reportData.reportReason = payload.reason;
+    reportData.timestamp = serverTimestamp();
+  }
+
+  const docRef = await addDoc(collection(db, 'moderation_reports'), reportData);
 
   return docRef.id;
 }

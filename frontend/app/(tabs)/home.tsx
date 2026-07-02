@@ -4568,9 +4568,10 @@ export default function HomeScreen() {
         reportedUserUid={pendingReportComment?.user_id || ''}
         contentId={pendingReportComment?.id || ''}
         contentType="comment"
+        postId={pendingReportComment?.post_id || selectedCommentPostId || ''}
         apiFallback={async (reason, description) => {
           if (pendingReportComment?.id) {
-            await reportComment(pendingReportComment.id, reason, description || '');
+            await reportComment(String(pendingReportComment.id), reason, description || '');
           }
         }}
         onSuccess={() => {

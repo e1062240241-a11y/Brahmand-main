@@ -30,7 +30,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch, reportContent } from '../../src/services/api';
+import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch, reportContent, reportComment } from '../../src/services/api';
 import { scheduleEventReminderNotification } from '../../src/services/pushNotifications';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
@@ -4890,14 +4890,10 @@ export default function CommunityDetailScreen() {
         reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
         contentId={String(pendingReportComment?.id || '')}
         contentType="comment"
-        apiFallback={async (reason) => {
+        postId={pendingReportComment?.post_id || showCommentModal?.id || ''}
+        apiFallback={async (reason, description) => {
           if (pendingReportComment?.id) {
-            await reportContent({
-              content_type: 'comment',
-              content_id: String(pendingReportComment.id),
-              category: reason as any,
-              description: `Reported comment: ${reason}`
-            });
+            await reportComment(String(pendingReportComment.id), reason, description || '');
           }
         }}
         onSuccess={() => {

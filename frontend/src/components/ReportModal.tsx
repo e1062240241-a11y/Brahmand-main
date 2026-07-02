@@ -33,6 +33,7 @@ interface ReportModalProps {
   reportedUserUid: string;
   contentId: string;
   contentType: ContentType;
+  postId?: string;
   apiFallback?: (reason: ReportReason, description?: string) => Promise<void>;
   /** Optional success callback called after report is submitted */
   onSuccess?: (reason: ReportReason) => void;
@@ -58,6 +59,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   reportedUserUid,
   contentId,
   contentType,
+  postId,
   apiFallback,
   onSuccess,
 }) => {
@@ -89,6 +91,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
         reportedUserUid,
         contentId,
         contentType,
+        postId,
         reason: selectedReason,
         description,
       });

@@ -109,6 +109,8 @@ const UserProfileScreen = () => {
   const [activeTab, setActiveTab] = useState('grid');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
+  const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
 
   const loadComments = async (postId: string) => {
@@ -241,6 +243,41 @@ const UserProfileScreen = () => {
       Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
     }
   };
+
+  const handleCommentMenuPress = useCallback((comment: any) => {
+    const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
+    if (!targetUserId) return;
+
+    if (Platform.OS === 'ios') {
+      const { ActionSheetIOS } = require('react-native');
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Comment'],
+          cancelButtonIndex: 0,
+          title: 'Comment Options'
+        },
+        async (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            setPendingReportComment(comment);
+            setReportCommentModalVisible(true);
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Comment Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Comment', onPress: () => {
+            setPendingReportComment(comment);
+            setReportCommentModalVisible(true);
+          }}
+        ],
+        { cancelable: true }
+      );
+    }
+  }, []);
 
   const loadProfile = useCallback(async (showLoading = true) => {
     if (!profileUserId) return;
@@ -994,12 +1031,19 @@ const UserProfileScreen = () => {
                                     <Avatar photo={item.user_photo} name={item.username || 'User'} size={24} />
                                     <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
                                   </View>
-                                  {canDelete && (
+                                  {canDelete ? (
                                     <TouchableOpacity
                                       style={{ padding: 4, marginRight: -4 }}
                                       onPress={() => handleDeleteComment(item)}
                                     >
                                       <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                    </TouchableOpacity>
+                                  ) : (
+                                    <TouchableOpacity
+                                      style={{ padding: 4, marginRight: -4 }}
+                                      onPress={() => handleCommentMenuPress(item)}
+                                    >
+                                      <Ionicons name="ellipsis-horizontal" size={16} color={COLORS.textLight} />
                                     </TouchableOpacity>
                                   )}
                                 </View>
@@ -1045,12 +1089,19 @@ const UserProfileScreen = () => {
                                               <Avatar photo={reply.user_photo} name={reply.username || 'User'} size={20} />
                                               <Text style={[styles.commentItemUser, { fontSize: 13 }]}>{reply?.username || 'User'}</Text>
                                             </View>
-                                            {canDeleteReply && (
+                                            {canDeleteReply ? (
                                               <TouchableOpacity
                                                 style={{ padding: 4, marginRight: -4 }}
                                                 onPress={() => handleDeleteComment(reply)}
                                               >
                                                 <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                              </TouchableOpacity>
+                                            ) : (
+                                              <TouchableOpacity
+                                                style={{ padding: 4, marginRight: -4 }}
+                                                onPress={() => handleCommentMenuPress(reply)}
+                                              >
+                                                <Ionicons name="ellipsis-horizontal" size={14} color={COLORS.textLight} />
                                               </TouchableOpacity>
                                             )}
                                           </View>
@@ -1183,6 +1234,32 @@ const UserProfileScreen = () => {
         reportedUserUid={profileUserId || ''}
         contentId={profileUserId || ''}
         contentType="user"
+      />
+
+      {/* Apple Guideline 1.2 - Report Comment Modal */}
+      <ReportModal
+        visible={reportCommentModalVisible}
+        onClose={() => {
+          setReportCommentModalVisible(false);
+          setPendingReportComment(null);
+        }}
+        reporterUid={currentUserId || ''}
+        reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+        contentId={String(pendingReportComment?.id || '')}
+        contentType="comment"
+        postId={pendingReportComment?.post_id || selectedCommentPost?.id || ''}
+        apiFallback={async (reason, description) => {
+          if (pendingReportComment?.id) {
+            const { reportComment } = require('../../src/services/api');
+            await reportComment(String(pendingReportComment.id), reason, description || '');
+          }
+        }}
+        onSuccess={() => {
+          if (pendingReportComment?.id) {
+            const targetId = pendingReportComment.id;
+            setPostComments(prev => prev.filter(c => c.id !== targetId));
+          }
+        }}
       />
     </SafeAreaView>
   );
