@@ -73,11 +73,12 @@ async def verify_token(
         user_data = await cache_manager.get_user(user_id)
         if not user_data:
             from config.database import get_database
-            db = await get_database()
-            user_doc = await db.collection('users').document(user_id).get()
-            if not user_doc.exists:
+            from config.firestore_db import FirestoreDB
+            db_client = await get_database()
+            db = FirestoreDB(db_client)
+            user_data = await db.get_document('users', user_id)
+            if not user_data:
                 raise HTTPException(status_code=401, detail="User account not found")
-            user_data = user_doc.to_dict()
             await cache_manager.set_user(user_id, user_data)
 
         if user_data.get('is_blocked'):
@@ -143,13 +144,11 @@ async def get_current_user(
             pass
     
     # Fetch from database
-    db = await get_database()
-    user_doc = await db.collection('users').document(user_id).get()
-    if not user_doc.exists:
+    db_client = await get_database()
+    db = FirestoreDB(db_client)
+    user = await db.get_document('users', user_id)
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    user = user_doc.to_dict()
-    user['id'] = user_doc.id
     
     # Serialize and cache
     user_data = serialize_user(user)
