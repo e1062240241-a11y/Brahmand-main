@@ -1245,6 +1245,37 @@ const UserProfileScreen = () => {
               </View>
             </KeyboardAvoidingView>
           </Modal>
+          {/* Apple Guideline 1.2 - Report Comment Modal */}
+          <ReportModal
+            visible={reportCommentModalVisible}
+            onClose={() => {
+              setReportCommentModalVisible(false);
+              setPendingReportComment(null);
+              if (commentModalToRestore) {
+                setTimeout(() => {
+                  setCommentModalVisible(true);
+                  setCommentModalToRestore(false);
+                }, 300);
+              }
+            }}
+            reporterUid={currentUserId || ''}
+            reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+            contentId={String(pendingReportComment?.id || '')}
+            contentType="comment"
+            postId={pendingReportComment?.post_id || selectedCommentPost?.id || ''}
+            apiFallback={async (reason, description) => {
+              if (pendingReportComment?.id) {
+                const { reportComment } = require('../../src/services/api');
+                await reportComment(String(pendingReportComment.id), reason, description || '');
+              }
+            }}
+            onSuccess={() => {
+              if (pendingReportComment?.id) {
+                const targetId = pendingReportComment.id;
+                setPostComments(prev => prev.filter(c => c.id !== targetId));
+              }
+            }}
+          />
         </View>
       </Modal>
 
@@ -1308,37 +1339,7 @@ const UserProfileScreen = () => {
         contentType="user"
       />
 
-      {/* Apple Guideline 1.2 - Report Comment Modal */}
-      <ReportModal
-        visible={reportCommentModalVisible}
-        onClose={() => {
-          setReportCommentModalVisible(false);
-          setPendingReportComment(null);
-          if (commentModalToRestore) {
-            setTimeout(() => {
-              setCommentModalVisible(true);
-              setCommentModalToRestore(false);
-            }, 300);
-          }
-        }}
-        reporterUid={currentUserId || ''}
-        reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
-        contentId={String(pendingReportComment?.id || '')}
-        contentType="comment"
-        postId={pendingReportComment?.post_id || selectedCommentPost?.id || ''}
-        apiFallback={async (reason, description) => {
-          if (pendingReportComment?.id) {
-            const { reportComment } = require('../../src/services/api');
-            await reportComment(String(pendingReportComment.id), reason, description || '');
-          }
-        }}
-        onSuccess={() => {
-          if (pendingReportComment?.id) {
-            const targetId = pendingReportComment.id;
-            setPostComments(prev => prev.filter(c => c.id !== targetId));
-          }
-        }}
-      />
+
     </SafeAreaView>
   );
 };
