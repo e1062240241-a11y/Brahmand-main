@@ -60,11 +60,25 @@ export function deserializePayload(payloadStr: string): any {
 
 // Adds a request to the sync queue
 export async function queueRequest(url: string, method: string, data: any) {
+  let currentUserId = '';
+  try {
+    const { useAuthStore } = require('../store/authStore');
+    currentUserId = useAuthStore.getState().user?.id || '';
+  } catch (e) {
+    console.warn('[SyncQueue] Could not resolve current user ID:', e);
+  }
+
+  const serialized = serializePayload(data);
+  const wrappedPayload = JSON.stringify({
+    _sync_userId: currentUserId,
+    _sync_payload: serialized
+  });
+
   if (Platform.OS === 'web') {
     // Web fallback using local storage
     try {
       const queue = JSON.parse(localStorage.getItem('brahmand_sync_queue') || '[]');
-      queue.push({ url, method, payload: serializePayload(data), created_at: Date.now() });
+      queue.push({ url, method, payload: wrappedPayload, created_at: Date.now() });
       localStorage.setItem('brahmand_sync_queue', JSON.stringify(queue));
     } catch (e) {
       console.warn('[SyncQueue] Web queue save failed:', e);
@@ -77,7 +91,7 @@ export async function queueRequest(url: string, method: string, data: any) {
       await database.get('sync_queue').create((record: any) => {
         record.url = url;
         record.method = method.toUpperCase();
-        record.payload = serializePayload(data);
+        record.payload = wrappedPayload;
       });
     });
     console.log(`[SyncQueue] Queued offline request: ${method} ${url}`);
@@ -92,6 +106,14 @@ export async function flushSyncQueue() {
   isFlushing = true;
   console.log('[SyncQueue] Checking sync queue for pending requests...');
 
+  let currentUserId = '';
+  try {
+    const { useAuthStore } = require('../store/authStore');
+    currentUserId = useAuthStore.getState().user?.id || '';
+  } catch (e) {
+    console.warn('[SyncQueue] Could not resolve current user ID:', e);
+  }
+
   try {
     if (Platform.OS === 'web') {
       const queue = JSON.parse(localStorage.getItem('brahmand_sync_queue') || '[]');
@@ -102,17 +124,40 @@ export async function flushSyncQueue() {
       console.log(`[SyncQueue] Web flushing ${queue.length} requests...`);
       const remaining: any[] = [];
       for (const item of queue) {
+        let payloadStr = item.payload;
+        let recordUserId = '';
         try {
-          const payload = deserializePayload(item.payload);
+          const parsedWrapper = JSON.parse(item.payload);
+          if (parsedWrapper && typeof parsedWrapper === 'object' && '_sync_payload' in parsedWrapper) {
+            payloadStr = parsedWrapper._sync_payload;
+            recordUserId = parsedWrapper._sync_userId || '';
+          }
+        } catch (e) {
+          // Legacy payload
+        }
+
+        // Verify session matches
+        if (recordUserId && recordUserId !== currentUserId) {
+          console.warn(`[SyncQueue] User session changed from ${recordUserId} to ${currentUserId}. Discarding request ${item.method} ${item.url}`);
+          continue; // Discard by skipping
+        }
+
+        try {
+          const payload = deserializePayload(payloadStr);
           await api({
             url: item.url,
             method: item.method,
             data: payload,
             headers: payload instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
           });
-        } catch (err) {
-          console.warn(`[SyncQueue] Web request failed to retry: ${item.method} ${item.url}`, err);
-          remaining.push(item);
+        } catch (err: any) {
+          const status = err.response?.status;
+          if (status && status >= 400 && status < 500) {
+            console.warn(`[SyncQueue] Web request failed with client error ${status}. Discarding: ${item.method} ${item.url}`);
+          } else {
+            console.warn(`[SyncQueue] Web request failed to retry: ${item.method} ${item.url}`, err);
+            remaining.push(item);
+          }
         }
       }
       localStorage.setItem('brahmand_sync_queue', JSON.stringify(remaining));
@@ -134,7 +179,28 @@ export async function flushSyncQueue() {
     const sorted = [...pending].sort((a: any, b: any) => a.createdAt.getTime() - b.createdAt.getTime());
 
     for (const item of sorted) {
-      const payload = deserializePayload(item.payload);
+      let payloadStr = item.payload;
+      let recordUserId = '';
+      try {
+        const parsedWrapper = JSON.parse(item.payload);
+        if (parsedWrapper && typeof parsedWrapper === 'object' && '_sync_payload' in parsedWrapper) {
+          payloadStr = parsedWrapper._sync_payload;
+          recordUserId = parsedWrapper._sync_userId || '';
+        }
+      } catch (e) {
+        // Legacy payload
+      }
+
+      // Check session context
+      if (recordUserId && recordUserId !== currentUserId) {
+        console.warn(`[SyncQueue] User session changed from ${recordUserId} to ${currentUserId}. Discarding request ${item.method} ${item.url}`);
+        await database.write(async () => {
+          await item.destroyPermanently();
+        });
+        continue;
+      }
+
+      const payload = deserializePayload(payloadStr);
       try {
         console.log(`[SyncQueue] Retrying request: ${item.method} ${item.url}`);
         await api({
@@ -150,9 +216,17 @@ export async function flushSyncQueue() {
         });
         console.log(`[SyncQueue] Successfully synced and removed: ${item.method} ${item.url}`);
       } catch (err: any) {
-        console.warn(`[SyncQueue] Request failed to sync (will retry later): ${item.method} ${item.url}`, err.message || err);
-        // Stop flushing subsequent requests if there's a connection/server failure
-        break;
+        const status = err.response?.status;
+        if (status && status >= 400 && status < 500) {
+          console.warn(`[SyncQueue] Request failed with client error ${status}. Discarding: ${item.method} ${item.url}`);
+          await database.write(async () => {
+            await item.destroyPermanently();
+          });
+        } else {
+          console.warn(`[SyncQueue] Request failed to sync (will retry later): ${item.method} ${item.url}`, err.message || err);
+          // Stop flushing subsequent requests if there's a connection/server failure
+          break;
+        }
       }
     }
   } catch (err) {

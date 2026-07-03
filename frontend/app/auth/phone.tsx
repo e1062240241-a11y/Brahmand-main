@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { initializeFirebase, firebaseConfig, isAnonymousPhone } from '../../src/services/firebase/config';
 import { loginAnonymous } from '../../src/services/api';
 
@@ -35,6 +36,7 @@ export default function PhoneScreen() {
   const [error, setError] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const phoneInputRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
 
   // Initialize Firebase on mount
   React.useEffect(() => {
@@ -122,7 +124,7 @@ export default function PhoneScreen() {
         <View style={styles.content}>
           <View style={styles.inputsStack}>
             <Text style={styles.title}>Enter your phone</Text>
-            <Text style={styles.subtitle}>We'll send you a verification code</Text>
+            <Text style={styles.subtitle}>{"We'll send you a verification code"}</Text>
 
             {/* Phone Input */}
             <TouchableWithoutFeedback onPress={() => phoneInputRef.current?.focus()}>
@@ -158,7 +160,12 @@ export default function PhoneScreen() {
         </View>
 
         {/* Action Button at the bottom */}
-        <View style={styles.bottomContainer}>
+        <View style={[
+          styles.bottomContainer,
+          Platform.OS === 'android' && {
+            paddingBottom: Math.max(insets.bottom + 16, 24)
+          }
+        ]}>
           <TouchableOpacity
             style={[
               styles.sendButton,

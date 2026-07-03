@@ -656,6 +656,21 @@ export default function RootLayout() {
       } catch (e) {
         console.warn('Failed to require jyotishStore on startup:', e);
       }
+
+      // Load blocked users into the global block store so all screens
+      // can react immediately without individual per-screen fetches.
+      try {
+        const { user } = useAuthStore.getState();
+        const userId = user?.id;
+        if (userId) {
+          const { useBlockStore } = require('../src/store/blockStore');
+          useBlockStore.getState().loadBlocked(userId).catch((e: any) => {
+            console.warn('Failed to load block list on startup:', e);
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to require blockStore on startup:', e);
+      }
     });
   }, [loadStoredAuth, loadStoredAdminAuth]);
 
@@ -744,10 +759,114 @@ export default function RootLayout() {
         }
       };
 
+      const handlePostDeleted = (data: any) => {
+        try {
+          const postId = data?.post_id;
+          if (postId) {
+            console.log(`[Socket] Received post_deleted for ${postId}`);
+            
+            // 1. Remove from feed store
+            const { useFeedStore } = require('../src/store/feedStore');
+            useFeedStore.getState().removePost(postId);
+
+            // 2. Delete from WatermelonDB (async call)
+            (async () => {
+              try {
+                const { database } = require('../src/database');
+                if (database) {
+                  const feedCollection = database.get('feeds');
+                  const post = await feedCollection.find(postId);
+                  if (post) {
+                    await database.write(async () => {
+                      await post.destroyPermanently();
+                    });
+                    console.log(`[Socket] Permanently deleted post ${postId} from WatermelonDB`);
+                  }
+                }
+              } catch (dbErr) {
+                // If post not found or DB not initialized, it's fine
+              }
+            })();
+          }
+        } catch (e) {
+          console.warn('[Socket] Failed to process real-time post_deleted:', e);
+        }
+      };
+
+      const handleUserBlocked = (data: any) => {
+        try {
+          const blockerId = data?.blocker_id;
+          const blockedId = data?.blocked_id;
+          if (blockerId && blockedId) {
+            console.log(`[Socket] Received user_blocked: blocker=${blockerId}, blocked=${blockedId}`);
+            
+            const { useAuthStore } = require('../src/store/authStore');
+            const currentUser = useAuthStore.getState().user;
+            const currentUserId = currentUser?.id || currentUser?.uid;
+            
+            if (currentUserId === blockerId || currentUserId === blockedId) {
+              const otherId = currentUserId === blockerId ? blockedId : blockerId;
+
+              // 0. Update global block store immediately so all screens react
+              try {
+                const { useBlockStore } = require('../src/store/blockStore');
+                useBlockStore.getState().addBlock(otherId);
+              } catch (bsErr) {
+                console.warn('[Socket] Failed to update blockStore:', bsErr);
+              }
+              
+              // 1. Remove from feed store
+              const { useFeedStore } = require('../src/store/feedStore');
+              const feedStore = useFeedStore.getState();
+              if (feedStore.tabFeeds) {
+                Object.keys(feedStore.tabFeeds).forEach((tab) => {
+                  const posts = feedStore.tabFeeds[tab] || [];
+                  const filtered = posts.filter((p: any) => p.user_id !== otherId);
+                  useFeedStore.setState((state: any) => ({
+                    tabFeeds: {
+                      ...state.tabFeeds,
+                      [tab]: filtered
+                    }
+                  }));
+                });
+              }
+
+              // 2. Delete from WatermelonDB
+              (async () => {
+                try {
+                  const { database } = require('../src/database');
+                  if (database) {
+                    const feedCollection = database.get('feeds');
+                    const posts = await feedCollection.query().fetch();
+                    const postsToDelete = posts.filter((p: any) => p.userId === otherId);
+                    if (postsToDelete.length > 0) {
+                      await database.write(async () => {
+                        for (const post of postsToDelete) {
+                          await post.destroyPermanently();
+                        }
+                      });
+                      console.log(`[Socket] Permanently deleted ${postsToDelete.length} posts by ${otherId} from WatermelonDB due to block`);
+                    }
+                  }
+                } catch (dbErr) {
+                  // Ignore
+                }
+              })();
+            }
+          }
+        } catch (e) {
+          console.warn('[Socket] Failed to process real-time user_blocked:', e);
+        }
+      };
+
       socketService.onEvent('new_notification', handleNewNotification);
+      socketService.onEvent('post_deleted', handlePostDeleted);
+      socketService.onEvent('user_blocked', handleUserBlocked);
 
       return () => {
         socketService.offEvent('new_notification', handleNewNotification);
+        socketService.offEvent('post_deleted', handlePostDeleted);
+        socketService.offEvent('user_blocked', handleUserBlocked);
       };
     } else if (!isLoading && !isAuthenticated) {
       socketService.disconnect();

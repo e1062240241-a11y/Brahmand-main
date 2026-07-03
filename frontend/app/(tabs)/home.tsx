@@ -19,6 +19,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActionSheetIOS,
   RefreshControl,
   Animated,
 } from 'react-native';
@@ -36,6 +37,7 @@ import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
 import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
+import { useBlockStore } from '../../src/store/blockStore';
 import { useCoachMarkStore, getNextStep } from '../../src/utils/coachMarkState';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
@@ -79,6 +81,8 @@ import {
   getPostsFeed,
   repostPost,
   reportPost,
+  reportContent,
+  reportComment,
   searchByHashtag,
   togglePostLike,
   unfollowUser,
@@ -306,6 +310,7 @@ function ShopIcon() {
 }
 
 import { ReportModal } from '../../src/components/ReportModal';
+import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
@@ -515,6 +520,12 @@ export default function HomeScreen() {
   const firstName = user?.name?.trim()?.split(/\s+/)[0] || 'Yash';
   const avatarUri = user?.photo;
   const currentUserId = (user as any)?.id;
+
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
   const [bioText, setBioText] = useState(user?.bio || 'Sanatan Lok Community');
   const [isEditingBio, setIsEditingBio] = useState(false);
   const activeTab = useFeedStore(state => state.activeTab);
@@ -523,7 +534,13 @@ export default function HomeScreen() {
   const setTabFeed = useFeedStore(state => state.setTabFeed);
   const loadHistory = useFeedStore(state => state.loadHistory);
   const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
-  const feedPosts = currentFeed.posts;
+  const rawFeedPosts = currentFeed.posts;
+  const feedPosts = useMemo(() => {
+    return rawFeedPosts.filter((post: any) => {
+      const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
+      return !uid || !blockedUserIds.includes(String(uid));
+    });
+  }, [rawFeedPosts, blockedUserIds]);
   const feedOffset = currentFeed.offset;
   const hasMoreFeed = currentFeed.hasMore;
   const [loadingFeed, setLoadingFeed] = useState(false);
@@ -552,6 +569,8 @@ export default function HomeScreen() {
   // Apple Guideline 1.2 - report comment state
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+  const [commentModalToRestore, setCommentModalToRestore] = useState(false);
+
   const [searchActive, setSearchActive] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [hashtagResults, setHashtagResults] = useState<any[]>([]);
@@ -2209,8 +2228,151 @@ export default function HomeScreen() {
       handleDeletePost(post);
       return;
     }
-    handleReportPost(post);
-  }, [currentUserId, handleDeletePost, handleReportPost]);
+
+    const targetUserId = post?.user_id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(currentUserId, targetUserId);
+          removeBlock(String(targetUserId));
+          Alert.alert('Success', `${post.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${post.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(currentUserId, targetUserId);
+                  addBlock(String(targetUserId));
+                  Alert.alert('Success', `${post.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in post menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Post', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Post Options'
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === 1) {
+            handleReportPost(post);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Post Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Post', onPress: () => handleReportPost(post) },
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [currentUserId, blockedByMeUserIds, handleDeletePost, handleReportPost]);
+
+  const handleCommentMenuPress = useCallback((comment: any) => {
+    const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(currentUserId, targetUserId);
+          removeBlock(String(targetUserId));
+          Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${comment.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(currentUserId, targetUserId);
+                  addBlock(String(targetUserId));
+                  Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in comment menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Comment', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Comment Options'
+        },
+        async (buttonIndex) => {
+          if (buttonIndex === 1) {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Comment Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Comment', onPress: () => {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          }},
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [currentUserId, blockedByMeUserIds, commentModalVisible]);
 
   const handleOpenPostUserProfile = useCallback((post: any) => {
     if (post?.user_id) {
@@ -4380,6 +4542,21 @@ export default function HomeScreen() {
             await reportPost(pendingReportPost.id, reason, `Reported from feed: ${reason}`);
           }
         }}
+        onSuccess={() => {
+          if (pendingReportPost?.id) {
+            const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+            setTabFeed(activeTab, {
+              ...useFeedStore.getState().tabFeeds[activeTab],
+              posts: currentPosts.filter((item) => item.id !== pendingReportPost.id)
+            });
+            if (selectedCommentPostId === pendingReportPost.id) {
+              setCommentModalVisible(false);
+              setSelectedCommentPostId(null);
+              setSelectedCommentPost(null);
+              setPostComments([]);
+            }
+          }
+        }}
       />
 
       {/* Apple Guideline 1.2 - Report Comment Modal */}
@@ -4388,11 +4565,26 @@ export default function HomeScreen() {
         onClose={() => {
           setReportCommentModalVisible(false);
           setPendingReportComment(null);
+          if (commentModalToRestore) {
+            setTimeout(() => {
+              setCommentModalVisible(true);
+              setCommentModalToRestore(false);
+            }, 300);
+          }
         }}
         reporterUid={currentUserId || ''}
-        reportedUserUid={pendingReportComment?.user_id || ''}
+        reportedUserUid={pendingReportComment?.user_id || pendingReportComment?.userId || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
         contentId={pendingReportComment?.id || ''}
         contentType="comment"
+        postId={pendingReportComment?.post_id || selectedCommentPostId || ''}
+        apiFallback={async (reason, description) => {
+          if (pendingReportComment?.id) {
+            await reportComment(String(pendingReportComment.id), reason, description || '');
+          }
+        }}
+        onSuccess={() => {
+          // Keep reported comment visible
+        }}
       />
 
       <Modal
@@ -4453,8 +4645,12 @@ export default function HomeScreen() {
                   <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
                 </View>
               ) : postComments.length > 0 ? (() => {
-                const parentComments = postComments.filter(c => !c.parent_id);
-                const repliesMap = postComments.reduce((acc, c) => {
+                const filteredComments = postComments.filter((c: any) => {
+                  const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                  return !uid || !blockedUserIds.includes(String(uid));
+                });
+                const parentComments = filteredComments.filter(c => !c.parent_id);
+                const repliesMap = filteredComments.reduce((acc, c) => {
                   if (c.parent_id) {
                     if (!acc[c.parent_id]) acc[c.parent_id] = [];
                     acc[c.parent_id].push(c);
@@ -4494,12 +4690,19 @@ export default function HomeScreen() {
                             <View style={styles.commentBubble}>
                               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                                {canDelete && (
+                                {canDelete ? (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
                                     onPress={() => handleDeleteComment(item)}
                                   >
                                     <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                  </TouchableOpacity>
+                                ) : (
+                                  <TouchableOpacity
+                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                    onPress={() => handleCommentMenuPress(item)}
+                                  >
+                                    <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
                                   </TouchableOpacity>
                                 )}
                               </View>
@@ -4514,17 +4717,6 @@ export default function HomeScreen() {
                                 >
                                   <Text style={{ fontSize: 12, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
                                 </TouchableOpacity>
-                                {!canDelete && (
-                                  <TouchableOpacity
-                                    style={{ marginLeft: 16 }}
-                                    onPress={() => {
-                                      setPendingReportComment(item);
-                                      setReportCommentModalVisible(true);
-                                    }}
-                                  >
-                                    <Text style={{ fontSize: 12, color: '#E53935', fontWeight: '600' }}>Report</Text>
-                                  </TouchableOpacity>
-                                )}
                               </View>
                             </View>
                           </View>
@@ -4561,12 +4753,19 @@ export default function HomeScreen() {
                                 <View style={[styles.commentBubble, { backgroundColor: '#F8F5F9' }]}>
                                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                     <Text style={styles.commentItemUser}>{reply?.username || 'User'}</Text>
-                                    {canDeleteReply && (
+                                    {canDeleteReply ? (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4, marginTop: -4 }}
                                         onPress={() => handleDeleteComment(reply)}
                                       >
                                         <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                      </TouchableOpacity>
+                                    ) : (
+                                      <TouchableOpacity
+                                        style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                        onPress={() => handleCommentMenuPress(reply)}
+                                      >
+                                        <Ionicons name="ellipsis-horizontal" size={14} color="#536471" />
                                       </TouchableOpacity>
                                     )}
                                   </View>

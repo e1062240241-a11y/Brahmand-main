@@ -166,7 +166,7 @@ const normalizeNativeUploadFile = async (file: {
 const resolvedWebApiUrl = runtimeWebApiUrl
   ? runtimeWebApiUrl
   : configuredWebApiUrl &&
-      (!isLocalhostUrl(configuredWebApiUrl) || isWebRunningOnLocalhost)
+    (!isLocalhostUrl(configuredWebApiUrl) || isWebRunningOnLocalhost)
     ? configuredWebApiUrl
     : configuredApiUrl;
 
@@ -328,10 +328,10 @@ const uploadLargeVideoViaBunny = async (
   // Make sure we keep the correct extension if file.name lacks it but file.type is known
   let fileNameWithExt = file.name || `video-${uploadId}.mp4`;
   if (!fileNameWithExt.includes('.') && file.type) {
-     if (file.type === 'video/quicktime') fileNameWithExt += '.mov';
-     else if (file.type === 'video/mp4') fileNameWithExt += '.mp4';
-     else if (file.type === 'video/webm') fileNameWithExt += '.webm';
-     else fileNameWithExt += '.mp4';
+    if (file.type === 'video/quicktime') fileNameWithExt += '.mov';
+    else if (file.type === 'video/mp4') fileNameWithExt += '.mp4';
+    else if (file.type === 'video/webm') fileNameWithExt += '.webm';
+    else fileNameWithExt += '.mp4';
   }
 
   // Preserve the extension when sanitizing the name
@@ -597,7 +597,11 @@ export interface AdminUserKycRequest {
 export interface AdminPostReport {
   id: string;
   reporter_id?: string;
+  reporter_name?: string;
+  reporter_username?: string;
   reported_user_id?: string;
+  reported_user_name?: string;
+  reported_user_username?: string;
   content_type?: string;
   content_id?: string;
   category?: string;
@@ -612,11 +616,16 @@ export interface AdminPostReport {
     media_type?: string;
     post_user_id?: string;
     post_username?: string;
+    comment_id?: string;
+    text?: string;
+    comment_user_id?: string;
+    comment_username?: string;
   };
   moderation_result?: {
     post_deleted?: boolean;
     media_deleted?: boolean;
     comments_deleted?: number;
+    comment_deleted?: boolean;
   };
 }
 
@@ -706,11 +715,15 @@ export const adminVerifyUserKyc = (
 export const getAdminReports = (
   adminToken: string,
   status: string = "pending",
-  contentType: string = "post",
+  contentType?: string,
   limit: number = 100,
 ) =>
   adminApi.get<AdminPostReport[]>("/admin/reports", {
-    params: { status, content_type: contentType, limit },
+    params: {
+      status,
+      ...(contentType ? { content_type: contentType } : {}),
+      limit
+    },
     headers: { Authorization: `Bearer ${adminToken}` },
   });
 
@@ -851,6 +864,10 @@ export const getUserPosts = (
   limit: number = 20,
   offset: number = 0,
 ) => api.get(`/users/${userId}/posts`, { params: { limit, offset } });
+
+export const blockUserApi = (userId: string) => api.post(`/users/${userId}/block`);
+export const unblockUserApi = (userId: string) => api.post(`/users/${userId}/unblock`);
+export const checkUserBlockedApi = (userId: string) => api.get(`/users/${userId}/is_blocked`);
 
 export const getUsersBatch = (userIds: string[]) =>
   api.post("/users/batch", { user_ids: userIds });
@@ -1203,7 +1220,7 @@ export const uploadCompressedVideo = (file: {
   })();
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────────
 // OPT-3 + OPT-8: In-memory seen-IDs cache
 //
 // Previously: markPostAsSeen & getPostsFeed both called AsyncStorage.getItem
@@ -1240,7 +1257,7 @@ const _hydrateSeenCache = async () => {
         slice.forEach((id: string) => _seenIdsCache.add(id));
       }
     }
-  } catch (_) {}
+  } catch (_) { }
 };
 // Kick off hydration immediately at module load — non-blocking
 _hydrateSeenCache();
@@ -1253,7 +1270,7 @@ const _flushSeenCache = async () => {
     let arr = Array.from(_seenIdsCache);
     if (arr.length > MAX_SEEN_IDS) arr = arr.slice(arr.length - MAX_SEEN_IDS);
     await AsyncStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(arr));
-  } catch (_) {}
+  } catch (_) { }
 };
 
 /** Schedule a lazy flush unless we hit the dirty threshold immediately. */
@@ -1334,6 +1351,12 @@ export const reportPost = (
   category: string = "other",
   description: string = "",
 ) => api.post(`/posts/${postId}/report`, { category, description });
+
+export const reportComment = (
+  commentId: string,
+  category: string = "other",
+  description: string = "",
+) => api.post("/report", { content_type: "comment", content_id: commentId, category, description });
 
 export const updatePost = (postId: string, data: { caption?: string }) =>
   api.put(`/posts/${postId}`, data);
@@ -1776,10 +1799,10 @@ export const verifyUserAadhaarOtp = (data: {
 
 // Report APIs
 export const reportContent = (data: {
-  content_type: "message" | "user" | "temple" | "post";
+  content_type: "message" | "user" | "temple" | "post" | "community" | "comment";
   content_id: string;
   chat_id?: string;
-  category: "religious_attack" | "disrespectful" | "spam" | "abuse" | "other";
+  category: "religious_attack" | "disrespectful" | "spam" | "abuse" | "other" | "harassment" | "hate_speech" | "violence" | "sexual_content" | "fake_profile" | "scam_fraud";
   description?: string;
 }) => api.post("/report", data);
 
@@ -1845,12 +1868,12 @@ export const deleteHelpRequest = (requestId: string) =>
 export const createCommunityRequest = (data: {
   community_id?: string;
   request_type:
-    | "help"
-    | "blood"
-    | "medical"
-    | "financial"
-    | "petition"
-    | "emergency";
+  | "help"
+  | "blood"
+  | "medical"
+  | "financial"
+  | "petition"
+  | "emergency";
   visibility_level?: "area" | "city" | "state" | "national";
   title: string;
   description: string;
@@ -1912,11 +1935,11 @@ export const createVendor = (data: {
   photos?: string[];
   business_description?: string;
   kyc_status?:
-    | "pending"
-    | "manual_review"
-    | "verified"
-    | "rejected"
-    | "approved";
+  | "pending"
+  | "manual_review"
+  | "verified"
+  | "rejected"
+  | "approved";
   aadhar_url?: string | null;
   pan_url?: string | null;
   face_scan_url?: string | null;
@@ -1962,11 +1985,11 @@ export const updateVendor = (
     offers_home_delivery?: boolean;
     business_media_key?: string | null;
     kyc_status?:
-      | "pending"
-      | "manual_review"
-      | "verified"
-      | "rejected"
-      | "approved";
+    | "pending"
+    | "manual_review"
+    | "verified"
+    | "rejected"
+    | "approved";
   },
 ) => api.put(`/vendors/${vendorId}`, data);
 

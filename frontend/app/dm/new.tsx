@@ -53,7 +53,7 @@ export default function NewDMScreen() {
           const conversationId = existingConv?.conversation_id || existingConv?.chat_id || existingConv?.id;
 
           if (conversationId) {
-            router.replace(`/dm/${conversationId}`);
+            router.replace(`/dm/${conversationId}?userId=${selectedUserId}&userName=${encodeURIComponent(selectedUserName)}&userSL=${encodeURIComponent(selectedUserSL)}`);
             return;
           }
           
@@ -158,7 +158,7 @@ export default function NewDMScreen() {
       const conversationId = existingConv?.conversation_id || existingConv?.chat_id || existingConv?.id;
 
       if (conversationId) {
-        router.replace(`/dm/${conversationId}`);
+        router.replace(`/dm/${conversationId}?userId=${selectedUser.id}&userName=${encodeURIComponent(selectedUser.name || '')}&userSL=${encodeURIComponent(selectedUser.sl_id || '')}`);
         return;
       }
 
@@ -174,7 +174,8 @@ export default function NewDMScreen() {
     setSending(true);
     try {
       const response = await sendDirectMessage(foundUser.sl_id, message.trim());
-      router.replace(`/dm/${response.data.chat_id}`);
+      const chatId = response.data.chat_id || response.data.conversation_id;
+      router.replace(`/dm/${chatId}?userId=${foundUser.id}&userName=${encodeURIComponent(foundUser.name || '')}&userSL=${encodeURIComponent(foundUser.sl_id || '')}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to send message');
       setSending(false);

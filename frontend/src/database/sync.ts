@@ -24,7 +24,7 @@ const REQUIRED_TABLES = [
   'sync_queue',
 ];
 
-function buildEmptyChangeset(lastPulledAt: number | null) {
+function buildEmptyChangeset(lastPulledAt: number | null | undefined) {
   const changes: Record<string, { created: any[]; updated: any[]; deleted: string[] }> = {};
   REQUIRED_TABLES.forEach((t) => {
     changes[t] = { created: [], updated: [], deleted: [] };
@@ -117,7 +117,7 @@ export async function syncDatabase() {
               // Return empty changeset so WatermelonDB sync completes cleanly
               // and the local DB is left completely untouched.
               console.warn('[Sync] Pull skipped — network unavailable');
-              return buildEmptyChangeset(lastPulledAt);
+              return buildEmptyChangeset(lastPulledAt ?? null);
             }
 
             console.error('[Sync] Pull changes failed:', error);

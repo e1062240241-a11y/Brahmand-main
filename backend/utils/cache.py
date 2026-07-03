@@ -7,6 +7,8 @@ from datetime import datetime
 
 from config.settings import settings
 
+from cachetools import TTLCache
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +25,7 @@ class CacheManager:
     
     def __init__(self):
         self._redis = None
+        self._local_cache = TTLCache(maxsize=1000, ttl=300)
     
     async def _get_redis(self):
         """Lazy load Redis connection"""
@@ -33,6 +36,8 @@ class CacheManager:
     
     async def get(self, key: str) -> Optional[Any]:
         """Get value from cache"""
+        if key in self._local_cache:
+            return self._local_cache[key]
         try:
             redis = await self._get_redis()
             value = await redis.get(key)
@@ -64,6 +69,8 @@ class CacheManager:
         if ttl is None:
             ttl = settings.CACHE_TTL
         
+        self._local_cache[key] = value
+
         try:
             redis = await self._get_redis()
             serialized = json.dumps(value, default=str)
@@ -89,6 +96,8 @@ class CacheManager:
             
     async def delete(self, key: str):
         """Delete value from cache"""
+        if key in self._local_cache:
+            del self._local_cache[key]
         try:
             redis = await self._get_redis()
             await redis.delete(key)

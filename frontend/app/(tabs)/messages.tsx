@@ -1746,7 +1746,8 @@ function MessagesScreen({
                         ]}
                         android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                         onPress={() => {
-                          router.push(`/dm/${conversationId}`);
+                          const userSL = (item.user as any)?.sl_id || (item.user as any)?.slId || '';
+                          router.push(`/dm/${conversationId}?userId=${item.user?.id || ''}&userName=${encodeURIComponent(item.user?.name || '')}&userSL=${encodeURIComponent(userSL)}`);
                         }}
                       >
                         <Avatar name={item.user?.name || '?'} photo={item.user?.photo} size={52} />

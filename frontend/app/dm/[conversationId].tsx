@@ -54,7 +54,8 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { socketService } from '../../src/services/socket';
 import { isConversationMuted, muteConversationLocal, unmuteConversationLocal } from '../../src/services/mutedChats';
 import { ReportModal } from '../../src/components/ReportModal';
-import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
+import { blockUser, unblockUser, isUserBlocked, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
+import { useBlockStore } from '../../src/store/blockStore';
 
 const DM_MESSAGES_CACHE_KEY = 'dm_messages_cache';
 
@@ -125,7 +126,11 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
 
   useEffect(() => {
     if (player && isPlaying) {
-      player.play();
+      try {
+        player.play();
+      } catch (e) {
+        console.warn('[ChatVideo] play failed:', e);
+      }
     }
   }, [player, isPlaying]);
 
@@ -373,7 +378,21 @@ const DirectMessageScreen = () => {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [sharingContact, setSharingContact] = useState(false);
   const [requestActionLoading, setRequestActionLoading] = useState(false);
-  const [isBlocked, setIsBlocked] = useState(false);
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
+
+  const targetUserId = conversation?.user?.id || userId;
+  const isBlockedByMe = targetUserId ? blockedByMeUserIds.includes(String(targetUserId)) : false;
+  const [isBlockedByThem, setIsBlockedByThem] = useState(false);
+  const isBlocked = isBlockedByMe || isBlockedByThem;
+  const isBlockedRef = useRef(false);
+  
+  useEffect(() => {
+    isBlockedRef.current = isBlocked;
+  }, [isBlocked]);
   const [reportUserModalVisible, setReportUserModalVisible] = useState(false);
   const attachmentAnim = useRef(new Animated.Value(0)).current;
 
@@ -478,24 +497,37 @@ const DirectMessageScreen = () => {
   };
 
   const checkBlockStatus = useCallback(async () => {
-    if (!conversation?.user?.id || !user?.id) return;
+    const activeTargetUserId = conversation?.user?.id || userId;
+    if (!activeTargetUserId || !user?.id) return;
     try {
-      // Firebase-backed block check
-      const blocked = await isUserBlocked(user.id, conversation.user.id);
-      setIsBlocked(blocked);
+      const [blockedByMeRes, blockedByThemRes] = await Promise.all([
+        isUserBlocked(user.id, activeTargetUserId),
+        isUserBlocked(activeTargetUserId, user.id).catch(() => false)
+      ]);
+      if (blockedByMeRes) {
+        addBlock(String(activeTargetUserId));
+      } else {
+        removeBlock(String(activeTargetUserId));
+      }
+      setIsBlockedByThem(blockedByThemRes);
     } catch (e) {
-      // Fallback to AsyncStorage
       try {
         const blockedListRaw = await AsyncStorage.getItem('blocked_users_list');
         const blockedList = blockedListRaw ? JSON.parse(blockedListRaw) : [];
-        setIsBlocked(blockedList.includes(conversation.user.id));
+        const localBlocked = blockedList.includes(activeTargetUserId);
+        if (localBlocked) {
+          addBlock(String(activeTargetUserId));
+        } else {
+          removeBlock(String(activeTargetUserId));
+        }
+        setIsBlockedByThem(false);
       } catch {}
     }
-  }, [conversation?.user?.id, user?.id]);
+  }, [conversation?.user?.id, userId, user?.id, addBlock, removeBlock]);
 
   useEffect(() => {
     checkBlockStatus();
-  }, [conversation?.user?.id, checkBlockStatus]);
+  }, [conversation?.user?.id, userId, checkBlockStatus]);
 
   // Reset hasMarkedRead and mark read when screen is focused
   useEffect(() => {
@@ -519,40 +551,42 @@ const DirectMessageScreen = () => {
   }, [isFocused, markMessagesAsRead]);
 
   const handleToggleBlock = async () => {
-    if (!conversation?.user?.id || !user?.id) return;
+    const activeTargetUserId = conversation?.user?.id || userId;
+    const activeTargetUserName = conversation?.user?.name || userName || 'User';
+    if (!activeTargetUserId || !user?.id) return;
     try {
-      if (isBlocked) {
+      if (isBlockedByMe) {
         // Unblock
-        await unblockUser(user.id, conversation.user.id);
+        await unblockUser(user.id, activeTargetUserId);
+        removeBlock(String(activeTargetUserId));
         // Also clear AsyncStorage for compatibility
         try {
           const raw = await AsyncStorage.getItem('blocked_users_list');
           const list = raw ? JSON.parse(raw) : [];
-          await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list.filter((id: string) => id !== conversation.user.id)));
+          await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list.filter((id: string) => id !== activeTargetUserId)));
         } catch {}
-        setIsBlocked(false);
-        Alert.alert('Success', `${conversation.user.name} has been unblocked.`);
+        Alert.alert('Success', `${activeTargetUserName} has been unblocked.`);
         closeChatOptions();
       } else {
         Alert.alert(
           'Block User',
-          `Are you sure you want to block ${conversation.user.name}? You will no longer receive messages from them.`,
+          `Are you sure you want to block ${activeTargetUserName}? You will no longer receive messages from them.`,
           [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Block',
               style: 'destructive',
               onPress: async () => {
-                await blockUser(user.id, conversation.user.id);
+                await blockUser(user.id, activeTargetUserId);
+                addBlock(String(activeTargetUserId));
                 // Also store in AsyncStorage for compatibility
                 try {
                   const raw = await AsyncStorage.getItem('blocked_users_list');
                   const list = raw ? JSON.parse(raw) : [];
-                  if (!list.includes(conversation.user.id)) list.push(conversation.user.id);
+                  if (!list.includes(activeTargetUserId)) list.push(activeTargetUserId);
                   await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list));
                 } catch {}
-                setIsBlocked(true);
-                Alert.alert('Blocked', `${conversation.user.name} has been blocked.`);
+                Alert.alert('Blocked', `${activeTargetUserName} has been blocked.`);
                 closeChatOptions();
               }
             }
@@ -566,7 +600,8 @@ const DirectMessageScreen = () => {
   };
 
   const handleReportUser = () => {
-    if (!conversation?.user?.id) return;
+    const activeTargetUserId = conversation?.user?.id || userId;
+    if (!activeTargetUserId) return;
     closeChatOptions();
     // Small delay so options panel closes before modal opens
     setTimeout(() => setReportUserModalVisible(true), 300);
@@ -624,7 +659,10 @@ const DirectMessageScreen = () => {
     isBlocked;
 
   const inputLockReason = (() => {
-    if (isBlocked) {
+    if (isBlockedByThem) {
+      return 'You cannot send messages to this user.';
+    }
+    if (isBlockedByMe) {
       return 'You have blocked this user. Unblock them to resume chat.';
     }
     if (requestStatus === 'pending') {
@@ -707,19 +745,26 @@ const DirectMessageScreen = () => {
           request_status: 'approved',
         } as unknown as Conversation);
       }
-    } catch (error) {
-      console.warn('Error fetching conversation details by ID, falling back to conversations list:', error);
-      try {
-        const convResponse = await getConversations();
-        const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
-        const conv = conversations.find((c: Conversation) => 
-          c.conversation_id === conversationId || c.chat_id === conversationId
-        );
-        if (conv) {
-          setConversation(conv);
+    } catch (error: any) {
+      const errorMsg = error?.response?.data?.detail || error?.message || String(error);
+      const isBlockError = error?.response?.status === 403 || errorMsg.includes('block') || errorMsg.includes('Access denied');
+      if (isBlockError) {
+        setIsBlockedByThem(true);
+        console.warn('[Chat] Fetch conversation details blocked relationship detected');
+      } else {
+        console.warn('Error fetching conversation details by ID, falling back to conversations list:', error);
+        try {
+          const convResponse = await getConversations();
+          const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
+          const conv = conversations.find((c: Conversation) => 
+            c.conversation_id === conversationId || c.chat_id === conversationId
+          );
+          if (conv) {
+            setConversation(conv);
+          }
+        } catch (fbError) {
+          console.error('Fallback error fetching conversation:', fbError);
         }
-      } catch (fbError) {
-        console.error('Fallback error fetching conversation:', fbError);
       }
     }
   }, [conversationId, userId, userName, userSL]);
@@ -828,7 +873,14 @@ const DirectMessageScreen = () => {
       setLoading(false);
       return true;
     } catch (error: any) {
-      console.error('[Chat] Error fetching messages:', error);
+      const errorMsg = error?.response?.data?.detail || error?.message || String(error);
+      const isBlockError = error?.response?.status === 403 || errorMsg.includes('block') || errorMsg.includes('Access denied');
+      if (isBlockError) {
+        setIsBlockedByThem(true);
+        console.warn('[Chat] Fetch messages blocked relationship detected');
+      } else {
+        console.error('[Chat] Error fetching messages:', error);
+      }
       setLoading(false);
       return true;
     }
@@ -853,6 +905,10 @@ const DirectMessageScreen = () => {
 
     if (Platform.OS === 'web') {
       pollingInterval = setInterval(async () => {
+        if (isBlockedRef.current) {
+          if (pollingInterval) clearInterval(pollingInterval);
+          return;
+        }
         if (!uploadingMedia) {
           await fetchMessagesViaAPI();
           await fetchConversation();
@@ -886,6 +942,7 @@ const DirectMessageScreen = () => {
         socketService.joinRoom(conversationId!);
         socketService.onEvent('dm_request_updated', handleRequestUpdated);
         socketService.onMessage(socketListenerId, async (message: any) => {
+          if (isBlockedRef.current) return;
           if (message && (message.chat_id === conversationId || message.conversation_id === conversationId)) {
             setMessages((prev) => {
               const exists = prev.some((m) => m.id === message.id);
@@ -922,6 +979,10 @@ const DirectMessageScreen = () => {
     })();
 
     pollingInterval = setInterval(async () => {
+      if (isBlockedRef.current) {
+        if (pollingInterval) clearInterval(pollingInterval);
+        return;
+      }
       if (!uploadingMedia) {
         await fetchMessagesViaAPI();
         await fetchConversation();
@@ -1703,7 +1764,7 @@ const DirectMessageScreen = () => {
               
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleBlock}>
                 <Ionicons name="ban-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
-                <Text style={styles.modalItemText}>{isBlocked ? 'Unblock User' : 'Block User'}</Text>
+                <Text style={styles.modalItemText}>{isBlockedByMe ? 'Unblock User' : 'Block User'}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
               
@@ -1729,12 +1790,12 @@ const DirectMessageScreen = () => {
           </View>
         </Modal>
 
-        {requestStatus !== 'approved' && (
+        {(requestStatus !== 'approved' || isBlocked) && (
           <View style={styles.requestCard}>
-            <Text style={styles.requestTitle}>Message Request</Text>
-            <Text style={styles.requestText}>{inputLockReason || 'This chat requires request approval.'}</Text>
-            {canSendAfterCooldown && <Text style={styles.requestHint}>You can now send one new message request.</Text>}
-            {needsRecipientDecision && (
+            <Text style={styles.requestTitle}>{isBlocked ? 'Conversation Locked' : 'Message Request'}</Text>
+            <Text style={styles.requestText}>{inputLockReason || 'This chat is locked.'}</Text>
+            {!isBlocked && canSendAfterCooldown && <Text style={styles.requestHint}>You can now send one new message request.</Text>}
+            {!isBlocked && needsRecipientDecision && (
               <View style={styles.requestActionRow}>
                 <TouchableOpacity style={[styles.requestButton, styles.requestDenyButton]} onPress={handleDenyRequest} disabled={requestActionLoading}>
                   <Text style={[styles.requestButtonText, styles.requestDenyButtonText]}>{requestActionLoading ? 'Please wait...' : 'Deny'}</Text>

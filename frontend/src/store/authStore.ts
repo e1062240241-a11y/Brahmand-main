@@ -200,6 +200,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (coachMarkPairs.length > 0) {
         await AsyncStorage.multiSet(coachMarkPairs);
       }
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('brahmand_sync_queue');
+      }
     } catch (asyncStorageErr) {
       console.warn('[Auth] Failed to clear AsyncStorage on logout:', asyncStorageErr);
     }
@@ -211,6 +214,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       useFeedStore.getState().clearRotation();
     } catch (err) {
       console.warn('[Auth] Failed to clear feedStore:', err);
+    }
+
+    try {
+      const { useBlockStore } = require('./blockStore');
+      useBlockStore.getState().reset();
+    } catch (err) {
+      console.warn('[Auth] Failed to clear blockStore:', err);
     }
 
     try {

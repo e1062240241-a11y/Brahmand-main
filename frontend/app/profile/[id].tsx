@@ -23,13 +23,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment, reportPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import { ReportModal } from '../../src/components/ReportModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
+import { useBlockStore } from '../../src/store/blockStore';
 
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -109,7 +110,18 @@ const UserProfileScreen = () => {
   const [activeTab, setActiveTab] = useState('grid');
   const [userMenuVisible, setUserMenuVisible] = useState(false);
   const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
+  const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [commentModalToRestore, setCommentModalToRestore] = useState(false);
+  const [reportPostModalVisible, setReportPostModalVisible] = useState(false);
+  const [pendingReportPost, setPendingReportPost] = useState<any | null>(null);
+
+  // Global block store — shared across all screens
+  const blockedUserIds = useBlockStore(state => state.blockedUserIds);
+  const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
+  const addBlock = useBlockStore(state => state.addBlock);
+  const removeBlock = useBlockStore(state => state.removeBlock);
 
   const loadComments = async (postId: string) => {
     setCommentsLoading(true);
@@ -241,6 +253,87 @@ const UserProfileScreen = () => {
       Alert.alert('Error', detail || 'Could not delete comment. Please try again.');
     }
   };
+
+  const handleCommentMenuPress = useCallback((comment: any) => {
+    if (!comment || !currentUserId) return;
+    const targetUserId = comment.user_id || comment.userId || comment.sender_id || comment.user?.id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(currentUserId, targetUserId);
+          removeBlock(String(targetUserId));
+          Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${comment.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(currentUserId, targetUserId);
+                  addBlock(String(targetUserId));
+                  Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in comment menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      const { ActionSheetIOS } = require('react-native');
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Comment', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Comment Options'
+        },
+        async (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Comment Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Comment', onPress: () => {
+            setPendingReportComment(comment);
+            setCommentModalToRestore(commentModalVisible);
+            setCommentModalVisible(false);
+            setTimeout(() => {
+              setReportCommentModalVisible(true);
+            }, 300);
+          }},
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [currentUserId, blockedUserIds, commentModalVisible]);
 
   const loadProfile = useCallback(async (showLoading = true) => {
     if (!profileUserId) return;
@@ -381,6 +474,13 @@ const UserProfileScreen = () => {
   }, [profileUserId, offset, postsLoading]);
 
   useEffect(() => {
+    // Clear state immediately to avoid cross-user/stale leakage during navigation
+    setPosts([]);
+    setTotalPosts(0);
+    setOffset(0);
+    setHasMore(true);
+    setPostsLoading(true);
+
     loadProfile(true);
     loadPosts(true);
   }, [profileUserId]);
@@ -447,6 +547,84 @@ const UserProfileScreen = () => {
       ]
     );
   };
+
+  const handlePostMenuPress = useCallback((post: any) => {
+    if (!currentUserId) return;
+    if (profile?.id === currentUserId || post?.user_id === currentUserId) {
+      handleDeletePost(post);
+      return;
+    }
+
+    const targetUserId = post?.user_id || post?.userId || post?.user?.id || profile?.id;
+    if (!targetUserId) return;
+
+    const isUserCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUserId));
+    const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
+
+    const handleToggleBlock = async () => {
+      try {
+        if (isUserCurrentlyBlocked) {
+          await unblockUser(currentUserId, targetUserId);
+          removeBlock(String(targetUserId));
+          Alert.alert('Success', `${post.username || 'User'} has been unblocked.`);
+        } else {
+          Alert.alert(
+            'Block User',
+            `Are you sure you want to block ${post.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Block',
+                style: 'destructive',
+                onPress: async () => {
+                  await blockUser(currentUserId, targetUserId);
+                  addBlock(String(targetUserId));
+                  Alert.alert('Success', `${post.username || 'User'} has been blocked.`);
+                }
+              }
+            ]
+          );
+        }
+      } catch (err) {
+        console.error('Error toggling block in post menu:', err);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
+      }
+    };
+
+    if (Platform.OS === 'ios') {
+      const { ActionSheetIOS } = require('react-native');
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Report Post', blockLabel],
+          destructiveButtonIndex: 2,
+          cancelButtonIndex: 0,
+          title: 'Post Options'
+        },
+        async (buttonIndex: number) => {
+          if (buttonIndex === 1) {
+            setPendingReportPost(post);
+            setReportPostModalVisible(true);
+          } else if (buttonIndex === 2) {
+            await handleToggleBlock();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Post Options',
+        'Choose an action:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Report Post', onPress: () => {
+            setPendingReportPost(post);
+            setReportPostModalVisible(true);
+          }},
+          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
+        ],
+        { cancelable: true }
+      );
+    }
+  }, [profile?.id, currentUserId, blockedByMeUserIds, handleDeletePost]);
 
   const handleLikePost = useCallback(async (post: any) => {
     const postId = post?.id;
@@ -565,6 +743,7 @@ const UserProfileScreen = () => {
               try {
                 await unblockUser(currentUserId!, profileUserId!);
                 setIsBlocked(false);
+                removeBlock(String(profileUserId));
                 Alert.alert('Unblocked', `@${profile?.sl_id} has been unblocked.`);
               } catch (e) {
                 Alert.alert('Error', 'Could not unblock user. Please try again.');
@@ -587,6 +766,7 @@ const UserProfileScreen = () => {
             try {
               await blockUser(currentUserId!, profileUserId!);
               setIsBlocked(true);
+              addBlock(String(profileUserId));
               Alert.alert('Blocked', `@${profile?.sl_id} has been blocked.`);
             } catch (e) {
               Alert.alert('Error', 'Could not block user. Please try again.');
@@ -670,21 +850,23 @@ const UserProfileScreen = () => {
 
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalPosts}</Text>
+            <Text style={styles.statValue}>{isBlocked ? '0' : totalPosts}</Text>
             <Text style={styles.statLabel}>Posts</Text>
           </View>
           <TouchableOpacity 
             style={styles.statItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'followers', userId: profile?.id } })}
+            onPress={() => !isBlocked && router.push({ pathname: '/follow-connections', params: { tab: 'followers', userId: profile?.id } })}
+            disabled={isBlocked}
           >
-            <Text style={styles.statValue}>{profile?.followers_count ?? (profile?.followers?.length || 0)}</Text>
+            <Text style={styles.statValue}>{isBlocked ? '0' : (profile?.followers_count ?? (profile?.followers?.length || 0))}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.statItem}
-            onPress={() => router.push({ pathname: '/follow-connections', params: { tab: 'following', userId: profile?.id } })}
+            onPress={() => !isBlocked && router.push({ pathname: '/follow-connections', params: { tab: 'following', userId: profile?.id } })}
+            disabled={isBlocked}
           >
-            <Text style={styles.statValue}>{profile?.following_count ?? (profile?.following?.length || 0)}</Text>
+            <Text style={styles.statValue}>{isBlocked ? '0' : (profile?.following_count ?? (profile?.following?.length || 0))}</Text>
             <Text style={styles.statLabel}>Following</Text>
           </TouchableOpacity>
         </View>
@@ -699,11 +881,11 @@ const UserProfileScreen = () => {
           )}
         </View>
         <Text style={styles.slId}>@{profile?.sl_id || ''}</Text>
-        {profile?.bio ? (
+        {profile?.bio && !isBlocked ? (
           <Text style={styles.bioText}>{profile.bio}</Text>
         ) : null}
         
-        {profile?.home_location && (
+        {profile?.home_location && !isBlocked && (
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
             <Text style={styles.locationText}>
@@ -721,6 +903,13 @@ const UserProfileScreen = () => {
             onPress={() => router.push('/profile/edit')}
           >
             <Text style={styles.editProfileText}>Edit Profile</Text>
+          </TouchableOpacity>
+        ) : isBlocked ? (
+          <TouchableOpacity 
+            style={styles.editProfileButton}
+            onPress={handleBlockUser}
+          >
+            <Text style={styles.editProfileText}>Unblock</Text>
           </TouchableOpacity>
         ) : (
           <>
@@ -813,7 +1002,7 @@ const UserProfileScreen = () => {
       </View>
 
       <Animated.FlatList
-        data={posts}
+        data={isBlocked ? [] : posts}
         renderItem={renderPost}
         keyExtractor={(item, index) => item.id ? `profile-post-${item.id}` : `profile-post-idx-${index}`}
         numColumns={3}
@@ -829,14 +1018,24 @@ const UserProfileScreen = () => {
             <View style={styles.footerLoader}>
               <ActivityIndicator size="small" color={COLORS.textLight} />
             </View>
-          ) : !hasMore && posts.length > 0 ? (
+          ) : !hasMore && posts.length > 0 && !isBlocked ? (
             <View style={styles.endOfFeed}>
               <Text style={styles.endOfFeedText}>You've reached the end</Text>
             </View>
           ) : null
         }
         ListEmptyComponent={
-          !loading && !postsLoading ? (
+          isBlocked ? (
+            <View style={styles.emptyContainer}>
+              <View style={[styles.emptyIconCircle, { borderColor: COLORS.error }]}>
+                <Ionicons name="ban-outline" size={40} color={COLORS.error} />
+              </View>
+              <Text style={styles.emptyTitle}>Blocked</Text>
+              <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32 }}>
+                You have blocked this user or they have blocked you. Unblock to view posts and interact.
+              </Text>
+            </View>
+          ) : !loading && !postsLoading ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
                 <Ionicons name="camera-outline" size={40} color={COLORS.text} />
@@ -894,8 +1093,8 @@ const UserProfileScreen = () => {
                 onRepost={handleRepost}
                 openCommentsOnCaptionPress
                 onUserPress={() => setPostModalVisible(false)}
-                postMenuType={profile?.id === currentUserId ? 'delete' : undefined}
-                onPostMenuPress={handleDeletePost}
+                postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
+                onPostMenuPress={handlePostMenuPress}
                 theme="dark"
                 isBlackBackground
               />
@@ -951,9 +1150,15 @@ const UserProfileScreen = () => {
                       <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
                     </View>
                   ) : (() => {
-                    const parentComments = postComments.filter(c => !c.parent_id);
+                    const parentComments = postComments.filter(c => {
+                      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                      const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                      return !c.parent_id && !isBlockedUser;
+                    });
                     const repliesMap = postComments.reduce((acc, c) => {
-                      if (c.parent_id) {
+                      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                      const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+                      if (c.parent_id && !isBlockedUser) {
                         if (!acc[c.parent_id]) acc[c.parent_id] = [];
                         acc[c.parent_id].push(c);
                       }
@@ -975,12 +1180,19 @@ const UserProfileScreen = () => {
                                     <Avatar photo={item.user_photo} name={item.username || 'User'} size={24} />
                                     <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
                                   </View>
-                                  {canDelete && (
+                                  {canDelete ? (
                                     <TouchableOpacity
                                       style={{ padding: 4, marginRight: -4 }}
                                       onPress={() => handleDeleteComment(item)}
                                     >
                                       <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                                    </TouchableOpacity>
+                                  ) : (
+                                    <TouchableOpacity
+                                      style={{ padding: 4, marginRight: -4 }}
+                                      onPress={() => handleCommentMenuPress(item)}
+                                    >
+                                      <Ionicons name="ellipsis-horizontal" size={16} color={COLORS.textLight} />
                                     </TouchableOpacity>
                                   )}
                                 </View>
@@ -1026,12 +1238,19 @@ const UserProfileScreen = () => {
                                               <Avatar photo={reply.user_photo} name={reply.username || 'User'} size={20} />
                                               <Text style={[styles.commentItemUser, { fontSize: 13 }]}>{reply?.username || 'User'}</Text>
                                             </View>
-                                            {canDeleteReply && (
+                                            {canDeleteReply ? (
                                               <TouchableOpacity
                                                 style={{ padding: 4, marginRight: -4 }}
                                                 onPress={() => handleDeleteComment(reply)}
                                               >
                                                 <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                              </TouchableOpacity>
+                                            ) : (
+                                              <TouchableOpacity
+                                                style={{ padding: 4, marginRight: -4 }}
+                                                onPress={() => handleCommentMenuPress(reply)}
+                                              >
+                                                <Ionicons name="ellipsis-horizontal" size={14} color={COLORS.textLight} />
                                               </TouchableOpacity>
                                             )}
                                           </View>
@@ -1103,6 +1322,55 @@ const UserProfileScreen = () => {
               </View>
             </KeyboardAvoidingView>
           </Modal>
+          {/* Apple Guideline 1.2 - Report Comment Modal */}
+          <ReportModal
+            visible={reportCommentModalVisible}
+            onClose={() => {
+              setReportCommentModalVisible(false);
+              setPendingReportComment(null);
+              if (commentModalToRestore) {
+                setTimeout(() => {
+                  setCommentModalVisible(true);
+                  setCommentModalToRestore(false);
+                }, 300);
+              }
+            }}
+            reporterUid={currentUserId || ''}
+            reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+            contentId={String(pendingReportComment?.id || '')}
+            contentType="comment"
+            postId={pendingReportComment?.post_id || selectedCommentPost?.id || ''}
+            apiFallback={async (reason, description) => {
+              if (pendingReportComment?.id) {
+                const { reportComment } = require('../../src/services/api');
+                await reportComment(String(pendingReportComment.id), reason, description || '');
+              }
+            }}
+            onSuccess={() => {
+              // Keep reported comment visible
+            }}
+          />
+
+          {/* Apple Guideline 1.2 - Report Post Modal */}
+          <ReportModal
+            visible={reportPostModalVisible}
+            onClose={() => {
+              setReportPostModalVisible(false);
+              setPendingReportPost(null);
+            }}
+            reporterUid={currentUserId || ''}
+            reportedUserUid={pendingReportPost?.user_id || pendingReportPost?.userId || pendingReportPost?.user?.id || profile?.id || ''}
+            contentId={pendingReportPost?.id || ''}
+            contentType="post"
+            apiFallback={async (reason) => {
+              if (pendingReportPost?.id) {
+                await reportPost(pendingReportPost.id, reason, `Reported from profile posts: ${reason}`);
+              }
+            }}
+            onSuccess={() => {
+              // Keep it visible as per user's requirement: "remain it visible"
+            }}
+          />
         </View>
       </Modal>
 
@@ -1165,6 +1433,9 @@ const UserProfileScreen = () => {
         contentId={profileUserId || ''}
         contentType="user"
       />
+
+
+
     </SafeAreaView>
   );
 };

@@ -20,7 +20,9 @@ import {
   where,
   getDocs,
 } from 'firebase/firestore';
+import { blockUserApi, unblockUserApi, checkUserBlockedApi } from '../api';
 import { initializeFirebase } from './config';
+import { getAuth } from 'firebase/auth';
 
 export type ReportReason =
   | 'spam'
@@ -51,6 +53,8 @@ export interface ReportPayload {
   contentId: string;
   contentType: ContentType;
   reason: ReportReason;
+  description?: string;
+  postId?: string;
 }
 
 function getDB() {
@@ -65,42 +69,86 @@ function getDB() {
 export async function submitReport(payload: ReportPayload): Promise<string> {
   const db = getDB();
 
-  const docRef = await addDoc(collection(db, 'moderation_reports'), {
+  // Prevent duplicate reports by the same user for the same content
+  try {
+    const q = query(
+      collection(db, 'moderation_reports'),
+      where('reporterUid', '==', payload.reporterUid),
+      where('contentId', '==', payload.contentId)
+    );
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      console.warn('[moderationService] Report already submitted for this content.');
+      return snap.docs[0].id;
+    }
+  } catch (err) {
+    console.warn('[moderationService] Duplicate check failed, proceeding with submit:', err);
+  }
+
+  const reportData: any = {
     reporterUid: payload.reporterUid,
     reportedUserUid: payload.reportedUserUid,
     contentId: payload.contentId,
     contentType: payload.contentType,
     reason: payload.reason,
+    description: payload.description || '',
     status: 'pending' as ModerationStatus,
     createdAt: serverTimestamp(),
-  });
+  };
+
+  // Apple Guideline 1.2 Compliance - strict field requirements for comment reporting
+  if (payload.contentType === 'comment') {
+    reportData.commentId = payload.contentId;
+    reportData.postId = payload.postId || '';
+    reportData.commentOwnerId = payload.reportedUserUid;
+    reportData.reporterUserId = payload.reporterUid;
+    reportData.reportReason = payload.reason;
+    reportData.timestamp = serverTimestamp();
+  }
+
+  const docRef = await addDoc(collection(db, 'moderation_reports'), reportData);
 
   return docRef.id;
 }
 
+
+
 /**
- * Block a user. Stores the block in Firebase.
+ * Block a user. Stores the block in Firebase and backend.
  * Collection: user_blocks
  * Document ID: `${blockerUid}_${blockedUid}` for fast lookup.
  */
 export async function blockUser(blockerUid: string, blockedUid: string): Promise<void> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
+  // Call backend API first to perform block, which also writes to Firestore securely.
+  await blockUserApi(blockedUid);
 
-  await setDoc(doc(db, 'user_blocks', docId), {
-    blockerUid,
-    blockedUid,
-    createdAt: serverTimestamp(),
-  });
+  try {
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
+    await setDoc(doc(db, 'user_blocks', docId), {
+      blockerUid,
+      blockedUid,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.warn('[moderationService] Direct client Firebase block write failed (ignored):', error);
+  }
 }
 
 /**
- * Unblock a user. Removes the block document from Firebase.
+ * Unblock a user. Removes the block document from Firebase and backend.
  */
 export async function unblockUser(blockerUid: string, blockedUid: string): Promise<void> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
-  await deleteDoc(doc(db, 'user_blocks', docId));
+  // Call backend API first to perform unblock, which also deletes from Firestore securely.
+  await unblockUserApi(blockedUid);
+
+  try {
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
+    await deleteDoc(doc(db, 'user_blocks', docId));
+  } catch (error) {
+    console.warn('[moderationService] Direct client Firebase unblock write failed (ignored):', error);
+  }
 }
 
 /**
@@ -110,10 +158,44 @@ export async function isUserBlocked(
   blockerUid: string,
   blockedUid: string,
 ): Promise<boolean> {
-  const db = getDB();
-  const docId = `${blockerUid}_${blockedUid}`;
-  const snap = await getDoc(doc(db, 'user_blocks', docId));
-  return snap.exists();
+  try {
+    const auth = getAuth();
+    const currentUserId = auth.currentUser?.uid;
+
+    if (blockerUid === currentUserId) {
+      // One-way check: Am I blocking them? Safe to read Firestore document we own.
+      const db = getDB();
+      const docId = `${blockerUid}_${blockedUid}`;
+      const snap = await getDoc(doc(db, 'user_blocks', docId));
+      return snap.exists();
+    } else if (blockedUid === currentUserId) {
+      // One-way check: Are they blocking me? Firestore read would fail with permission error.
+      // Call bidirectional API check first.
+      const res = await checkUserBlockedApi(blockerUid);
+      const isBidirectionalBlocked = res.data?.is_blocked ?? false;
+      if (!isBidirectionalBlocked) {
+        return false;
+      }
+      // If bidirectional block exists, check if I blocked them.
+      // If I did not block them, they must have blocked me.
+      const amIBlockingThem = await isUserBlocked(currentUserId, blockerUid);
+      return !amIBlockingThem;
+    }
+
+    // Default fallback
+    const db = getDB();
+    const docId = `${blockerUid}_${blockedUid}`;
+    const snap = await getDoc(doc(db, 'user_blocks', docId));
+    return snap.exists();
+  } catch (error) {
+    console.warn('[moderationService] isUserBlocked error:', error);
+    try {
+      const res = await checkUserBlockedApi(blockedUid);
+      return res.data?.is_blocked ?? false;
+    } catch {
+      return false;
+    }
+  }
 }
 
 /**
@@ -127,4 +209,17 @@ export async function getBlockedUsers(blockerUid: string): Promise<string[]> {
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => d.data().blockedUid as string);
+}
+
+/**
+ * Get all UIDs of users who have blocked this user.
+ */
+export async function getUsersWhoBlockedMe(blockedUid: string): Promise<string[]> {
+  const db = getDB();
+  const q = query(
+    collection(db, 'user_blocks'),
+    where('blockedUid', '==', blockedUid),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => d.data().blockerUid as string);
 }

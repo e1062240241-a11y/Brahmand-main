@@ -14,6 +14,7 @@ interface FeedState {
   tabFeeds: Record<string, TabFeedData>;
   setTabFeed: (tab: string, data: Partial<TabFeedData>) => void;
   clearCache: () => void;
+  removePost: (postId: string) => void;
 
   // ─── Smart Rotation ───────────────────────────────────────────────────────
   /** Per-user view history (loaded from AsyncStorage on init) */
@@ -67,6 +68,24 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         trending: initialTabData(),
         festivals: initialTabData(),
       },
+    }),
+  removePost: (postId) =>
+    set((state) => {
+      const updatedTabFeeds = { ...state.tabFeeds };
+      Object.keys(updatedTabFeeds).forEach((tab) => {
+        const feed = updatedTabFeeds[tab];
+        if (feed && feed.posts) {
+          const originalLength = feed.posts.length;
+          const filtered = feed.posts.filter((p) => p.id !== postId);
+          const removedCount = originalLength - filtered.length;
+          updatedTabFeeds[tab] = {
+            ...feed,
+            posts: filtered,
+            offset: Math.max(0, feed.offset - removedCount),
+          };
+        }
+      });
+      return { tabFeeds: updatedTabFeeds };
     }),
 
   // ─── Smart Rotation State ─────────────────────────────────────────────────
