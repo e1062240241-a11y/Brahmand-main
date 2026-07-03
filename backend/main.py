@@ -201,6 +201,7 @@ async def lifespan(app: FastAPI):
         logger.error("❌ Firebase/Firestore not available - check service account key")
     
     # Start task queue
+    task_queue.max_workers = int(os.getenv("TASK_QUEUE_WORKERS", "2"))
     await task_queue.start()
     logger.info("Background task queue started")
 
@@ -211,14 +212,17 @@ async def lifespan(app: FastAPI):
     # Run Krishna RAG pipeline diagnostics at startup
     try:
         from services.krishna_rag_service import run_startup_diagnostics
-        rag_diag = await asyncio.to_thread(run_startup_diagnostics)
-        logger.info(
-            "[RAG-Startup] mode=%s | chromadb_installed=%s | collection_count=%d | local_verses=%d",
-            rag_diag.get("rag_mode"),
-            rag_diag.get("chromadb_installed"),
-            rag_diag.get("collection_count", 0),
-            rag_diag.get("local_verses_loaded", 0),
-        )
+        async def _log_rag_startup_diagnostics():
+            rag_diag = await asyncio.to_thread(run_startup_diagnostics)
+            logger.info(
+                "[RAG-Startup] mode=%s | chromadb_installed=%s | collection_count=%d | local_verses=%d",
+                rag_diag.get("rag_mode"),
+                rag_diag.get("chromadb_installed"),
+                rag_diag.get("collection_count", 0),
+                rag_diag.get("local_verses_loaded", 0),
+            )
+
+        asyncio.create_task(_log_rag_startup_diagnostics())
     except Exception as _rag_diag_err:
         logger.error("[RAG-Startup] Diagnostics failed to run: %s", _rag_diag_err)
 
