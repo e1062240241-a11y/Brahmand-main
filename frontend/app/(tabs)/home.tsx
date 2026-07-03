@@ -596,21 +596,26 @@ export default function HomeScreen() {
   const [activeAartiIndex, setActiveAartiIndex] = useState(0);
 
   const AARTI_YOUTUBE_URLS: Record<string, string> = {
-    'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/live/9gC4O6-9oCc?si=AQKFTRQ8OmEx2TD9',
-    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/live/58NWbwkGrG0?si=u3rstcuQc5dbUiWC',
-    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/TLqrhY3bRp8?si=4sPKpeWVFnAtxPY2',
-    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/embed?listType=playlist&list=UUdMj2twWfMHXrWgX5oVdoyA&autoplay=1'
+    'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/watch?v=TZxIgnTHEB0',
+    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/watch?v=J4z7CIrvsuw',
+    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/watch?v=BHVRy8DSFEA',
+    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/watch?v=J0nRdUOQps8'
   };
 
   const [isAartiModalVisible, setIsAartiModalVisible] = useState(false);
   const [selectedAartiUrl, setSelectedAartiUrl] = useState('');
   const [selectedAartiTitle, setSelectedAartiTitle] = useState('');
 
+  const getYoutubeVideoId = (url: string) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
   const getAartiEmbedUrl = (url: string) => {
-    const match = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]+)/);
-    if (match) return `https://www.youtube.com/embed/${match[1]}?autoplay=1`;
-    const match2 = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
-    if (match2) return `https://www.youtube.com/embed/${match2[1]}?autoplay=1`;
+    const videoId = getYoutubeVideoId(url);
+    if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     return url;
   };
 
@@ -619,8 +624,8 @@ export default function HomeScreen() {
       const listId = url.split('&list=')[1].split('&')[0];
       return `https://m.youtube.com/playlist?list=${listId}`;
     }
-    const match = url.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]+)/);
-    if (match) return `https://m.youtube.com/watch?v=${match[1]}`;
+    const videoId = getYoutubeVideoId(url);
+    if (videoId) return `https://m.youtube.com/watch?v=${videoId}`;
     return url.replace('www.youtube.com', 'm.youtube.com');
   };
 
