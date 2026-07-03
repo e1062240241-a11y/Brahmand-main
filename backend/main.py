@@ -8340,8 +8340,8 @@ async def init_sample_temples(token_data: dict = Depends(verify_token)):
             await db.create_document('temples', doc)
             created += 1
     
-    logger.info(f"Initialized {created}/21 temples with full data")
-    return {"message": f"Created {created} temples with full data", "total": 21}
+    logger.info(f"Initialized {created}/23 temples with full data")
+    return {"message": f"Created {created} temples with full data", "total": 23}
 
 
 # =================== EVENTS ===================
