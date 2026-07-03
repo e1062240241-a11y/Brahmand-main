@@ -74,6 +74,15 @@ export default function FollowConnectionsScreen() {
   const listOpacity = useRef(new Animated.Value(1)).current;
   const listTranslateY = useRef(new Animated.Value(0)).current;
 
+  const currentUserId = user?.id;
+  const activeUserIdRef = useRef<string | undefined>(currentUserId);
+  const activeTargetUserIdRef = useRef<string | undefined>(targetUserId);
+
+  useEffect(() => {
+    activeUserIdRef.current = currentUserId;
+    activeTargetUserIdRef.current = targetUserId;
+  }, [currentUserId, targetUserId]);
+
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
@@ -98,8 +107,21 @@ export default function FollowConnectionsScreen() {
   useEffect(() => {
     let isMounted = true;
 
+    // Purge previous state on ID change to prevent flashing stale data
+    setUsersById({});
+    setFollowerIds([]);
+    setProfileFollowingIds([]);
+    setViewerFollowingIds([]);
+    setSuggestedUsers([]);
+    setLoading(true);
+
     const loadConnections = async () => {
-      setLoading(true);
+      if (!currentUserId) {
+        setLoading(false);
+        return;
+      }
+      const requestedUserId = currentUserId;
+      const requestedTargetUserId = targetUserId;
 
       try {
         const [profileResponse, viewerResponse, usersResponse] = await Promise.all([
@@ -107,6 +129,10 @@ export default function FollowConnectionsScreen() {
           getUserProfile(),
           getAllUsers('', 20),
         ]);
+
+        if (requestedUserId !== activeUserIdRef.current || requestedTargetUserId !== activeTargetUserIdRef.current) {
+          return;
+        }
 
         const profile = profileResponse.data || {};
         const viewerProfile = viewerResponse.data || {};
@@ -118,6 +144,10 @@ export default function FollowConnectionsScreen() {
           loadUsersByIds(followerIds),
           loadUsersByIds(followingIds),
         ]);
+
+        if (requestedUserId !== activeUserIdRef.current || requestedTargetUserId !== activeTargetUserIdRef.current) {
+          return;
+        }
 
         const allFetchedUsers = Array.isArray(usersResponse?.data?.users) ? usersResponse.data.users : Array.isArray(usersResponse?.data) ? usersResponse.data : [];
         const suggestions = allFetchedUsers.filter((u: any) => 
@@ -143,7 +173,7 @@ export default function FollowConnectionsScreen() {
         setSuggestedUsers(suggestions);
       } catch (error) {
         console.warn('Failed to load follower/following users:', error);
-        if (isMounted) {
+        if (isMounted && requestedUserId === activeUserIdRef.current && requestedTargetUserId === activeTargetUserIdRef.current) {
           setUsersById({});
           setFollowerIds([]);
           setProfileFollowingIds([]);
@@ -151,7 +181,7 @@ export default function FollowConnectionsScreen() {
           setSuggestedUsers([]);
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && requestedUserId === activeUserIdRef.current && requestedTargetUserId === activeTargetUserIdRef.current) {
           setLoading(false);
         }
       }
@@ -162,7 +192,7 @@ export default function FollowConnectionsScreen() {
     return () => {
       isMounted = false;
     };
-  }, [targetUserId]);
+  }, [targetUserId, currentUserId]);
 
   const followers = followerIds
     .map((id) => usersById[id])

@@ -201,7 +201,7 @@ function MessagesScreen({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
+  const { coachMarkStep, setCoachMarkStep, showCoachMarks, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [communityHeaderLayout, setCommunityHeaderLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const onMessagesScrollTabBar = useScrollToHideTabBar();
 
@@ -1423,15 +1423,21 @@ function MessagesScreen({
       } catch (_) {}
     };
     const handleNext = async () => {
-      const userId = user?.id;
-      await setFlagSeen(userId, 'feedCoachSeen');
-      
-      const latestFlags = useCoachMarkStore.getState().seenFlags;
-      const next = getNextStep(6, latestFlags);
-      if (next <= 8) {
-        setCoachMarkStep(next);
-        router.push('/(tabs)/vendor');
-      } else {
+      try {
+        const userId = user?.id;
+        await setFlagSeen(userId, 'feedCoachSeen');
+        
+        const latestFlags = useCoachMarkStore.getState().seenFlags;
+        const next = getNextStep(6, latestFlags);
+        if (next <= 8) {
+          setCoachMarkStep(next);
+          router.push('/(tabs)/vendor');
+        } else {
+          setShowCoachMarks(false);
+        }
+      } catch (err) {
+        console.warn('Error in community coach mark next:', err);
+        setCoachMarkStep(7);
         setShowCoachMarks(false);
       }
     };
@@ -1443,7 +1449,7 @@ function MessagesScreen({
         <View style={{ position: 'absolute', top: tY + tH + 2, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' }} />
 
         {/* Coach card */}
-        <View style={[communityCoachStyles.card, { top: cardTop, left: cardLeft, width: cardW }]} pointerEvents="box-none">
+        <View style={[communityCoachStyles.card, { top: cardTop, left: cardLeft, width: cardW }]} pointerEvents="auto">
           {/* Arrow */}
           <View style={{
             position: 'absolute', top: -8, left: arrowX,
@@ -1932,7 +1938,7 @@ function MessagesScreen({
         </View>
       )}
       {/* Community Coach Mark (Step 5) */}
-      {coachMarkStep === 6 && renderCommunityCoachMark()}
+      {showCoachMarks && coachMarkStep === 6 && renderCommunityCoachMark()}
     </LinearGradient>
   );
 }

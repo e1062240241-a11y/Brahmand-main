@@ -126,6 +126,20 @@ export async function syncDatabase() {
         },
         pushChanges: async ({ changes, lastPulledAt }) => {
           try {
+            // ponytail: Strip feeds, users, and follows from push — the local database caches
+            // feed posts, other users' profiles, and follow information which belong to
+            // other users. Pushing them would attempt to modify other users' documents in Firestore.
+            // These objects are managed solely via dedicated, validated API endpoints.
+            const pushChanges = changes as any;
+            if (pushChanges.feeds) {
+              pushChanges.feeds = { created: [], updated: [], deleted: [] };
+            }
+            if (pushChanges.users) {
+              pushChanges.users = { created: [], updated: [], deleted: [] };
+            }
+            if (pushChanges.follows) {
+              pushChanges.follows = { created: [], updated: [], deleted: [] };
+            }
             await api.post('/sync/push', {
               changes,
               last_pulled_at: lastPulledAt,
