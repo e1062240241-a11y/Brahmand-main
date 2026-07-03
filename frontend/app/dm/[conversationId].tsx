@@ -345,7 +345,23 @@ const DirectMessageScreen = () => {
       hideSubscription.remove();
     };
   }, []);
-  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [conversation, setConversation] = useState<Conversation | null>(() => {
+    if (userId && userName) {
+      return {
+        conversation_id: conversationId || 'new',
+        chat_id: conversationId || 'new',
+        user: {
+          id: userId,
+          name: userName,
+          sl_id: userSL || '',
+          photo: undefined,
+          is_verified: false,
+        },
+        request_status: 'approved',
+      } as unknown as Conversation;
+    }
+    return null;
+  });
   const [otherUserPresence, setOtherUserPresence] = useState<{
     online_status?: boolean;
     last_seen_at?: string;
@@ -405,7 +421,7 @@ const DirectMessageScreen = () => {
 
   // Mark messages as read
   const markMessagesAsRead = useCallback(async () => {
-    if (!conversationId || hasMarkedRead) return;
+    if (!conversationId || conversationId === 'undefined' || conversationId === 'new' || hasMarkedRead) return;
     if (!isFocused || AppState.currentState !== 'active') {
       console.log('[Chat] Skipping mark read: screen not focused or app in background');
       return;
@@ -725,7 +741,7 @@ const DirectMessageScreen = () => {
   // Fetch conversation details
   const fetchConversation = useCallback(async () => {
     try {
-      if (conversationId && conversationId !== 'new') {
+      if (conversationId && conversationId !== 'new' && conversationId !== 'undefined') {
         const metadataResponse = await getDMConversationMetadata(conversationId);
         if (metadataResponse?.data) {
           setConversation(metadataResponse.data);
@@ -761,6 +777,17 @@ const DirectMessageScreen = () => {
           );
           if (conv) {
             setConversation(conv);
+          } else if (userId && userName) {
+            setConversation({
+              conversation_id: conversationId || 'new',
+              chat_id: conversationId || 'new',
+              user: {
+                id: userId,
+                name: userName,
+                sl_id: userSL || '',
+              },
+              request_status: 'approved',
+            } as unknown as Conversation);
           }
         } catch (fbError) {
           console.error('Fallback error fetching conversation:', fbError);
@@ -771,6 +798,11 @@ const DirectMessageScreen = () => {
 
   // Fetch messages via REST API
   const fetchMessagesViaAPI = useCallback(async (fromCache = true) => {
+    if (!conversationId || conversationId === 'undefined' || conversationId === 'new') {
+      setLoading(false);
+      return;
+    }
+    
     if (fromCache && messages.length === 0) {
       // 1. Try loading from WatermelonDB first (extremely fast SQLite query)
       try {

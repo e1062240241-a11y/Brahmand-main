@@ -284,19 +284,22 @@ function MessagesScreen({
 
   const conversations = useMemo(() => {
     if (Platform.OS === 'web') {
-      return apiDMs.map((c: any) => ({
-        id: c.id,
-        conversation_id: c.id,
-        user: {
-          id: c.user?.id || '',
-          name: c.user?.name || '',
-          sl_id: c.user?.sl_id || '',
-          photo: c.user?.photo || '',
-          is_verified: false,
-        },
-        last_message: c.last_message,
-        last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
-      }));
+      return apiDMs.map((c: any) => {
+        const convId = c.conversation_id || c.chat_id || c.id;
+        return {
+          id: convId,
+          conversation_id: convId,
+          user: {
+            id: c.user?.id || '',
+            name: c.user?.name || '',
+            sl_id: c.user?.sl_id || '',
+            photo: c.user?.photo || '',
+            is_verified: c.user?.is_verified || false,
+          },
+          last_message: c.last_message,
+          last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
+        };
+      });
     }
     const dbDMs = observedConversations
       .filter(c => c.type === 'dm')
@@ -314,19 +317,22 @@ function MessagesScreen({
         last_message_at: c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : undefined,
       }));
     if (dbDMs.length === 0 && apiDMs.length > 0) {
-      return apiDMs.map((c: any) => ({
-        id: c.id,
-        conversation_id: c.id,
-        user: {
-          id: c.user?.id || '',
-          name: c.user?.name || '',
-          sl_id: c.user?.sl_id || '',
-          photo: c.user?.photo || '',
-          is_verified: false,
-        },
-        last_message: c.last_message,
-        last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
-      }));
+      return apiDMs.map((c: any) => {
+        const convId = c.conversation_id || c.chat_id || c.id;
+        return {
+          id: convId,
+          conversation_id: convId,
+          user: {
+            id: c.user?.id || '',
+            name: c.user?.name || '',
+            sl_id: c.user?.sl_id || '',
+            photo: c.user?.photo || '',
+            is_verified: c.user?.is_verified || false,
+          },
+          last_message: c.last_message,
+          last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
+        };
+      });
     }
     return dbDMs;
   }, [observedConversations, apiDMs]);

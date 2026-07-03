@@ -349,7 +349,11 @@ function HomeCardTextureBg({
       imageStyle={{ borderRadius, resizeMode: 'cover' }}
       resizeMode="cover"
     >
-      <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFillObject} />
+      {Platform.OS === 'web' ? (
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
+      ) : (
+        <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFillObject} />
+      )}
       <LinearGradient
         colors={['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)']}
         start={{ x: 0, y: 0 }}

@@ -48,7 +48,9 @@ const parseTimeStr = (timeStr: string) => {
 const splitTimeRange = (timeStr: string) => {
   let parts = timeStr.split(/\s+:\s+|\s*-\s*/);
   if (parts.length < 2) {
-    parts = timeStr.split(/(?<=[APap][Mm])\s+/);
+    // Avoid regex lookbehind assertion to support older Safari versions (iOS < 16.4)
+    const normalized = timeStr.replace(/([APap][Mm])\s+/g, '$1 - ');
+    parts = normalized.split(/\s*-\s*/);
   }
   if (parts.length < 2) {
     const matches = timeStr.match(/\d{1,2}:\d{1,2}(\s*(?:AM|PM|am|pm))?/g);
