@@ -77,7 +77,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Shri Sai Baba Samadhi Mandir in Shirdi is a revered pilgrimage center built around the final resting place of Shirdi Sai Baba. The temple complex draws devotees from across India for daily darshan, sacred aarti ceremonies, and prasadam distribution, and it includes the nearby Dwarkamai and Chavadi sites associated with Sai Baba’s life.',
  guidance: 'Guidance: To reach Shirdi Sai Baba Temple, arrive at Shirdi railway station or Shirdi airport and take a short taxi or auto-rickshaw to the main temple complex. The Samadhi Mandir is located in central Shirdi near the main road, and marked local signs guide visitors to the temple, Dwarkamai, and Chavadi. During festivals, allow extra time for darshan and follow the designated queues and visitor lanes.',
- youtubeUrl: 'https://www.youtube.com/watch?v=bKY1KCHKNRc',
+ youtubeUrl: 'https://www.youtube.com/live/kerfd4z2fQ0?si=1zUBZrTkMudipXc5',
  },
  'Somnath Temple – Gujarat': {
  aliases: ['somnath', 'prabhas patan', 'jyotirling-somnath'],
@@ -116,7 +116,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Mahakaleshwar Jyotirling in Ujjain is renowned for its ancient worship traditions and the iconic Bhasma Aarti. It is one of the most significant Shiva temples in central India.',
  guidance: 'Guidance: Reach Ujjain by rail or via Indore airport and continue by road to Mahakal area. Early-morning slots are preferred for Bhasma Aarti; follow queue instructions and dress-code guidance near the inner sanctum.',
- youtubeUrl: 'https://www.youtube.com/watch?v=BHVRy8DSFEA',
+ youtubeUrl: 'https://www.youtube.com/live/-BdYhAVkykw?si=SebQrtak2DS8e0vk',
  },
  'Kashi Vishwanath Temple – Varanasi': {
  aliases: ['kashi vishwanath', 'vishwanath temple varanasi'],
@@ -207,7 +207,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Nageshwar Jyotirling near Dwarka is a revered Shiva temple on the coastal pilgrimage route of Gujarat and an important stop for Shiva devotees.',
  guidance: 'Guidance: Reach Dwarka by rail/road, then proceed to Nageshwar temple via local transport on the Dwarka-Bet Dwarka route. Combine darshan planning with Dwarka city temple timings for convenience.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+ youtubeUrl: 'https://livedarshanhub.com/temple/nageshwar-jyotirlinga-temple/?utm_source=chatgpt.com',
  },
  'Mallikarjuna Temple – Srisailam': {
  aliases: ['mallikarjuna', 'srisailam jyotirling'],
@@ -233,7 +233,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Baidyanath Jyotirling in Deoghar is one of the most visited Shiva pilgrimage sites, especially during the Shravan month Kanwar yatra season.',
  guidance: 'Guidance: Reach Jasidih railway junction and take local transport to Deoghar temple complex. During Shravan and major festivals, use the designated darshan queues and buffer extra time for entry.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+ youtubeUrl: 'https://www.youtube.com/live/Qq1J1SqM6m0?si=QIId9Hd9sNtrXxBB',
  },
  'Tirupati Balaji Temple – Andhra Pradesh': {
  aliases: ['tirupati balaji', 'tirumala', 'venkateswara temple'],
@@ -246,7 +246,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Tirupati Balaji Temple at Tirumala is one of the most visited pilgrimage shrines in India, dedicated to Lord Venkateswara. The temple is known for disciplined darshan systems, daily sevas, and large-scale prasadam distribution for devotees.',
  guidance: 'Guidance: Reach Tirupati by rail/air, then continue to Tirumala via ghat road buses or private vehicles. Book darshan slots in advance when possible and arrive early to accommodate queue and security procedures.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+ youtubeUrl: 'https://www.youtube.com/watch?v=dwsS3bxweBw',
  },
  'Vaishno Devi Temple – Jammu & Kashmir': {
  aliases: ['vaishno devi', 'mata vaishno devi', 'katra shrine'],
@@ -272,7 +272,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Siddhivinayak Temple in Mumbai is one of India’s most prominent Lord Ganesha temples, known for daily aarti, darshan, and strong devotional traditions among local and visiting devotees.',
  guidance: 'Guidance: Reach Prabhadevi via local train (Dadar/Prabhadevi area) or metro-road connections. Prefer non-peak hours for shorter queues and follow temple guidelines for entry and offerings.',
- youtubeUrl: 'https://www.youtube.com/watch?v=vyfNry9u1f8',
+ youtubeUrl: 'https://www.youtube.com/live/1oS-N5Y0QHI?si=bMe7KXazyLzf4Lnh',
  },
  'Jagannath Temple – Puri': {
  aliases: ['jagannath temple', 'puri jagannath', 'jagannath puri'],
@@ -298,7 +298,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'The Golden Temple (Sri Harmandir Sahib) in Amritsar is the holiest Sikh shrine, known for continuous kirtan, sacred sarovar, and the community langar that welcomes all visitors.',
  guidance: 'Guidance: Reach Amritsar city by rail/air and travel to the heritage zone near Harmandir Sahib. Cover your head, follow shrine etiquette, and use designated footwear and queue areas.',
- youtubeUrl: 'https://www.youtube.com/watch?v=fluMoNW4nH4',
+ youtubeUrl: 'https://www.youtube.com/live/0lbH5ZiHy-c?si=vk9q-iOMDeqJKNjs',
  },
  'Meenakshi Temple – Madurai': {
  aliases: ['meenakshi temple', 'madurai meenakshi', 'meenakshi amman'],
