@@ -518,8 +518,12 @@ export default function ProfileScreen() {
       }
       const payload = response.data;
       console.log('[Profile] getUserPosts response payload:', JSON.stringify(payload).substring(0, 200));
-      const items = Array.isArray(payload) ? payload : (payload?.items || []);
-      console.log('[Profile] items count:', items.length);
+      let items = Array.isArray(payload) ? payload : (payload?.items || []);
+
+      // Strict frontend boundary: guarantee that we NEVER display another user's post in this tab
+      items = items.filter((p: any) => p.user_id === userId);
+
+      console.log('[Profile] items count after strict filter:', items.length);
 
       if (reset) {
         setPosts(items);
@@ -535,8 +539,11 @@ export default function ProfileScreen() {
       }
 
       setPostsCount(prev => payload?.total_count !== undefined ? payload.total_count : (reset ? items.length : prev + items.length));
-      setOffset(currentOffset + items.length);
-      setHasMore(payload?.has_more ?? (items.length === LIMIT));
+
+      // The offset calculation must be based on the raw payload length so pagination logic is maintained correctly
+      const rawPayloadLength = Array.isArray(payload) ? payload.length : (payload?.items || []).length;
+      setOffset(currentOffset + rawPayloadLength);
+      setHasMore(payload?.has_more ?? (rawPayloadLength === LIMIT));
     } catch (error) {
       if (requestedUserId !== activeUserIdRef.current) {
         return;
@@ -595,8 +602,10 @@ export default function ProfileScreen() {
       }
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed.length > 0) {
-          setPosts(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Strictly filter cache to only show posts belonging to the current user
+          const strictUserPosts = parsed.filter((p: any) => p.user_id === userId);
+          setPosts(strictUserPosts);
           setPostsLoading(false);
         }
       }
@@ -1430,7 +1439,7 @@ export default function ProfileScreen() {
             ) : !hasMore && posts.length > 0 ? (
               <View style={styles.endOfFeed}>
                 <Text style={styles.endOfFeedText}>
-                  {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You've reached the end"}
+                  {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You have reached the end"}
                 </Text>
               </View>
             ) : null
@@ -1442,7 +1451,10 @@ export default function ProfileScreen() {
                   <Ionicons name="camera-outline" size={40} color="#FFFFFF" />
                 </View>
                 <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>
-                  {t('language') === 'hi' ? 'अभी तक कोई पोस्ट नहीं' : 'No Posts Yet'}
+                  {t('language') === 'hi' ? 'कोई पोस्ट नहीं मिली' : 'No posts found'}
+                </Text>
+                <Text style={[styles.emptySubTitle, { color: 'rgba(255,255,255,0.7)', marginTop: 8 }]}>
+                  {t('language') === 'hi' ? 'अपनी सामग्री देखने के लिए कृपया अपलोड करें।' : 'Please upload to see your content.'}
                 </Text>
               </View>
             ) : null
