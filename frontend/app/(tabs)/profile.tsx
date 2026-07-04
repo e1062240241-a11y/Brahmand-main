@@ -528,7 +528,7 @@ export default function ProfileScreen() {
       if (reset) {
         setPosts(items);
         if (userId && userId.trim() !== '' && userId.toLowerCase() !== 'undefined') {
-          AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => { });
+          AsyncStorage.setItem(`profile_posts_v2_${userId}`, JSON.stringify(items)).catch(() => { });
         }
       } else {
         setPosts(prev => {
@@ -595,8 +595,8 @@ export default function ProfileScreen() {
       return;
     }
 
-    // Attempt to load cached posts immediately
-    AsyncStorage.getItem(`profile_posts_${userId}`).then(cached => {
+    // Attempt to load cached posts immediately using v2 key to break legacy cache
+    AsyncStorage.getItem(`profile_posts_v2_${userId}`).then(cached => {
       if (userId !== activeUserIdRef.current) {
         return;
       }
