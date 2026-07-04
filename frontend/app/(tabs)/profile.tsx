@@ -117,7 +117,7 @@ export default function ProfileScreen() {
             { id: 'edit', icon: 'person-circle-outline', label: t('manageProfile'), route: '/profile/edit' },
             { id: 'kyc', icon: 'globe-outline', label: t('kycVerification'), route: '/kyc' },
             { id: 'notifications', icon: 'notifications-outline', label: t('notifications'), route: '/settings/notifications' },
-            { id: 'privacy', icon: 'lock-closed-outline', label: t('privacy'), route: '/settings/privacy', disabled: true },
+            { id: 'privacy', icon: 'lock-closed-outline', label: t('privacy'), route: '/settings/privacy', disabled: false },
           ],
         },
         {
@@ -125,7 +125,7 @@ export default function ProfileScreen() {
           title: t('preferences'),
           items: [
             { id: 'about_us', icon: 'information-circle-outline', label: t('aboutUs'), route: '/settings/about' },
-            { id: 'location', icon: 'location-outline', label: t('location'), route: '/settings/location', disabled: true },
+            { id: 'location', icon: 'location-outline', label: t('location'), route: '/settings/location', disabled: false },
             { id: 'language', icon: 'language-outline', label: t('languageLabel'), value: language === 'en' ? t('english') : t('hindi') },
           ],
         },
@@ -149,7 +149,7 @@ export default function ProfileScreen() {
           { id: 'kyc', icon: 'shield-checkmark', label: t('kycVerification'), route: '/kyc', color: '#FB923C' },
           { id: 'personality_verification', icon: 'ribbon', label: t('personalityVerification'), route: '/profile/personality-verification', color: '#D4AF37' },
           { id: 'notifications', icon: 'notifications', label: t('notifications'), route: '/settings/notifications', color: '#F59E0B' },
-          { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: true, subLabel: t('language') === 'hi' ? 'जल्द आ रहा है' : 'Coming soon', color: '#D97706' },
+          { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: false, color: '#D97706' },
         ],
       },
       {
@@ -1228,7 +1228,7 @@ export default function ProfileScreen() {
                     {section.items.map((item: SettingItem, index: number) => {
                       const iconColor = item.disabled ? '#A0A0A0' : '#000000';
                       const textColor = item.disabled ? '#A0A0A0' : '#000000';
-                      const showChevron = item.id !== 'privacy' && item.id !== 'language';
+                      const showChevron = item.id !== 'language';
                       const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
 
                       return (
@@ -1443,7 +1443,7 @@ export default function ProfileScreen() {
                       {section.items.map((item: SettingItem, index: number) => {
                         const iconColor = item.disabled ? '#A0A0A0' : '#000000';
                         const textColor = item.disabled ? '#A0A0A0' : '#000000';
-                        const showChevron = item.id !== 'privacy' && item.id !== 'language';
+                        const showChevron = item.id !== 'language';
                         const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
 
                         return (

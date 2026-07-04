@@ -462,3 +462,27 @@ class FirestoreDB:
         
         await self._run_sync(_update)
         await self._cache.delete(f"{collection}:{doc_id}")
+
+    async def get_user_chats(self, user_id: str) -> List[Dict[str, Any]]:
+        """Get all DM and circle chats for a user"""
+        # 1. Fetch DM chats where user is a participant
+        dm_chats = await self.query_documents(
+            'chats',
+            filters=[('type', '==', 'dm'), ('participants', 'array_contains', user_id)]
+        )
+        
+        # 2. Fetch Circle chats where user is a member
+        circle_chats = []
+        user_doc = await self.get_document('users', user_id)
+        if user_doc:
+            circle_ids = user_doc.get('circles', [])
+            for cid in circle_ids:
+                chat_id = f"circle_{cid}"
+                chat_doc = await self.get_document('chats', chat_id)
+                if chat_doc:
+                    circle_chats.append(chat_doc)
+                else:
+                    # Fallback if chat doc doesn't exist yet but has messages
+                    circle_chats.append({'id': chat_id, 'type': 'circle', 'circle_id': cid})
+                    
+        return dm_chats + circle_chats

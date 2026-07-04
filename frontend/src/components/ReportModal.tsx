@@ -1,11 +1,4 @@
-/**
- * ReportModal - Reusable Apple Guideline 1.2 compliant report flow
- *
- * Shows reason selection → submit → confirmation message
- * Stores report in Firebase moderation_reports collection
- */
-
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -16,6 +9,7 @@ import {
   ScrollView,
   Platform,
   TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -68,13 +62,21 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+  const submittingRef = useRef(false);
 
   const reset = () => {
     setStep('select');
     setSelectedReason(null);
     setDescription('');
     setError(null);
+    submittingRef.current = false;
   };
+
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      reset();
+    }
+  }, [visible]);
 
   const handleClose = () => {
     reset();
@@ -82,7 +84,8 @@ export const ReportModal: React.FC<ReportModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!selectedReason) return;
+    if (!selectedReason || submittingRef.current) return;
+    submittingRef.current = true;
     setStep('submitting');
     setError(null);
 
@@ -107,21 +110,135 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           const errMsg = apiErr?.response?.data?.detail || apiErr?.message || 'Could not submit report. Please check your connection and try again.';
           setError(errMsg);
           setStep('select');
+          submittingRef.current = false;
           return;
         }
       } else {
         const errMsg = firebaseErr?.message || 'Could not submit report. Please check your connection and try again.';
         setError(errMsg);
         setStep('select');
+        submittingRef.current = false;
         return;
       }
     }
 
     setStep('success');
+    submittingRef.current = false;
     if (onSuccess) {
       onSuccess(selectedReason);
     }
   };
+
+  const modalContent = (
+    <View style={styles.overlay}>
+      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+        {/* Handle bar */}
+        <View style={styles.handleBar} />
+
+        {step === 'select' && (
+          <>
+            <View style={styles.header}>
+              <Text style={styles.title}>Report</Text>
+              <TouchableOpacity onPress={handleClose} style={styles.closeBtn} accessibilityLabel="Close report">
+                <Ionicons name="close" size={24} color={COLORS.text} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.subtitle}>Why are you reporting this?</Text>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.reasonList}
+              keyboardShouldPersistTaps="handled"
+            >
+              {REASONS.map((r) => (
+                <TouchableOpacity
+                  key={r.key}
+                  style={[
+                    styles.reasonRow,
+                    selectedReason === r.key && styles.reasonRowSelected,
+                  ]}
+                  onPress={() => setSelectedReason(r.key)}
+                  accessibilityLabel={r.label}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selectedReason === r.key }}
+                >
+                  <Ionicons
+                    name={r.icon as any}
+                    size={22}
+                    color={selectedReason === r.key ? COLORS.primary : '#555'}
+                    style={styles.reasonIcon}
+                  />
+                  <Text
+                    style={[
+                      styles.reasonLabel,
+                      selectedReason === r.key && styles.reasonLabelSelected,
+                    ]}
+                  >
+                    {r.label}
+                  </Text>
+                  {selectedReason === r.key && (
+                    <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+
+              <TextInput
+                style={styles.textInput}
+                placeholder="Additional comments (optional)"
+                placeholderTextColor="#999"
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+              />
+            </ScrollView>
+
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={[
+                styles.submitBtn,
+                !selectedReason && styles.submitBtnDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!selectedReason}
+              accessibilityLabel="Submit report"
+            >
+              <Text style={styles.submitText}>Submit Report</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {step === 'submitting' && (
+          <View style={styles.centerContent}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.submittingText}>Submitting...</Text>
+          </View>
+        )}
+
+        {step === 'success' && (
+          <View style={styles.centerContent}>
+            <View style={styles.successIcon}>
+              <Ionicons name="checkmark-circle" size={56} color="#4CAF50" />
+            </View>
+            <Text style={styles.successTitle}>Report Submitted</Text>
+            <Text style={styles.successMessage}>
+              Thank you. Your report has been submitted for review.
+            </Text>
+            <TouchableOpacity
+              style={styles.doneBtn}
+              onPress={handleClose}
+              accessibilityLabel="Done"
+            >
+              <Text style={styles.doneBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </View>
+  );
 
   return (
     <Modal
@@ -129,114 +246,14 @@ export const ReportModal: React.FC<ReportModalProps> = ({
       transparent
       animationType="slide"
       onRequestClose={handleClose}
+      statusBarTranslucent
     >
-      <View style={styles.overlay}>
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-          {/* Handle bar */}
-          <View style={styles.handleBar} />
-
-          {step === 'select' && (
-            <>
-              <View style={styles.header}>
-                <Text style={styles.title}>Report</Text>
-                <TouchableOpacity onPress={handleClose} style={styles.closeBtn} accessibilityLabel="Close report">
-                  <Ionicons name="close" size={24} color={COLORS.text} />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.subtitle}>Why are you reporting this?</Text>
-
-              <ScrollView
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.reasonList}
-              >
-                {REASONS.map((r) => (
-                  <TouchableOpacity
-                    key={r.key}
-                    style={[
-                      styles.reasonRow,
-                      selectedReason === r.key && styles.reasonRowSelected,
-                    ]}
-                    onPress={() => setSelectedReason(r.key)}
-                    accessibilityLabel={r.label}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: selectedReason === r.key }}
-                  >
-                    <Ionicons
-                      name={r.icon as any}
-                      size={22}
-                      color={selectedReason === r.key ? COLORS.primary : '#555'}
-                      style={styles.reasonIcon}
-                    />
-                    <Text
-                      style={[
-                        styles.reasonLabel,
-                        selectedReason === r.key && styles.reasonLabelSelected,
-                      ]}
-                    >
-                      {r.label}
-                    </Text>
-                    {selectedReason === r.key && (
-                      <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Additional comments (optional)"
-                  placeholderTextColor="#999"
-                  value={description}
-                  onChangeText={setDescription}
-                  multiline
-                  numberOfLines={3}
-                  maxLength={200}
-                />
-              </ScrollView>
-
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-              <TouchableOpacity
-                style={[
-                  styles.submitBtn,
-                  !selectedReason && styles.submitBtnDisabled,
-                ]}
-                onPress={handleSubmit}
-                disabled={!selectedReason}
-                accessibilityLabel="Submit report"
-              >
-                <Text style={styles.submitText}>Submit Report</Text>
-              </TouchableOpacity>
-            </>
-          )}
-
-          {step === 'submitting' && (
-            <View style={styles.centerContent}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
-              <Text style={styles.submittingText}>Submitting...</Text>
-            </View>
-          )}
-
-          {step === 'success' && (
-            <View style={styles.centerContent}>
-              <View style={styles.successIcon}>
-                <Ionicons name="checkmark-circle" size={56} color="#4CAF50" />
-              </View>
-              <Text style={styles.successTitle}>Report Submitted</Text>
-              <Text style={styles.successMessage}>
-                Thank you. Your report has been submitted for review.
-              </Text>
-              <TouchableOpacity
-                style={styles.doneBtn}
-                onPress={handleClose}
-                accessibilityLabel="Done"
-              >
-                <Text style={styles.doneBtnText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        {modalContent}
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

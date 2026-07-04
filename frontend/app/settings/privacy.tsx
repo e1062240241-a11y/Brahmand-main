@@ -155,6 +155,30 @@ export default function PrivacySettingsScreen() {
           </View>
         </View>
 
+        {/* Safety Section */}
+        <View style={styles.settingSection}>
+          <Text style={styles.sectionTitle}>Safety</Text>
+          
+          <TouchableOpacity 
+            style={styles.settingItem} 
+            activeOpacity={0.7}
+            onPress={() => router.push('/settings/blocked')}
+          >
+            <View style={styles.settingInfo}>
+              <View style={[styles.settingIconContainer, { backgroundColor: '#EF444415' }]}>
+                <Ionicons name="ban-outline" size={20} color="#EF4444" />
+              </View>
+              <View style={styles.settingText}>
+                <Text style={styles.settingLabel}>Blocked Accounts</Text>
+                <Text style={styles.settingDescription}>
+                  View and manage the accounts you have blocked
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Status Indicators Legend */}
         <View style={styles.legendSection}>
           <Text style={styles.sectionTitle}>Message Status Guide</Text>

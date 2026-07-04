@@ -120,7 +120,7 @@ from utils.helpers import (
     generate_sl_id
 )
 from utils.cache import cache_manager
-from utils.helpers import generate_community_code, generate_circle_code, SUBGROUPS
+from utils.helpers import generate_community_code, generate_circle_code, SUBGROUPS, normalize_location
 from offensive_detector import is_offensive, is_text_safe
 from services.firebase_messaging_service import FirebaseMessagingService as MessagingService
 
@@ -1869,7 +1869,7 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     user = await db.get_document('users', user_id)
     if user and user.get('anonymous_account'):
         raise HTTPException(status_code=403, detail="Anonymous accounts cannot set location")
-    loc = location.dict()
+    loc = normalize_location(location.dict())
     
     # Create/get communities
     community_ids = []
@@ -2057,7 +2057,7 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     # Process home location
     if locations.home_location:
-        home_loc = locations.home_location
+        home_loc = normalize_location(locations.home_location)
         update_data['home_location'] = home_loc
         update_data['location'] = home_loc
         
@@ -2084,7 +2084,7 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         default_community_ids.append(country_id)
     
     if locations.office_location:
-        office_loc = locations.office_location
+        office_loc = normalize_location(locations.office_location)
         update_data['office_location'] = office_loc
     
     # Remove duplicates while preserving order
@@ -2474,6 +2474,41 @@ async def unblock_user_endpoint(user_id: str, token_data: dict = Depends(verify_
     await cache_manager.delete(f"blocked_users:{user_id}")
 
     return {'message': 'User unblocked successfully', 'user_id': user_id}
+
+
+@api_router.get('/user/blocked')
+async def get_blocked_users_endpoint(token_data: dict = Depends(verify_token)):
+    """Fetch the list of users blocked by the current user"""
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    try:
+        # Query blocks where blockerUid is the current user
+        blocks = await db.query_documents('user_blocks', filters=[('blockerUid', '==', current_user_id)])
+        blocked_users = []
+        for b in blocks:
+            blocked_uid = b.get('blockedUid')
+            if blocked_uid:
+                user_doc = await db.get_document('users', blocked_uid)
+                if user_doc:
+                    blocked_users.append({
+                        'id': user_doc.get('id'),
+                        'name': user_doc.get('name', 'Unknown User'),
+                        'username': user_doc.get('username', ''),
+                        'sl_id': user_doc.get('sl_id', ''),
+                        'photo_url': user_doc.get('photo_url', '') or user_doc.get('photo', '')
+                    })
+                else:
+                    blocked_users.append({
+                        'id': blocked_uid,
+                        'name': 'Unknown User',
+                        'username': 'unknown',
+                        'sl_id': '',
+                        'photo_url': ''
+                    })
+        return blocked_users
+    except Exception as e:
+        logger.error(f"Error fetching blocked users: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch blocked users")
 
 
 @api_router.get('/users/{user_id}/is_blocked')
@@ -4885,13 +4920,13 @@ async def reverse_geocode(request: dict):
                                     area = comp.get("long_name", "")
                                     break
 
-                        return {
+                        return normalize_location({
                             "country": country or "Bharat",
                             "state": state or "Unknown State",
                             "city": city or "Unknown City",
                             "area": area or "Unknown Area",
                             "display_name": result.get("formatted_address", "")
-                        }
+                        })
                     else:
                         logger.warning(f"Google Geocode API returned status: {data.get('status')}")
                 else:
@@ -4965,7 +5000,7 @@ async def forward_geocode(request: dict):
                                 if "sublocality" in types or "neighborhood" in types:
                                     area = comp.get("long_name", "")
                             
-                            results.append({
+                            results.append(normalize_location({
                                 "latitude": float(lat),
                                 "longitude": float(lon),
                                 "display_name": res.get("formatted_address", ""),
@@ -4973,7 +5008,7 @@ async def forward_geocode(request: dict):
                                 "state": state or "Unknown",
                                 "city": city or "Unknown",
                                 "area": area or "Unknown",
-                            })
+                            }))
                         
                         # Return first result for single-result compatibility or full list if needed
                         # The frontend's forwardGeocode usually expects a list or a single object.

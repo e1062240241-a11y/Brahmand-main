@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, Mask } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
@@ -73,6 +73,29 @@ export default function EntryAnimationScreen() {
 
   const containerOpacity = useRef(new Animated.Value(0)).current;
 
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+
+  // Design references: Width: 390, Height: 844
+  // We compute scaling factor based on screen width/height to fit smaller devices
+  const isAndroid = Platform.OS === 'android';
+  const isSmallScreen = isAndroid && (screenWidth < 375 || screenHeight < 700);
+
+  const cardWidth = isAndroid ? Math.min(357, screenWidth - 32) : 357;
+  const cardHeight = isAndroid ? (screenHeight < 700 ? Math.min(380, screenHeight * 0.48) : 474) : 474;
+  const imageContainerHeight = isAndroid ? (screenHeight < 700 ? Math.min(280, cardHeight - 100) : 364) : 364;
+
+  const titleFontSize = isAndroid ? (screenHeight < 700 ? 26 : 32) : 32;
+  const titleBottom = isAndroid ? (screenHeight < 700 ? 6 : 10) : 10;
+
+  const iconsRowWidth = isAndroid ? Math.min(329, screenWidth - 32) : 329;
+  const iconsRowGap = isAndroid ? (screenWidth < 360 ? 12 : 32) : 32;
+  const iconsRowMargin = isAndroid ? (isSmallScreen ? 12 : 24) : 24;
+
+  const checkboxMarginBottom = isAndroid ? (isSmallScreen ? 16 : 24) : 24;
+
+  const continueButtonWidth = isAndroid ? Math.min(359, screenWidth - 32) : 359;
+  const continueButtonMargin = isAndroid ? (isSmallScreen ? 16 : 30) : 30;
+
   useEffect(() => {
     if (token) {
       router.replace('/home');
@@ -107,14 +130,14 @@ export default function EntryAnimationScreen() {
       <View style={styles.content}>
         
         {/* Main Content Card (Rectangle 1506) */}
-        <View style={styles.card}>
-          <View style={styles.imageContainer}>
+        <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
+          <View style={[styles.imageContainer, { width: cardWidth, height: imageContainerHeight }]}>
             <Image
               source={require('../../assets/images/icon.png')}
               style={styles.lotusImage}
               resizeMode="contain"
             />
-            <Text style={styles.title}>BRAHMAND</Text>
+            <Text style={[styles.title, { fontSize: titleFontSize, bottom: titleBottom }]}>BRAHMAND</Text>
           </View>
           
           <View style={styles.contentContainer}>
@@ -131,7 +154,7 @@ export default function EntryAnimationScreen() {
         </View>
 
         {/* Icons Row */}
-        <View style={styles.iconsRow}>
+        <View style={[styles.iconsRow, { width: iconsRowWidth, gap: iconsRowGap, marginTop: iconsRowMargin, marginBottom: iconsRowMargin }]}>
           <IconItem icon={DharmaIcon} label="Dharma" />
           <IconItem icon={SafetyIcon} label="Safety" />
           <IconItem icon={TrustedIcon} label="Trusted" customWidth={44} />
@@ -139,7 +162,7 @@ export default function EntryAnimationScreen() {
         </View>
 
         {/* Checkbox and Terms Section */}
-        <View style={styles.checkboxContainer}>
+        <View style={[styles.checkboxContainer, { marginBottom: checkboxMarginBottom }]}>
           <TouchableOpacity
             style={styles.checkbox}
             onPress={() => setAgreed(!agreed)}
@@ -157,7 +180,7 @@ export default function EntryAnimationScreen() {
 
         {/* Continue Button */}
         <TouchableOpacity
-          style={[styles.continueButton, !agreed && styles.continueButtonDisabled]}
+          style={[styles.continueButton, { width: continueButtonWidth, marginBottom: continueButtonMargin }, !agreed && styles.continueButtonDisabled]}
           onPress={handleContinue}
           disabled={!agreed}
           activeOpacity={0.9}

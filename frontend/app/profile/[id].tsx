@@ -16,7 +16,9 @@ import {
   TextInput,
   Animated,
   KeyboardAvoidingView,
-  Keyboard
+  Keyboard,
+  BackHandler,
+  useWindowDimensions
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,6 +48,9 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COLUMN_WIDTH = SCREEN_WIDTH / 3;
 
 const UserProfileScreen = () => {
+  const { width: windowWidth } = useWindowDimensions();
+  const columnWidth = Platform.OS === 'android' ? (windowWidth / 3) : COLUMN_WIDTH;
+
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const profileUserId = Array.isArray(params?.id) ? params.id[0] : params?.id;
@@ -75,6 +80,25 @@ const UserProfileScreen = () => {
   const [selectedPost, setSelectedPost] = useState<any>(null);
   const [postModalVisible, setPostModalVisible] = useState(false);
   const [viewablePostId, setViewablePostId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if ((Platform.OS as string) !== 'android') return;
+
+    const backAction = () => {
+      if (postModalVisible) {
+        setPostModalVisible(false);
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [postModalVisible]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -795,7 +819,7 @@ const UserProfileScreen = () => {
 
     return (
       <TouchableOpacity
-        style={styles.gridItem}
+        style={Platform.OS === 'android' ? [styles.gridItem, { width: columnWidth, height: columnWidth * 1.2 }] : styles.gridItem}
         activeOpacity={0.9}
         onPress={() => openPostModal(item)}
       >
@@ -983,6 +1007,212 @@ const UserProfileScreen = () => {
     );
   }
 
+  const commentModalContent = (
+    <KeyboardAvoidingView
+      style={styles.commentModalOverlay}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
+      <TouchableOpacity 
+        style={styles.modalBackgroundDismiss} 
+        activeOpacity={1} 
+        onPress={() => {
+          setCommentModalVisible(false);
+          setReplyingToComment(null);
+        }} 
+      />
+      <View style={[styles.commentModalSheet, { paddingBottom: insets.bottom + 10 }]}>
+        <View style={styles.bottomSheetHandle} />
+        <View style={styles.commentModalHeader}>
+          <Text style={styles.commentModalTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
+          <TouchableOpacity onPress={() => { setCommentModalVisible(false); setReplyingToComment(null); }} style={styles.commentCloseBtn}>
+            <Ionicons name="close" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.commentList}>
+          {commentsLoading ? (
+            <View style={styles.commentLoadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+            </View>
+          ) : postComments.length === 0 ? (
+            <View style={styles.emptyCommentsContainer}>
+              <Ionicons name="chatbubble-outline" size={48} color="#DDD" />
+              <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
+            </View>
+          ) : (() => {
+            const parentComments = postComments.filter(c => {
+              const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+              const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+              return !c.parent_id && !isBlockedUser;
+            });
+            const repliesMap = postComments.reduce((acc, c) => {
+              const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+              const isBlockedUser = uid && blockedUserIds.includes(String(uid));
+              if (c.parent_id && !isBlockedUser) {
+                if (!acc[c.parent_id]) acc[c.parent_id] = [];
+                acc[c.parent_id].push(c);
+              }
+              return acc;
+            }, {} as Record<string, any[]>);
+
+            return (
+              <FlatList
+                data={parentComments}
+                keyExtractor={(item, index) => item.id ? `comment-${item.id}` : `comment-${index}`}
+                renderItem={({ item }) => {
+                  const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                  const replies = repliesMap[item.id] || [];
+                  return (
+                    <View style={{ marginBottom: 12 }}>
+                      <View style={styles.commentItem}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={styles.commentItemHeader}>
+                            <Avatar photo={item.user_photo} name={item.username || 'User'} size={24} />
+                            <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                          </View>
+                          {canDelete ? (
+                            <TouchableOpacity
+                              style={{ padding: 4, marginRight: -4 }}
+                              onPress={() => handleDeleteComment(item)}
+                            >
+                              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+                            </TouchableOpacity>
+                          ) : (
+                            <TouchableOpacity
+                              style={{ padding: 4, marginRight: -4 }}
+                              onPress={() => handleCommentMenuPress(item)}
+                            >
+                              <Ionicons name="ellipsis-horizontal" size={16} color={COLORS.textLight} />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                        <MentionText style={styles.commentItemText} text={item?.text || ''} />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginLeft: 32 }}>
+                          <TouchableOpacity
+                            onPress={() => {
+                              setReplyingToComment(item);
+                              setCommentText(`@${item.username || 'User'} `);
+                            }}
+                          >
+                            <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* Render replies */}
+                      {replies.length > 0 && (
+                        <View style={{
+                          marginLeft: 32,
+                          paddingLeft: 16,
+                          borderLeftWidth: 1.5,
+                          borderLeftColor: '#E6E1E8',
+                          marginTop: 8,
+                        }}>
+                          {replies.map((reply: any) => {
+                            const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                            return (
+                              <View key={reply.id} style={[styles.commentItem, { position: 'relative', paddingLeft: 4, marginBottom: 10 }]}>
+                                {/* Horizontal connection branch */}
+                                <View style={{
+                                  position: 'absolute',
+                                  left: -16,
+                                  top: 10,
+                                  width: 12,
+                                  height: 1.5,
+                                  backgroundColor: '#E6E1E8',
+                                }} />
+
+                                <View style={{ flex: 1 }}>
+                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <View style={styles.commentItemHeader}>
+                                      <Avatar photo={reply.user_photo} name={reply.username || 'User'} size={20} />
+                                      <Text style={[styles.commentItemUser, { fontSize: 13 }]}>{reply?.username || 'User'}</Text>
+                                    </View>
+                                    {canDeleteReply ? (
+                                      <TouchableOpacity
+                                        style={{ padding: 4, marginRight: -4 }}
+                                        onPress={() => handleDeleteComment(reply)}
+                                      >
+                                        <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                      </TouchableOpacity>
+                                    ) : (
+                                      <TouchableOpacity
+                                        style={{ padding: 4, marginRight: -4 }}
+                                        onPress={() => handleCommentMenuPress(reply)}
+                                      >
+                                        <Ionicons name="ellipsis-horizontal" size={14} color={COLORS.textLight} />
+                                      </TouchableOpacity>
+                                    )}
+                                  </View>
+                                  <MentionText style={[styles.commentItemText, { fontSize: 13 }]} text={reply?.text || ''} />
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginLeft: 26 }}>
+                                    <TouchableOpacity
+                                      onPress={() => {
+                                        setReplyingToComment(item);
+                                        setCommentText(`@${reply.username} `);
+                                      }}
+                                    >
+                                      <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
+                    </View>
+                  );
+                }}
+                showsVerticalScrollIndicator={false}
+              />
+            );
+          })()}
+        </View>
+
+        {replyingToComment && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: COLORS.background,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderTopWidth: 0.5,
+            borderTopColor: COLORS.divider,
+            marginBottom: 8,
+            width: '100%',
+          }}>
+            <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
+              Replying to <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
+            </Text>
+            <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+              <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <View style={styles.commentInputRow}>
+          <MentionInput
+            value={commentText}
+            onChangeText={setCommentText}
+            placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
+            placeholderTextColor={COLORS.textSecondary}
+            inputStyle={styles.commentTextInput}
+            multiline
+          />
+          <TouchableOpacity 
+            onPress={handleSubmitComment} 
+            style={[styles.commentSubmitBtn, (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }]} 
+            disabled={!commentText.trim() || commentSubmitting}
+          >
+            <Text style={styles.commentSubmitText}>{commentSubmitting ? '...' : 'Post'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
@@ -1020,7 +1250,7 @@ const UserProfileScreen = () => {
             </View>
           ) : !hasMore && posts.length > 0 && !isBlocked ? (
             <View style={styles.endOfFeed}>
-              <Text style={styles.endOfFeedText}>You've reached the end</Text>
+              <Text style={styles.endOfFeedText}>{"You've reached the end"}</Text>
             </View>
           ) : null
         }
@@ -1067,312 +1297,154 @@ const UserProfileScreen = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Post Detail Modal */}
-      <Modal 
-        visible={postModalVisible} 
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        <View style={styles.postDetailContainer}>
-          <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
-            <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <Text style={styles.postDetailTitle}>Posts</Text>
+      {/* Post Detail Modal / View */}
+      {(Platform.OS as string) === 'ios' ? (
+        <Modal 
+          visible={postModalVisible} 
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setPostModalVisible(false)}
+        >
+          <View style={styles.postDetailContainer}>
+            <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
+              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.postDetailTitle}>Posts</Text>
+            </View>
+            <FlatList
+              ref={detailFlatListRef}
+              data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
+              renderItem={({ item }) => (
+                <PostFeedCard
+                  post={item}
+                  isActive={postModalVisible && viewablePostId === item.id}
+                  onLike={handleLikePost}
+                  onComment={handleOpenComment}
+                  onShare={handleSharePost}
+                  onRepost={handleRepost}
+                  openCommentsOnCaptionPress
+                  onUserPress={() => setPostModalVisible(false)}
+                  postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
+                  onPostMenuPress={handlePostMenuPress}
+                  theme="dark"
+                  isBlackBackground
+                />
+              )}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
+              windowSize={3}
+              initialNumToRender={1}
+              maxToRenderPerBatch={2}
+              removeClippedSubviews={(Platform.OS as string) === 'android'}
+            />
           </View>
-          <FlatList
-            ref={detailFlatListRef}
-            data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
-            renderItem={({ item }) => (
-              <PostFeedCard
-                post={item}
-                isActive={postModalVisible && viewablePostId === item.id}
-                onLike={handleLikePost}
-                onComment={handleOpenComment}
-                onShare={handleSharePost}
-                onRepost={handleRepost}
-                openCommentsOnCaptionPress
-                onUserPress={() => setPostModalVisible(false)}
-                postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
-                onPostMenuPress={handlePostMenuPress}
-                theme="dark"
-                isBlackBackground
-              />
-            )}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-            windowSize={3}
-            initialNumToRender={1}
-            maxToRenderPerBatch={2}
-            removeClippedSubviews={Platform.OS === 'android'}
-          />
+        </Modal>
+      ) : (
+        postModalVisible && (
+          <View style={[styles.postDetailContainer, styles.androidPostDetailContainer]}>
+            <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
+              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.postDetailTitle}>Posts</Text>
+            </View>
+            <FlatList
+              ref={detailFlatListRef}
+              data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
+              renderItem={({ item }) => (
+                <PostFeedCard
+                  post={item}
+                  isActive={postModalVisible && viewablePostId === item.id}
+                  onLike={handleLikePost}
+                  onComment={handleOpenComment}
+                  onShare={handleSharePost}
+                  onRepost={handleRepost}
+                  openCommentsOnCaptionPress
+                  onUserPress={() => setPostModalVisible(false)}
+                  postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
+                  onPostMenuPress={handlePostMenuPress}
+                  theme="dark"
+                  isBlackBackground
+                />
+              )}
+              keyExtractor={(item) => item.id}
+              showsVerticalScrollIndicator={false}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
+              windowSize={3}
+              initialNumToRender={1}
+              maxToRenderPerBatch={2}
+              removeClippedSubviews={(Platform.OS as string) === 'android'}
+            />
+          </View>
+        )
+      )}
 
-          <Modal 
-            visible={commentModalVisible} 
-            transparent 
-            animationType="slide" 
-            onRequestClose={() => {
-              setCommentModalVisible(false);
-              setReplyingToComment(null);
-            }}
-          >
-            <KeyboardAvoidingView
-              style={styles.commentModalOverlay}
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={0}
-            >
-              <TouchableOpacity 
-                style={styles.modalBackgroundDismiss} 
-                activeOpacity={1} 
-                onPress={() => {
-                  setCommentModalVisible(false);
-                  setReplyingToComment(null);
-                }} 
-              />
-              <View style={[styles.commentModalSheet, { paddingBottom: insets.bottom + 10 }]}>
-                <View style={styles.bottomSheetHandle} />
-                <View style={styles.commentModalHeader}>
-                  <Text style={styles.commentModalTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
-                  <TouchableOpacity onPress={() => { setCommentModalVisible(false); setReplyingToComment(null); }} style={styles.commentCloseBtn}>
-                    <Ionicons name="close" size={24} color={COLORS.text} />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.commentList}>
-                  {commentsLoading ? (
-                    <View style={styles.commentLoadingContainer}>
-                      <ActivityIndicator size="large" color={COLORS.primary} />
-                    </View>
-                  ) : postComments.length === 0 ? (
-                    <View style={styles.emptyCommentsContainer}>
-                      <Ionicons name="chatbubble-outline" size={48} color="#DDD" />
-                      <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment!</Text>
-                    </View>
-                  ) : (() => {
-                    const parentComments = postComments.filter(c => {
-                      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                      const isBlockedUser = uid && blockedUserIds.includes(String(uid));
-                      return !c.parent_id && !isBlockedUser;
-                    });
-                    const repliesMap = postComments.reduce((acc, c) => {
-                      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                      const isBlockedUser = uid && blockedUserIds.includes(String(uid));
-                      if (c.parent_id && !isBlockedUser) {
-                        if (!acc[c.parent_id]) acc[c.parent_id] = [];
-                        acc[c.parent_id].push(c);
-                      }
-                      return acc;
-                    }, {} as Record<string, any[]>);
-
-                    return (
-                      <FlatList
-                        data={parentComments}
-                        keyExtractor={(item, index) => item.id ? `comment-${item.id}` : `comment-${index}`}
-                        renderItem={({ item }) => {
-                          const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                          const replies = repliesMap[item.id] || [];
-                          return (
-                            <View style={{ marginBottom: 12 }}>
-                              <View style={styles.commentItem}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <View style={styles.commentItemHeader}>
-                                    <Avatar photo={item.user_photo} name={item.username || 'User'} size={24} />
-                                    <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                                  </View>
-                                  {canDelete ? (
-                                    <TouchableOpacity
-                                      style={{ padding: 4, marginRight: -4 }}
-                                      onPress={() => handleDeleteComment(item)}
-                                    >
-                                      <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                                    </TouchableOpacity>
-                                  ) : (
-                                    <TouchableOpacity
-                                      style={{ padding: 4, marginRight: -4 }}
-                                      onPress={() => handleCommentMenuPress(item)}
-                                    >
-                                      <Ionicons name="ellipsis-horizontal" size={16} color={COLORS.textLight} />
-                                    </TouchableOpacity>
-                                  )}
-                                </View>
-                                <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginLeft: 32 }}>
-                                  <TouchableOpacity
-                                    onPress={() => {
-                                      setReplyingToComment(item);
-                                      setCommentText(`@${item.username || 'User'} `);
-                                    }}
-                                  >
-                                    <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-
-                              {/* Render replies */}
-                              {replies.length > 0 && (
-                                <View style={{
-                                  marginLeft: 32,
-                                  paddingLeft: 16,
-                                  borderLeftWidth: 1.5,
-                                  borderLeftColor: '#E6E1E8',
-                                  marginTop: 8,
-                                }}>
-                                  {replies.map((reply: any) => {
-                                    const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                                    return (
-                                      <View key={reply.id} style={[styles.commentItem, { position: 'relative', paddingLeft: 4, marginBottom: 10 }]}>
-                                        {/* Horizontal connection branch */}
-                                        <View style={{
-                                          position: 'absolute',
-                                          left: -16,
-                                          top: 10,
-                                          width: 12,
-                                          height: 1.5,
-                                          backgroundColor: '#E6E1E8',
-                                        }} />
-
-                                        <View style={{ flex: 1 }}>
-                                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <View style={styles.commentItemHeader}>
-                                              <Avatar photo={reply.user_photo} name={reply.username || 'User'} size={20} />
-                                              <Text style={[styles.commentItemUser, { fontSize: 13 }]}>{reply?.username || 'User'}</Text>
-                                            </View>
-                                            {canDeleteReply ? (
-                                              <TouchableOpacity
-                                                style={{ padding: 4, marginRight: -4 }}
-                                                onPress={() => handleDeleteComment(reply)}
-                                              >
-                                                <Ionicons name="trash-outline" size={14} color="#FF3B30" />
-                                              </TouchableOpacity>
-                                            ) : (
-                                              <TouchableOpacity
-                                                style={{ padding: 4, marginRight: -4 }}
-                                                onPress={() => handleCommentMenuPress(reply)}
-                                              >
-                                                <Ionicons name="ellipsis-horizontal" size={14} color={COLORS.textLight} />
-                                              </TouchableOpacity>
-                                            )}
-                                          </View>
-                                          <MentionText style={[styles.commentItemText, { fontSize: 13 }]} text={reply?.text || ''} />
-                                          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, marginLeft: 26 }}>
-                                            <TouchableOpacity
-                                              onPress={() => {
-                                                setReplyingToComment(item);
-                                                setCommentText(`@${reply.username} `);
-                                              }}
-                                            >
-                                              <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
-                                            </TouchableOpacity>
-                                          </View>
-                                        </View>
-                                      </View>
-                                    );
-                                  })}
-                                </View>
-                              )}
-                            </View>
-                          );
-                        }}
-                        showsVerticalScrollIndicator={false}
-                      />
-                    );
-                  })()}
-                </View>
-
-                {replyingToComment && (
-                  <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    backgroundColor: COLORS.background,
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderTopWidth: 0.5,
-                    borderTopColor: COLORS.divider,
-                    marginBottom: 8,
-                    width: '100%',
-                  }}>
-                    <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
-                      Replying to <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
-                    </Text>
-                    <TouchableOpacity onPress={() => setReplyingToComment(null)}>
-                      <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                <View style={styles.commentInputRow}>
-                  <MentionInput
-                    value={commentText}
-                    onChangeText={setCommentText}
-                    placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
-                    placeholderTextColor={COLORS.textSecondary}
-                    inputStyle={styles.commentTextInput}
-                    multiline
-                  />
-                  <TouchableOpacity 
-                    onPress={handleSubmitComment} 
-                    style={[styles.commentSubmitBtn, (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }]} 
-                    disabled={!commentText.trim() || commentSubmitting}
-                  >
-                    <Text style={styles.commentSubmitText}>{commentSubmitting ? '...' : 'Post'}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </KeyboardAvoidingView>
-          </Modal>
-          {/* Apple Guideline 1.2 - Report Comment Modal */}
-          <ReportModal
-            visible={reportCommentModalVisible}
-            onClose={() => {
-              setReportCommentModalVisible(false);
-              setPendingReportComment(null);
-              if (commentModalToRestore) {
-                setTimeout(() => {
-                  setCommentModalVisible(true);
-                  setCommentModalToRestore(false);
-                }, 300);
-              }
-            }}
-            reporterUid={currentUserId || ''}
-            reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
-            contentId={String(pendingReportComment?.id || '')}
-            contentType="comment"
-            postId={pendingReportComment?.post_id || selectedCommentPost?.id || ''}
-            apiFallback={async (reason, description) => {
-              if (pendingReportComment?.id) {
-                const { reportComment } = require('../../src/services/api');
-                await reportComment(String(pendingReportComment.id), reason, description || '');
-              }
-            }}
-            onSuccess={() => {
-              // Keep reported comment visible
-            }}
-          />
-
-          {/* Apple Guideline 1.2 - Report Post Modal */}
-          <ReportModal
-            visible={reportPostModalVisible}
-            onClose={() => {
-              setReportPostModalVisible(false);
-              setPendingReportPost(null);
-            }}
-            reporterUid={currentUserId || ''}
-            reportedUserUid={pendingReportPost?.user_id || pendingReportPost?.userId || pendingReportPost?.user?.id || profile?.id || ''}
-            contentId={pendingReportPost?.id || ''}
-            contentType="post"
-            apiFallback={async (reason) => {
-              if (pendingReportPost?.id) {
-                await reportPost(pendingReportPost.id, reason, `Reported from profile posts: ${reason}`);
-              }
-            }}
-            onSuccess={() => {
-              // Keep it visible as per user's requirement: "remain it visible"
-            }}
-          />
-        </View>
+      {/* Comments Modal (Rendered outside, as native Modal on both platforms) */}
+      <Modal 
+        visible={commentModalVisible} 
+        transparent 
+        animationType="slide" 
+        onRequestClose={() => {
+          setCommentModalVisible(false);
+          setReplyingToComment(null);
+        }}
+      >
+        {commentModalContent}
       </Modal>
+
+      {/* Apple Guideline 1.2 - Report Comment Modal (Rendered outside, as native Modal on both platforms) */}
+      <ReportModal
+        visible={reportCommentModalVisible}
+        onClose={() => {
+          setReportCommentModalVisible(false);
+          setPendingReportComment(null);
+          if (commentModalToRestore) {
+            setTimeout(() => {
+              setCommentModalVisible(true);
+              setCommentModalToRestore(false);
+            }, 300);
+          }
+        }}
+        reporterUid={currentUserId || ''}
+        reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+        contentId={String(pendingReportComment?.id || '')}
+        contentType="comment"
+        postId={pendingReportComment?.post_id || selectedCommentPost?.id || ''}
+        apiFallback={async (reason, description) => {
+          if (pendingReportComment?.id) {
+            const { reportComment } = require('../../src/services/api');
+            await reportComment(String(pendingReportComment.id), reason, description || '');
+          }
+        }}
+        onSuccess={() => {
+          // Keep reported comment visible
+        }}
+      />
+
+      {/* Apple Guideline 1.2 - Report Post Modal (Rendered outside, as native Modal on both platforms) */}
+      <ReportModal
+        visible={reportPostModalVisible}
+        onClose={() => {
+          setReportPostModalVisible(false);
+          setPendingReportPost(null);
+        }}
+        reporterUid={currentUserId || ''}
+        reportedUserUid={pendingReportPost?.user_id || pendingReportPost?.userId || pendingReportPost?.user?.id || profile?.id || ''}
+        contentId={pendingReportPost?.id || ''}
+        contentType="post"
+        apiFallback={async (reason) => {
+          if (pendingReportPost?.id) {
+            await reportPost(pendingReportPost.id, reason, `Reported from profile posts: ${reason}`);
+          }
+        }}
+        onSuccess={() => {
+          // Keep it visible as per user's requirement: "remain it visible"
+        }}
+      />
 
       {/* User Options Modal */}
       <Modal
@@ -1414,8 +1486,6 @@ const UserProfileScreen = () => {
           </View>
         </View>
       </Modal>
-
-
 
       <SharePostModal
         visible={shareModalVisible}
@@ -1692,6 +1762,16 @@ const styles = StyleSheet.create({
   },
   postDetailContainer: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  androidPostDetailContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 999,
+    elevation: 999,
     backgroundColor: '#000',
   },
   postDetailHeader: {
