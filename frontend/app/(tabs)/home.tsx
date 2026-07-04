@@ -349,7 +349,11 @@ function HomeCardTextureBg({
       imageStyle={{ borderRadius, resizeMode: 'cover' }}
       resizeMode="cover"
     >
-      <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFillObject} />
+      {Platform.OS === 'web' ? (
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]} />
+      ) : (
+        <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFillObject} />
+      )}
       <LinearGradient
         colors={['rgba(255, 255, 255, 0.45)', 'rgba(255, 255, 255, 0.0)']}
         start={{ x: 0, y: 0 }}
@@ -594,7 +598,7 @@ export default function HomeScreen() {
   const AARTI_YOUTUBE_URLS: Record<string, string> = {
     'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/watch?v=TZxIgnTHEB0',
     'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/watch?v=J4z7CIrvsuw',
-    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/watch?v=BHVRy8DSFEA',
+    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/-BdYhAVkykw?si=SebQrtak2DS8e0vk',
     'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/watch?v=J0nRdUOQps8'
   };
 

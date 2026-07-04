@@ -240,7 +240,7 @@ export default function VendorScreen() {
   const searchAnim = useRef(new Animated.Value(0)).current;
 
   // Coach marks
-  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
+  const { coachMarkStep, setCoachMarkStep, showCoachMarks, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [searchBarLayout, setSearchBarLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [registerBtnLayout, setRegisterBtnLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
@@ -1492,7 +1492,7 @@ export default function VendorScreen() {
       />
 
       {/* Vendor Coach Marks (Steps 6 & 7) */}
-      {(coachMarkStep === 7 || coachMarkStep === 8) && renderVendorCoachMarks()}
+      {showCoachMarks && (coachMarkStep === 7 || coachMarkStep === 8) && renderVendorCoachMarks()}
 
     </LinearGradient>
   );

@@ -187,8 +187,10 @@ export async function isUserBlocked(
     const docId = `${blockerUid}_${blockedUid}`;
     const snap = await getDoc(doc(db, 'user_blocks', docId));
     return snap.exists();
-  } catch (error) {
-    console.warn('[moderationService] isUserBlocked error:', error);
+  } catch (error: any) {
+    if (error?.code !== 'permission-denied') {
+      console.warn('[moderationService] isUserBlocked error:', error);
+    }
     try {
       const res = await checkUserBlockedApi(blockedUid);
       return res.data?.is_blocked ?? false;

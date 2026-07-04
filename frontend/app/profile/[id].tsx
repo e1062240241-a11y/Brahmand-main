@@ -58,6 +58,7 @@ const UserProfileScreen = () => {
   const currentUserId = user?.id;
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const activeUserIdRef = useRef<string | undefined>(profileUserId);
   const detailFlatListRef = useRef<FlatList>(null);
 
   const headerTitleOpacity = scrollY.interpolate({
@@ -360,8 +361,9 @@ const UserProfileScreen = () => {
   }, [currentUserId, blockedUserIds, commentModalVisible]);
 
   const loadProfile = useCallback(async (showLoading = true) => {
-    if (!profileUserId) return;
+    if (!profileUserId || profileUserId.toLowerCase().trim() === 'undefined' || profileUserId.toLowerCase().trim() === 'null' || profileUserId.toLowerCase().trim() === 'none') return;
     setError(null);
+    const requestedUserId = profileUserId;
     
     // 1. Optimistic load from WatermelonDB
     try {
@@ -370,6 +372,7 @@ const UserProfileScreen = () => {
         const { Q } = require('@nozbe/watermelondb');
         const usersCollection = database.collections.get('users');
         const cachedUsers = await usersCollection.query(Q.where('id', profileUserId)).fetch();
+        if (profileUserId !== activeUserIdRef.current) return;
         if (cachedUsers.length > 0) {
           const u = cachedUsers[0];
           setProfile((prev: any) => prev?.id === profileUserId ? prev : {
@@ -389,6 +392,7 @@ const UserProfileScreen = () => {
     if (showLoading) setLoading(true);
     try {
       const response = await getUserProfile(profileUserId);
+      if (requestedUserId !== activeUserIdRef.current) return;
       setProfile(response.data);
 
       // 2. Save fetched data back to WatermelonDB for next time
@@ -424,6 +428,7 @@ const UserProfileScreen = () => {
       }
       
     } catch (error: any) {
+      if (requestedUserId !== activeUserIdRef.current) return;
       if (error.response?.status === 404) {
         setError('User profile not found. This account may have been deleted.');
       } else {
@@ -431,7 +436,9 @@ const UserProfileScreen = () => {
         setError('Failed to load profile. Please check your connection.');
       }
     } finally {
-      if (showLoading) setLoading(false);
+      if (requestedUserId === activeUserIdRef.current && showLoading) {
+        setLoading(false);
+      }
     }
   }, [profileUserId]);
 
@@ -462,16 +469,21 @@ const UserProfileScreen = () => {
   };
 
   const loadPosts = useCallback(async (reset = false) => {
-    if (!profileUserId || (postsLoading && !reset)) return;
+    if (!profileUserId || profileUserId.toLowerCase().trim() === 'undefined' || profileUserId.toLowerCase().trim() === 'null' || profileUserId.toLowerCase().trim() === 'none') {
+      return;
+    }
+    if (postsLoading && !reset) return;
 
     const currentOffset = reset ? 0 : offset;
     if (reset) {
       setPostsLoading(true);
       setHasMore(true);
     }
+    const requestedUserId = profileUserId;
 
     try {
       const response = await getUserPosts(profileUserId, LIMIT, currentOffset);
+      if (requestedUserId !== activeUserIdRef.current) return;
       const payload = response.data;
       const items = Array.isArray(payload) ? payload : (payload?.items || []);
       
@@ -490,19 +502,39 @@ const UserProfileScreen = () => {
       setOffset(currentOffset + items.length);
       setHasMore(payload?.has_more ?? (items.length === LIMIT));
     } catch (error) {
+      if (requestedUserId !== activeUserIdRef.current) return;
       console.warn('Failed to load user posts:', error);
     } finally {
-      setPostsLoading(false);
-      setRefreshing(false);
+      if (requestedUserId === activeUserIdRef.current) {
+        setPostsLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [profileUserId, offset, postsLoading]);
 
   useEffect(() => {
+    activeUserIdRef.current = profileUserId;
     // Clear state immediately to avoid cross-user/stale leakage during navigation
     setPosts([]);
     setTotalPosts(0);
     setOffset(0);
     setHasMore(true);
+    setProfile(null);
+    setError(null);
+
+    const isPlaceholder = !profileUserId || 
+                          profileUserId.toLowerCase().trim() === 'undefined' || 
+                          profileUserId.toLowerCase().trim() === 'null' || 
+                          profileUserId.toLowerCase().trim() === 'none' ||
+                          profileUserId === '';
+
+    if (isPlaceholder) {
+      setLoading(false);
+      setPostsLoading(false);
+      return;
+    }
+
+    setLoading(true);
     setPostsLoading(true);
 
     loadProfile(true);

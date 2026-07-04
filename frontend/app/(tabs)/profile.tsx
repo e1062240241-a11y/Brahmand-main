@@ -92,6 +92,7 @@ export default function ProfileScreen() {
   const { user, logout, updateUser } = useAuthStore();
   const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
+  const activeUserIdRef = useRef<string | undefined>(userId);
   const scrollY = useRef(new Animated.Value(0)).current;
   const onProfileScrollTabBar = useScrollToHideTabBar();
 
@@ -258,20 +259,23 @@ export default function ProfileScreen() {
 
   const fetchProfile = useCallback(async (showLoading = true) => {
     console.log('[Profile] fetchProfile called, userId:', userId);
-    if (!userId) {
+    if (!userId || userId.toLowerCase().trim() === 'undefined' || userId.toLowerCase().trim() === 'null' || userId.toLowerCase().trim() === 'none') {
       console.log('[Profile] no userId in fetchProfile');
       setLoading(false);
       return;
     }
     if (showLoading) setLoading(true);
+    const requestedUserId = userId;
     try {
       console.log('[Profile] calling getUserProfile API');
       const res = await getUserProfile();
+      if (requestedUserId !== activeUserIdRef.current) return;
       console.log('[Profile] getUserProfile success:', JSON.stringify(res.data).substring(0, 200));
       const nextProfile = res.data || {};
       setProfile(nextProfile);
       updateUser(nextProfile);
     } catch (error: any) {
+      if (requestedUserId !== activeUserIdRef.current) return;
       console.error('Error fetching profile:', error);
       if (error && error.response) {
         console.error('Error status:', error.response.status);
@@ -286,8 +290,10 @@ export default function ProfileScreen() {
         router.replace('/');
       }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestedUserId === activeUserIdRef.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [logout, router, updateUser, userId]);
 
@@ -492,7 +498,7 @@ export default function ProfileScreen() {
 
   const loadPosts = useCallback(async (reset = false, silent = false) => {
     console.log('[Profile] loading posts for userId:', userId, 'reset:', reset, 'silent:', silent);
-    if (!userId || (postsLoading && !reset)) {
+    if (!userId || userId.toLowerCase().trim() === 'undefined' || userId.toLowerCase().trim() === 'null' || userId.toLowerCase().trim() === 'none' || (postsLoading && !reset)) {
       console.log('[Profile] skip loadPosts:', { userId, postsLoading, reset });
       return;
     }
@@ -502,10 +508,14 @@ export default function ProfileScreen() {
       setPostsLoading(true);
       setHasMore(true);
     }
+    const requestedUserId = userId;
 
     try {
       console.log('[Profile] calling getUserPosts with:', { userId, LIMIT, currentOffset });
       const response = await getUserPosts(userId, LIMIT, currentOffset);
+      if (requestedUserId !== activeUserIdRef.current) {
+        return;
+      }
       const payload = response.data;
       console.log('[Profile] getUserPosts response payload:', JSON.stringify(payload).substring(0, 200));
       const items = Array.isArray(payload) ? payload : (payload?.items || []);
@@ -522,12 +532,17 @@ export default function ProfileScreen() {
       setOffset(currentOffset + items.length);
       setHasMore(payload?.has_more ?? (items.length === LIMIT));
     } catch (error) {
+      if (requestedUserId !== activeUserIdRef.current) {
+        return;
+      }
       console.warn('Failed to load user posts:', error);
     } finally {
-      if (!silent) {
-        setPostsLoading(false);
+      if (requestedUserId === activeUserIdRef.current) {
+        if (!silent) {
+          setPostsLoading(false);
+        }
+        setRefreshing(false);
       }
-      setRefreshing(false);
     }
   }, [userId, offset, postsLoading]);
 
@@ -538,20 +553,35 @@ export default function ProfileScreen() {
   };
 
   useEffect(() => {
+    activeUserIdRef.current = userId;
+
     // Clear state immediately to prevent cross-account display/leakage
     setPosts([]);
     setPostsCount(0);
     setOffset(0);
     setHasMore(true);
-    setPostsLoading(true);
+    setProfile(user || null);
 
-    if (!userId) {
+    const isPlaceholder = !userId || 
+                          userId.toLowerCase().trim() === 'undefined' || 
+                          userId.toLowerCase().trim() === 'null' || 
+                          userId.toLowerCase().trim() === 'none' ||
+                          userId === '';
+
+    if (isPlaceholder) {
       setPostsLoading(false);
+      setLoading(false);
       return;
     }
 
+    setPostsLoading(true);
+    setLoading(!user);
+
     // Attempt to load cached posts immediately
     AsyncStorage.getItem(`profile_posts_${userId}`).then(cached => {
+      if (userId !== activeUserIdRef.current) {
+        return;
+      }
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed.length > 0) {
@@ -562,6 +592,9 @@ export default function ProfileScreen() {
       fetchProfile(!user); // Silently fetch if we already have user data
       loadPosts(true); // Will update in background if we had cache
     }).catch(() => {
+      if (userId !== activeUserIdRef.current) {
+        return;
+      }
       fetchProfile(true);
       loadPosts(true);
     });

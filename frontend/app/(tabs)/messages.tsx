@@ -201,7 +201,7 @@ function MessagesScreen({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { coachMarkStep, setCoachMarkStep, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
+  const { coachMarkStep, setCoachMarkStep, showCoachMarks, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [communityHeaderLayout, setCommunityHeaderLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const onMessagesScrollTabBar = useScrollToHideTabBar();
 
@@ -284,19 +284,22 @@ function MessagesScreen({
 
   const conversations = useMemo(() => {
     if (Platform.OS === 'web') {
-      return apiDMs.map((c: any) => ({
-        id: c.id,
-        conversation_id: c.id,
-        user: {
-          id: c.user?.id || '',
-          name: c.user?.name || '',
-          sl_id: c.user?.sl_id || '',
-          photo: c.user?.photo || '',
-          is_verified: false,
-        },
-        last_message: c.last_message,
-        last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
-      }));
+      return apiDMs.map((c: any) => {
+        const convId = c.conversation_id || c.chat_id || c.id;
+        return {
+          id: convId,
+          conversation_id: convId,
+          user: {
+            id: c.user?.id || '',
+            name: c.user?.name || '',
+            sl_id: c.user?.sl_id || '',
+            photo: c.user?.photo || '',
+            is_verified: c.user?.is_verified || false,
+          },
+          last_message: c.last_message,
+          last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
+        };
+      });
     }
     const dbDMs = observedConversations
       .filter(c => c.type === 'dm')
@@ -314,19 +317,22 @@ function MessagesScreen({
         last_message_at: c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : undefined,
       }));
     if (dbDMs.length === 0 && apiDMs.length > 0) {
-      return apiDMs.map((c: any) => ({
-        id: c.id,
-        conversation_id: c.id,
-        user: {
-          id: c.user?.id || '',
-          name: c.user?.name || '',
-          sl_id: c.user?.sl_id || '',
-          photo: c.user?.photo || '',
-          is_verified: false,
-        },
-        last_message: c.last_message,
-        last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
-      }));
+      return apiDMs.map((c: any) => {
+        const convId = c.conversation_id || c.chat_id || c.id;
+        return {
+          id: convId,
+          conversation_id: convId,
+          user: {
+            id: c.user?.id || '',
+            name: c.user?.name || '',
+            sl_id: c.user?.sl_id || '',
+            photo: c.user?.photo || '',
+            is_verified: c.user?.is_verified || false,
+          },
+          last_message: c.last_message,
+          last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
+        };
+      });
     }
     return dbDMs;
   }, [observedConversations, apiDMs]);
@@ -1417,15 +1423,21 @@ function MessagesScreen({
       } catch (_) {}
     };
     const handleNext = async () => {
-      const userId = user?.id;
-      await setFlagSeen(userId, 'feedCoachSeen');
-      
-      const latestFlags = useCoachMarkStore.getState().seenFlags;
-      const next = getNextStep(6, latestFlags);
-      if (next <= 8) {
-        setCoachMarkStep(next);
-        router.push('/(tabs)/vendor');
-      } else {
+      try {
+        const userId = user?.id;
+        await setFlagSeen(userId, 'feedCoachSeen');
+        
+        const latestFlags = useCoachMarkStore.getState().seenFlags;
+        const next = getNextStep(6, latestFlags);
+        if (next <= 8) {
+          setCoachMarkStep(next);
+          router.push('/(tabs)/vendor');
+        } else {
+          setShowCoachMarks(false);
+        }
+      } catch (err) {
+        console.warn('Error in community coach mark next:', err);
+        setCoachMarkStep(7);
         setShowCoachMarks(false);
       }
     };
@@ -1437,7 +1449,7 @@ function MessagesScreen({
         <View style={{ position: 'absolute', top: tY + tH + 2, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' }} />
 
         {/* Coach card */}
-        <View style={[communityCoachStyles.card, { top: cardTop, left: cardLeft, width: cardW }]} pointerEvents="box-none">
+        <View style={[communityCoachStyles.card, { top: cardTop, left: cardLeft, width: cardW }]} pointerEvents="auto">
           {/* Arrow */}
           <View style={{
             position: 'absolute', top: -8, left: arrowX,
@@ -1926,7 +1938,7 @@ function MessagesScreen({
         </View>
       )}
       {/* Community Coach Mark (Step 5) */}
-      {coachMarkStep === 6 && renderCommunityCoachMark()}
+      {showCoachMarks && coachMarkStep === 6 && renderCommunityCoachMark()}
     </LinearGradient>
   );
 }

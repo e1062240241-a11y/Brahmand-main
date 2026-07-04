@@ -201,6 +201,7 @@ async def lifespan(app: FastAPI):
         logger.error("❌ Firebase/Firestore not available - check service account key")
     
     # Start task queue
+    task_queue.max_workers = int(os.getenv("TASK_QUEUE_WORKERS", "2"))
     await task_queue.start()
     logger.info("Background task queue started")
 
@@ -211,14 +212,17 @@ async def lifespan(app: FastAPI):
     # Run Krishna RAG pipeline diagnostics at startup
     try:
         from services.krishna_rag_service import run_startup_diagnostics
-        rag_diag = await asyncio.to_thread(run_startup_diagnostics)
-        logger.info(
-            "[RAG-Startup] mode=%s | chromadb_installed=%s | collection_count=%d | local_verses=%d",
-            rag_diag.get("rag_mode"),
-            rag_diag.get("chromadb_installed"),
-            rag_diag.get("collection_count", 0),
-            rag_diag.get("local_verses_loaded", 0),
-        )
+        async def _log_rag_startup_diagnostics():
+            rag_diag = await asyncio.to_thread(run_startup_diagnostics)
+            logger.info(
+                "[RAG-Startup] mode=%s | chromadb_installed=%s | collection_count=%d | local_verses=%d",
+                rag_diag.get("rag_mode"),
+                rag_diag.get("chromadb_installed"),
+                rag_diag.get("collection_count", 0),
+                rag_diag.get("local_verses_loaded", 0),
+            )
+
+        asyncio.create_task(_log_rag_startup_diagnostics())
     except Exception as _rag_diag_err:
         logger.error("[RAG-Startup] Diagnostics failed to run: %s", _rag_diag_err)
 
@@ -2186,6 +2190,8 @@ async def get_users_batch(
 
 @api_router.get('/users/{user_id}')
 async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token)):
+    if not user_id or user_id.lower().strip() in ('undefined', 'null', 'none', ''):
+        raise HTTPException(status_code=400, detail='Invalid user ID')
     db = await get_db()
     user = await db.get_document('users', user_id)
     if not user:
@@ -2205,8 +2211,8 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'home_location': user.get('home_location'),
         'followers': user.get('followers', []),
         'following': user.get('following', []),
-        'followers_count': user.get('followers_count', len(user.get('followers', []))),
-        'following_count': user.get('following_count', len(user.get('following', []))),
+        'followers_count': len(user.get('followers', []) or []),
+        'following_count': len(user.get('following', []) or []),
         'is_verified': user.get('is_verified', False),
         'verification_level': user.get('verification_level', 'state')
     }
@@ -2220,6 +2226,14 @@ async def get_user_posts(
     offset: int = 0,
     token_data: dict = Depends(verify_token)
 ):
+    if not user_id or user_id.lower().strip() in ('undefined', 'null', 'none', ''):
+        return {
+            'items': [],
+            'total_count': 0,
+            'limit': limit,
+            'offset': offset,
+            'has_more': False,
+        }
     db = await get_db()
     viewer_user_id = token_data['user_id']
 
@@ -5268,6 +5282,72 @@ async def get_communities(token_data: dict = Depends(verify_token)):
     communities.sort(key=lambda x: x.get('sort_order', 99))
     
     return communities
+
+@api_router.get("/communities/my-creation-requests")
+async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
+    """Get community creation requests initiated by the current user."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+    
+    try:
+        requests = await db.query_documents(
+            'community_creation_requests',
+            filters=[('owner_id', '==', user_id)]
+        )
+        
+        result = []
+        for req in requests:
+            req_id = req.get('id')
+            if not req_id:
+                continue
+                
+            admin_ids = req.get('admin_ids', [])
+            member_ids = req.get('member_ids', [])
+            responses = req.get('responses', {})
+            
+            invited_ids = list(set(admin_ids + member_ids))
+            users_data = []
+            if invited_ids:
+                users_data = await db.get_documents_batch('users', invited_ids)
+            
+            admins_list = []
+            members_list = []
+            
+            for u in users_data:
+                if not u:
+                    continue
+                uid = u.get('id')
+                status = responses.get(uid, 'pending')
+                invitee_info = {
+                    'id': uid,
+                    'name': u.get('name') or 'Unknown User',
+                    'photo': u.get('photo'),
+                    'status': status
+                }
+                
+                if uid in admin_ids:
+                    admins_list.append(invitee_info)
+                elif uid in member_ids:
+                    members_list.append(invitee_info)
+            
+            formatted_req = {
+                'id': req_id,
+                'name': req.get('name', ''),
+                'description': req.get('description', ''),
+                'photo': req.get('photo'),
+                'status': req.get('status', 'pending'),
+                'created_at': req.get('created_at', ''),
+                'admins': admins_list,
+                'members': members_list,
+                'community_id': req.get('community_id')
+            }
+            result.append(formatted_req)
+            
+        result.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        return result
+    except Exception as e:
+        logger.error(f"Error fetching my creation requests: {e}")
+        return []
 
 
 class CommunityRequestResponse(BaseModel):
@@ -13837,55 +13917,52 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
     
     if 'feeds' in changes:
         feeds = changes['feeds']
-        for post_data in feeds.get('created', []):
-            try:
-                db.client.collection('posts').document(post_data['id']).set({
-                    "user_id": user_id,
-                    "username": post_data.get('username', 'User'),
-                    "user_photo": post_data.get('user_photo'),
-                    "media_url": post_data.get('media_url'),
-                    "media_type": post_data.get('media_type', 'image'),
-                    "caption": post_data.get('caption', ''),
-                    "likes_count": post_data.get('likes_count', 0),
-                    "comments_count": post_data.get('comments_count', 0),
-                    "visibility": post_data.get('visibility', 'public'),
-                    "created_at": datetime.utcnow(),
-                    "updated_at": datetime.utcnow()
-                })
-            except Exception as e:
-                logger.error("Error pushing feed created: %s", e)
+        # ponytail: Sync push must NOT create or overwrite post documents.
+        # Posts are created only via the dedicated /posts/upload endpoint which
+        # validates media, assigns user_id from token, and enforces rate limits.
+        # The local WatermelonDB cache holds feed posts from ALL users; letting
+        # sync push write them back would re-attribute other users' posts to the
+        # syncing user, creating ghost duplicates and corrupting ownership.
+        if feeds.get('created'):
+            logger.warning("[sync/push] Ignoring %d feeds.created entries from user %s — posts must be created via upload API", len(feeds['created']), user_id)
 
         for post_data in feeds.get('updated', []):
             try:
-                post_ref = db.client.collection('posts').document(post_data['id'])
+                post_id = post_data.get('id')
+                if not post_id:
+                    continue
+                post_ref = db.client.collection('posts').document(post_id)
                 post_snapshot = post_ref.get()
                 if post_snapshot.exists:
-                    post_ref.update({
-                        "caption": post_data.get('caption'),
-                        "likes_count": post_data.get('likes_count'),
-                        "comments_count": post_data.get('comments_count'),
-                        "updated_at": datetime.utcnow()
-                    })
+                    existing_data = post_snapshot.to_dict()
+                    # Only allow the post owner to update their own post
+                    if existing_data.get('user_id') != user_id:
+                        logger.warning("[sync/push] User %s tried to update post %s owned by %s — skipped", user_id, post_id, existing_data.get('user_id'))
+                        continue
+                    # Only update safe fields (caption, counts)
+                    update_fields = {"updated_at": datetime.utcnow()}
+                    if 'caption' in post_data and post_data['caption'] is not None:
+                        update_fields['caption'] = post_data['caption']
+                    post_ref.update(update_fields)
                 else:
-                    post_ref.set({
-                        "user_id": user_id,
-                        "username": post_data.get('username', 'User'),
-                        "user_photo": post_data.get('user_photo'),
-                        "media_url": post_data.get('media_url'),
-                        "media_type": post_data.get('media_type', 'image'),
-                        "caption": post_data.get('caption', ''),
-                        "likes_count": post_data.get('likes_count', 0),
-                        "comments_count": post_data.get('comments_count', 0),
-                        "visibility": post_data.get('visibility', 'public'),
-                        "created_at": datetime.utcnow(),
-                        "updated_at": datetime.utcnow()
-                    })
+                    # Post doesn't exist in Firestore — do NOT re-create it.
+                    # It was likely deleted via the delete API.
+                    logger.warning("[sync/push] User %s tried to update non-existent post %s — skipped (not re-creating)", user_id, post_id)
             except Exception as e:
                 logger.error("Error pushing feed updated: %s", e)
 
         for post_id in feeds.get('deleted', []):
             try:
-                db.client.collection('posts').document(post_id).delete()
+                # Ownership check: only allow deleting posts the user owns
+                post_ref = db.client.collection('posts').document(post_id)
+                post_snapshot = post_ref.get()
+                if post_snapshot.exists:
+                    existing_data = post_snapshot.to_dict()
+                    if existing_data.get('user_id') != user_id:
+                        logger.warning("[sync/push] User %s tried to delete post %s owned by %s — skipped", user_id, post_id, existing_data.get('user_id'))
+                        continue
+                    post_ref.delete()
+                # If post doesn't exist, nothing to delete — that's fine
             except Exception as e:
                 logger.error("Error pushing feed deleted: %s", e)
 

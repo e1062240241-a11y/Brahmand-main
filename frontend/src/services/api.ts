@@ -1573,14 +1573,20 @@ export const sendDirectMessage = (
 export const getConversations = () =>
   api.get("/dm/conversations", { timeout: 120000 });
 
-export const getDMConversationMetadata = (conversationId: string) =>
-  api.get(`/dm/${conversationId}/metadata`);
+export const getDMConversationMetadata = (conversationId: string) => {
+  if (!conversationId || conversationId === "undefined" || conversationId === "new") return Promise.reject(new Error("Invalid conversationId"));
+  return api.get(`/dm/${conversationId}/metadata`);
+};
 
-export const getDirectMessages = (conversationId: string, limit: number = 50) =>
-  api.get(`/dm/${conversationId}?limit=${limit}`, { timeout: 120000 });
+export const getDirectMessages = (conversationId: string, limit: number = 50) => {
+  if (!conversationId || conversationId === "undefined" || conversationId === "new") return Promise.resolve({ data: [] });
+  return api.get(`/dm/${conversationId}?limit=${limit}`, { timeout: 120000 });
+};
 
-export const markDirectMessagesRead = (conversationId: string) =>
-  api.post(`/dm/${conversationId}/read`);
+export const markDirectMessagesRead = (conversationId: string) => {
+  if (!conversationId || conversationId === "undefined" || conversationId === "new") return Promise.resolve();
+  return api.post(`/dm/${conversationId}/read`);
+};
 
 export const clearDirectMessages = (conversationId: string) =>
   api.delete(`/dm/${conversationId}/messages`);
@@ -1825,8 +1831,10 @@ export const createTemplePost = (
 ) => api.post(`/temples/${templeId}/posts`, data);
 
 // Mark messages as read
-export const markMessagesRead = (chatId: string) =>
-  api.post(`/dm/${chatId}/read`);
+export const markMessagesRead = (chatId: string) => {
+  if (!chatId || chatId === "undefined" || chatId === "new") return Promise.resolve();
+  return api.post(`/dm/${chatId}/read`);
+};
 
 // =================== HELP REQUEST APIS ===================
 
