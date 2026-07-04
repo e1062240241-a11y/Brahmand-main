@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 
 from config.firebase_config import get_firestore
 from config.firestore_db import FirestoreDB
-from utils.helpers import generate_community_code, SUBGROUPS
+from utils.helpers import generate_community_code, SUBGROUPS, normalize_location
 from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
@@ -168,6 +168,7 @@ class FirebaseCommunityService:
         location: Dict[str, Any]
     ) -> List[str]:
         """Join all communities for a location (city, state, country)"""
+        location = normalize_location(location) or location
         db = await FirebaseCommunityService.get_db()
         community_ids = []
         

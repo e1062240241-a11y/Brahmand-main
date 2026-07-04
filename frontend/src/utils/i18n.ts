@@ -261,6 +261,16 @@ export const translations = {
     emergencyContact: 'Emergency Contact',
     phoneNumberLabel: 'Phone Number: ',
     callAction: 'Call',
+    blockedAccounts: 'Blocked Accounts',
+    unblock: 'Unblock',
+    noBlockedUsers: 'No blocked accounts',
+    searchBlockedPlaceholder: 'Search blocked accounts...',
+    unblockSuccess: 'User unblocked successfully',
+    unblockConfirmTitle: 'Unblock User',
+    unblockConfirmMessage: 'Are you sure you want to unblock this user?',
+    yes: 'Yes',
+    no: 'No',
+    error: 'Error',
   },
   hi: {
     // Bottom Tabs
@@ -490,6 +500,16 @@ export const translations = {
     emergencyContact: 'आपातकालीन संपर्क',
     phoneNumberLabel: 'फ़ोन नंबर: ',
     callAction: 'कॉल करें',
+    blockedAccounts: 'अवरुद्ध खाते',
+    unblock: 'अवरोध हटाएं',
+    noBlockedUsers: 'कोई अवरुद्ध खाता नहीं है',
+    searchBlockedPlaceholder: 'अवरुद्ध खातों में खोजें...',
+    unblockSuccess: 'उपयोगकर्ता का अवरोध सफलतापूर्वक हटा दिया गया',
+    unblockConfirmTitle: 'अवरोध हटाएं',
+    unblockConfirmMessage: 'क्या आप वाकई इस उपयोगकर्ता का अवरोध हटाना चाहते हैं?',
+    yes: 'हाँ',
+    no: 'नहीं',
+    error: 'त्रुटि',
   },
 };
 

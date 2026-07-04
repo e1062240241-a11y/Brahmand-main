@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder, Image, Dimensions, ImageBackground } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder, Image, Dimensions, ImageBackground, useWindowDimensions, Platform } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,10 +7,13 @@ import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from '../utils/i18n';
 
-const { width, height } = Dimensions.get('window');
+const { width: staticWidth, height: staticHeight } = Dimensions.get('window');
 const FAB_SIZE = 60;
 
 export default function FloatingMenu({ bottomOffset = 90 }) {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const scaleFactor = Platform.OS === 'android' ? Math.min(1, (windowWidth * 0.95) / 360) : 1;
+
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -19,6 +22,13 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
   const fabScale = useRef(new Animated.Value(0)).current;
   const fabRotation = useRef(new Animated.Value(0)).current;
   const fabItemAnims = useRef(Array.from({ length: 7 }, () => new Animated.Value(0))).current;
+
+  const scaledScale = Platform.OS === 'android'
+    ? fabScale.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, scaleFactor]
+      })
+    : fabScale;
 
   // Draggable state
   const pan = useRef(new Animated.ValueXY()).current;
@@ -53,13 +63,15 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
         // Prevent going offscreen left (max right is 0, since initial position is right: 20)
         // Wait, right is 20. x=0 means right=20.
         // x goes negative to move left.
-        const maxLeft = -(width - FAB_SIZE - 40);
+        const currentWidth = Platform.OS === 'android' ? Dimensions.get('window').width : staticWidth;
+        const currentHeight = Platform.OS === 'android' ? Dimensions.get('window').height : staticHeight;
+        const maxLeft = -(currentWidth - FAB_SIZE - 40);
         if (newX > 0) newX = 0;
         if (newX < maxLeft) newX = maxLeft;
         
         // y bounds (y=0 means bottom = bottomOffset)
         // y goes negative to move up
-        const maxUp = -(height - bottomOffset - insets.top - FAB_SIZE - 50);
+        const maxUp = -(currentHeight - bottomOffset - insets.top - FAB_SIZE - 50);
         const maxDown = 0; // Don't go below initial position
         
         if (newY > maxDown) newY = maxDown;
@@ -113,7 +125,11 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
               <Animated.View
                 style={[
                   fabStyles.menuContainer,
-                  {
+                  Platform.OS === 'android' ? {
+                    top: windowHeight / 2 - 180,
+                    transform: [{ scale: scaledScale }],
+                    opacity: fabScale,
+                  } : {
                     transform: [{ scale: fabScale }],
                     opacity: fabScale,
                   },
@@ -278,7 +294,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
 
 const fabStyles = StyleSheet.create({
   overlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center' },
-  menuContainer: { position: 'absolute', width: 360, height: 360, alignSelf: 'center', top: height / 2 - 180 },
+  menuContainer: { position: 'absolute', width: 360, height: 360, alignSelf: 'center', top: staticHeight / 2 - 180 },
   outerRing: { width: 360, height: 360, borderRadius: 180, backgroundColor: '#FFEEE7', justifyContent: 'center', alignItems: 'center' },
   innerCircle: { width: 280, height: 280, borderRadius: 140, backgroundColor: '#FFEEE7', position: 'relative' },
   dottedRing: { position: 'absolute', top: 40, left: 40, width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255, 123, 0, 0.15)', borderStyle: 'dashed' },

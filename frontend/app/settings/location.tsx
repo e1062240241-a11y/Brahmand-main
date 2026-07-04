@@ -66,21 +66,28 @@ const normalizeUserLocation = (location: any): LocationData | null => {
 export default function ChangeLocationScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { user, updateUser } = useAuthStore();
+
+  const homeLoc = user?.home_location;
+  const hasValidLocation = !!(homeLoc && typeof homeLoc === 'object' && homeLoc.city && homeLoc.area && homeLoc.state);
+
   const handleBack = useCallback(() => {
+    if (!hasValidLocation) return;
     router.back?.();
     router.replace('/profile');
-  }, [router]);
+  }, [router, hasValidLocation]);
 
   useEffect(() => {
     const backAction = () => {
+      if (!hasValidLocation) {
+        return true;
+      }
       handleBack();
       return true;
     };
     const subscription = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => subscription.remove();
-  }, [handleBack]);
-
-  const { user, updateUser } = useAuthStore();
+  }, [handleBack, hasValidLocation]);
 
   const [homeLocation, setHomeLocation] = useState<LocationData | null>(
     normalizeUserLocation(user?.home_location) || null
@@ -469,9 +476,13 @@ export default function ChangeLocationScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
+        {hasValidLocation ? (
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="arrow-back" size={24} color={COLORS.text} />
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
         <Text style={styles.headerTitle}>
           {t('language') === 'hi' ? 'स्थान बदलें' : 'Change Location'}
         </Text>

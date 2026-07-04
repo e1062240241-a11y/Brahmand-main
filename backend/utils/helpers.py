@@ -95,3 +95,53 @@ SUBGROUPS = [
 
 # Supported languages
 SUPPORTED_LANGUAGES = ["English", "Hindi", "Gujarati", "Marathi", "Tamil", "Telugu", "Kannada", "Malayalam", "Bengali"]
+
+
+def normalize_location(loc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Normalize location details to prevent sub-community fragmentation (e.g. mapping area groups to city level)"""
+    if not loc:
+        return loc
+    
+    # Create a copy to prevent in-place mutation issues
+    normalized = dict(loc)
+    
+    country = normalized.get("country", "") or ""
+    state = normalized.get("state", "") or ""
+    city = normalized.get("city", "") or ""
+    area = normalized.get("area", "") or ""
+    display_name = normalized.get("display_name", "") or ""
+    
+    # Normalize India to Bharat
+    if country.lower().strip() in ["india", "bharat"]:
+        country = "Bharat"
+        
+    # Clean Suburban from city names
+    if "Suburban" in city:
+        city = city.replace(" Suburban", "").strip()
+        
+    city_lower = city.lower().strip()
+    area_lower = area.lower().strip()
+    display_name_lower = display_name.lower().strip()
+    
+    # Handle Madh / Madh Island and other sublocalities under Mumbai
+    if "madh" in city_lower or "madh island" in city_lower:
+        if not area or "madh" not in area_lower:
+            area = city
+        city = "Mumbai"
+    elif "mumbai" in display_name_lower or "mumbai" in area_lower or state.lower().strip() == "maharashtra":
+        mumbai_subareas = ["madh", "madh island", "malad", "andheri", "juhu", "bandra", "borivali", "dadar", "colaba", "chembur", "kurla", "ghatkopar", "kandivali"]
+        if any(sub in city_lower for sub in mumbai_subareas):
+            if not area:
+                area = city
+            city = "Mumbai"
+            
+    city = city.strip()
+    area = area.strip()
+    
+    normalized["country"] = country
+    normalized["state"] = state
+    normalized["city"] = city
+    normalized["area"] = area
+    
+    return normalized
+

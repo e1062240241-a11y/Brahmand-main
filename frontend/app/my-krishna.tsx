@@ -15,6 +15,7 @@ import {
   Pressable,
   ActivityIndicator,
   Keyboard,
+  Dimensions,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -127,6 +128,7 @@ export default function MyKrishnaChat() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -140,18 +142,32 @@ export default function MyKrishnaChat() {
   }, []);
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      const height = e.endCoordinates.height;
+      setKeyboardHeight(height);
       setKeyboardVisible(true);
+      console.log('[DEBUG KEYBOARD SHOW]', {
+        keyboardHeight: height,
+        insetsBottom: insets.bottom,
+        windowHeight: Dimensions.get('window').height,
+        screenHeight: Dimensions.get('screen').height,
+      });
       scrollToBottom();
     });
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
       setKeyboardVisible(false);
+      console.log('[DEBUG KEYBOARD HIDE]', {
+        insetsBottom: insets.bottom,
+        windowHeight: Dimensions.get('window').height,
+        screenHeight: Dimensions.get('screen').height,
+      });
     });
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, [scrollToBottom]);
+  }, [scrollToBottom, insets.bottom]);
 
   // Load chat history from Firestore on mount
   useEffect(() => {
@@ -334,7 +350,17 @@ export default function MyKrishnaChat() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View 
+      style={{ flex: 1 }}
+      onLayout={(e) => {
+        const layout = e.nativeEvent.layout;
+        console.log('[DEBUG ROOT ONLAYOUT]', {
+          height: layout.height,
+          width: layout.width,
+          y: layout.y,
+        });
+      }}
+    >
       <LinearGradient
         colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
         locations={[0, 0.1058, 0.2212]}
@@ -381,6 +407,14 @@ export default function MyKrishnaChat() {
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+          onLayout={(e) => {
+            const layout = e.nativeEvent.layout;
+            console.log('[DEBUG KAV ONLAYOUT]', {
+              height: layout.height,
+              width: layout.width,
+              y: layout.y,
+            });
+          }}
         >
           {/* ── Loading indicator while history loads ── */}
           {historyLoading ? (
@@ -388,6 +422,7 @@ export default function MyKrishnaChat() {
           ) : (
             <FlatList
               ref={flatListRef}
+              style={{ flex: 1 }}
               data={messages}
               renderItem={renderMessage}
               keyExtractor={(item) => item.id}
@@ -432,16 +467,26 @@ export default function MyKrishnaChat() {
           )}
 
           {/* ── Input Bar ── */}
-          <View style={[
-            styles.inputWrapper,
-            {
-              paddingBottom: Platform.OS === 'android'
-                ? (keyboardVisible ? 8 : Math.max(insets.bottom, 16))
-                : Platform.OS === 'ios'
-                  ? Math.max(insets.bottom, 12)
-                  : 24
-            }
-          ]}>
+          <View 
+            style={[
+              styles.inputWrapper,
+              {
+                paddingBottom: Platform.OS === 'android'
+                  ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12))
+                  : Platform.OS === 'ios'
+                    ? Math.max(insets.bottom, 12)
+                    : 24
+              }
+            ]}
+            onLayout={(e) => {
+              const layout = e.nativeEvent.layout;
+              console.log('[DEBUG INPUT ONLAYOUT]', {
+                height: layout.height,
+                width: layout.width,
+                y: layout.y,
+              });
+            }}
+          >
             <View style={styles.inputRow}>
               <View style={styles.inputContainer}>
                 <TextInput
@@ -458,16 +503,6 @@ export default function MyKrishnaChat() {
                   editable={!historyLoading}
                   disableFullscreenUI={true}
                   textAlignVertical="center"
-                  onFocus={() => {
-                    if (Platform.OS === 'android') {
-                      setKeyboardVisible(true);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (Platform.OS === 'android') {
-                      setKeyboardVisible(false);
-                    }
-                  }}
                 />
                 <View style={styles.inputIcons}>
                   <Ionicons name="mic-outline" size={20} color="rgba(0, 0, 0, 0.6)" style={styles.iconMargin} />
@@ -510,11 +545,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     zIndex: 100,
     backgroundColor: 'rgba(255, 250, 248, 0.50)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowColor: Platform.OS === 'ios' ? '#000' : undefined,
+    shadowOffset: Platform.OS === 'ios' ? { width: 0, height: 6 } : undefined,
+    shadowOpacity: Platform.OS === 'ios' ? 0.15 : undefined,
+    shadowRadius: Platform.OS === 'ios' ? 10 : undefined,
+    elevation: Platform.OS === 'android' ? 0 : 6,
+    borderBottomWidth: Platform.OS === 'android' ? 1 : 0,
+    borderBottomColor: Platform.OS === 'android' ? 'rgba(0, 0, 0, 0.06)' : undefined,
   },
   headerLeft: {
     flexDirection: 'row',

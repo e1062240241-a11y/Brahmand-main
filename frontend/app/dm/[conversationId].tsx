@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
+  useWindowDimensions,
   Dimensions,
   BackHandler,
   Alert,
@@ -20,6 +21,7 @@ import {
   Linking,
   AppState,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useIsFocused } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -323,28 +325,49 @@ const DirectMessageScreen = () => {
     userName?: string;
     userSL?: string;
   }>();
+
+  const logLayout = (name: string, styleObj: any) => (event: any) => {
+    const { y, height } = event.nativeEvent.layout;
+    const flatStyle = StyleSheet.flatten(styleObj) || {};
+    
+    let translateY = 0;
+    if (flatStyle.transform) {
+      const translateObj = flatStyle.transform.find((t: any) => t.translateY !== undefined);
+      if (translateObj) translateY = translateObj.translateY;
+    }
+    
+    console.log(`[LAYOUT_TRACE] ${name} | y: ${y} | height: ${height} | paddingBottom: ${flatStyle.paddingBottom ?? 0} | marginBottom: ${flatStyle.marginBottom ?? 0} | bottom: ${flatStyle.bottom ?? 'none'} | translateY: ${translateY} | flex: ${flatStyle.flex ?? 'none'} | insets.bottom: ${insets.bottom}`);
+  };
   const isFocused = useIsFocused();
   const router = useRouter();
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
+  const textInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
+  const windowDimensions = useWindowDimensions();
 
   const [messages, setMessages] = useState<Message[]>([]);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-      setKeyboardVisible(true);
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      const windowDim = Dimensions.get('window');
+      const screenDim = Dimensions.get('screen');
+      console.log('[KEYBOARD_DIAGNOSTICS] keyboardDidShow | ' +
+        `Dimensions(window) height: ${windowDim.height} | ` +
+        `Dimensions(screen) height: ${screenDim.height} | ` +
+        `useWindowDimensions() height: ${windowDimensions.height} | ` +
+        `endCoordinates: ${JSON.stringify(e.endCoordinates)}`
+      );
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
     });
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
+      textInputRef.current?.blur();
     });
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
-  }, []);
+  }, [windowDimensions.height]);
   const [conversation, setConversation] = useState<Conversation | null>(() => {
     if (userId && userName) {
       return {
@@ -380,7 +403,6 @@ const DirectMessageScreen = () => {
   } | null>(null);
   const [fullScreenMedia, setFullScreenMedia] = useState<{ uri: string; type: 'image' | 'video' } | null>(null);
   const [isRealtime, setIsRealtime] = useState(false);
-  const [viewHeight, setViewHeight] = useState(Dimensions.get('window').height);
   const [hasMarkedRead, setHasMarkedRead] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -443,6 +465,10 @@ const DirectMessageScreen = () => {
 
   const handleBackNavigation = useCallback(() => {
     try {
+      if (textInputRef.current) {
+        textInputRef.current.blur();
+      }
+      Keyboard.dismiss();
       if (router.canGoBack()) {
         router.back();
       } else {
@@ -728,6 +754,10 @@ const DirectMessageScreen = () => {
     if (Platform.OS !== 'android') return;
 
     const onHardwareBackPress = () => {
+      if (textInputRef.current?.isFocused()) {
+        textInputRef.current.blur();
+        return true;
+      }
       handleBackNavigation();
       return true;
     };
@@ -1726,7 +1756,10 @@ const DirectMessageScreen = () => {
   const bottomPadding = Platform.OS === 'web' ? 8 : (Platform.OS === 'android' ? 8 : Math.max(insets.bottom, 8));
 
   const renderContent = () => (
-    <View style={styles.chatScreen}>
+    <View 
+      style={styles.chatScreen}
+      onLayout={logLayout('Chat container', styles.chatScreen)}
+    >
       <View style={styles.chatBackground} pointerEvents="none">
         <LinearGradient
           colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
@@ -1863,6 +1896,7 @@ const DirectMessageScreen = () => {
               onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
               onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
@@ -1873,7 +1907,10 @@ const DirectMessageScreen = () => {
           )}
         </View>
         
-        <View style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}>
+        <View 
+          style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}
+          onLayout={logLayout('Input wrapper', [styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }])}
+        >
           {selectedMedia && (
             <View style={styles.mediaPreviewContainer}>
               {selectedMedia.mediaType === 'image' ? (
@@ -1887,9 +1924,13 @@ const DirectMessageScreen = () => {
             </View>
           )}
 
-          <View style={styles.inputContainer}>
+          <View 
+            style={styles.inputContainer}
+            onLayout={logLayout('TextInput container', styles.inputContainer)}
+          >
             <View style={styles.inputFieldContainer}>
               <TextInput
+                ref={textInputRef}
                 value={newMessage}
                 onChangeText={setNewMessage}
                 placeholder="Message..."
@@ -1899,16 +1940,6 @@ const DirectMessageScreen = () => {
                 style={styles.input}
                 editable={!isInputLocked}
                 returnKeyType="default"
-                onFocus={() => {
-                  if (Platform.OS === 'android') {
-                    setKeyboardVisible(true);
-                  }
-                }}
-                onBlur={() => {
-                  if (Platform.OS === 'android') {
-                    setKeyboardVisible(false);
-                  }
-                }}
               />
               <TouchableOpacity onPress={handleOpenCamera} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="camera-outline" size={24} color="#000" />
@@ -1995,7 +2026,7 @@ const DirectMessageScreen = () => {
   if (Platform.OS === 'web') {
     return (
       <>
-        <View style={[styles.container, { height: viewHeight }]}>{renderContent()}</View>
+        <View style={[styles.container, { height: windowHeight }]}>{renderContent()}</View>
         {/* Apple Guideline 1.2 - Report User Modal */}
         <ReportModal
           visible={reportUserModalVisible}
@@ -2016,8 +2047,18 @@ const DirectMessageScreen = () => {
 
   return (
     <>
-      <SafeAreaView style={styles.container} edges={['left', 'right']}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}>
+      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+      <SafeAreaView 
+        style={styles.container} 
+        edges={['left', 'right']}
+        onLayout={logLayout('Root container / SafeAreaView', styles.container)}
+      >
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+          onLayout={logLayout('KeyboardAvoidingView', { flex: 1 })}
+        >
           {renderContent()}
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -2049,13 +2090,15 @@ const styles = StyleSheet.create({
     paddingBottom: 4, 
     paddingHorizontal: 16, 
     backgroundColor: 'rgba(255, 250, 248, 0.50)', 
-    height: 103,
+    height: Platform.OS === 'android' ? undefined : 103,
+    minHeight: Platform.OS === 'android' ? 56 : undefined,
     shadowColor: 'rgba(0, 0, 0, 0.15)', 
     shadowOffset: { width: 0, height: 6 }, 
     shadowOpacity: 1, 
     shadowRadius: 10, 
-    elevation: 10, 
-    borderBottomWidth: 0, 
+    elevation: Platform.OS === 'android' ? 0 : 10, 
+    borderBottomWidth: Platform.OS === 'android' ? 0.5 : 0, 
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
     zIndex: 10, 
     flexShrink: 0 
   },

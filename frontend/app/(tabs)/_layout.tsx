@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, StyleSheet, Image } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../src/utils/i18n';
 import CustomTabBar from '../../src/components/CustomTabBar';
 import { TabBarProvider } from '../../src/contexts/TabBarContext';
 import { ThemeProvider, DefaultTheme } from '@react-navigation/native';
+import { useAuthStore } from '../../src/store/authStore';
 
 const MyTheme = {
   ...DefaultTheme,
@@ -26,6 +27,20 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom;
   const { t } = useTranslation();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, isAuthenticated, isLoading } = useAuthStore();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      const homeLoc = user?.home_location;
+      const hasValidLocation = !!(homeLoc && typeof homeLoc === 'object' && homeLoc.city && homeLoc.area && homeLoc.state);
+      if (!hasValidLocation) {
+        console.log('[TabLayout] Mandatory location is missing. Redirecting to /settings/location');
+        router.replace('/settings/location');
+      }
+    }
+  }, [isLoading, isAuthenticated, user, pathname, router]);
 
   return (
     <ThemeProvider value={MyTheme}>

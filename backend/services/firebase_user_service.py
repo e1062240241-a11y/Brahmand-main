@@ -6,7 +6,7 @@ import aiohttp
 
 from config.firebase_config import get_firestore
 from config.firestore_db import FirestoreDB
-from utils.helpers import SUPPORTED_LANGUAGES
+from utils.helpers import SUPPORTED_LANGUAGES, normalize_location
 from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
@@ -127,6 +127,7 @@ class FirebaseUserService:
         from services.firebase_community_service import FirebaseCommunityService
         
         db = await FirebaseUserService.get_db()
+        location = normalize_location(location) or location
         
         # Join location-based communities
         community_ids = await FirebaseCommunityService.join_location_communities(user_id, location)
@@ -167,12 +168,14 @@ class FirebaseUserService:
         update_data = {'updated_at': datetime.utcnow()}
         
         if home_location:
+            home_location = normalize_location(home_location) or home_location
             home_ids = await FirebaseCommunityService.join_location_communities(user_id, home_location)
             community_ids.extend(home_ids)
             update_data['home_location'] = home_location
             update_data['location'] = home_location
         
         if office_location:
+            office_location = normalize_location(office_location) or office_location
             office_ids = await FirebaseCommunityService.join_location_communities(user_id, office_location)
             community_ids.extend(office_ids)
             update_data['office_location'] = office_location
