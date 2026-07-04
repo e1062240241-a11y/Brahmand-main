@@ -526,6 +526,7 @@ export default function MyKrishnaChat() {
               </Pressable>
             </View>
           </View>
+          {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
         </KeyboardAvoidingView>
       </LinearGradient>
     </View>
