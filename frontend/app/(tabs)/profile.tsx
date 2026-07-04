@@ -518,19 +518,32 @@ export default function ProfileScreen() {
       }
       const payload = response.data;
       console.log('[Profile] getUserPosts response payload:', JSON.stringify(payload).substring(0, 200));
-      const items = Array.isArray(payload) ? payload : (payload?.items || []);
-      console.log('[Profile] items count:', items.length);
+      let items = Array.isArray(payload) ? payload : (payload?.items || []);
+
+      // Strict frontend boundary: guarantee that we NEVER display another user's post in this tab
+      items = items.filter((p: any) => p.user_id === userId);
+
+      console.log('[Profile] items count after strict filter:', items.length);
 
       if (reset) {
         setPosts(items);
-        AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => { });
+        if (userId && userId.trim() !== '' && userId.toLowerCase() !== 'undefined') {
+          AsyncStorage.setItem(`profile_posts_v2_${userId}`, JSON.stringify(items)).catch(() => { });
+        }
       } else {
-        setPosts(prev => [...prev, ...items]);
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNew = items.filter((p: any) => !existingIds.has(p.id));
+          return [...prev, ...uniqueNew];
+        });
       }
 
       setPostsCount(prev => payload?.total_count !== undefined ? payload.total_count : (reset ? items.length : prev + items.length));
-      setOffset(currentOffset + items.length);
-      setHasMore(payload?.has_more ?? (items.length === LIMIT));
+
+      // The offset calculation must be based on the raw payload length so pagination logic is maintained correctly
+      const rawPayloadLength = Array.isArray(payload) ? payload.length : (payload?.items || []).length;
+      setOffset(currentOffset + rawPayloadLength);
+      setHasMore(payload?.has_more ?? (rawPayloadLength === LIMIT));
     } catch (error) {
       if (requestedUserId !== activeUserIdRef.current) {
         return;
@@ -577,15 +590,25 @@ export default function ProfileScreen() {
     setPostsLoading(true);
     setLoading(!user);
 
-    // Attempt to load cached posts immediately
-    AsyncStorage.getItem(`profile_posts_${userId}`).then(cached => {
+    // Ensure we don't query a cache for 'undefined' or missing user ids
+    if (!userId || userId.trim() === '' || userId.toLowerCase() === 'undefined') {
+      return;
+    }
+
+    // Attempt to load cached posts immediately using v2 key to break legacy cache
+    // Also actively delete the old legacy cache so we don't waste device storage
+    AsyncStorage.removeItem(`profile_posts_${userId}`).catch(() => {});
+
+    AsyncStorage.getItem(`profile_posts_v2_${userId}`).then(cached => {
       if (userId !== activeUserIdRef.current) {
         return;
       }
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (parsed.length > 0) {
-          setPosts(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Strictly filter cache to only show posts belonging to the current user
+          const strictUserPosts = parsed.filter((p: any) => p.user_id === userId);
+          setPosts(strictUserPosts);
           setPostsLoading(false);
         }
       }
@@ -609,9 +632,9 @@ export default function ProfileScreen() {
         if (userId && newPost.user_id === userId) {
           setPosts(prev => {
             if (prev.some(p => p.id === newPost.id)) return prev;
+            setPostsCount(count => count + 1);
             return [newPost, ...prev];
           });
-          setPostsCount(prev => prev + 1);
         }
       }
       // Trigger a silent background refresh to keep state and counts synced with the server
@@ -1419,7 +1442,7 @@ export default function ProfileScreen() {
             ) : !hasMore && posts.length > 0 ? (
               <View style={styles.endOfFeed}>
                 <Text style={styles.endOfFeedText}>
-                  {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You've reached the end"}
+                  {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You have reached the end"}
                 </Text>
               </View>
             ) : null
@@ -1431,7 +1454,10 @@ export default function ProfileScreen() {
                   <Ionicons name="camera-outline" size={40} color="#FFFFFF" />
                 </View>
                 <Text style={[styles.emptyTitle, { color: '#FFFFFF' }]}>
-                  {t('language') === 'hi' ? 'अभी तक कोई पोस्ट नहीं' : 'No Posts Yet'}
+                  {t('language') === 'hi' ? 'कोई पोस्ट नहीं मिली' : 'No posts found'}
+                </Text>
+                <Text style={[styles.emptySubTitle, { color: 'rgba(255,255,255,0.7)', marginTop: 8 }]}>
+                  {t('language') === 'hi' ? 'अपनी सामग्री देखने के लिए कृपया अपलोड करें।' : 'Please upload to see your content.'}
                 </Text>
               </View>
             ) : null
@@ -1627,8 +1653,12 @@ export default function ProfileScreen() {
             </View>
             {posts.length > 0 ? (
               <FlatList
-                ref={postListRef}
-                data={posts}
+              ref={postListRef}
+              data={posts}
+              initialNumToRender={5}
+              maxToRenderPerBatch={3}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS === 'android'}
                 renderItem={({ item }) => {
                   const postKey = String(item.id || item.media_url || 0);
                   return (
@@ -1781,8 +1811,12 @@ export default function ProfileScreen() {
 
                     return (
                       <FlatList
-                        data={parentComments}
-                        keyExtractor={(item, index) => item.id || String(index)}
+                      data={parentComments}
+                      keyExtractor={(item, index) => item.id || String(index)}
+                      initialNumToRender={10}
+                      maxToRenderPerBatch={5}
+                      windowSize={5}
+                      removeClippedSubviews={Platform.OS === 'android'}
                         renderItem={({ item }) => {
                           const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                           const replies = repliesMap[item.id] || [];
