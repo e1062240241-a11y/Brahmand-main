@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, useWindowDimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ExpoImage } from 'expo-image';
@@ -23,12 +23,15 @@ const ZODIAC_DATA = [
 
 export default function HomeJyotishSection() {
   const router = useRouter();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const dynamicWidth = Platform.OS === 'android' ? windowWidth : width;
+  const dynamicHeight = Platform.OS === 'android' ? windowHeight : Dimensions.get('window').height;
 
   return (
     <LinearGradient
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
       locations={[0, 0.0913, 0.25]}
-      style={styles.container}
+      style={[styles.container, Platform.OS === 'android' && { minHeight: dynamicHeight }]}
     >
       <Text style={styles.title}>What's your Rashi</Text>
       
@@ -37,7 +40,7 @@ export default function HomeJyotishSection() {
           return (
             <TouchableOpacity 
               key={zodiac.id} 
-              style={styles.card}
+              style={[styles.card, Platform.OS === 'android' && { width: (dynamicWidth - 32 - 24) / 3 }]}
               onPress={() => router.push('/horoscope')}
               activeOpacity={0.8}
             >

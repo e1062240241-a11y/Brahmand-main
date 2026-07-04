@@ -12,6 +12,7 @@ import {
   Image,
   ImageBackground,
   Dimensions,
+  useWindowDimensions,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -430,6 +431,9 @@ const formatFestivalDate = (dateStr: string) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const screenWidth = Platform.OS === 'android' ? windowWidth : SCREEN_WIDTH;
+  const screenHeight = Platform.OS === 'android' ? windowHeight : SCREEN_HEIGHT;
   const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
@@ -1629,7 +1633,7 @@ export default function HomeScreen() {
     let closestKey = null;
     let maxVisible = 0;
     const viewportTop = y;
-    const viewportBottom = y + SCREEN_HEIGHT;
+    const viewportBottom = y + screenHeight;
 
     for (const key of feedPostKeys) {
       const offset = postOffsetsRef.current[key];
@@ -1641,7 +1645,7 @@ export default function HomeScreen() {
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
         // Stricter condition: Post must be at least 60% visible OR take up at least 50% of the screen
-        const visibilityThreshold = Math.min(height * 0.6, SCREEN_HEIGHT * 0.5);
+        const visibilityThreshold = Math.min(height * 0.6, screenHeight * 0.5);
         if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
           maxVisible = visibleAmount;
           closestKey = key;
@@ -1674,7 +1678,7 @@ export default function HomeScreen() {
         }
       }
     }
-  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts, onSmartScroll]);
+  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts, onSmartScroll, screenHeight]);
 
   const loadHomeRequests = useCallback(async () => {
     // Legacy function, replaced by initializeHome
@@ -2471,13 +2475,13 @@ export default function HomeScreen() {
       ? Math.max(insets.bottom + 5, 5) 
       : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
       
-    const tabY = SCREEN_HEIGHT - bottomPosition - 69;
-    const tabCenterY = SCREEN_HEIGHT - bottomPosition - 69 / 2;
+    const tabY = screenHeight - bottomPosition - 69;
+    const tabCenterY = screenHeight - bottomPosition - 69 / 2;
     const tabCenterX = (idx: number) => {
       // Scale design-space (373dp) positions to the actual bar width
       const OUTER_H_PADDING = 14;
       const DESIGN_BAR_WIDTH = 373;
-      const barWidth = Math.max(SCREEN_WIDTH - OUTER_H_PADDING * 2, 200);
+      const barWidth = Math.max(screenWidth - OUTER_H_PADDING * 2, 200);
       const scaleX = barWidth / DESIGN_BAR_WIDTH;
       const leftOffset = OUTER_H_PADDING; // outerContainer starts after padding
       // Design-space home-active icon centers
@@ -2517,14 +2521,14 @@ export default function HomeScreen() {
       case 3: // Live Jaap (Hanuman Chalisa)
         targetX = 20;
         targetY = insets.top + bannersY - 80;
-        targetW = SCREEN_WIDTH - 40;
+        targetW = screenWidth - 40;
         targetH = 160;
         arrowDirection = 'up';
         break;
       case 4: // Live Aarti (Somnath Temple)
         targetX = 20;
         targetY = insets.top + bannersY - 80;
-        targetW = SCREEN_WIDTH - 40;
+        targetW = screenWidth - 40;
         targetH = 160;
         arrowDirection = 'up';
         break;
@@ -2532,8 +2536,8 @@ export default function HomeScreen() {
         const fabSize = 60;
         const fabRight = 20;
         const fabBottom = 90 + insets.bottom;
-        targetX = SCREEN_WIDTH - fabRight - fabSize;
-        targetY = SCREEN_HEIGHT - fabBottom - fabSize;
+        targetX = screenWidth - fabRight - fabSize;
+        targetY = screenHeight - fabBottom - fabSize;
         targetW = fabSize;
         targetH = fabSize;
         arrowDirection = 'down';
@@ -2552,10 +2556,10 @@ export default function HomeScreen() {
       ? targetY + targetH + 12
       : undefined;
     const cardBottomOffset = arrowDirection === 'down'
-      ? SCREEN_HEIGHT - targetY + 12
+      ? screenHeight - targetY + 12
       : undefined;
 
-    const cardLeft = (SCREEN_WIDTH - cardWidth) / 2;
+    const cardLeft = (screenWidth - cardWidth) / 2;
     const arrowX = targetX + targetW / 2 - cardLeft;
 
     const handleSkip = async () => {
@@ -2607,7 +2611,7 @@ export default function HomeScreen() {
         bannerScrollRef.current?.scrollTo({ x: 0, animated: true });
       } else if (nextStep === 4) {
         scrollViewRef.current?.scrollTo({ y: 80, animated: true });
-        bannerScrollRef.current?.scrollTo({ x: SCREEN_WIDTH - 40 + 12, animated: true });
+        bannerScrollRef.current?.scrollTo({ x: screenWidth - 40 + 12, animated: true });
       } else if (nextStep === 5) {
         // Scroll back to top for FAB spotlight
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
@@ -3599,16 +3603,16 @@ export default function HomeScreen() {
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         decelerationRate="fast"
-                        snapToInterval={SCREEN_WIDTH - 40 + 12}
+                        snapToInterval={screenWidth - 40 + 12}
                         contentContainerStyle={{ gap: 12, paddingRight: 20 }}
                         onScroll={(e) => {
                           const x = e.nativeEvent.contentOffset.x;
-                          const idx = Math.round(x / (SCREEN_WIDTH - 40));
+                          const idx = Math.round(x / (screenWidth - 40));
                           setActiveBannerIndex(idx);
                         }}
                         scrollEventThrottle={16}
                       >
-                        <View style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]}>
+                        <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
                           <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                             <LinearGradient
                               colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
@@ -3735,7 +3739,7 @@ export default function HomeScreen() {
                         </ImageBackground>
                     </View>
 
-                    <View style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]}>
+                    <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
                       <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                         <LinearGradient
                           colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
