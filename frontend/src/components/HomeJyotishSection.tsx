@@ -33,22 +33,33 @@ export default function HomeJyotishSection() {
       locations={[0, 0.0913, 0.25]}
       style={[styles.container, Platform.OS === 'android' && { minHeight: dynamicHeight }]}
     >
-      <Text style={styles.title}>What's your Rashi</Text>
+      <Text style={[styles.title, Platform.OS === 'android' && { fontSize: 22, marginBottom: 20 }]}>What's your Rashi</Text>
       
       <View style={styles.grid}>
         {ZODIAC_DATA.map((zodiac) => {
           return (
             <TouchableOpacity 
               key={zodiac.id} 
-              style={[styles.card, Platform.OS === 'android' && { width: (dynamicWidth - 32 - 24) / 3 }]}
+              style={[
+                styles.card, 
+                Platform.OS === 'android' && { 
+                  width: (dynamicWidth - 32 - 24) / 3,
+                  padding: 10,
+                  borderRadius: 16
+                }
+              ]}
               onPress={() => router.push('/horoscope')}
               activeOpacity={0.8}
             >
-              <View style={styles.iconContainer}>
-                <ExpoImage source={zodiac.image} style={{ width: 52, height: 52 }} contentFit="contain" />
+              <View style={[styles.iconContainer, Platform.OS === 'android' && { width: 50, height: 50, borderRadius: 25, marginBottom: 8 }]}>
+                <ExpoImage 
+                  source={zodiac.image} 
+                  style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 52, height: 52 }} 
+                  contentFit="contain" 
+                />
               </View>
-              <Text style={styles.name}>{zodiac.name}</Text>
-              <Text style={styles.hindiName}>{zodiac.hindi}</Text>
+              <Text style={[styles.name, Platform.OS === 'android' && { fontSize: 13 }]}>{zodiac.name}</Text>
+              <Text style={[styles.hindiName, Platform.OS === 'android' && { fontSize: 11 }]}>{zodiac.hindi}</Text>
             </TouchableOpacity>
           );
         })}
