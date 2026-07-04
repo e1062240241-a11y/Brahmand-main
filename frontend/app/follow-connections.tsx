@@ -360,8 +360,8 @@ export default function FollowConnectionsScreen() {
 
         <View style={styles.tabContainer}>
           <View style={styles.tabBar}>
-            {renderTabButton('followers', 'Followers', followerIds.length)}
-            {renderTabButton('following', 'Following', profileFollowingIds.length)}
+            {renderTabButton('followers', 'Followers', followers.length)}
+            {renderTabButton('following', 'Following', following.length)}
           </View>
         </View>
 

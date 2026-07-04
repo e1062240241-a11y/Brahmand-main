@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  ActivityIndicator, 
-  Modal, 
-  Dimensions, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Modal,
+  Dimensions,
   FlatList,
   RefreshControl,
   Platform,
@@ -59,6 +59,8 @@ const UserProfileScreen = () => {
   const insets = useSafeAreaInsets();
   const scrollY = useRef(new Animated.Value(0)).current;
   const activeUserIdRef = useRef<string | undefined>(profileUserId);
+  const requestSequenceRef = useRef(0); // ponytail: track request sequence to avoid race conditions
+  const isFetchingRef = useRef(false); // ponytail: track fetch state to prevent overlapping calls
   const detailFlatListRef = useRef<FlatList>(null);
 
   const headerTitleOpacity = scrollY.interpolate({
@@ -118,7 +120,7 @@ const UserProfileScreen = () => {
     setPostModalVisible(true);
     try {
       viewPost(post.id);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const [selectedCommentPost, setSelectedCommentPost] = useState<any>(null);
@@ -178,11 +180,11 @@ const UserProfileScreen = () => {
       const parentId = replyingToComment?.id || undefined;
       const response = await addPostComment(selectedCommentPost.id, commentText.trim(), parentId);
       const serverComment = response.data?.comment || response.data;
-      
+
       setCommentText('');
       setReplyingToComment(null);
       Keyboard.dismiss();
-      
+
       // Update top_comments in local state for outer preview
       setPosts(prev => prev.map(p => {
         if (p.id === selectedCommentPost.id) {
@@ -345,14 +347,16 @@ const UserProfileScreen = () => {
         'Choose an action:',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Report Comment', onPress: () => {
-            setPendingReportComment(comment);
-            setCommentModalToRestore(commentModalVisible);
-            setCommentModalVisible(false);
-            setTimeout(() => {
-              setReportCommentModalVisible(true);
-            }, 300);
-          }},
+          {
+            text: 'Report Comment', onPress: () => {
+              setPendingReportComment(comment);
+              setCommentModalToRestore(commentModalVisible);
+              setCommentModalVisible(false);
+              setTimeout(() => {
+                setReportCommentModalVisible(true);
+              }, 300);
+            }
+          },
           { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
         ],
         { cancelable: true }
@@ -364,7 +368,7 @@ const UserProfileScreen = () => {
     if (!profileUserId || profileUserId.toLowerCase().trim() === 'undefined' || profileUserId.toLowerCase().trim() === 'null' || profileUserId.toLowerCase().trim() === 'none') return;
     setError(null);
     const requestedUserId = profileUserId;
-    
+
     // 1. Optimistic load from WatermelonDB
     try {
       if (Platform.OS !== 'web') {
@@ -402,7 +406,7 @@ const UserProfileScreen = () => {
           const { Q } = require('@nozbe/watermelondb');
           const usersCollection = database.collections.get('users');
           const remoteUser = response.data;
-          
+
           await database.write(async () => {
             const existing = await usersCollection.query(Q.where('id', profileUserId)).fetch();
             if (existing.length > 0) {
@@ -426,7 +430,7 @@ const UserProfileScreen = () => {
       } catch (dbErr) {
         console.log('Failed to update profile cache:', dbErr);
       }
-      
+
     } catch (error: any) {
       if (requestedUserId !== activeUserIdRef.current) return;
       if (error.response?.status === 404) {
@@ -460,7 +464,7 @@ const UserProfileScreen = () => {
         sl_id: userObj.sl_id,
         phone: userObj.phone
       };
-      
+
       recent = [profileToSave, ...recent.filter((item: any) => item.id !== profileToSave.id)].slice(0, 4);
       await AsyncStorage.setItem('recent_searches', JSON.stringify(recent));
     } catch (e) {
@@ -472,21 +476,29 @@ const UserProfileScreen = () => {
     if (!profileUserId || profileUserId.toLowerCase().trim() === 'undefined' || profileUserId.toLowerCase().trim() === 'null' || profileUserId.toLowerCase().trim() === 'none') {
       return;
     }
-    if (postsLoading && !reset) return;
+    
+    if (isFetchingRef.current && !reset) {
+      return;
+    }
 
     const currentOffset = reset ? 0 : offset;
     if (reset) {
       setPostsLoading(true);
       setHasMore(true);
     }
+    
+    isFetchingRef.current = true;
     const requestedUserId = profileUserId;
+    const currentSeq = ++requestSequenceRef.current;
 
     try {
       const response = await getUserPosts(profileUserId, LIMIT, currentOffset);
-      if (requestedUserId !== activeUserIdRef.current) return;
+      if (requestedUserId !== activeUserIdRef.current || currentSeq !== requestSequenceRef.current) return;
       const payload = response.data;
-      const items = Array.isArray(payload) ? payload : (payload?.items || []);
-      
+      let items = Array.isArray(payload) ? payload : (payload?.items || []);
+      // ponytail: strict frontend boundary to guarantee that we NEVER display another user's post in this profile feed
+      items = items.filter((p: any) => (p.user_id || p.userId || p.creator_id || p.creator?.id || p.sender_id) === profileUserId);
+
       if (reset) {
         setPosts(items);
       } else {
@@ -502,15 +514,16 @@ const UserProfileScreen = () => {
       setOffset(currentOffset + items.length);
       setHasMore(payload?.has_more ?? (items.length === LIMIT));
     } catch (error) {
-      if (requestedUserId !== activeUserIdRef.current) return;
+      if (requestedUserId !== activeUserIdRef.current || currentSeq !== requestSequenceRef.current) return;
       console.warn('Failed to load user posts:', error);
     } finally {
-      if (requestedUserId === activeUserIdRef.current) {
+      if (requestedUserId === activeUserIdRef.current && currentSeq === requestSequenceRef.current) {
+        isFetchingRef.current = false;
         setPostsLoading(false);
         setRefreshing(false);
       }
     }
-  }, [profileUserId, offset, postsLoading]);
+  }, [profileUserId, offset]);
 
   useEffect(() => {
     activeUserIdRef.current = profileUserId;
@@ -522,11 +535,11 @@ const UserProfileScreen = () => {
     setProfile(null);
     setError(null);
 
-    const isPlaceholder = !profileUserId || 
-                          profileUserId.toLowerCase().trim() === 'undefined' || 
-                          profileUserId.toLowerCase().trim() === 'null' || 
-                          profileUserId.toLowerCase().trim() === 'none' ||
-                          profileUserId === '';
+    const isPlaceholder = !profileUserId ||
+      profileUserId.toLowerCase().trim() === 'undefined' ||
+      profileUserId.toLowerCase().trim() === 'null' ||
+      profileUserId.toLowerCase().trim() === 'none' ||
+      profileUserId === '';
 
     if (isPlaceholder) {
       setLoading(false);
@@ -555,7 +568,7 @@ const UserProfileScreen = () => {
     // Optimistic Update
     const currentFollowers = Array.isArray(profile.followers) ? profile.followers : [];
     const isNowFollowing = !isFollowing;
-    
+
     const nextFollowers = isNowFollowing
       ? [...currentFollowers, currentUserId]
       : currentFollowers.filter((id: string) => id !== currentUserId);
@@ -671,10 +684,12 @@ const UserProfileScreen = () => {
         'Choose an action:',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Report Post', onPress: () => {
-            setPendingReportPost(post);
-            setReportPostModalVisible(true);
-          }},
+          {
+            text: 'Report Post', onPress: () => {
+              setPendingReportPost(post);
+              setReportPostModalVisible(true);
+            }
+          },
           { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
         ],
         { cancelable: true }
@@ -765,7 +780,7 @@ const UserProfileScreen = () => {
     // Open DM selection with pre-filled profile link
     router.push({
       pathname: '/dm/new',
-      params: { 
+      params: {
         shareText: `Check out ${profile?.name || 'this user'} on Brahmand: @${profile?.sl_id}`
       }
     });
@@ -782,7 +797,7 @@ const UserProfileScreen = () => {
     if (!currentUserId || !profileUserId || currentUserId === profileUserId) return;
     isUserBlocked(currentUserId, profileUserId)
       .then(setIsBlocked)
-      .catch(() => {});
+      .catch(() => { });
   }, [currentUserId, profileUserId]);
 
   const handleBlockUser = () => {
@@ -862,13 +877,13 @@ const UserProfileScreen = () => {
             <Ionicons name={isVideo ? "videocam" : "image-outline"} size={24} color={COLORS.textLight} />
           </View>
         )}
-        
+
         {/* View Count and Comments Count Overlay */}
         <View style={styles.gridOverlay}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={styles.viewCountBadge}>
               <Ionicons name="play" size={10} color="#FFF" />
-              <Text style={styles.viewCountText}>{views >= 1000 ? `${(views/1000).toFixed(1)}K` : views}</Text>
+              <Text style={styles.viewCountText}>{views >= 1000 ? `${(views / 1000).toFixed(1)}K` : views}</Text>
             </View>
             <View style={styles.viewCountBadge}>
               <Ionicons name="chatbubble" size={10} color="#FFF" />
@@ -890,7 +905,7 @@ const UserProfileScreen = () => {
     <View style={styles.headerContent}>
       {/* Profile Header: Avatar and Stats */}
       <View style={styles.profileHeaderRow}>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => profile?.photo && setAvatarModalVisible(true)}
           activeOpacity={0.8}
         >
@@ -909,7 +924,7 @@ const UserProfileScreen = () => {
             <Text style={styles.statValue}>{isBlocked ? '0' : totalPosts}</Text>
             <Text style={styles.statLabel}>Posts</Text>
           </View>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statItem}
             onPress={() => !isBlocked && router.push({ pathname: '/follow-connections', params: { tab: 'followers', userId: profile?.id } })}
             disabled={isBlocked}
@@ -917,7 +932,7 @@ const UserProfileScreen = () => {
             <Text style={styles.statValue}>{isBlocked ? '0' : (profile?.followers_count ?? (profile?.followers?.length || 0))}</Text>
             <Text style={styles.statLabel}>Followers</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.statItem}
             onPress={() => !isBlocked && router.push({ pathname: '/follow-connections', params: { tab: 'following', userId: profile?.id } })}
             disabled={isBlocked}
@@ -940,7 +955,7 @@ const UserProfileScreen = () => {
         {profile?.bio && !isBlocked ? (
           <Text style={styles.bioText}>{profile.bio}</Text>
         ) : null}
-        
+
         {profile?.home_location && !isBlocked && (
           <View style={styles.locationContainer}>
             <Ionicons name="location-outline" size={12} color={COLORS.textSecondary} />
@@ -954,14 +969,14 @@ const UserProfileScreen = () => {
       {/* Action Buttons */}
       <View style={styles.actionButtonsRow}>
         {profile?.id === currentUserId ? (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.editProfileButton}
             onPress={() => router.push('/profile/edit')}
           >
             <Text style={styles.editProfileText}>Edit Profile</Text>
           </TouchableOpacity>
         ) : isBlocked ? (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.editProfileButton}
             onPress={handleBlockUser}
           >
@@ -969,7 +984,7 @@ const UserProfileScreen = () => {
           </TouchableOpacity>
         ) : (
           <>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.followButton, isFollowing && styles.followingButton]}
               onPress={toggleFollow}
             >
@@ -977,7 +992,7 @@ const UserProfileScreen = () => {
                 {isFollowing ? 'Following' : 'Follow'}
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.messageButton}
               onPress={openPrivateChat}
             >
@@ -1015,8 +1030,8 @@ const UserProfileScreen = () => {
       <SafeAreaView style={styles.container}>
         {/* Custom Header Bar */}
         <View style={[styles.navBar, { backgroundColor: '#FFF', paddingTop: insets.top, height: 50 + insets.top, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#DBDBDB' }]}>
-          <TouchableOpacity 
-            onPress={() => router.back()} 
+          <TouchableOpacity
+            onPress={() => router.back()}
             style={styles.navIcon}
           >
             <Ionicons name="chevron-back" size={28} color={COLORS.text} />
@@ -1028,7 +1043,7 @@ const UserProfileScreen = () => {
           <Ionicons name="alert-circle-outline" size={64} color={COLORS.textSecondary} style={{ marginBottom: 16 }} />
           <Text style={[styles.emptyTitle, { marginBottom: 8, fontSize: 20 }]}>Profile Not Found</Text>
           <Text style={{ fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', marginBottom: 24 }}>{error}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={{ paddingVertical: 12, paddingHorizontal: 24, borderRadius: 24, backgroundColor: COLORS.primary }}
             onPress={() => router.back()}
           >
@@ -1045,13 +1060,13 @@ const UserProfileScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
-      <TouchableOpacity 
-        style={styles.modalBackgroundDismiss} 
-        activeOpacity={1} 
+      <TouchableOpacity
+        style={styles.modalBackgroundDismiss}
+        activeOpacity={1}
         onPress={() => {
           setCommentModalVisible(false);
           setReplyingToComment(null);
-        }} 
+        }}
       />
       <View style={[styles.commentModalSheet, { paddingBottom: insets.bottom + 10 }]}>
         <View style={styles.bottomSheetHandle} />
@@ -1233,9 +1248,9 @@ const UserProfileScreen = () => {
             inputStyle={styles.commentTextInput}
             multiline
           />
-          <TouchableOpacity 
-            onPress={handleSubmitComment} 
-            style={[styles.commentSubmitBtn, (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }]} 
+          <TouchableOpacity
+            onPress={handleSubmitComment}
+            style={[styles.commentSubmitBtn, (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }]}
             disabled={!commentText.trim() || commentSubmitting}
           >
             <Text style={styles.commentSubmitText}>{commentSubmitting ? '...' : 'Post'}</Text>
@@ -1249,8 +1264,8 @@ const UserProfileScreen = () => {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       {/* Custom Header Bar */}
       <View style={[styles.navBar, { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, backgroundColor: '#FFF', paddingTop: insets.top, height: 50 + insets.top }]}>
-        <TouchableOpacity 
-          onPress={() => router.back()} 
+        <TouchableOpacity
+          onPress={() => router.back()}
           style={styles.navIcon}
         >
           <Ionicons name="chevron-back" size={28} color={COLORS.text} />
@@ -1320,9 +1335,9 @@ const UserProfileScreen = () => {
 
       {/* Avatar Modal */}
       <Modal visible={avatarModalVisible} transparent animationType="fade">
-        <TouchableOpacity 
-          style={styles.modalOverlay} 
-          activeOpacity={1} 
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
           onPress={() => setAvatarModalVisible(false)}
         >
           <Image source={{ uri: profile?.photo }} style={styles.fullImage} resizeMode="contain" />
@@ -1331,8 +1346,8 @@ const UserProfileScreen = () => {
 
       {/* Post Detail Modal / View */}
       {(Platform.OS as string) === 'ios' ? (
-        <Modal 
-          visible={postModalVisible} 
+        <Modal
+          visible={postModalVisible}
           animationType="slide"
           presentationStyle="fullScreen"
           onRequestClose={() => setPostModalVisible(false)}
@@ -1416,10 +1431,10 @@ const UserProfileScreen = () => {
       )}
 
       {/* Comments Modal (Rendered outside, as native Modal on both platforms) */}
-      <Modal 
-        visible={commentModalVisible} 
-        transparent 
-        animationType="slide" 
+      <Modal
+        visible={commentModalVisible}
+        transparent
+        animationType="slide"
         onRequestClose={() => {
           setCommentModalVisible(false);
           setReplyingToComment(null);
@@ -1486,14 +1501,14 @@ const UserProfileScreen = () => {
         onRequestClose={() => setUserMenuVisible(false)}
       >
         <View style={styles.userMenuOverlay}>
-          <TouchableOpacity 
-            style={styles.userMenuBackground} 
-            activeOpacity={1} 
-            onPress={() => setUserMenuVisible(false)} 
+          <TouchableOpacity
+            style={styles.userMenuBackground}
+            activeOpacity={1}
+            onPress={() => setUserMenuVisible(false)}
           />
           <View style={[styles.userMenuSheet, { paddingBottom: insets.bottom + 10 }]}>
             <View style={styles.userMenuHandle} />
-            
+
             <TouchableOpacity style={styles.userMenuItem} onPress={handleShareProfile}>
               <Ionicons name="share-social-outline" size={22} color={COLORS.text} />
               <Text style={styles.userMenuText}>Share this profile</Text>
@@ -1509,8 +1524,8 @@ const UserProfileScreen = () => {
               <Text style={[styles.userMenuText, { color: COLORS.error }]}>{isBlocked ? 'Unblock User' : 'Block User'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={[styles.userMenuItem, { borderBottomWidth: 0, marginTop: 10 }]} 
+            <TouchableOpacity
+              style={[styles.userMenuItem, { borderBottomWidth: 0, marginTop: 10 }]}
               onPress={() => setUserMenuVisible(false)}
             >
               <Text style={[styles.userMenuText, { textAlign: 'center', width: '100%', color: '#666' }]}>Cancel</Text>

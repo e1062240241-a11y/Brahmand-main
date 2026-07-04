@@ -93,6 +93,8 @@ export default function ProfileScreen() {
   const { section } = useLocalSearchParams<{ section?: string }>();
   const userId = user?.id;
   const activeUserIdRef = useRef<string | undefined>(userId);
+  const requestSequenceRef = useRef(0); // ponytail: track request sequence to avoid race conditions
+  const isFetchingRef = useRef(false); // ponytail: track fetch state to prevent overlapping calls
   const scrollY = useRef(new Animated.Value(0)).current;
   const onProfileScrollTabBar = useScrollToHideTabBar();
 
@@ -175,7 +177,7 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<any>(user || null);
   const [loading, setLoading] = useState(!user);
   const [posts, setPosts] = useState<any[]>([]);
-  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
@@ -497,67 +499,13 @@ export default function ProfileScreen() {
   };
 
   const loadPosts = useCallback(async (reset = false, silent = false) => {
-    console.log('[Profile] loading posts for userId:', userId, 'reset:', reset, 'silent:', silent);
-    if (!userId || userId.toLowerCase().trim() === 'undefined' || userId.toLowerCase().trim() === 'null' || userId.toLowerCase().trim() === 'none' || (postsLoading && !reset)) {
-      console.log('[Profile] skip loadPosts:', { userId, postsLoading, reset });
-      return;
-    }
-
-    const currentOffset = reset ? 0 : offset;
-    if (reset && !silent) {
-      setPostsLoading(true);
-      setHasMore(true);
-    }
-    const requestedUserId = userId;
-
-    try {
-      console.log('[Profile] calling getUserPosts with:', { userId, LIMIT, currentOffset });
-      const response = await getUserPosts(userId, LIMIT, currentOffset);
-      if (requestedUserId !== activeUserIdRef.current) {
-        return;
-      }
-      const payload = response.data;
-      console.log('[Profile] getUserPosts response payload:', JSON.stringify(payload).substring(0, 200));
-      let items = Array.isArray(payload) ? payload : (payload?.items || []);
-
-      // Strict frontend boundary: guarantee that we NEVER display another user's post in this tab
-      items = items.filter((p: any) => p.user_id === userId);
-
-      console.log('[Profile] items count after strict filter:', items.length);
-
-      if (reset) {
-        setPosts(items);
-        if (userId && userId.trim() !== '' && userId.toLowerCase() !== 'undefined') {
-          AsyncStorage.setItem(`profile_posts_v2_${userId}`, JSON.stringify(items)).catch(() => { });
-        }
-      } else {
-        setPosts(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const uniqueNew = items.filter((p: any) => !existingIds.has(p.id));
-          return [...prev, ...uniqueNew];
-        });
-      }
-
-      setPostsCount(prev => payload?.total_count !== undefined ? payload.total_count : (reset ? items.length : prev + items.length));
-
-      // The offset calculation must be based on the raw payload length so pagination logic is maintained correctly
-      const rawPayloadLength = Array.isArray(payload) ? payload.length : (payload?.items || []).length;
-      setOffset(currentOffset + rawPayloadLength);
-      setHasMore(payload?.has_more ?? (rawPayloadLength === LIMIT));
-    } catch (error) {
-      if (requestedUserId !== activeUserIdRef.current) {
-        return;
-      }
-      console.warn('Failed to load user posts:', error);
-    } finally {
-      if (requestedUserId === activeUserIdRef.current) {
-        if (!silent) {
-          setPostsLoading(false);
-        }
-        setRefreshing(false);
-      }
-    }
-  }, [userId, offset, postsLoading]);
+    // ponytail: disabled posts showing functionality on profile tab as requested
+    setPosts([]);
+    setPostsCount(0);
+    setPostsLoading(false);
+    setRefreshing(false);
+    setHasMore(false);
+  }, []);
 
 
 
@@ -587,61 +535,24 @@ export default function ProfileScreen() {
       return;
     }
 
-    setPostsLoading(true);
+    setPostsLoading(false);
     setLoading(!user);
 
-    // Ensure we don't query a cache for 'undefined' or missing user ids
+    // Ensure we don't query for 'undefined' or missing user ids
     if (!userId || userId.trim() === '' || userId.toLowerCase() === 'undefined') {
       return;
     }
 
-    // Attempt to load cached posts immediately using v2 key to break legacy cache
-    // Also actively delete the old legacy cache so we don't waste device storage
-    AsyncStorage.removeItem(`profile_posts_${userId}`).catch(() => {});
-
-    AsyncStorage.getItem(`profile_posts_v2_${userId}`).then(cached => {
-      if (userId !== activeUserIdRef.current) {
-        return;
-      }
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Strictly filter cache to only show posts belonging to the current user
-          const strictUserPosts = parsed.filter((p: any) => p.user_id === userId);
-          setPosts(strictUserPosts);
-          setPostsLoading(false);
-        }
-      }
-      fetchProfile(!user); // Silently fetch if we already have user data
-      loadPosts(true); // Will update in background if we had cache
-    }).catch(() => {
-      if (userId !== activeUserIdRef.current) {
-        return;
-      }
-      fetchProfile(true);
-      loadPosts(true);
-    });
+    fetchProfile(!user);
   }, [userId]);
 
-  // Listen for background video/post uploads to update list smoothly without flickering
+  // Listen for background video/post uploads (disabled posts feed update)
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('post_uploaded', (newPost: any) => {
       console.log('[Profile] post_uploaded event received:', newPost?.id);
-      if (newPost) {
-        // Prepend newPost optimistically if it belongs to the current user
-        if (userId && newPost.user_id === userId) {
-          setPosts(prev => {
-            if (prev.some(p => p.id === newPost.id)) return prev;
-            setPostsCount(count => count + 1);
-            return [newPost, ...prev];
-          });
-        }
-      }
-      // Trigger a silent background refresh to keep state and counts synced with the server
-      loadPosts(true, true);
     });
     return () => sub.remove();
-  }, [userId, loadPosts]);
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

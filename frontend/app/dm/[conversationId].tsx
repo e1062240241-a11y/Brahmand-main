@@ -1,15 +1,15 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
-  View, 
-  Text, 
+  View,
+  Text,
   Image,
-  StyleSheet, 
-  FlatList, 
-  TextInput, 
-  TouchableOpacity, 
+  StyleSheet,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
   Modal,
-  Platform, 
+  Platform,
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
@@ -80,7 +80,7 @@ const getCachedMessages = async (conversationId: string): Promise<Message[]> => 
 const setCachedMessages = async (conversationId: string, messages: Message[]) => {
   try {
     await AsyncStorage.setItem(`${DM_MESSAGES_CACHE_KEY}_${conversationId}`, JSON.stringify(messages));
-  } catch {}
+  } catch { }
 };
 
 let dmImageManipulator: typeof ImageManipulatorType | null = null;
@@ -143,12 +143,12 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
         if (videoRef.current) {
           try {
             videoRef.current.pause();
-          } catch (e) {}
+          } catch (e) { }
         }
       } else if (player) {
         try {
           player.pause();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, [player]);
@@ -178,7 +178,7 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
   }
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[style, { backgroundColor: '#1C1C1E', justifyContent: 'center', alignItems: 'center', position: 'relative' }]}
       onPress={() => setIsPlaying(true)}
     >
@@ -329,13 +329,13 @@ const DirectMessageScreen = () => {
   const logLayout = (name: string, styleObj: any) => (event: any) => {
     const { y, height } = event.nativeEvent.layout;
     const flatStyle = StyleSheet.flatten(styleObj) || {};
-    
+
     let translateY = 0;
     if (flatStyle.transform) {
       const translateObj = flatStyle.transform.find((t: any) => t.translateY !== undefined);
       if (translateObj) translateY = translateObj.translateY;
     }
-    
+
     console.log(`[LAYOUT_TRACE] ${name} | y: ${y} | height: ${height} | paddingBottom: ${flatStyle.paddingBottom ?? 0} | marginBottom: ${flatStyle.marginBottom ?? 0} | bottom: ${flatStyle.bottom ?? 'none'} | translateY: ${translateY} | flex: ${flatStyle.flex ?? 'none'} | insets.bottom: ${insets.bottom}`);
   };
   const isFocused = useIsFocused();
@@ -345,6 +345,7 @@ const DirectMessageScreen = () => {
   const textInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
   const windowDimensions = useWindowDimensions();
+  const windowHeight = windowDimensions.height; // ponytail: quick fix for missing windowHeight variable
 
   const [messages, setMessages] = useState<Message[]>([]);
 
@@ -427,7 +428,7 @@ const DirectMessageScreen = () => {
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
   const isBlocked = isBlockedByMe || isBlockedByThem;
   const isBlockedRef = useRef(false);
-  
+
   useEffect(() => {
     isBlockedRef.current = isBlocked;
   }, [isBlocked]);
@@ -436,8 +437,8 @@ const DirectMessageScreen = () => {
 
   // Get picker media types function
   const getPickerMediaTypes = (mediaType: 'image' | 'video') => {
-    return mediaType === 'image' 
-      ? ImagePicker.MediaTypeOptions.Images 
+    return mediaType === 'image'
+      ? ImagePicker.MediaTypeOptions.Images
       : ImagePicker.MediaTypeOptions.Videos;
   };
 
@@ -448,7 +449,7 @@ const DirectMessageScreen = () => {
       console.log('[Chat] Skipping mark read: screen not focused or app in background');
       return;
     }
-    
+
     try {
       await markDirectMessagesRead(conversationId);
       setHasMarkedRead(true);
@@ -527,14 +528,14 @@ const DirectMessageScreen = () => {
     setMuteLoading(true);
     try {
       if (isMuted) {
-        await unmuteConversation(conversationId).catch(() => {});
+        await unmuteConversation(conversationId).catch(() => { });
         await unmuteConversationLocal(conversationId);
       } else {
-        await muteConversation(conversationId).catch(() => {});
+        await muteConversation(conversationId).catch(() => { });
         await muteConversationLocal(conversationId);
       }
       setIsMuted(!isMuted);
-    } catch {}
+    } catch { }
     setMuteLoading(false);
   };
 
@@ -563,7 +564,7 @@ const DirectMessageScreen = () => {
           removeBlock(String(activeTargetUserId));
         }
         setIsBlockedByThem(false);
-      } catch {}
+      } catch { }
     }
   }, [conversation?.user?.id, userId, user?.id, addBlock, removeBlock]);
 
@@ -606,7 +607,7 @@ const DirectMessageScreen = () => {
           const raw = await AsyncStorage.getItem('blocked_users_list');
           const list = raw ? JSON.parse(raw) : [];
           await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list.filter((id: string) => id !== activeTargetUserId)));
-        } catch {}
+        } catch { }
         Alert.alert('Success', `${activeTargetUserName} has been unblocked.`);
         closeChatOptions();
       } else {
@@ -627,7 +628,7 @@ const DirectMessageScreen = () => {
                   const list = raw ? JSON.parse(raw) : [];
                   if (!list.includes(activeTargetUserId)) list.push(activeTargetUserId);
                   await AsyncStorage.setItem('blocked_users_list', JSON.stringify(list));
-                } catch {}
+                } catch { }
                 Alert.alert('Blocked', `${activeTargetUserName} has been blocked.`);
                 closeChatOptions();
               }
@@ -778,7 +779,7 @@ const DirectMessageScreen = () => {
           return;
         }
       }
-      
+
       if (conversationId === 'new') {
         setConversation({
           conversation_id: 'new',
@@ -802,7 +803,7 @@ const DirectMessageScreen = () => {
         try {
           const convResponse = await getConversations();
           const conversations = Array.isArray(convResponse?.data) ? convResponse.data : [];
-          const conv = conversations.find((c: Conversation) => 
+          const conv = conversations.find((c: Conversation) =>
             c.conversation_id === conversationId || c.chat_id === conversationId
           );
           if (conv) {
@@ -832,7 +833,7 @@ const DirectMessageScreen = () => {
       setLoading(false);
       return;
     }
-    
+
     if (fromCache && messages.length === 0) {
       // 1. Try loading from WatermelonDB first (extremely fast SQLite query)
       try {
@@ -845,7 +846,7 @@ const DirectMessageScreen = () => {
               Q.sortBy('created_at', Q.desc),
               Q.take(50)
             ).fetch();
-            
+
           if (localMessages && localMessages.length > 0) {
             const mapped = localMessages.reverse().map((msg: any) => {
               let msgDateStr = new Date().toISOString();
@@ -861,7 +862,7 @@ const DirectMessageScreen = () => {
                     msgDateStr = d.toISOString();
                   }
                 }
-              } catch (e) {}
+              } catch (e) { }
 
               return {
                 id: msg.id,
@@ -894,7 +895,7 @@ const DirectMessageScreen = () => {
         }
       }
     }
-    
+
     try {
       const response = await getDirectMessages(conversationId!, 30);
       if (!Array.isArray(response?.data)) {
@@ -916,10 +917,10 @@ const DirectMessageScreen = () => {
         timestamp: msg.timestamp || msg.created_at || '',
         is_verified: msg.is_verified || false,
       }));
-      
+
       const existingIds = new Set(messages.map(m => m.id));
       const hasNewMessages = apiMessages.some(m => !existingIds.has(m.id));
-      
+
       if (hasNewMessages || apiMessages.length !== messages.length) {
         setMessages(prev => {
           const sending = prev.filter(m => m.status === 'sending');
@@ -931,7 +932,7 @@ const DirectMessageScreen = () => {
         setHasMarkedRead(false);
         setTimeout(() => markMessagesAsRead(), 100);
       }
-      
+
       setLoading(false);
       return true;
     } catch (error: any) {
@@ -961,7 +962,7 @@ const DirectMessageScreen = () => {
         console.warn('[DM] Failed to require syncDatabase:', e);
       }
     }
-    
+
     let pollingInterval: NodeJS.Timeout | null = null;
     const socketListenerId = `dm_${conversationId}_${Date.now()}`;
 
@@ -1009,17 +1010,17 @@ const DirectMessageScreen = () => {
             setMessages((prev) => {
               const exists = prev.some((m) => m.id === message.id);
               if (exists) return prev;
-              
+
               const tempIndex = prev.findIndex(
                 (m) => m.status === 'sending' && m.content === message.content && m.sender_id === message.sender_id
               );
-              
+
               if (tempIndex !== -1) {
                 const updated = [...prev];
                 updated[tempIndex] = { ...message, status: 'sent' };
                 return deduplicateMessages(updated);
               }
-              
+
               return deduplicateMessages([...prev, message]);
             });
             const cached = await getCachedMessages(conversationId);
@@ -1152,14 +1153,14 @@ const DirectMessageScreen = () => {
       message_type: 'text',
       status: 'sending',
     };
-    
+
     setMessages(prev => deduplicateMessages([...prev, optimisticMessage]));
-    
+
     try {
       const response = await sendDirectMessage(conversation.user.sl_id, messageText);
       const serverMsg = response?.data?.message || response?.data;
       const realId = serverMsg?.id || response?.data?.id || tempId;
-      setMessages(prev => deduplicateMessages(prev.map(m => 
+      setMessages(prev => deduplicateMessages(prev.map(m =>
         m.id === tempId ? { ...m, id: realId, status: 'sent' } : m
       )));
       const cached = await getCachedMessages(conversationId);
@@ -1592,10 +1593,10 @@ const DirectMessageScreen = () => {
     const rawContent = message.content ?? message.text ?? '';
     const sourceUrl = typeof rawContent === 'string' ? rawContent.trim() : '';
     const safeSourceUrl = getSafeUri(sourceUrl);
-    
+
     const shared = parseSharedPostPayload(rawContent);
     const safeSharedMediaUrl = getSafeUri(shared.mediaUrl);
-    
+
     const rawString = typeof rawContent === 'string' ? rawContent : '';
     const hasSharedKeys =
       typeof rawContent === 'object' &&
@@ -1711,8 +1712,8 @@ const DirectMessageScreen = () => {
     const fallbackText = typeof message.text === 'string'
       ? message.text
       : typeof message.content === 'string'
-      ? message.content
-      : JSON.stringify(message.content || {});
+        ? message.content
+        : JSON.stringify(message.content || {});
 
     return <Text style={[styles.messageText, message.sender_id === user?.id && styles.ownMessageText]}>{fallbackText}</Text>;
   }, [router]);
@@ -1736,7 +1737,7 @@ const DirectMessageScreen = () => {
   const renderMessage = useCallback(({ item, index }: { item: Message; index: number }) => {
     const showDateSeparator = index === 0 || !isSameDay(new Date(item.created_at), new Date(messages[index - 1]?.created_at || ''));
     const showSenderChangeDivider = !!(
-      messages[index + 1] && 
+      messages[index + 1] &&
       messages[index + 1].sender_id !== item.sender_id
     );
     return (
@@ -1756,7 +1757,7 @@ const DirectMessageScreen = () => {
   const bottomPadding = Platform.OS === 'web' ? 8 : (Platform.OS === 'android' ? 8 : Math.max(insets.bottom, 8));
 
   const renderContent = () => (
-    <View 
+    <View
       style={styles.chatScreen}
       onLayout={logLayout('Chat container', styles.chatScreen)}
     >
@@ -1767,7 +1768,7 @@ const DirectMessageScreen = () => {
           style={StyleSheet.absoluteFillObject}
         />
       </View>
-      
+
       <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 12 : 0) }]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Svg width={12} height={20} viewBox="0 0 12 20" fill="none">
@@ -1820,19 +1821,19 @@ const DirectMessageScreen = () => {
                 <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
-              
+
               <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
                 <Ionicons name="trash-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>Clear Chat</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
-              
+
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleBlock}>
                 <Ionicons name="ban-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{isBlockedByMe ? 'Unblock User' : 'Block User'}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
-              
+
               <TouchableOpacity style={styles.modalItem} onPress={handleReportUser}>
                 <Ionicons name="warning-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>Report User</Text>
@@ -1906,8 +1907,8 @@ const DirectMessageScreen = () => {
             />
           )}
         </View>
-        
-        <View 
+
+        <View
           style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}
           onLayout={logLayout('Input wrapper', [styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }])}
         >
@@ -1924,7 +1925,7 @@ const DirectMessageScreen = () => {
             </View>
           )}
 
-          <View 
+          <View
             style={styles.inputContainer}
             onLayout={logLayout('TextInput container', styles.inputContainer)}
           >
@@ -1955,14 +1956,14 @@ const DirectMessageScreen = () => {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Svg width={20} height={18} viewBox="0 0 20 18" fill="none">
-                <Path 
-                  d="M19.7218 0.196948C19.4963 0.00063171 19.1815 -0.0537551 18.904 0.0556532L0.809777 7.19361C-0.101125 7.55066 -0.287004 8.76782 0.475207 9.3845C0.6356 9.51427 0.824875 9.60282 1.02674 9.64254L5.71502 10.5704V15.84C5.71313 16.4273 6.067 16.9563 6.60786 17.1747C7.14793 17.397 7.76791 17.2639 8.17122 16.839L10.4319 14.4756L14.0184 17.64C14.2772 17.8714 14.6109 17.9994 14.9568 18C15.1083 17.9999 15.259 17.9759 15.4032 17.9289C15.8827 17.7755 16.2455 17.377 16.3559 16.8822L19.9799 0.989854C20.0459 0.697791 19.9467 0.392822 19.7218 0.196948ZM14.263 3.43698L6.26411 9.21143L1.83565 8.33572L14.263 3.43698ZM7.14356 15.84V11.5667L9.3569 13.5234L7.14356 15.84ZM14.9586 16.56L7.57659 10.0349L18.2013 2.35877L14.9586 16.56Z" 
-                  fill="#000" 
+                <Path
+                  d="M19.7218 0.196948C19.4963 0.00063171 19.1815 -0.0537551 18.904 0.0556532L0.809777 7.19361C-0.101125 7.55066 -0.287004 8.76782 0.475207 9.3845C0.6356 9.51427 0.824875 9.60282 1.02674 9.64254L5.71502 10.5704V15.84C5.71313 16.4273 6.067 16.9563 6.60786 17.1747C7.14793 17.397 7.76791 17.2639 8.17122 16.839L10.4319 14.4756L14.0184 17.64C14.2772 17.8714 14.6109 17.9994 14.9568 18C15.1083 17.9999 15.259 17.9759 15.4032 17.9289C15.8827 17.7755 16.2455 17.377 16.3559 16.8822L19.9799 0.989854C20.0459 0.697791 19.9467 0.392822 19.7218 0.196948ZM14.263 3.43698L6.26411 9.21143L1.83565 8.33572L14.263 3.43698ZM7.14356 15.84V11.5667L9.3569 13.5234L7.14356 15.84ZM14.9586 16.56L7.57659 10.0349L18.2013 2.35877L14.9586 16.56Z"
+                  fill="#000"
                 />
               </Svg>
             </TouchableOpacity>
           </View>
-          
+
           {showAttachmentOptions && (
             <Animated.View style={[styles.attachmentOverlay, { opacity: attachmentAnim, transform: [{ scale: attachmentAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }]}>
               <TouchableOpacity style={styles.attachmentOption} onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked}>
@@ -1980,7 +1981,7 @@ const DirectMessageScreen = () => {
             </Animated.View>
           )}
         </View>
-        
+
         <Modal visible={showContactModal} transparent animationType="fade" onRequestClose={() => setShowContactModal(false)}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactModal(false)} />
           <View style={styles.contactModalCard}>
@@ -2002,10 +2003,10 @@ const DirectMessageScreen = () => {
             </View>
           </View>
         </Modal>
-        
+
         <Modal visible={showContactPicker} transparent animationType="fade" onRequestClose={() => setShowContactPicker(false)}>
           <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactPicker(false)} />
-          <View style={[styles.contactModalCard, { maxHeight: '70%' }]}> 
+          <View style={[styles.contactModalCard, { maxHeight: '70%' }]}>
             <View style={styles.contactModalHeader}>
               <Text style={styles.contactModalTitle}>Choose Contact</Text>
               <TouchableOpacity onPress={() => setShowContactPicker(false)}><Ionicons name="close" size={22} color={COLORS.text} /></TouchableOpacity>
@@ -2048,14 +2049,14 @@ const DirectMessageScreen = () => {
   return (
     <>
       <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
-      <SafeAreaView 
-        style={styles.container} 
+      <SafeAreaView
+        style={styles.container}
         edges={['left', 'right']}
         onLayout={logLayout('Root container / SafeAreaView', styles.container)}
       >
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           onLayout={logLayout('KeyboardAvoidingView', { flex: 1 })}
         >
@@ -2084,23 +2085,23 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.background },
   chatScreen: { flex: 1, backgroundColor: '#FFFFFF' },
   chatBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: '#F2ECE8', pointerEvents: 'none' },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingBottom: 4, 
-    paddingHorizontal: 16, 
-    backgroundColor: 'rgba(255, 250, 248, 0.50)', 
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 4,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255, 250, 248, 0.50)',
     height: Platform.OS === 'android' ? undefined : 103,
     minHeight: Platform.OS === 'android' ? 56 : undefined,
-    shadowColor: 'rgba(0, 0, 0, 0.15)', 
-    shadowOffset: { width: 0, height: 6 }, 
-    shadowOpacity: 1, 
-    shadowRadius: 10, 
-    elevation: Platform.OS === 'android' ? 0 : 10, 
-    borderBottomWidth: Platform.OS === 'android' ? 0.5 : 0, 
+    shadowColor: 'rgba(0, 0, 0, 0.15)',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    elevation: Platform.OS === 'android' ? 0 : 10,
+    borderBottomWidth: Platform.OS === 'android' ? 0.5 : 0,
     borderBottomColor: 'rgba(0, 0, 0, 0.08)',
-    zIndex: 10, 
-    flexShrink: 0 
+    zIndex: 10,
+    flexShrink: 0
   },
   backButton: { marginRight: SPACING.md, padding: 4 },
   moreButton: { padding: 6, borderRadius: BORDER_RADIUS.full, marginLeft: 8 },
@@ -2114,11 +2115,11 @@ const styles = StyleSheet.create({
   realtimeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF6B00', marginRight: 4 },
   realtimeText: { fontSize: 11, fontWeight: '700', color: '#FF6B00' },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.45)' },
-  modalContent: { 
-    backgroundColor: COLORS.surface, 
-    borderTopLeftRadius: 32, 
-    borderTopRightRadius: 32, 
-    paddingHorizontal: 24, 
+  modalContent: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingHorizontal: 24,
     paddingTop: 24,
     borderTopWidth: 0,
     shadowColor: '#000',
@@ -2127,16 +2128,16 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 20
   },
-  modalItem: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingVertical: 18 
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 18
   },
-  modalItemText: { 
-    fontSize: 16, 
-    fontWeight: '500', 
-    fontFamily: 'Inter_500Medium', 
-    color: '#1A1A1A' 
+  modalItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: 'Inter_500Medium',
+    color: '#1A1A1A'
   },
   modalItemDestructive: { color: COLORS.error },
   modalDivider: { height: 1, backgroundColor: '#F2F2F2', marginVertical: 0 },
@@ -2157,24 +2158,24 @@ const styles = StyleSheet.create({
   dateSeparatorText: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#8E8E8E' },
   messageContainer: { flexDirection: 'row', marginBottom: SPACING.xs, alignItems: 'flex-end', paddingHorizontal: SPACING.md },
   ownMessageContainer: { justifyContent: 'flex-end' },
-  messageBubble: { 
-    maxWidth: '100%', 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: 22, 
-    borderBottomLeftRadius: 8, 
-    paddingHorizontal: 16, 
-    paddingVertical: 12, 
-    marginLeft: 8, 
-    borderWidth: 0 
+  messageBubble: {
+    maxWidth: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    borderBottomLeftRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginLeft: 8,
+    borderWidth: 0
   },
-  ownMessageBubble: { 
-    backgroundColor: '#FFD5C2', 
-    borderRadius: 22, 
-    borderBottomRightRadius: 8, 
-    paddingHorizontal: 16, 
-    paddingVertical: 12, 
-    marginRight: 8, 
-    marginLeft: 0 
+  ownMessageBubble: {
+    backgroundColor: '#FFD5C2',
+    borderRadius: 22,
+    borderBottomRightRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginRight: 8,
+    marginLeft: 0
   },
   sharedPostMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderRadius: 0, shadowOpacity: 0, elevation: 0, borderWidth: 0, marginLeft: 0, width: '100%', maxWidth: 340, alignSelf: 'flex-start' },
   mediaMessageBubble: { backgroundColor: 'transparent', paddingHorizontal: 0, paddingVertical: 0, borderWidth: 0, shadowOpacity: 0, elevation: 0, shadowColor: 'transparent', shadowRadius: 0, shadowOffset: { width: 0, height: 0 } },
@@ -2189,14 +2190,14 @@ const styles = StyleSheet.create({
   emptyText: { marginTop: SPACING.md, fontSize: 16, fontWeight: '500', color: COLORS.textSecondary },
   inputWrapperContainer: { backgroundColor: 'transparent', paddingTop: 12, borderTopWidth: 0, zIndex: 20 },
   inputContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingBottom: 8 },
-  inputFieldContainer: { 
-    flex: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#FFF', 
-    borderRadius: 22, 
-    borderWidth: 1, 
-    borderColor: 'rgba(0, 0, 0, 0.50)', 
+  inputFieldContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.50)',
     paddingLeft: 16,
     paddingRight: 17,
     paddingTop: Platform.OS === 'android' ? 4 : 10,
@@ -2234,17 +2235,17 @@ const styles = StyleSheet.create({
   phoneContactName: { fontSize: 15, fontWeight: '700', color: COLORS.text },
   phoneContactNumber: { fontSize: 13, color: COLORS.textSecondary, marginTop: SPACING.xs },
   modalBackdrop: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.45)' },
-  input: { 
-    flex: 1, 
-    backgroundColor: 'transparent', 
-    borderRadius: 0, 
-    paddingHorizontal: 0, 
+  input: {
+    flex: 1,
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    paddingHorizontal: 0,
     paddingTop: Platform.OS === 'android' ? 8 : 0,
     paddingBottom: Platform.OS === 'android' ? 8 : 0,
-    fontSize: 15, 
-    fontFamily: 'Inter_400Regular', 
-    color: '#1A1A1A', 
-    maxHeight: 120 
+    fontSize: 15,
+    fontFamily: 'Inter_400Regular',
+    color: '#1A1A1A',
+    maxHeight: 120
   },
   fullScreenMediaOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' },
   fullScreenMediaClose: { position: 'absolute', top: Platform.OS === 'ios' ? 40 : 24, right: 20, zIndex: 2, padding: 10, borderRadius: BORDER_RADIUS.full, backgroundColor: 'rgba(0,0,0,0.35)' },
@@ -2259,15 +2260,15 @@ const styles = StyleSheet.create({
   mediaPreviewCloseButton: { position: 'absolute', top: 6, right: 6, backgroundColor: 'rgba(0, 0, 0, 0.5)', borderRadius: 12, width: 24, height: 24, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   mediaPreviewImage: { width: '100%', height: '100%' },
   mediaPreviewVideo: { width: '100%', height: '100%' },
-  sendButton: { 
-    width: 44, 
-    height: 44, 
-    borderRadius: 22, 
-    backgroundColor: '#FFF', 
-    borderWidth: 1, 
-    borderColor: 'rgba(0, 0, 0, 0.50)', 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.50)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginLeft: 8
   },
   senderChangeDivider: {
