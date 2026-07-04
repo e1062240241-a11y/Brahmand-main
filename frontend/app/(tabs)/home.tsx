@@ -439,6 +439,9 @@ export default function HomeScreen() {
     : FEATURE_CARD_WIDTH;
   const featureCardHeight = Platform.OS === 'android' ? 72 : FEATURE_CARD_HEIGHT;
   const featureSnapInterval = Platform.OS === 'android' ? featureCardWidth + 10 : FEATURE_SNAP_INTERVAL;
+  const actionCardWidth = Platform.OS === 'android' ? 144 : ACTION_CARD_WIDTH;
+  const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
+  const actionCardSnapInterval = Platform.OS === 'android' ? 154 : ACTION_CARD_SNAP_INTERVAL;
   const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
@@ -3893,7 +3896,7 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 nestedScrollEnabled={true}
-                snapToInterval={ACTION_CARD_SNAP_INTERVAL}
+                snapToInterval={actionCardSnapInterval}
                 decelerationRate="fast"
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
@@ -3908,7 +3911,7 @@ export default function HomeScreen() {
                     ? `${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`
                     : (req.description || req.location || 'Nearby');
                   return (
-                    <View key={req.id || 0} style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View key={req.id || 0} style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="rose">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -3919,8 +3922,8 @@ export default function HomeScreen() {
                                 <Ionicons name="people-outline" size={20} color="#FF0022" />
                               )}
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
                           </View>
                           <TouchableOpacity
                             style={{
@@ -3961,15 +3964,15 @@ export default function HomeScreen() {
                     </View>
                   );
                 })() : (
-                  <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                  <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="rose">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                           <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                             <BloodDropIcon />
                           </View>
-                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
-                          <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
                         </View>
                         <TouchableOpacity
                           style={{
@@ -4006,15 +4009,15 @@ export default function HomeScreen() {
 
                 {/* Register Business */}
                 {!myVendor && (
-                  <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                  <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="peach">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                           <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                             <ShopIcon />
                           </View>
-                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{t('becomeVerified')}</Text>
-                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{t('sanatanVendor')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{t('becomeVerified')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{t('sanatanVendor')}</Text>
                         </View>
                         <TouchableOpacity
                           style={{
@@ -4059,15 +4062,15 @@ export default function HomeScreen() {
                     : 'Flower Decor\nAndheri West';
 
                   return (
-                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="mint">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                               <LotusIcon />
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
                           </View>
                           <TouchableOpacity
                             style={{
@@ -4111,15 +4114,15 @@ export default function HomeScreen() {
                 {(() => {
                   const aarti1 = ROTATING_AARTIS[activeAartiIndex];
                   return (
-                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="lavender">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                               <TempleIcon />
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
-                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
+                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: Platform.OS === 'android' ? '100%' : 95 }}>
                               <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                                 <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
@@ -4172,15 +4175,15 @@ export default function HomeScreen() {
                 {(() => {
                   const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
                   return (
-                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="lavender">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                               <TempleIcon />
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
-                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
+                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: Platform.OS === 'android' ? '100%' : 95 }}>
                               <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                                 <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
@@ -5248,8 +5251,8 @@ const styles = StyleSheet.create({
     gap: Platform.OS === 'ios' ? 8 : 10,
   },
   actionCard: {
-    width: ACTION_CARD_WIDTH,
-    height: ACTION_CARD_HEIGHT,
+    width: Platform.OS === 'android' ? undefined : ACTION_CARD_WIDTH,
+    height: Platform.OS === 'android' ? undefined : ACTION_CARD_HEIGHT,
     borderRadius: 15,
     padding: 10,
     justifyContent: 'space-between',
