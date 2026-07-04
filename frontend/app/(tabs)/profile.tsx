@@ -596,6 +596,9 @@ export default function ProfileScreen() {
     }
 
     // Attempt to load cached posts immediately using v2 key to break legacy cache
+    // Also actively delete the old legacy cache so we don't waste device storage
+    AsyncStorage.removeItem(`profile_posts_${userId}`).catch(() => {});
+
     AsyncStorage.getItem(`profile_posts_v2_${userId}`).then(cached => {
       if (userId !== activeUserIdRef.current) {
         return;
