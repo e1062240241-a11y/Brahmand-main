@@ -523,9 +523,15 @@ export default function ProfileScreen() {
 
       if (reset) {
         setPosts(items);
-        AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => { });
+        if (userId && userId.trim() !== '' && userId.toLowerCase() !== 'undefined') {
+          AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify(items)).catch(() => { });
+        }
       } else {
-        setPosts(prev => [...prev, ...items]);
+        setPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNew = items.filter((p: any) => !existingIds.has(p.id));
+          return [...prev, ...uniqueNew];
+        });
       }
 
       setPostsCount(prev => payload?.total_count !== undefined ? payload.total_count : (reset ? items.length : prev + items.length));
@@ -577,6 +583,11 @@ export default function ProfileScreen() {
     setPostsLoading(true);
     setLoading(!user);
 
+    // Ensure we don't query a cache for 'undefined' or missing user ids
+    if (!userId || userId.trim() === '' || userId.toLowerCase() === 'undefined') {
+      return;
+    }
+
     // Attempt to load cached posts immediately
     AsyncStorage.getItem(`profile_posts_${userId}`).then(cached => {
       if (userId !== activeUserIdRef.current) {
@@ -609,9 +620,9 @@ export default function ProfileScreen() {
         if (userId && newPost.user_id === userId) {
           setPosts(prev => {
             if (prev.some(p => p.id === newPost.id)) return prev;
+            setPostsCount(count => count + 1);
             return [newPost, ...prev];
           });
-          setPostsCount(prev => prev + 1);
         }
       }
       // Trigger a silent background refresh to keep state and counts synced with the server
@@ -1627,8 +1638,12 @@ export default function ProfileScreen() {
             </View>
             {posts.length > 0 ? (
               <FlatList
-                ref={postListRef}
-                data={posts}
+              ref={postListRef}
+              data={posts}
+              initialNumToRender={5}
+              maxToRenderPerBatch={3}
+              windowSize={5}
+              removeClippedSubviews={Platform.OS === 'android'}
                 renderItem={({ item }) => {
                   const postKey = String(item.id || item.media_url || 0);
                   return (
@@ -1781,8 +1796,12 @@ export default function ProfileScreen() {
 
                     return (
                       <FlatList
-                        data={parentComments}
-                        keyExtractor={(item, index) => item.id || String(index)}
+                      data={parentComments}
+                      keyExtractor={(item, index) => item.id || String(index)}
+                      initialNumToRender={10}
+                      maxToRenderPerBatch={5}
+                      windowSize={5}
+                      removeClippedSubviews={Platform.OS === 'android'}
                         renderItem={({ item }) => {
                           const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                           const replies = repliesMap[item.id] || [];
