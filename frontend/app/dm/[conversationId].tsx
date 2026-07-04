@@ -1826,7 +1826,7 @@ const DirectMessageScreen = () => {
       <View style={{ flex: 1 }}>
         <Modal visible={showOptions} transparent animationType="fade" onRequestClose={closeChatOptions}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
-            <View style={[styles.modalContent, { paddingBottom: Platform.OS === 'android' ? SPACING.md : Math.max(insets.bottom, SPACING.md) }]}>
+            <View style={[styles.modalContent, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, SPACING.md) + 24 : Math.max(insets.bottom, SPACING.md) }]}>
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
                 <Ionicons name={isMuted ? "notifications-outline" : "notifications-off-outline"} size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>

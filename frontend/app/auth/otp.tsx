@@ -369,7 +369,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   actionButton: {
-    width: 359,
+    width: Platform.OS === 'android' ? '100%' : 359,
+    maxWidth: Platform.OS === 'android' ? 359 : undefined,
     height: 56,
     borderRadius: 28,
     backgroundColor: '#FF7B00',

@@ -439,9 +439,9 @@ export default function HomeScreen() {
     : FEATURE_CARD_WIDTH;
   const featureCardHeight = Platform.OS === 'android' ? 72 : FEATURE_CARD_HEIGHT;
   const featureSnapInterval = Platform.OS === 'android' ? featureCardWidth + 10 : FEATURE_SNAP_INTERVAL;
-  const actionCardWidth = Platform.OS === 'android' ? 144 : ACTION_CARD_WIDTH;
+  const actionCardWidth = Platform.OS === 'android' ? 120 : ACTION_CARD_WIDTH;
   const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
-  const actionCardSnapInterval = Platform.OS === 'android' ? 154 : ACTION_CARD_SNAP_INTERVAL;
+  const actionCardSnapInterval = Platform.OS === 'android' ? 130 : ACTION_CARD_SNAP_INTERVAL;
   const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
@@ -3267,7 +3267,7 @@ export default function HomeScreen() {
                           onPress={() => router.push('/(tabs)/profile')}
                           onLongPress={() => setShowProfileActions(true)}
                         >
-                          <Avatar name={firstName} photo={avatarUri} size={55} />
+                          <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
                         </TouchableOpacity>
                       </View>
 
@@ -3285,10 +3285,10 @@ export default function HomeScreen() {
                           color: '#E6C87A',
                           textAlign: 'center',
                           fontFamily: 'Cinzel',
-                          fontSize: 28,
+                          fontSize: Platform.OS === 'android' ? 22 : 28,
                           fontStyle: 'normal',
                           fontWeight: '500',
-                          lineHeight: 36,
+                          lineHeight: Platform.OS === 'android' ? 28 : 36,
                           letterSpacing: 0,
                         }}>BRAHMAND</Text>
                       </View>
@@ -3299,7 +3299,7 @@ export default function HomeScreen() {
                           style={styles.headerIconButton}
                           onPress={() => setSearchActive(!searchActive)}
                         >
-                          <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={24} color="#000" />
+                          <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                         </TouchableOpacity>
                         <TouchableOpacity
                           activeOpacity={0.7}
@@ -3307,7 +3307,7 @@ export default function HomeScreen() {
                           onPress={handleNotificationPress}
                         >
                           <View>
-                            <Ionicons name="notifications-outline" size={24} color="#000" />
+                            <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                             {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
                           </View>
                         </TouchableOpacity>
@@ -5014,12 +5014,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 2,
-    marginTop: 0,
+    marginTop: Platform.OS === 'android' ? 8 : 0,
+    paddingTop: Platform.OS === 'android' ? 4 : 0,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    flex: Platform.OS === 'android' ? undefined : 1,
     marginRight: 10,
   },
   headerRight: {
@@ -5028,15 +5029,15 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
+    width: Platform.OS === 'android' ? 36 : 40,
+    height: Platform.OS === 'android' ? 36 : 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileButton: {
-    width: 55,
-    height: 55,
-    borderRadius: 28,
+    width: Platform.OS === 'android' ? 42 : 55,
+    height: Platform.OS === 'android' ? 42 : 55,
+    borderRadius: Platform.OS === 'android' ? 21 : 28,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -5561,7 +5562,7 @@ const styles = StyleSheet.create({
   },
   communityCardLabel: {
     color: '#9F45FF',
-    fontSize: 10,
+    fontSize: Platform.OS === 'android' ? 8.5 : 10,
     letterSpacing: 0,
     marginBottom: 2,
   },
@@ -5573,9 +5574,9 @@ const styles = StyleSheet.create({
   },
   communityCardTitle: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 12.5,
+    fontSize: Platform.OS === 'android' ? 10.5 : 12.5,
     color: '#000',
-    lineHeight: 15,
+    lineHeight: Platform.OS === 'android' ? 13 : 15,
   },
   miniCardMembers: {
     fontFamily: 'Inter_500Medium',
@@ -5584,7 +5585,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   communityCardMembers: {
-    fontSize: 10,
+    fontSize: Platform.OS === 'android' ? 8.5 : 10,
     color: '#000',
     marginTop: 2,
   },
