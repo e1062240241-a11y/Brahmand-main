@@ -254,11 +254,22 @@ app = FastAPI(
 )
 
 # Socket.IO for real-time
+# Setup Socket.IO Redis Manager if REDIS_URL is provided for horizontal scaling
+redis_url = os.environ.get("REDIS_URL")
+client_manager = None
+if redis_url:
+    try:
+        client_manager = socketio.AsyncRedisManager(redis_url)
+        logger.info(f"Initialized Socket.IO with Redis Adapter: {redis_url}")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Redis Adapter: {e}. Using in-memory Socket.IO manager.")
+
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins='*',
     ping_interval=settings.WS_PING_INTERVAL,
-    ping_timeout=settings.WS_PING_TIMEOUT
+    ping_timeout=settings.WS_PING_TIMEOUT,
+    client_manager=client_manager
 )
 socket_app = socketio.ASGIApp(sio, app)
 
@@ -3570,17 +3581,31 @@ async def get_posts_feed(
             # Remove internal scoring keys
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
-            try:
-                top_comments = await db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=200,
-                )
-                top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-                top_comments.sort(key=_comment_sort_key, reverse=True)
-                post['top_comments'] = top_comments[:5]
-            except Exception:
-                post['top_comments'] = []
+            # Use denormalized top_comments array from the post document itself
+            # Instead of performing an N+1 query:
+            # top_comments = await db.query_documents('post_comments', filters=[('post_id', '==', post.get('id'))], limit=200)
+
+            top_comments = post.get('top_comments')
+            if top_comments is None:
+                # Fallback for legacy posts that haven't been updated with denormalized top_comments
+                try:
+                    top_comments_raw = await db.query_documents(
+                        'post_comments',
+                        filters=[('post_id', '==', post.get('id'))],
+                        limit=5,
+                    )
+                    top_comments = top_comments_raw
+                except Exception:
+                    top_comments = []
+            elif not isinstance(top_comments, list):
+                top_comments = []
+
+            # Filter out blocked users
+            top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+
+            # Sort comments
+            top_comments.sort(key=_comment_sort_key, reverse=True)
+            post['top_comments'] = top_comments[:5]
             return post
 
     tasks = [fetch_post_details(p) for p in paged_posts]
@@ -3760,11 +3785,20 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = user_id in liked_by
 
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=200,
-        )
+        # Denormalized top comments
+        top_comments = post.get('top_comments')
+        if top_comments is None:
+            try:
+                top_comments_raw = await db.query_documents(
+                    'post_comments',
+                    filters=[('post_id', '==', post.get('id'))],
+                    limit=5,
+                )
+                top_comments = top_comments_raw
+            except Exception:
+                top_comments = []
+        elif not isinstance(top_comments, list):
+            top_comments = []
         top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
         top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
         post['top_comments'] = top_comments[:5]
@@ -3808,12 +3842,21 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['comments_count'] = post.get('comments_count', 0)
     post['liked_by_me'] = user_id in liked_by
 
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post.get('id'))],
-        limit=200,
-    )
-    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+    # Denormalized top comments
+    top_comments = post.get('top_comments')
+        if top_comments is None:
+            try:
+                top_comments_raw = await db.query_documents(
+                    'post_comments',
+                    filters=[('post_id', '==', post.get('id'))],
+                    limit=5,
+                )
+                top_comments = top_comments_raw
+            except Exception:
+                top_comments = []
+        elif not isinstance(top_comments, list):
+            top_comments = []
+        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -4186,8 +4229,34 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
     comment_id = await db.create_document('post_comments', comment_doc)
     comment_doc['id'] = comment_id
 
-    comments_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
-    await db.update_document('posts', post_id, {'comments_count': comments_count})
+    # Update comments_count and also denormalize top_comments into the post
+    from google.cloud import firestore
+
+    top_comments = post.get('top_comments', [])
+    if not isinstance(top_comments, list):
+        top_comments = []
+
+    # Add new comment
+    top_comments.append(comment_doc)
+
+    # Sort and keep top 5
+    def _comment_sort_key(item: dict):
+        val = item.get('created_at')
+        if isinstance(val, datetime): return val
+        if isinstance(val, str):
+            try: return datetime.fromisoformat(val.replace('Z', '+00:00'))
+            except Exception: return datetime.min
+        return datetime.min
+
+    top_comments.sort(key=_comment_sort_key, reverse=True)
+    top_comments = top_comments[:5]
+
+    comments_count = post.get('comments_count', 0) + 1
+
+    await db.update_document('posts', post_id, {
+        'comments_count': comments_count,
+        'top_comments': top_comments
+    })
 
     updated_post = await db.get_document('posts', post_id)
     if not updated_post:
@@ -4197,35 +4266,7 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
-    
-    # Pre-fetch existing comments but manually include the new one to ensure immediate visibility
-    try:
-        top_comments_raw = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post_id)],
-            limit=10,
-        )
-    except:
-        top_comments_raw = []
-
-    # Ensure the one we just created is included even if Firestore hasn't indexed it yet
-    if not any(c.get('id') == comment_id for c in top_comments_raw):
-        top_comments_raw.append(comment_doc)
-
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                # Handle ISO format with Z or +00:00
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
-
-    top_comments_raw.sort(key=_comment_created_at_sort_key, reverse=True)
-    updated_post['top_comments'] = top_comments_raw[:5]
+    updated_post['top_comments'] = top_comments
 
     # Send all notifications (replies, comments, mentions) in the background asynchronously
     asyncio.create_task(

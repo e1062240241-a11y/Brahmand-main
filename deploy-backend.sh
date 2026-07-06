@@ -54,6 +54,8 @@ gcloud run deploy brahmand-backend \
   --allow-unauthenticated \
   --memory "4096Mi" \
   --cpu "2" \
+  --concurrency 1000 \
+  --max-instances 100 \
   --env-vars-file .gcloud.env.yaml
 
 echo "Deploy Complete!"
