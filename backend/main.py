@@ -2703,6 +2703,24 @@ async def get_bunny_media(filepath: str):
     )
 
 
+# ponytail: CDN proxy to avoid CORS issues on web
+@api_router.get("/library-cdn/{filepath:path}")
+async def get_library_cdn(filepath: str):
+    """Proxy library CDN requests to avoid CORS"""
+    cdn_url = f"https://brahmandfeed23.b-cdn.net/library/{filepath}"
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with session.get(cdn_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+            if resp.status != 200:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=resp.status, content={"error": "Not found"})
+            data = await resp.read()
+    from fastapi.responses import Response
+    return Response(content=data, media_type="application/json", headers={
+        "Cache-Control": "public, max-age=3600",
+        "Access-Control-Allow-Origin": "*",
+    })
+
+
 # =================== SOCIAL POSTS ===================
 
 @api_router.get('/posts/bunny-upload-credentials')
@@ -2794,8 +2812,9 @@ async def _upload_post_impl(
     header = await file.read(32)
     await file.seek(0)
 
-    is_actually_video = b'ftyp' in header or header.startswith(b'\x00\x00\x00')
-    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG')
+    is_heic = any(brand in header for brand in (b'heic', b'heix', b'hevc', b'mif1'))
+    is_actually_video = (b'ftyp' in header and not is_heic) or header.startswith(b'\x00\x00\x00')
+    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG') or is_heic
 
     if is_actually_video:
         content_type = 'video/mp4'
@@ -3039,8 +3058,9 @@ async def _upload_chat_media_impl(
     header = await file.read(32)
     await file.seek(0)
 
-    is_actually_video = b'ftyp' in header or header.startswith(b'\x00\x00\x00')
-    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG')
+    is_heic = any(brand in header for brand in (b'heic', b'heix', b'hevc', b'mif1'))
+    is_actually_video = (b'ftyp' in header and not is_heic) or header.startswith(b'\x00\x00\x00')
+    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG') or is_heic
 
     if is_actually_video:
         content_type = 'video/mp4'
