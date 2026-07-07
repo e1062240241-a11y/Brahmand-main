@@ -1772,9 +1772,11 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Add counts and ensure structure matches get_user_by_id
-    user['followers_count'] = len(user.get('followers', []))
-    user['following_count'] = len(user.get('following', []))
+    # Normalize followers/following to always be proper lists (guard against None)
+    user['followers'] = list(user.get('followers') or [])
+    user['following'] = list(user.get('following') or [])
+    user['followers_count'] = len(user['followers'])
+    user['following_count'] = len(user['following'])
     
     return user
 
@@ -1930,8 +1932,24 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     except Exception as e:
         logger.warning(f"Error querying posts for deletion: {e}")
 
+    # ponytail: Clean up vendor/business and reviews if the user had one
+    try:
+        vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
+        if vendor:
+            vendor_id = vendor['id']
+            await db.delete_document('vendors', vendor_id)
+            try:
+                await db.delete_document('vendor_admin_reviews', vendor_id)
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning(f"Error deleting user vendor business on account delete: {e}")
+
     # 3. Delete the user document
     await db.delete_document('users', user_id)
+    
+    # ponytail: invalidate cached user profile upon user account deletion
+    await cache_manager.invalidate_user(user_id)
     
     logger.info(f"User account deleted: {user_id}")
     return {"message": "Account deleted successfully"}
@@ -2269,6 +2287,9 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
 
+    followers_list = list(user.get('followers') or [])
+    following_list = list(user.get('following') or [])
+
     safe_user = {
         'id': user.get('id'),
         'name': user.get('name'),
@@ -2281,10 +2302,10 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'updated_at': user.get('updated_at'),
         'badges': user.get('badges', []),
         'home_location': user.get('home_location'),
-        'followers': user.get('followers', []),
-        'following': user.get('following', []),
-        'followers_count': len(user.get('followers', []) or []),
-        'following_count': len(user.get('following', []) or []),
+        'followers': followers_list,
+        'following': following_list,
+        'followers_count': len(followers_list),
+        'following_count': len(following_list),
         'is_verified': user.get('is_verified', False),
         'verification_level': user.get('verification_level', 'state')
     }
@@ -2559,6 +2580,10 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     current_following = current_user.get('following', []) or []
     await db.update_document('users', current_user_id, {'following_count': len(current_following) + 1})
 
+    # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
+    await cache_manager.invalidate_user(user_id)
+    await cache_manager.invalidate_user(current_user_id)
+
     return {'message': 'Now following user', 'user_id': user_id}
 
 @api_router.post('/users/{user_id}/unfollow')
@@ -2570,19 +2595,27 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
+    current_user = await db.get_document('users', current_user_id)
+
+    # Compute counts from pre-mutation snapshots
+    target_followers = list(target_user.get('followers') or [])
+    current_following = list((current_user or {}).get('following') or [])
+
     await db.array_remove_update('users', user_id, 'followers', [current_user_id])
     await db.array_remove_update('users', current_user_id, 'following', [user_id])
 
-    target_followers = target_user.get('followers', []) or []
     new_followers_count = max(0, len(target_followers) - 1)
     await db.update_document('users', user_id, {'followers_count': new_followers_count})
     
-    current_user = await db.get_document('users', current_user_id)
-    current_following = (current_user or {}).get('following', []) or []
     new_following_count = max(0, len(current_following) - 1)
     await db.update_document('users', current_user_id, {'following_count': new_following_count})
 
+    # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
+    await cache_manager.invalidate_user(user_id)
+    await cache_manager.invalidate_user(current_user_id)
+
     return {'message': 'Unfollowed user', 'user_id': user_id}
+
 
 
 @api_router.post('/users/{target_user_id}/block')
@@ -10451,6 +10484,9 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
 
     await _sync_vendor_to_admin_queue(db, vendor_id)
 
+    # ponytail: invalidate cached user profile to force KYC verification prompt
+    await cache_manager.invalidate_user(user_id)
+
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
 
@@ -11452,6 +11488,9 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         await db.delete_document('vendor_admin_reviews', vendor_id)
     except Exception:
         pass
+    
+    # ponytail: invalidate cached user profile to reflect vendor deletion
+    await cache_manager.invalidate_user(user_id)
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
@@ -12751,13 +12790,19 @@ async def get_nearby_sos_alerts(
     radius: float = 1.0,  # km
     token_data: dict = Depends(verify_token)
 ):
-    """Get active SOS alerts nearby"""
+    current_user_id = token_data["user_id"]
     db = await get_db()
     
     # Get all active SOS alerts
     alerts = await db.query_documents('sos_alerts', filters=[
         ('status', '==', 'active')
     ])
+    
+    # ponytail: Only show alerts to users who were notified (targeted nearby/fallback) or created it
+    alerts = [
+        alert for alert in alerts 
+        if current_user_id in alert.get('notified_user_ids', []) or alert.get('user_id') == current_user_id
+    ]
     
     # Filter by distance if coordinates provided
     if lat and lng:

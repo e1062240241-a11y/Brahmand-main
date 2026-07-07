@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
@@ -11,6 +11,8 @@ import {
   Platform,
   StatusBar,
   Dimensions,
+  Pressable,
+  Animated,
 } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -70,6 +72,9 @@ function LibraryPage() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [showCursorCircle, setShowCursorCircle] = useState(false);
+  const [cursorX, setCursorX] = useState(0);
+  const lastTapRef = useRef(0);
   const gitaState = useGitaStore();
   const libraryStore = useLibraryStore();
   const observedProgress = libraryStore.getRecentBooks();
@@ -80,6 +85,23 @@ function LibraryPage() {
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+
+  const handleSearchPress = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      setShowCursorCircle(true);
+      setTimeout(() => setShowCursorCircle(false), 800);
+    }
+    lastTapRef.current = now;
+  };
+
+  const handleSelectionChange = (e: any) => {
+    const { start } = e.nativeEvent.selection;
+    const textBeforeCursor = query.substring(0, start);
+    const charWidth = 8.5;
+    const xOffset = 28;
+    setCursorX(Math.min(xOffset + textBeforeCursor.length * charWidth, Dimensions.get('window').width - 80));
+  };
 
   const books = query.trim()
     ? BOOKS.filter(b => b.title.toLowerCase().includes(query.toLowerCase()))
@@ -112,11 +134,19 @@ function LibraryPage() {
       >
         {/* ── Search Bar ── */}
         <View style={styles.searchWrapper}>
-          <View style={styles.searchBar}>
+          <Pressable
+            onPress={handleSearchPress}
+            android_ripple={{ color: 'rgba(255, 107, 0, 0.15)', borderless: false }}
+            style={({ pressed }) => [
+              styles.searchBar,
+              pressed && Platform.OS === 'ios' && { opacity: 0.92, transform: [{ scale: 0.98 }] }
+            ]}
+          >
             <Ionicons name="search-outline" size={19} color="#9E8878" style={{ marginRight: 10 }} />
             <TextInput
               value={query}
               onChangeText={setQuery}
+              onSelectionChange={handleSelectionChange}
               placeholder="Search by book name, author or topic."
               placeholderTextColor="#A09090"
               style={styles.searchInput}
@@ -124,7 +154,12 @@ function LibraryPage() {
             <TouchableOpacity style={styles.filterBtn}>
               <MaterialCommunityIcons name="tune-vertical" size={20} color="#8A7060" />
             </TouchableOpacity>
-          </View>
+          </Pressable>
+          {showCursorCircle && (
+            <View style={[styles.cursorCircleContainer, { left: cursorX }]}>
+              <View style={styles.cursorCircle} />
+            </View>
+          )}
         </View>
 
         {/* ── Quote Section (Moved to Top) ── */}
@@ -376,6 +411,19 @@ const styles = StyleSheet.create({
   },
   filterBtn: {
     paddingLeft: 10,
+  },
+  cursorCircleContainer: {
+    position: 'absolute',
+    bottom: -12,
+    transform: [{ translateX: -6 }],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cursorCircle: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255, 107, 0, 0.6)',
   },
 
   /* Hero card */

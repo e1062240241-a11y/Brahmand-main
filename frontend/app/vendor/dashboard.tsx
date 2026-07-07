@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -99,10 +99,11 @@ export default function VendorDashboardScreen() {
   const [businessHoursVal, setBusinessHoursVal] = useState('');
   const [offersVal, setOffersVal] = useState('');
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
+  const hasInitializedRef = useRef(false);
 
   // Sync data from store when myVendor is loaded
   useEffect(() => {
-    if (myVendor) {
+    if (myVendor && !hasInitializedRef.current) {
       setOwnerName(myVendor.owner_name || '');
       setBusinessName(myVendor.business_name || '');
       setPhoneVal(myVendor.phone_number || '');
@@ -115,6 +116,7 @@ export default function VendorDashboardScreen() {
       setCategoriesVal(myVendor.categories || []);
       setBusinessHoursVal(myVendor.business_hours || '');
       setOffersVal(myVendor.offers || '');
+      hasInitializedRef.current = true;
     }
   }, [myVendor]);
 

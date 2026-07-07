@@ -79,6 +79,30 @@ export default function CategoryScreen() {
     );
   };
 
+  const getCategoryIcon = () => {
+    const cat = (category || '').trim().toLowerCase();
+    switch (cat) {
+      case 'astrologer':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/siren.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      case 'electrician':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/lightning.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      case 'panditji':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/panditji_icon.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      case 'carpenter':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/hammer_custom.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      case 'plumber':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/plumber_icon.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      case 'general store':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/general_store.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      case 'dairy':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/cow.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      case 'salon':
+        return <Image source={require('../../../assets/images/tab-bar/rashi/vendor/salon_icon.png')} style={{ width: 48, height: 48, marginBottom: 12 }} resizeMode="contain" />;
+      default:
+        return <Ionicons name="alert-circle-outline" size={48} color="#FD6500" style={{ marginBottom: 12 }} />;
+    }
+  };
+
   const dataToRender = displayVendors;
 
   return (
@@ -126,6 +150,13 @@ export default function CategoryScreen() {
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        // ponytail: Display a friendly empty state instead of a blank screen when no vendors are in the area
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            {getCategoryIcon()}
+            <Text style={styles.emptyText}>Currently no "{category}" in your area.</Text>
+          </View>
+        }
       />
     </LinearGradient>
   );
@@ -279,4 +310,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 120,
+    paddingHorizontal: 24,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 });
+
