@@ -1774,7 +1774,7 @@ const DirectMessageScreen = () => {
           style={StyleSheet.absoluteFillObject}
         />
       </View>
-      
+
       <View style={[
         styles.header,
         Platform.OS === 'android'
@@ -1918,8 +1918,8 @@ const DirectMessageScreen = () => {
             />
           )}
         </View>
-        
-        <View 
+
+        <View
           style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}
           onLayout={logLayout('Input wrapper', [styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }])}
         >
@@ -2066,8 +2066,8 @@ const DirectMessageScreen = () => {
         edges={['left', 'right']}
         onLayout={logLayout('Root container / SafeAreaView', styles.container)}
       >
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           onLayout={logLayout('KeyboardAvoidingView', { flex: 1 })}
