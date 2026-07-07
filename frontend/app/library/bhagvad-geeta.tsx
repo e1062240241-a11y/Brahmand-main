@@ -172,7 +172,7 @@ export default function BhagvadGeetaReaderScreen() {
     if (openDirectly) setPendingOpenChapter({ chapter: safeChapterNumber, edge: openDirectly });
     try {
       const incoming = await loadBhagavadGitaChapter(safeChapterNumber);
-      setChapters((prev) => ({ ...prev, [safeChapterNumber]: incoming }));
+      setChapters((prev) => ({ ...prev, [safeChapterNumber]: (incoming || []) as VerseItem[] }));
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       setError(typeof detail === 'string' ? detail : `Failed to load Chapter ${safeChapterNumber}`);

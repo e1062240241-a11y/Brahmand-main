@@ -377,7 +377,6 @@ export const LiveMantraRoom = () => {
     const initAudioMode = async () => {
       try {
         await setAudioModeAsync({
-          staysActiveInBackground: true,
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,

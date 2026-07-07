@@ -50,6 +50,30 @@ export const useFeedStore = create<FeedState>((set, get) => ({
   setTabFeed: (tab, data) =>
     set((state) => {
       const currentTabFeed = state.tabFeeds[tab] || initialTabData();
+      let posts = data.posts !== undefined ? data.posts : currentTabFeed.posts;
+
+      if (posts) {
+        const validPosts: any[] = [];
+        const seenIds = new Set<string>();
+        for (const post of posts) {
+          if (!post || post.id === undefined || post.id === null || String(post.id).trim() === '') {
+            console.warn('[Feed Validation Store] Post missing valid ID:', post);
+            continue;
+          }
+          const idStr = String(post.id);
+          if (!seenIds.has(idStr)) {
+            seenIds.add(idStr);
+            validPosts.push(post);
+          } else {
+            console.warn('[Feed Validation Store] Duplicate post ID detected and filtered out:', idStr);
+          }
+        }
+        data = {
+          ...data,
+          posts: validPosts,
+        };
+      }
+
       return {
         tabFeeds: {
           ...state.tabFeeds,
@@ -76,7 +100,7 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         const feed = updatedTabFeeds[tab];
         if (feed && feed.posts) {
           const originalLength = feed.posts.length;
-          const filtered = feed.posts.filter((p) => p.id !== postId);
+          const filtered = feed.posts.filter((p) => String(p.id) !== String(postId));
           const removedCount = originalLength - filtered.length;
           updatedTabFeeds[tab] = {
             ...feed,

@@ -565,9 +565,11 @@ export default function HomeScreen() {
   const feedPosts = useMemo(() => {
     return rawFeedPosts.filter((post: any) => {
       const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
-      return !uid || !blockedUserIds.includes(String(uid));
+      if (!uid) return true;
+      const uidStr = String(uid);
+      return !blockedUserIds.includes(uidStr) && !blockedByMeUserIds.includes(uidStr);
     });
-  }, [rawFeedPosts, blockedUserIds]);
+  }, [rawFeedPosts, blockedUserIds, blockedByMeUserIds]);
   const feedOffset = currentFeed.offset;
   const hasMoreFeed = currentFeed.hasMore;
   const [loadingFeed, setLoadingFeed] = useState(false);
@@ -900,6 +902,24 @@ export default function HomeScreen() {
         }
       }
 
+      // Filter out invalid posts (missing/null id) and deduplicate incomingItems
+      const filteredIncoming: any[] = [];
+      const incomingSeen = new Set<string>();
+      for (const item of incomingItems) {
+        if (!item || item.id === undefined || item.id === null || String(item.id).trim() === '') {
+          console.warn('[Feed Validation] Post missing valid ID:', item);
+          continue;
+        }
+        const idStr = String(item.id);
+        if (!incomingSeen.has(idStr)) {
+          incomingSeen.add(idStr);
+          filteredIncoming.push(item);
+        } else {
+          console.warn('[Feed Validation] Duplicate post ID in incoming feed:', idStr);
+        }
+      }
+      incomingItems = filteredIncoming;
+
       console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
       // Save fetched items to local WatermelonDB (native only)
@@ -984,11 +1004,11 @@ export default function HomeScreen() {
             lastFetched: Date.now(),
           });
         } else {
-          // Unseen posts exhausted – shuffle and recycle existing posts
+          // Unseen posts exhausted – shuffle and recycle existing posts (replace, not append, to avoid duplicate keys)
           console.log(`[HomeFeed] No new unique posts for ${tabToLoad} – recycling ${currentPosts.length} posts`);
           const recycled = [...currentPosts].sort(() => Math.random() - 0.5);
           setTabFeed(tabToLoad, {
-            posts: [...currentPosts, ...recycled],
+            posts: recycled,
             offset: 0, // reset offset so next fetch starts from beginning
             hasMore: true, // never stop scrolling
             lastFetched: Date.now(),
@@ -3337,7 +3357,7 @@ export default function HomeScreen() {
                         zIndex: -1,
                       }} pointerEvents="none">
                         <Text style={{
-                          color: '#E6C87A',
+                          color: '#000',
                           textAlign: 'center',
                           fontFamily: 'Cinzel',
                           fontSize: Platform.OS === 'android' ? 22 : 28,
@@ -4177,18 +4197,16 @@ export default function HomeScreen() {
                               <TempleIcon />
                             </View>
                             <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
-                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: Platform.OS === 'android' ? '100%' : 95 }}>
-                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
-                                <TouchableOpacity
-                                  onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
-                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                  style={{ marginLeft: 3 }}
-                                >
-                                  <Ionicons name="notifications-outline" size={18} color="#000" />
-                                </TouchableOpacity>
-                              </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
+                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                                {t('notify')} {t('me')}
+                              </Text>
+                              <TouchableOpacity
+                                onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                              >
+                                <Ionicons name="notifications-outline" size={15} color="#000" />
+                              </TouchableOpacity>
                             </View>
                           </View>
                           <TouchableOpacity
@@ -4238,18 +4256,16 @@ export default function HomeScreen() {
                               <TempleIcon />
                             </View>
                             <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
-                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: Platform.OS === 'android' ? '100%' : 95 }}>
-                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
-                                <TouchableOpacity
-                                  onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
-                                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                  style={{ marginLeft: 3 }}
-                                >
-                                  <Ionicons name="notifications-outline" size={18} color="#000" />
-                                </TouchableOpacity>
-                              </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
+                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                                {t('notify')} {t('me')}
+                              </Text>
+                              <TouchableOpacity
+                                onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                              >
+                                <Ionicons name="notifications-outline" size={15} color="#000" />
+                              </TouchableOpacity>
                             </View>
                           </View>
                           <TouchableOpacity
@@ -4744,7 +4760,7 @@ export default function HomeScreen() {
                   // ⚡ Bolt: Added FlatList performance props — Prevents memory leaks and heavy JS thread load on Android for long lists. Expected impact: smoother scrolling and fewer crashes on Android.
               <FlatList
                 data={parentComments}
-                    keyExtractor={(item) => item.id || `${item.user_id}-${item.created_at}`}
+                    keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
                     initialNumToRender={10}
                     maxToRenderPerBatch={5}
                     windowSize={5}

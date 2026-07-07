@@ -229,6 +229,31 @@ async def lifespan(app: FastAPI):
     _panchang_prefetch_task = None
     logger.info("Panchang prefetch loop disabled")
     
+    # Update ISKCON Bangalore temple (Robust)
+    async def update_iskcon():
+        try:
+            db = await get_db()
+            # Find the temple first
+            temples = await db.query_documents('temples', limit=100)
+            target_id = None
+            for t in temples:
+                if t.get('temple_id') == 'other-iskcon-temple-bangalore-karnataka' or 'ISKCON Temple Bangalore' in t.get('name', ''):
+                    target_id = t.get('id') # Actual Firestore document ID
+                    break
+            
+            if target_id:
+                await db.update_document('temples', target_id, {
+                    'name': 'ISKCON Bangalore aarti',
+                    'youtube_url': 'https://www.youtube.com/live/cVlUJPTObdk?si=CZlANF07SSYPDMj3'
+                })
+                logger.info(f"Successfully updated ISKCON Bangalore temple (Doc ID: {target_id}).")
+            else:
+                logger.warning("ISKCON Bangalore temple not found in database!")
+        except Exception as e:
+            logger.error(f"Failed to update ISKCON Bangalore: {e}")
+    
+    asyncio.create_task(update_iskcon())
+    
     yield
     
     # Shutdown
@@ -1044,41 +1069,78 @@ def _apply_cors_headers(response: Response, origin: str, request: Optional[Reque
     return response
 
 
-@app.middleware("http")
-async def add_process_time_header(request: Request, call_next):
-    origin = request.headers.get("origin") or ""
+class ProcessTimeAndCORSMiddleware:
+    def __init__(self, app):
+        self.app = app
 
-    if request.method == "OPTIONS" and _is_origin_allowed(origin):
-        return _apply_cors_headers(Response(status_code=204), origin, request)
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-    start_time = datetime.utcnow()
-    response = await call_next(request)
-    process_time = (datetime.utcnow() - start_time).total_seconds()
-    response.headers["X-Process-Time"] = str(process_time)
-    return _apply_cors_headers(response, origin, request)
+        method = scope.get("method", "")
+        origin = ""
+        request_headers = ""
+        
+        for k, v in scope.get("headers", []):
+            k_lower = k.lower()
+            if k_lower == b"origin":
+                origin = v.decode("latin-1")
+            elif k_lower == b"access-control-request-headers":
+                request_headers = v.decode("latin-1")
+
+        if method == "OPTIONS" and _is_origin_allowed(origin):
+            response_headers = [
+                (b"access-control-allow-origin", origin.encode("latin-1")),
+                (b"access-control-allow-credentials", b"true"),
+                (b"access-control-allow-methods", b"GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD"),
+                (b"access-control-allow-headers", (request_headers or "*").encode("latin-1")),
+                (b"access-control-expose-headers", b"Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified, X-Process-Time"),
+                (b"vary", b"Origin"),
+                (b"content-length", b"0"),
+            ]
+            await send({
+                "type": "http.response.start",
+                "status": 204,
+                "headers": response_headers,
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b"",
+            })
+            return
+
+        start_time = datetime.utcnow()
+
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                process_time = (datetime.utcnow() - start_time).total_seconds()
+                headers_list = list(message.get("headers", []))
+                headers_dict = {}
+                for k, v in headers_list:
+                    headers_dict[k.lower()] = v
+                
+                headers_dict[b"x-process-time"] = str(process_time).encode("latin-1")
+                
+                if _is_origin_allowed(origin):
+                    headers_dict[b"access-control-allow-origin"] = origin.encode("latin-1")
+                    headers_dict[b"access-control-allow-credentials"] = b"true"
+                    headers_dict[b"access-control-allow-methods"] = b"GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD"
+                    headers_dict[b"access-control-expose-headers"] = b"Accept-Ranges, Content-Length, Content-Range, Content-Type, ETag, Last-Modified, X-Process-Time"
+                    headers_dict[b"access-control-allow-headers"] = (request_headers or "*").encode("latin-1")
+                    headers_dict[b"vary"] = b"Origin"
+                
+                new_headers = []
+                for k, v in headers_dict.items():
+                    new_headers.append((k, v))
+                message["headers"] = new_headers
+
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
 
 
-@app.middleware("http")
-async def dedupe_cors_headers(request: Request, call_next):
-    response = await call_next(request)
-    header_keys = {
-        b'access-control-allow-origin',
-        b'access-control-allow-credentials',
-        b'access-control-expose-headers',
-    }
-    new_raw_headers = []
-    seen = set()
-
-    for name, value in response.raw_headers:
-        lower_name = name.lower()
-        if lower_name in header_keys:
-            if lower_name in seen:
-                continue
-            seen.add(lower_name)
-        new_raw_headers.append((name, value))
-
-    response.raw_headers = new_raw_headers
-    return response
+app.add_middleware(ProcessTimeAndCORSMiddleware)
 
 
 @app.exception_handler(Exception)
@@ -7836,14 +7898,14 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
 @api_router.get("/temples")
 async def get_temples(token_data: dict = Depends(verify_token)):
     db = await get_db()
-    return await db.query_documents('temples', limit=20)
+    return await db.query_documents('temples', limit=100)
 
 
 @api_router.get("/temples/nearby")
 async def get_nearby_temples(lat: float = None, lng: float = None, token_data: dict = Depends(verify_token)):
     """Get temples, optionally filtered by location"""
     db = await get_db()
-    temples = await db.query_documents('temples', limit=20)
+    temples = await db.query_documents('temples', limit=100)
     
     # Add is_following status for each temple
     user_id = token_data["user_id"]

@@ -3220,7 +3220,8 @@ export default function CommunityDetailScreen() {
           const response = await sendDirectMessage(targetSlId, messageText);
           const conversationId = response.data?.chat_id || response.data?.conversation_id;
           if (conversationId) {
-            router.push(`/dm/${conversationId}?userId=${item.user_id || ''}&userName=${encodeURIComponent(item.user_name || '')}&userSL=${encodeURIComponent(targetSlId || '')}`);
+            const photoUrl = item.user?.photo || item.user_photo || '';
+            router.push(`/dm/${conversationId}?userId=${item.user_id || ''}&userName=${encodeURIComponent(item.user_name || '')}&userSL=${encodeURIComponent(targetSlId || '')}&userPhoto=${encodeURIComponent(photoUrl)}`);
           } else {
             router.push('/(tabs)/messages');
           }
@@ -3251,7 +3252,8 @@ export default function CommunityDetailScreen() {
                     const response = await sendDirectMessage(targetSlId, messageText);
                     const conversationId = response.data?.chat_id || response.data?.conversation_id;
                     if (conversationId) {
-                      router.push(`/dm/${conversationId}?userId=${item.user_id || ''}&userName=${encodeURIComponent(item.user_name || '')}&userSL=${encodeURIComponent(targetSlId || '')}`);
+                      const photoUrl = item.user?.photo || item.user_photo || '';
+                      router.push(`/dm/${conversationId}?userId=${item.user_id || ''}&userName=${encodeURIComponent(item.user_name || '')}&userSL=${encodeURIComponent(targetSlId || '')}&userPhoto=${encodeURIComponent(photoUrl)}`);
                     } else {
                       router.push('/(tabs)/messages');
                     }

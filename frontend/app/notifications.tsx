@@ -6,6 +6,7 @@ import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useTranslation } from '../src/utils/i18n';
 
 import { COLORS } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
@@ -108,6 +109,7 @@ export default function NotificationsScreen() {
   const filter = params.filter;
   const { user, updateUser } = useAuthStore();
   const { dismissBadge, recentNotifications } = useNotificationStore();
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [actorsMap, setActorsMap] = useState<Record<string, { name?: string; photo?: string; isVerified?: boolean }>>({});
   const [followingMap, setFollowingMap] = useState<Record<string, boolean>>({});
@@ -328,11 +330,13 @@ export default function NotificationsScreen() {
       const actorId = itemData?.actor_user_id || itemData?.sender_id || itemData?.user_id;
       const actorName = itemData?.actor_name || itemData?.username || itemData?.name || '';
       const actorSL = itemData?.actor_sl_id || itemData?.sl_id || '';
+      const actorUser = actorId ? actorsMap[actorId] : null;
+      const actorPhoto = actorUser?.photo || '';
       if (convId && convId !== 'undefined' && convId !== 'new') {
-        return `/dm/${convId}?userId=${actorId}&userName=${encodeURIComponent(actorName)}&userSL=${encodeURIComponent(actorSL)}`;
+        return `/dm/${convId}?userId=${actorId}&userName=${encodeURIComponent(actorName)}&userSL=${encodeURIComponent(actorSL)}&userPhoto=${encodeURIComponent(actorPhoto)}`;
       }
       if (actorId) {
-        return `/dm/new?userId=${actorId}&userName=${encodeURIComponent(actorName)}&userSL=${encodeURIComponent(actorSL)}`;
+        return `/dm/new?userId=${actorId}&userName=${encodeURIComponent(actorName)}&userSL=${encodeURIComponent(actorSL)}&userPhoto=${encodeURIComponent(actorPhoto)}`;
       }
       return '/dm/new';
     }
@@ -569,7 +573,7 @@ export default function NotificationsScreen() {
                     followingMap[actorId] && styles.followingButtonText,
                   ]}
                 >
-                  {followingMap[actorId] ? 'Following' : 'Follow'}
+                  {followingMap[actorId] ? t('following2') : t('follow')}
                 </Text>
               )}
             </TouchableOpacity>
@@ -593,7 +597,7 @@ export default function NotificationsScreen() {
             <Ionicons name="chevron-back" size={24} color="#000" />
           </TouchableOpacity>
           <View style={styles.headerTitleWrap}>
-            <Text style={styles.title}>{filter === 'vendor' ? 'Vendor Notifications' : 'Notifications'}</Text>
+            <Text style={styles.title}>{filter === 'vendor' ? t('notifications') : t('notificationsTitle')}</Text>
           </View>
           <View style={{ width: 40, height: 40 }} />
         </View>
@@ -641,8 +645,8 @@ export default function NotificationsScreen() {
               <View style={styles.emptyIconCircle}>
                 <Ionicons name="notifications-off-outline" size={50} color="#8E8E93" />
               </View>
-              <Text style={styles.emptyTitle}>No Notifications Yet</Text>
-              <Text style={styles.emptyText}>When people interact with you, you'll see it here.</Text>
+              <Text style={styles.emptyTitle}>{t('noNotifications')}</Text>
+              <Text style={styles.emptyText}>{t('whenPeopleFollow')}</Text>
             </View>
           ) : (
             <View style={{ backgroundColor: 'transparent' }}>

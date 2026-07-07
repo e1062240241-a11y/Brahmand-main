@@ -36,6 +36,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { blockUser, unblockUser, isUserBlocked } from '../../src/services/firebase/moderationService';
 import { useBlockStore } from '../../src/store/blockStore';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
+import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
 
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -174,6 +175,9 @@ const UserProfileScreen = () => {
     isBlocked: boolean;
     onConfirm: () => void;
   } | null>(null);
+
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<any | null>(null);
 
   // Global block store — shared across all screens
   const blockedUserIds = useBlockStore(state => state.blockedUserIds);
@@ -553,18 +557,34 @@ const UserProfileScreen = () => {
 
       // Strict validation: every post must belong to the viewed profile user
       const validated: any[] = [];
+      const seenIds = new Set<string>();
       for (const p of incomingPosts) {
-        if (p.user_id !== profileUserId) {
-          console.error(`SECURITY VIOLATION: Post ${p.id} belongs to user {p.user_id} but was returned for user ${profileUserId}!`);
+        if (!p || p.id === undefined || p.id === null || String(p.id).trim() === '') {
+          console.warn('[Profile Screen Feed] Post missing valid ID:', p);
           continue;
         }
-        validated.push(p);
+        if (p.user_id !== profileUserId) {
+          console.error(`SECURITY VIOLATION: Post ${p.id} belongs to user ${p.user_id} but was returned for user ${profileUserId}!`);
+          continue;
+        }
+        const idStr = String(p.id);
+        if (!seenIds.has(idStr)) {
+          seenIds.add(idStr);
+          validated.push(p);
+        } else {
+          console.warn('[Profile Screen Feed] Duplicate post ID in incoming chunk:', idStr);
+        }
       }
 
       const nextOffset = currentOffset + validated.length;
       const nextHasMore = !payload?.has_reached_end;
 
-      setPosts(prev => reset ? validated : [...prev, ...validated]);
+      setPosts(prev => {
+        if (reset) return validated;
+        const existingIds = new Set(prev.map(x => String(x.id)));
+        const deduplicated = validated.filter(x => !existingIds.has(String(x.id)));
+        return [...prev, ...deduplicated];
+      });
       setTotalPosts(payload?.total || 0);
       setOffset(nextOffset);
       setHasMore(nextHasMore);
@@ -645,27 +665,8 @@ const UserProfileScreen = () => {
 
   const handleDeletePost = (post: any) => {
     if (!post?.id) return;
-    Alert.alert(
-      'Delete Post',
-      'Are you sure you want to delete this post?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deletePost(post.id);
-              setPosts(prev => prev.filter(p => p.id !== post.id));
-              setTotalPosts(prev => Math.max(0, prev - 1));
-              setPostModalVisible(false);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete post. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+    setPostToDelete(post);
+    setDeleteConfirmVisible(true);
   };
 
   const handlePostMenuPress = useCallback((post: any) => {
@@ -823,7 +824,8 @@ const UserProfileScreen = () => {
     if (!profile?.id || profile?.id === currentUserId) return;
     const userName = encodeURIComponent(profile.name || '');
     const userSL = encodeURIComponent(profile.sl_id || '');
-    router.push(`/dm/new?userId=${profile.id}&userName=${userName}&userSL=${userSL}`);
+    const userPhoto = encodeURIComponent(profile.photo || '');
+    router.push(`/dm/new?userId=${profile.id}&userName=${userName}&userSL=${userSL}&userPhoto=${userPhoto}`);
   };
 
   const handleShareProfile = () => {
@@ -1369,7 +1371,13 @@ const UserProfileScreen = () => {
       <Animated.FlatList
         data={isBlocked ? [] : posts}
         renderItem={renderPost}
-        keyExtractor={(item, index) => item.id ? `profile-post-${item.id}` : `profile-post-idx-${index}`}
+        keyExtractor={(item, index) => {
+          if (!item || !item.id) {
+            console.warn('[Profile keyExtractor] Post missing valid ID:', item);
+            return `profile-post-idx-${index}`;
+          }
+          return `profile-post-${item.id}`;
+        }}
         numColumns={3}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -1466,7 +1474,7 @@ const UserProfileScreen = () => {
                   isBlackBackground
                 />
               )}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => item && item.id ? String(item.id) : `detail-idx-${index}`}
               showsVerticalScrollIndicator={false}
               onViewableItemsChanged={onViewableItemsChanged}
               viewabilityConfig={viewabilityConfig}
@@ -1505,7 +1513,7 @@ const UserProfileScreen = () => {
                   isBlackBackground
                 />
               )}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => item && item.id ? String(item.id) : `detail-idx-${index}`}
               showsVerticalScrollIndicator={false}
               onViewableItemsChanged={onViewableItemsChanged}
               viewabilityConfig={viewabilityConfig}
@@ -1652,6 +1660,27 @@ const UserProfileScreen = () => {
           isBlocked={blockConfirmData.isBlocked}
         />
       )}
+
+      <DeleteConfirmationModal
+        visible={deleteConfirmVisible}
+        onClose={() => {
+          setDeleteConfirmVisible(false);
+          setPostToDelete(null);
+        }}
+        onConfirm={async () => {
+          if (!postToDelete?.id) return;
+          try {
+            await deletePost(postToDelete.id);
+            setPosts(prev => prev.filter(p => p.id !== postToDelete.id));
+            setTotalPosts(prev => Math.max(0, prev - 1));
+            setPostModalVisible(false);
+          } catch (error) {
+            Alert.alert('Error', 'Failed to delete post. Please try again.');
+          } finally {
+            setPostToDelete(null);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 };

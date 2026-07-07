@@ -16,6 +16,7 @@ import { originalAlert } from '../../src/utils/nativeAlert';
 import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
+import { useTranslation } from '../../src/utils/i18n';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const FEED_PAGE_SIZE = 7;
@@ -24,6 +25,7 @@ const PostScreen = () => {
   const params = useLocalSearchParams<{ id: string | string[] }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const routePostId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { user } = useAuthStore();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -94,9 +96,18 @@ const PostScreen = () => {
   const listRef = useRef<FlatList>(null);
   const hasScrolled = useRef(false);
 
+  const visibleFeedPosts = useMemo(() => {
+    return feedPosts.filter((post: any) => {
+      const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
+      if (!uid) return true;
+      const uidStr = String(uid);
+      return !blockedUserIds.includes(uidStr) && !blockedByMeUserIds.includes(uidStr);
+    });
+  }, [feedPosts, blockedUserIds, blockedByMeUserIds]);
+
   const feedPostKeys = useMemo(
-    () => feedPosts.map((post, index) => String(post.id || post.media_url || index)),
-    [feedPosts],
+    () => visibleFeedPosts.map((post, index) => String(post.id || post.media_url || index)),
+    [visibleFeedPosts],
   );
 
   useEffect(() => {
@@ -127,39 +138,58 @@ const PostScreen = () => {
       const payload = response.data;
       let feedItems = Array.isArray(payload) ? payload : (Array.isArray(payload?.items) ? payload.items : []);
 
-      let items: any[] = [];
+      let rawItems: any[] = [];
       if (targetPost) {
         feedItems = feedItems.filter((p: any) => String(p.id) !== String(targetPost.id));
-        items = [targetPost, ...feedItems];
+        rawItems = [targetPost, ...feedItems];
       } else {
-        items = feedItems;
+        rawItems = feedItems;
       }
 
-      // Add new items to the global session pool
-      for (const p of items) {
-        if (p?.id && !allSessionPostsRef.current.find((x: any) => x.id === p.id)) {
+      // Filter invalid posts (missing/null id) and deduplicate rawItems chunk
+      const cleanItems: any[] = [];
+      const seenIds = new Set<string>();
+      for (const item of rawItems) {
+        if (!item || item.id === undefined || item.id === null || String(item.id).trim() === '') {
+          console.warn('[Post Detail Feed] Post missing valid ID:', item);
+          continue;
+        }
+        const idStr = String(item.id);
+        if (!seenIds.has(idStr)) {
+          seenIds.add(idStr);
+          cleanItems.push(item);
+        } else {
+          console.warn('[Post Detail Feed] Duplicate post ID in incoming chunk:', idStr);
+        }
+      }
+
+      // Add clean items to the global session pool
+      for (const p of cleanItems) {
+        const idStr = String(p.id);
+        if (!allSessionPostsRef.current.find((x: any) => String(x.id) === idStr)) {
           allSessionPostsRef.current.push(p);
         }
       }
 
       if (append) {
         setFeedPosts(prev => {
-          const seen = new Set(prev.map(p => String(p.id)));
-          const newItems = items.filter(p => !seen.has(String(p.id)));
+          const existing = new Set(prev.map(p => String(p.id)));
+          const newItems = cleanItems.filter(p => !existing.has(String(p.id)));
 
           if (newItems.length === 0) {
             // All returned posts already visible — recycle from session pool (shuffled)
             const pool = allSessionPostsRef.current;
             if (pool.length > 1) {
               const shuffled = [...pool].sort(() => Math.random() - 0.5);
-              return [...prev, ...shuffled.filter(p => !seen.has(String(p.id))).slice(0, FEED_PAGE_SIZE * 2)];
+              const recycledFiltered = shuffled.filter(p => p && p.id && !existing.has(String(p.id)));
+              return [...prev, ...recycledFiltered.slice(0, FEED_PAGE_SIZE * 2)];
             }
             return prev;
           }
           return [...prev, ...newItems];
         });
       } else {
-        setFeedPosts(items);
+        setFeedPosts(cleanItems);
       }
       setFeedOffset(offset + feedItems.length);
       // Always keep hasMore true so the feed is truly infinite via recycling
@@ -177,8 +207,8 @@ const PostScreen = () => {
   }, [loadFeed]);
 
   useEffect(() => {
-    if (feedPosts.length > 0 && routePostId && !hasScrolled.current) {
-      const idx = feedPosts.findIndex(
+    if (visibleFeedPosts.length > 0 && routePostId && !hasScrolled.current) {
+      const idx = visibleFeedPosts.findIndex(
         p => String(p?.id) === String(routePostId) || String(p?.post_id) === String(routePostId)
       );
       if (idx !== -1 && listRef.current) {
@@ -190,7 +220,7 @@ const PostScreen = () => {
       }
       setInitialPostLoaded(true);
     }
-  }, [feedPosts, routePostId, feedPostKeys]);
+  }, [visibleFeedPosts, routePostId, feedPostKeys]);
 
   const loadComments = useCallback(async (postId: string) => {
     setCommentsLoading(true);
@@ -521,7 +551,7 @@ const PostScreen = () => {
   }, [loadingMore, feedOffset, loadFeed]);
 
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
-    const postKey = String(item.id || item.media_url || index);
+    const postKey = item && item.id ? String(item.id) : `post-idx-${index}`;
     return (
       <View
         onLayout={(event) => {
@@ -552,7 +582,13 @@ const PostScreen = () => {
     );
   }, [activePostKey, handleOpenComment, handleSharePost, handleRepost, router]);
 
-  const keyExtractor = useCallback((item: any, index: number) => String(item.id || item.media_url || index), []);
+  const keyExtractor = useCallback((item: any, index: number) => {
+    if (!item || item.id === undefined || item.id === null) {
+      console.warn('[Post Detail keyExtractor] Post missing valid ID:', item);
+      return `post-idx-${index}`;
+    }
+    return String(item.id);
+  }, []);
 
   const onScroll = useCallback((event: any) => {
     const y = event.nativeEvent.contentOffset.y;
@@ -575,13 +611,13 @@ const PostScreen = () => {
       setActivePostKey(closestKey);
       // Find the post for this key and mark it as seen
       const postIdx = feedPostKeys.indexOf(closestKey);
-      if (postIdx >= 0 && feedPosts[postIdx]?.id) {
-        seenPostIdsRef.current.add(String(feedPosts[postIdx].id));
+      if (postIdx >= 0 && visibleFeedPosts[postIdx]?.id) {
+        seenPostIdsRef.current.add(String(visibleFeedPosts[postIdx].id));
       }
     } else {
       setActivePostKey(prev => prev);
     }
-  }, [feedPostKeys, feedPosts]);
+  }, [feedPostKeys, visibleFeedPosts]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -589,18 +625,18 @@ const PostScreen = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={COLORS.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Posts</Text>
+        <Text style={styles.headerTitle}>{t('posts')}</Text>
       </View>
 
-      {loadingFeed && feedPosts.length === 0 ? (
+      {loadingFeed && visibleFeedPosts.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading posts...</Text>
+          <Text style={styles.loadingText}>{t('loadingPosts')}</Text>
         </View>
       ) : (
         <FlatList
           ref={listRef}
-          data={feedPosts}
+          data={visibleFeedPosts}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           onScroll={onScroll}
@@ -642,7 +678,7 @@ const PostScreen = () => {
           />
           <View style={[styles.commentModalSheet, { paddingBottom: keyboardVisible ? 8 : (Platform.OS === 'ios' ? SPACING.lg : SPACING.md) }]}>
             <View style={styles.commentModalHeader}>
-              <Text style={styles.commentModalTitle}>Comments ({commentPost?.comments_count ?? postComments.length ?? 0})</Text>
+              <Text style={styles.commentModalTitle}>{t('comments')} ({commentPost?.comments_count ?? postComments.length ?? 0})</Text>
               <TouchableOpacity
                 onPress={() => {
                   setCommentModalVisible(false);
@@ -660,7 +696,7 @@ const PostScreen = () => {
                   <ActivityIndicator size="large" color={COLORS.primary} />
                 </View>
               ) : postComments.length === 0 ? (
-                <Text style={styles.commentEmptyText}>No comments yet. Be the first to comment.</Text>
+                <Text style={styles.commentEmptyText}>{t('noCommentsYet2')}</Text>
               ) : (() => {
                 const parentComments = postComments.filter(c => {
                   const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
@@ -713,7 +749,7 @@ const PostScreen = () => {
                                   setCommentText(`@${item.username || 'User'} `);
                                 }}
                               >
-                                <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                                <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>{t('reply')}</Text>
                               </TouchableOpacity>
                             </View>
                           </View>
@@ -768,7 +804,7 @@ const PostScreen = () => {
                                             setCommentText(`@${reply.username} `);
                                           }}
                                         >
-                                          <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>Reply</Text>
+                                          <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>{t('reply')}</Text>
                                         </TouchableOpacity>
                                       </View>
                                     </View>
@@ -798,7 +834,7 @@ const PostScreen = () => {
                 marginBottom: 8,
               }}>
                 <Text style={{ fontSize: 13, color: COLORS.textSecondary }}>
-                  Replying to <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
+                  {t('replyingTo')} <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
                 </Text>
                 <TouchableOpacity onPress={() => setReplyingToComment(null)}>
                   <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
@@ -810,7 +846,7 @@ const PostScreen = () => {
               <TextInput
                 value={commentText}
                 onChangeText={setCommentText}
-                placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
+                placeholder={replyingToComment ? `${t('reply')} @${replyingToComment.username}...` : t('addComment')}
                 placeholderTextColor={COLORS.textSecondary}
                 style={styles.commentTextInput}
                 multiline

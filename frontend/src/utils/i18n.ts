@@ -271,6 +271,44 @@ export const translations = {
     yes: 'Yes',
     no: 'No',
     error: 'Error',
+
+    // Post Page / Comments
+    loadingPosts: 'Loading posts...',
+    noCommentsYet2: 'No comments yet. Be the first to comment.',
+    reply: 'Reply',
+    replyingTo: 'Replying to',
+    reportComment: 'Report Comment',
+    blockUser: 'Block User',
+    unblockUser: 'Unblock User',
+    commentOptions: 'Comment Options',
+
+    // Follow Connections
+    suggested: 'Suggested for you',
+    follow: 'Follow',
+    following2: 'Following',
+    message: 'Message',
+    noFollowersYet: 'No followers yet',
+    noFollowingYet: 'No following yet',
+    searchByName: 'Search by name or SL ID...',
+    noFound: 'No results found',
+    whenPeopleFollow: 'When people follow you, they will appear here.',
+    discoverPeople: 'Discover and follow amazing people.',
+
+    // Notifications
+    notificationsTitle: 'Notifications',
+    noNotifications: 'No notifications yet',
+    markAllRead: 'Mark all read',
+
+    // Common
+    loading: 'Loading...',
+    retry: 'Retry',
+    back: 'Back',
+    search: 'Search',
+    close: 'Close',
+    confirm: 'Confirm',
+    delete: 'Delete',
+    report: 'Report',
+    block: 'Block',
   },
   hi: {
     // Bottom Tabs
@@ -510,6 +548,45 @@ export const translations = {
     yes: 'हाँ',
     no: 'नहीं',
     error: 'त्रुटि',
+
+    // Post Page / Comments
+    loadingPosts: 'पोस्ट लोड हो रही हैं...',
+    noCommentsYet2: 'अभी कोई टिप्पणी नहीं। पहले लिखें!',
+    reply: 'उत्तर दें',
+    replyingTo: 'को उत्तर दे रहे हैं',
+    reportComment: 'टिप्पणी रिपोर्ट करें',
+    blockUser: 'उपयोगकर्ता ब्लॉक करें',
+    unblockUser: 'ब्लॉक हटाएं',
+    commentOptions: 'टिप्पणी विकल्प',
+
+    // Follow Connections
+    suggested: 'आपके लिए सुझाए गए',
+    follow: 'फ़ॉलो करें',
+    following2: 'फ़ॉलो किए गए',
+    message: 'संदेश',
+    noFollowersYet: 'अभी कोई फ़ॉलोअर नहीं',
+    noFollowingYet: 'अभी कोई फ़ॉलोइंग नहीं',
+    searchByName: 'नाम या SL ID से खोजें...',
+    noFound: 'कोई परिणाम नहीं मिला',
+    whenPeopleFollow: 'जब लोग आपको फ़ॉलो करेंगे, वे यहाँ दिखेंगे।',
+    discoverPeople: 'अद्भुत लोगों को खोजें और फ़ॉलो करें।',
+
+    // Notifications
+    notificationsTitle: 'सूचनाएं',
+    noNotifications: 'अभी कोई सूचना नहीं',
+    markAllRead: 'सभी पढ़े हुए चिह्नित करें',
+
+    // Common
+    loading: 'लोड हो रहा है...',
+    retry: 'पुनः प्रयास करें',
+    back: 'वापस',
+    search: 'खोजें',
+    close: 'बंद करें',
+    confirm: 'पुष्टि करें',
+    delete: 'हटाएं',
+    report: 'रिपोर्ट करें',
+    block: 'ब्लॉक करें',
+    myCultureGroup: 'मेरा संस्कृति समूह',
   },
 };
 

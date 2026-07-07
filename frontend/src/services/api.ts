@@ -475,19 +475,19 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    // Handle 401 Unauthorized globally by logging out and redirecting to splash
-    if (status === 401) {
+    // Handle 401 Unauthorized or 403 unauthenticated globally by logging out and redirecting to splash
+    if (status === 401 || (status === 403 && error.response?.data?.detail === "Not authenticated")) {
       const isAuthUrl = /auth\/|login|register|otp/i.test(config?.url || "");
       if (!isAuthUrl) {
         console.warn(
-          "[API] 401 Unauthorized received. Triggering automatic logout...",
+          `[API] ${status} Unauthenticated received. Triggering automatic logout...`,
         );
         try {
           const { useAuthStore } = require("../store/authStore");
           useAuthStore.getState().logout();
         } catch (logoutErr) {
           console.error(
-            "[API] Failed to trigger automatic logout on 401:",
+            `[API] Failed to trigger automatic logout on ${status}:`,
             logoutErr,
           );
         }

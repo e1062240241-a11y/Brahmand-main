@@ -180,7 +180,7 @@ const EkantJaapPage = () => {
         const initAudioMode = async () => {
             try {
                 await setAudioModeAsync({
-                    staysActiveInBackground: true,
+                    shouldPlayInBackground: true,
                     playsInSilentMode: true,
                     interruptionMode: 'doNotMix',
                     shouldRouteThroughEarpiece: false,
