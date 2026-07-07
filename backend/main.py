@@ -2323,9 +2323,10 @@ async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
     return set(blocked_ids)
 
 
-async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type: str) -> set:
+async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type: str, is_android: bool = False) -> set:
     """Returns a set of content IDs of a specific type reported by the user to filter them out."""
-    cache_key = f"reported_content:{content_type}:{user_id}"
+    platform_suffix = "_android" if is_android else "_other"
+    cache_key = f"reported_content:{content_type}:{user_id}:{platform_suffix}"
     cached_ids = await cache_manager.get(cache_key)
     if cached_ids is not None:
         return set(cached_ids)
@@ -2339,7 +2340,10 @@ async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type:
         )
         for r in mod_reports:
             c_id = r.get('contentId')
+            status = r.get('status')
             if c_id:
+                if is_android and status == 'denied':
+                    continue
                 reported_ids.add(str(c_id))
                 
         # Query legacy reports
@@ -2349,7 +2353,10 @@ async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type:
         )
         for r in legacy_reports:
             c_id = r.get('contentId')
+            status = r.get('status')
             if c_id:
+                if is_android and status == 'denied':
+                    continue
                 reported_ids.add(str(c_id))
 
         await cache_manager.set(cache_key, list(reported_ids), ttl=300) # Cache for 5 mins
@@ -3365,6 +3372,7 @@ async def get_my_posts(
 
 @api_router.get('/posts/feed')
 async def get_posts_feed(
+    request: Request,
     limit: int = 15,
     offset: int = 0,
     tab: str = 'for_you',
@@ -3452,7 +3460,9 @@ async def get_posts_feed(
     public_posts = []
     
     blocked_user_ids = await _get_blocked_user_ids(db, current_user_id)
-    reported_post_ids = await _get_reported_content_ids(db, current_user_id, 'post')
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+    reported_post_ids = await _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android)
     
     # Pre-calculate user location for performance
     u_city = str(user_loc.get('city') or '').strip().lower()
@@ -4417,7 +4427,7 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
 
 @api_router.get('/posts/{post_id}/comments')
-async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = Depends(verify_token)):
+async def get_post_comments(post_id: str, request: Request, limit: int = 200, token_data: dict = Depends(verify_token)):
     db = await get_db()
 
     post = await db.get_document('posts', post_id)
@@ -4433,7 +4443,9 @@ async def get_post_comments(post_id: str, limit: int = 200, token_data: dict = D
 
     user_id = token_data['user_id']
     blocked_user_ids = await _get_blocked_user_ids(db, user_id)
-    reported_comment_ids = await _get_reported_content_ids(db, user_id, 'comment')
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+    reported_comment_ids = await _get_reported_content_ids(db, user_id, 'comment', is_android=is_android)
     comments = [
         c for c in comments 
         if c.get('user_id') not in blocked_user_ids and c.get('id') not in reported_comment_ids

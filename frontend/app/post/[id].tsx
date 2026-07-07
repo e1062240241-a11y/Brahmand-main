@@ -12,7 +12,10 @@ import { MentionText } from '../../src/components/MentionText';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
 import { ReportModal } from '../../src/components/ReportModal';
+import { originalAlert } from '../../src/utils/nativeAlert';
+import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
+import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const FEED_PAGE_SIZE = 7;
@@ -24,12 +27,15 @@ const PostScreen = () => {
   const routePostId = Array.isArray(params.id) ? params.id[0] : params.id;
   const { user } = useAuthStore();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
       setKeyboardVisible(true);
     });
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
       setKeyboardVisible(false);
     });
     return () => {
@@ -73,6 +79,17 @@ const PostScreen = () => {
 
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+  const [keptComments, setKeptComments] = useState<any[]>([]);
+  const [commentOptionsModalVisible, setCommentOptionsModalVisible] = useState(false);
+  const [commentOptions, setCommentOptions] = useState<any[]>([]);
+
+  const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
+  const [blockConfirmData, setBlockConfirmData] = useState<{
+    targetUserId: string;
+    username: string;
+    isBlocked: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   const listRef = useRef<FlatList>(null);
   const hasScrolled = useRef(false);
@@ -179,13 +196,25 @@ const PostScreen = () => {
     setCommentsLoading(true);
     try {
       const response = await getPostComments(postId, 200);
-      setPostComments(Array.isArray(response.data) ? response.data : []);
+      const comments = Array.isArray(response.data) ? response.data : [];
+      const merged = [...comments];
+      keptComments.forEach(kc => {
+        if (kc && kc.id && !merged.some(c => c.id === kc.id)) {
+          merged.push(kc);
+        }
+      });
+      merged.sort((a, b) => {
+        const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+        const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+      setPostComments(merged);
     } catch {
       setPostComments([]);
     } finally {
       setCommentsLoading(false);
     }
-  }, []);
+  }, [keptComments]);
 
   const handleOpenComment = useCallback((post: any) => {
     if (!post?.id) return;
@@ -203,7 +232,19 @@ const PostScreen = () => {
       try {
         const response = await getPostComments(String(commentPost.id), 200);
         if (Array.isArray(response.data)) {
-          setPostComments(response.data);
+          const comments = response.data;
+          const merged = [...comments];
+          keptComments.forEach(kc => {
+            if (kc && kc.id && !merged.some(c => c.id === kc.id)) {
+              merged.push(kc);
+            }
+          });
+          merged.sort((a, b) => {
+            const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+            const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+            return dateB - dateA;
+          });
+          setPostComments(merged);
         }
       } catch (error) {
         console.warn('[Post Detail Comments Polling] Failed:', error);
@@ -211,7 +252,7 @@ const PostScreen = () => {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [commentModalVisible, commentPost?.id]);
+  }, [commentModalVisible, commentPost?.id, keptComments]);
 
   const handleSubmitComment = useCallback(async () => {
     if (!commentPost?.id || !commentText.trim()) return;
@@ -316,32 +357,56 @@ const PostScreen = () => {
     const blockLabel = isUserCurrentlyBlocked ? 'Unblock User' : 'Block User';
 
     const handleToggleBlock = async () => {
-      try {
-        if (isUserCurrentlyBlocked) {
-          await unblockUser(user.id, targetUserId);
-          removeBlock(String(targetUserId));
-          Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
-        } else {
-          Alert.alert(
-            'Block User',
-            `Are you sure you want to block ${comment.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
-            [
-              { text: 'Cancel', style: 'cancel' },
-              {
-                text: 'Block',
-                style: 'destructive',
-                onPress: async () => {
-                  await blockUser(user.id, targetUserId);
-                  addBlock(String(targetUserId));
-                  Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
-                }
-              }
-            ]
-          );
+      const performBlockToggle = async () => {
+        try {
+          if (isUserCurrentlyBlocked) {
+            await unblockUser(user.id, targetUserId);
+            removeBlock(String(targetUserId));
+            Alert.alert('Success', `${comment.username || 'User'} has been unblocked.`);
+          } else {
+            await blockUser(user.id, targetUserId);
+            addBlock(String(targetUserId));
+            
+            // Dismiss comments modal first
+            setCommentModalVisible(false);
+
+            Alert.alert('Success', `${comment.username || 'User'} has been blocked.`);
+
+            // If this post belongs to the blocked user, go back
+            const postOwnerId = commentPost?.user_id || commentPost?.userId || commentPost?.user?.id;
+            if (String(postOwnerId) === String(targetUserId)) {
+              router.back();
+            }
+          }
+        } catch (err) {
+          console.error('Error toggling block in comment menu:', err);
+          Alert.alert('Error', 'Could not update block status. Please try again.');
         }
-      } catch (err) {
-        console.error('Error toggling block in comment menu:', err);
-        Alert.alert('Error', 'Could not update block status. Please try again.');
+      };
+
+      if (Platform.OS === 'android') {
+        setBlockConfirmData({
+          targetUserId: String(targetUserId),
+          username: comment.username || 'User',
+          isBlocked: isUserCurrentlyBlocked,
+          onConfirm: performBlockToggle,
+        });
+        setBlockConfirmVisible(true);
+      } else {
+        Alert.alert(
+          isUserCurrentlyBlocked ? 'Unblock User' : 'Block User',
+          isUserCurrentlyBlocked
+            ? `Are you sure you want to unblock ${comment.username || 'this user'}?`
+            : `Are you sure you want to block ${comment.username || 'this user'}? You will no longer see their posts, comments, or messages.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: isUserCurrentlyBlocked ? 'Unblock' : 'Block',
+              style: isUserCurrentlyBlocked ? 'default' : 'destructive',
+              onPress: performBlockToggle,
+            }
+          ]
+        );
       }
     };
 
@@ -368,23 +433,23 @@ const PostScreen = () => {
         }
       );
     } else {
-      Alert.alert(
-        'Comment Options',
-        'Choose an action:',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Report Comment', onPress: () => {
+      setCommentOptions([
+        {
+          label: 'Report Comment',
+          icon: 'flag-outline',
+          onPress: () => {
             setPendingReportComment(comment);
-            setCommentModalToRestore(commentModalVisible);
-            setCommentModalVisible(false);
-            setTimeout(() => {
-              setReportCommentModalVisible(true);
-            }, 300);
-          }},
-          { text: blockLabel, style: 'destructive', onPress: handleToggleBlock }
-        ],
-        { cancelable: true }
-      );
+            setReportCommentModalVisible(true);
+          }
+        },
+        {
+          label: blockLabel,
+          isDestructive: true,
+          icon: 'ban-outline',
+          onPress: handleToggleBlock
+        }
+      ]);
+      setCommentOptionsModalVisible(true);
     }
   }, [user?.id, blockedByMeUserIds, commentModalVisible]);
 
@@ -762,6 +827,43 @@ const PostScreen = () => {
                 )}
               </TouchableOpacity>
             </View>
+            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+            {Platform.OS === 'android' && (
+              <ReportModal
+                visible={reportCommentModalVisible}
+                onClose={() => {
+                  setReportCommentModalVisible(false);
+                  setPendingReportComment(null);
+                }}
+                reporterUid={user?.id || ''}
+                reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+                contentId={String(pendingReportComment?.id || '')}
+                contentType="comment"
+                postId={pendingReportComment?.post_id || commentPost?.id || ''}
+                apiFallback={async (reason, description) => {
+                  if (pendingReportComment?.id) {
+                    const { reportComment } = require('../../src/services/api');
+                    await reportComment(String(pendingReportComment.id), reason, description || '');
+                  }
+                }}
+                onSuccess={() => {
+                  // Keep reported comment visible
+                  if (pendingReportComment) {
+                    setKeptComments(prev => {
+                      if (prev.some(c => c.id === pendingReportComment.id)) return prev;
+                      return [...prev, pendingReportComment];
+                    });
+                  }
+                }}
+              />
+            )}
+            {Platform.OS === 'android' && (
+              <CommentOptionsModal
+                visible={commentOptionsModalVisible}
+                onClose={() => setCommentOptionsModalVisible(false)}
+                options={commentOptions}
+              />
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -781,33 +883,45 @@ const PostScreen = () => {
       />
 
       {/* Apple Guideline 1.2 - Report Comment Modal */}
-      <ReportModal
-        visible={reportCommentModalVisible}
-        onClose={() => {
-          setReportCommentModalVisible(false);
-          setPendingReportComment(null);
-          if (commentModalToRestore) {
-            setTimeout(() => {
-              setCommentModalVisible(true);
-              setCommentModalToRestore(false);
-            }, 300);
-          }
-        }}
-        reporterUid={user?.id || ''}
-        reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
-        contentId={String(pendingReportComment?.id || '')}
-        contentType="comment"
-        postId={pendingReportComment?.post_id || commentPost?.id || ''}
-        apiFallback={async (reason, description) => {
-          if (pendingReportComment?.id) {
-            const { reportComment } = require('../../src/services/api');
-            await reportComment(String(pendingReportComment.id), reason, description || '');
-          }
-        }}
-        onSuccess={() => {
-          // Keep reported comment visible
-        }}
-      />
+      {Platform.OS !== 'android' && (
+        <ReportModal
+          visible={reportCommentModalVisible}
+          onClose={() => {
+            setReportCommentModalVisible(false);
+            setPendingReportComment(null);
+            if (commentModalToRestore) {
+              setTimeout(() => {
+                setCommentModalVisible(true);
+                setCommentModalToRestore(false);
+              }, 300);
+            }
+          }}
+          reporterUid={user?.id || ''}
+          reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+          contentId={String(pendingReportComment?.id || '')}
+          contentType="comment"
+          postId={pendingReportComment?.post_id || commentPost?.id || ''}
+          apiFallback={async (reason, description) => {
+            if (pendingReportComment?.id) {
+              const { reportComment } = require('../../src/services/api');
+              await reportComment(String(pendingReportComment.id), reason, description || '');
+            }
+          }}
+          onSuccess={() => {
+            // Keep reported comment visible
+          }}
+        />
+      )}
+      
+      {blockConfirmData && (
+        <BlockConfirmationModal
+          visible={blockConfirmVisible}
+          onClose={() => setBlockConfirmVisible(false)}
+          onConfirm={blockConfirmData.onConfirm}
+          username={blockConfirmData.username}
+          isBlocked={blockConfirmData.isBlocked}
+        />
+      )}
     </SafeAreaView>
   );
 };

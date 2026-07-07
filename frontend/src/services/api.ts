@@ -199,6 +199,7 @@ const isTunnelApiUrl = /\.loca\.lt$/i.test(
 
 const defaultHeaders: Record<string, string> = {
   "Content-Type": "application/json",
+  "X-Platform": Platform.OS,
 };
 
 if (Platform.OS !== "web" || isTunnelApiUrl) {

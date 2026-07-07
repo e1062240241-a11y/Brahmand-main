@@ -192,10 +192,18 @@ const MessageStatus = ({ status, isOwn }: { status?: string; isOwn: boolean }) =
 
   const color = isOwn ? '#000000' : COLORS.textLight;
 
+  if (status === 'sending') {
+    return (
+      <View style={styles.statusContainer}>
+        <Ionicons name="time-outline" size={14} color={color} style={{ opacity: 0.5 }} />
+      </View>
+    );
+  }
+
   if (status === 'read') {
     return (
       <View style={styles.statusContainer}>
-        <Ionicons name="checkmark-done" size={14} color={color} />
+        <Ionicons name="checkmark-done" size={14} color={COLORS.primary} />
       </View>
     );
   }
@@ -300,6 +308,7 @@ const DMMessageItem = React.memo(({
               <Text style={[styles.timeText, isOwnMessage && styles.ownTimeText]}>
                 {formatTime(item.created_at)}
               </Text>
+              <MessageStatus status={item.status} isOwn={isOwnMessage} />
             </View>
           )}
         </View>
@@ -782,6 +791,10 @@ const DirectMessageScreen = () => {
         const metadataResponse = await getDMConversationMetadata(conversationId);
         if (metadataResponse?.data) {
           setConversation(metadataResponse.data);
+          const recipientId = metadataResponse.data.user?.id || userId;
+          if (recipientId) {
+            fetchUserPresence(recipientId);
+          }
           return;
         }
       }
@@ -832,6 +845,22 @@ const DirectMessageScreen = () => {
       }
     }
   }, [conversationId, userId, userName, userSL]);
+
+  const fetchUserPresence = useCallback(async (targetUserId: string) => {
+    try {
+      const res = await getUserProfile(targetUserId);
+      if (res?.data) {
+        setOtherUserPresence({
+          online_status: res.data.online_status,
+          last_seen_at: res.data.last_seen_at,
+          last_active: res.data.last_active,
+          updated_at: res.data.updated_at,
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to fetch user presence:', err);
+    }
+  }, []);
 
   // Fetch messages via REST API
   const fetchMessagesViaAPI = useCallback(async (fromCache = true) => {
