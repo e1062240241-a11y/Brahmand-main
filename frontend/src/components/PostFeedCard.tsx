@@ -276,10 +276,10 @@ export const PostFeedCard = memo(({
       p.muted = isMuted;
       if (Platform.OS !== 'web') {
         p.bufferOptions = {
-          preferredForwardBufferDuration: 4, 
+          preferredForwardBufferDuration: 2, 
           waitsToMinimizeStalling: true,
           minBufferForPlayback: 0.5, 
-          maxBufferBytes: 15 * 1024 * 1024,
+          maxBufferBytes: 2 * 1024 * 1024, // Reduced from 15MB to 2MB to save data traffic
         };
       }
     }

@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   Image,
   ScrollView,
@@ -33,6 +34,22 @@ export default function ProfileScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>();
   const { login } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isAndroid = Platform.OS === 'android';
+
+  // Responsive layouts for Android to prevent clipping/distortion
+  const photoSize = isAndroid ? Math.min(120, Math.max(96, windowWidth * 0.28)) : 128;
+  const photoEditBadgeSize = isAndroid ? Math.round(photoSize * 0.3) : 36;
+  const photoEditBadgeRight = isAndroid ? 0 : 4;
+  const inputHeight = isAndroid ? (windowHeight < 700 ? 50 : 54) : 56;
+  const buttonHeight = isAndroid ? (windowHeight < 700 ? 50 : 54) : 56;
+  const labelFontSize = isAndroid ? (windowWidth < 360 ? 13 : 14) : 16;
+  const labelMarginTop = isAndroid ? (windowHeight < 700 ? 6 : 10) : 12;
+  const labelMarginBottom = isAndroid ? (windowHeight < 700 ? 4 : 6) : 8;
+  const inputMarginBottom = isAndroid ? (windowHeight < 700 ? 10 : 12) : 16;
+  const titleFontSize = isAndroid ? (windowWidth < 360 ? 22 : 24) : 24;
+  const captionFontSize = isAndroid ? (windowWidth < 360 ? 13 : 14) : 14;
+  const languageButtonHeight = isAndroid ? (windowHeight < 700 ? 36 : 40) : 44;
 
   const storeLanguage = useLanguageStore((state) => state.language);
   const storeSetLanguage = useLanguageStore((state) => state.setLanguage);
@@ -270,30 +287,31 @@ export default function ProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-            <Text style={styles.title}>{getTranslation('beginYourJourney')}</Text>
+            <Text style={[styles.title, isAndroid && { fontSize: titleFontSize, marginBottom: isAndroid ? 6 : 8 }]}>{getTranslation('beginYourJourney')}</Text>
 
             {/* Profile Photo */}
-            <TouchableOpacity style={styles.photoContainer} onPress={pickImage}>
+            <TouchableOpacity style={[styles.photoContainer, { width: photoSize, height: photoSize }]} onPress={pickImage}>
               {photo ? (
-                <Image source={{ uri: photo }} style={styles.photo} />
+                <Image source={{ uri: photo }} style={[styles.photo, { width: photoSize, height: photoSize, borderRadius: photoSize / 2 }]} />
               ) : (
-                <View style={styles.photoPlaceholder} />
+                <View style={[styles.photoPlaceholder, { width: photoSize, height: photoSize, borderRadius: photoSize / 2 }]} />
               )}
-              <View style={styles.photoEditBadge}>
-                <Ionicons name="camera" size={Platform.OS === 'android' ? 16 : 18} color="#FFFFFF" />
+              <View style={[styles.photoEditBadge, { width: photoEditBadgeSize, height: photoEditBadgeSize, borderRadius: photoEditBadgeSize / 2, right: photoEditBadgeRight }]}>
+                <Ionicons name="camera" size={isAndroid ? Math.round(photoEditBadgeSize * 0.5) : 18} color="#FFFFFF" />
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.caption}>{getTranslation('awakenVisualEssence')}</Text>
+            <Text style={[styles.caption, isAndroid && { fontSize: captionFontSize, marginBottom: isAndroid ? 12 : 20 }]}>{getTranslation('awakenVisualEssence')}</Text>
 
             {Platform.OS === 'android' ? (
               <>
                 {/* Full Name */}
-                <Text style={styles.label}>
+                {/* Full Name */}
+                <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
                   {getTranslation('fullName')} <Text style={{ color: '#E53935' }}>*</Text>
                 </Text>
-                <View style={styles.sideBySideContainer}>
-                  <View style={styles.halfInputContainer}>
+                <View style={[styles.sideBySideContainer, isAndroid && { marginBottom: inputMarginBottom }]}>
+                  <View style={[styles.halfInputContainer, { height: inputHeight }]}>
                     <TextInput
                       style={styles.androidTextInput}
                       placeholder={getTranslation('firstName')}
@@ -307,7 +325,7 @@ export default function ProfileScreen() {
                       autoCapitalize="words"
                     />
                   </View>
-                  <View style={styles.halfInputContainer}>
+                  <View style={[styles.halfInputContainer, { height: inputHeight }]}>
                     <TextInput
                       style={styles.androidTextInput}
                       placeholder={getTranslation('surname')}
@@ -324,10 +342,10 @@ export default function ProfileScreen() {
                 </View>
 
                 {/* Current City Selection */}
-                <Text style={styles.label}>
+                <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
                   {getTranslation('currentCity')} <Text style={{ color: '#E53935' }}>*</Text>
                 </Text>
-                <View style={styles.dropdownContainer}>
+                <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
                   <View style={styles.dropdownLeft}>
                     <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
                     <TextInput
@@ -375,10 +393,10 @@ export default function ProfileScreen() {
                 )}
 
                 {/* Location Selection (GPS) */}
-                <Text style={styles.label}>
+                <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
                   {getTranslation('location')} <Text style={{ color: '#E53935' }}>*</Text>
                 </Text>
-                <View style={styles.dropdownContainer}>
+                <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
                   <View style={styles.dropdownLeft}>
                     <Ionicons name="locate-outline" size={22} color="#FF7B00" style={{ marginRight: 8 }} />
                     <Text style={currentCity ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
@@ -386,7 +404,7 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.detectButtonInline}
+                    style={[styles.detectButtonInline, { height: isAndroid ? (windowHeight < 700 ? 32 : 36) : 36 }]}
                     onPress={handleFetchLocation}
                     disabled={loading}
                     activeOpacity={0.7}
@@ -447,12 +465,13 @@ export default function ProfileScreen() {
               </Text>
             </View>
 
-            {/* Sacred Language */}
-            <Text style={styles.sacredLanguageLabel}>{getTranslation('sacredLanguage')}</Text>
-            <View style={styles.languageContainer}>
+             {/* Sacred Language */}
+            <Text style={[styles.sacredLanguageLabel, isAndroid && { marginTop: isAndroid ? 4 : 6, marginBottom: isAndroid ? 2 : 4 }]}>{getTranslation('sacredLanguage')}</Text>
+            <View style={[styles.languageContainer, isAndroid && { marginBottom: isAndroid ? 12 : 24, marginTop: isAndroid ? 2 : 4 }]}>
               <TouchableOpacity 
                 style={[
                   styles.languageButton, 
+                  { height: languageButtonHeight },
                   language === 'English' ? styles.languageButtonActive : styles.languageButtonInactive
                 ]}
                 onPress={() => {
@@ -472,6 +491,7 @@ export default function ProfileScreen() {
               <TouchableOpacity 
                 style={[
                   styles.languageButton, 
+                  { height: languageButtonHeight },
                   language === 'Hindi' ? styles.languageButtonActive : styles.languageButtonInactive
                 ]}
                 onPress={() => {
@@ -495,6 +515,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={[
                 styles.continueButton,
+                { height: buttonHeight, marginTop: isAndroid ? 10 : 10, marginBottom: isAndroid ? 12 : 16 },
                 isButtonDisabled() && styles.continueButtonEmpty,
               ]}
               onPress={handleContinue}
@@ -504,7 +525,7 @@ export default function ProfileScreen() {
                 <ActivityIndicator color="#FF7B00" />
               ) : (
                 <View style={styles.continueButtonContent}>
-                  <Text style={[styles.continueButtonText, isButtonDisabled() && styles.continueButtonTextEmpty]}>{getTranslation('continueToMyJourney')}</Text>
+                  <Text style={[styles.continueButtonText, isAndroid && { fontSize: isAndroid ? (windowWidth < 360 ? 16 : 18) : 20, lineHeight: isAndroid ? (windowWidth < 360 ? 22 : 24) : 28 }, isButtonDisabled() && styles.continueButtonTextEmpty]}>{getTranslation('continueToMyJourney')}</Text>
                   <Svg width={22} height={22} viewBox="0 0 22 22" fill="none">
                     <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill={isButtonDisabled() ? '#FF7B00' : 'white'}/>
                   </Svg>
@@ -513,7 +534,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Footer Text */}
-            <Text style={styles.footerText}>
+            <Text style={[styles.footerText, isAndroid && { fontSize: isAndroid ? (windowWidth < 360 ? 10 : 11) : 12, lineHeight: isAndroid ? (windowWidth < 360 ? 13 : 14) : 16, marginTop: isAndroid ? 4 : 8 }]}>
               {getTranslation('footerText')}
             </Text>
           </View>

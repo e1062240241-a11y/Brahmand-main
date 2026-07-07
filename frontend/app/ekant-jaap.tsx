@@ -22,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { KaraokeSyncEngine, KaraokeData, KaraokeSection } from '../src/components/Karaoke';
 import hanumanChalisaData from '../assets/data/hanuman-chalisa-karaoke.json';
 import { useTranslation } from '../src/utils/i18n';
+import { useKeepAwake } from 'expo-keep-awake';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -157,6 +158,7 @@ const formatDuration = (seconds: number): string => {
 };
 
 const EkantJaapPage = () => {
+    useKeepAwake();
     const { t } = useTranslation();
     const router = useRouter();
     const [selectedNaam, setSelectedNaam] = useState<NaamJaap | null>(null);
@@ -178,6 +180,7 @@ const EkantJaapPage = () => {
         const initAudioMode = async () => {
             try {
                 await setAudioModeAsync({
+                    staysActiveInBackground: true,
                     playsInSilentMode: true,
                     interruptionMode: 'doNotMix',
                     shouldRouteThroughEarpiece: false,

@@ -26,6 +26,7 @@ import {
   RtcConnection,
   IRtcEngineEventHandler,
 } from 'react-native-agora';
+import { useKeepAwake } from 'expo-keep-awake';
 
 const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || '4f7199e5d22f4aaf936700d75affe65d';
 
@@ -53,6 +54,7 @@ const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.
 type VoiceTransport = 'sfu' | 'agora';
 
 export const LiveMantraRoom = () => {
+  useKeepAwake();
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHolding, setIsHolding] = useState(false);
@@ -375,6 +377,7 @@ export const LiveMantraRoom = () => {
     const initAudioMode = async () => {
       try {
         await setAudioModeAsync({
+          staysActiveInBackground: true,
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,

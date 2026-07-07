@@ -2415,6 +2415,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFF',
   },
+  emptySubTitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
