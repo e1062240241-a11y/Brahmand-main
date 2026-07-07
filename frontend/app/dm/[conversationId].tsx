@@ -328,11 +328,12 @@ const deduplicateMessages = (msgs: Message[]) => {
 };
 
 const DirectMessageScreen = () => {
-  const { conversationId, userId, userName, userSL } = useLocalSearchParams<{
+  const { conversationId, userId, userName, userSL, userPhoto } = useLocalSearchParams<{
     conversationId: string;
     userId?: string;
     userName?: string;
     userSL?: string;
+    userPhoto?: string;
   }>();
 
   const logLayout = (name: string, styleObj: any) => (event: any) => {
@@ -393,7 +394,7 @@ const DirectMessageScreen = () => {
           id: userId,
           name: userName,
           sl_id: userSL || '',
-          photo: undefined,
+          photo: userPhoto ? decodeURIComponent(userPhoto) : undefined,
           is_verified: false,
         },
         request_status: 'approved',
@@ -985,8 +986,19 @@ const DirectMessageScreen = () => {
   }, [conversationId, messages.length, markMessagesAsRead]);
 
   useEffect(() => {
-    fetchConversation();
-    fetchMessagesViaAPI();
+    const loadScreenData = async () => {
+      const promises: Promise<any>[] = [
+        fetchConversation(),
+        fetchMessagesViaAPI(true)
+      ];
+      const recipientId = userId || conversation?.user?.id;
+      if (recipientId) {
+        promises.push(fetchUserPresence(recipientId));
+      }
+      await Promise.allSettled(promises);
+    };
+
+    loadScreenData();
 
     // Trigger WatermelonDB sync in background immediately on screen mount
     if (Platform.OS !== 'web') {
@@ -1067,8 +1079,10 @@ const DirectMessageScreen = () => {
             setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
           } else {
             setHasMarkedRead(false);
-            await fetchMessagesViaAPI();
-            await fetchConversation();
+            await Promise.allSettled([
+              fetchMessagesViaAPI(),
+              fetchConversation()
+            ]);
           }
         });
       } catch (error) {
@@ -1082,8 +1096,10 @@ const DirectMessageScreen = () => {
         return;
       }
       if (!uploadingMedia) {
-        await fetchMessagesViaAPI();
-        await fetchConversation();
+        await Promise.allSettled([
+          fetchMessagesViaAPI(),
+          fetchConversation()
+        ]);
       }
     }, 30000);
 

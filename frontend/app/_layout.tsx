@@ -695,7 +695,6 @@ export default function RootLayout() {
     const initAudio = async () => {
       try {
         await setAudioModeAsync({
-          staysActiveInBackground: true,
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           allowsRecording: false,
@@ -904,20 +903,21 @@ export default function RootLayout() {
               const { useFeedStore } = require('../src/store/feedStore');
               const feedStore = useFeedStore.getState();
               if (feedStore.tabFeeds) {
-                Object.keys(feedStore.tabFeeds).forEach((tab) => {
-                  const tabData = feedStore.tabFeeds[tab];
-                  const posts = tabData?.posts || [];
-                  const filtered = posts.filter((p: any) => p.user_id !== otherId);
-                  useFeedStore.setState((state: any) => ({
-                    tabFeeds: {
-                      ...state.tabFeeds,
-                      [tab]: {
-                        ...tabData,
-                        posts: filtered
-                      }
-                    }
-                  }));
+                const updatedTabFeeds = { ...feedStore.tabFeeds };
+                Object.keys(updatedTabFeeds).forEach((tab) => {
+                  const tabData = updatedTabFeeds[tab];
+                  if (tabData && tabData.posts) {
+                    const originalLength = tabData.posts.length;
+                    const filtered = tabData.posts.filter((p: any) => p.user_id !== otherId);
+                    const removedCount = originalLength - filtered.length;
+                    updatedTabFeeds[tab] = {
+                      ...tabData,
+                      posts: filtered,
+                      offset: Math.max(0, tabData.offset - removedCount)
+                    };
+                  }
                 });
+                useFeedStore.setState({ tabFeeds: updatedTabFeeds });
               }
 
               // 2. Delete from WatermelonDB

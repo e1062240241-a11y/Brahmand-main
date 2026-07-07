@@ -54,6 +54,7 @@ import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
+import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 
@@ -236,6 +237,8 @@ export default function ProfileScreen() {
   const [locationDraft, setLocationDraft] = useState('');
   const [savingProfileField, setSavingProfileField] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<any | null>(null);
   const handleUploadStart = async (
     media: any,
     caption: string,
@@ -533,19 +536,34 @@ export default function ProfileScreen() {
 
       // Strict validation: every post must belong to the logged-in user
       const validated: any[] = [];
+      const seenIds = new Set<string>();
       for (const p of incomingPosts) {
-        if (p.user_id !== userId) {
-          console.error(`SECURITY VIOLATION: Post ${p.id} belongs to user ${p.user_id} but was returned for user ${userId}!`);
-          // Skip/block the corrupt post to maintain absolute integrity
+        if (!p || p.id === undefined || p.id === null || String(p.id).trim() === '') {
+          console.warn('[Profile Tab Feed] Post missing valid ID:', p);
           continue;
         }
-        validated.push(p);
+        if (p.user_id !== userId) {
+          console.error(`SECURITY VIOLATION: Post ${p.id} belongs to user ${p.user_id} but was returned for user ${userId}!`);
+          continue;
+        }
+        const idStr = String(p.id);
+        if (!seenIds.has(idStr)) {
+          seenIds.add(idStr);
+          validated.push(p);
+        } else {
+          console.warn('[Profile Tab Feed] Duplicate post ID in incoming chunk:', idStr);
+        }
       }
 
       const nextOffset = currentOffset + validated.length;
       const nextHasMore = !payload?.has_reached_end;
 
-      setPosts(prev => reset ? validated : [...prev, ...validated]);
+      setPosts(prev => {
+        if (reset) return validated;
+        const existingIds = new Set(prev.map(x => String(x.id)));
+        const deduplicated = validated.filter(x => !existingIds.has(String(x.id)));
+        return [...prev, ...deduplicated];
+      });
       setPostsCount(payload?.total || 0);
       setOffset(nextOffset);
       setHasMore(nextHasMore);
@@ -708,21 +726,9 @@ export default function ProfileScreen() {
   };
 
   const confirmDeletePost = (post: any) => {
-    if (Platform.OS === 'web') {
-      if (window.confirm(t('language') === 'hi' ? 'इस पोस्ट को हटाएं?' : 'Delete this post?')) {
-        handleDeletePost(post);
-      }
-      return;
-    }
-
-    Alert.alert(
-      t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post',
-      t('language') === 'hi' ? 'क्या आप सचमुच इस पोस्ट को हटाना चाहते हैं?' : 'Are you sure you want to delete this post?',
-      [
-        { text: t('cancel'), style: 'cancel' },
-        { text: t('language') === 'hi' ? 'हटाएं' : 'Delete', style: 'destructive', onPress: () => handleDeletePost(post) },
-      ]
-    );
+    if (!post?.id) return;
+    setPostToDelete(post);
+    setDeleteConfirmVisible(true);
   };
 
   const openPostModal = (post: any) => {
@@ -1383,7 +1389,13 @@ export default function ProfileScreen() {
           style={{ flex: 1 }}
           data={posts}
           renderItem={renderPost}
-          keyExtractor={(item, index) => item.id ? `post-${item.id}` : `post-idx-${index}`}
+          keyExtractor={(item, index) => {
+            if (!item || !item.id) {
+              console.warn('[Profile Tab keyExtractor] Post missing valid ID:', item);
+              return `post-idx-${index}`;
+            }
+            return `post-${item.id}`;
+          }}
           numColumns={3}
           onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
@@ -1620,8 +1632,8 @@ export default function ProfileScreen() {
               maxToRenderPerBatch={3}
               windowSize={5}
               removeClippedSubviews={Platform.OS === 'android'}
-                renderItem={({ item }) => {
-                  const postKey = String(item.id || item.media_url || 0);
+                renderItem={({ item, index }) => {
+                  const postKey = item && item.id ? `profile-detail-${item.id}` : `profile-detail-idx-${index}`;
                   return (
                     <View
                       onLayout={(event) => {
@@ -1670,7 +1682,13 @@ export default function ProfileScreen() {
                     </View>
                   );
                 }}
-                keyExtractor={(item, idx) => String(item.id || idx)}
+                keyExtractor={(item, index) => {
+                  if (!item || !item.id) {
+                    console.warn('[Profile Tab Detail keyExtractor] Post missing valid ID:', item);
+                    return `profile-detail-idx-${index}`;
+                  }
+                  return `profile-detail-${item.id}`;
+                }}
                 onScroll={(event) => {
                   const y = event.nativeEvent.contentOffset.y;
                   let closestKey: string | null = null;
@@ -1773,7 +1791,7 @@ export default function ProfileScreen() {
                     return (
                       <FlatList
                       data={parentComments}
-                      keyExtractor={(item, index) => item.id || String(index)}
+                      keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
                       initialNumToRender={10}
                       maxToRenderPerBatch={5}
                       windowSize={5}
@@ -2057,6 +2075,20 @@ export default function ProfileScreen() {
             </View>
           </View>
         </Modal>
+
+        <DeleteConfirmationModal
+          visible={deleteConfirmVisible}
+          onClose={() => {
+            setDeleteConfirmVisible(false);
+            setPostToDelete(null);
+          }}
+          onConfirm={async () => {
+            if (postToDelete) {
+              await handleDeletePost(postToDelete);
+              setPostToDelete(null);
+            }
+          }}
+        />
       </View>
     </View>
   );

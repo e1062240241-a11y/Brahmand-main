@@ -17,12 +17,60 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import Svg, { Path } from 'react-native-svg';
 import { updateExtendedProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { useLanguageStore } from '../../src/utils/i18n';
 
 export default function LocationSetupScreen() {
   const router = useRouter();
   const { updateUser } = useAuthStore();
   const insets = useSafeAreaInsets();
   const ScrollWrapper = Platform.OS === 'android' ? View : SafeAreaView;
+  const language = useLanguageStore((state) => state.language);
+
+  const getTranslation = (key: string) => {
+    if (Platform.OS !== 'android') {
+      const defaults: Record<string, string> = {
+        beginSpiritualJourney: 'Begin Your Spiritual Journey',
+        starsAlignment: 'The stars were in a specific alignment the moment you arrived.',
+        dateOfBirth: 'Date of Birth',
+        timeOfBirth: 'Time of Birth',
+        placeOfBirth: 'Place of Birth',
+        seconds: 'Seconds:',
+        cityStateCountry: 'City, State, Country',
+        skip: 'Skip',
+        next: 'Next',
+        pleaseSelectDob: 'Please select your Date of Birth',
+        pleaseSelectTob: 'Please select your Time of Birth',
+        pleaseEnterPob: 'Please enter your Place of Birth',
+        failedToSave: 'Failed to save birth details'
+      };
+      return defaults[key] || key;
+    }
+
+    const isHi = language === 'hi';
+    const dict: Record<string, { en: string; hi: string }> = {
+      beginSpiritualJourney: { en: 'Begin Your Spiritual Journey', hi: 'अपनी आध्यात्मिक यात्रा शुरू करें' },
+      starsAlignment: {
+        en: 'The stars were in a specific alignment the moment you arrived.',
+        hi: 'आपके जन्म के समय तारे एक विशेष संरेखण में थे।'
+      },
+      dateOfBirth: { en: 'Date of Birth', hi: 'जन्म तिथि' },
+      timeOfBirth: { en: 'Time of Birth', hi: 'जन्म समय' },
+      placeOfBirth: { en: 'Place of Birth', hi: 'जन्म स्थान' },
+      seconds: { en: 'Seconds:', hi: 'सेकंड:' },
+      cityStateCountry: { en: 'City, State, Country', hi: 'शहर, राज्य, देश' },
+      infoTextKundli: {
+        en: 'Creating your Kundli unlocks personalised Jyotish insights, spiritual guidance and recommendations tailored to your journey. 🙏',
+        hi: 'आपकी कुंडली बनाने से व्यक्तिगत ज्योतिष अंतर्दृष्टि, आध्यात्मिक मार्गदर्शन और आपकी यात्रा के अनुकूल अनुशंसाएं मिलती हैं। 🙏'
+      },
+      skip: { en: 'Skip', hi: 'छोड़ें' },
+      next: { en: 'Next', hi: 'आगे बढ़ें' },
+      pleaseSelectDob: { en: 'Please select your Date of Birth', hi: 'कृपया अपनी जन्म तिथि चुनें' },
+      pleaseSelectTob: { en: 'Please select your Time of Birth', hi: 'कृपया अपना जन्म समय चुनें' },
+      pleaseEnterPob: { en: 'Please enter your Place of Birth', hi: 'कृपया अपना जन्म स्थान दर्ज करें' },
+      failedToSave: { en: 'Failed to save birth details', hi: 'जन्म विवरण सहेजने में विफल' }
+    };
+    return dict[key]?.[isHi ? 'hi' : 'en'] || key;
+  };
 
   const [dob, setDob] = useState('');
   const [tob, setTob] = useState('');
@@ -78,15 +126,15 @@ export default function LocationSetupScreen() {
 
   const handleNext = async () => {
     if (!dob) {
-      setError('Please select your Date of Birth');
+      setError(getTranslation('pleaseSelectDob'));
       return;
     }
     if (!tob) {
-      setError('Please select your Time of Birth');
+      setError(getTranslation('pleaseSelectTob'));
       return;
     }
     if (!place.trim()) {
-      setError('Please enter your Place of Birth');
+      setError(getTranslation('pleaseEnterPob'));
       return;
     }
 
@@ -103,7 +151,7 @@ export default function LocationSetupScreen() {
       updateUser(response.data.user);
       router.replace('/home');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to save birth details');
+      setError(err.response?.data?.detail || getTranslation('failedToSave'));
     } finally {
       setLoading(false);
     }
@@ -126,33 +174,39 @@ export default function LocationSetupScreen() {
           contentContainerStyle={[
             styles.scrollContent,
             Platform.OS === 'android' && {
-              paddingTop: Math.max(insets.top, 16),
-              paddingBottom: Math.max(insets.bottom, 16),
+              paddingTop: Math.max(insets.top, 10),
+              paddingBottom: Math.max(insets.bottom, 10),
             }
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-            {/* Header Badge */}
-            <View style={styles.badgeContainer}>
+            <View style={styles.topSection}>
+              {/* Header Badge */}
+              <View style={styles.badgeContainer}>
               <View style={styles.badgeCircle}>
-                <Svg width={29.333} height={29.333} viewBox="0 0 30 30" fill="none">
+                <Svg 
+                  width={Platform.OS === 'android' ? 22 : 29.333} 
+                  height={Platform.OS === 'android' ? 22 : 29.333} 
+                  viewBox="0 0 30 30" 
+                  fill="none"
+                >
                   <Path d="M24 10.6667L22.3333 7L18.6667 5.33333L22.3333 3.66667L24 0L25.6667 3.66667L29.3333 5.33333L25.6667 7L24 10.6667ZM24 29.3333L22.3333 25.6667L18.6667 24L22.3333 22.3333L24 18.6667L25.6667 22.3333L29.3333 24L25.6667 25.6667L24 29.3333ZM10.6667 25.3333L7.33333 18L0 14.6667L7.33333 11.3333L10.6667 4L14 11.3333L21.3333 14.6667L14 18L10.6667 25.3333Z" fill="#FF7B00"/>
                 </Svg>
               </View>
             </View>
 
             {/* Header */}
-            <Text style={styles.title}>Begin Your Celestial Map</Text>
+            <Text style={styles.title}>{getTranslation('beginSpiritualJourney')}</Text>
             <Text style={styles.subtitle}>
-              The stars were in a specific alignment the moment you arrived.
+              {getTranslation('starsAlignment')}
             </Text>
 
             {/* Date of Birth Field */}
             <View style={styles.labelRow}>
               <Ionicons name="calendar-outline" size={16} color="#584235" style={styles.labelIcon} />
-              <Text style={styles.label}>Date of Birth</Text>
+              <Text style={styles.label}>{getTranslation('dateOfBirth')}</Text>
             </View>
             <TouchableOpacity 
               style={styles.inputContainer} 
@@ -199,7 +253,7 @@ export default function LocationSetupScreen() {
             {/* Time of Birth Field */}
             <View style={styles.labelRow}>
               <Ionicons name="time-outline" size={16} color="#584235" style={styles.labelIcon} />
-              <Text style={styles.label}>Time of Birth</Text>
+              <Text style={styles.label}>{getTranslation('timeOfBirth')}</Text>
             </View>
             <TouchableOpacity 
               style={styles.inputContainer} 
@@ -230,7 +284,7 @@ export default function LocationSetupScreen() {
                     }}
                   />
                   <View style={styles.secondsSelectorContainer}>
-                    <Text style={styles.secondsLabel}>Seconds:</Text>
+                    <Text style={styles.secondsLabel}>{getTranslation('seconds')}</Text>
                     <TextInput
                       style={styles.secondsInput}
                       keyboardType="number-pad"
@@ -275,7 +329,7 @@ export default function LocationSetupScreen() {
             {/* Android Standalone Seconds Input */}
             {Platform.OS === 'android' && tob ? (
               <View style={styles.androidSecondsContainer}>
-                <Text style={styles.secondsLabel}>Seconds:</Text>
+                <Text style={styles.secondsLabel}>{getTranslation('seconds')}</Text>
                 <TextInput
                   style={styles.secondsInput}
                   keyboardType="number-pad"
@@ -302,12 +356,12 @@ export default function LocationSetupScreen() {
             {/* Place of Birth Field */}
             <View style={styles.labelRow}>
               <Ionicons name="location-outline" size={16} color="#584235" style={styles.labelIcon} />
-              <Text style={styles.label}>Place of Birth</Text>
+              <Text style={styles.label}>{getTranslation('placeOfBirth')}</Text>
             </View>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.textInput}
-                placeholder="City, State, Country"
+                placeholder={getTranslation('cityStateCountry')}
                 placeholderTextColor="#C5B49F"
                 value={place}
                 onChangeText={(text) => {
@@ -356,9 +410,16 @@ export default function LocationSetupScreen() {
               <View style={styles.infoIconContainer}>
                 <Ionicons name="information-circle" size={24} color="#FF7B00" />
               </View>
-              <Text style={styles.infoText}>
-                Creating your <Text style={styles.boldOrangeText}>Kundli</Text> unlocks personalised <Text style={styles.boldOrangeText}>Jyotish</Text> insights, <Text style={styles.boldOrangeText}>spiritual guidance</Text> and recommendations tailored to your journey. 🙏
-              </Text>
+              {Platform.OS === 'android' && language === 'hi' ? (
+                <Text style={styles.infoText}>
+                  आपकी <Text style={styles.boldOrangeText}>कुंडली</Text> बनाने से व्यक्तिगत <Text style={styles.boldOrangeText}>ज्योतिष</Text> अंतर्दृष्टि, <Text style={styles.boldOrangeText}>आध्यात्मिक मार्गदर्शन</Text> और आपकी यात्रा के अनुकूल अनुशंसाएं मिलती हैं। 🙏
+                </Text>
+              ) : (
+                <Text style={styles.infoText}>
+                  Creating your <Text style={styles.boldOrangeText}>Kundli</Text> unlocks personalised <Text style={styles.boldOrangeText}>Jyotish</Text> insights, <Text style={styles.boldOrangeText}>spiritual guidance</Text> and recommendations tailored to your journey. 🙏
+                </Text>
+              )}
+            </View>
             </View>
 
             {/* Action Buttons */}
@@ -368,7 +429,7 @@ export default function LocationSetupScreen() {
                 onPress={handleSkip}
                 activeOpacity={0.8}
               >
-                <Text style={styles.skipButtonText}>Skip</Text>
+                <Text style={styles.skipButtonText}>{getTranslation('skip')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity 
@@ -381,7 +442,7 @@ export default function LocationSetupScreen() {
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
                   <>
-                    <Text style={styles.nextButtonText}>Next </Text>
+                    <Text style={styles.nextButtonText}>{getTranslation('next')} </Text>
                     <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
                   </>
                 )}
@@ -411,7 +472,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0C0AF',
     backgroundColor: '#FFFFFF',
-    marginBottom: 10,
+    marginBottom: 14,
     justifyContent: 'space-between',
   },
   scrollContent: {
@@ -423,17 +484,27 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
     width: '100%',
+    ...Platform.select({
+      android: {
+        flex: 1,
+        justifyContent: 'space-between',
+      }
+    })
+  },
+  topSection: {
+    width: '100%',
+    alignItems: 'center',
   },
   badgeContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
-    marginBottom: 8,
+    marginTop: Platform.OS === 'android' ? 15 : 4,
+    marginBottom: Platform.OS === 'android' ? 15 : 8,
   },
   badgeCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: Platform.OS === 'android' ? 48 : 64,
+    height: Platform.OS === 'android' ? 48 : 64,
+    borderRadius: Platform.OS === 'android' ? 24 : 32,
     backgroundColor: '#FBE9E0',
     justifyContent: 'center',
     alignItems: 'center',
@@ -446,31 +517,31 @@ const styles = StyleSheet.create({
   title: {
     color: '#1E1B17',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 24,
+    fontSize: Platform.OS === 'android' ? 22 : 24,
     fontStyle: 'normal',
     fontWeight: '700',
-    lineHeight: 32,
+    lineHeight: Platform.OS === 'android' ? 28 : 32,
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 4,
+    marginTop: Platform.OS === 'android' ? 6 : 4,
+    marginBottom: Platform.OS === 'android' ? 8 : 4,
   },
   subtitle: {
     color: '#564337',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 16,
+    fontSize: Platform.OS === 'android' ? 14 : 16,
     fontStyle: 'normal',
     fontWeight: '400',
-    lineHeight: 24,
+    lineHeight: Platform.OS === 'android' ? 20 : 24,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: Platform.OS === 'android' ? 24 : 16,
     paddingHorizontal: 20,
   },
   labelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginBottom: 4,
-    marginTop: 6,
+    marginBottom: Platform.OS === 'android' ? 6 : 4,
+    marginTop: Platform.OS === 'android' ? 12 : 6,
   },
   labelIcon: {
     marginRight: 6,
@@ -484,7 +555,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     display: 'flex',
     flexDirection: 'row',
-    height: 50,
+    height: Platform.OS === 'android' ? 50 : 50,
     paddingHorizontal: 16,
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -493,7 +564,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0C0AF',
     backgroundColor: '#FFFFFF',
-    marginBottom: 10,
+    marginBottom: Platform.OS === 'android' ? 14 : 10,
   },
   inputText: {
     fontSize: 16,
@@ -559,7 +630,7 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     alignSelf: 'stretch',
-    padding: 20,
+    padding: Platform.OS === 'android' ? 16 : 20,
     borderRadius: 12,
     borderLeftWidth: 4,
     borderLeftColor: '#FF7B00',
@@ -567,7 +638,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 8,
+    marginTop: Platform.OS === 'android' ? 16 : 8,
+    marginBottom: Platform.OS === 'android' ? 20 : 8,
   },
   infoIconContainer: {
     justifyContent: 'center',
@@ -575,20 +647,20 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    fontSize: 16,
-    lineHeight: 26,
+    fontSize: Platform.OS === 'android' ? 14 : 16,
+    lineHeight: Platform.OS === 'android' ? 20 : 26,
     color: '#723600',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontWeight: '400',
     fontStyle: 'normal',
-    marginLeft: 20,
+    marginLeft: Platform.OS === 'android' ? 12 : 20,
   },
   boldOrangeText: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
-    fontSize: 16,
+    fontSize: Platform.OS === 'android' ? 14 : 16,
     fontStyle: 'normal',
     fontWeight: '700',
-    lineHeight: 26,
+    lineHeight: Platform.OS === 'android' ? 20 : 26,
     color: '#FF7B00',
   },
   buttonRow: {
@@ -596,12 +668,12 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     justifyContent: 'center',
     gap: 12,
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: Platform.OS === 'android' ? 24 : 24,
+    marginBottom: Platform.OS === 'android' ? 16 : 8,
   },
   skipButton: {
     width: 160,
-    height: 56,
+    height: Platform.OS === 'android' ? 52 : 56,
     borderRadius: 50,
     borderWidth: 1,
     borderColor: '#FF7B00',
@@ -622,7 +694,7 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     width: 160,
-    height: 56,
+    height: Platform.OS === 'android' ? 52 : 56,
     borderRadius: 50,
     backgroundColor: '#FF7B00',
     justifyContent: 'center',

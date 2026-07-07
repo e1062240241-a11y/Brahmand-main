@@ -16,7 +16,7 @@ except Exception:
     ExpiredSignatureError = Exception
     InvalidTokenError = Exception
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 def create_jwt_token(user_id: str, sl_id: str) -> str:
@@ -58,9 +58,11 @@ def decode_jwt_token(token: str) -> Dict[str, Any]:
 
 
 async def verify_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ) -> Dict[str, Any]:
     """Verify JWT token from Authorization header"""
+    if not credentials:
+        raise HTTPException(status_code=401, detail="Not authenticated")
     payload = decode_jwt_token(credentials.credentials)
     user_id = payload.get("user_id")
     if not user_id:
@@ -101,8 +103,10 @@ async def verify_token(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error checking user block status in verify_token: {e}")
-        raise HTTPException(status_code=403, detail="User account verification failed")
+        import traceback
+        tb = traceback.format_exc()
+        logger.error(f"Error checking user block status in verify_token: {e}\n{tb}")
+        raise HTTPException(status_code=403, detail=f"User account verification failed: {e}\n{tb}")
         
     return payload
 

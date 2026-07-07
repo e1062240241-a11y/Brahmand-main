@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuthStore } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
 import { followUser, getUserProfile, unfollowUser, getUsersBatch, getAllUsers } from '../src/services/api';
+import { useTranslation } from '../src/utils/i18n';
 
 type ConnectionTab = 'followers' | 'following';
 
@@ -57,6 +58,7 @@ export default function FollowConnectionsScreen() {
   const initialTab: ConnectionTab = params.tab === 'following' ? 'following' : 'followers';
   const targetUserId = typeof params.userId === 'string' && params.userId.trim().length ? params.userId : undefined;
   const { user, updateUser } = useAuthStore();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<ConnectionTab>(initialTab);
   const [loading, setLoading] = useState(true);
@@ -316,7 +318,7 @@ export default function FollowConnectionsScreen() {
             {pendingUserIds.includes(item.id) ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.followButtonText}>Follow</Text>
+              <Text style={styles.followButtonText}>{t('follow')}</Text>
             )}
           </TouchableOpacity>
         ) : (
@@ -326,10 +328,11 @@ export default function FollowConnectionsScreen() {
             onPress={() => {
               const userName = encodeURIComponent(item.name || '');
               const userSL = encodeURIComponent(item.sl_id || '');
-              router.push(`/dm/new?userId=${item.id}&userName=${userName}&userSL=${userSL}` as any);
+              const userPhoto = encodeURIComponent(item.photo || '');
+              router.push(`/dm/new?userId=${item.id}&userName=${userName}&userSL=${userSL}&userPhoto=${userPhoto}` as any);
             }}
           >
-            <Text style={styles.messageButtonText}>Message</Text>
+            <Text style={styles.messageButtonText}>{t('message')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -360,8 +363,8 @@ export default function FollowConnectionsScreen() {
 
         <View style={styles.tabContainer}>
           <View style={styles.tabBar}>
-            {renderTabButton('followers', 'Followers', followers.length)}
-            {renderTabButton('following', 'Following', following.length)}
+            {renderTabButton('followers', t('followers'), followers.length)}
+            {renderTabButton('following', t('following'), following.length)}
           </View>
         </View>
 
@@ -369,7 +372,7 @@ export default function FollowConnectionsScreen() {
           <Ionicons name="search" size={20} color="#94A3B8" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search by name or SL ID..."
+            placeholder={t('searchByName')}
             placeholderTextColor="#94A3B8"
             value={activeTab === 'followers' ? followersSearch : followingSearch}
             onChangeText={activeTab === 'followers' ? setFollowersSearch : setFollowingSearch}
@@ -405,22 +408,22 @@ export default function FollowConnectionsScreen() {
                   </View>
                   <Text style={styles.emptyTitle}>
                     {activeSearch.trim()
-                      ? `No ${activeTab} found`
-                      : `No ${activeTab} yet`}
+                      ? t('noFound')
+                      : activeTab === 'followers' ? t('noFollowersYet') : t('noFollowingYet')}
                   </Text>
                   <Text style={styles.emptySubtitle}>
                     {activeSearch.trim()
-                      ? 'Try adjusting your search terms.'
+                      ? t('noFound')
                       : activeTab === 'followers'
-                        ? 'When people follow you, they will appear here.'
-                        : 'Discover and follow amazing people.'}
+                        ? t('whenPeopleFollow')
+                        : t('discoverPeople')}
                   </Text>
                 </View>
               )}
 
               {activeTab === 'followers' && suggestedUsers.length > 0 && !activeSearch.trim() && (
                 <View style={styles.suggestionsContainer}>
-                  <Text style={styles.suggestionsTitle}>Suggested for you</Text>
+                  <Text style={styles.suggestionsTitle}>{t('suggested')}</Text>
                   {suggestedUsers.map((item, index) => renderUserCard(item, index === suggestedUsers.length - 1))}
                 </View>
               )}

@@ -38,18 +38,18 @@ export default function ProfileScreen() {
   const isAndroid = Platform.OS === 'android';
 
   // Responsive layouts for Android to prevent clipping/distortion
-  const photoSize = isAndroid ? Math.min(120, Math.max(96, windowWidth * 0.28)) : 128;
+  const photoSize = isAndroid ? Math.min(96, Math.max(80, windowWidth * 0.24)) : 128;
   const photoEditBadgeSize = isAndroid ? Math.round(photoSize * 0.3) : 36;
   const photoEditBadgeRight = isAndroid ? 0 : 4;
-  const inputHeight = isAndroid ? (windowHeight < 700 ? 50 : 54) : 56;
-  const buttonHeight = isAndroid ? (windowHeight < 700 ? 50 : 54) : 56;
-  const labelFontSize = isAndroid ? (windowWidth < 360 ? 13 : 14) : 16;
-  const labelMarginTop = isAndroid ? (windowHeight < 700 ? 6 : 10) : 12;
-  const labelMarginBottom = isAndroid ? (windowHeight < 700 ? 4 : 6) : 8;
-  const inputMarginBottom = isAndroid ? (windowHeight < 700 ? 10 : 12) : 16;
-  const titleFontSize = isAndroid ? (windowWidth < 360 ? 22 : 24) : 24;
-  const captionFontSize = isAndroid ? (windowWidth < 360 ? 13 : 14) : 14;
-  const languageButtonHeight = isAndroid ? (windowHeight < 700 ? 36 : 40) : 44;
+  const inputHeight = isAndroid ? 44 : 56;
+  const buttonHeight = isAndroid ? 44 : 56;
+  const labelFontSize = isAndroid ? (windowWidth < 360 ? 12 : 13) : 16;
+  const labelMarginTop = isAndroid ? 6 : 12;
+  const labelMarginBottom = isAndroid ? 3 : 8;
+  const inputMarginBottom = isAndroid ? 8 : 16;
+  const titleFontSize = isAndroid ? (windowWidth < 360 ? 18 : 20) : 24;
+  const captionFontSize = isAndroid ? (windowWidth < 360 ? 11 : 12) : 14;
+  const languageButtonHeight = isAndroid ? 34 : 44;
 
   const storeLanguage = useLanguageStore((state) => state.language);
   const storeSetLanguage = useLanguageStore((state) => state.setLanguage);
@@ -279,8 +279,8 @@ export default function ProfileScreen() {
           contentContainerStyle={[
             styles.scrollContent,
             Platform.OS === 'android' && {
-              paddingTop: Math.max(insets.top, 16),
-              paddingBottom: Math.max(insets.bottom, 12) + 12,
+              paddingTop: Math.max(insets.top, 10),
+              paddingBottom: Math.max(insets.bottom, 8) + 8,
             }
           ]}
           keyboardShouldPersistTaps="handled"
@@ -694,10 +694,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderLeftWidth: 4,
     borderLeftColor: '#FF7B00',
-    padding: 16,
+    padding: Platform.OS === 'android' ? 10 : 16,
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 8,
+    marginTop: Platform.OS === 'android' ? 4 : 8,
+    marginBottom: Platform.OS === 'android' ? 16 : 8,
     shadowColor: 'rgba(139, 79, 59, 0.05)',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 1,
@@ -707,12 +708,12 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 12,
-    lineHeight: 19.5,
+    lineHeight: Platform.OS === 'android' ? 16 : 19.5,
     color: '#584235',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontWeight: '500',
     fontStyle: 'normal',
-    marginLeft: 12,
+    marginLeft: Platform.OS === 'android' ? 8 : 12,
   },
   languageContainer: {
     flexDirection: 'row',

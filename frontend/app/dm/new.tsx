@@ -19,13 +19,14 @@ const toParamString = (value: string | string[] | undefined): string => {
 
 export default function NewDMScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ userId?: string; userName?: string; userSL?: string; shareText?: string }>();
+  const params = useLocalSearchParams<{ userId?: string; userName?: string; userSL?: string; userPhoto?: string; shareText?: string }>();
   const { user } = useAuthStore();
   const searchInputRef = useRef<TextInput>(null);
 
   const selectedUserId = toParamString(params.userId as any);
   const selectedUserName = toParamString(params.userName as any);
   const selectedUserSL = toParamString(params.userSL as any);
+  const selectedUserPhoto = toParamString(params.userPhoto as any);
   const initialShareText = toParamString(params.shareText as any);
 
   const [message, setMessage] = useState(initialShareText || '');
@@ -56,14 +57,16 @@ export default function NewDMScreen() {
           const finalSL = selectedUserSL || existingConv?.user?.sl_id || '';
 
           if (conversationId) {
-            router.replace(`/dm/${conversationId}?userId=${selectedUserId}&userName=${encodeURIComponent(finalName)}&userSL=${encodeURIComponent(finalSL)}`);
+            const finalPhoto = existingConv?.user?.photo || '';
+            router.replace(`/dm/${conversationId}?userId=${selectedUserId}&userName=${encodeURIComponent(finalName)}&userSL=${encodeURIComponent(finalSL)}&userPhoto=${encodeURIComponent(finalPhoto)}`);
             return;
           }
           
           setFoundUser({
             id: selectedUserId,
             name: finalName,
-            sl_id: finalSL
+            sl_id: finalSL,
+            photo: selectedUserPhoto || existingConv?.user?.photo || ''
           });
           setError('');
         } catch (e) {
@@ -71,7 +74,8 @@ export default function NewDMScreen() {
           setFoundUser({
             id: selectedUserId,
             name: selectedUserName || 'User',
-            sl_id: selectedUserSL || ''
+            sl_id: selectedUserSL || '',
+            photo: selectedUserPhoto || ''
           });
         }
       };
@@ -161,7 +165,7 @@ export default function NewDMScreen() {
       const conversationId = existingConv?.conversation_id || existingConv?.chat_id || existingConv?.id;
 
       if (conversationId) {
-        router.replace(`/dm/${conversationId}?userId=${selectedUser.id}&userName=${encodeURIComponent(selectedUser.name || '')}&userSL=${encodeURIComponent(selectedUser.sl_id || '')}`);
+        router.replace(`/dm/${conversationId}?userId=${selectedUser.id}&userName=${encodeURIComponent(selectedUser.name || '')}&userSL=${encodeURIComponent(selectedUser.sl_id || '')}&userPhoto=${encodeURIComponent(selectedUser.photo || '')}`);
         return;
       }
 
@@ -178,7 +182,7 @@ export default function NewDMScreen() {
     try {
       const response = await sendDirectMessage(foundUser.sl_id, message.trim());
       const chatId = response.data.chat_id || response.data.conversation_id;
-      router.replace(`/dm/${chatId}?userId=${foundUser.id}&userName=${encodeURIComponent(foundUser.name || '')}&userSL=${encodeURIComponent(foundUser.sl_id || '')}`);
+      router.replace(`/dm/${chatId}?userId=${foundUser.id}&userName=${encodeURIComponent(foundUser.name || '')}&userSL=${encodeURIComponent(foundUser.sl_id || '')}&userPhoto=${encodeURIComponent(foundUser.photo || '')}`);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to send message');
       setSending(false);

@@ -6,6 +6,7 @@ import { useTabBar } from '../contexts/TabBarContext';
 import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useCoachMarkStore } from '../utils/coachMarkState';
+import { useTranslation } from '../utils/i18n';
 
 const ACTIVE_ORANGE = '#FF8A00';
 const INACTIVE_COLOR = '#FFFFFF';
@@ -21,12 +22,12 @@ const DESIGN_BAR_WIDTH = 373;
 
 const HIDDEN_ROUTES = new Set(['index', 'legacy_index', 'temple', 'circles', 'jobs', 'discover']);
 
-const TAB_META: Record<string, { label: string; activeIcon: string; inactiveIcon: string }> = {
-  home:     { label: 'Home',      activeIcon: 'home',          inactiveIcon: 'home-outline'          },
-  messages: { label: 'Community', activeIcon: 'people',        inactiveIcon: 'people-outline'        },
-  vendor:   { label: 'Service',   activeIcon: 'accessibility', inactiveIcon: 'accessibility-outline' },
-  jaap:     { label: 'Temple',    activeIcon: 'temple',        inactiveIcon: 'temple'                },
-  profile:  { label: 'Profile',   activeIcon: 'person',        inactiveIcon: 'person-outline'        },
+const TAB_META: Record<string, { activeIcon: string; inactiveIcon: string; labelKey: string }> = {
+  home:     { activeIcon: 'home',          inactiveIcon: 'home-outline',          labelKey: 'home'      },
+  messages: { activeIcon: 'people',        inactiveIcon: 'people-outline',        labelKey: 'community' },
+  vendor:   { activeIcon: 'accessibility', inactiveIcon: 'accessibility-outline', labelKey: 'service'   },
+  jaap:     { activeIcon: 'temple',        inactiveIcon: 'temple',                labelKey: 'temple'    },
+  profile:  { activeIcon: 'person',        inactiveIcon: 'person-outline',        labelKey: 'profile'   },
 };
 
 // Icon centre-X positions in the 373dp design coordinate system.
@@ -127,6 +128,7 @@ function BackgroundSvg({ geom, barWidth }: { geom: CapsuleGeometry; barWidth: nu
 export default function CustomTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
   const { tabBarTranslateY } = useTabBar();
+  const { t } = useTranslation();
 
   // ── Responsive geometry ────────────────────────────────────────────────────
   const { width: screenWidth } = useWindowDimensions();
@@ -152,7 +154,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   });
 
   const bottomPosition = Platform.OS === 'android'
-    ? insets.bottom + 5
+    ? 10
     : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
 
   const visibleRoutes = state.routes.filter((route: any) => !HIDDEN_ROUTES.has(route.name));
@@ -272,7 +274,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
                 <View style={styles.activeSlotContent}>
                   {renderTabIcon(route.name, true)}
                   <Text style={styles.activeLabel} numberOfLines={1} adjustsFontSizeToFit>
-                    {TAB_META[route.name]?.label ?? ''}
+                    {TAB_META[route.name]?.labelKey ? t(TAB_META[route.name].labelKey) : ''}
                   </Text>
                 </View>
               ) : (

@@ -116,7 +116,7 @@ export const loadBhagavadGitaChapter = async (chapterNumber: number) => {
   if (cached?.length) return cached;
   // Fetch raw, then parse
   await fetchAndStoreRaw(chapterNumber);
-  return parseChapter(chapterNumber) || [];
+  return (await parseChapter(chapterNumber)) || [];
 };
 
 // ponytail: cleanup previous chapters from parsed cache

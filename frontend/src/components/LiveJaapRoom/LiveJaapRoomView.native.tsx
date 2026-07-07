@@ -750,7 +750,6 @@ export default function LiveJaapRoomView() {
     const initAudioMode = async () => {
       try {
         await setAudioModeAsync({
-          staysActiveInBackground: true,
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
