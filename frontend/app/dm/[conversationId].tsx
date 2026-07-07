@@ -1956,8 +1956,8 @@ const DirectMessageScreen = () => {
               <TouchableOpacity onPress={handleOpenCamera} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="camera-outline" size={24} color="#000" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="image-outline" size={24} color="#000" />
+              <TouchableOpacity onPress={toggleAttachmentOptions} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="attach-outline" size={24} color="#000" />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
