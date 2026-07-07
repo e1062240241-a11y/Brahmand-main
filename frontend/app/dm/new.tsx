@@ -40,7 +40,7 @@ export default function NewDMScreen() {
 
   // Pre-fill if coming from user list click (stable deps to avoid render loops on web)
   useEffect(() => {
-    if (selectedUserId && selectedUserName && selectedUserSL) {
+    if (selectedUserId) {
       if (foundUser?.id === selectedUserId) {
         return;
       }
@@ -52,23 +52,26 @@ export default function NewDMScreen() {
           const existingConv = conversations.find((c: any) => c.user?.id === selectedUserId);
           const conversationId = existingConv?.conversation_id || existingConv?.chat_id || existingConv?.id;
 
+          const finalName = selectedUserName || existingConv?.user?.name || 'User';
+          const finalSL = selectedUserSL || existingConv?.user?.sl_id || '';
+
           if (conversationId) {
-            router.replace(`/dm/${conversationId}?userId=${selectedUserId}&userName=${encodeURIComponent(selectedUserName)}&userSL=${encodeURIComponent(selectedUserSL)}`);
+            router.replace(`/dm/${conversationId}?userId=${selectedUserId}&userName=${encodeURIComponent(finalName)}&userSL=${encodeURIComponent(finalSL)}`);
             return;
           }
           
           setFoundUser({
             id: selectedUserId,
-            name: selectedUserName,
-            sl_id: selectedUserSL
+            name: finalName,
+            sl_id: finalSL
           });
           setError('');
         } catch (e) {
           // Fallback to manual selection if API fails
           setFoundUser({
             id: selectedUserId,
-            name: selectedUserName,
-            sl_id: selectedUserSL
+            name: selectedUserName || 'User',
+            sl_id: selectedUserSL || ''
           });
         }
       };

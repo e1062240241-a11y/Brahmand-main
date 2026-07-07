@@ -25,7 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
-import { getUserProfile, followUser, unfollowUser, getUserPosts, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment, reportPost } from '../../src/services/api';
+import { getUserProfile, followUser, unfollowUser, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment, reportPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import SharePostModal from '../../src/components/SharePostModal';
@@ -473,57 +473,44 @@ const UserProfileScreen = () => {
   };
 
   const loadPosts = useCallback(async (reset = false) => {
-    if (!profileUserId || profileUserId.toLowerCase().trim() === 'undefined' || profileUserId.toLowerCase().trim() === 'null' || profileUserId.toLowerCase().trim() === 'none') {
-      return;
-    }
-    
-    if (isFetchingRef.current && !reset) {
-      return;
-    }
+    if (!profileUserId) return;
+
+    if (!reset && !hasMore) return;
 
     const currentOffset = reset ? 0 : offset;
-    if (reset) {
-      setPostsLoading(true);
-      setHasMore(true);
-    }
-    
-    isFetchingRef.current = true;
-    const requestedUserId = profileUserId;
-    const currentSeq = ++requestSequenceRef.current;
+
+    setPostsLoading(true);
 
     try {
-      const response = await getUserPosts(profileUserId, LIMIT, currentOffset);
-      if (requestedUserId !== activeUserIdRef.current || currentSeq !== requestSequenceRef.current) return;
+      const { getMyPosts } = require('../../src/services/api');
+      const response = await getMyPosts(6, currentOffset, profileUserId);
       const payload = response.data;
-      let items = Array.isArray(payload) ? payload : (payload?.items || []);
-      // ponytail: strict frontend boundary to guarantee that we NEVER display another user's post in this profile feed
-      items = items.filter((p: any) => (p.user_id || p.userId || p.creator_id || p.creator?.id || p.sender_id) === profileUserId);
+      const incomingPosts = payload?.posts || [];
 
-      if (reset) {
-        setPosts(items);
-      } else {
-        setPosts(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const uniqueNew = items.filter((p: any) => !existingIds.has(p.id));
-          return [...prev, ...uniqueNew];
-        });
+      // Strict validation: every post must belong to the viewed profile user
+      const validated = [];
+      for (const p of incomingPosts) {
+        if (p.user_id !== profileUserId) {
+          console.error(`SECURITY VIOLATION: Post ${p.id} belongs to user {p.user_id} but was returned for user ${profileUserId}!`);
+          continue;
+        }
+        validated.push(p);
       }
 
-      const totalCount = payload?.total_count || items.length;
-      setTotalPosts(totalCount);
-      setOffset(currentOffset + items.length);
-      setHasMore(payload?.has_more ?? (items.length === LIMIT));
-    } catch (error) {
-      if (requestedUserId !== activeUserIdRef.current || currentSeq !== requestSequenceRef.current) return;
-      console.warn('Failed to load user posts:', error);
+      const nextOffset = currentOffset + validated.length;
+      const nextHasMore = !payload?.has_reached_end;
+
+      setPosts(prev => reset ? validated : [...prev, ...validated]);
+      setTotalPosts(payload?.total || 0);
+      setOffset(nextOffset);
+      setHasMore(nextHasMore);
+    } catch (err) {
+      console.warn('Failed to load posts on profile screen:', err);
     } finally {
-      if (requestedUserId === activeUserIdRef.current && currentSeq === requestSequenceRef.current) {
-        isFetchingRef.current = false;
-        setPostsLoading(false);
-        setRefreshing(false);
-      }
+      setPostsLoading(false);
+      setRefreshing(false);
     }
-  }, [profileUserId, offset]);
+  }, [profileUserId, offset, hasMore]);
 
   useEffect(() => {
     activeUserIdRef.current = profileUserId;
@@ -1297,7 +1284,7 @@ const UserProfileScreen = () => {
             </View>
           ) : !hasMore && posts.length > 0 && !isBlocked ? (
             <View style={styles.endOfFeed}>
-              <Text style={styles.endOfFeedText}>{"You've reached the end"}</Text>
+              <Text style={styles.endOfFeedText}>{"you have reached end"}</Text>
             </View>
           ) : null
         }

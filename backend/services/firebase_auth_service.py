@@ -98,6 +98,13 @@ class FirebaseAuthService:
             if normalized_phone.startswith("+919999"):
                 existing_user = await db.get_user_by_phone(normalized_phone)
                 if existing_user:
+                    try:
+                        from main import _delete_post_with_dependencies
+                        posts = await db.query_documents('posts', filters=[('user_id', '==', existing_user['id'])])
+                        for post in posts:
+                            await _delete_post_with_dependencies(db, post['id'])
+                    except Exception as e:
+                        logger.warning(f"Failed to delete posts for test user {existing_user['id']}: {e}")
                     await db.delete_document('users', existing_user['id'])
 
             # Check anonymous account clash
