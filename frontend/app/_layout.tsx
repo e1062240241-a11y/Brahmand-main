@@ -691,11 +691,12 @@ export default function RootLayout() {
     const initAudio = async () => {
       try {
         await setAudioModeAsync({
+          staysActiveInBackground: true,
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           allowsRecording: false,
           shouldRouteThroughEarpiece: false,
-          shouldPlayInBackground: false,
+          shouldPlayInBackground: true,
         });
       } catch (error) {
         console.warn('[Audio] Failed to set default audio mode:', error);

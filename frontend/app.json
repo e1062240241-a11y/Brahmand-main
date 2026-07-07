@@ -38,7 +38,8 @@
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition.",
         "UIBackgroundModes": [
           "fetch",
-          "remote-notification"
+          "remote-notification",
+          "audio"
         ],
         "LSApplicationQueriesSchemes": [
           "whatsapp"
@@ -174,7 +175,7 @@
       [
         "expo-audio",
         {
-          "enableBackgroundPlayback": false
+          "enableBackgroundPlayback": true
         }
       ],
       "expo-sharing",

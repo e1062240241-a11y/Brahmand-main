@@ -39,6 +39,7 @@ import api, { getAgoraToken } from '../../services/api';
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
 import { socketService } from '../../services/socket';
+import { useKeepAwake } from 'expo-keep-awake';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
@@ -245,6 +246,7 @@ const getSlotId = (date: Date, mType: string): string => {
 };
 
 export default function LiveJaapRoomView() {
+  useKeepAwake();
   const { t } = useTranslation();
   const router = useRouter();
   const { initialMic, mantraType, title: roomTitle, fromHome } = useLocalSearchParams<{ 
@@ -748,6 +750,7 @@ export default function LiveJaapRoomView() {
     const initAudioMode = async () => {
       try {
         await setAudioModeAsync({
+          staysActiveInBackground: true,
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
