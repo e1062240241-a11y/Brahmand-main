@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +25,23 @@ const HashtagPage = () => {
 
   // Comment Modal States
   const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   const [selectedCommentPostId, setSelectedCommentPostId] = useState<string | null>(null);
   const [selectedCommentPost, setSelectedCommentPost] = useState<any | null>(null);
   const [postComments, setPostComments] = useState<any[]>([]);
@@ -299,7 +316,7 @@ const HashtagPage = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
         >
-          <View style={styles.bottomSheet}>
+          <View style={[styles.bottomSheet, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : SPACING.xl }]}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
@@ -489,6 +506,7 @@ const HashtagPage = () => {
                 )}
               </TouchableOpacity>
             </View>
+            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
           </View>
         </KeyboardAvoidingView>
       </Modal>

@@ -11,7 +11,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets, SafeAreaView as ContextSafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import {
@@ -131,7 +131,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
   const modalContent = (
     <View style={styles.overlay}>
-      <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+      <ContextSafeAreaView style={[styles.sheet, { paddingBottom: Platform.OS === 'android' ? 16 : Math.max(insets.bottom, 24) }]} edges={['bottom']}>
         {/* Handle bar */}
         <View style={styles.handleBar} />
 
@@ -237,7 +237,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </ContextSafeAreaView>
     </View>
   );
 

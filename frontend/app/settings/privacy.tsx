@@ -184,8 +184,12 @@ export default function PrivacySettingsScreen() {
           <Text style={styles.sectionTitle}>Message Status Guide</Text>
           <View style={styles.legendContainer}>
             <View style={styles.legendItem}>
+              <Ionicons name="time-outline" size={18} color={COLORS.textSecondary} style={{ opacity: 0.6 }} />
+              <Text style={styles.legendText}>Clock = Message sending</Text>
+            </View>
+            <View style={styles.legendItem}>
               <Ionicons name="checkmark" size={18} color={COLORS.textSecondary} />
-              <Text style={styles.legendText}>Single tick = Message delivered</Text>
+              <Text style={styles.legendText}>Single tick = Message sent</Text>
             </View>
             <View style={styles.legendItem}>
               <Ionicons name="checkmark-done" size={18} color={COLORS.primary} />

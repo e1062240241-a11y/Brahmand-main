@@ -45,6 +45,7 @@ import {
   discoverCommunities,
   joinCommunityDirect,
   getMyCreationRequests,
+  clearDirectMessages,
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
@@ -242,6 +243,7 @@ function MessagesScreen({
   const [apiCommunities, setApiCommunities] = useState<any[]>([]);
   const [apiCircles, setApiCircles] = useState<any[]>([]);
   const [apiDMs, setApiDMs] = useState<any[]>([]);
+  const [dmMetadataMap, setDmMetadataMap] = useState<Record<string, { senderId?: string; status?: string }>>({});
 
   const communities = useMemo(() => {
     const source = Platform.OS === 'web' ? apiCommunities : observedCommunities;
@@ -298,24 +300,31 @@ function MessagesScreen({
           },
           last_message: c.last_message,
           last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
+          last_message_status: c.last_message_status,
+          last_message_sender_id: c.last_message_sender_id,
         };
       });
     }
     const dbDMs = observedConversations
       .filter(c => c.type === 'dm')
-      .map(c => ({
-        id: c.id,
-        conversation_id: c.id,
-        user: {
-          id: c.otherUserId || '',
-          name: c.name,
-          sl_id: c.slId || '',
-          photo: c.photo,
-          is_verified: false,
-        },
-        last_message: c.lastMessage,
-        last_message_at: c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : undefined,
-      }));
+      .map(c => {
+        const lastMsgMeta = dmMetadataMap[c.id];
+        return {
+          id: c.id,
+          conversation_id: c.id,
+          user: {
+            id: c.otherUserId || '',
+            name: c.name,
+            sl_id: c.slId || '',
+            photo: c.photo,
+            is_verified: false,
+          },
+          last_message: c.lastMessage,
+          last_message_at: c.lastMessageAt ? new Date(c.lastMessageAt).toISOString() : undefined,
+          last_message_status: lastMsgMeta?.status,
+          last_message_sender_id: lastMsgMeta?.senderId,
+        };
+      });
     if (dbDMs.length === 0 && apiDMs.length > 0) {
       return apiDMs.map((c: any) => {
         const convId = c.conversation_id || c.chat_id || c.id;
@@ -331,11 +340,13 @@ function MessagesScreen({
           },
           last_message: c.last_message,
           last_message_at: c.last_message_at || c.updated_at ? new Date(c.last_message_at || c.updated_at).toISOString() : undefined,
+          last_message_status: c.last_message_status,
+          last_message_sender_id: c.last_message_sender_id,
         };
       });
     }
     return dbDMs;
-  }, [observedConversations, apiDMs]);
+  }, [observedConversations, apiDMs, dmMetadataMap]);
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery) return circles;
@@ -443,6 +454,46 @@ function MessagesScreen({
     } finally {
       setJoiningLocalId(null);
     }
+  };
+
+  const handleDeleteChat = (conversationId: string) => {
+    Alert.alert(
+      t('language') === 'hi' ? 'चैट हटाएं' : 'Delete Chat',
+      t('language') === 'hi' 
+        ? 'क्या आप वाकई इस चैट को हटाना चाहते हैं? इससे सभी संदेश हट जाएंगे।' 
+        : 'Are you sure you want to delete this chat? This will remove all messages.',
+      [
+        { text: t('language') === 'hi' ? 'रद्द करें' : 'Cancel', style: 'cancel' },
+        {
+          text: t('language') === 'hi' ? 'हटाएं' : 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // 1. Call API to clear messages on backend
+              await clearDirectMessages(conversationId);
+              
+              // 2. Delete locally in WatermelonDB (if not Web)
+              if (Platform.OS !== 'web') {
+                try {
+                  const convCollection = database.get('conversations');
+                  const record = await convCollection.find(conversationId);
+                  await database.write(async () => {
+                    await record.destroyPermanently();
+                  });
+                } catch (dbErr) {
+                  console.warn('Failed to delete locally from WatermelonDB', dbErr);
+                }
+              } else {
+                // On web, remove from apiDMs state
+                setApiDMs(prev => prev.filter(c => (c.conversation_id || c.chat_id || c.id) !== conversationId));
+              }
+            } catch (err: any) {
+              Alert.alert('Error', parseApiError(err));
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getRequestTheme = (item: any) => {
@@ -1068,6 +1119,17 @@ function MessagesScreen({
 
         setApiCircles(allCircles);
         setApiDMs(allDMs);
+
+        const metaMap: Record<string, { senderId?: string; status?: string }> = {};
+        for (const dm of allDMs) {
+          const dmId = dm.conversation_id || dm.id;
+          metaMap[dmId] = {
+            senderId: dm.last_message_sender_id,
+            status: dm.last_message_status,
+          };
+        }
+        setDmMetadataMap(metaMap);
+        AsyncStorage.setItem('dm_metadata_map', JSON.stringify(metaMap)).catch(() => {});
         if (Platform.OS === 'web') {
           AsyncStorage.setItem('web_circles_cache', JSON.stringify(allCircles)).catch(() => {});
           AsyncStorage.setItem('web_dms_cache', JSON.stringify(allDMs)).catch(() => {});
@@ -1187,6 +1249,15 @@ function MessagesScreen({
         }
       } catch (err) {
         console.warn('Failed to load cached user groups:', err);
+      }
+
+      try {
+        const metaCached = await AsyncStorage.getItem('dm_metadata_map');
+        if (metaCached) {
+          setDmMetadataMap(JSON.parse(metaCached));
+        }
+      } catch (err) {
+        console.warn('Failed to load dm_metadata_map cache:', err);
       }
 
       if (Platform.OS === 'web') {
@@ -1761,6 +1832,7 @@ function MessagesScreen({
                           const userSL = (item.user as any)?.sl_id || (item.user as any)?.slId || '';
                           router.push(`/dm/${conversationId}?userId=${item.user?.id || ''}&userName=${encodeURIComponent(item.user?.name || '')}&userSL=${encodeURIComponent(userSL)}`);
                         }}
+                        onLongPress={() => handleDeleteChat(conversationId)}
                       >
                         <Avatar name={item.user?.name || '?'} photo={item.user?.photo} size={52} />
                         <View style={styles.chatRowMiddle}>
@@ -1776,14 +1848,41 @@ function MessagesScreen({
                         </View>
                         <View style={styles.chatRowRight}>
                           <Text style={styles.chatRowTime}>{formatTime(item.last_message_at)}</Text>
-                          {!!item.last_message && (
-                            <MaterialCommunityIcons
-                              name="check-all"
-                              size={18}
-                              color="#34B7F1"
-                              style={styles.checkmarkIcon}
-                            />
-                          )}
+                          {(() => {
+                            if (!item.last_message) return null;
+                            const isMyMessage = item.last_message_sender_id === user?.id;
+                            if (!isMyMessage) return null;
+
+                            if (item.last_message_status === 'sending') {
+                              return (
+                                <MaterialCommunityIcons
+                                  name="clock-outline"
+                                  size={16}
+                                  color={COLORS.textLight}
+                                  style={styles.checkmarkIcon}
+                                />
+                              );
+                            }
+                            if (item.last_message_status === 'read') {
+                              return (
+                                <MaterialCommunityIcons
+                                  name="check-all"
+                                  size={18}
+                                  color={COLORS.primary}
+                                  style={styles.checkmarkIcon}
+                                />
+                              );
+                            }
+                            // Default to sent/delivered
+                            return (
+                              <MaterialCommunityIcons
+                                name="check"
+                                size={16}
+                                color={COLORS.textLight}
+                                style={styles.checkmarkIcon}
+                              />
+                            );
+                          })()}
                         </View>
                       </Pressable>
                       {index < filteredAll.length - 1 && <View style={styles.chatSeparator} />}
