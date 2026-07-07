@@ -640,10 +640,10 @@ export default function HomeScreen() {
   const [activeAartiIndex, setActiveAartiIndex] = useState(0);
 
   const AARTI_YOUTUBE_URLS: Record<string, string> = {
-    'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/watch?v=TZxIgnTHEB0',
-    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/watch?v=J4z7CIrvsuw',
-    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/-BdYhAVkykw?si=SebQrtak2DS8e0vk',
-    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/watch?v=J0nRdUOQps8'
+    'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
+    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/embed/live_stream?channel=UCXhail7h5FDRbHprlR56nIw',
+    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/embed/live_stream?channel=UCQE_hlxeDSuw4YpuAkDmrMg',
+    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/embed/live_stream?channel=UCijUmzuXOxyLWv0APau_5xw'
   };
 
   const [isAartiModalVisible, setIsAartiModalVisible] = useState(false);
@@ -658,12 +658,18 @@ export default function HomeScreen() {
   };
 
   const getAartiEmbedUrl = (url: string) => {
+    if (url.includes('embed/live_stream')) {
+      return url + '&autoplay=1';
+    }
     const videoId = getYoutubeVideoId(url);
     if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     return url;
   };
 
   const getAartiMobileUrl = (url: string) => {
+    if (url.includes('embed/live_stream')) {
+      return url + '&autoplay=1';
+    }
     if (url.includes('embed?listType=playlist&list=')) {
       const listId = url.split('&list=')[1].split('&')[0];
       return `https://m.youtube.com/playlist?list=${listId}`;

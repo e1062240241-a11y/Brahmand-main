@@ -62,7 +62,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Shri Radhagiridhari Mandir, ISKCON Mira Road is a vibrant spiritual temple dedicated to Radha and Giridhari, offering daily worship, bhajans, classes, and community service. The temple is known for its peaceful atmosphere, devotional programs, vegetarian prasadam, and regular festivals celebrating Krishna consciousness. Visitors can take part in congregational chanting, scripture study, and cultural programs organized for families and children.',
  guidance: 'Guidance: To reach ISKCON Mira Road, travel to Mira Road station and take a short taxi or auto-rickshaw ride toward Elderao Nagar. The temple is located near Radha Girdhari Mandir, close to the Mira Road bus depot and main Mira Bhayandar road. From Thane, use the Dahisar–Mira Road route; from Bhayandar, follow the highway toward Mira Road. Parking is available nearby and the temple is well signposted from local landmarks.',
- youtubeUrl: 'https://www.youtube.com/watch?v=aqJh9Dh_us8',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCKsPhfStsvK9NKPjXj0DLvg',
  },
  'Shirdi Sai Baba Temple': {
  aliases: ['shirdi', 'sai baba', 'saibaba', 'samadhi', 'sai baba samadhi', 'sai baba mandir'],
@@ -77,7 +77,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Shri Sai Baba Samadhi Mandir in Shirdi is a revered pilgrimage center built around the final resting place of Shirdi Sai Baba. The temple complex draws devotees from across India for daily darshan, sacred aarti ceremonies, and prasadam distribution, and it includes the nearby Dwarkamai and Chavadi sites associated with Sai Baba’s life.',
  guidance: 'Guidance: To reach Shirdi Sai Baba Temple, arrive at Shirdi railway station or Shirdi airport and take a short taxi or auto-rickshaw to the main temple complex. The Samadhi Mandir is located in central Shirdi near the main road, and marked local signs guide visitors to the temple, Dwarkamai, and Chavadi. During festivals, allow extra time for darshan and follow the designated queues and visitor lanes.',
- youtubeUrl: 'https://www.youtube.com/live/kerfd4z2fQ0?si=1zUBZrTkMudipXc5',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A',
  },
  'Somnath Temple – Gujarat': {
  aliases: ['somnath', 'prabhas patan', 'jyotirling-somnath'],
@@ -90,7 +90,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Somnath Temple is one of the twelve sacred Jyotirling shrines of Lord Shiva, located at Prabhas Patan on the Gujarat coast. Revered for its deep spiritual significance and long history of restoration, Somnath remains a major pilgrimage destination where devotees gather for daily darshan, aarti, and temple rituals.',
  guidance: 'Guidance: To reach Somnath Temple, travel to Veraval railway station (about 7 km) or Diu airport (about 80 km), then continue by taxi or local transport to Prabhas Patan. The temple complex is well signposted from Somnath town roads and has organized entry lanes for darshan. Visit during early morning or evening aarti for a smoother experience and less crowding.',
- youtubeUrl: 'https://www.youtube.com/watch?v=J4z7CIrvsuw',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCXhail7h5FDRbHprlR56nIw',
  },
  'Kedarnath Temple – Uttarakhand': {
  aliases: ['kedarnath'],
@@ -103,7 +103,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Kedarnath Jyotirling in the Himalayas is among the holiest Shiva shrines and a core destination of Char Dham pilgrimage. The stone temple, set amid high mountain terrain, draws devotees seeking darshan and traditional worship during the open season.',
  guidance: 'Guidance: Reach Kedarnath via Haridwar/Rishikesh to Sonprayag-Gaurikund by road, then complete the trek or use approved pony/palanquin/helicopter services. Keep weather buffers, register yatra details in advance, and start early for smoother darshan.',
- youtubeUrl: 'https://www.youtube.com/watch?v=TZxIgnTHEB0',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
  },
  'Mahakaleshwar Temple – Ujjain': {
  aliases: ['mahakaleshwar', 'ujjain jyotirling'],
@@ -116,7 +116,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Mahakaleshwar Jyotirling in Ujjain is renowned for its ancient worship traditions and the iconic Bhasma Aarti. It is one of the most significant Shiva temples in central India.',
  guidance: 'Guidance: Reach Ujjain by rail or via Indore airport and continue by road to Mahakal area. Early-morning slots are preferred for Bhasma Aarti; follow queue instructions and dress-code guidance near the inner sanctum.',
- youtubeUrl: 'https://www.youtube.com/live/-BdYhAVkykw?si=SebQrtak2DS8e0vk',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCQE_hlxeDSuw4YpuAkDmrMg',
  },
  'Kashi Vishwanath Temple – Varanasi': {
  aliases: ['kashi vishwanath', 'vishwanath temple varanasi'],
@@ -129,7 +129,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Kashi Vishwanath Jyotirling at Varanasi is one of India’s most sacred Shiva shrines, closely associated with the spiritual heart of Kashi and the Ganga ghats.',
  guidance: 'Guidance: Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area. Use designated entry gates, carry minimal belongings, and plan darshan outside peak festival windows when possible.',
- youtubeUrl: 'https://www.youtube.com/watch?v=J0nRdUOQps8',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCijUmzuXOxyLWv0APau_5xw',
  },
  'Bhimashankar Temple – Maharashtra': {
  aliases: ['bhimashankar'],
@@ -233,7 +233,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Baidyanath Jyotirling in Deoghar is one of the most visited Shiva pilgrimage sites, especially during the Shravan month Kanwar yatra season.',
  guidance: 'Guidance: Reach Jasidih railway junction and take local transport to Deoghar temple complex. During Shravan and major festivals, use the designated darshan queues and buffer extra time for entry.',
- youtubeUrl: 'https://www.youtube.com/live/Qq1J1SqM6m0?si=QIId9Hd9sNtrXxBB',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCXKgkQYWYVFM6HpCkmuOFFw',
  },
  'Tirupati Balaji Temple – Andhra Pradesh': {
  aliases: ['tirupati balaji', 'tirumala', 'venkateswara temple'],
@@ -246,7 +246,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Tirupati Balaji Temple at Tirumala is one of the most visited pilgrimage shrines in India, dedicated to Lord Venkateswara. The temple is known for disciplined darshan systems, daily sevas, and large-scale prasadam distribution for devotees.',
  guidance: 'Guidance: Reach Tirupati by rail/air, then continue to Tirumala via ghat road buses or private vehicles. Book darshan slots in advance when possible and arrive early to accommodate queue and security procedures.',
- youtubeUrl: 'https://www.youtube.com/watch?v=dwsS3bxweBw',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCS2Y83GD-fc7qqgNW5uj41g',
  },
  'Vaishno Devi Temple – Jammu & Kashmir': {
  aliases: ['vaishno devi', 'mata vaishno devi', 'katra shrine'],
@@ -259,7 +259,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Vaishno Devi Temple in the Trikuta hills is one of the most revered Shakti pilgrimage destinations. Devotees undertake the sacred yatra from Katra to the Bhawan for darshan of the holy pindis.',
  guidance: 'Guidance: Travel to Katra by rail/road and complete yatra registration before starting the trek. Use official pony, palki, battery car, or helicopter services as needed, and follow route advisories during peak season.',
- youtubeUrl: 'https://www.youtube.com/watch?v=BvAFKNZcszk',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC5SVw4I1kK4xB0h60Tdk5lQ',
  },
  'Siddhivinayak Temple – Mumbai': {
  aliases: ['siddhivinayak', 'prabhadevi ganpati', 'siddhivinayak temple mumbai'],
@@ -272,7 +272,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Siddhivinayak Temple in Mumbai is one of India’s most prominent Lord Ganesha temples, known for daily aarti, darshan, and strong devotional traditions among local and visiting devotees.',
  guidance: 'Guidance: Reach Prabhadevi via local train (Dadar/Prabhadevi area) or metro-road connections. Prefer non-peak hours for shorter queues and follow temple guidelines for entry and offerings.',
- youtubeUrl: 'https://www.youtube.com/live/1oS-N5Y0QHI?si=bMe7KXazyLzf4Lnh',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCmVh_JJg-jurl1G-8opW1zw',
  },
  'Jagannath Temple – Puri': {
  aliases: ['jagannath temple', 'puri jagannath', 'jagannath puri'],
@@ -285,7 +285,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Jagannath Temple in Puri is a sacred Vaishnav pilgrimage center and one of the Char Dham sites, renowned for its elaborate daily rituals and the globally known Rath Yatra festival.',
  guidance: 'Guidance: Reach Puri by rail/road and proceed to the Grand Road temple zone. Plan darshan with local timing advisories, and account for larger crowds during festival periods and weekends.',
- youtubeUrl: 'https://www.youtube.com/watch?v=1DScORQ1YL0',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCxnh8tVFUMlhruMpa7Bycng',
  },
  'Golden Temple – Amritsar': {
  aliases: ['golden temple', 'harmandir sahib', 'amritsar golden temple'],
@@ -298,7 +298,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'The Golden Temple (Sri Harmandir Sahib) in Amritsar is the holiest Sikh shrine, known for continuous kirtan, sacred sarovar, and the community langar that welcomes all visitors.',
  guidance: 'Guidance: Reach Amritsar city by rail/air and travel to the heritage zone near Harmandir Sahib. Cover your head, follow shrine etiquette, and use designated footwear and queue areas.',
- youtubeUrl: 'https://www.youtube.com/live/0lbH5ZiHy-c?si=vk9q-iOMDeqJKNjs',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCYn6UEtQ771a_OWSiNBoG8w',
  },
  'Meenakshi Temple – Madurai': {
  aliases: ['meenakshi temple', 'madurai meenakshi', 'meenakshi amman'],
@@ -337,7 +337,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Mahalaxmi Temple is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area. It is dedicated to Mahalakshmi the central deity of Devi Mahatmyam. The temple was built in 1831 by Dhakji Dadaji.',
  guidance: 'Guidance: Reach Mahalaxmi railway station (Western Line) and take a short taxi or walk towards Bhulabhai Desai Road. Expect heavy crowds during Navratri festivals, so plan your visit during early morning hours for peaceful darshan.',
- youtubeUrl: 'https://www.youtube.com/watch?v=zRujktEdQpg',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCcMSlXWOYWCPiFR3-sM-rEg',
  },
  'ISKCON Juhu Mumbai': {
  aliases: ['iskcon juhu', 'iskcon mumbai', 'juhu temple', 'radha rasabihari'],
@@ -350,7 +350,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Shri Shri Radha Rasabihari Ji Temple, ISKCON Mumbai, is a beautiful spiritual haven located near Juhu beach. It features a majestic marble temple, a spacious auditorium, a guest house, and Govinda\'s restaurant, drawing millions of visitors seeking spiritual solace.',
  guidance: 'Guidance: Reach Vile Parle or Andheri railway station, then take an auto-rickshaw or taxi to Juhu. The temple is located on Juhu Church Road, close to the beach and local hotels.',
- youtubeUrl: 'https://www.youtube.com/watch?v=OjS_u-7kkjo',
+ youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC1vJ4RlWSHP6n0xL2G1tkYQ',
  },
 };
 
@@ -892,12 +892,18 @@ if (!temple) {
   };
 
   const getYoutubeEmbedUrl = (url: string) => {
+    if (url.includes('embed/live_stream')) {
+      return url + '&autoplay=1';
+    }
     const videoId = getYoutubeVideoId(url);
     if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     return url;
   };
 
   const getYoutubeMobileUrl = (url: string) => {
+    if (url.includes('embed/live_stream')) {
+      return url + '&autoplay=1'; // Direct embed URL works in WebView
+    }
     if (url.includes('embed?listType=playlist&list=')) {
       const listId = url.split('&list=')[1].split('&')[0];
       return `https://m.youtube.com/playlist?list=${listId}`;
@@ -1090,12 +1096,12 @@ if (!temple) {
        </Text>
      </View>
    ) : (
-     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-       <Ionicons name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+     <View style={{ flexDirection: 'row', alignItems: 'center', opacity: 0.8 }}>
+       <Ionicons name="play-circle" size={20} color="#DDD" style={{ marginRight: 8 }} />
        <Text style={styles.youtubeLinkText}>
          {isYoutubeUrl
-           ? (t('language') === 'hi' ? 'यूट्यूब पर आरती देखें' : 'Watch Aarti on YouTube')
-           : (t('language') === 'hi' ? 'लाइव दर्शन देखें' : 'Watch Live Darshan')}
+           ? (t('language') === 'hi' ? 'आरती अभी लाइव नहीं है' : 'Aarti Not Live')
+           : (t('language') === 'hi' ? 'दर्शन ऑफ़लाइन' : 'Darshan Offline')}
        </Text>
      </View>
    )}
