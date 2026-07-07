@@ -1,59 +1,69 @@
 import { getUpanishadsChapter } from '../../src/services/api';
-import { loadCachedBookContent } from './book-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const TOTAL_CHAPTERS = 12;
+const CDN_BASE = 'https://brahmandfeed23.b-cdn.net/library';
+const TOTAL_CHAPTERS = 20;
 const PREFETCH_AHEAD = 3;
-const CACHE_PREFIX = 'book-json-cache:v1:upanishads:chapter:';
+const RAW_PREFIX = 'raw:upanishads:';
+const PARSED_PREFIX = 'parsed:upanishads:';
 
 const normalizeUpanishadVerse = (verse: any) => ({
   ...verse,
   translations: typeof verse?.translations === 'object' && verse?.translations !== null ? verse.translations : {},
 });
 
-const cacheChapter = async (num: number, verses: any[]) => {
-  if (verses.length > 0) {
-    await AsyncStorage.setItem(`${CACHE_PREFIX}${num}`, JSON.stringify({ cachedAt: Date.now(), verses }));
-  }
+const storeRawChapter = async (num: number, rawJson: string) => {
+  await AsyncStorage.setItem(`${RAW_PREFIX}${num}`, rawJson);
 };
 
-const getCachedChapter = async (num: number): Promise<any[] | null> => {
-  const raw = await AsyncStorage.getItem(`${CACHE_PREFIX}${num}`);
+const getRawChapter = async (num: number): Promise<string | null> => {
+  return AsyncStorage.getItem(`${RAW_PREFIX}${num}`);
+};
+
+const parseChapter = async (num: number): Promise<any[] | null> => {
+  const parsed = await AsyncStorage.getItem(`${PARSED_PREFIX}${num}`);
+  if (parsed) { try { return JSON.parse(parsed).verses; } catch { return null; } }
+  const raw = await getRawChapter(num);
   if (!raw) return null;
-  try { const p = JSON.parse(raw); return Array.isArray(p?.verses) ? p.verses : null; } catch { return null; }
+  try {
+    const data = JSON.parse(raw);
+    const verses = Array.isArray(data?.verses) ? data.verses.map(normalizeUpanishadVerse) : [];
+    await AsyncStorage.setItem(`${PARSED_PREFIX}${num}`, JSON.stringify({ verses }));
+    return verses;
+  } catch { return null; }
 };
 
-const fetchAndCacheChapter = async (num: number): Promise<any[] | null> => {
+const clearParsedChapter = async (num: number) => {
+  await AsyncStorage.removeItem(`${PARSED_PREFIX}${num}`);
+};
+
+const fetchAndStoreRaw = async (num: number): Promise<boolean> => {
   try {
+    try {
+      const res = await fetch(`${CDN_BASE}/upanishads/chapter-${num}.json`);
+      if (res.ok) { await storeRawChapter(num, await res.text()); return true; }
+    } catch {}
     const res = await getUpanishadsChapter(num);
-    const verses = Array.isArray(res.data?.verses) ? res.data.verses.map(normalizeUpanishadVerse) : [];
-    await cacheChapter(num, verses);
-    return verses.length > 0 ? verses : null;
-  } catch { return null; }
+    await storeRawChapter(num, JSON.stringify(res.data));
+    return true;
+  } catch { return false; }
 };
 
 export const prefetchUpanishadsChapters = (from: number, count: number = PREFETCH_AHEAD) => {
   for (let i = from; i <= Math.min(from + count - 1, TOTAL_CHAPTERS); i++) {
-    getCachedChapter(i).then(cached => { if (!cached) fetchAndCacheChapter(i); });
+    getRawChapter(i).then(raw => { if (!raw) fetchAndStoreRaw(i); });
   }
 };
 
 export const loadUpanishadChapter = async (chapterNumber: number) => {
-  try {
-    return await loadCachedBookContent({
-      cacheKey: `upanishads:chapter:${chapterNumber}`,
-      fetcher: async () => {
-        const cached = await getCachedChapter(chapterNumber);
-        if (cached) return { data: { verses: cached } };
-        const verses = await fetchAndCacheChapter(chapterNumber);
-        return { data: { verses: verses || [] } };
-      },
-      extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
-      normalizeVerse: normalizeUpanishadVerse,
-      timeoutMessage: `Upanishad ${chapterNumber} loading timed out`,
-    });
-  } catch (error) {
-    console.error('Failed to load Upanishads chapter:', error);
-    throw error;
+  const cached = await parseChapter(chapterNumber);
+  if (cached?.length) return cached;
+  await fetchAndStoreRaw(chapterNumber);
+  return parseChapter(chapterNumber) || [];
+};
+
+export const cleanupUpanishadsChapters = (currentChapter: number) => {
+  for (let i = Math.max(1, currentChapter - 2); i < currentChapter; i++) {
+    clearParsedChapter(i);
   }
 };

@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native';
 import { useLibraryStore } from '../../src/store/libraryStore';
 import BookLayout, { BookVerse, PageItem, SpreadItem, useBookLayout } from '../../src/components/BookLayout';
-import { loadBhagavadGitaChapter, getPreferredTranslation } from '../../src/services/bhagavad-geeta-service';
+import { loadBhagavadGitaChapter, getPreferredTranslation, prefetchBhagavadGitaChapters, cleanupBhagavadGitaChapters } from '../../src/services/bhagavad-geeta-service';
 
 const convertToHindiNumerals = (num: number | string | undefined | null) => {
   if (num === undefined || num === null) return '';
@@ -336,6 +336,10 @@ export default function BhagvadGeetaReaderScreen() {
       progressPercent: chapterSpreadCount > 0 ? (relativeIndex / chapterSpreadCount) * 100 : 0,
       lastOpenedTime: Date.now(),
     });
+
+    // ponytail: cleanup old chapters, prefetch next ones
+    cleanupBhagavadGitaChapters(activeChapter);
+    prefetchBhagavadGitaChapters(activeChapter + 1);
   }, [spreadIndex, currentPageChapter, chapterPages, chapterStartSpreads, pages.length]);
 
   useEffect(() => {

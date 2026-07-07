@@ -1,59 +1,69 @@
 import { getMahabharataBook } from '../../src/services/api';
-import { loadCachedBookContent } from './book-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const CDN_BASE = 'https://brahmandfeed23.b-cdn.net/library';
 const TOTAL_CHAPTERS = 18;
 const PREFETCH_AHEAD = 3;
-const CACHE_PREFIX = 'book-json-cache:v1:mahabharata:book:';
+const RAW_PREFIX = 'raw:mahabharata:';
+const PARSED_PREFIX = 'parsed:mahabharata:';
 
 const normalizeMahabharataVerse = (verse: any) => ({
   ...verse,
   translations: typeof verse?.translations === 'object' && verse?.translations !== null ? verse.translations : {},
 });
 
-const cacheChapter = async (num: number, verses: any[]) => {
-  if (verses.length > 0) {
-    await AsyncStorage.setItem(`${CACHE_PREFIX}${num}`, JSON.stringify({ cachedAt: Date.now(), verses }));
-  }
+const storeRawChapter = async (num: number, rawJson: string) => {
+  await AsyncStorage.setItem(`${RAW_PREFIX}${num}`, rawJson);
 };
 
-const getCachedChapter = async (num: number): Promise<any[] | null> => {
-  const raw = await AsyncStorage.getItem(`${CACHE_PREFIX}${num}`);
+const getRawChapter = async (num: number): Promise<string | null> => {
+  return AsyncStorage.getItem(`${RAW_PREFIX}${num}`);
+};
+
+const parseChapter = async (num: number): Promise<any[] | null> => {
+  const parsed = await AsyncStorage.getItem(`${PARSED_PREFIX}${num}`);
+  if (parsed) { try { return JSON.parse(parsed).verses; } catch { return null; } }
+  const raw = await getRawChapter(num);
   if (!raw) return null;
-  try { const p = JSON.parse(raw); return Array.isArray(p?.verses) ? p.verses : null; } catch { return null; }
+  try {
+    const data = JSON.parse(raw);
+    const verses = Array.isArray(data?.verses) ? data.verses.map(normalizeMahabharataVerse) : [];
+    await AsyncStorage.setItem(`${PARSED_PREFIX}${num}`, JSON.stringify({ verses }));
+    return verses;
+  } catch { return null; }
 };
 
-const fetchAndCacheChapter = async (num: number): Promise<any[] | null> => {
+const clearParsedChapter = async (num: number) => {
+  await AsyncStorage.removeItem(`${PARSED_PREFIX}${num}`);
+};
+
+const fetchAndStoreRaw = async (num: number): Promise<boolean> => {
   try {
+    try {
+      const res = await fetch(`${CDN_BASE}/mahabharata/chapter-${num}.json`);
+      if (res.ok) { await storeRawChapter(num, await res.text()); return true; }
+    } catch {}
     const res = await getMahabharataBook(num);
-    const verses = Array.isArray(res.data?.verses) ? res.data.verses.map(normalizeMahabharataVerse) : [];
-    await cacheChapter(num, verses);
-    return verses.length > 0 ? verses : null;
-  } catch { return null; }
+    await storeRawChapter(num, JSON.stringify(res.data));
+    return true;
+  } catch { return false; }
 };
 
 export const prefetchMahabharataChapters = (from: number, count: number = PREFETCH_AHEAD) => {
   for (let i = from; i <= Math.min(from + count - 1, TOTAL_CHAPTERS); i++) {
-    getCachedChapter(i).then(cached => { if (!cached) fetchAndCacheChapter(i); });
+    getRawChapter(i).then(raw => { if (!raw) fetchAndStoreRaw(i); });
   }
 };
 
 export const loadMahabharataBook = async (bookNumber: number) => {
-  try {
-    return await loadCachedBookContent({
-      cacheKey: `mahabharata:book:${bookNumber}`,
-      fetcher: async () => {
-        const cached = await getCachedChapter(bookNumber);
-        if (cached) return { data: { verses: cached } };
-        const verses = await fetchAndCacheChapter(bookNumber);
-        return { data: { verses: verses || [] } };
-      },
-      extractVerses: (response) => Array.isArray(response.data?.verses) ? response.data.verses : [],
-      normalizeVerse: normalizeMahabharataVerse,
-      timeoutMessage: `Book ${bookNumber} loading timed out`,
-    });
-  } catch (error) {
-    console.error('Failed to load Mahabharata book:', error);
-    throw error;
+  const cached = await parseChapter(bookNumber);
+  if (cached?.length) return cached;
+  await fetchAndStoreRaw(bookNumber);
+  return parseChapter(bookNumber) || [];
+};
+
+export const cleanupMahabharataChapters = (currentChapter: number) => {
+  for (let i = Math.max(1, currentChapter - 2); i < currentChapter; i++) {
+    clearParsedChapter(i);
   }
 };
