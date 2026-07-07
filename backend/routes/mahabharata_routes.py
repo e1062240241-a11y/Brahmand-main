@@ -67,3 +67,11 @@ async def get_mahabharata_book(book_number: int):
         "total_verses": len(verses),
         "verses": verses,
     }
+
+
+@router.get("/all")
+async def get_mahabharata_all():
+    chapters = {}
+    for i in range(1, 19):
+        chapters[i] = _load_mahabharata_book(i)
+    return {"book": "mahabharata", "chapters": chapters}

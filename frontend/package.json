@@ -52,6 +52,7 @@
     "expo-image": "~55.0.11",
     "expo-image-manipulator": "~55.0.17",
     "expo-image-picker": "~55.0.20",
+    "expo-keep-awake": "~15.0.0",
     "expo-linear-gradient": "~55.0.14",
     "expo-linking": "~55.0.15",
     "expo-location": "~55.1.10",
@@ -108,8 +109,8 @@
     "vm-browserify": "^1.1.2"
   },
   "optionalDependencies": {
-    "lightningcss-darwin-x64": "^1.32.0",
-    "lightningcss-darwin-arm64": "^1.32.0"
+    "lightningcss-darwin-arm64": "^1.32.0",
+    "lightningcss-darwin-x64": "^1.32.0"
   },
   "private": true,
   "overrides": {

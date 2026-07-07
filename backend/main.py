@@ -647,7 +647,8 @@ def _deduplicate_posts(posts: list[dict]) -> list[dict]:
             if match:
                 path_user_id = match.group(1)
                 # If the folder path ID does not match the post's user_id, it is corrupt
-                if path_user_id != post_user_id:
+                # (Unless it is a repost, where the media belongs to the original user)
+                if path_user_id != post_user_id and post.get('source') != 'repost' and not post.get('original_post_id'):
                     logger.warning(f"Corrupt post filtered: Post {post.get('id')} has user_id {post_user_id} but media folder belongs to {path_user_id}")
                     continue
 

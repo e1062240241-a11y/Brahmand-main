@@ -1627,19 +1627,26 @@ export default function HomeScreen() {
     }
   }, [activePostKey]);
 
-  // Auto-initialize activePostKey to the first post on Android to prevent loading failure of the first reel/video on startup.
+  // Auto-initialize activePostKey to the first post to prevent loading failure of the first reel/video on startup.
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      if (feedPosts && feedPosts.length > 0) {
-        const firstPost = feedPosts[0];
-        const firstKey = `feed-android-0-${firstPost.id || firstPost.media_url || 0}`;
-        const keyExists = feedPosts.some((post, index) => `feed-android-${index}-${post.id || post.media_url || index}` === activePostKey);
-        if (!activePostKey || !keyExists) {
-          setActivePostKey(firstKey);
-        }
-      } else {
-        setActivePostKey(null);
+    if (feedPosts && feedPosts.length > 0) {
+      const firstPost = feedPosts[0];
+      const firstKey = Platform.OS === 'android'
+        ? `feed-android-0-${firstPost.id || firstPost.media_url || 0}`
+        : `feed-0-${firstPost.id || firstPost.media_url || 0}`;
+
+      const keyExists = feedPosts.some((post, index) => {
+        const key = Platform.OS === 'android'
+          ? `feed-android-${index}-${post.id || post.media_url || index}`
+          : `feed-${index}-${post.id || post.media_url || index}`;
+        return key === activePostKey;
+      });
+
+      if (!activePostKey || !keyExists) {
+        setActivePostKey(firstKey);
       }
+    } else {
+      setActivePostKey(null);
     }
   }, [feedPosts, activeTab, activePostKey]);
 

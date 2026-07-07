@@ -84,3 +84,11 @@ async def get_ramcharitmanas_kand(kand_number: int):
         "total_verses": len(verses),
         "verses": verses,
     }
+
+
+@router.get("/all")
+async def get_ramcharitmanas_all():
+    chapters = {}
+    for i in range(1, 8):
+        chapters[i] = _load_ramcharitmanas_kand(i)
+    return {"book": "ramcharitmanas", "chapters": chapters}

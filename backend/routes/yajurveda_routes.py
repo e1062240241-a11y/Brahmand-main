@@ -99,3 +99,20 @@ async def get_yajurveda_chapter(chapter_number: int):
         "total_verses": len(verses),
         "verses": verses,
     }
+
+
+@router.get("/all")
+async def get_yajurveda_all():
+    kanva = _load_yajurveda_kanva()
+    madhyadina = _load_yajurveda_madhyadina()
+    all_rows = kanva + madhyadina
+    chapters: Dict[int, list] = {}
+    for row in all_rows:
+        ch = row.get("chapter")
+        if isinstance(ch, int):
+            chapters.setdefault(ch, []).append(row)
+    # renumber verses per chapter
+    for ch in chapters:
+        for idx, v in enumerate(chapters[ch]):
+            v["verse"] = idx + 1
+    return {"book": "yajurveda", "chapters": chapters}

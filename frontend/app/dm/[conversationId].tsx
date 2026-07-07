@@ -1803,7 +1803,7 @@ const DirectMessageScreen = () => {
           style={StyleSheet.absoluteFillObject}
         />
       </View>
-      
+
       <View style={[
         styles.header,
         Platform.OS === 'android'
@@ -1947,8 +1947,8 @@ const DirectMessageScreen = () => {
             />
           )}
         </View>
-        
-        <View 
+
+        <View
           style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}
           onLayout={logLayout('Input wrapper', [styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }])}
         >
@@ -1985,8 +1985,8 @@ const DirectMessageScreen = () => {
               <TouchableOpacity onPress={handleOpenCamera} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="camera-outline" size={24} color="#000" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="image-outline" size={24} color="#000" />
+              <TouchableOpacity onPress={toggleAttachmentOptions} disabled={uploadingMedia || sending || isInputLocked} style={styles.inlineIcon} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="attach-outline" size={24} color="#000" />
               </TouchableOpacity>
             </View>
             <TouchableOpacity
@@ -2095,8 +2095,8 @@ const DirectMessageScreen = () => {
         edges={['left', 'right']}
         onLayout={logLayout('Root container / SafeAreaView', styles.container)}
       >
-        <KeyboardAvoidingView 
-          style={{ flex: 1 }} 
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           onLayout={logLayout('KeyboardAvoidingView', { flex: 1 })}

@@ -62,3 +62,12 @@ async def get_bhagavad_gita_chapter(chapter_number: int):
         "total_verses": len(verses),
         "verses": verses,
     }
+
+
+@router.get("/all")
+async def get_bhagavad_gita_all():
+    # ponytail: load all 18 chapters in one call, avoids N round-trips
+    chapters = {}
+    for i in range(1, 19):
+        chapters[i] = _load_bhagavad_gita_chapter(i)
+    return {"book": "bhagavad-gita", "chapters": chapters}

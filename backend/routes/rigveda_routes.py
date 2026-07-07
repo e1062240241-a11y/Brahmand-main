@@ -67,3 +67,11 @@ async def get_rigveda_mandala(mandala_number: int):
         "total_verses": len(verses),
         "verses": verses,
     }
+
+
+@router.get("/all")
+async def get_rigveda_all():
+    chapters = {}
+    for i in range(1, 11):
+        chapters[i] = _load_rigveda_mandala(i)
+    return {"book": "rigveda", "chapters": chapters}

@@ -50,3 +50,14 @@ async def get_upanishad_chapter(chapter_number: int):
         "total_verses": len(chapter_verses),
         "verses": chapter_verses,
     }
+
+
+@router.get("/all")
+async def get_upanishads_all():
+    all_verses = _load_upanishads()
+    chapters: Dict[int, list] = {}
+    for v in all_verses:
+        ch = v.get("chapter")
+        if isinstance(ch, int):
+            chapters.setdefault(ch, []).append(v)
+    return {"book": "upanishads", "chapters": chapters}

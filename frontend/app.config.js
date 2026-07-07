@@ -161,7 +161,7 @@ module.exports = ({ config }) => {
       // Handle background playback for expo-audio
       if (Array.isArray(plugin) && plugin[0] === 'expo-audio') {
         const options = plugin[1] || {};
-        options.enableBackgroundPlayback = !isIos;
+        options.enableBackgroundPlayback = true;
         return [plugin[0], options];
       }
 
@@ -169,17 +169,6 @@ module.exports = ({ config }) => {
     });
   }
 
-  // Extra guard: explicitly strip "audio" from UIBackgroundModes in Info.plist during the iOS mod build phase
-  const withRemoveAudioBackgroundMode = (config) => {
-    return withInfoPlist(config, (config) => {
-      if (config.modResults.UIBackgroundModes) {
-        config.modResults.UIBackgroundModes = config.modResults.UIBackgroundModes.filter(
-          (mode) => mode !== 'audio'
-        );
-      }
-      return config;
-    });
-  };
-
-  return withRemoveAudioBackgroundMode(config);
+  // Removed stripping audio from UIBackgroundModes to allow background audio
+  return config;
 };
