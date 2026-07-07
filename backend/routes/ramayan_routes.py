@@ -77,3 +77,11 @@ async def get_ramayan_kaanda(kaanda_number: int):
         "total_verses": len(verses),
         "verses": verses,
     }
+
+
+@router.get("/all")
+async def get_ramayan_all():
+    chapters = {}
+    for i in range(1, 8):
+        chapters[i] = _load_ramayan_kaanda(i)
+    return {"book": "ramayan", "chapters": chapters}

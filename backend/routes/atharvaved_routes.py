@@ -67,3 +67,11 @@ async def get_atharvaved_kaanda(kaanda_number: int):
         "total_verses": len(verses),
         "verses": verses,
     }
+
+
+@router.get("/all")
+async def get_atharvaved_all():
+    chapters = {}
+    for i in range(1, 21):
+        chapters[i] = _load_atharvaved_kaanda(i)
+    return {"book": "atharvaved", "chapters": chapters}

@@ -1403,26 +1403,50 @@ export const getFeedPreferences = () => api.get("/users/me/feed-preferences");
 export const getBhagavadGitaChapter = (chapterNumber: number = 1) =>
   api.get(`/library/bhagavad-gita/chapter/${chapterNumber}`);
 
+export const getBhagavadGitaAll = () =>
+  api.get(`/library/bhagavad-gita/all`);
+
 export const getRamcharitmanasKand = (kandNumber: number = 1) =>
   api.get(`/library/ramcharitmanas/chapter/${kandNumber}`);
+
+export const getRamcharitmanasAll = () =>
+  api.get(`/library/ramcharitmanas/all`);
 
 export const getAtharvavedChapter = (chapterNumber: number = 1) =>
   api.get(`/library/atharvaved/chapter/${chapterNumber}`);
 
+export const getAtharvavedAll = () =>
+  api.get(`/library/atharvaved/all`);
+
 export const getRamayanChapter = (chapterNumber: number = 1) =>
   api.get(`/library/ramayan/chapter/${chapterNumber}`);
+
+export const getRamayanAll = () =>
+  api.get(`/library/ramayan/all`);
 
 export const getRigvedaChapter = (chapterNumber: number = 1) =>
   api.get(`/library/rigveda/chapter/${chapterNumber}`);
 
+export const getRigvedaAll = () =>
+  api.get(`/library/rigveda/all`);
+
 export const getYajurvedaChapter = (chapterNumber: number = 1) =>
   api.get(`/library/yajurveda/chapter/${chapterNumber}`);
+
+export const getYajurvedaAll = () =>
+  api.get(`/library/yajurveda/all`);
 
 export const getMahabharataBook = (bookNumber: number = 1) =>
   api.get(`/library/mahabharata/book/${bookNumber}`);
 
+export const getMahabharataAll = () =>
+  api.get(`/library/mahabharata/all`);
+
 export const getUpanishadsChapter = (chapterNumber: number = 1) =>
   api.get(`/library/upanishads/chapter/${chapterNumber}`);
+
+export const getUpanishadsAll = () =>
+  api.get(`/library/upanishads/all`);
 
 // Community APIs
 export const getCommunities = () => api.get("/communities");
