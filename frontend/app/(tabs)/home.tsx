@@ -12,6 +12,7 @@ import {
   Image,
   ImageBackground,
   Dimensions,
+  useWindowDimensions,
   Modal,
   TextInput,
   ActivityIndicator,
@@ -430,6 +431,17 @@ const formatFestivalDate = (dateStr: string) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const screenWidth = Platform.OS === 'android' ? windowWidth : SCREEN_WIDTH;
+  const screenHeight = Platform.OS === 'android' ? windowHeight : SCREEN_HEIGHT;
+  const featureCardWidth = Platform.OS === 'android'
+    ? Math.min(155, (screenWidth - 42) / 2)
+    : FEATURE_CARD_WIDTH;
+  const featureCardHeight = Platform.OS === 'android' ? 72 : FEATURE_CARD_HEIGHT;
+  const featureSnapInterval = Platform.OS === 'android' ? featureCardWidth + 10 : FEATURE_SNAP_INTERVAL;
+  const actionCardWidth = Platform.OS === 'android' ? 120 : ACTION_CARD_WIDTH;
+  const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
+  const actionCardSnapInterval = Platform.OS === 'android' ? 130 : ACTION_CARD_SNAP_INTERVAL;
   const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
@@ -1629,7 +1641,7 @@ export default function HomeScreen() {
     let closestKey = null;
     let maxVisible = 0;
     const viewportTop = y;
-    const viewportBottom = y + SCREEN_HEIGHT;
+    const viewportBottom = y + screenHeight;
 
     for (const key of feedPostKeys) {
       const offset = postOffsetsRef.current[key];
@@ -1641,7 +1653,7 @@ export default function HomeScreen() {
         const visibleBottom = Math.min(viewportBottom, postBottom);
         const visibleAmount = Math.max(0, visibleBottom - visibleTop);
         // Stricter condition: Post must be at least 60% visible OR take up at least 50% of the screen
-        const visibilityThreshold = Math.min(height * 0.6, SCREEN_HEIGHT * 0.5);
+        const visibilityThreshold = Math.min(height * 0.6, screenHeight * 0.5);
         if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
           maxVisible = visibleAmount;
           closestKey = key;
@@ -1674,7 +1686,7 @@ export default function HomeScreen() {
         }
       }
     }
-  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts, onSmartScroll]);
+  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts, onSmartScroll, screenHeight]);
 
   const loadHomeRequests = useCallback(async () => {
     // Legacy function, replaced by initializeHome
@@ -2471,13 +2483,13 @@ export default function HomeScreen() {
       ? Math.max(insets.bottom + 5, 5) 
       : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
       
-    const tabY = SCREEN_HEIGHT - bottomPosition - 69;
-    const tabCenterY = SCREEN_HEIGHT - bottomPosition - 69 / 2;
+    const tabY = screenHeight - bottomPosition - 69;
+    const tabCenterY = screenHeight - bottomPosition - 69 / 2;
     const tabCenterX = (idx: number) => {
       // Scale design-space (373dp) positions to the actual bar width
       const OUTER_H_PADDING = 14;
       const DESIGN_BAR_WIDTH = 373;
-      const barWidth = Math.max(SCREEN_WIDTH - OUTER_H_PADDING * 2, 200);
+      const barWidth = Math.max(screenWidth - OUTER_H_PADDING * 2, 200);
       const scaleX = barWidth / DESIGN_BAR_WIDTH;
       const leftOffset = OUTER_H_PADDING; // outerContainer starts after padding
       // Design-space home-active icon centers
@@ -2494,15 +2506,15 @@ export default function HomeScreen() {
     // Set coordinates based on current step
     switch (coachMarkStep) {
       case 1: // SOS Card (Top menu, index 1)
-        targetX = 201;
+        targetX = Platform.OS === 'android' ? PAGE_PADDING + featureCardWidth + 10 : 201;
         targetY = insets.top + topFeaturesY;
-        targetW = 175;
-        targetH = 75;
+        targetW = Platform.OS === 'android' ? featureCardWidth : 175;
+        targetH = Platform.OS === 'android' ? featureCardHeight : 75;
         arrowDirection = 'up';
         break;
       case 2: { // Kundli card in horizontal quick-access scroll (index 3)
         const PAGE_PADDING_STEP2 = 16;
-        const CARD_WIDTH_STEP2 = 175;
+        const CARD_WIDTH_STEP2 = Platform.OS === 'android' ? featureCardWidth : 175;
         const CARD_GAP_STEP2 = 10;
         const kundliCardIndex = 3; // Kundli is 4th item (0-indexed)
         const scrollOffsetStep2 = kundliCardIndex * (CARD_WIDTH_STEP2 + CARD_GAP_STEP2);
@@ -2510,21 +2522,21 @@ export default function HomeScreen() {
         targetX = PAGE_PADDING_STEP2;
         targetY = insets.top + topFeaturesY;
         targetW = CARD_WIDTH_STEP2;
-        targetH = 75;
+        targetH = Platform.OS === 'android' ? featureCardHeight : 75;
         arrowDirection = 'up';
         break;
       }
       case 3: // Live Jaap (Hanuman Chalisa)
         targetX = 20;
         targetY = insets.top + bannersY - 80;
-        targetW = SCREEN_WIDTH - 40;
+        targetW = screenWidth - 40;
         targetH = 160;
         arrowDirection = 'up';
         break;
       case 4: // Live Aarti (Somnath Temple)
         targetX = 20;
         targetY = insets.top + bannersY - 80;
-        targetW = SCREEN_WIDTH - 40;
+        targetW = screenWidth - 40;
         targetH = 160;
         arrowDirection = 'up';
         break;
@@ -2532,8 +2544,8 @@ export default function HomeScreen() {
         const fabSize = 60;
         const fabRight = 20;
         const fabBottom = 90 + insets.bottom;
-        targetX = SCREEN_WIDTH - fabRight - fabSize;
-        targetY = SCREEN_HEIGHT - fabBottom - fabSize;
+        targetX = screenWidth - fabRight - fabSize;
+        targetY = screenHeight - fabBottom - fabSize;
         targetW = fabSize;
         targetH = fabSize;
         arrowDirection = 'down';
@@ -2544,18 +2556,22 @@ export default function HomeScreen() {
     }
 
     const isStep3Or4 = coachMarkStep === 3 || coachMarkStep === 4;
-    const cardWidth = isStep3Or4 ? 340 : 348;
-    const cardHeight = isStep3Or4 ? 275.793 : (coachMarkStep === 2 ? 352.167 : 369.999);
+    const cardWidth = Platform.OS === 'android'
+      ? Math.min(320, screenWidth - 32)
+      : (isStep3Or4 ? 340 : 348);
+    const cardHeight = Platform.OS === 'android'
+      ? undefined
+      : (isStep3Or4 ? 275.793 : (coachMarkStep === 2 ? 352.167 : 369.999));
     const cardBg = isStep3Or4 ? '#D9D9D9' : '#FCF3EE';
     const cardBorderColor = isStep3Or4 ? '#D9D9D9' : '#FFEFE5';
     const cardTopOffset = arrowDirection === 'up'
       ? targetY + targetH + 12
       : undefined;
     const cardBottomOffset = arrowDirection === 'down'
-      ? SCREEN_HEIGHT - targetY + 12
+      ? screenHeight - targetY + 12
       : undefined;
 
-    const cardLeft = (SCREEN_WIDTH - cardWidth) / 2;
+    const cardLeft = (screenWidth - cardWidth) / 2;
     const arrowX = targetX + targetW / 2 - cardLeft;
 
     const handleSkip = async () => {
@@ -2607,7 +2623,7 @@ export default function HomeScreen() {
         bannerScrollRef.current?.scrollTo({ x: 0, animated: true });
       } else if (nextStep === 4) {
         scrollViewRef.current?.scrollTo({ y: 80, animated: true });
-        bannerScrollRef.current?.scrollTo({ x: SCREEN_WIDTH - 40 + 12, animated: true });
+        bannerScrollRef.current?.scrollTo({ x: screenWidth - 40 + 12, animated: true });
       } else if (nextStep === 5) {
         // Scroll back to top for FAB spotlight
         scrollViewRef.current?.scrollTo({ y: 0, animated: true });
@@ -2901,7 +2917,8 @@ export default function HomeScreen() {
               },
               coachMarkStep === 2 && {
                 alignItems: 'flex-start',
-                width: 144,
+                width: Platform.OS === 'android' ? undefined : 144,
+                flex: Platform.OS === 'android' ? 1 : undefined,
               }
             ]}>
               <Text
@@ -2914,13 +2931,13 @@ export default function HomeScreen() {
                     fontSize: 16,
                     fontStyle: 'normal',
                     fontWeight: '600',
-                    width: 308,
+                    width: Platform.OS === 'android' ? '100%' : 308,
                   },
                   (coachMarkStep === 2) && {
                     fontSize: 14,
                     lineHeight: 18,
                     fontWeight: '700',
-                    width: 144,
+                    width: Platform.OS === 'android' ? '100%' : 144,
                   }
                 ]}
               >
@@ -2934,7 +2951,7 @@ export default function HomeScreen() {
                     fontSize: 13,
                     lineHeight: 16,
                     fontWeight: '700',
-                    width: 144,
+                    width: Platform.OS === 'android' ? '100%' : 144,
                   }
                 ]}>{currentData.subtitle}</Text>
               ) : null}
@@ -2948,12 +2965,12 @@ export default function HomeScreen() {
                     fontSize: 12,
                     fontStyle: 'normal',
                     fontWeight: '500',
-                    width: 308,
+                    width: Platform.OS === 'android' ? '100%' : 308,
                   },
                   coachMarkStep === 2 && {
                     fontSize: 10,
                     lineHeight: 14,
-                    width: 144,
+                    width: Platform.OS === 'android' ? '100%' : 144,
                   }
                 ]}
               >
@@ -2964,7 +2981,7 @@ export default function HomeScreen() {
                 <View style={[
                   styles.coachCallout,
                   coachMarkStep === 2 && {
-                    width: 144,
+                    width: Platform.OS === 'android' ? '100%' : 144,
                     marginTop: 8,
                     padding: 6,
                     backgroundColor: '#FFF',
@@ -3250,7 +3267,7 @@ export default function HomeScreen() {
                           onPress={() => router.push('/(tabs)/profile')}
                           onLongPress={() => setShowProfileActions(true)}
                         >
-                          <Avatar name={firstName} photo={avatarUri} size={55} />
+                          <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
                         </TouchableOpacity>
                       </View>
 
@@ -3268,10 +3285,10 @@ export default function HomeScreen() {
                           color: '#E6C87A',
                           textAlign: 'center',
                           fontFamily: 'Cinzel',
-                          fontSize: 28,
+                          fontSize: Platform.OS === 'android' ? 22 : 28,
                           fontStyle: 'normal',
                           fontWeight: '500',
-                          lineHeight: 36,
+                          lineHeight: Platform.OS === 'android' ? 28 : 36,
                           letterSpacing: 0,
                         }}>BRAHMAND</Text>
                       </View>
@@ -3282,7 +3299,7 @@ export default function HomeScreen() {
                           style={styles.headerIconButton}
                           onPress={() => setSearchActive(!searchActive)}
                         >
-                          <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={24} color="#000" />
+                          <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                         </TouchableOpacity>
                         <TouchableOpacity
                           activeOpacity={0.7}
@@ -3290,7 +3307,7 @@ export default function HomeScreen() {
                           onPress={handleNotificationPress}
                         >
                           <View>
-                            <Ionicons name="notifications-outline" size={24} color="#000" />
+                            <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                             {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
                           </View>
                         </TouchableOpacity>
@@ -3442,13 +3459,13 @@ export default function HomeScreen() {
                           ref={topFeaturesScrollRef}
                           horizontal
                           showsHorizontalScrollIndicator={false}
-                          snapToInterval={FEATURE_SNAP_INTERVAL}
+                          snapToInterval={featureSnapInterval}
                           decelerationRate="fast"
                           contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
                           style={{ width: '100%' }}
                           onScroll={(e) => {
                             const x = e.nativeEvent.contentOffset.x;
-                            const idx = Math.round(x / FEATURE_SNAP_INTERVAL);
+                            const idx = Math.round(x / featureSnapInterval);
                             const clampedIdx = Math.max(0, Math.min(idx, baseQuickAccess.length - 1));
                             setActiveFeatureIndex(clampedIdx);
                             topFeaturesAutoScrollIndex.current = clampedIdx;
@@ -3502,7 +3519,10 @@ export default function HomeScreen() {
                             return (
                               <TouchableOpacity
                                 key={idx}
-                                style={styles.featureCard}
+                                style={[
+                                  styles.featureCard,
+                                  Platform.OS === 'android' && { width: featureCardWidth, height: featureCardHeight, paddingHorizontal: 8 }
+                                ]}
                                 activeOpacity={0.9}
                                 onPress={() => {
                                   if (item.label === 'Panchang') router.push('/panchang');
@@ -3515,59 +3535,59 @@ export default function HomeScreen() {
                                 }}
                               >
                                 {item.label === 'SOS' ? (
-                                  <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' }}>
-                                    <View style={{ width: 42.2, height: 42.2, borderRadius: 21.1, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' }}>
-                                      <View style={{ width: 34.5, height: 34.5, borderRadius: 17.25, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' }}>
-                                        <Text style={{ color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 11, fontWeight: '600' }}>SOS</Text>
+                                  <View style={Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' }}>
+                                    <View style={Platform.OS === 'android' ? { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' } : { width: 42.2, height: 42.2, borderRadius: 21.1, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' }}>
+                                      <View style={Platform.OS === 'android' ? { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' } : { width: 34.5, height: 34.5, borderRadius: 17.25, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' }}>
+                                        <Text style={Platform.OS === 'android' ? { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 9, fontWeight: '600' } : { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 11, fontWeight: '600' }}>SOS</Text>
                                       </View>
                                     </View>
                                   </View>
                                 ) : item.label === 'My Krishn' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 42, height: 42 }} contentFit="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={Platform.OS === 'android' ? { width: 32, height: 32 } : { width: 42, height: 42 }} contentFit="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Panchang' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/panchang_icon_3.png')} style={Platform.OS === 'android' ? { width: 20, height: 20 } : { width: 26, height: 26 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Kundli' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/custom_kundli_icon.png')} style={Platform.OS === 'android' ? { width: 32, height: 32 } : { width: 44, height: 44 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Brahmand Passport' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'visible', width: 52, height: 67 }]}>
-                                    <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 50, overflow: 'visible' } : { overflow: 'visible', width: 52, height: 67 }]}>
+                                    <Image source={require('../../assets/images/custom_passport_icon.png')} style={Platform.OS === 'android' ? { width: 40, height: 50, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
                                   </View>
                                 ) : item.label === 'Festival' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 26, height: 26 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={Platform.OS === 'android' ? { width: 20, height: 20 } : { width: 26, height: 26 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Brahmand Library' ? (
-                                  <View style={[styles.featureIconWrap, { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={{ width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 24, height: 24 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/library_icon_3.png')} style={Platform.OS === 'android' ? { width: 18, height: 18 } : { width: 24, height: 24 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : (
-                                  <View style={[styles.featureIconWrap, { backgroundColor: iconBg }]}>
-                                    <Ionicons name="calendar" size={24} color="#FFF" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, backgroundColor: iconBg } : { backgroundColor: iconBg }]}>
+                                    <Ionicons name="calendar" size={Platform.OS === 'android' ? 18 : 24} color="#FFF" />
                                   </View>
                                 )}
-                                <View style={styles.featureTextContainer}>
-                                  <Text style={styles.featureTitle} numberOfLines={undefined}>{displayLabel}</Text>
+                                <View style={[styles.featureTextContainer, Platform.OS === 'android' && { marginLeft: 6 }]}>
+                                  <Text style={[styles.featureTitle, Platform.OS === 'android' && { fontSize: 11, lineHeight: 13 }]} numberOfLines={undefined}>{displayLabel}</Text>
                                   {displaySubtitle ? (
-                                    <Text style={styles.featureSubtitle} numberOfLines={undefined}>{displaySubtitle}</Text>
+                                    <Text style={[styles.featureSubtitle, Platform.OS === 'android' && { fontSize: 8.5, lineHeight: 10 }]} numberOfLines={undefined}>{displaySubtitle}</Text>
                                   ) : null}
                                 </View>
-                                <Ionicons name="chevron-forward" size={12} color="#999" style={{ marginLeft: 'auto' }} />
+                                <Ionicons name="chevron-forward" size={10} color="#999" style={{ marginLeft: 'auto' }} />
                               </TouchableOpacity>
                             );
                           })}
@@ -3599,16 +3619,16 @@ export default function HomeScreen() {
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         decelerationRate="fast"
-                        snapToInterval={SCREEN_WIDTH - 40 + 12}
+                        snapToInterval={screenWidth - 40 + 12}
                         contentContainerStyle={{ gap: 12, paddingRight: 20 }}
                         onScroll={(e) => {
                           const x = e.nativeEvent.contentOffset.x;
-                          const idx = Math.round(x / (SCREEN_WIDTH - 40));
+                          const idx = Math.round(x / (screenWidth - 40));
                           setActiveBannerIndex(idx);
                         }}
                         scrollEventThrottle={16}
                       >
-                        <View style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]}>
+                        <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
                           <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                             <LinearGradient
                               colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
@@ -3735,7 +3755,7 @@ export default function HomeScreen() {
                         </ImageBackground>
                     </View>
 
-                    <View style={[styles.featuredLiveCard, { width: SCREEN_WIDTH - 40 }]}>
+                    <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
                       <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
                         <LinearGradient
                           colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
@@ -3876,7 +3896,7 @@ export default function HomeScreen() {
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 nestedScrollEnabled={true}
-                snapToInterval={ACTION_CARD_SNAP_INTERVAL}
+                snapToInterval={actionCardSnapInterval}
                 decelerationRate="fast"
                 contentContainerStyle={styles.actionCardsScroll}
                 style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
@@ -3891,7 +3911,7 @@ export default function HomeScreen() {
                     ? `${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`
                     : (req.description || req.location || 'Nearby');
                   return (
-                    <View key={req.id || 0} style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View key={req.id || 0} style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="rose">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
@@ -3902,8 +3922,8 @@ export default function HomeScreen() {
                                 <Ionicons name="people-outline" size={20} color="#FF0022" />
                               )}
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
                           </View>
                           <TouchableOpacity
                             style={{
@@ -3944,15 +3964,15 @@ export default function HomeScreen() {
                     </View>
                   );
                 })() : (
-                  <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                  <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="rose">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                           <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                             <BloodDropIcon />
                           </View>
-                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
-                          <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
                         </View>
                         <TouchableOpacity
                           style={{
@@ -3989,15 +4009,15 @@ export default function HomeScreen() {
 
                 {/* Register Business */}
                 {!myVendor && (
-                  <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                  <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                     <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                       <HomeCardTextureBg texture="peach">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                           <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                             <ShopIcon />
                           </View>
-                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{t('becomeVerified')}</Text>
-                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{t('sanatanVendor')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{t('becomeVerified')}</Text>
+                          <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{t('sanatanVendor')}</Text>
                         </View>
                         <TouchableOpacity
                           style={{
@@ -4042,15 +4062,15 @@ export default function HomeScreen() {
                     : 'Flower Decor\nAndheri West';
 
                   return (
-                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="mint">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                               <LotusIcon />
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
+                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
                           </View>
                           <TouchableOpacity
                             style={{
@@ -4094,15 +4114,15 @@ export default function HomeScreen() {
                 {(() => {
                   const aarti1 = ROTATING_AARTIS[activeAartiIndex];
                   return (
-                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="lavender">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                               <TempleIcon />
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
-                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
+                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: Platform.OS === 'android' ? '100%' : 95 }}>
                               <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                                 <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
@@ -4155,15 +4175,15 @@ export default function HomeScreen() {
                 {(() => {
                   const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
                   return (
-                    <View style={{ width: ACTION_CARD_WIDTH, height: ACTION_CARD_HEIGHT, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
                       <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
                         <HomeCardTextureBg texture="lavender">
                           <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                             <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
                               <TempleIcon />
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
-                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: 95 }}>
+                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
+                            <View style={{ alignItems: 'center', justifyContent: 'center', marginTop: 4, width: Platform.OS === 'android' ? '100%' : 95 }}>
                               <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('notify')}</Text>
                               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
                                 <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium' }}>{t('me')}</Text>
@@ -4994,12 +5014,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 2,
-    marginTop: 0,
+    marginTop: Platform.OS === 'android' ? 8 : 0,
+    paddingTop: Platform.OS === 'android' ? 4 : 0,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    flex: Platform.OS === 'android' ? undefined : 1,
     marginRight: 10,
   },
   headerRight: {
@@ -5008,15 +5029,15 @@ const styles = StyleSheet.create({
     gap: 0,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
+    width: Platform.OS === 'android' ? 36 : 40,
+    height: Platform.OS === 'android' ? 36 : 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileButton: {
-    width: 55,
-    height: 55,
-    borderRadius: 28,
+    width: Platform.OS === 'android' ? 42 : 55,
+    height: Platform.OS === 'android' ? 42 : 55,
+    borderRadius: Platform.OS === 'android' ? 21 : 28,
     position: 'relative',
     overflow: 'hidden',
   },
@@ -5231,8 +5252,8 @@ const styles = StyleSheet.create({
     gap: Platform.OS === 'ios' ? 8 : 10,
   },
   actionCard: {
-    width: ACTION_CARD_WIDTH,
-    height: ACTION_CARD_HEIGHT,
+    width: Platform.OS === 'android' ? undefined : ACTION_CARD_WIDTH,
+    height: Platform.OS === 'android' ? undefined : ACTION_CARD_HEIGHT,
     borderRadius: 15,
     padding: 10,
     justifyContent: 'space-between',
@@ -5541,7 +5562,7 @@ const styles = StyleSheet.create({
   },
   communityCardLabel: {
     color: '#9F45FF',
-    fontSize: 10,
+    fontSize: Platform.OS === 'android' ? 8.5 : 10,
     letterSpacing: 0,
     marginBottom: 2,
   },
@@ -5553,9 +5574,9 @@ const styles = StyleSheet.create({
   },
   communityCardTitle: {
     fontFamily: 'Inter_600SemiBold',
-    fontSize: 12.5,
+    fontSize: Platform.OS === 'android' ? 10.5 : 12.5,
     color: '#000',
-    lineHeight: 15,
+    lineHeight: Platform.OS === 'android' ? 13 : 15,
   },
   miniCardMembers: {
     fontFamily: 'Inter_500Medium',
@@ -5564,7 +5585,7 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   communityCardMembers: {
-    fontSize: 10,
+    fontSize: Platform.OS === 'android' ? 8.5 : 10,
     color: '#000',
     marginTop: 2,
   },

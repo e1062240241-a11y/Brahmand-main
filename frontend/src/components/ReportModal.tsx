@@ -147,6 +147,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
             <Text style={styles.subtitle}>Why are you reporting this?</Text>
 
             <ScrollView
+              style={Platform.OS === 'android' ? styles.scrollView : undefined}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.reasonList}
               keyboardShouldPersistTaps="handled"
@@ -269,7 +270,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 20,
-    maxHeight: '85%',
+    maxHeight: Platform.OS === 'android' ? '90%' : '85%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
@@ -315,10 +316,10 @@ const styles = StyleSheet.create({
   reasonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
+    paddingVertical: Platform.OS === 'android' ? 10 : 14,
     paddingHorizontal: 16,
     borderRadius: 14,
-    marginBottom: 8,
+    marginBottom: Platform.OS === 'android' ? 6 : 8,
     backgroundColor: '#FDFBF7',
     borderWidth: 1.5,
     borderColor: '#E8E0D8',
@@ -421,12 +422,15 @@ const styles = StyleSheet.create({
     borderColor: '#E8E0D8',
     borderRadius: 14,
     padding: 14,
-    minHeight: 90,
+    minHeight: Platform.OS === 'android' ? 70 : 90,
     fontSize: 14,
     color: '#1A1A1A',
     marginTop: 8,
     marginBottom: 16,
     textAlignVertical: 'top',
     backgroundColor: '#FCF9F6',
+  },
+  scrollView: {
+    flexShrink: 1,
   },
 });

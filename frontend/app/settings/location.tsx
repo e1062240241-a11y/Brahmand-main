@@ -1,44 +1,75 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  ActivityIndicator, 
-  Alert, 
-  BackHandler, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  BackHandler,
   Platform,
   Modal,
   TextInput,
   KeyboardAvoidingView,
   Keyboard,
-  Dimensions
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
-import { Button } from '../../src/components/Button';
-import { setupDualLocation, reverseGeocode, forwardGeocode } from '../../src/services/api';
-import { useAuthStore } from '../../src/store/authStore';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { useTranslation } from '../../src/utils/i18n';
+  Animated,
+  Dimensions,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
+import { Button } from "../../src/components/Button";
+import {
+  setupDualLocation,
+  reverseGeocode,
+  forwardGeocode,
+} from "../../src/services/api";
+import { useAuthStore } from "../../src/store/authStore";
+import { COLORS, SPACING, BORDER_RADIUS } from "../../src/constants/theme";
+import { useTranslation } from "../../src/utils/i18n";
 
 let MapView: any = null;
 let Marker: any = null;
 let PROVIDER_GOOGLE: any = null;
 
-if (Platform.OS !== 'web') {
+if (Platform.OS !== "web") {
   try {
-    const Maps = require('react-native-maps');
+    const Maps = require("react-native-maps");
     MapView = Maps.default || Maps;
     Marker = Maps.Marker;
     PROVIDER_GOOGLE = Maps.PROVIDER_GOOGLE;
   } catch (e) {
-    console.warn('Native maps failed to load:', e);
+    console.warn("Native maps failed to load:", e);
   }
 }
+
+// Custom Loading Icon component
+const CustomLoader = ({ color }: { color: string }) => {
+  const spinValue = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+    ).start();
+  }, []);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+      <Ionicons name="scan-outline" size={20} color={color} />
+    </Animated.View>
+  );
+};
 
 interface LocationData {
   country: string;
@@ -53,10 +84,10 @@ interface LocationData {
 const normalizeUserLocation = (location: any): LocationData | null => {
   if (!location) return null;
   return {
-    country: location.country || '',
-    state: location.state || '',
-    city: location.city || '',
-    area: location.area || '',
+    country: location.country || "",
+    state: location.state || "",
+    city: location.city || "",
+    area: location.area || "",
     latitude: location.latitude,
     longitude: location.longitude,
     display_name: location.display_name,
@@ -69,12 +100,18 @@ export default function ChangeLocationScreen() {
   const { user, updateUser } = useAuthStore();
 
   const homeLoc = user?.home_location;
-  const hasValidLocation = !!(homeLoc && typeof homeLoc === 'object' && homeLoc.city && homeLoc.area && homeLoc.state);
+  const hasValidLocation = !!(
+    homeLoc &&
+    typeof homeLoc === "object" &&
+    homeLoc.city &&
+    homeLoc.area &&
+    homeLoc.state
+  );
 
   const handleBack = useCallback(() => {
     if (!hasValidLocation) return;
     router.back?.();
-    router.replace('/profile');
+    router.replace("/profile");
   }, [router, hasValidLocation]);
 
   useEffect(() => {
@@ -85,27 +122,30 @@ export default function ChangeLocationScreen() {
       handleBack();
       return true;
     };
-    const subscription = BackHandler.addEventListener('hardwareBackPress', backAction);
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
     return () => subscription.remove();
   }, [handleBack, hasValidLocation]);
 
   const [homeLocation, setHomeLocation] = useState<LocationData | null>(
-    normalizeUserLocation(user?.home_location) || null
+    normalizeUserLocation(user?.home_location) || null,
   );
   const [officeLocation, setOfficeLocation] = useState<LocationData | null>(
-    normalizeUserLocation((user as any)?.office_location) || null
+    normalizeUserLocation((user as any)?.office_location) || null,
   );
   const [loading, setLoading] = useState(false);
   const [detectingHome, setDetectingHome] = useState(false);
   const [detectingOffice, setDetectingOffice] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
 
   // Map Picker Modal States
   const [mapPickerVisible, setMapPickerVisible] = useState(false);
-  const [mapTarget, setMapTarget] = useState<'home' | 'office' | null>(null);
+  const [mapTarget, setMapTarget] = useState<"home" | "office" | null>(null);
   const [mapRegion, setMapRegion] = useState<any>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const mapRef = React.useRef<any>(null);
@@ -113,42 +153,53 @@ export default function ChangeLocationScreen() {
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        const msg = t('language') === 'hi' ? 'अपने क्षेत्र का पता लगाने के लिए कृपया स्थान पहुंच सक्षम करें।' : 'Please enable location access to detect your area.';
-        if (Platform.OS === 'web') {
+      if (status !== "granted") {
+        const msg =
+          t("language") === "hi"
+            ? "अपने क्षेत्र का पता लगाने के लिए कृपया स्थान पहुंच सक्षम करें।"
+            : "Please enable location access to detect your area.";
+        if (Platform.OS === "web") {
           window.alert(msg);
         } else {
           Alert.alert(
-            t('language') === 'hi' ? 'स्थान अनुमति आवश्यक है' : 'Location Permission Required', 
-            msg, 
-            [{ text: 'OK' }]
+            t("language") === "hi"
+              ? "स्थान अनुमति आवश्यक है"
+              : "Location Permission Required",
+            msg,
+            [{ text: "OK" }],
           );
         }
         return false;
       }
       return true;
     } catch (error) {
-      console.error('Permission request error:', error);
-      if (Platform.OS === 'web') {
+      console.error("Permission request error:", error);
+      if (Platform.OS === "web") {
         window.alert(
-          t('language') === 'hi' ? 'स्थान अनुमति अनुरोध विफल रहा। कृपया अपनी ब्राउज़र सेटिंग्स जांचें।' : 'Location permission request failed. Please check your browser settings.'
+          t("language") === "hi"
+            ? "स्थान अनुमति अनुरोध विफल रहा। कृपया अपनी ब्राउज़र सेटिंग्स जांचें।"
+            : "Location permission request failed. Please check your browser settings.",
         );
       }
       return false;
     }
   };
 
-  const detectCurrentLocation = async (type: 'home' | 'office') => {
+  const detectCurrentLocation = async (type: "home" | "office") => {
     try {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         if (!navigator.geolocation) {
-           setError(t('language') === 'hi' ? 'भू-स्थान आपके ब्राउज़र द्वारा समर्थित नहीं है' : 'Geolocation is not supported by your browser');
-           return;
+          setError(
+            t("language") === "hi"
+              ? "भू-स्थान आपके ब्राउज़र द्वारा समर्थित नहीं है"
+              : "Geolocation is not supported by your browser",
+          );
+          return;
         }
-        
-        if (type === 'home') setDetectingHome(true);
+
+        if (type === "home") setDetectingHome(true);
         else setDetectingOffice(true);
-        setError('');
+        setError("");
 
         navigator.geolocation.getCurrentPosition(
           async (position) => {
@@ -165,28 +216,32 @@ export default function ChangeLocationScreen() {
                 display_name: response.data.display_name,
               };
 
-              if (type === 'home') setHomeLocation(locationData);
+              if (type === "home") setHomeLocation(locationData);
               else setOfficeLocation(locationData);
               setHasChanges(true);
             } catch (apiErr: any) {
-              console.error('Reverse geocode error:', apiErr);
-              setError(t('language') === 'hi' ? 'स्थान का पता नहीं लगाया जा सका। कृपया मैन्युअल रूप से दर्ज करें।' : 'Could not decode location. Please enter manually.');
+              console.error("Reverse geocode error:", apiErr);
+              setError(
+                t("language") === "hi"
+                  ? "स्थान का पता नहीं लगाया जा सका। कृपया मैन्युअल रूप से दर्ज करें।"
+                  : "Could not decode location. Please enter manually.",
+              );
             } finally {
-              if (type === 'home') setDetectingHome(false);
+              if (type === "home") setDetectingHome(false);
               else setDetectingOffice(false);
             }
           },
           (geoError) => {
-            console.error('Browser geolocation error:', geoError);
+            console.error("Browser geolocation error:", geoError);
             setError(
-              t('language') === 'hi' 
-                ? `स्थान त्रुटि: ${geoError.message}। कृपया ब्राउज़र अनुमतियाँ जांचें।` 
-                : `Location error: ${geoError.message}. Please check browser permissions.`
+              t("language") === "hi"
+                ? `स्थान त्रुटि: ${geoError.message}। कृपया ब्राउज़र अनुमतियाँ जांचें।`
+                : `Location error: ${geoError.message}. Please check browser permissions.`,
             );
-            if (type === 'home') setDetectingHome(false);
+            if (type === "home") setDetectingHome(false);
             else setDetectingOffice(false);
           },
-          { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 }
+          { enableHighAccuracy: false, timeout: 15000, maximumAge: 10000 },
         );
         return;
       }
@@ -195,9 +250,9 @@ export default function ChangeLocationScreen() {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) return;
 
-      if (type === 'home') setDetectingHome(true);
+      if (type === "home") setDetectingHome(true);
       else setDetectingOffice(true);
-      setError('');
+      setError("");
 
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
@@ -215,31 +270,35 @@ export default function ChangeLocationScreen() {
         display_name: response.data.display_name,
       };
 
-      if (type === 'home') setHomeLocation(locationData);
+      if (type === "home") setHomeLocation(locationData);
       else setOfficeLocation(locationData);
       setHasChanges(true);
     } catch (err: any) {
-      console.error('Location detection error:', err);
+      console.error("Location detection error:", err);
       setError(
-        t('language') === 'hi'
-          ? `स्थान का पता लगाना विफल रहा: ${err.message || 'अज्ञान त्रुटि'}`
-          : `Location detection failed: ${err.message || 'Unknown error'}`
+        t("language") === "hi"
+          ? `स्थान का पता लगाना विफल रहा: ${err.message || "अज्ञान त्रुटि"}`
+          : `Location detection failed: ${err.message || "Unknown error"}`,
       );
     } finally {
-      if (Platform.OS !== 'web') {
-        if (type === 'home') setDetectingHome(false);
+      if (Platform.OS !== "web") {
+        if (type === "home") setDetectingHome(false);
         else setDetectingOffice(false);
       }
     }
   };
 
-  const openMapPicker = async (type: 'home' | 'office') => {
+  const openMapPicker = async (type: "home" | "office") => {
     setMapTarget(type);
     let initialLat = 20.5937;
     let initialLng = 78.9629;
-    
-    const targetLoc = type === 'home' ? homeLocation : officeLocation;
-    if (targetLoc && targetLoc.latitude !== undefined && targetLoc.longitude !== undefined) {
+
+    const targetLoc = type === "home" ? homeLocation : officeLocation;
+    if (
+      targetLoc &&
+      targetLoc.latitude !== undefined &&
+      targetLoc.longitude !== undefined
+    ) {
       const parsedLat = parseFloat(targetLoc.latitude as any);
       const parsedLng = parseFloat(targetLoc.longitude as any);
       if (!isNaN(parsedLat) && !isNaN(parsedLng)) {
@@ -250,8 +309,10 @@ export default function ChangeLocationScreen() {
       // Try to get current device location as starting point if available
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (status === "granted") {
+          const pos = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
           initialLat = pos.coords.latitude;
           initialLng = pos.coords.longitude;
         }
@@ -266,8 +327,8 @@ export default function ChangeLocationScreen() {
     };
 
     setMapRegion(newRegion);
-    
-    setSearchQuery('');
+
+    setSearchQuery("");
     setSearchResults([]);
     setMapPickerVisible(true);
 
@@ -292,7 +353,7 @@ export default function ChangeLocationScreen() {
         setSearchResults(response.data);
       }
     } catch (e) {
-      console.error('Forward geocoding error:', e);
+      console.error("Forward geocoding error:", e);
     } finally {
       setSearching(false);
     }
@@ -314,7 +375,7 @@ export default function ChangeLocationScreen() {
       }
     }
     setSearchResults([]);
-    setSearchQuery(item.display_name || '');
+    setSearchQuery(item.display_name || "");
     Keyboard.dismiss();
   };
 
@@ -325,7 +386,10 @@ export default function ChangeLocationScreen() {
     }
     setLoading(true);
     try {
-      const response = await reverseGeocode(mapRegion.latitude, mapRegion.longitude);
+      const response = await reverseGeocode(
+        mapRegion.latitude,
+        mapRegion.longitude,
+      );
       const locData: LocationData = {
         country: response.data.country,
         state: response.data.state,
@@ -333,10 +397,10 @@ export default function ChangeLocationScreen() {
         area: response.data.area,
         latitude: mapRegion.latitude,
         longitude: mapRegion.longitude,
-        display_name: response.data.display_name || '',
+        display_name: response.data.display_name || "",
       };
-      
-      if (mapTarget === 'home') {
+
+      if (mapTarget === "home") {
         setHomeLocation(locData);
       } else {
         setOfficeLocation(locData);
@@ -344,10 +408,12 @@ export default function ChangeLocationScreen() {
       setHasChanges(true);
       setMapPickerVisible(false);
     } catch (e: any) {
-      console.error('Confirm location error:', e);
+      console.error("Confirm location error:", e);
       Alert.alert(
-        t('language') === 'hi' ? 'त्रुटि' : 'Error',
-        t('language') === 'hi' ? 'स्थान विवरण प्राप्त करने में विफल' : 'Failed to retrieve location details'
+        t("language") === "hi" ? "त्रुटि" : "Error",
+        t("language") === "hi"
+          ? "स्थान विवरण प्राप्त करने में विफल"
+          : "Failed to retrieve location details",
       );
     } finally {
       setLoading(false);
@@ -356,12 +422,16 @@ export default function ChangeLocationScreen() {
 
   const handleUpdateLocations = async () => {
     if (!homeLocation) {
-      setError(t('language') === 'hi' ? 'घर का स्थान आवश्यक है' : 'Home location is required');
+      setError(
+        t("language") === "hi"
+          ? "घर का स्थान आवश्यक है"
+          : "Home location is required",
+      );
       return;
     }
 
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
       const response = await setupDualLocation({
@@ -370,14 +440,21 @@ export default function ChangeLocationScreen() {
       });
 
       updateUser(response.data.user);
-      
+
       Alert.alert(
-        t('language') === 'hi' ? 'स्थान अपडेट कर दिया गया' : 'Location Updated',
-        t('language') === 'hi' ? 'आपके नए स्थानों के आधार पर आपके समुदायों को अपडेट कर दिया गया है।' : 'Your communities have been updated based on your new locations.',
-        [{ text: 'OK', onPress: handleBack }]
+        t("language") === "hi" ? "स्थान अपडेट कर दिया गया" : "Location Updated",
+        t("language") === "hi"
+          ? "आपके नए स्थानों के आधार पर आपके समुदायों को अपडेट कर दिया गया है।"
+          : "Your communities have been updated based on your new locations.",
+        [{ text: "OK", onPress: handleBack }],
       );
     } catch (err: any) {
-      setError(err.response?.data?.detail || (t('language') === 'hi' ? 'स्थान अपडेट करने में विफल। कृपया पुन: प्रयास करें।' : 'Failed to update locations. Please try again.'));
+      setError(
+        err.response?.data?.detail ||
+          (t("language") === "hi"
+            ? "स्थान अपडेट करने में विफल। कृपया पुन: प्रयास करें।"
+            : "Failed to update locations. Please try again."),
+      );
     } finally {
       setLoading(false);
     }
@@ -390,17 +467,23 @@ export default function ChangeLocationScreen() {
     onDetect: () => void,
     onManualSelect: () => void,
     icon: keyof typeof Ionicons.glyphMap,
-    color: string
+    color: string,
   ) => {
-    const displayTitle = 
-      title === 'Home Location' 
-        ? (t('language') === 'hi' ? 'घर का स्थान' : 'Home Location') 
-        : (t('language') === 'hi' ? 'कार्यालय का स्थान' : 'Office Location');
+    const displayTitle =
+      title === "Home Location"
+        ? t("language") === "hi"
+          ? "घर का स्थान"
+          : "Home Location"
+        : t("language") === "hi"
+          ? "कार्यालय का स्थान"
+          : "Office Location";
 
     return (
       <View style={styles.locationCard}>
         <View style={styles.locationHeader}>
-          <View style={[styles.locationIcon, { backgroundColor: `${color}20` }]}>
+          <View
+            style={[styles.locationIcon, { backgroundColor: `${color}20` }]}
+          >
             <Ionicons name={icon} size={24} color={color} />
           </View>
           <Text style={styles.locationTitle}>{displayTitle}</Text>
@@ -410,60 +493,79 @@ export default function ChangeLocationScreen() {
           <View style={styles.locationDetails}>
             <View style={styles.locationRow}>
               <Ionicons name="location" size={16} color={COLORS.success} />
-              <Text style={styles.areaText}>{location.area || 'Unknown Area'}</Text>
+              <Text style={styles.areaText}>
+                {location.area || "Unknown Area"}
+              </Text>
             </View>
             <Text style={styles.addressText}>
               {location.city}, {location.state}
             </Text>
             <Text style={styles.countryText}>{location.country}</Text>
-            
+
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.actionButton} onPress={onDetect} disabled={isDetecting}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={onDetect}
+                disabled={isDetecting}
+              >
                 <Ionicons name="navigate" size={16} color={COLORS.primary} />
                 <Text style={styles.actionButtonText}>
-                  {isDetecting ? (t('language') === 'hi' ? 'पता लगाया जा रहा है...' : 'Detecting...') : (t('language') === 'hi' ? 'ऑटो पता लगाएं' : 'Auto Detect')}
+                  {isDetecting
+                    ? t("language") === "hi"
+                      ? "पता लगाया जा रहा है..."
+                      : "Locating..."
+                    : t("language") === "hi"
+                      ? "ऑटो पता लगाएं"
+                      : "Auto Detect"}
                 </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity style={[styles.actionButton, { marginLeft: SPACING.md }]} onPress={onManualSelect}>
+
+              <TouchableOpacity
+                style={[styles.actionButton, { marginLeft: SPACING.md }]}
+                onPress={onManualSelect}
+              >
                 <Ionicons name="map" size={16} color={COLORS.primary} />
                 <Text style={styles.actionButtonText}>
-                  {t('language') === 'hi' ? 'मानचित्र / खोज' : 'Map / Search'}
+                  {t("language") === "hi" ? "मानचित्र / खोज" : "Map / Search"}
                 </Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <View style={styles.detectButtonsContainer}>
-            <TouchableOpacity 
-              style={styles.detectButton} 
+            <TouchableOpacity
+              style={styles.detectButton}
               onPress={onDetect}
               disabled={isDetecting}
             >
               {isDetecting ? (
                 <>
-                  <ActivityIndicator size="small" color={COLORS.primary} />
+                  <CustomLoader color={COLORS.primary} />
                   <Text style={styles.detectingText}>
-                    {t('language') === 'hi' ? 'आपके स्थान का पता लगाया जा रहा है...' : 'Detecting your location...'}
+                    {t("language") === "hi"
+                      ? "आपके स्थान का पता लगाया जा रहा है..."
+                      : "Locating..."}
                   </Text>
                 </>
               ) : (
                 <>
                   <Ionicons name="navigate" size={20} color={COLORS.primary} />
                   <Text style={styles.detectText}>
-                    {t('language') === 'hi' ? 'ऑटो पता लगाएं' : 'Auto Detect'}
+                    {t("language") === "hi" ? "ऑटो पता लगाएं" : "Auto Detect"}
                   </Text>
                 </>
               )}
             </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.detectButton, { marginTop: SPACING.sm }]} 
+
+            <TouchableOpacity
+              style={[styles.detectButton, { marginTop: SPACING.sm }]}
               onPress={onManualSelect}
             >
               <Ionicons name="map" size={20} color={COLORS.primary} />
               <Text style={styles.detectText}>
-                {t('language') === 'hi' ? 'मानचित्र / खोज से चुनें' : 'Choose via Map / Search'}
+                {t("language") === "hi"
+                  ? "मानचित्र / खोज से चुनें"
+                  : "Choose via Map / Search"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -484,42 +586,47 @@ export default function ChangeLocationScreen() {
           <View style={{ width: 40 }} />
         )}
         <Text style={styles.headerTitle}>
-          {t('language') === 'hi' ? 'स्थान बदलें' : 'Change Location'}
+          {t("language") === "hi" ? "स्थान बदलें" : "Change Location"}
         </Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.content}>
           {/* Info Box */}
           <View style={styles.infoBox}>
             <Ionicons name="information-circle" size={20} color={COLORS.info} />
             <Text style={styles.infoText}>
-              {t('language') === 'hi' ? 'अपना स्थान बदलने से आपकी समुदाय सदस्यताएँ स्वचालित रूप से अपडेट हो जाएँगी। आप पुराने स्थान के समुदायों को छोड़ देंगे और नए समुदायों में शामिल हो जाएँगे।' : 'Changing your location will automatically update your community memberships. You will leave old location communities and join new ones.'}
+              {t("language") === "hi"
+                ? "अपना स्थान बदलने से आपकी समुदाय सदस्यताएँ स्वचालित रूप से अपडेट हो जाएँगी। आप पुराने स्थान के समुदायों को छोड़ देंगे और नए समुदायों में शामिल हो जाएँगे।"
+                : "Changing your location will automatically update your community memberships. You will leave old location communities and join new ones."}
             </Text>
           </View>
 
           {/* Home Location */}
           {renderLocationCard(
-            'Home Location',
+            "Home Location",
             homeLocation,
             detectingHome,
-            () => detectCurrentLocation('home'),
-            () => openMapPicker('home'),
-            'home',
-            COLORS.success
+            () => detectCurrentLocation("home"),
+            () => openMapPicker("home"),
+            "home",
+            COLORS.success,
           )}
 
           {/* Office Location */}
           <View style={styles.divider} />
           {renderLocationCard(
-            'Office Location',
+            "Office Location",
             officeLocation,
             detectingOffice,
-            () => detectCurrentLocation('office'),
-            () => openMapPicker('office'),
-            'business',
-            COLORS.info
+            () => detectCurrentLocation("office"),
+            () => openMapPicker("office"),
+            "business",
+            COLORS.info,
           )}
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -528,24 +635,28 @@ export default function ChangeLocationScreen() {
           {homeLocation && (
             <View style={styles.previewBox}>
               <Text style={styles.previewTitle}>
-                {t('language') === 'hi' ? 'अपडेट के बाद आपके समुदाय:' : 'Your Communities After Update:'}
+                {t("language") === "hi"
+                  ? "अपडेट के बाद आपके समुदाय:"
+                  : "Your Communities After Update:"}
               </Text>
               <View style={styles.previewItem}>
                 <Ionicons name="location" size={16} color="#9B59B6" />
                 <Text style={styles.previewText}>
-                  {homeLocation.city} {t('language') === 'hi' ? 'समुदाय' : 'Community'}
+                  {homeLocation.city}{" "}
+                  {t("language") === "hi" ? "समुदाय" : "Community"}
                 </Text>
               </View>
               <View style={styles.previewItem}>
                 <Ionicons name="map" size={16} color={COLORS.warning} />
                 <Text style={styles.previewText}>
-                  {homeLocation.state} {t('language') === 'hi' ? 'समुदाय' : 'Community'}
+                  {homeLocation.state}{" "}
+                  {t("language") === "hi" ? "समुदाय" : "Community"}
                 </Text>
               </View>
               <View style={styles.previewItem}>
                 <Ionicons name="flag" size={16} color={COLORS.primary} />
                 <Text style={styles.previewText}>
-                  {t('language') === 'hi' ? 'भारत समुदाय' : 'Bharat Community'}
+                  {t("language") === "hi" ? "भारत समुदाय" : "Bharat Community"}
                 </Text>
               </View>
             </View>
@@ -554,7 +665,11 @@ export default function ChangeLocationScreen() {
           {/* Update Button */}
           {homeLocation && hasChanges && (
             <Button
-              title={t('language') === 'hi' ? 'स्थान और समुदाय अपडेट करें' : 'Update Location & Communities'}
+              title={
+                t("language") === "hi"
+                  ? "स्थान और समुदाय अपडेट करें"
+                  : "Update Location & Communities"
+              }
               onPress={handleUpdateLocations}
               loading={loading}
               style={styles.button}
@@ -575,10 +690,13 @@ export default function ChangeLocationScreen() {
               <Ionicons name="close" size={26} color={COLORS.text} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>
-              {mapTarget === 'home' 
-                ? (t('language') === 'hi' ? 'घर का स्थान चुनें' : 'Choose Home Location')
-                : (t('language') === 'hi' ? 'कार्यालय का स्थान चुनें' : 'Choose Office Location')
-              }
+              {mapTarget === "home"
+                ? t("language") === "hi"
+                  ? "घर का स्थान चुनें"
+                  : "Choose Home Location"
+                : t("language") === "hi"
+                  ? "कार्यालय का स्थान चुनें"
+                  : "Choose Office Location"}
             </Text>
             <View style={{ width: 26 }} />
           </View>
@@ -586,33 +704,60 @@ export default function ChangeLocationScreen() {
           {/* Search Section */}
           <View style={styles.searchContainer}>
             <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color={COLORS.textSecondary} style={{ marginRight: SPACING.sm }} />
+              <Ionicons
+                name="search"
+                size={20}
+                color={COLORS.textSecondary}
+                style={{ marginRight: SPACING.sm }}
+              />
               <TextInput
                 style={styles.searchInput}
-                placeholder={t('language') === 'hi' ? 'स्थान खोजें...' : 'Search location...'}
+                placeholder={
+                  t("language") === "hi"
+                    ? "स्थान खोजें..."
+                    : "Search location..."
+                }
                 placeholderTextColor={COLORS.textLight}
                 value={searchQuery}
                 onChangeText={handleSearchLocation}
               />
               {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => handleSearchLocation('')}>
-                  <Ionicons name="close-circle" size={18} color={COLORS.textSecondary} />
+                <TouchableOpacity onPress={() => handleSearchLocation("")}>
+                  <Ionicons
+                    name="close-circle"
+                    size={18}
+                    color={COLORS.textSecondary}
+                  />
                 </TouchableOpacity>
               )}
             </View>
-            
-            {searching && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: SPACING.xs }} />}
-            
+
+            {searching && (
+              <ActivityIndicator
+                size="small"
+                color={COLORS.primary}
+                style={{ marginVertical: SPACING.xs }}
+              />
+            )}
+
             {/* Search Suggestions */}
             {searchResults.length > 0 && (
-              <ScrollView style={styles.suggestionsList} keyboardShouldPersistTaps="handled">
+              <ScrollView
+                style={styles.suggestionsList}
+                keyboardShouldPersistTaps="handled"
+              >
                 {searchResults.map((item, index) => (
                   <TouchableOpacity
                     key={index}
                     style={styles.suggestionItem}
                     onPress={() => handleSelectSearchResult(item)}
                   >
-                    <Ionicons name="location-outline" size={18} color={COLORS.primary} style={{ marginRight: SPACING.sm }} />
+                    <Ionicons
+                      name="location-outline"
+                      size={18}
+                      color={COLORS.primary}
+                      style={{ marginRight: SPACING.sm }}
+                    />
                     <Text style={styles.suggestionText} numberOfLines={2}>
                       {item.display_name}
                     </Text>
@@ -624,16 +769,26 @@ export default function ChangeLocationScreen() {
 
           {/* Map Section */}
           <View style={styles.mapWrapper}>
-            {Platform.OS === 'web' ? (
+            {Platform.OS === "web" ? (
               <View style={styles.webMapFallback}>
-                <Ionicons name="map-outline" size={64} color={COLORS.textSecondary} />
+                <Ionicons
+                  name="map-outline"
+                  size={64}
+                  color={COLORS.textSecondary}
+                />
                 <Text style={styles.webMapFallbackText}>
-                  {t('language') === 'hi' ? 'मानचित्र दृश्य केवल मोबाइल ऐप पर उपलब्ध है।' : 'Map view is only available on mobile app.'}
+                  {t("language") === "hi"
+                    ? "मानचित्र दृश्य केवल मोबाइल ऐप पर उपलब्ध है।"
+                    : "Map view is only available on mobile app."}
                 </Text>
                 {mapRegion && (
                   <View style={styles.coordsBox}>
-                    <Text style={styles.coordsText}>Latitude: {mapRegion.latitude.toFixed(6)}</Text>
-                    <Text style={styles.coordsText}>Longitude: {mapRegion.longitude.toFixed(6)}</Text>
+                    <Text style={styles.coordsText}>
+                      Latitude: {mapRegion.latitude.toFixed(6)}
+                    </Text>
+                    <Text style={styles.coordsText}>
+                      Longitude: {mapRegion.longitude.toFixed(6)}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -654,9 +809,15 @@ export default function ChangeLocationScreen() {
               </>
             ) : (
               <View style={styles.webMapFallback}>
-                <Ionicons name="warning-outline" size={48} color={COLORS.error} />
+                <Ionicons
+                  name="warning-outline"
+                  size={48}
+                  color={COLORS.error}
+                />
                 <Text style={styles.webMapFallbackText}>
-                  {t('language') === 'hi' ? 'मानचित्र लोड करने में असमर्थ' : 'Unable to load map'}
+                  {t("language") === "hi"
+                    ? "मानचित्र लोड करने में असमर्थ"
+                    : "Unable to load map"}
                 </Text>
               </View>
             )}
@@ -664,9 +825,14 @@ export default function ChangeLocationScreen() {
 
           {/* Bottom Confirmation Bar */}
           <View style={styles.modalFooter}>
-            <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmLocation}>
+            <TouchableOpacity
+              style={styles.confirmButton}
+              onPress={handleConfirmLocation}
+            >
               <Text style={styles.confirmButtonText}>
-                {t('language') === 'hi' ? 'इस स्थान की पुष्टि करें' : 'Confirm This Location'}
+                {t("language") === "hi"
+                  ? "इस स्थान की पुष्टि करें"
+                  : "Confirm This Location"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -682,10 +848,10 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: SPACING.lg,
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.divider,
@@ -695,7 +861,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
   },
   scrollView: {
@@ -706,10 +872,10 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.lg,
   },
   infoBox: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: `${COLORS.info}15`,
-    borderRadius: BORDER_RADIUS.md,
-    padding: SPACING.md,
+    borderRadius: 100,
+    padding: SPACING.lg,
     marginBottom: SPACING.lg,
   },
   infoText: {
@@ -722,40 +888,40 @@ const styles = StyleSheet.create({
   locationCard: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
-    overflow: 'hidden',
+    padding: SPACING.lg,
+    overflow: "hidden",
     borderWidth: 1,
     borderColor: COLORS.divider,
   },
   locationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: SPACING.md,
   },
   locationIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: SPACING.md,
   },
   locationTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
   },
   locationDetails: {
     paddingLeft: 52,
   },
   locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
   },
   areaText: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     marginLeft: SPACING.xs,
   },
@@ -769,12 +935,12 @@ const styles = StyleSheet.create({
     color: COLORS.textLight,
   },
   actionsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginTop: SPACING.md,
   },
   actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: `${COLORS.primary}10`,
     paddingVertical: SPACING.xs + 2,
     paddingHorizontal: SPACING.sm,
@@ -783,27 +949,27 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 13,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: "500",
     marginLeft: SPACING.xs,
   },
   detectButtonsContainer: {
     marginTop: SPACING.xs,
   },
   detectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: `${COLORS.primary}10`,
     paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 100,
     borderWidth: 1,
     borderColor: COLORS.primary,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
   },
   detectText: {
     fontSize: 15,
     color: COLORS.primary,
-    fontWeight: '500',
+    fontWeight: "500",
     marginLeft: SPACING.sm,
   },
   detectingText: {
@@ -816,26 +982,26 @@ const styles = StyleSheet.create({
   },
   error: {
     color: COLORS.error,
-    textAlign: 'center',
+    textAlign: "center",
     marginVertical: SPACING.md,
   },
   previewBox: {
     backgroundColor: COLORS.surface,
     borderRadius: BORDER_RADIUS.lg,
-    padding: SPACING.md,
+    padding: SPACING.lg,
     marginTop: SPACING.lg,
     borderWidth: 1,
     borderColor: COLORS.divider,
   },
   previewTitle: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
     marginBottom: SPACING.md,
   },
   previewItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: SPACING.xs,
   },
   previewText: {
@@ -846,16 +1012,16 @@ const styles = StyleSheet.create({
   button: {
     marginTop: SPACING.lg,
   },
-  
+
   // Modal Styles
   modalContainer: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.md,
     backgroundColor: COLORS.surface,
@@ -864,19 +1030,19 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.text,
   },
   searchContainer: {
-    padding: SPACING.md,
+    padding: SPACING.lg,
     backgroundColor: COLORS.surface,
     zIndex: 10,
   },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 100,
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm - 2,
     borderWidth: 1,
@@ -891,13 +1057,13 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     marginTop: SPACING.sm,
     backgroundColor: COLORS.surface,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 100,
     borderWidth: 1,
     borderColor: COLORS.divider,
   },
   suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.md,
     borderBottomWidth: 1,
@@ -910,49 +1076,49 @@ const styles = StyleSheet.create({
   },
   mapWrapper: {
     flex: 1,
-    position: 'relative',
+    position: "relative",
   },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
   mapPinContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
+    position: "absolute",
+    top: "50%",
+    left: "50%",
     marginLeft: -20,
     marginTop: -40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 5,
   },
   webMapFallback: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: SPACING.xl,
   },
   webMapFallbackText: {
     marginTop: SPACING.md,
     fontSize: 14,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   coordsBox: {
     marginTop: SPACING.lg,
     backgroundColor: COLORS.background,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.lg,
+    borderRadius: 100,
     borderWidth: 1,
     borderColor: COLORS.divider,
   },
   coordsText: {
     fontSize: 13,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
     color: COLORS.text,
   },
   modalFooter: {
-    padding: SPACING.md,
+    padding: SPACING.lg,
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.divider,
@@ -960,12 +1126,12 @@ const styles = StyleSheet.create({
   confirmButton: {
     backgroundColor: COLORS.primary,
     paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    alignItems: 'center',
+    borderRadius: 100,
+    alignItems: "center",
   },
   confirmButtonText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

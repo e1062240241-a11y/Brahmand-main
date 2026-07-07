@@ -348,9 +348,13 @@ const DirectMessageScreen = () => {
   const windowHeight = windowDimensions.height; // ponytail: quick fix for missing windowHeight variable
 
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setIsKeyboardVisible(true);
       const windowDim = Dimensions.get('window');
       const screenDim = Dimensions.get('screen');
       console.log('[KEYBOARD_DIAGNOSTICS] keyboardDidShow | ' +
@@ -362,6 +366,8 @@ const DirectMessageScreen = () => {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
     });
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+      setIsKeyboardVisible(false);
       textInputRef.current?.blur();
     });
     return () => {
@@ -1768,8 +1774,13 @@ const DirectMessageScreen = () => {
           style={StyleSheet.absoluteFillObject}
         />
       </View>
-
-      <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'android' ? 12 : 0) }]}>
+      
+      <View style={[
+        styles.header,
+        Platform.OS === 'android'
+          ? { height: insets.top + 60, paddingTop: insets.top }
+          : { paddingTop: Math.max(insets.top, 0) }
+      ]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Svg width={12} height={20} viewBox="0 0 12 20" fill="none">
             <Path d="M10 20L0 10L10 0L11.775 1.775L3.55 10L11.775 18.225L10 20Z" fill="#291715" />
@@ -1815,7 +1826,7 @@ const DirectMessageScreen = () => {
       <View style={{ flex: 1 }}>
         <Modal visible={showOptions} transparent animationType="fade" onRequestClose={closeChatOptions}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={closeChatOptions}>
-            <View style={[styles.modalContent, { paddingBottom: Platform.OS === 'android' ? SPACING.md : Math.max(insets.bottom, SPACING.md) }]}>
+            <View style={[styles.modalContent, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, SPACING.md) + 24 : Math.max(insets.bottom, SPACING.md) }]}>
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
                 <Ionicons name={isMuted ? "notifications-outline" : "notifications-off-outline"} size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
                 <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
@@ -1907,10 +1918,10 @@ const DirectMessageScreen = () => {
             />
           )}
         </View>
-
-        <View
-          style={[styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}
-          onLayout={logLayout('Input wrapper', [styles.inputWrapperContainer, { paddingBottom: Math.max(insets.bottom, 12) }])}
+        
+        <View 
+          style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}
+          onLayout={logLayout('Input wrapper', [styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }])}
         >
           {selectedMedia && (
             <View style={styles.mediaPreviewContainer}>
@@ -2020,6 +2031,7 @@ const DirectMessageScreen = () => {
             )}
           </View>
         </Modal>
+        {Platform.OS === 'android' && <View style={{ height: isKeyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
       </View>
     </View>
   );
@@ -2027,7 +2039,7 @@ const DirectMessageScreen = () => {
   if (Platform.OS === 'web') {
     return (
       <>
-        <View style={[styles.container, { height: windowHeight }]}>{renderContent()}</View>
+        <View style={[styles.container, { height: windowDimensions.height }]}>{renderContent()}</View>
         {/* Apple Guideline 1.2 - Report User Modal */}
         <ReportModal
           visible={reportUserModalVisible}
@@ -2054,9 +2066,9 @@ const DirectMessageScreen = () => {
         edges={['left', 'right']}
         onLayout={logLayout('Root container / SafeAreaView', styles.container)}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
           onLayout={logLayout('KeyboardAvoidingView', { flex: 1 })}
         >
