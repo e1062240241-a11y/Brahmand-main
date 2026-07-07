@@ -30,7 +30,11 @@ import { socketService } from '../src/services/socket';
 import { originalAlert } from '../src/utils/nativeAlert';
 import { setAudioModeAsync } from 'expo-audio';
 
-LogBox.ignoreLogs(['UIKitCore] RCTScrollViewComponentView', 'RCTScrollViewComponentView implements focusItemsInRect:']);
+LogBox.ignoreLogs([
+  'UIKitCore] RCTScrollViewComponentView',
+  'RCTScrollViewComponentView implements focusItemsInRect:',
+  "Can't perform a React state update on a component that hasn't mounted yet"
+]);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
   const titleStr = typeof title === 'string' ? title : '';

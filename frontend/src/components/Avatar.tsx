@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Image } from 'expo-image';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,13 +12,15 @@ interface AvatarProps {
 }
 
 export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 'circle' }) => {
-  const initials = (name || 'U')
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const initials = React.useMemo(() => {
+    return (name || 'U')
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }, [name]);
 
   const borderRadius = shape === 'circle' ? size / 2 : shape === 'rounded' ? 12 : 0;
 
@@ -28,7 +31,18 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
     photo !== 'None' &&
     photo !== '';
 
-  if (hasPhoto) {
+  const source = React.useMemo(() => {
+    if (!hasPhoto) return null;
+    const isRequiredAsset = typeof photo === 'number' || (typeof photo === 'object' && photo !== null);
+    if (isRequiredAsset) return photo;
+    
+    const photoStr = String(photo);
+    const isUrl = photoStr.startsWith('http') || photoStr.startsWith('https://');
+    const uri = (isUrl || photoStr.startsWith('data:')) ? photoStr : `data:image/jpeg;base64,${photoStr}`;
+    return { uri };
+  }, [photo, hasPhoto]);
+
+  if (hasPhoto && source) {
     const isRequiredAsset = typeof photo === 'number' || (typeof photo === 'object' && photo !== null);
     
     if (isRequiredAsset) {
@@ -40,32 +54,28 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
         />
       ) : (
         <Image
-          source={photo}
+          source={source}
           style={[styles.image, { width: size, height: size, borderRadius }]}
           contentFit="cover"
-          transition={200}
-          cachePolicy="disk"
+          transition={0}
+          cachePolicy="memory-disk"
         />
       );
     }
     
-    const photoStr = String(photo);
-    const isUrl = photoStr.startsWith('http') || photoStr.startsWith('https://');
-    const uri = (isUrl || photoStr.startsWith('data:')) ? photoStr : `data:image/jpeg;base64,${photoStr}`;
-    
     return Platform.OS === 'web' ? (
       <img 
-        src={uri}
+        src={source.uri}
         style={{ width: size, height: size, borderRadius, objectFit: 'cover' }}
         alt={name}
       />
     ) : (
       <Image
-        source={{ uri }}
+        source={source}
         style={[styles.image, { width: size, height: size, borderRadius }]}
         contentFit="cover"
-        transition={200}
-        cachePolicy="disk"
+        transition={0}
+        cachePolicy="memory-disk"
       />
     );
   }

@@ -45,6 +45,7 @@ import { ToastContainer } from '../../src/components/ToastContainer';
 import { ReportModal } from '../../src/components/ReportModal';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { useBlockStore } from '../../src/store/blockStore';
+import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -732,6 +733,7 @@ export default function CommunityDetailScreen() {
   const [activeComments, setActiveComments] = useState<any[]>([]);
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [showGroupInfoModal, setShowGroupInfoModal] = useState(false);
   const [showAttendeesModal, setShowAttendeesModal] = useState<any | null>(null);
   const [attendeesList, setAttendeesList] = useState<User[]>([]);
@@ -742,7 +744,16 @@ export default function CommunityDetailScreen() {
   // Apple Guideline 1.2 - community comment report state
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
+  const [keptComments, setKeptComments] = useState<any[]>([]);
   const [commentModalToRestore, setCommentModalToRestore] = useState<any | null>(null);
+
+  const [blockConfirmVisible, setBlockConfirmVisible] = useState(false);
+  const [blockConfirmData, setBlockConfirmData] = useState<{
+    targetUserId: string;
+    username: string;
+    isBlocked: boolean;
+    onConfirm: () => void;
+  } | null>(null);
 
   // Global block store — shared across all screens
   const blockedUserIds = useBlockStore(state => state.blockedUserIds);
@@ -754,34 +765,50 @@ export default function CommunityDetailScreen() {
     if (!user?.id) return;
     const isCurrentlyBlocked = blockedByMeUserIds.includes(String(targetUid));
 
-    try {
-      if (isCurrentlyBlocked) {
-        // Unblock
-        await unblockUser(user.id, targetUid);
-        removeBlock(String(targetUid));
-        Alert.alert('Success', `${targetName} has been unblocked.`);
-      } else {
-        // Confirm block
-        Alert.alert(
-          'Block User',
-          `Are you sure you want to block ${targetName}? You will no longer see their posts, comments, or messages.`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Block',
-              style: 'destructive',
-              onPress: async () => {
-                await blockUser(user.id, targetUid);
-                addBlock(String(targetUid));
-                Alert.alert('Success', `${targetName} has been blocked.`);
-              }
-            }
-          ]
-        );
+    const performBlockToggle = async () => {
+      try {
+        if (isCurrentlyBlocked) {
+          await unblockUser(user.id, targetUid);
+          removeBlock(String(targetUid));
+          Alert.alert('Success', `${targetName} has been unblocked.`);
+        } else {
+          await blockUser(user.id, targetUid);
+          addBlock(String(targetUid));
+          
+          // Dismiss comments modal first
+          setShowCommentModal(null);
+
+          Alert.alert('Success', `${targetName} has been blocked.`);
+        }
+      } catch (error) {
+        console.error('Error toggling block status:', error);
+        Alert.alert('Error', 'Could not update block status. Please try again.');
       }
-    } catch (error) {
-      console.error('Error toggling block status:', error);
-      Alert.alert('Error', 'Could not update block status. Please try again.');
+    };
+
+    if (Platform.OS === 'android') {
+      setBlockConfirmData({
+        targetUserId: String(targetUid),
+        username: targetName || 'User',
+        isBlocked: isCurrentlyBlocked,
+        onConfirm: performBlockToggle,
+      });
+      setBlockConfirmVisible(true);
+    } else {
+      Alert.alert(
+        isCurrentlyBlocked ? 'Unblock User' : 'Block User',
+        isCurrentlyBlocked
+          ? `Are you sure you want to unblock ${targetName}?`
+          : `Are you sure you want to block ${targetName}? You will no longer see their posts, comments, or messages.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: isCurrentlyBlocked ? 'Unblock' : 'Block',
+            style: isCurrentlyBlocked ? 'default' : 'destructive',
+            onPress: performBlockToggle,
+          }
+        ]
+      );
     }
   }, [user?.id, blockedByMeUserIds, addBlock, removeBlock]);
 
@@ -814,18 +841,22 @@ export default function CommunityDetailScreen() {
         }
       );
     } else {
-      Alert.alert(
+      originalAlert(
         'Comment Options',
         'Choose an action:',
         [
           { text: 'Cancel', style: 'cancel' },
           { text: 'Report Comment', onPress: () => {
             setPendingReportComment(comment);
-            setCommentModalToRestore(showCommentModal);
-            setShowCommentModal(null);
-            setTimeout(() => {
+            if (Platform.OS === 'android') {
               setReportCommentModalVisible(true);
-            }, 300);
+            } else {
+              setCommentModalToRestore(showCommentModal);
+              setShowCommentModal(null);
+              setTimeout(() => {
+                setReportCommentModalVisible(true);
+              }, 300);
+            }
           }},
           {
             text: blockLabel,
@@ -884,10 +915,12 @@ export default function CommunityDetailScreen() {
   }, [community?.type]);
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
       setKeyboardVisible(true);
     });
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
       setKeyboardVisible(false);
     });
     return () => {
@@ -3767,10 +3800,22 @@ export default function CommunityDetailScreen() {
         avatar: c.user_photo || c.sender_photo || null,
         userId: c.user_id,
         isVerified: c.is_verified || false,
+        created_at: c.created_at || c.createdAt || 0,
       }));
-      setActiveComments(mappedComments);
+      const merged = [...mappedComments];
+      keptComments.forEach(kc => {
+        if (kc && kc.id && !merged.some(c => c.id === kc.id)) {
+          merged.push(kc);
+        }
+      });
+      merged.sort((a, b) => {
+        const dateA = new Date(a.created_at || 0).getTime();
+        const dateB = new Date(b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+      setActiveComments(merged);
       // Sync the comment count on the post with actual loaded count to prevent stale badge mismatch
-      setShowCommentModal(prev => prev ? { ...prev, comments: mappedComments.length } : null);
+      setShowCommentModal(prev => prev ? { ...prev, comments: merged.length } : null);
     } catch (error) {
       console.warn('Failed to load comments:', error);
     }
@@ -4586,7 +4631,7 @@ export default function CommunityDetailScreen() {
           style={styles.modalOverlay}
         >
           <ToastContainer />
-          <View style={[styles.commentModalContent, { paddingBottom: keyboardVisible ? 10 : Math.max(insets.bottom, 20) }]}>
+          <View style={[styles.commentModalContent, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : (keyboardVisible ? 10 : Math.max(insets.bottom, 20)) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>
                 {t('language') === 'hi'
@@ -4663,16 +4708,6 @@ export default function CommunityDetailScreen() {
                 placeholder={t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...'}
                 placeholderTextColor="#888"
                 inputStyle={styles.commentInput}
-                onFocus={() => {
-                  if (Platform.OS === 'android') {
-                    setKeyboardVisible(true);
-                  }
-                }}
-                onBlur={() => {
-                  if (Platform.OS === 'android') {
-                    setKeyboardVisible(false);
-                  }
-                }}
               />
               <TouchableOpacity onPress={handleAddComment} disabled={!commentText.trim()}>
                 <Text style={[styles.postCommentBtn, !commentText.trim() && { opacity: 0.5 }]}>
@@ -4680,6 +4715,35 @@ export default function CommunityDetailScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+            {Platform.OS === 'android' && (
+              <ReportModal
+                visible={reportCommentModalVisible}
+                onClose={() => {
+                  setReportCommentModalVisible(false);
+                  setPendingReportComment(null);
+                }}
+                reporterUid={user?.id || ''}
+                reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+                contentId={String(pendingReportComment?.id || '')}
+                contentType="comment"
+                postId={pendingReportComment?.post_id || showCommentModal?.id || commentModalToRestore?.id || ''}
+                apiFallback={async (reason, description) => {
+                  if (pendingReportComment?.id) {
+                    await reportComment(String(pendingReportComment.id), reason, description || '');
+                  }
+                }}
+                onSuccess={() => {
+                  // Keep reported comment visible
+                  if (pendingReportComment) {
+                    setKeptComments(prev => {
+                      if (prev.some(c => c.id === pendingReportComment.id)) return prev;
+                      return [...prev, pendingReportComment];
+                    });
+                  }
+                }}
+              />
+            )}
           </View>
         </KeyboardAvoidingView>
       </Modal>
@@ -4888,32 +4952,43 @@ export default function CommunityDetailScreen() {
       />
 
       {/* Apple Guideline 1.2 - Report Comment Modal */}
-      <ReportModal
-        visible={reportCommentModalVisible}
-        onClose={() => {
-          setReportCommentModalVisible(false);
-          setPendingReportComment(null);
-          if (commentModalToRestore) {
-            setTimeout(() => {
-              setShowCommentModal(commentModalToRestore);
-              setCommentModalToRestore(null);
-            }, 300);
-          }
-        }}
-        reporterUid={user?.id || ''}
-        reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
-        contentId={String(pendingReportComment?.id || '')}
-        contentType="comment"
-        postId={pendingReportComment?.post_id || showCommentModal?.id || commentModalToRestore?.id || ''}
-        apiFallback={async (reason, description) => {
-          if (pendingReportComment?.id) {
-            await reportComment(String(pendingReportComment.id), reason, description || '');
-          }
-        }}
-        onSuccess={() => {
-          // Keep reported comment visible
-        }}
-      />
+      {Platform.OS !== 'android' && (
+        <ReportModal
+          visible={reportCommentModalVisible}
+          onClose={() => {
+            setReportCommentModalVisible(false);
+            setPendingReportComment(null);
+            if (commentModalToRestore) {
+              setTimeout(() => {
+                setShowCommentModal(commentModalToRestore);
+                setCommentModalToRestore(null);
+              }, 300);
+            }
+          }}
+          reporterUid={user?.id || ''}
+          reportedUserUid={pendingReportComment?.userId || pendingReportComment?.user_id || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+          contentId={String(pendingReportComment?.id || '')}
+          contentType="comment"
+          postId={pendingReportComment?.post_id || showCommentModal?.id || commentModalToRestore?.id || ''}
+          apiFallback={async (reason, description) => {
+            if (pendingReportComment?.id) {
+              await reportComment(String(pendingReportComment.id), reason, description || '');
+            }
+          }}
+          onSuccess={() => {
+            // Keep reported comment visible
+          }}
+        />
+      )}
+      {blockConfirmData && (
+        <BlockConfirmationModal
+          visible={blockConfirmVisible}
+          onClose={() => setBlockConfirmVisible(false)}
+          onConfirm={blockConfirmData.onConfirm}
+          username={blockConfirmData.username}
+          isBlocked={blockConfirmData.isBlocked}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }

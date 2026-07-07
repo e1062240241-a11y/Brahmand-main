@@ -91,8 +91,10 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
             {icon}
           </View>
           <View style={styles.textContainer}>
-            <Text style={styles.titleText}>{title}:</Text>
-            <Text style={styles.messageText}>{toast.message}</Text>
+            <Text style={styles.messageText}>
+              <Text style={styles.titleText}>{title}: </Text>
+              {toast.message}
+            </Text>
           </View>
           {(!toast.actions || toast.actions.length === 0) && (
             <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
@@ -160,11 +162,12 @@ const styles = StyleSheet.create({
   },
   toastItem: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 100, // pill shaped
+    borderRadius: 24,
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     marginBottom: 10,
     alignSelf: 'center',
+    maxWidth: '100%',
     shadowColor: '#101828',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
@@ -175,10 +178,12 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     alignItems: 'center',
+    width: '100%',
   },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
   iconWrapper: {
     width: 28,
@@ -190,15 +195,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   textContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flex: 1,
     marginRight: 8,
   },
   titleText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#101828',
-    marginRight: 6,
     fontFamily: 'System',
   },
   messageText: {

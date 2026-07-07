@@ -198,6 +198,23 @@ export default function ProfileScreen() {
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+      setKeyboardVisible(false);
+    });
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -515,7 +532,7 @@ export default function ProfileScreen() {
       const incomingPosts = payload?.posts || [];
 
       // Strict validation: every post must belong to the logged-in user
-      const validated = [];
+      const validated: any[] = [];
       for (const p of incomingPosts) {
         if (p.user_id !== userId) {
           console.error(`SECURITY VIOLATION: Post ${p.id} belongs to user ${p.user_id} but was returned for user ${userId}!`);
@@ -1880,7 +1897,7 @@ export default function ProfileScreen() {
                     </View>
                   )}
 
-                  <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+                  <View style={[styles.commentInputContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : Math.max(insets.bottom, 12) }]}>
                     <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
                     <MentionInput
                       value={commentText}
@@ -1897,10 +1914,11 @@ export default function ProfileScreen() {
                         styles.commentPostButton,
                         (!commentText.trim() || commentSubmitting) && { opacity: 0.5 }
                       ]}>
-                        {t('language') === 'hi' ? 'पोस्ट करें' : 'Post'}
+                        {t('language') === 'hi' ? 'POST करें' : 'Post'}
                       </Text>
                     </TouchableOpacity>
                   </View>
+                  {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
                 </View>
               </KeyboardAvoidingView>
             </Modal>
