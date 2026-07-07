@@ -590,9 +590,80 @@ async def _create_post_document(
         if 'duration_seconds' in metadata: post_doc['duration'] = metadata['duration_seconds']
         if 'thumbnail_url' in metadata: post_doc['thumbnail_url'] = metadata['thumbnail_url']
 
+    # ─── Duplicate Upload Prevention Check ───
+    try:
+        recent_posts = await db.query_documents(
+            'posts',
+            filters=[('user_id', '==', user_id)]
+        )
+        if recent_posts:
+            # Sort in memory by created_at DESC
+            recent_posts.sort(key=lambda x: x.get('created_at') or datetime(1970, 1, 1), reverse=True)
+            
+            from datetime import timezone
+            for recent in recent_posts[:5]:  # Check the last 5 uploads
+                r_created = recent.get('created_at')
+                if r_created:
+                    if hasattr(r_created, 'tzinfo') and r_created.tzinfo is not None:
+                        r_created = r_created.astimezone(timezone.utc).replace(tzinfo=None)
+                    
+                    # If same content was uploaded in the last 180 seconds, reject new document insertion
+                    time_diff = datetime.utcnow() - r_created
+                    if time_diff.total_seconds() < 180:
+                        recent_caption = (recent.get('caption') or '').strip()
+                        recent_media = (recent.get('media_path') or '').strip()
+                        
+                        if (recent_caption == post_doc['caption'] and recent_media == post_doc['media_path']):
+                            logger.info(f"Duplicate upload detected. Returning existing post {recent.get('id')} to maintain database integrity.")
+                            return recent
+    except Exception as e:
+        logger.warning(f"Failed to check for recent duplicate uploads: {e}")
+
     post_id = await db.create_document('posts', post_doc)
     post_doc['id'] = post_id
     return post_doc
+
+
+def _deduplicate_posts(posts: list[dict]) -> list[dict]:
+    """
+    Deduplicates a list of post documents based on a unique signature
+    (caption + media_path) and strictly filters out corrupted posts where
+    the media URL owner path does not match the post's user_id.
+    """
+    import urllib.parse
+    import re
+    
+    seen_signatures = set()
+    deduped = []
+    for post in posts:
+        # ─── Strict Media URL Ownership Verification ───
+        media_url = post.get('media_url') or ''
+        post_user_id = post.get('user_id')
+        
+        if media_url and post_user_id:
+            unquoted_url = urllib.parse.unquote(media_url)
+            # Find the user ID in the path (e.g. /posts/{user_id}/)
+            match = re.search(r'/posts/([^/]+)/', unquoted_url)
+            if match:
+                path_user_id = match.group(1)
+                # If the folder path ID does not match the post's user_id, it is corrupt
+                if path_user_id != post_user_id:
+                    logger.warning(f"Corrupt post filtered: Post {post.get('id')} has user_id {post_user_id} but media folder belongs to {path_user_id}")
+                    continue
+
+        caption_sig = (post.get('caption') or '').strip()
+        media_sig = (post.get('media_path') or '').strip()
+        
+        # If both are empty, fallback to post id
+        if not caption_sig and not media_sig:
+            sig = post.get('id')
+        else:
+            sig = f"{caption_sig}::{media_sig}"
+
+        if sig not in seen_signatures:
+            seen_signatures.add(sig)
+            deduped.append(post)
+    return deduped
 
 
 def _extract_mention_handles(text: str) -> list[str]:
@@ -3199,6 +3270,76 @@ async def _upload_post_from_storage_impl(
             os.unlink(temp_input_file.name)
         if os.path.exists(temp_output_file.name):
             os.unlink(temp_output_file.name)
+@api_router.get('/posts/my')
+async def get_my_posts(
+    user_id: Optional[str] = Query(None),
+    limit: int = 6,
+    offset: int = 0,
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get personal or another user's posts with strict security and integrity checks.
+    Returns 6 posts per batch (pagination using offset).
+    """
+    db = await get_db()
+    current_user_id = token_data['user_id']
+    if not current_user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    target_user_id = user_id if user_id else current_user_id
+    
+    # Sanity check: verify the target user exists
+    target_user = await db.get_document('users', target_user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    safe_limit = max(1, min(limit, 50))
+
+    try:
+        # Fetch posts belonging to the target user
+        my_posts = await db.query_documents(
+            'posts',
+            filters=[('user_id', '==', target_user_id)]
+        )
+
+        # Sort in memory by created_at DESC (avoiding Firestore composite index requirement)
+        my_posts.sort(
+            key=lambda x: str(x.get('created_at') or ''),
+            reverse=True
+        )
+
+        # De-duplicate posts by media_path and caption to maintain absolute integrity and avoid duplicates
+        deduplicated_posts = _deduplicate_posts(my_posts)
+
+        # Strict validation check on the backend to avoid any leak
+        validated_posts = []
+        for post in deduplicated_posts:
+            # Integrity check: user_id must match the target user ID
+            if post.get('user_id') != target_user_id:
+                # Security violation! Block and raise exception
+                logger.error(f"SECURITY VIOLATION: Post {post.get('id')} belongs to user {post.get('user_id')} but was returned in feed of user {target_user_id}!")
+                raise HTTPException(status_code=403, detail="Security validation failed. Access denied.")
+            validated_posts.append(post)
+
+        # Sort and slice for offset/limit pagination
+        total_count = len(validated_posts)
+        paginated_posts = validated_posts[offset : offset + safe_limit]
+
+        # Has reached the end?
+        has_reached_end = (offset + len(paginated_posts)) >= total_count
+
+        return {
+            "posts": paginated_posts,
+            "total": total_count,
+            "has_reached_end": has_reached_end,
+            "offset": offset,
+            "limit": safe_limit
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching user's own posts: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @api_router.get('/posts/feed')
@@ -3511,6 +3652,9 @@ async def get_posts_feed(
 
             return filtered[:target_limit]
 
+    # Deduplicate public_posts to avoid duplicate uploads in reads
+    public_posts = _deduplicate_posts(public_posts)
+
     # Split public posts into unseen and seen
     unseen_pool = [p for p in public_posts if p.get('id') not in seen_set]
     seen_pool = [p for p in public_posts if p.get('id') in seen_set]
@@ -3712,6 +3856,7 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         post for post in posts 
         if _matches_hashtag(post) and post.get('user_id') not in blocked_user_ids
     ]
+    visible_posts = _deduplicate_posts(visible_posts)
 
     def _created_at_sort_key(item: dict):
         value = item.get('created_at')

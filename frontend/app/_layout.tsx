@@ -215,6 +215,19 @@ function useDeepLinkHandler() {
         let path: string | null = null;
         const raw = event.url;
 
+        // Ignore Expo Go / Dev Server URLs to prevent noisy toast alerts during development
+        if (
+          raw.includes('127.0.0.1') ||
+          raw.includes('localhost') ||
+          raw.includes('192.168.') ||
+          raw.startsWith('exp://') ||
+          raw.includes('index.bundle') ||
+          raw.includes('expo-development-client')
+        ) {
+          console.log('[DeepLink] Dev server url ignored:', raw);
+          return;
+        }
+
         // Universal link: https://brahmand.app/some/path
         if (raw.startsWith('https://brahmand.app') || raw.startsWith('http://brahmand.app')) {
           const urlObj = new URL(raw);
@@ -887,12 +900,16 @@ export default function RootLayout() {
               const feedStore = useFeedStore.getState();
               if (feedStore.tabFeeds) {
                 Object.keys(feedStore.tabFeeds).forEach((tab) => {
-                  const posts = feedStore.tabFeeds[tab] || [];
+                  const tabData = feedStore.tabFeeds[tab];
+                  const posts = tabData?.posts || [];
                   const filtered = posts.filter((p: any) => p.user_id !== otherId);
                   useFeedStore.setState((state: any) => ({
                     tabFeeds: {
                       ...state.tabFeeds,
-                      [tab]: filtered
+                      [tab]: {
+                        ...tabData,
+                        posts: filtered
+                      }
                     }
                   }));
                 });

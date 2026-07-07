@@ -1321,6 +1321,16 @@ export const getPostsFeed = async (
   });
 };
 
+export const getMyPosts = async (
+  limit: number = 6,
+  offset: number = 0,
+  userId?: string,
+) => {
+  return api.get("/posts/my", {
+    params: { limit, offset, user_id: userId },
+  });
+};
+
 export const togglePostLike = (postId: string) => {
   markPostAsSeen(postId);
   return api.post(`/posts/${postId}/like`);

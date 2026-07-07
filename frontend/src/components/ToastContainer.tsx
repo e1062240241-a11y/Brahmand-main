@@ -54,21 +54,21 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
     switch (toast.type) {
       case 'success':
         return {
-          icon: <Ionicons name="checkmark" size={18} color="#12B76A" />,
+          icon: <Ionicons name="checkmark" size={14} color="#12B76A" />,
           containerStyle: { borderColor: 'rgba(18, 183, 106, 0.15)', backgroundColor: '#F6FEF9' },
           title: 'Success',
         };
       case 'error':
         return {
-          icon: <Ionicons name="alert-outline" size={18} color="#F04438" />,
+          icon: <Ionicons name="alert-outline" size={14} color="#F04438" />,
           containerStyle: { borderColor: 'rgba(240, 68, 56, 0.15)', backgroundColor: '#FEF3F2' },
           title: 'Error',
         };
       default:
         return {
-          icon: <Ionicons name="information-outline" size={18} color="#0086C9" />,
+          icon: <Ionicons name="information-outline" size={14} color="#0086C9" />,
           containerStyle: { borderColor: 'rgba(0, 134, 201, 0.15)', backgroundColor: '#F0F9FF' },
-          title: 'Information',
+          title: 'Info',
         };
     }
   };
@@ -91,12 +91,12 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
             {icon}
           </View>
           <View style={styles.textContainer}>
-            <Text style={styles.titleText}>{title}</Text>
+            <Text style={styles.titleText}>{title}:</Text>
             <Text style={styles.messageText}>{toast.message}</Text>
           </View>
           {(!toast.actions || toast.actions.length === 0) && (
             <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
-              <Ionicons name="close" size={18} color="#98A2B3" />
+              <Ionicons name="close" size={16} color="#98A2B3" />
             </TouchableOpacity>
           )}
         </View>
@@ -160,45 +160,45 @@ const styles = StyleSheet.create({
   },
   toastItem: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 100, // pill shaped
+    paddingVertical: 10,
+    paddingHorizontal: 20,
     marginBottom: 10,
-    width: '100%',
-    maxWidth: 420,
+    alignSelf: 'center',
     shadowColor: '#101828',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowRadius: 12,
+    elevation: 6,
     borderWidth: 1,
     borderColor: '#F2F4F7',
   },
   contentContainer: {
-    width: '100%',
+    alignItems: 'center',
   },
   messageRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
   },
   iconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 10,
   },
   textContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
   },
   titleText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#101828',
-    marginBottom: 2,
+    marginRight: 6,
     fontFamily: 'System',
   },
   messageText: {
@@ -206,49 +206,45 @@ const styles = StyleSheet.create({
     color: '#475467',
     fontWeight: '400',
     fontFamily: 'System',
-    lineHeight: 18,
   },
   closeButton: {
-    padding: 6,
-    marginLeft: 8,
+    padding: 4,
+    marginLeft: 6,
   },
   actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
     flexWrap: 'wrap',
-    marginTop: 12,
+    marginTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F2F4F7',
-    paddingTop: 12,
-    gap: 8,
+    paddingTop: 8,
+    gap: 12,
   },
   actionBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary || '#FF6600',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 80,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.primary || '#FF6600',
   },
   actionBtnDestructive: {
-    backgroundColor: '#D92D20',
+    borderBottomColor: '#D92D20',
   },
   actionBtnCancel: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D0D5DD',
+    borderBottomColor: '#667085',
   },
   actionText: {
-    color: '#FFFFFF',
+    color: COLORS.primary || '#FF6600',
     fontSize: 13,
     fontWeight: '600',
     fontFamily: 'System',
   },
   actionTextDestructive: {
-    color: '#FFFFFF',
+    color: '#D92D20',
   },
   actionTextCancel: {
-    color: '#344054',
+    color: '#667085',
   },
 });

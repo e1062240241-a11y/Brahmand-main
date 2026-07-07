@@ -33,7 +33,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuthStore } from '../../src/store/authStore';
 import { useUploadStore } from '../../src/store/uploadStore';
 import api, {
-  getUserPosts,
   getUserProfile,
   viewPost,
   deletePost,
@@ -499,13 +498,47 @@ export default function ProfileScreen() {
   };
 
   const loadPosts = useCallback(async (reset = false, silent = false) => {
-    // ponytail: disabled posts showing functionality on profile tab as requested
-    setPosts([]);
-    setPostsCount(0);
-    setPostsLoading(false);
-    setRefreshing(false);
-    setHasMore(false);
-  }, []);
+    if (!userId) return;
+
+    if (!reset && !hasMore) return;
+
+    const currentOffset = reset ? 0 : offset;
+
+    if (!silent) {
+      setPostsLoading(true);
+    }
+
+    try {
+      const { getMyPosts } = require('../../src/services/api');
+      const response = await getMyPosts(6, currentOffset);
+      const payload = response.data;
+      const incomingPosts = payload?.posts || [];
+
+      // Strict validation: every post must belong to the logged-in user
+      const validated = [];
+      for (const p of incomingPosts) {
+        if (p.user_id !== userId) {
+          console.error(`SECURITY VIOLATION: Post ${p.id} belongs to user ${p.user_id} but was returned for user ${userId}!`);
+          // Skip/block the corrupt post to maintain absolute integrity
+          continue;
+        }
+        validated.push(p);
+      }
+
+      const nextOffset = currentOffset + validated.length;
+      const nextHasMore = !payload?.has_reached_end;
+
+      setPosts(prev => reset ? validated : [...prev, ...validated]);
+      setPostsCount(payload?.total || 0);
+      setOffset(nextOffset);
+      setHasMore(nextHasMore);
+    } catch (err) {
+      console.warn('Failed to load posts on profile:', err);
+    } finally {
+      setPostsLoading(false);
+      setRefreshing(false);
+    }
+  }, [userId, offset, hasMore]);
 
 
 
@@ -1353,7 +1386,7 @@ export default function ProfileScreen() {
             ) : !hasMore && posts.length > 0 ? (
               <View style={styles.endOfFeed}>
                 <Text style={styles.endOfFeedText}>
-                  {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "You have reached the end"}
+                  {t('language') === 'hi' ? 'आप अंत तक पहुँच चुके हैं' : "you have reached end"}
                 </Text>
               </View>
             ) : null

@@ -324,7 +324,17 @@ export default function NotificationsScreen() {
       return '/festivals';
     }
     if (typeKey.includes('chat') || typeKey.includes('dm') || typeKey.includes('message') || actionKey.includes('chat') || actionKey.includes('dm') || actionKey.includes('message')) {
-      return '/dm';
+      const convId = itemData?.conversation_id || itemData?.chat_id;
+      const actorId = itemData?.actor_user_id || itemData?.sender_id || itemData?.user_id;
+      const actorName = itemData?.actor_name || itemData?.username || itemData?.name || '';
+      const actorSL = itemData?.actor_sl_id || itemData?.sl_id || '';
+      if (convId && convId !== 'undefined' && convId !== 'new') {
+        return `/dm/${convId}?userId=${actorId}&userName=${encodeURIComponent(actorName)}&userSL=${encodeURIComponent(actorSL)}`;
+      }
+      if (actorId) {
+        return `/dm/new?userId=${actorId}&userName=${encodeURIComponent(actorName)}&userSL=${encodeURIComponent(actorSL)}`;
+      }
+      return '/dm/new';
     }
 
     if (itemData?.post_id) {

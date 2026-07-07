@@ -162,14 +162,14 @@ const PostScreen = () => {
   useEffect(() => {
     if (feedPosts.length > 0 && routePostId && !hasScrolled.current) {
       const idx = feedPosts.findIndex(
-        p => String(p.id) === String(routePostId) || String(p.post_id) === String(routePostId)
+        p => String(p?.id) === String(routePostId) || String(p?.post_id) === String(routePostId)
       );
-      if (idx >= 0) {
+      if (idx !== -1 && listRef.current) {
+        hasScrolled.current = true;
         setTimeout(() => {
-          listRef.current?.scrollToIndex({ index: idx, animated: false, viewPosition: 0 });
-          hasScrolled.current = true;
+          listRef.current?.scrollToIndex({ index: idx, animated: false });
           setActivePostKey(feedPostKeys[idx]);
-        }, 300);
+        }, 100);
       }
       setInitialPostLoaded(true);
     }
