@@ -347,10 +347,16 @@ export default function ActiveRequestsList() {
     );
   };
 
-  const handleWhatsApp = (number: string, title: string) => {
+  const handleWhatsApp = (number: string, title: string, requestId?: string) => {
     if (!number) return;
     const formatted = number.replace(/\D/g, ''); // Official WhatsApp format must exclude '+' and other non-digits
-    const text = encodeURIComponent(`Hare Krishna! I saw your community request "${title}" on Brahmand App and would like to extend my help.`);
+    
+    let messageText = `Hare Krishna! I saw your community request "${title}" on Brahmand App and would like to extend my help.`;
+    if (requestId) {
+      messageText += `\n\nRequest Link: https://brahmand.app/community-request/list?requestId=${requestId}`;
+    }
+    
+    const text = encodeURIComponent(messageText);
     Linking.openURL(`https://wa.me/${formatted}?text=${text}`).catch(() => {
       Alert.alert('Error', 'Unable to open WhatsApp');
     });
@@ -507,7 +513,7 @@ export default function ActiveRequestsList() {
 
                 <TouchableOpacity 
                   style={[styles.actionBtn, styles.waBtn]}
-                  onPress={() => handleWhatsApp(item.contact_number, item.title)}
+                  onPress={() => handleWhatsApp(item.contact_number, item.title, item.id)}
                 >
                   <FontAwesome5 name="whatsapp" size={14} color="#FFF" />
                   <Text style={styles.actionBtnText}>Offer Help</Text>
@@ -727,7 +733,7 @@ export default function ActiveRequestsList() {
 
                 <TouchableOpacity 
                   style={[styles.sheetBtn, styles.sheetWhatsAppBtn]}
-                  onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
+                  onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title, selectedRequest.id)}
                 >
                   <FontAwesome5 name="whatsapp" size={20} color="#FFF" />
                   <Text style={styles.sheetWhatsAppBtnText}>Offer Help</Text>

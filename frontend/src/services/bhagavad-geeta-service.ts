@@ -41,7 +41,7 @@ const normalizeVerse = (verse: any) => {
   };
 };
 
-const CDN_BASE = 'https://brahmandfeed23.b-cdn.net/library';
+const CDN_BASE = '/api/library-cdn';
 const TOTAL_CHAPTERS = 18;
 const PREFETCH_AHEAD = 3;
 const RAW_PREFIX = 'raw:bhagavad-gita:';

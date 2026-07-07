@@ -229,6 +229,31 @@ async def lifespan(app: FastAPI):
     _panchang_prefetch_task = None
     logger.info("Panchang prefetch loop disabled")
     
+    # Update ISKCON Bangalore temple (Robust)
+    async def update_iskcon():
+        try:
+            db = await get_db()
+            # Find the temple first
+            temples = await db.query_documents('temples', limit=100)
+            target_id = None
+            for t in temples:
+                if t.get('temple_id') == 'other-iskcon-temple-bangalore-karnataka' or 'ISKCON Temple Bangalore' in t.get('name', ''):
+                    target_id = t.get('id') # Actual Firestore document ID
+                    break
+            
+            if target_id:
+                await db.update_document('temples', target_id, {
+                    'name': 'ISKCON Bangalore aarti',
+                    'youtube_url': 'https://www.youtube.com/live/cVlUJPTObdk?si=CZlANF07SSYPDMj3'
+                })
+                logger.info(f"Successfully updated ISKCON Bangalore temple (Doc ID: {target_id}).")
+            else:
+                logger.warning("ISKCON Bangalore temple not found in database!")
+        except Exception as e:
+            logger.error(f"Failed to update ISKCON Bangalore: {e}")
+    
+    asyncio.create_task(update_iskcon())
+    
     yield
     
     # Shutdown
@@ -2715,6 +2740,24 @@ async def get_bunny_media(filepath: str):
     )
 
 
+# ponytail: CDN proxy to avoid CORS issues on web
+@api_router.get("/library-cdn/{filepath:path}")
+async def get_library_cdn(filepath: str):
+    """Proxy library CDN requests to avoid CORS"""
+    cdn_url = f"https://brahmandfeed23.b-cdn.net/library/{filepath}"
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
+        async with session.get(cdn_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+            if resp.status != 200:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=resp.status, content={"error": "Not found"})
+            data = await resp.read()
+    from fastapi.responses import Response
+    return Response(content=data, media_type="application/json", headers={
+        "Cache-Control": "public, max-age=3600",
+        "Access-Control-Allow-Origin": "*",
+    })
+
+
 # =================== SOCIAL POSTS ===================
 
 @api_router.get('/posts/bunny-upload-credentials')
@@ -2806,8 +2849,9 @@ async def _upload_post_impl(
     header = await file.read(32)
     await file.seek(0)
 
-    is_actually_video = b'ftyp' in header or header.startswith(b'\x00\x00\x00')
-    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG')
+    is_heic = any(brand in header for brand in (b'heic', b'heix', b'hevc', b'mif1'))
+    is_actually_video = (b'ftyp' in header and not is_heic) or header.startswith(b'\x00\x00\x00')
+    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG') or is_heic
 
     if is_actually_video:
         content_type = 'video/mp4'
@@ -3051,8 +3095,9 @@ async def _upload_chat_media_impl(
     header = await file.read(32)
     await file.seek(0)
 
-    is_actually_video = b'ftyp' in header or header.startswith(b'\x00\x00\x00')
-    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG')
+    is_heic = any(brand in header for brand in (b'heic', b'heix', b'hevc', b'mif1'))
+    is_actually_video = (b'ftyp' in header and not is_heic) or header.startswith(b'\x00\x00\x00')
+    is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG') or is_heic
 
     if is_actually_video:
         content_type = 'video/mp4'
@@ -7820,14 +7865,14 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
 @api_router.get("/temples")
 async def get_temples(token_data: dict = Depends(verify_token)):
     db = await get_db()
-    return await db.query_documents('temples', limit=20)
+    return await db.query_documents('temples', limit=100)
 
 
 @api_router.get("/temples/nearby")
 async def get_nearby_temples(lat: float = None, lng: float = None, token_data: dict = Depends(verify_token)):
     """Get temples, optionally filtered by location"""
     db = await get_db()
-    temples = await db.query_documents('temples', limit=20)
+    temples = await db.query_documents('temples', limit=100)
     
     # Add is_following status for each temple
     user_id = token_data["user_id"]
