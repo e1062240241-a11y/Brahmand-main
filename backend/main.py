@@ -10831,13 +10831,6 @@ async def upload_vendor_business_image(
     if vendor.get('owner_id') != user_id:
         raise HTTPException(status_code=403, detail="Only the owner can upload business images")
 
-    user = await db.get_document('users', user_id)
-    user_verified = bool(user and (user.get('kyc_status') == 'verified'))
-    vendor_verified = vendor.get('kyc_status') == 'verified'
-
-    if not (vendor_verified or user_verified):
-        raise HTTPException(status_code=403, detail="Business images can be uploaded only for approved vendors")
-
     if slot < 0 or slot > 4:
         raise HTTPException(status_code=400, detail="slot must be between 0 and 4")
 

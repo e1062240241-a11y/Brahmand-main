@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import * as Device from "expo-device";
 import * as FileSystem from "expo-file-system/legacy";
+import Constants from "expo-constants";
 import { secureStorage } from "../utils/secureStorage";
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -170,6 +171,21 @@ const resolvedWebApiUrl = runtimeWebApiUrl
     ? configuredWebApiUrl
     : configuredApiUrl;
 
+const getMetroHostIp = (): string | null => {
+  try {
+    const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.29.108:8081"
+    if (hostUri) {
+      const ip = hostUri.split(":")[0];
+      if (ip && ip !== "127.0.0.1" && ip !== "localhost") {
+        return ip;
+      }
+    }
+  } catch (err) {
+    console.warn("[API] Failed to get Metro host IP:", err);
+  }
+  return null;
+};
+
 const getResolvedApiUrl = (): string => {
   if (Platform.OS === "web") {
     return (resolvedWebApiUrl || "http://127.0.0.1:8000").replace(
@@ -181,12 +197,24 @@ const getResolvedApiUrl = (): string => {
   const baseApiUrl = configuredApiUrl || "http://127.0.0.1:8000";
 
   if (!Device.isDevice) {
-    const isAndroid = Platform.OS === "android";
-    const targetHost = isAndroid ? "10.0.2.2" : "127.0.0.1";
-
+    // Use 127.0.0.1 for both Android emulator (adb reverse) and iOS simulator.
+    // Run: adb reverse tcp:8000 tcp:8000 to forward the port before starting.
     const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
     const port = portMatch ? portMatch[1] : "8000";
+    const configuredHost = baseApiUrl.match(/\/\/([\d.]+|localhost)/)?.[1] || "127.0.0.1";
+    const targetHost = configuredHost.replace("localhost", "127.0.0.1");
     return `http://${targetHost}:${port}`;
+  }
+
+  // If running on a physical device in development, dynamically resolve to the Metro server host IP
+  if (Device.isDevice && isLocalhostUrl(baseApiUrl)) {
+    const metroIp = getMetroHostIp();
+    if (metroIp) {
+      const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
+      const port = portMatch ? portMatch[1] : "8000";
+      console.info(`[API] Physical device detected. Dynamically routing localhost to Metro host IP: http://${metroIp}:${port}`);
+      return `http://${metroIp}:${port}`;
+    }
   }
 
   return baseApiUrl.replace("localhost", "127.0.0.1");
@@ -869,6 +897,7 @@ export const getUserPosts = (
 export const blockUserApi = (userId: string) => api.post(`/users/${userId}/block`);
 export const unblockUserApi = (userId: string) => api.post(`/users/${userId}/unblock`);
 export const checkUserBlockedApi = (userId: string) => api.get(`/users/${userId}/is_blocked`);
+export const getBlockedUsersApi = () => api.get('/user/blocked');
 
 export const getUsersBatch = (userIds: string[]) =>
   api.post("/users/batch", { user_ids: userIds });

@@ -23,6 +23,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { Avatar } from '../../src/components/Avatar';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 import api, { sendMsg91OTP, verifyMsg91OTP, getKYCStatus } from '../../src/services/api';
 
@@ -562,6 +563,128 @@ export default function VendorDashboardScreen() {
   };
 
   const handleSaveAll = async () => {
+    // 1. Profile Picture Validation
+    if (!profileUri) {
+      Alert.alert('Validation Error', 'Profile picture is required. Please upload a profile photo.');
+      return;
+    }
+
+    const trimmedBusinessName = businessName.trim();
+    const trimmedOwnerName = ownerName.trim();
+    const trimmedPhone = phoneVal.trim();
+    const trimmedAddress = addressVal.trim();
+    const trimmedEmail = emailVal.trim();
+    const trimmedWebsite = websiteVal.trim();
+    const trimmedWhatsapp = whatsappVal.trim();
+    const trimmedDescription = descriptionVal.trim();
+
+    const businessNameRegex = /^[a-zA-Z0-9\u0900-\u097F\s&.,'-\/]{2,100}$/;
+    const ownerNameRegex = /^[a-zA-Z\u0900-\u097F\s.'-]{2,100}$/;
+    const addressRegex = /^[a-zA-Z0-9\u0900-\u097F\s.,'#\-\/()]{5,250}$/;
+    const phoneRegex = /^\d+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+
+    // Business Name
+    if (!trimmedBusinessName) {
+      Alert.alert('Validation Error', 'Business name is required');
+      return;
+    }
+    if (!businessNameRegex.test(trimmedBusinessName)) {
+      Alert.alert('Validation Error', 'Business name must be 2 to 100 characters and contain only letters, numbers, spaces, and basic symbols (&.,\'-/)');
+      return;
+    }
+
+    // Owner Name
+    if (!trimmedOwnerName) {
+      Alert.alert('Validation Error', 'Full Name is required');
+      return;
+    }
+    if (!ownerNameRegex.test(trimmedOwnerName)) {
+      Alert.alert('Validation Error', 'Full Name must be 2 to 100 characters and contain only letters, spaces, dots, and hyphens');
+      return;
+    }
+
+    // Phone Number
+    if (!trimmedPhone) {
+      Alert.alert('Validation Error', 'Phone number is required');
+      return;
+    }
+    const cleanPhoneDigits = trimmedPhone.replace(/^\+91/, '').replace(/^\+/, '');
+    if (!phoneRegex.test(cleanPhoneDigits)) {
+      Alert.alert('Validation Error', 'Phone number must contain only digits');
+      return;
+    }
+    if (trimmedPhone.startsWith('+91') && cleanPhoneDigits.length !== 10) {
+      Alert.alert('Validation Error', 'Indian phone numbers must be exactly 10 digits');
+      return;
+    }
+    if (cleanPhoneDigits.length < 7 || cleanPhoneDigits.length > 15) {
+      Alert.alert('Validation Error', 'Phone number must be between 7 and 15 digits');
+      return;
+    }
+
+    // Email Address
+    if (!trimmedEmail) {
+      Alert.alert('Validation Error', 'Email address is required');
+      return;
+    }
+    if (!emailRegex.test(trimmedEmail)) {
+      Alert.alert('Validation Error', 'Please enter a valid email address');
+      return;
+    }
+
+    // Business Description
+    if (!trimmedDescription) {
+      Alert.alert('Validation Error', 'Business description is required');
+      return;
+    }
+    if (trimmedDescription.length < 10) {
+      Alert.alert('Validation Error', 'Business description must be at least 10 characters');
+      return;
+    }
+
+    // Categories
+    if (categoriesVal.length === 0) {
+      Alert.alert('Validation Error', 'Please select at least one category');
+      return;
+    }
+    if (categoriesVal.length > 5) {
+      Alert.alert('Validation Error', 'Maximum 5 categories allowed');
+      return;
+    }
+
+    // Address
+    if (!trimmedAddress) {
+      Alert.alert('Validation Error', 'Address is required');
+      return;
+    }
+    if (!addressRegex.test(trimmedAddress)) {
+      Alert.alert('Validation Error', 'Address must be between 5 and 250 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/())');
+      return;
+    }
+
+    // If verified/KYC, validate premium fields
+    if (isVerified) {
+      // Website
+      if (trimmedWebsite && !urlRegex.test(trimmedWebsite)) {
+        Alert.alert('Validation Error', 'Please enter a valid website link (e.g. http://example.com)');
+        return;
+      }
+      // WhatsApp
+      if (trimmedWhatsapp) {
+        const cleanWhatsappDigits = trimmedWhatsapp.replace(/^\+91/, '').replace(/^\+/, '');
+        if (!phoneRegex.test(cleanWhatsappDigits)) {
+          Alert.alert('Validation Error', 'WhatsApp number must contain only digits');
+          return;
+        }
+        if (cleanWhatsappDigits.length < 7 || cleanWhatsappDigits.length > 15) {
+          Alert.alert('Validation Error', 'WhatsApp number must be between 7 and 15 digits');
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     try {
       const vendorUpdates: any = {
@@ -653,10 +776,20 @@ export default function VendorDashboardScreen() {
         {/* Profile Image Section */}
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={profileUri ? { uri: profileUri } : require('../../assets/images/favicon.png')}
-              style={styles.profileImage}
-            />
+            {profileUri ? (
+              <Image
+                source={{ uri: profileUri }}
+                style={styles.profileImage}
+              />
+            ) : (
+              <View style={[styles.profileImage, { justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }]}>
+                <Avatar
+                  name={businessName || ownerName || 'Business'}
+                  size={94}
+                  shape="circle"
+                />
+              </View>
+            )}
             <TouchableOpacity style={styles.profileEditBadge} onPress={() => pickAndUploadImage(0)}>
               {loadingSlot === 0 ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -666,7 +799,7 @@ export default function VendorDashboardScreen() {
             </TouchableOpacity>
           </View>
           <TouchableOpacity onPress={() => pickAndUploadImage(0)}>
-            <Text style={styles.changePhotoText}>Change Profile Photo</Text>
+            <Text style={styles.changePhotoText}>Change Profile Photo <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           </TouchableOpacity>
         </View>
 
@@ -677,7 +810,7 @@ export default function VendorDashboardScreen() {
             <Text style={styles.cardTitle}>Personal Information</Text>
           </View>
 
-          <Text style={styles.inputLabel}>Full Name</Text>
+          <Text style={styles.inputLabel}>Full Name <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
@@ -688,13 +821,13 @@ export default function VendorDashboardScreen() {
             />
           </View>
 
-          <Text style={styles.inputLabel}>Phone Number</Text>
+          <Text style={styles.inputLabel}>Phone Number <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <TouchableOpacity style={styles.inputContainer} onPress={handleEditPhone}>
             <Text style={styles.pressableInputText}>{phoneVal || 'Add Phone Number'}</Text>
             <Ionicons name="shield-checkmark" size={16} color="#5C3B24" style={{ opacity: 0.5 }} />
           </TouchableOpacity>
 
-          <Text style={styles.inputLabel}>Email Address</Text>
+          <Text style={styles.inputLabel}>Email Address <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
@@ -763,7 +896,7 @@ export default function VendorDashboardScreen() {
             <Text style={styles.cardTitle}>Business Information</Text>
           </View>
 
-          <Text style={styles.inputLabel}>Business Name</Text>
+          <Text style={styles.inputLabel}>Business Name <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={styles.inputContainer}>
             <TextInput
               style={styles.textInput}
@@ -774,7 +907,7 @@ export default function VendorDashboardScreen() {
             />
           </View>
 
-          <Text style={styles.inputLabel}>Categories</Text>
+          <Text style={styles.inputLabel}>Categories <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={styles.categoriesRow}>
             {categoriesVal.map((cat, idx) => (
               <View key={idx} style={styles.categoryChip}>
@@ -790,7 +923,7 @@ export default function VendorDashboardScreen() {
              </TouchableOpacity>
           </View>
 
-          <Text style={[styles.inputLabel, { marginTop: 14 }]}>Description</Text>
+          <Text style={[styles.inputLabel, { marginTop: 14 }]}>Description <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={[styles.inputContainer, styles.descriptionContainer]}>
             <TextInput
               style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
@@ -803,7 +936,7 @@ export default function VendorDashboardScreen() {
             />
           </View>
 
-          <Text style={styles.inputLabel}>Address</Text>
+          <Text style={styles.inputLabel}>Address <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={[styles.inputContainer, styles.addressContainer]}>
             <TextInput
               style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}

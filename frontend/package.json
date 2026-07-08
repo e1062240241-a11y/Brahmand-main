@@ -3,7 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start --scheme sanatanlok",
+    "start": "expo start --localhost --max-workers 4 --scheme sanatanlok",
+    "start:lan": "expo start --scheme sanatanlok",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android --scheme sanatanlok",
     "ios": "expo run:ios --scheme sanatanlok",

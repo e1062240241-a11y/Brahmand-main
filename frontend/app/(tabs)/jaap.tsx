@@ -38,9 +38,17 @@ const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
 const HERO_DOT_COUNT = 4;
 
-const UPCOMING_CARD_WIDTH = 115;
-const UPCOMING_CARD_HEIGHT = 180;
-const UPCOMING_GRID_PADDING = Math.max(10, (SCREEN_WIDTH - 361) / 2);
+const UPCOMING_GRID_PADDING = Platform.OS === 'android'
+  ? 12
+  : Math.max(10, (SCREEN_WIDTH - 361) / 2);
+
+const UPCOMING_CARD_WIDTH = Platform.OS === 'android'
+  ? (SCREEN_WIDTH - 2 * 12 - 16) / 3
+  : 115;
+
+const UPCOMING_CARD_HEIGHT = Platform.OS === 'android'
+  ? Math.round(180 * (UPCOMING_CARD_WIDTH / 115))
+  : 180;
 
 const JAAP_CARD_WIDTH = Platform.OS === 'android' ? 125 : 115;
 const JAAP_CARD_HEIGHT = Platform.OS === 'android' ? 190 : 180;
@@ -350,27 +358,13 @@ export default function JaapLandingScreen() {
   };
 
   const handleUpcomingCardPress = (jaap: any) => {
-    const currentDay = now.getDay();
-    if (jaap.allowedDays && !jaap.allowedDays.includes(currentDay)) {
-      const dayName = getDayName(jaap.allowedDays[0], t('language'));
-      const title = t('language') === 'hi' ? jaap.titleHi : jaap.title;
-      const msg = t('language') === 'hi'
-        ? `${title} केवल ${dayName} को ही उपलब्ध है।`
-        : `${title} is only accessible on ${dayName}.`;
-      Alert.alert(
-        t('language') === 'hi' ? 'आगामी जाप' : 'Upcoming Jaap',
-        msg
-      );
-      return;
-    }
-
-    router.push({
-      pathname: '/live-jaap-welcome',
-      params: {
-        mantraType: jaap.mantraType,
-        title: jaap.title,
-      }
-    });
+    const title = t('language') === 'hi' ? jaap.titleHi : jaap.title;
+    Alert.alert(
+      t('language') === 'hi' ? '🙏 जल्द ही आ रहा है' : '🙏 Coming Soon',
+      t('language') === 'hi'
+        ? `${title} सेवा जल्द ही आ रही है। कृपया प्रतीक्षा करें!`
+        : `${title} is coming soon. Stay tuned!`
+    );
   };
 
 
@@ -876,37 +870,30 @@ export default function JaapLandingScreen() {
                         style={StyleSheet.absoluteFillObject}
                       />
                       
-                      {/* Day Badge */}
-                      {jaap.allowedDays && jaap.allowedDays.includes(now.getDay()) && (
-                        <View style={[styles.upcomingDayBadge, styles.upcomingDayBadgeActive]}>
-                          <Text style={styles.upcomingDayBadgeText}>
-                            {t('language') === 'hi' ? 'आज' : 'TODAY'}
-                          </Text>
-                        </View>
-                      )}
-
                       <View style={styles.upcomingCardContent}>
                         <Text style={styles.upcomingCardTitle} numberOfLines={2}>
                           {displayName}
                         </Text>
 
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.upcomingReminderBtn,
-                            isReminderActive && styles.upcomingReminderBtnActive,
-                            pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                          ]}
-                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                          onPress={() => handleSetReminder(jaap.id, jaap.mantraType, jaap.title)}
-                        >
-                          <Text style={[
-                            styles.upcomingReminderBtnText,
-                            isReminderActive && styles.upcomingReminderBtnTextActive
-                          ]} numberOfLines={1}>
-                            {t('reminder')}
+                        <View style={[
+                          styles.upcomingReminderBtn,
+                          {
+                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                            borderColor: 'rgba(255, 255, 255, 0.4)',
+                            borderWidth: 1,
+                            elevation: 0,
+                            shadowOpacity: 0,
+                          }
+                        ]}>
+                          <Text style={{
+                            color: '#FFF',
+                            fontSize: 10,
+                            fontWeight: '700',
+                            letterSpacing: 0.5,
+                          }} numberOfLines={1}>
+                            {t('language') === 'hi' ? 'जल्द ही आ रहा है' : 'COMING SOON'}
                           </Text>
-                          <BellIconSvg active={isReminderActive} />
-                        </Pressable>
+                        </View>
                       </View>
                     </View>
                   </Pressable>

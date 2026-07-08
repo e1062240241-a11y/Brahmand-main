@@ -6,7 +6,9 @@
  * effect globally without requiring a navigation reload.
  */
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { getBlockedUsers, getUsersWhoBlockedMe } from '../services/firebase/moderationService';
+import { getBlockedUsersApi } from '../services/api';
 
 interface BlockState {
   blockedUserIds: string[];
@@ -35,10 +37,33 @@ export const useBlockStore = create<BlockState>((set, get) => ({
     if (!currentUserId) return;
     set({ isLoading: true });
     try {
-      const [blockedByMe, blockedMe] = await Promise.all([
-        getBlockedUsers(currentUserId),
-        getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[]),
-      ]);
+      let blockedByMe: string[] = [];
+      let blockedMe: string[] = [];
+
+      if (Platform.OS === 'android') {
+        try {
+          [blockedByMe, blockedMe] = await Promise.all([
+            getBlockedUsers(currentUserId),
+            getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[]),
+          ]);
+        } catch (firestoreError) {
+          console.warn('[blockStore] Android: Firestore read failed, falling back to backend API:', firestoreError);
+          try {
+            const response = await getBlockedUsersApi();
+            if (response && response.data) {
+              blockedByMe = response.data.map((u: any) => String(u.id));
+            }
+          } catch (apiError) {
+            console.warn('[blockStore] Android backend API fallback also failed:', apiError);
+          }
+        }
+      } else {
+        [blockedByMe, blockedMe] = await Promise.all([
+          getBlockedUsers(currentUserId),
+          getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[]),
+        ]);
+      }
+
       const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
       set({ 
         blockedUserIds: combined, 

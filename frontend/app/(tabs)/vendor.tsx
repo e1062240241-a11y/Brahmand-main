@@ -43,13 +43,13 @@ const VSCREEN_WIDTH = Dimensions.get('window').width;
 const VSCREEN_HEIGHT = Dimensions.get('window').height;
 
 // Responsive variables for Android to prevent horizontal scroll/layout cuts
-const wrapperWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 24 : 394;
+const wrapperWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 16 : 394;
 const gridPadding = 16;
 const gap = 8;
 const cardWidth = Platform.OS === 'android' ? (wrapperWidth - (gridPadding * 2) - (gap * 2) - 4) / 3 : 110;
 const rightColWidth = Platform.OS === 'android' ? cardWidth * 2 + gap : 228;
 
-const businessGridWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 32 : 347;
+const businessGridWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 16 : 347;
 const businessRightColWidth = Platform.OS === 'android' ? (businessGridWidth - 12) / 3.13 : 107;
 const businessLeftColWidth = Platform.OS === 'android' ? businessRightColWidth * 2.13 : 228;
 
@@ -89,6 +89,7 @@ const LOCAL_TRANSLATIONS = {
     pendingKyc: 'Pending KYC',
     verify: 'Verify',
     registerYourService: 'Register Your Service',
+    registerBusinessService: 'Register Your Business/Service',
     createJobProfile: 'Create Job Profile',
     updateJobProfile: 'Update Job Profile',
     noJobsFound: 'No jobs found',
@@ -106,6 +107,12 @@ const LOCAL_TRANSLATIONS = {
     teacher: 'Teacher',
     painter: 'Painter',
     beautician: 'Beautician',
+    astrologer: 'Astrologer',
+    panditji: 'Panditji',
+    salon: 'Salon',
+    generalstore: 'General Store',
+    'general store': 'General Store',
+    dairy: 'Dairy',
     deleteTitle: 'Delete Service Profile',
     deleteConfirm: 'Are you sure you want to permanently delete your service business profile? This action cannot be undone.',
     deletedTitle: 'Deleted',
@@ -124,6 +131,16 @@ const LOCAL_TRANSLATIONS = {
     approvedTitle: 'Approved',
     approvedMsg: 'Your business has been registered and your KYC is already verified.',
     goDashboard: 'Go to Dashboard',
+    searchRequests: 'Search requests...',
+    sanataniServicesAround: 'Sanatani Services Around You',
+    sanataniBusinessAround: 'Sanatani Business\'s Around You',
+    allVendorsKyc: 'All vendors are KYC verified.',
+    kycComplete: 'KYC Complete',
+    kycUnderReview: 'KYC Under Review',
+    kycRequired: 'KYC Required',
+    kycRequiredTitle: 'KYC Required',
+    kycRequiredMsg: 'Please complete your KYC verification to manage your business/service.',
+    jobSaveSuccess: 'Job profile saved successfully.',
   },
   hi: {
     nearby: 'आस-पास',
@@ -140,6 +157,7 @@ const LOCAL_TRANSLATIONS = {
     pendingKyc: 'लंबित केवाईसी',
     verify: 'सत्यापित करें',
     registerYourService: 'अपनी सेवा पंजीकृत करें',
+    registerBusinessService: 'अपना व्यवसाय/सेवा पंजीकृत करें',
     createJobProfile: 'नौकरी प्रोफ़ाइल बनाएं',
     updateJobProfile: 'नौकरी प्रोफ़ाइल अपडेट करें',
     noJobsFound: 'कोई नौकरी नहीं मिली',
@@ -157,6 +175,12 @@ const LOCAL_TRANSLATIONS = {
     teacher: 'शिक्षक',
     painter: 'चित्रकार',
     beautician: 'ब्यूटीशियन',
+    astrologer: 'ज्योतिषी',
+    panditji: 'पंडितजी',
+    salon: 'सैलून',
+    generalstore: 'किराना दुकान',
+    'general store': 'किराना दुकान',
+    dairy: 'डेयरी',
     deleteTitle: 'सेवा प्रोफ़ाइल हटाएं',
     deleteConfirm: 'क्या आप वाकई अपनी सेवा व्यवसाय प्रोफ़ाइल को स्थायी रूप से हटाना चाहते हैं? इस कार्रवाई को वापस नहीं लिया जा सकता।',
     deletedTitle: 'हटा दिया गया',
@@ -175,6 +199,16 @@ const LOCAL_TRANSLATIONS = {
     approvedTitle: 'सत्यापित',
     approvedMsg: 'आपका व्यवसाय पंजीकृत कर दिया गया है और आपका केवाईसी पहले से ही सत्यापित है।',
     goDashboard: 'डैशबोर्ड पर जाएं',
+    searchRequests: 'अनुरोध खोजें...',
+    sanataniServicesAround: 'आपके आसपास सनातनी सेवाएं',
+    sanataniBusinessAround: 'आपके आसपास सनातनी व्यवसाय',
+    allVendorsKyc: 'सभी विक्रेता केवाईसी सत्यापित हैं।',
+    kycComplete: 'केवाईसी पूर्ण',
+    kycUnderReview: 'केवाईसी समीक्षाधीन',
+    kycRequired: 'केवाईसी आवश्यक',
+    kycRequiredTitle: 'केवाईसी आवश्यक',
+    kycRequiredMsg: 'अपना व्यवसाय/सेवा प्रबंधित करने के लिए कृपया केवाईसी सत्यापन पूरा करें।',
+    jobSaveSuccess: 'नौकरी प्रोफ़ाइल सफलतापूर्वक सहेजी गई।',
   }
 };
 
@@ -680,7 +714,7 @@ export default function VendorScreen() {
         cv_url: uploadedCvUrl,
       });
 
-      Alert.alert('Success', 'Job profile saved successfully.');
+      Alert.alert('Success', localT('jobSaveSuccess'));
       await loadJobsData();
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
@@ -1133,7 +1167,7 @@ export default function VendorScreen() {
         <TextInput
           ref={searchInputRef}
           style={styles.figmaSearchInput}
-          placeholder="Search requests..."
+          placeholder={localT('searchRequests')}
           placeholderTextColor="#9CA3AF"
           value={searchTerm}
           onChangeText={setSearchTerm}
@@ -1173,11 +1207,11 @@ export default function VendorScreen() {
                   router.push('/vendor/dashboard');
                 } else {
                   Alert.alert(
-                    'KYC Required',
-                    'Please complete your KYC verification to manage your business/service.',
+                    localT('kycRequiredTitle'),
+                    localT('kycRequiredMsg'),
                     [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Complete KYC', onPress: () => router.push('/kyc') }
+                      { text: localT('cancel'), style: 'cancel' },
+                      { text: localT('completeKyc'), onPress: () => router.push('/kyc') }
                     ]
                   );
                 }
@@ -1189,25 +1223,25 @@ export default function VendorScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
               <Text style={styles.figmaRegisterBtnText}>
                 {myVendor 
-                  ? 'Manage My Service'
-                  : 'Register Your Business/Service'}
+                  ? localT('manageMyService')
+                  : localT('registerBusinessService')}
               </Text>
               {myVendor && hasVerifiedKyc && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
                   <Ionicons name="checkmark-circle" size={14} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700', marginLeft: 3 }}>KYC Complete</Text>
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '700', marginLeft: 3 }}>{localT('kycComplete')}</Text>
                 </View>
               )}
               {myVendor && !hasVerifiedKyc && hasPendingKyc && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
                   <Ionicons name="time" size={12} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>KYC Under Review</Text>
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>{localT('kycUnderReview')}</Text>
                 </View>
               )}
               {myVendor && !hasVerifiedKyc && !hasPendingKyc && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8, backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12 }}>
                   <Ionicons name="lock-closed" size={12} color="#FFF" />
-                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>KYC Required</Text>
+                  <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '600', marginLeft: 3 }}>{localT('kycRequired')}</Text>
                 </View>
               )}
             </View>
@@ -1224,7 +1258,7 @@ export default function VendorScreen() {
                   adjustsFontSizeToFit
                   style={styles.figmaKycCapsuleText}
                 >
-                  All vendors are KYC verified.
+                  {localT('allVendorsKyc')}
                 </Text>
                 <Ionicons name="checkmark-circle" size={14} color="#F26522" />
               </View>
@@ -1254,7 +1288,7 @@ export default function VendorScreen() {
                     adjustsFontSizeToFit
                     style={styles.figmaServiceBadgeText}
                   >
-                    Astrologer
+                    {localT('astrologer')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -1275,7 +1309,7 @@ export default function VendorScreen() {
                       adjustsFontSizeToFit
                       style={styles.figmaServiceBadgeText}
                     >
-                      Electrician
+                      {localT('electrician')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1293,7 +1327,7 @@ export default function VendorScreen() {
                       adjustsFontSizeToFit
                       style={styles.figmaServiceBadgeText}
                     >
-                      Panditji
+                      {localT('panditji')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1311,7 +1345,7 @@ export default function VendorScreen() {
                       adjustsFontSizeToFit
                       style={styles.figmaServiceBadgeText}
                     >
-                      Carpenter
+                      {localT('carpenter')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1329,7 +1363,7 @@ export default function VendorScreen() {
                       adjustsFontSizeToFit
                       style={styles.figmaServiceBadgeText}
                     >
-                      Plumber
+                      {localT('plumber')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1344,7 +1378,7 @@ export default function VendorScreen() {
                   adjustsFontSizeToFit
                   style={styles.figmaServicesCapsuleText}
                 >
-                  Sanatani Services Around You
+                  {localT('sanataniServicesAround')}
                 </Text>
               </View>
             </View>
@@ -1366,7 +1400,7 @@ export default function VendorScreen() {
                   adjustsFontSizeToFit
                   style={styles.figmaBusinessCapsuleText}
                 >
-                  Sanatani Business’s Around You
+                  {localT('sanataniBusinessAround')}
                 </Text>
               </View>
             </View>
@@ -1387,7 +1421,7 @@ export default function VendorScreen() {
                       adjustsFontSizeToFit
                       style={styles.figmaServiceBadgeText}
                     >
-                      General Store
+                      {localT('general store')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1404,7 +1438,7 @@ export default function VendorScreen() {
                       adjustsFontSizeToFit
                       style={styles.figmaServiceBadgeText}
                     >
-                      Dairy
+                      {localT('dairy')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1423,7 +1457,7 @@ export default function VendorScreen() {
                       adjustsFontSizeToFit
                       style={styles.figmaServiceBadgeText}
                     >
-                      Salon
+                      {localT('salon')}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -1994,7 +2028,7 @@ const styles = StyleSheet.create({
   },
   figmaRegisterBtn: {
     flexDirection: 'row',
-    width: Platform.OS === 'android' ? VSCREEN_WIDTH - 32 : 361,
+    width: Platform.OS === 'android' ? VSCREEN_WIDTH - 16 : 361,
     paddingVertical: 12,
     paddingHorizontal: 16,
     justifyContent: 'center',

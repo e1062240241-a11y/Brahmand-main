@@ -154,7 +154,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
   });
 
   const bottomPosition = Platform.OS === 'android'
-    ? 10
+    ? (insets.bottom > 0 ? insets.bottom + 10 : 20)
     : (insets.bottom > 0 ? Math.max(insets.bottom - 10, 5) : 10);
 
   const visibleRoutes = state.routes.filter((route: any) => !HIDDEN_ROUTES.has(route.name));

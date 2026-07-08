@@ -439,9 +439,9 @@ export default function HomeScreen() {
   const screenWidth = Platform.OS === 'android' ? windowWidth : SCREEN_WIDTH;
   const screenHeight = Platform.OS === 'android' ? windowHeight : SCREEN_HEIGHT;
   const featureCardWidth = Platform.OS === 'android'
-    ? Math.min(155, (screenWidth - 42) / 2)
+    ? 175
     : FEATURE_CARD_WIDTH;
-  const featureCardHeight = Platform.OS === 'android' ? 72 : FEATURE_CARD_HEIGHT;
+  const featureCardHeight = Platform.OS === 'android' ? 82 : FEATURE_CARD_HEIGHT;
   const featureSnapInterval = Platform.OS === 'android' ? featureCardWidth + 10 : FEATURE_SNAP_INTERVAL;
   const actionCardWidth = Platform.OS === 'android' ? 120 : ACTION_CARD_WIDTH;
   const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
@@ -3360,10 +3360,10 @@ export default function HomeScreen() {
                           color: '#000',
                           textAlign: 'center',
                           fontFamily: 'Cinzel',
-                          fontSize: Platform.OS === 'android' ? 22 : 28,
+                          fontSize: Platform.OS === 'android' ? 26 : 28,
                           fontStyle: 'normal',
                           fontWeight: '500',
-                          lineHeight: Platform.OS === 'android' ? 28 : 36,
+                          lineHeight: Platform.OS === 'android' ? 32 : 36,
                           letterSpacing: 0,
                         }}>BRAHMAND</Text>
                       </View>
@@ -3596,7 +3596,7 @@ export default function HomeScreen() {
                                 key={idx}
                                 style={[
                                   styles.featureCard,
-                                  Platform.OS === 'android' && { width: featureCardWidth, height: featureCardHeight, paddingHorizontal: 8 }
+                                  Platform.OS === 'android' && { width: featureCardWidth, height: featureCardHeight, paddingHorizontal: 12 }
                                 ]}
                                 activeOpacity={0.9}
                                 onPress={() => {
@@ -3610,56 +3610,56 @@ export default function HomeScreen() {
                                 }}
                               >
                                 {item.label === 'SOS' ? (
-                                  <View style={Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' }}>
-                                    <View style={Platform.OS === 'android' ? { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' } : { width: 42.2, height: 42.2, borderRadius: 21.1, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' }}>
-                                      <View style={Platform.OS === 'android' ? { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' } : { width: 34.5, height: 34.5, borderRadius: 17.25, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' }}>
-                                        <Text style={Platform.OS === 'android' ? { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 9, fontWeight: '600' } : { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 11, fontWeight: '600' }}>SOS</Text>
+                                  <View style={Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' }}>
+                                    <View style={Platform.OS === 'android' ? { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' } : { width: 42.2, height: 42.2, borderRadius: 21.1, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' }}>
+                                      <View style={Platform.OS === 'android' ? { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' } : { width: 34.5, height: 34.5, borderRadius: 17.25, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' }}>
+                                        <Text style={Platform.OS === 'android' ? { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 10, fontWeight: '600' } : { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 11, fontWeight: '600' }}>SOS</Text>
                                       </View>
                                     </View>
                                   </View>
                                 ) : item.label === 'My Krishn' ? (
-                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={Platform.OS === 'android' ? { width: 32, height: 32 } : { width: 42, height: 42 }} contentFit="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 42, height: 42 }} contentFit="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Panchang' ? (
-                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/panchang_icon_3.png')} style={Platform.OS === 'android' ? { width: 20, height: 20 } : { width: 26, height: 26 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/panchang_icon_3.png')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Kundli' ? (
-                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/custom_kundli_icon.png')} style={Platform.OS === 'android' ? { width: 32, height: 32 } : { width: 44, height: 44 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/custom_kundli_icon.png')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 44, height: 44 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Brahmand Passport' ? (
-                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 50, overflow: 'visible' } : { overflow: 'visible', width: 52, height: 67 }]}>
-                                    <Image source={require('../../assets/images/custom_passport_icon.png')} style={Platform.OS === 'android' ? { width: 40, height: 50, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 58, overflow: 'visible' } : { overflow: 'visible', width: 52, height: 67 }]}>
+                                    <Image source={require('../../assets/images/custom_passport_icon.png')} style={Platform.OS === 'android' ? { width: 46, height: 58, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
                                   </View>
                                 ) : item.label === 'Festival' ? (
-                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={Platform.OS === 'android' ? { width: 20, height: 20 } : { width: 26, height: 26 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : item.label === 'Brahmand Library' ? (
-                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                                      <Image source={require('../../assets/images/library_icon_3.png')} style={Platform.OS === 'android' ? { width: 18, height: 18 } : { width: 24, height: 24 }} resizeMode="contain" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                                    <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                                      <Image source={require('../../assets/images/library_icon_3.png')} style={Platform.OS === 'android' ? { width: 22, height: 22 } : { width: 24, height: 24 }} resizeMode="contain" />
                                     </ImageBackground>
                                   </View>
                                 ) : (
-                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 40, height: 40, borderRadius: 20, backgroundColor: iconBg } : { backgroundColor: iconBg }]}>
-                                    <Ionicons name="calendar" size={Platform.OS === 'android' ? 18 : 24} color="#FFF" />
+                                  <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, backgroundColor: iconBg } : { backgroundColor: iconBg }]}>
+                                    <Ionicons name="calendar" size={Platform.OS === 'android' ? 22 : 24} color="#FFF" />
                                   </View>
                                 )}
-                                <View style={[styles.featureTextContainer, Platform.OS === 'android' && { marginLeft: 6 }]}>
-                                  <Text style={[styles.featureTitle, Platform.OS === 'android' && { fontSize: 11, lineHeight: 13 }]} numberOfLines={undefined}>{displayLabel}</Text>
+                                <View style={[styles.featureTextContainer, Platform.OS === 'android' && { marginLeft: 8 }]}>
+                                  <Text style={[styles.featureTitle, Platform.OS === 'android' && { fontSize: 13, lineHeight: 15 }]} numberOfLines={undefined}>{displayLabel}</Text>
                                   {displaySubtitle ? (
-                                    <Text style={[styles.featureSubtitle, Platform.OS === 'android' && { fontSize: 8.5, lineHeight: 10 }]} numberOfLines={undefined}>{displaySubtitle}</Text>
+                                    <Text style={[styles.featureSubtitle, Platform.OS === 'android' && { fontSize: 9.5, lineHeight: 11.5 }]} numberOfLines={undefined}>{displaySubtitle}</Text>
                                   ) : null}
                                 </View>
                                 <Ionicons name="chevron-forward" size={10} color="#999" style={{ marginLeft: 'auto' }} />
