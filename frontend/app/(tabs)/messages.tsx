@@ -1754,7 +1754,7 @@ function MessagesScreen({
               <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Find people, groups"
+                placeholder={t('findPeopleGroups')}
                 placeholderTextColor="#8E8E93"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -1771,7 +1771,7 @@ function MessagesScreen({
             {/* Group Chats Section */}
             {filteredGroups.length > 0 ? (
               <View style={styles.chatSection}>
-                <Text style={styles.privateChatSectionTitle}>Group Chats</Text>
+                <Text style={styles.privateChatSectionTitle}>{t('groupChats')}</Text>
                 {filteredGroups.map((item, index) => (
                   <Pressable
                     key={item.id ? `${item.id}-${index}` : `group-${index}`}
@@ -1788,7 +1788,7 @@ function MessagesScreen({
                     <View style={styles.chatRowMiddle}>
                       <Text style={styles.chatRowTitle} numberOfLines={1}>{item.name}</Text>
                       <Text style={styles.chatRowSubtitle} numberOfLines={1}>
-                        {formatLastMessage(item.last_message, t('language') === 'hi') || (t('language') === 'hi' ? 'बातचीत शुरू करें' : 'Start a conversation')}
+                        {formatLastMessage(item.last_message, t('language') === 'hi') || t('startConversation')}
                       </Text>
                     </View>
                     <View style={styles.chatRowRight}>
@@ -1808,7 +1808,7 @@ function MessagesScreen({
             ) : !searchQuery && (
               <View style={styles.emptyChat}>
                 <Text style={styles.emptyChatText}>
-                  {t('language') === 'hi' ? 'अभी तक कोई ग्रुप चैट नहीं है' : 'No group chats yet'}
+                  {t('noGroupChatsYet')}
                 </Text>
               </View>
             )}
@@ -1816,7 +1816,7 @@ function MessagesScreen({
             {/* All Chats Section */}
             {filteredAll.length > 0 ? (
               <View style={styles.chatSection}>
-                <Text style={styles.privateChatSectionTitle}>All Chats</Text>
+                <Text style={styles.privateChatSectionTitle}>{t('allChats')}</Text>
                 {filteredAll.map((item, index) => {
                   const conversationId = item.conversation_id || item.id;
                   const itemKey = conversationId ? `${conversationId}-${index}` : `dm-${index}`;

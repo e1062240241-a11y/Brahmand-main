@@ -3,7 +3,8 @@
   "main": "expo-router/entry",
   "version": "1.0.0",
   "scripts": {
-    "start": "expo start --scheme sanatanlok",
+    "start": "expo start --localhost --max-workers 4 --scheme sanatanlok",
+    "start:lan": "expo start --scheme sanatanlok",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android --scheme sanatanlok",
     "ios": "expo run:ios --scheme sanatanlok",
@@ -104,7 +105,7 @@
     "fb-dotslash": "^0.5.8",
     "patch-package": "^6.5.1",
     "stream-browserify": "^3.0.0",
-    "typescript": "~5.9.3",
+    "typescript": "^6.0.3",
     "util": "^0.12.5",
     "vm-browserify": "^1.1.2"
   },

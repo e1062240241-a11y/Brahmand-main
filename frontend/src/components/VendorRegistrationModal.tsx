@@ -567,13 +567,18 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
 
 
+    const businessNameRegex = /^[a-zA-Z0-9\u0900-\u097F\s&.,'-\/]{2,100}$/;
+    const ownerNameRegex = /^[a-zA-Z\u0900-\u097F\s.'-]{2,100}$/;
+    const addressRegex = /^[a-zA-Z0-9\u0900-\u097F\s.,'#\-\/()]{5,250}$/;
+    const phoneRegex = /^\d+$/;
+
     // Validation
     if (!trimmedBusinessName) {
       setErrorMsg('Business name is required');
       return;
     }
-    if (trimmedBusinessName.length < 2 || trimmedBusinessName.length > 100) {
-      setErrorMsg('Business name must be between 2 and 100 characters');
+    if (!businessNameRegex.test(trimmedBusinessName)) {
+      setErrorMsg('Business name must be 2 to 100 characters and contain only letters, numbers, spaces, and basic symbols (&.,\'-/)');
       return;
     }
 
@@ -581,13 +586,17 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       setErrorMsg('Owner name is required');
       return;
     }
-    if (trimmedOwnerName.length < 2 || trimmedOwnerName.length > 100) {
-      setErrorMsg('Owner name must be between 2 and 100 characters');
+    if (!ownerNameRegex.test(trimmedOwnerName)) {
+      setErrorMsg('Owner name must be 2 to 100 characters and contain only letters, spaces, dots, and hyphens');
       return;
     }
 
     if (!trimmedPhone) {
       setErrorMsg('Phone number is required');
+      return;
+    }
+    if (!phoneRegex.test(trimmedPhone)) {
+      setErrorMsg('Phone number must contain only digits');
       return;
     }
     if (countryCode === '+91' && trimmedPhone.length !== 10) {
@@ -605,7 +614,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     }
     const fullPhone = countryCode + cleanedPhone;
 
-
     if (!yearsInBusiness) {
       setErrorMsg('Years in business is required');
       return;
@@ -616,12 +624,17 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       return;
     }
 
+    if (categories.length === 0) {
+      setErrorMsg('Please select at least one category');
+      return;
+    }
+
     if (!trimmedAddress) {
       setErrorMsg('Address is required');
       return;
     }
-    if (trimmedAddress.length < 5 || trimmedAddress.length > 250) {
-      setErrorMsg('Address must be between 5 and 250 characters');
+    if (!addressRegex.test(trimmedAddress)) {
+      setErrorMsg('Address must be between 5 and 250 characters and can only contain letters, numbers, spaces, and basic symbols (.,\'#-/())');
       return;
     }
 
@@ -633,10 +646,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     console.log('Validation passed');
 
     const mergedCategories = [...categories, ...subCategories].filter(Boolean).slice(0, 5);
-    if (categories.length === 0) {
-      setErrorMsg('Please select at least one category');
-      return;
-    }
 
     const payload = {
       businessName: trimmedBusinessName,

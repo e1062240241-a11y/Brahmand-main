@@ -309,6 +309,13 @@ export const translations = {
     delete: 'Delete',
     report: 'Report',
     block: 'Block',
+
+    // Messages / Chat Page
+    allChats: 'All Chats',
+    groupChats: 'Group Chats',
+    findPeopleGroups: 'Find people, groups',
+    noGroupChatsYet: 'No group chats yet',
+    startConversation: 'Start a conversation',
   },
   hi: {
     // Bottom Tabs
@@ -587,6 +594,13 @@ export const translations = {
     report: 'रिपोर्ट करें',
     block: 'ब्लॉक करें',
     myCultureGroup: 'मेरा संस्कृति समूह',
+
+    // Messages / Chat Page
+    allChats: 'सभी चैट',
+    groupChats: 'ग्रुप चैट',
+    findPeopleGroups: 'लोग, ग्रुप खोजें',
+    noGroupChatsYet: 'अभी तक कोई ग्रुप चैट नहीं है',
+    startConversation: 'बातचीत शुरू करें',
   },
 };
 

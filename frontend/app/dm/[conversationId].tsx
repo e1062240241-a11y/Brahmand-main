@@ -58,6 +58,80 @@ import { isConversationMuted, muteConversationLocal, unmuteConversationLocal } f
 import { ReportModal } from '../../src/components/ReportModal';
 import { blockUser, unblockUser, isUserBlocked, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
 import { useBlockStore } from '../../src/store/blockStore';
+import { useLanguageStore } from '../../src/utils/i18n';
+
+const DM_STRINGS = {
+  en: {
+    online: 'Online',
+    justNow: 'Just now',
+    yesterday: 'Yesterday',
+    today: 'Today',
+    muteChat: 'Mute Chat',
+    unmuteChat: 'Unmute Chat',
+    clearChat: 'Clear Chat',
+    blockUser: 'Block User',
+    unblockUser: 'Unblock User',
+    reportUser: 'Report User',
+    pleaseWait: 'Please wait...',
+    live: 'Live',
+    conversationLocked: 'Conversation Locked',
+    messageRequest: 'Message Request',
+    chatLocked: 'This chat is locked.',
+    canSendNewRequest: 'You can now send one new message request.',
+    deny: 'Deny',
+    approve: 'Approve',
+    startConversation: 'Start your conversation',
+    messagePlaceholder: 'Message...',
+    contactName: 'Contact name',
+    phoneNumber: 'Phone number',
+    sharedPost: 'Shared post',
+    shareContact: 'Share Contact',
+    cancel: 'Cancel',
+    send: 'Send',
+    shareContactTitle: 'Share a Contact',
+    enterName: 'Enter name',
+    enterPhone: 'Enter phone',
+    clearChatConfirm: 'Are you sure you want to clear this chat?',
+    confirm: 'Confirm',
+    clearAction: 'Clear',
+    errorClear: 'Unable to clear chat. Please try again.',
+  },
+  hi: {
+    online: 'ऑनलाइन',
+    justNow: 'अभी-अभी',
+    yesterday: 'कल',
+    today: 'आज',
+    muteChat: 'चैट म्यूट करें',
+    unmuteChat: 'चैट अनम्यूट करें',
+    clearChat: 'चैट साफ़ करें',
+    blockUser: 'उपयोगकर्ता ब्लॉक करें',
+    unblockUser: 'ब्लॉक हटाएं',
+    reportUser: 'उपयोगकर्ता रिपोर्ट करें',
+    pleaseWait: 'कृपया प्रतीक्षा करें...',
+    live: 'लाइव',
+    conversationLocked: 'बातचीत बंद है',
+    messageRequest: 'संदेश अनुरोध',
+    chatLocked: 'यह चैट बंद है।',
+    canSendNewRequest: 'अब आप एक नया संदेश अनुरोध भेज सकते हैं।',
+    deny: 'अस्वीकार',
+    approve: 'स्वीकार',
+    startConversation: 'बातचीत शुरू करें',
+    messagePlaceholder: 'संदेश...',
+    contactName: 'संपर्क नाम',
+    phoneNumber: 'फ़ोन नंबर',
+    sharedPost: 'साझा पोस्ट',
+    shareContact: 'संपर्क साझा करें',
+    cancel: 'रद्द करें',
+    send: 'भेजें',
+    shareContactTitle: 'संपर्क साझा करें',
+    enterName: 'नाम दर्ज करें',
+    enterPhone: 'फ़ोन दर्ज करें',
+    clearChatConfirm: 'क्या आप वाकई यह चैट साफ़ करना चाहते हैं?',
+    confirm: 'पुष्टि करें',
+    clearAction: 'साफ़ करें',
+    errorClear: 'चैट साफ़ नहीं हो सकी। कृपया पुनः प्रयास करें।',
+  },
+};
 
 const DM_MESSAGES_CACHE_KEY = 'dm_messages_cache';
 
@@ -351,6 +425,8 @@ const DirectMessageScreen = () => {
   const isFocused = useIsFocused();
   const router = useRouter();
   const { user } = useAuthStore();
+  const dmLang = useLanguageStore(state => state.language);
+  const dmT = (key: keyof typeof DM_STRINGS.en) => DM_STRINGS[dmLang]?.[key] ?? DM_STRINGS.en[key];
   const flatListRef = useRef<FlatList>(null);
   const textInputRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
@@ -509,7 +585,7 @@ const DirectMessageScreen = () => {
       closeChatOptions();
     } catch (error: any) {
       console.error('[Chat] Clear chat failed:', error);
-      Alert.alert('Error', 'Unable to clear chat. Please try again.');
+    Alert.alert('Error', dmT('errorClear'));
     }
   };
 
@@ -529,11 +605,11 @@ const DirectMessageScreen = () => {
     }
 
     Alert.alert(
-      'Confirm',
-      'Are you sure you want to clear this chat?',
+      dmT('confirm'),
+      dmT('clearChatConfirm'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Clear', style: 'destructive', onPress: executeClearChat },
+        { text: dmT('cancel'), style: 'cancel' },
+        { text: dmT('clearAction'), style: 'destructive', onPress: executeClearChat },
       ],
       { cancelable: true }
     );
@@ -682,7 +758,7 @@ const DirectMessageScreen = () => {
   const getPresenceLabel = () => {
     const src = getPresenceSource();
     if (!src) return '';
-    if (src.online_status) return 'Online';
+    if (src.online_status) return dmT('online');
     const lastActive = src.last_seen_at || src.last_active || src.updated_at;
     if (lastActive) {
       try {
@@ -691,11 +767,11 @@ const DirectMessageScreen = () => {
         const now = new Date();
         const diffMs = now.getTime() - date.getTime();
         const diffMins = Math.floor(diffMs / 60000);
-        if (diffMins < 1) return 'Just now';
+        if (diffMins < 1) return dmT('justNow');
         if (diffMins < 60) return `${diffMins}m ago`;
         const diffHours = Math.floor(diffMins / 60);
         if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffHours < 48) return 'Yesterday';
+        if (diffHours < 48) return dmT('yesterday');
         return formatDateIST(date);
       } catch {
         return '';
@@ -1780,8 +1856,8 @@ const DirectMessageScreen = () => {
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
 
-    if (isSameDay(date, now)) return 'Today';
-    if (isSameDay(date, yesterday)) return 'Yesterday';
+    if (isSameDay(date, now)) return dmT('today');
+    if (isSameDay(date, yesterday)) return dmT('yesterday');
     return formatDateIST(date);
   }, []);
 
@@ -1851,7 +1927,7 @@ const DirectMessageScreen = () => {
                 {isRealtime && (
                   <View style={styles.realtimeBadge}>
                     <View style={styles.realtimeDot} />
-                    <Text style={styles.realtimeText}>Live</Text>
+                    <Text style={styles.realtimeText}>{dmT('live')}</Text>
                   </View>
                 )}
                 {!!getPresenceLabel() && (
@@ -1874,25 +1950,25 @@ const DirectMessageScreen = () => {
             <View style={[styles.modalContent, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, SPACING.md) + 24 : Math.max(insets.bottom, SPACING.md) }]}>
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleMute} disabled={muteLoading}>
                 <Ionicons name={isMuted ? "notifications-outline" : "notifications-off-outline"} size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
-                <Text style={styles.modalItemText}>{muteLoading ? 'Please wait...' : isMuted ? 'Unmute Chat' : 'Mute Chat'}</Text>
+                <Text style={styles.modalItemText}>{muteLoading ? dmT('pleaseWait') : isMuted ? dmT('unmuteChat') : dmT('muteChat')}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
 
               <TouchableOpacity style={styles.modalItem} onPress={handleClearChat}>
                 <Ionicons name="trash-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
-                <Text style={styles.modalItemText}>Clear Chat</Text>
+                <Text style={styles.modalItemText}>{dmT('clearChat')}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
 
               <TouchableOpacity style={styles.modalItem} onPress={handleToggleBlock}>
                 <Ionicons name="ban-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
-                <Text style={styles.modalItemText}>{isBlockedByMe ? 'Unblock User' : 'Block User'}</Text>
+                <Text style={styles.modalItemText}>{isBlockedByMe ? dmT('unblockUser') : dmT('blockUser')}</Text>
               </TouchableOpacity>
               <View style={styles.modalDivider} />
 
               <TouchableOpacity style={styles.modalItem} onPress={handleReportUser}>
                 <Ionicons name="warning-outline" size={22} color="#1A1A1A" style={{ marginRight: 14 }} />
-                <Text style={styles.modalItemText}>Report User</Text>
+                <Text style={styles.modalItemText}>{dmT('reportUser')}</Text>
               </TouchableOpacity>
             </View>
           </TouchableOpacity>
@@ -1914,16 +1990,16 @@ const DirectMessageScreen = () => {
 
         {(requestStatus !== 'approved' || isBlocked) && (
           <View style={styles.requestCard}>
-            <Text style={styles.requestTitle}>{isBlocked ? 'Conversation Locked' : 'Message Request'}</Text>
-            <Text style={styles.requestText}>{inputLockReason || 'This chat is locked.'}</Text>
-            {!isBlocked && canSendAfterCooldown && <Text style={styles.requestHint}>You can now send one new message request.</Text>}
+            <Text style={styles.requestTitle}>{isBlocked ? dmT('conversationLocked') : dmT('messageRequest')}</Text>
+            <Text style={styles.requestText}>{inputLockReason || dmT('chatLocked')}</Text>
+            {!isBlocked && canSendAfterCooldown && <Text style={styles.requestHint}>{dmT('canSendNewRequest')}</Text>}
             {!isBlocked && needsRecipientDecision && (
               <View style={styles.requestActionRow}>
                 <TouchableOpacity style={[styles.requestButton, styles.requestDenyButton]} onPress={handleDenyRequest} disabled={requestActionLoading}>
-                  <Text style={[styles.requestButtonText, styles.requestDenyButtonText]}>{requestActionLoading ? 'Please wait...' : 'Deny'}</Text>
+                  <Text style={[styles.requestButtonText, styles.requestDenyButtonText]}>{requestActionLoading ? dmT('pleaseWait') : dmT('deny')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.requestButton, styles.requestApproveButton]} onPress={handleApproveRequest} disabled={requestActionLoading}>
-                  <Text style={styles.requestButtonText}>{requestActionLoading ? 'Please wait...' : 'Approve'}</Text>
+                  <Text style={styles.requestButtonText}>{requestActionLoading ? dmT('pleaseWait') : dmT('approve')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -1957,7 +2033,7 @@ const DirectMessageScreen = () => {
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Ionicons name="chatbubble-outline" size={48} color={COLORS.textLight} />
-                  <Text style={styles.emptyText}>Start your conversation</Text>
+                  <Text style={styles.emptyText}>{dmT('startConversation')}</Text>
                 </View>
               }
             />
@@ -1990,7 +2066,7 @@ const DirectMessageScreen = () => {
                 ref={textInputRef}
                 value={newMessage}
                 onChangeText={setNewMessage}
-                placeholder="Message..."
+                placeholder={dmT('messagePlaceholder')}
                 placeholderTextColor="#888888"
                 multiline
                 blurOnSubmit={false}

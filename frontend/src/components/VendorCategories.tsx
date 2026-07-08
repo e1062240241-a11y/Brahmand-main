@@ -11,6 +11,7 @@ import {
   ViewStyle, 
   TextStyle 
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 
 // Map of category names to their respective local assets
@@ -88,6 +89,7 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
 
   const renderItem = (category: string, index: number) => {
     const isActive = activeCategory?.toLowerCase() === category.toLowerCase();
+    const finalImageSize = Platform.OS === 'android' ? 28 : imageSize;
     
     return (
       <TouchableOpacity
@@ -99,14 +101,25 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
         ]}
         onPress={() => handlePress(category)}
       >
-        <Image
-          source={getCategoryIconSource(category)}
-          style={[
-            { width: imageSize, height: imageSize, tintColor: isActive ? '#FF8D57' : tintColor },
-            styles.image
-          ]}
-          resizeMode="contain"
-        />
+        {Platform.OS === 'android' ? (
+          <ExpoImage
+            source={getCategoryIconSource(category)}
+            style={[
+              { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FF8D57' : tintColor },
+              styles.image
+            ]}
+            contentFit="contain"
+          />
+        ) : (
+          <Image
+            source={getCategoryIconSource(category)}
+            style={[
+              { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FF8D57' : tintColor },
+              styles.image
+            ]}
+            resizeMode="contain"
+          />
+        )}
         <Text 
           style={[
             styles.categoryText,
@@ -142,15 +155,23 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
 const styles = StyleSheet.create({
   horizontalContainer: {
     paddingHorizontal: 24,
-    gap: 40,
     marginBottom: 24,
+    ...Platform.select({
+      android: {
+        flexGrow: 1,
+        justifyContent: 'space-between',
+      },
+      default: {
+        gap: 40,
+      },
+    }),
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-around',
     paddingHorizontal: 16,
-    gap: 16,
+    gap: Platform.OS === 'android' ? 12 : 16,
     marginBottom: 24,
   },
   categoryItem: {

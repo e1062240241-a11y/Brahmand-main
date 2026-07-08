@@ -36,6 +36,9 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (evt, gestureState) => {
+        if (Platform.OS === 'android') {
+          return false;
+        }
         // Only start dragging if moved significantly (prevent blocking tap)
         return Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
       },
@@ -261,12 +264,12 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
       )}
 
       <Animated.View
-        {...panResponder.panHandlers}
+        {...(Platform.OS === 'android' ? {} : panResponder.panHandlers)}
         style={[
           fabStyles.fab,
           { 
             bottom: bottomOffset + insets.bottom,
-            transform: [
+            transform: Platform.OS === 'android' ? [] : [
               { translateX: pan.x },
               { translateY: pan.y }
             ]
