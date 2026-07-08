@@ -98,8 +98,6 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
-class MSG91TokenRequest(BaseModel):
-    access_token: str
 
 
 # ================= USER MODELS =================

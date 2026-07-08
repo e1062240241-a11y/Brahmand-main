@@ -24,7 +24,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
-import api, { sendMsg91OTP, verifyMsg91OTP, getKYCStatus } from '../../src/services/api';
+import api, { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 
 const PersonalInfoIcon = () => (
   <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
@@ -373,7 +373,7 @@ export default function VendorDashboardScreen() {
     setPhoneSending(true);
 
     try {
-      await sendMsg91OTP(`+91${phone}`);
+      await sendOTP(`+91${phone}`);
       setPhoneOtpStage('sent');
       setPhoneOtpMessage(`OTP sent to +91${phone}.`);
     } catch (error: any) {
@@ -393,7 +393,7 @@ export default function VendorDashboardScreen() {
     setPhoneVerifying(true);
 
     try {
-      const res = await verifyMsg91OTP(`+91${editValue.replace(/[^0-9]/g, '')}`, phoneOtp.trim());
+      const res = await verifyOTP(`+91${editValue.replace(/[^0-9]/g, '')}`, phoneOtp.trim());
       if (res.data?.type === 'success') {
         setPhoneOtpStage('verified');
         setPhoneOtpMessage('Phone verified successfully. You can now save the number.');
