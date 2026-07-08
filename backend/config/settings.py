@@ -77,7 +77,6 @@ class Settings:
     VEDIC_ASTRO_API_KEY: str = os.environ.get('VEDIC_ASTRO_API_KEY', 'fe3e8481-8e8b-57fe-81a9-5f2a8c97c771')
     
     # Prokerala Astrology API
-    PROKERALA_BASE_URL: str = os.environ.get('PROKERALA_BASE_URL', 'https://api.prokerala.com')
     PROKERALA_CLIENT_ID: str = os.environ.get('PROKERALA_CLIENT_ID', '')
     PROKERALA_CLIENT_SECRET: str = os.environ.get('PROKERALA_CLIENT_SECRET', '')
     PROKERALA_DEFAULT_TZ: str = os.environ.get('PROKERALA_DEFAULT_TZ', 'Asia/Kolkata')

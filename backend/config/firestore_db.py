@@ -40,8 +40,11 @@ class FirestoreDB:
         return self._loop
     
     async def _run_sync(self, func, *args, **kwargs):
-        """Run sync function directly to avoid gRPC multithreading deadlocks"""
-        return func(*args, **kwargs)
+        """Run sync function in a separate thread to avoid blocking the asyncio event loop"""
+        import asyncio
+        from functools import partial
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(None, partial(func, *args, **kwargs))
     
     # =================== GENERIC OPERATIONS ===================
     
