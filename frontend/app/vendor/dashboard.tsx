@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -25,7 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { Avatar } from '../../src/components/Avatar';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
-import api, { sendMsg91OTP, verifyMsg91OTP, getKYCStatus } from '../../src/services/api';
+import api, { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 
 const PersonalInfoIcon = () => (
   <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
@@ -100,10 +100,11 @@ export default function VendorDashboardScreen() {
   const [businessHoursVal, setBusinessHoursVal] = useState('');
   const [offersVal, setOffersVal] = useState('');
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
+  const hasInitializedRef = useRef(false);
 
   // Sync data from store when myVendor is loaded
   useEffect(() => {
-    if (myVendor) {
+    if (myVendor && !hasInitializedRef.current) {
       setOwnerName(myVendor.owner_name || '');
       setBusinessName(myVendor.business_name || '');
       setPhoneVal(myVendor.phone_number || '');
@@ -116,6 +117,7 @@ export default function VendorDashboardScreen() {
       setCategoriesVal(myVendor.categories || []);
       setBusinessHoursVal(myVendor.business_hours || '');
       setOffersVal(myVendor.offers || '');
+      hasInitializedRef.current = true;
     }
   }, [myVendor]);
 
@@ -372,7 +374,7 @@ export default function VendorDashboardScreen() {
     setPhoneSending(true);
 
     try {
-      await sendMsg91OTP(`+91${phone}`);
+      await sendOTP(`+91${phone}`);
       setPhoneOtpStage('sent');
       setPhoneOtpMessage(`OTP sent to +91${phone}.`);
     } catch (error: any) {
@@ -392,7 +394,7 @@ export default function VendorDashboardScreen() {
     setPhoneVerifying(true);
 
     try {
-      const res = await verifyMsg91OTP(`+91${editValue.replace(/[^0-9]/g, '')}`, phoneOtp.trim());
+      const res = await verifyOTP(`+91${editValue.replace(/[^0-9]/g, '')}`, phoneOtp.trim());
       if (res.data?.type === 'success') {
         setPhoneOtpStage('verified');
         setPhoneOtpMessage('Phone verified successfully. You can now save the number.');

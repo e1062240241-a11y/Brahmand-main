@@ -366,6 +366,22 @@ class FirebaseNotificationService:
                 logger.warning("send_multicast: No user_ids provided")
                 return {"message": "No user_ids", "sent": 0}
             
+            # Filter out users who blocked the sender
+            sender_id = None
+            if data:
+                sender_id = data.get('sender_id') or data.get('user_id') or data.get('actor_id') or data.get('inviter_id')
+            
+            if sender_id:
+                try:
+                    blocked_user_ids = await FirebaseNotificationService._get_blocked_user_ids(db, sender_id)
+                    if blocked_user_ids:
+                        original_count = len(user_ids)
+                        user_ids = [uid for uid in user_ids if uid not in blocked_user_ids and uid != sender_id]
+                        if len(user_ids) < original_count:
+                            logger.info(f"send_multicast: Filtered {original_count - len(user_ids)} blocked/unwanted users for sender {sender_id}")
+                except Exception as e:
+                    logger.warning(f"Error checking block status in send_multicast: {e}")
+            
             # Collect all FCM and Expo tokens from users (at most 1 per user to prevent duplicate notifications)
             all_fcm_tokens = []
             all_expo_tokens = []

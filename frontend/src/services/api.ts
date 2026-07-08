@@ -844,14 +844,8 @@ export const adminActionPersonalityVerification = (
 export const verifyFirebaseToken = (id_token: string) =>
   api.post("/auth/verify-firebase-token", { id_token });
 
-export const verifyMsg91Token = (access_token: string) =>
-  api.post("/auth/verify-msg91", { access_token });
 
-export const sendMsg91OTP = (phone: string) =>
-  api.post("/auth/msg91/send", { phone });
 
-export const verifyMsg91OTP = (phone: string, otp: string) =>
-  api.post("/auth/msg91/verify", { phone, otp });
 
 export const sendNettyfishOTP = (phone: string) =>
   api.post("/auth/nettyfish/send", { phone });

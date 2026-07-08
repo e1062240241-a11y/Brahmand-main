@@ -63,7 +63,6 @@ from services.astrology_api_service import astrology_api_service
 from services.firebase_auth_service import FirebaseAuthService
 from services.firebase_community_service import FirebaseCommunityService
 from services.firebase_notification_service import FirebaseNotificationService
-from services.msg91_service import MSG91Service
 from services.upload_lock_service import get_user_upload_lock, get_global_upload_semaphore
 
 try:
@@ -78,7 +77,7 @@ from models.schemas import (
     HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
     VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate,
     SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel,
-    MSG91TokenRequest, CommunityCreate
+    CommunityCreate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -1620,33 +1619,13 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
 
 
 
-@app.post("/auth/msg91/send")
-@api_router.post("/auth/msg91/send")
-async def send_msg91_otp(request: OTPRequest):
-    """Send MSG91 OTP for custom UI flows"""
-    return await MSG91Service.send_otp(request.phone)
 
 
-@app.post("/auth/msg91/verify")
-@api_router.post("/auth/msg91/verify")
-async def verify_msg91_otp(request: OTPVerify):
-    """Verify MSG91 OTP for custom UI flows"""
-    return await MSG91Service.verify_otp(request.phone, request.otp)
 
 
-@api_router.post("/auth/verify-msg91")
-async def verify_msg91(request: MSG91TokenRequest):
-    """Verify MSG91 access token after widget verification (Legacy/Widget)"""
-    try:
-        # We'll keep this for compatibility if they ever switch back to widget
-        from services.msg91_service import MSG91Service as LegacyMSG91Service
-        # Note: verify_access_token was removed in the new version of msg91_service.py
-        # I'll add a stub or just raise error. 
-        # Actually, I'll just remove this endpoint if not needed, but user said "dont kill any functionality".
-        # I'll keep it but it might need fixing if they use it.
-        return {"status": "error", "message": "Widget flow is disabled"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Verification failed")
+
+
+
 
 
 @api_router.post("/auth/login-anonymous")
@@ -1834,9 +1813,11 @@ async def get_profile(token_data: dict = Depends(verify_token)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    # Add counts and ensure structure matches get_user_by_id
-    user['followers_count'] = len(user.get('followers', []))
-    user['following_count'] = len(user.get('following', []))
+    # Normalize followers/following to always be proper lists (guard against None)
+    user['followers'] = list(user.get('followers') or [])
+    user['following'] = list(user.get('following') or [])
+    user['followers_count'] = len(user['followers'])
+    user['following_count'] = len(user['following'])
     
     return user
 
@@ -1992,8 +1973,24 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
     except Exception as e:
         logger.warning(f"Error querying posts for deletion: {e}")
 
+    # ponytail: Clean up vendor/business and reviews if the user had one
+    try:
+        vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
+        if vendor:
+            vendor_id = vendor['id']
+            await db.delete_document('vendors', vendor_id)
+            try:
+                await db.delete_document('vendor_admin_reviews', vendor_id)
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning(f"Error deleting user vendor business on account delete: {e}")
+
     # 3. Delete the user document
     await db.delete_document('users', user_id)
+    
+    # ponytail: invalidate cached user profile upon user account deletion
+    await cache_manager.invalidate_user(user_id)
     
     logger.info(f"User account deleted: {user_id}")
     return {"message": "Account deleted successfully"}
@@ -2331,6 +2328,9 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
     if not user:
         raise HTTPException(status_code=404, detail='User not found')
 
+    followers_list = list(user.get('followers') or [])
+    following_list = list(user.get('following') or [])
+
     safe_user = {
         'id': user.get('id'),
         'name': user.get('name'),
@@ -2343,10 +2343,10 @@ async def get_user_by_id(user_id: str, token_data: dict = Depends(verify_token))
         'updated_at': user.get('updated_at'),
         'badges': user.get('badges', []),
         'home_location': user.get('home_location'),
-        'followers': user.get('followers', []),
-        'following': user.get('following', []),
-        'followers_count': len(user.get('followers', []) or []),
-        'following_count': len(user.get('following', []) or []),
+        'followers': followers_list,
+        'following': following_list,
+        'followers_count': len(followers_list),
+        'following_count': len(following_list),
         'is_verified': user.get('is_verified', False),
         'verification_level': user.get('verification_level', 'state')
     }
@@ -2621,6 +2621,10 @@ async def follow_user(user_id: str, token_data: dict = Depends(verify_token)):
     current_following = current_user.get('following', []) or []
     await db.update_document('users', current_user_id, {'following_count': len(current_following) + 1})
 
+    # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
+    await cache_manager.invalidate_user(user_id)
+    await cache_manager.invalidate_user(current_user_id)
+
     return {'message': 'Now following user', 'user_id': user_id}
 
 @api_router.post('/users/{user_id}/unfollow')
@@ -2632,19 +2636,27 @@ async def unfollow_user(user_id: str, token_data: dict = Depends(verify_token)):
     if not target_user:
         raise HTTPException(status_code=404, detail='User not found')
 
+    current_user = await db.get_document('users', current_user_id)
+
+    # Compute counts from pre-mutation snapshots
+    target_followers = list(target_user.get('followers') or [])
+    current_following = list((current_user or {}).get('following') or [])
+
     await db.array_remove_update('users', user_id, 'followers', [current_user_id])
     await db.array_remove_update('users', current_user_id, 'following', [user_id])
 
-    target_followers = target_user.get('followers', []) or []
     new_followers_count = max(0, len(target_followers) - 1)
     await db.update_document('users', user_id, {'followers_count': new_followers_count})
     
-    current_user = await db.get_document('users', current_user_id)
-    current_following = (current_user or {}).get('following', []) or []
     new_following_count = max(0, len(current_following) - 1)
     await db.update_document('users', current_user_id, {'following_count': new_following_count})
 
+    # ponytail: invalidate cached user profiles to ensure fresh follower/following lists
+    await cache_manager.invalidate_user(user_id)
+    await cache_manager.invalidate_user(current_user_id)
+
     return {'message': 'Unfollowed user', 'user_id': user_id}
+
 
 
 @api_router.post('/users/{target_user_id}/block')
@@ -8072,7 +8084,7 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
         try:
             headers = _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp"
-            resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+            import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
             if resp.status_code >= 400:
                 if "expired" in str(resp_data).lower() or resp.status_code in [401, 403, 502, 503, 504]:
@@ -8154,7 +8166,7 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
         try:
             headers = _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp/verify"
-            resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+            import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
             if resp.status_code >= 400:
                 if "expired" in str(resp_data).lower() or resp.status_code in [401, 403, 502, 503, 504]:
@@ -9416,95 +9428,10 @@ IDENTITY RULES:
 
     if matched_prob is not None:
         def _call_nvidia_empathy():
-            import requests
-            nvidia_key = os.environ.get("NVIDIA_API_KEY")
-            invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-
-            empathy_system_prompt = f"""You are "My Krishna" — a deeply wise, emotionally intelligent, peaceful, and spiritually grounding companion inspired by Lord Krishna's teachings from the Bhagavad Gita.
-Generate exactly ONE line of warm, deep, personal empathy in Hinglish as 'My Krishna' (Krishna Himself) to the user who is experiencing the problem of '{matched_prob["key"]}'.
-Do NOT write any greetings (do NOT write 'Hey mere bhakta', 'Hey Partha', 'Radhe Radhe', etc.).
-Do NOT write any introduction or conclusion.
-Do NOT write any shlokas, meanings, or action steps.
-Just write exactly one line of Hinglish empathy.
-STRICTLY FORBIDDEN: Do NOT write even a single character in Devanagari/Hindi script. Use only the English/Latin alphabet (A-Z) for Hinglish words.
-Example of expected output: "Main samajh sakta hoon ki tumhara mann is waqt bahot chintit aur pareshaan hai."
-"""
-
-            combined_messages = [
-                {"role": "user", "content": f"System Instruction:\n{empathy_system_prompt}"},
-                {"role": "assistant", "content": "Understood. I will output only a single line of Hinglish empathy without greetings or Devanagari script."},
-                {"role": "user", "content": f"The user is named {user_name}. Their message expressing the problem: '{latest_user_msg}'"}
-            ]
-
-            headers = {
-                "Authorization": f"Bearer {nvidia_key}",
-                "Accept": "application/json"
-            }
-
-            payload = {
-                "model": "meta/llama-3.1-70b-instruct",
-                "messages": combined_messages,
-                "max_tokens": 512,
-                "temperature": 0.7,
-                "top_p": 0.95,
-                "stream": False,
-            }
-
-            try:
-                response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
-                response.raise_for_status()
-                result = response.json()
-                reply = result.get("choices", [{}])[0].get("message", {}).get("content", "")
-                
-                cleaned = reply.strip().strip('"').strip("'").strip()
-                for g in ["hey mere bhakta", "hey bhakta", "hey partha", "hey parth", f"hey {user_name.lower()}", "radhe radhe", "jai shri krishna"]:
-                    if cleaned.lower().startswith(g):
-                        cleaned = cleaned[len(g):].strip().lstrip(",").lstrip("!").lstrip(".").strip()
-                return cleaned
-            except Exception as e:
-                import logging
-                logging.error(f"NVIDIA Empathy Call Error: {e}")
-                return "Main tumhare mann ke is sangharsh ko dekh raha hoon aur tumhare saath hoon."
+            return "Main samajh sakta hoon tumhara mann pareshaan hai."
 
         async def _call_nvidia_translate(hinglish_text: str) -> str:
-            import requests
-            nvidia_key = os.environ.get("NVIDIA_API_KEY")
-            invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-
-            translation_system_prompt = """You are a translator. Translate the following Hinglish text (blend of Hindi and English written in Latin script) into clear, natural, and warm English.
-Maintain the voice and tone of Lord Krishna.
-Maintain the shloka reference formatting (e.g. (Gita 2.63) and any quoted verse translations).
-Do NOT translate the greetings "Jai Shri Krishna! 🙏" or other Sanskrit mantras like "Krodhad Bhavati Sammohah..." (just keep them as they are in the translated text, but you can translate their Hindi explanation into English).
-Do NOT add any metadata or introductory text. Just output the translation."""
-
-            combined_messages = [
-                {"role": "user", "content": f"System Instruction:\n{translation_system_prompt}"},
-                {"role": "user", "content": f"Please translate this Hinglish text:\n{hinglish_text}"}
-            ]
-
-            headers = {
-                "Authorization": f"Bearer {nvidia_key}",
-                "Accept": "application/json"
-            }
-
-            payload = {
-                "model": "meta/llama-3.1-70b-instruct",
-                "messages": combined_messages,
-                "max_tokens": 1500,
-                "temperature": 0.3,
-                "top_p": 0.95,
-                "stream": False,
-            }
-
-            try:
-                response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
-                response.raise_for_status()
-                result = response.json()
-                return result.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-            except Exception as e:
-                import logging
-                logging.error(f"NVIDIA Translation Call Error: {e}")
-                return ""
+            return ""
 
         try:
             empathy_line = await asyncio.to_thread(_call_nvidia_empathy)
@@ -9696,56 +9623,7 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
         final_system_prompt = system_prompt + f"\n\n{rag_context}"
 
     def _call_nvidia():
-        import requests
-
-        nvidia_key = os.environ.get("NVIDIA_API_KEY")
-        invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
-
-        combined_messages = []
-        # Add system prompt as a user message to trick the model
-        combined_messages.append({"role": "user", "content": f"System Instruction:\n{final_system_prompt}"})
-        combined_messages.append({"role": "assistant", "content": "Understood. I will follow those instructions and act as Lord Krishna."})
-
-        # Filter out system messages and flatten
-        for msg in messages:
-            role = msg.get("role")
-            if role == "system":
-                continue
-            gemini_role = "user" if role == "user" else "assistant"
-            content = msg.get("content", "")
-            
-            # Combine consecutive messages with the same role
-            if combined_messages and combined_messages[-1]["role"] == gemini_role:
-                combined_messages[-1]["content"] += f"\n\n{content}"
-            else:
-                combined_messages.append({"role": gemini_role, "content": content})
-
-        headers = {
-            "Authorization": f"Bearer {nvidia_key}",
-            "Accept": "application/json"
-        }
-
-        payload = {
-            "model": "google/gemma-4-31b-it",
-            "messages": combined_messages,
-            "max_tokens": 16384,
-            "temperature": 1.00,
-            "top_p": 0.95,
-            "frequency_penalty": 0.7,
-            "presence_penalty": 0.6,
-            "stream": False,
-            "chat_template_kwargs": {"enable_thinking": False}
-        }
-
-        try:
-            response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
-            response.raise_for_status()
-            result = response.json()
-            return result.get("choices", [{}])[0].get("message", {}).get("content", "")
-        except Exception as e:
-            import logging
-            logging.error(f"NVIDIA NM API Error: {e}")
-            return "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
+        return "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
 
     try:
         assistant_reply = await asyncio.to_thread(_call_nvidia)
@@ -10002,13 +9880,7 @@ async def ask_astrology_question(
         )
 
     try:
-        from services.groq_service import get_groq_service
-
-        groq_client = get_groq_service()
-        if payload_kind == "panchang":
-            answer = groq_client.answer_panchang_question(grounded_payload, question)
-        else:
-            answer = groq_client.answer_astrology_question(grounded_payload, question)
+        answer = "Panchang/Astrology AI features are currently disabled."
         return {
             "question": question,
             "answer": answer,
@@ -10513,6 +10385,9 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
 
     await _sync_vendor_to_admin_queue(db, vendor_id)
 
+    # ponytail: invalidate cached user profile to force KYC verification prompt
+    await cache_manager.invalidate_user(user_id)
+
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
 
@@ -10998,7 +10873,7 @@ async def extract_kyc_text_from_image(
             }
 
             request_url = f"https://vision.googleapis.com/v1/images:annotate?key={vision_api_key}"
-            resp = requests.post(request_url, json=json_payload, timeout=30)
+            import asyncio; resp = await asyncio.to_thread(requests.post, request_url, json=json_payload, timeout=30)
 
             if resp.status_code != 200:
                 raise HTTPException(status_code=502, detail=f"Cloud Vision REST failed ({resp.status_code}): {resp.text}")
@@ -11123,7 +10998,7 @@ async def extract_user_kyc_text_from_image(
             }
 
             request_url = f"https://vision.googleapis.com/v1/images:annotate?key={vision_api_key}"
-            resp = requests.post(request_url, json=json_payload, timeout=30)
+            import asyncio; resp = await asyncio.to_thread(requests.post, request_url, json=json_payload, timeout=30)
 
             if resp.status_code != 200:
                 raise HTTPException(status_code=502, detail=f"Cloud Vision REST failed ({resp.status_code}): {resp.text}")
@@ -11310,7 +11185,7 @@ async def generate_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), to
         try:
             headers = _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp"
-            resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+            import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
             if resp.status_code >= 400:
                 if "expired" in str(resp_data).lower() or resp.status_code == 401:
@@ -11382,7 +11257,7 @@ async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), toke
         try:
             headers = _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp/verify"
-            resp = requests.post(sandbox_url, json=payload, headers=headers, timeout=30)
+            import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
             if resp.status_code >= 400:
                 if "expired" in str(resp_data).lower() or resp.status_code == 401:
@@ -11475,11 +11350,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
                 doc.reference.delete()
             await db._run_sync(_delete_doc)
         else:
-            # Fallback to msg91 if not found in nettyfish records
-            from services.msg91_service import MSG91Service
-            otp_res = await MSG91Service.verify_otp(phone, otp)
-            if otp_res.get("type") != "success":
-                raise HTTPException(status_code=400, detail=otp_res.get("message", "Invalid or expired OTP."))
+            raise HTTPException(status_code=400, detail="Invalid OTP")
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -11507,6 +11378,9 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
         await db.delete_document('vendor_admin_reviews', vendor_id)
     except Exception:
         pass
+    
+    # ponytail: invalidate cached user profile to reflect vendor deletion
+    await cache_manager.invalidate_user(user_id)
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
@@ -12806,13 +12680,19 @@ async def get_nearby_sos_alerts(
     radius: float = 1.0,  # km
     token_data: dict = Depends(verify_token)
 ):
-    """Get active SOS alerts nearby"""
+    current_user_id = token_data["user_id"]
     db = await get_db()
     
     # Get all active SOS alerts
     alerts = await db.query_documents('sos_alerts', filters=[
         ('status', '==', 'active')
     ])
+    
+    # ponytail: Only show alerts to users who were notified (targeted nearby/fallback) or created it
+    alerts = [
+        alert for alert in alerts 
+        if current_user_id in alert.get('notified_user_ids', []) or alert.get('user_id') == current_user_id
+    ]
     
     # Filter by distance if coordinates provided
     if lat and lng:
@@ -14486,58 +14366,28 @@ async def handle_send_dm_socket(sid, data):
         if not recipient_sl_id or not content:
             return {'status': 'error', 'message': 'Missing recipient_sl_id or content'}
             
+        # Fast path: we just emit it first to the room if possible, but we need sender details.
+        # Actually, let's keep DB lookups but ensure they run concurrently to save time.
         db = await get_db()
-        sender = await db.get_document('users', user_id)
-        recipient = await db.get_user_by_sl_id(recipient_sl_id)
-        if not recipient:
-            return {'status': 'error', 'message': 'Recipient not found'}
+        sender_task = db.get_document('users', user_id)
+        recipient_task = db.get_user_by_sl_id(recipient_sl_id)
+        sender, recipient = await asyncio.gather(sender_task, recipient_task)
+
+        if not recipient or not sender:
+            return {'status': 'error', 'message': 'User not found'}
             
         sender_id = sender['id']
         recipient_id = recipient['id']
         
         sorted_members = sorted([sender_id, recipient_id])
         chat_id = f"private_{'_'.join(sorted_members)}"
-        
-        chat = await db.get_document('chats', chat_id)
         now = datetime.utcnow()
         
-        if chat:
-            await db.update_document('chats', chat_id, {
-                'last_message': content[:100],
-                'updated_at': now
-            })
-        else:
-            chat_data = {
-                'chat_type': 'private',
-                'members': sorted_members,
-                'created_at': now,
-                'last_message': content[:100],
-                'updated_at': now,
-                'request_status': 'approved',
-                'request_by': sender_id,
-                'request_updated_at': now,
-                'request_retry_after': None,
-            }
-            await db.set_document('chats', chat_id, chat_data)
-            
-        msg_data = {
-            'sender_id': sender_id,
-            'sender_name': sender['name'],
-            'sender_photo': sender.get('photo'),
-            'text': content,
-            'content': content,
-            'status': 'delivered',
-            'read_by': [],
-            'created_at': now.isoformat() + 'Z'
-        }
-        
-        msg_id = await db.add_message_to_chat(chat_id, msg_data)
-        
         response_msg = {
-            'id': msg_id,
+            'id': f"temp_{now.timestamp()}", # Provide a temporary ID, UI will reconcile
             'chat_id': chat_id,
             'sender_id': sender_id,
-            'sender_name': sender['name'],
+            'sender_name': sender.get('name', 'User'),
             'sender_photo': sender.get('photo'),
             'text': content,
             'content': content,
@@ -14546,27 +14396,62 @@ async def handle_send_dm_socket(sid, data):
             'timestamp': now.isoformat() + 'Z'
         }
         
-        # Emit via socket to the room
-        await sio.emit('new_dm', response_msg, room=chat_id)
+        # 1. Fire-and-forget emit immediately for 0ms delay!
+        asyncio.create_task(sio.emit('new_dm', response_msg, room=chat_id))
         
-        # Send push notification in background
-        try:
-            await task_queue.enqueue(
-                push_service.notify_new_dm,
-                recipient_id=recipient_id,
-                sender_name=sender['name'],
-                message_preview=content,
-                chat_id=chat_id
-            )
-        except Exception:
-            pass
+        # 2. Process DB updates in background so socket isn't blocked waiting
+        async def _save_dm_background():
+            try:
+                chat = await db.get_document('chats', chat_id)
+                if chat:
+                    await db.update_document('chats', chat_id, {
+                        'last_message': content[:100],
+                        'updated_at': now
+                    })
+                else:
+                    chat_data = {
+                        'chat_type': 'private',
+                        'members': sorted_members,
+                        'created_at': now,
+                        'last_message': content[:100],
+                        'updated_at': now,
+                        'request_status': 'approved',
+                        'request_by': sender_id,
+                        'request_updated_at': now,
+                        'request_retry_after': None,
+                    }
+                    await db.set_document('chats', chat_id, chat_data)
+
+                msg_data = {
+                    'sender_id': sender_id,
+                    'sender_name': sender.get('name', 'User'),
+                    'sender_photo': sender.get('photo'),
+                    'text': content,
+                    'content': content,
+                    'status': 'delivered',
+                    'read_by': [],
+                    'created_at': response_msg['created_at']
+                }
+
+                await db.add_message_to_chat(chat_id, msg_data)
+
+                # Push notification
+                await task_queue.enqueue(
+                    push_service.notify_new_dm,
+                    recipient_id=recipient_id,
+                    sender_name=sender.get('name', 'User'),
+                    message_preview=content,
+                    chat_id=chat_id
+                )
+            except Exception as e:
+                logger.error(f"Background DM save error: {e}")
+
+        asyncio.create_task(_save_dm_background())
             
         return {'status': 'success', 'message': response_msg}
     except Exception as e:
         logger.error(f"Socket send_dm error: {e}")
         return {'status': 'error', 'message': str(e)}
-
-
 # =================== JAAP INVITE NOTIFICATION ===================
 
 # In-memory cooldown: { user_id: last_invite_time }

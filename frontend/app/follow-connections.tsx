@@ -29,7 +29,8 @@ interface ConnectionUser {
 }
 
 const loadUsersByIds = async (ids: string[]): Promise<ConnectionUser[]> => {
-  if (!ids || !ids.length) {
+  const validIds = (ids || []).filter((id) => typeof id === 'string' && id.trim().length > 0);
+  if (!validIds.length) {
     return [];
   }
 
@@ -37,14 +38,17 @@ const loadUsersByIds = async (ids: string[]): Promise<ConnectionUser[]> => {
     const BATCH_SIZE = 100;
     const allUsers: ConnectionUser[] = [];
     
-    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-      const chunk = ids.slice(i, i + BATCH_SIZE);
+    for (let i = 0; i < validIds.length; i += BATCH_SIZE) {
+      const chunk = validIds.slice(i, i + BATCH_SIZE);
       const res = await getUsersBatch(chunk);
       if (Array.isArray(res.data)) {
         allUsers.push(...res.data);
+      } else {
+        console.warn('[Connections] getUsersBatch returned non-array:', typeof res.data);
       }
     }
     
+    console.log(`[Connections] loadUsersByIds: requested=${validIds.length}, loaded=${allUsers.length}`);
     return allUsers;
   } catch (error) {
     console.warn('[Connections] Failed to batch load users:', error);
@@ -138,9 +142,11 @@ export default function FollowConnectionsScreen() {
 
         const profile = profileResponse.data || {};
         const viewerProfile = viewerResponse.data || {};
-        const followerIds = Array.isArray(profile.followers) ? profile.followers : [];
-        const followingIds = Array.isArray(profile.following) ? profile.following : [];
-        const viewerFollowing = Array.isArray(viewerProfile.following) ? viewerProfile.following : [];
+        const followerIds = Array.isArray(profile.followers) ? profile.followers.filter((id: any) => typeof id === 'string' && id.length > 0) : [];
+        const followingIds = Array.isArray(profile.following) ? profile.following.filter((id: any) => typeof id === 'string' && id.length > 0) : [];
+        const viewerFollowing = Array.isArray(viewerProfile.following) ? viewerProfile.following.filter((id: any) => typeof id === 'string' && id.length > 0) : [];
+
+        console.log(`[Connections] Profile followers: ${followerIds.length}, following: ${followingIds.length}, viewer following: ${viewerFollowing.length}`);
 
         const [followerUsers, followingUsers] = await Promise.all([
           loadUsersByIds(followerIds),
@@ -233,32 +239,47 @@ export default function FollowConnectionsScreen() {
     );
   };
 
-  const handleToggleFollow = async (targetUserId: string) => {
-    const isFollowing = viewerFollowingIds.includes(targetUserId);
-    const targetUser = usersById[targetUserId];
-    const nextFollowingIds = isFollowing
-      ? viewerFollowingIds.filter((id) => id !== targetUserId)
-      : [...viewerFollowingIds, targetUserId];
+  const isViewingOwnProfile = !targetUserId;
 
-    setPendingUserIds((current) => [...current, targetUserId]);
+  const handleToggleFollow = async (followTargetId: string) => {
+    const isFollowing = viewerFollowingIds.includes(followTargetId);
+    const targetUser = usersById[followTargetId];
+    const nextFollowingIds = isFollowing
+      ? viewerFollowingIds.filter((id) => id !== followTargetId)
+      : [...viewerFollowingIds, followTargetId];
+
+    const prevFollowerIds = [...followerIds];
+    const prevFollowingIds = [...viewerFollowingIds];
+    const prevProfileFollowingIds = [...profileFollowingIds];
+
+    setPendingUserIds((current) => [...current, followTargetId]);
     setViewerFollowingIds(nextFollowingIds);
     if (targetUser) {
-      setUsersById((current) => ({ ...current, [targetUserId]: targetUser }));
+      setUsersById((current) => ({ ...current, [followTargetId]: targetUser }));
     }
     updateUser({ following: nextFollowingIds } as any);
 
+    // If viewing own profile, also update the profile's following list optimistically
+    if (isViewingOwnProfile) {
+      setProfileFollowingIds(nextFollowingIds);
+    }
+
     try {
       if (isFollowing) {
-        await unfollowUser(targetUserId);
+        await unfollowUser(followTargetId);
       } else {
-        await followUser(targetUserId);
+        await followUser(followTargetId);
       }
     } catch (error) {
       console.warn('Failed to update follow state:', error);
-      setViewerFollowingIds(viewerFollowingIds);
-      updateUser({ following: viewerFollowingIds } as any);
+      setViewerFollowingIds(prevFollowingIds);
+      setFollowerIds(prevFollowerIds);
+      if (isViewingOwnProfile) {
+        setProfileFollowingIds(prevProfileFollowingIds);
+      }
+      updateUser({ following: prevFollowingIds } as any);
     } finally {
-      setPendingUserIds((current) => current.filter((id) => id !== targetUserId));
+      setPendingUserIds((current) => current.filter((id) => id !== followTargetId));
     }
   };
 

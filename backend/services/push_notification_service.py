@@ -31,6 +31,25 @@ class PushNotificationService:
     """Service for sending push notifications via FCM"""
     
     @staticmethod
+    async def _get_blocked_user_ids(user_id: str) -> set:
+        blocked_ids = set()
+        try:
+            db = await _get_db()
+            blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+            for b in blocks_by_me:
+                b_uid = b.get('blockedUid')
+                if b_uid:
+                    blocked_ids.add(b_uid)
+            blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+            for b in blocks_of_me:
+                b_uid = b.get('blockerUid')
+                if b_uid:
+                    blocked_ids.add(b_uid)
+        except Exception as e:
+            logger.error("Error retrieving blocked users list: %s", e)
+        return blocked_ids
+    
+    @staticmethod
     async def get_user_fcm_token(user_id: str) -> Optional[str]:
         """Get the FCM token for a user from Firestore"""
         db = await _get_db()
@@ -379,6 +398,14 @@ class PushNotificationService:
         # Exclude the sender
         if exclude_user_id:
             member_ids = [m for m in member_ids if m != exclude_user_id]
+            
+            # Filter out members who blocked the sender
+            try:
+                blocked_ids = await cls._get_blocked_user_ids(exclude_user_id)
+                if blocked_ids:
+                    member_ids = [m for m in member_ids if m not in blocked_ids]
+            except Exception as e:
+                logger.warning(f"Error checking block status for community notifications: {e}")
         
         if not member_ids:
             return {'success_count': 0, 'failure_count': 0}
@@ -454,6 +481,14 @@ class PushNotificationService:
                 
         if exclude_user_id:
             actual_member_ids = [m for m in actual_member_ids if m != exclude_user_id]
+            
+            # Filter out members who blocked the sender
+            try:
+                blocked_ids = await cls._get_blocked_user_ids(exclude_user_id)
+                if blocked_ids:
+                    actual_member_ids = [m for m in actual_member_ids if m not in blocked_ids]
+            except Exception as e:
+                logger.warning(f"Error checking block status for circle notifications: {e}")
             
         if not actual_member_ids:
             return {'success_count': 0, 'failure_count': 0}

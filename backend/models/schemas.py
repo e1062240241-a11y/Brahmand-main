@@ -98,8 +98,6 @@ class TokenResponse(BaseModel):
     expires_in: int
 
 
-class MSG91TokenRequest(BaseModel):
-    access_token: str
 
 
 # ================= USER MODELS =================
@@ -543,7 +541,7 @@ class VendorUpdate(BaseModel):
     owner_name: Optional[str] = Field(None, min_length=2, max_length=100)
     years_in_business: Optional[int] = Field(None, ge=0, le=100)
     categories: Optional[List[str]] = Field(None, min_items=1, max_items=5)
-    full_address: Optional[str] = Field(None, min_length=10, max_length=500)
+    full_address: Optional[str] = Field(None, max_length=500)
     location_link: Optional[str] = None
     phone_number: Optional[str] = None
     latitude: Optional[float] = None
