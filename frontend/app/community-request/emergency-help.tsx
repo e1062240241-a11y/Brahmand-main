@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   textAreaWrapper: { backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14 },
   textArea: { minHeight: 120, fontSize: 15, color: '#333', textAlignVertical: 'top' },
   
-  continueButton: { marginTop: 10, borderRadius: 18, overflow: 'hidden' },
+  continueButton: { marginTop: 10, borderRadius: 45, overflow: 'hidden' },
   continueGradient: { flexDirection: 'row', paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
   continueButtonText: { color: '#FFFFFF', fontSize: 17, fontFamily: FONTS.bold },
   bottomDisclaimer: { textAlign: 'center', color: '#BBB', fontSize: 12, marginTop: 18, fontFamily: FONTS.regular },

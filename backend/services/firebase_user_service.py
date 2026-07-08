@@ -140,12 +140,16 @@ class FirebaseUserService:
                 'location': location,
                 'home_location': location,
                 'communities': firestore.ArrayUnion(community_ids),
+                'default_communities': firestore.ArrayUnion(community_ids),
                 'updated_at': datetime.utcnow()
             }
         )
         
         # Invalidate cache
         await cache_manager.invalidate_user(user_id)
+        await cache_manager.invalidate_user_communities(user_id)
+        for cid in community_ids:
+            await cache_manager.invalidate_community(cid)
         
         user = await FirebaseUserService.get_profile(user_id)
         return {
@@ -171,8 +175,8 @@ class FirebaseUserService:
             home_location = normalize_location(home_location) or home_location
             home_ids = await FirebaseCommunityService.join_location_communities(user_id, home_location)
             community_ids.extend(home_ids)
-            update_data['home_location'] = home_location
-            update_data['location'] = home_location
+            update_data['home_location'] = home_loc = home_location
+            update_data['location'] = home_loc
         
         if office_location:
             office_location = normalize_location(office_location) or office_location
@@ -188,11 +192,15 @@ class FirebaseUserService:
             db.client.collection('users').document(user_id).update,
             {
                 **update_data,
-                'communities': firestore.ArrayUnion(community_ids)
+                'communities': firestore.ArrayUnion(community_ids),
+                'default_communities': firestore.ArrayUnion(community_ids)
             }
         )
         
         await cache_manager.invalidate_user(user_id)
+        await cache_manager.invalidate_user_communities(user_id)
+        for cid in community_ids:
+            await cache_manager.invalidate_community(cid)
         
         user = await FirebaseUserService.get_profile(user_id)
         return {

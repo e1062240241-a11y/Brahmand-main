@@ -498,7 +498,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: '#F25C05', // Exact orange from screenshot
-    borderRadius: 12,
+    borderRadius: 45,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 8,

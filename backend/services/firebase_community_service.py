@@ -141,16 +141,19 @@ class FirebaseCommunityService:
         """Get existing community or create new one"""
         db = await FirebaseCommunityService.get_db()
         
-        community = await db.get_community_by_name(name)
+        # Clean double spaces, trailing spaces and trim
+        cleaned_name = " ".join(str(name).split())
+        
+        community = await db.get_community_by_name(cleaned_name)
         if community:
             return community
         
         # Create new community
         community_data = {
-            "name": name,
+            "name": cleaned_name,
             "type": community_type,
-            "location": location,
-            "code": generate_community_code(name.split()[0]),
+            "location": {k: str(v).strip() if v else "" for k, v in location.items()},
+            "code": generate_community_code(cleaned_name.split()[0]) if cleaned_name else "GRP",
             "members": [],
             "member_count": 0,
             "subgroups": SUBGROUPS.copy()
@@ -159,48 +162,87 @@ class FirebaseCommunityService:
         community_id = await db.create_community(community_data)
         community_data['id'] = community_id
         
-        logger.info(f"Created community: {name}")
+        logger.info(f"Created community: {cleaned_name}")
         return community_data
     
     @staticmethod
     async def join_location_communities(
         user_id: str,
-        location: Dict[str, Any]
+        location: Optional[Dict[str, Any]]
     ) -> List[str]:
         """Join all communities for a location (city, state, country)"""
+        if not location:
+            logger.warning(f"Cannot join location communities: location is empty/None for user {user_id}")
+            return []
+            
         location = normalize_location(location) or location
         db = await FirebaseCommunityService.get_db()
         community_ids = []
         
-        # City Community
-        city_community = await FirebaseCommunityService.get_or_create_community(
-            f"{location['city'].title()} Group",
-            "city",
-            {"country": location['country'], "state": location['state'], "city": location['city']}
-        )
-        community_ids.append(city_community['id'])
+        # City Community (Always joined)
+        city_name = location.get('city')
+        if city_name and str(city_name).strip():
+            city_name_cleaned = " ".join(str(city_name).split())
+            try:
+                city_community = await FirebaseCommunityService.get_or_create_community(
+                    f"{city_name_cleaned.title()} Group",
+                    "city",
+                    {
+                        "country": str(location.get('country', '')).strip(),
+                        "state": str(location.get('state', '')).strip(),
+                        "city": city_name_cleaned
+                    }
+                )
+                if city_community and 'id' in city_community:
+                    community_ids.append(city_community['id'])
+            except Exception as e:
+                logger.error(f"Error creating city community for city '{city_name}': {e}", exc_info=True)
         
-        # State Community
-        state_community = await FirebaseCommunityService.get_or_create_community(
-            f"{location['state'].title()} Group",
-            "state",
-            {"country": location['country'], "state": location['state']}
-        )
-        community_ids.append(state_community['id'])
+        # State Community (Always joined)
+        state_name = location.get('state')
+        if state_name and str(state_name).strip():
+            state_name_cleaned = " ".join(str(state_name).split())
+            try:
+                state_community = await FirebaseCommunityService.get_or_create_community(
+                    f"{state_name_cleaned.title()} Group",
+                    "state",
+                    {
+                        "country": str(location.get('country', '')).strip(),
+                        "state": state_name_cleaned
+                    }
+                )
+                if state_community and 'id' in state_community:
+                    community_ids.append(state_community['id'])
+            except Exception as e:
+                logger.error(f"Error creating state community for state '{state_name}': {e}", exc_info=True)
+                
+        # Country Community (Always joined)
+        country_name = location.get('country')
+        if country_name and str(country_name).strip():
+            country_name_cleaned = " ".join(str(country_name).split())
+            try:
+                country_community = await FirebaseCommunityService.get_or_create_community(
+                    f"{country_name_cleaned.title()} Group",
+                    "country",
+                    {
+                        "country": country_name_cleaned
+                    }
+                )
+                if country_community and 'id' in country_community:
+                    community_ids.append(country_community['id'])
+            except Exception as e:
+                logger.error(f"Error creating country community for country '{country_name}': {e}", exc_info=True)
         
-        # Country Community
-        country_community = await FirebaseCommunityService.get_or_create_community(
-            f"{location['country'].title()} Group",
-            "country",
-            {"country": location['country']}
-        )
-        community_ids.append(country_community['id'])
-        
-        # Add user to each community
+        # Add user to each community safely
+        joined_ids = []
         for cid in community_ids:
-            await db.add_member_to_community(cid, user_id)
-        
-        return community_ids
+            try:
+                await db.add_member_to_community(cid, user_id)
+                joined_ids.append(cid)
+            except Exception as e:
+                logger.error(f"Failed to add user {user_id} to community {cid}: {e}", exc_info=True)
+                
+        return joined_ids
     
     @staticmethod
     async def get_user_communities(user_id: str) -> List[Dict[str, Any]]:

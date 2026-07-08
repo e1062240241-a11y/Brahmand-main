@@ -1500,7 +1500,7 @@ const styles = StyleSheet.create({
   submitBtn: {
     backgroundColor: COLORS.primary,
     padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
+    borderRadius: 45,
     alignItems: 'center',
     marginTop: SPACING.lg,
   },
@@ -1728,7 +1728,7 @@ const styles = StyleSheet.create({
   selectorDoneButton: {
     height: 53,
     backgroundColor: '#F97316',
-    borderRadius: 8,
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
   },

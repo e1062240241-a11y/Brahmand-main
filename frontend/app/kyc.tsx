@@ -11,7 +11,8 @@ import {
   TextInput,
   ScrollView,
   Platform,
-  KeyboardAvoidingView
+  KeyboardAvoidingView,
+  Linking
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -117,6 +118,7 @@ const ProgressRing = ({ progress = 0.35, size = 60, strokeWidth = 5 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference * (1 - progress);
+  const percentage = Math.round(progress * 100);
 
   return (
     <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
@@ -143,7 +145,7 @@ const ProgressRing = ({ progress = 0.35, size = 60, strokeWidth = 5 }) => {
         />
       </Svg>
       <View style={{ position: 'absolute' }}>
-        <Text style={{ fontSize: 13, fontWeight: '700', color: '#A04100' }}>35%</Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: '#A04100' }}>{percentage}%</Text>
       </View>
     </View>
   );
@@ -247,6 +249,8 @@ export default function KYCStatusScreen() {
       updateUser({
         kyc_status: serverStatus,
         is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+        kyc_submitted_at: response?.data?.submitted_at || null,
+        kyc_verified_at: response?.data?.verified_at || null,
       } as any);
     } catch (error) {
       console.warn('Failed to refresh KYC status:', error);
@@ -261,8 +265,8 @@ export default function KYCStatusScreen() {
 
   const status = (user as any)?.kyc_status || (myVendor as any)?.kyc_status || null;
   const isVerified = status === 'verified';
-  const isReview = !isVerified && (status === 'pending' || status === 'manual_review');
-  const isRejected = !isVerified && !isReview && status === 'rejected';
+  const isReview = status === 'verified' || status === 'pending' || status === 'manual_review';
+  const isRejected = !isReview && status === 'rejected';
 
   const handleBack = useCallback(() => {
     if (otpSent && !phoneVerified) {
@@ -319,10 +323,11 @@ export default function KYCStatusScreen() {
   const handleOtpChange = (value: string, index: number) => {
     const cleanValue = value.replace(/[^0-9]/g, '');
 
-    if (Platform.OS === 'android' && cleanValue.length > 1) {
+    if (cleanValue.length > 1) {
       const digits = cleanValue.split('');
       const newOtp = [...otp];
-      const startIdx = cleanValue.length === 4 ? 0 : index;
+      // If the pasted/autofilled value is 4 digits, always start from index 0
+      const startIdx = digits.length === 4 ? 0 : index;
       for (let i = 0; i < digits.length; i++) {
         if (startIdx + i < 4) {
           newOtp[startIdx + i] = digits[i];
@@ -340,7 +345,7 @@ export default function KYCStatusScreen() {
     }
 
     const newOtp = [...otp];
-    newOtp[index] = Platform.OS === 'android' ? cleanValue.slice(-1) : cleanValue;
+    newOtp[index] = cleanValue.slice(-1);
     setOtp(newOtp);
     
     if (newOtp[index] && index < 3) {
@@ -450,7 +455,7 @@ export default function KYCStatusScreen() {
                     onChangeText={(value) => handleOtpChange(value, index)}
                     onKeyPress={(e) => handleKeyPress(e, index)}
                     keyboardType="number-pad"
-                    maxLength={Platform.OS === 'android' ? 4 : 1}
+                    maxLength={4}
                     selectTextOnFocus
                     textContentType="oneTimeCode"
                     autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
@@ -508,8 +513,12 @@ export default function KYCStatusScreen() {
   const submissionDate = (user as any)?.kyc_submitted_at 
     ? new Date((user as any).kyc_submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const approvalDate = (user as any)?.kyc_verified_at 
+    ? new Date((user as any).kyc_verified_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     
-  const requestId = "BR-" + (myVendor?.id ? myVendor.id.slice(0, 4).toUpperCase() : "8921");
+  const requestId = "BR-" + (myVendor?.id ? myVendor.id.slice(0, 6).toUpperCase() : "8921");
 
   return (
     <LinearGradient
@@ -539,38 +548,20 @@ export default function KYCStatusScreen() {
             contentContainerStyle={isReview ? styles.scrollContentStatus : styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
-            {isVerified ? (
-              <View style={[styles.whiteCard, { alignItems: 'center', gap: 20, paddingVertical: 32, marginTop: 24 }]}>
-                <View style={{ alignItems: 'center', gap: 12, width: '100%' }}>
-                  <Ionicons 
-                    name="checkmark-circle"
-                    size={64} 
-                    color="#2E7D32" 
-                  />
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 8 }}>
-                    KYC Verified
-                  </Text>
-                  <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20, paddingHorizontal: 16 }}>
-                    Your KYC documents have been successfully verified. You now have full access to all features.
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  style={[styles.primaryBtn, { width: '90%', marginTop: 12 }]} 
-                  onPress={handleBack}
-                >
-                  <Text style={styles.primaryBtnText}>Go Back</Text>
-                </TouchableOpacity>
-              </View>
-            ) : isReview ? (
+            {isReview ? (
               <>
                 {/* Status Card */}
                 <View style={styles.statusCard}>
                   <View style={{ flex: 1, gap: 4 }}>
                     <Text style={styles.statusCardLabel}>REQUEST #{requestId}</Text>
-                    <Text style={styles.statusCardTitle}>In Review</Text>
-                    <Text style={styles.statusCardSubtitle}>Submitted on {submissionDate}</Text>
+                    <Text style={styles.statusCardTitle}>
+                      {status === 'verified' ? 'Approved' : 'In Review'}
+                    </Text>
+                    <Text style={styles.statusCardSubtitle}>
+                      {status === 'verified' ? `Approved on ${approvalDate}` : `Submitted on ${submissionDate}`}
+                    </Text>
                   </View>
-                  <ProgressRing progress={0.35} />
+                  <ProgressRing progress={status === 'verified' ? 1.0 : 0.35} />
                 </View>
 
                 {/* Next Steps Section */}
@@ -588,20 +579,20 @@ export default function KYCStatusScreen() {
                     />
                     
                     <TimelineItem 
-                      isCompleted={false}
-                      isActive={true}
+                      isCompleted={status === 'verified'}
+                      isActive={status !== 'verified'}
                       title="Final Approval"
                       description="Quality check by our verification experts."
-                      iconName="sync"
+                      iconName={status === 'verified' ? 'checkmark' : 'sync'}
                       showLine={true}
                     />
                     
                     <TimelineItem 
-                      isCompleted={false}
+                      isCompleted={status === 'verified'}
                       isActive={false}
                       title="Business Profile Live"
                       description="Your business visible to the community."
-                      iconName="settings"
+                      iconName={status === 'verified' ? 'checkmark' : 'settings'}
                       showLine={false}
                     />
                   </View>
@@ -610,11 +601,20 @@ export default function KYCStatusScreen() {
                 {/* What to Expect Box */}
                 <View style={styles.expectBox}>
                   <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start' }}>
-                    <Ionicons name="information-circle" size={24} color="#D97706" style={{ marginTop: 2 }} />
+                    <Ionicons 
+                      name={status === 'verified' ? 'checkmark-circle' : 'information-circle'} 
+                      size={24} 
+                      color={status === 'verified' ? '#10B981' : '#D97706'} 
+                      style={{ marginTop: 2 }} 
+                    />
                     <View style={{ flex: 1, gap: 4 }}>
-                      <Text style={styles.expectBoxTitle}>What to Expect</Text>
+                      <Text style={styles.expectBoxTitle}>
+                        {status === 'verified' ? 'Verification Complete' : 'What to Expect'}
+                      </Text>
                       <Text style={styles.expectBoxDescription}>
-                        Our team is currently verifying your business details. You will receive a push notification once the process is complete.
+                        {status === 'verified' 
+                          ? 'Your business is now fully verified and live on Brahmand! You can start managing your business from the vendor dashboard.' 
+                          : 'Our team is currently verifying your business details. You will receive a push notification once the process is complete.'}
                       </Text>
                     </View>
                   </View>
@@ -625,7 +625,10 @@ export default function KYCStatusScreen() {
                   <TouchableOpacity 
                     style={styles.contactSupportBtn}
                     onPress={() => {
-                      Alert.alert("Support", "Connecting to support. Please dial: +91 8747283324");
+                      Linking.openURL('tel:9326097414').catch((err) => {
+                        console.error('Failed to open dialer:', err);
+                        Alert.alert("Support", "Could not initiate call. Please dial: 9326097414");
+                      });
                     }}
                   >
                     <SupportIcon style={{ marginRight: 8 }} />
@@ -674,7 +677,7 @@ export default function KYCStatusScreen() {
                     </View>
                     <View style={styles.cardHeaderTexts}>
                       <Text style={styles.cardTitle}>Verify Your Number</Text>
-                      <Text style={styles.cardDescription}>We'll send a 6 digit OTP to verify your{"\n"}mobile number.</Text>
+                      <Text style={styles.cardDescription}>We'll send a 4 digit OTP to verify your{"\n"}mobile number.</Text>
                     </View>
                   </View>
 
@@ -1018,7 +1021,7 @@ const styles = StyleSheet.create({
     height: 56,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 45,
     backgroundColor: '#F26522',
   },
   disabledBtn: {
@@ -1232,7 +1235,7 @@ const styles = StyleSheet.create({
   },
   otpPrimaryBtn: {
     backgroundColor: '#F26522',
-    borderRadius: 16,
+    borderRadius: 45,
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
@@ -1360,7 +1363,7 @@ const styles = StyleSheet.create({
   backHomeBtn: {
     width: '100%',
     height: 56,
-    borderRadius: 41,
+    borderRadius: 45,
     borderWidth: 2,
     borderColor: '#FF7B00',
     backgroundColor: 'rgba(255, 255, 255, 0.50)',

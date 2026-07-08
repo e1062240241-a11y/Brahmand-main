@@ -2004,63 +2004,95 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     user = await db.get_document('users', user_id)
     if user and user.get('anonymous_account'):
         raise HTTPException(status_code=403, detail="Anonymous accounts cannot set location")
+    
     loc = normalize_location(location.dict())
+    if not loc:
+        raise HTTPException(status_code=400, detail="Invalid location data")
     
     # Create/get communities
     community_ids = []
     
     # City Group
-    city_name = f"{loc['city'].title()} Group"
-    city = await db.get_community_by_name(city_name)
-    if not city:
-        city_id = await db.create_community({
-            "name": city_name, "type": "city",
-            "location": {"country": loc['country'], "state": loc['state'], "city": loc['city']},
-            "code": generate_community_code(loc['city']), "members": [], "subgroups": SUBGROUPS
-        })
-        logger.info(f"Created community: {city_name}")
-    else:
-        city_id = city['id']
-    community_ids.append(city_id)
+    city_name = loc.get('city')
+    if city_name and str(city_name).strip():
+        city_name_cleaned = " ".join(str(city_name).split())
+        city_group_name = f"{city_name_cleaned.title()} Group"
+        city = await db.get_community_by_name(city_group_name)
+        if not city:
+            city_id = await db.create_community({
+                "name": city_group_name, "type": "city",
+                "location": {
+                    "country": str(loc.get('country', '')).strip(),
+                    "state": str(loc.get('state', '')).strip(),
+                    "city": city_name_cleaned
+                },
+                "code": generate_community_code(city_name_cleaned) if city_name_cleaned else "GRP",
+                "members": [], "subgroups": SUBGROUPS.copy()
+            })
+            logger.info(f"Created community: {city_group_name}")
+        else:
+            city_id = city['id']
+        community_ids.append(city_id)
     
     # State Group
-    state_name = f"{loc['state'].title()} Group"
-    state = await db.get_community_by_name(state_name)
-    if not state:
-        state_id = await db.create_community({
-            "name": state_name, "type": "state",
-            "location": {"country": loc['country'], "state": loc['state']},
-            "code": generate_community_code(loc['state']), "members": [], "subgroups": SUBGROUPS
-        })
-        logger.info(f"Created community: {state_name}")
-    else:
-        state_id = state['id']
-    community_ids.append(state_id)
+    state_name = loc.get('state')
+    if state_name and str(state_name).strip():
+        state_name_cleaned = " ".join(str(state_name).split())
+        state_group_name = f"{state_name_cleaned.title()} Group"
+        state = await db.get_community_by_name(state_group_name)
+        if not state:
+            state_id = await db.create_community({
+                "name": state_group_name, "type": "state",
+                "location": {
+                    "country": str(loc.get('country', '')).strip(),
+                    "state": state_name_cleaned
+                },
+                "code": generate_community_code(state_name_cleaned) if state_name_cleaned else "GRP",
+                "members": [], "subgroups": SUBGROUPS.copy()
+            })
+            logger.info(f"Created community: {state_group_name}")
+        else:
+            state_id = state['id']
+        community_ids.append(state_id)
     
     # Country Group
-    country_name = f"{loc['country'].title()} Group"
-    country = await db.get_community_by_name(country_name)
-    if not country:
-        country_id = await db.create_community({
-            "name": country_name, "type": "country",
-            "location": {"country": loc['country']},
-            "code": generate_community_code(loc['country']), "members": [], "subgroups": SUBGROUPS
-        })
-        logger.info(f"Created community: {country_name}")
-    else:
-        country_id = country['id']
-    community_ids.append(country_id)
+    country_name = loc.get('country')
+    if country_name and str(country_name).strip():
+        country_name_cleaned = " ".join(str(country_name).split())
+        country_group_name = f"{country_name_cleaned.title()} Group"
+        country = await db.get_community_by_name(country_group_name)
+        if not country:
+            country_id = await db.create_community({
+                "name": country_group_name, "type": "country",
+                "location": {
+                    "country": country_name_cleaned
+                },
+                "code": generate_community_code(country_name_cleaned) if country_name_cleaned else "GRP",
+                "members": [], "subgroups": SUBGROUPS.copy()
+            })
+            logger.info(f"Created community: {country_group_name}")
+        else:
+            country_id = country['id']
+        community_ids.append(country_id)
     
     # Add user to communities
     for cid in community_ids:
         await db.add_member_to_community(cid, user_id)
     
     # Update user with location and communities
+    existing_defaults = user.get('default_communities', []) or []
     await db.update_document('users', user_id, {
         'location': loc,
-        'home_location': loc
+        'home_location': loc,
+        'default_communities': list(set(existing_defaults + community_ids))
     })
     await db.array_union_update('users', user_id, 'communities', community_ids)
+    
+    # Invalidate cache
+    await cache_manager.invalidate_user(user_id)
+    for cid in community_ids:
+        await cache_manager.invalidate_community(cid)
+        await cache_manager.invalidate_user_communities(user_id)
     
     user = await db.get_document('users', user_id)
     return {"message": "Location set successfully", "user": user, "communities_joined": len(community_ids)}
@@ -2111,6 +2143,12 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     user = await db.get_document('users', user_id)
     if user and user.get('anonymous_account'):
         raise HTTPException(status_code=403, detail="Anonymous accounts cannot update dual location")
+        
+    is_verified = False
+    verification_level = 'state'
+    if user:
+        is_verified = user.get('is_verified', False)
+        verification_level = user.get('verification_level', 'state')
         
     # Get user's currently joined communities to find old location-based ones
     current_communities = user.get('communities', []) or []
@@ -2164,7 +2202,8 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     
     async def create_or_get_community(name: str, comm_type: str, location: dict):
         """Helper to create/get a community with proper label"""
-        existing = await db.get_community_by_name(name)
+        cleaned_name = " ".join(str(name).split())
+        existing = await db.get_community_by_name(cleaned_name)
         if existing:
             # Update existing community with label and is_default if not set
             if not existing.get('label') or not existing.get('is_default'):
@@ -2177,50 +2216,92 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         
         # Create new community
         comm_id = await db.create_community({
-            "name": name,
+            "name": cleaned_name,
             "type": comm_type,
             "label": TYPE_LABELS.get(comm_type, ''),
-            "location": location,
-            "code": generate_community_code(name.split()[0]),
+            "location": {k: str(v).strip() if v else "" for k, v in location.items()},
+            "code": generate_community_code(cleaned_name.split()[0]) if cleaned_name else "GRP",
             "members": [],
             "is_default": True,
             "sort_order": TYPE_ORDER.get(comm_type, 99),
-            "subgroups": SUBGROUPS
+            "subgroups": SUBGROUPS.copy()
         })
-        logger.info(f"Created default community: {name} ({comm_type})")
+        logger.info(f"Created default community: {cleaned_name} ({comm_type})")
         return comm_id
     
     # Process home location
     if locations.home_location:
         home_loc = normalize_location(locations.home_location)
-        update_data['home_location'] = home_loc
-        update_data['location'] = home_loc
-        
-        # City Group
-        city_name = f"{home_loc['city'].title()} Group"
-        city_id = await create_or_get_community(city_name, 'city', {
-            "country": home_loc['country'], "state": home_loc['state'], "city": home_loc['city']
-        })
-        default_community_ids.append(city_id)
-        
-        # State Group
-        state_name = f"{home_loc['state'].title()} Group"
-        state_id = await create_or_get_community(state_name, 'state', {
-            "country": home_loc['country'], "state": home_loc['state']
-        })
-        default_community_ids.append(state_id)
-        
-        # Country Group
-        country = home_loc['country'].replace('India', 'Bharat')
-        country_name = f"{country.title()} Group"
-        country_id = await create_or_get_community(country_name, 'country', {
-            "country": country
-        })
-        default_community_ids.append(country_id)
+        if home_loc:
+            update_data['home_location'] = home_loc
+            update_data['location'] = home_loc
+            
+            # City Group
+            city_name = home_loc.get('city')
+            if city_name and str(city_name).strip():
+                city_name_cleaned = " ".join(str(city_name).split())
+                city_id = await create_or_get_community(f"{city_name_cleaned.title()} Group", 'city', {
+                    "country": str(home_loc.get('country', '')).strip(),
+                    "state": str(home_loc.get('state', '')).strip(),
+                    "city": city_name_cleaned
+                })
+                default_community_ids.append(city_id)
+            
+            # State Group
+            state_name = home_loc.get('state')
+            if state_name and str(state_name).strip():
+                state_name_cleaned = " ".join(str(state_name).split())
+                state_id = await create_or_get_community(f"{state_name_cleaned.title()} Group", 'state', {
+                    "country": str(home_loc.get('country', '')).strip(),
+                    "state": state_name_cleaned
+                })
+                default_community_ids.append(state_id)
+            
+            # Country Group
+            country_name = home_loc.get('country')
+            if country_name and str(country_name).strip():
+                country_name_cleaned = " ".join(str(country_name).split())
+                country_name_cleaned = country_name_cleaned.replace('India', 'Bharat')
+                country_id = await create_or_get_community(f"{country_name_cleaned.title()} Group", 'country', {
+                    "country": country_name_cleaned
+                })
+                default_community_ids.append(country_id)
     
     if locations.office_location:
         office_loc = normalize_location(locations.office_location)
-        update_data['office_location'] = office_loc
+        if office_loc:
+            update_data['office_location'] = office_loc
+            
+            # City Group for Office
+            city_name = office_loc.get('city')
+            if city_name and str(city_name).strip():
+                city_name_cleaned = " ".join(str(city_name).split())
+                city_id = await create_or_get_community(f"{city_name_cleaned.title()} Group", 'city', {
+                    "country": str(office_loc.get('country', '')).strip(),
+                    "state": str(office_loc.get('state', '')).strip(),
+                    "city": city_name_cleaned
+                })
+                default_community_ids.append(city_id)
+            
+            # State Group for Office
+            state_name = office_loc.get('state')
+            if state_name and str(state_name).strip():
+                state_name_cleaned = " ".join(str(state_name).split())
+                state_id = await create_or_get_community(f"{state_name_cleaned.title()} Group", 'state', {
+                    "country": str(office_loc.get('country', '')).strip(),
+                    "state": state_name_cleaned
+                })
+                default_community_ids.append(state_id)
+            
+            # Country Group for Office
+            country_name = office_loc.get('country')
+            if country_name and str(country_name).strip():
+                country_name_cleaned = " ".join(str(country_name).split())
+                country_name_cleaned = country_name_cleaned.replace('India', 'Bharat')
+                country_id = await create_or_get_community(f"{country_name_cleaned.title()} Group", 'country', {
+                    "country": country_name_cleaned
+                })
+                default_community_ids.append(country_id)
     
     # Remove duplicates while preserving order
     seen = set()
@@ -2239,6 +2320,12 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     update_data['communities'] = list(set(non_location_community_ids + unique_community_ids))
     
     await db.update_document('users', user_id, update_data)
+    
+    # Invalidate cache
+    await cache_manager.invalidate_user(user_id)
+    for cid in unique_community_ids:
+        await cache_manager.invalidate_community(cid)
+    await cache_manager.invalidate_user_communities(user_id)
     
     user = await db.get_document('users', user_id)
     return {"message": "Locations updated", "user": user, "communities_joined": len(unique_community_ids)}
@@ -4776,19 +4863,45 @@ async def action_personality_verification(request_id: str, action: str = Body(..
              
         loc = user.get('location') or user.get('home_location')
         
-        community_to_join = None
+        communities_to_join = []
         if level == 'national':
-            community_to_join = "Bharat Group"
-        elif level == 'state' and loc and loc.get('state'):
+            communities_to_join.append("Bharat Group")
+            
+        if level in ['state', 'national'] and loc and loc.get('state'):
             state_name = str(loc.get('state', '')).title()
             if state_name:
-                community_to_join = f"{state_name} Group"
+                communities_to_join.append(f"{state_name} Group")
             
-        if community_to_join:
-            comm = await db.get_community_by_name(community_to_join)
+        joined_comm_ids = []
+        for community_name in communities_to_join:
+            comm = await db.get_community_by_name(community_name)
+            if not comm:
+                # Create the community automatically
+                comm_type = "country" if community_name == "Bharat Group" else "state"
+                comm_loc = {"country": "Bharat"}
+                if comm_type == "state" and loc:
+                    comm_loc["state"] = str(loc.get('state', '')).strip()
+                
+                comm_id = await db.create_community({
+                    "name": community_name,
+                    "type": comm_type,
+                    "location": comm_loc,
+                    "code": generate_community_code(community_name.split()[0]),
+                    "members": [],
+                    "subgroups": SUBGROUPS.copy()
+                })
+                comm = {"id": comm_id, "name": community_name}
+                logger.info(f"Automatically created community on admin approval: {community_name}")
+                
             if comm:
                 await db.add_member_to_community(comm['id'], target_user_id)
                 await db.array_union_update('users', target_user_id, 'communities', [comm['id']])
+                await db.array_union_update('users', target_user_id, 'default_communities', [comm['id']])
+                joined_comm_ids.append(comm['id'])
+                await cache_manager.invalidate_community(comm['id'])
+                
+        # Invalidate user communities cache
+        await cache_manager.invalidate_user_communities(target_user_id)
         
         # Invalidate cache
         await cache_manager.invalidate_user(target_user_id)
@@ -6024,6 +6137,17 @@ async def get_community(community_id: str, token_data: dict = Depends(verify_tok
     if not comm:
         raise HTTPException(status_code=404, detail="Community not found")
         
+    # Enforce personality verification access limits for state/country groups
+    comm_type = comm.get('type')
+    if comm_type in ['state', 'country']:
+        user = await db.get_document('users', token_data["user_id"])
+        is_verified = user.get('is_verified', False) if user else False
+        verification_level = user.get('verification_level', 'state') if user else 'state'
+        if not is_verified:
+            raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
+        if comm_type == 'country' and verification_level != 'national':
+            raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
+        
     # Build complete members_details array for frontend
     members_details = []
     
@@ -6201,12 +6325,16 @@ async def send_community_message(
     if not is_member:
         raise HTTPException(status_code=403, detail="Not a community member")
 
-    # Check verification (state and country groups require verification; city groups do not)
+    # Check verification (state and country groups require verification)
     community_doc = community if 'community' in locals() and community else await db.get_document('communities', community_id)
-    is_city_group = (community_doc.get('type') == 'city') if community_doc else False
-    
-    if not is_city_group and not user.get('is_verified', False):
-        raise HTTPException(status_code=403, detail="Only verified members can post in community groups")
+    comm_type = community_doc.get('type') if community_doc else None
+    if comm_type in ['state', 'country']:
+        is_verified = user.get('is_verified', False)
+        verification_level = user.get('verification_level', 'state')
+        if not is_verified:
+            raise HTTPException(status_code=403, detail="Only verified personalities can post in state/country level communities")
+        if comm_type == 'country' and verification_level != 'national':
+            raise HTTPException(status_code=403, detail="Only national-level verified personalities can post in country communities")
     
     is_ok, reason = moderate_content(message.content)
     if not is_ok:
@@ -6347,6 +6475,16 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
 
     if not community:
         raise HTTPException(status_code=404, detail="Community not found")
+        
+    # Enforce personality verification access limits for state/country groups
+    comm_type = community.get('type')
+    if comm_type in ['state', 'country']:
+        is_verified = user.get('is_verified', False)
+        verification_level = user.get('verification_level', 'state')
+        if not is_verified:
+            raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
+        if comm_type == 'country' and verification_level != 'national':
+            raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
         
 
     chat_id = f"community_{community_id}_{subgroup_type}"

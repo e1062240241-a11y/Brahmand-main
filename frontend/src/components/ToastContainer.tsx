@@ -1,25 +1,25 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { Animated, StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS } from '../constants/theme';
 import { ToastMessage, useToastStore } from '../store/toastStore';
 
 const ToastItem = ({ toast }: { toast: ToastMessage }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(-20)).current;
+  const slideAnim = useRef(new Animated.Value(-40)).current;
   const { hideToast } = useToastStore();
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 350,
         useNativeDriver: true,
       }),
-      Animated.timing(slideAnim, {
+      Animated.spring(slideAnim, {
         toValue: 0,
-        duration: 300,
+        tension: 65,
+        friction: 10,
         useNativeDriver: true,
       }),
     ]).start();
@@ -41,7 +41,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
         useNativeDriver: true,
       }),
       Animated.timing(slideAnim, {
-        toValue: -20,
+        toValue: -30,
         duration: 250,
         useNativeDriver: true,
       }),
@@ -54,26 +54,26 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
     switch (toast.type) {
       case 'success':
         return {
-          icon: <Ionicons name="checkmark" size={14} color="#12B76A" />,
-          containerStyle: { borderColor: 'rgba(18, 183, 106, 0.15)', backgroundColor: '#F6FEF9' },
+          icon: <Ionicons name="checkmark-circle" size={20} color="#34D399" />,
+          borderColor: 'rgba(52, 211, 153, 0.25)',
           title: 'Success',
         };
       case 'error':
         return {
-          icon: <Ionicons name="alert-outline" size={14} color="#F04438" />,
-          containerStyle: { borderColor: 'rgba(240, 68, 56, 0.15)', backgroundColor: '#FEF3F2' },
+          icon: <Ionicons name="alert-circle" size={20} color="#F87171" />,
+          borderColor: 'rgba(248, 113, 113, 0.25)',
           title: 'Error',
         };
       default:
         return {
-          icon: <Ionicons name="information-outline" size={14} color="#0086C9" />,
-          containerStyle: { borderColor: 'rgba(0, 134, 201, 0.15)', backgroundColor: '#F0F9FF' },
+          icon: <Ionicons name="information-circle" size={20} color="#FBBF24" />,
+          borderColor: 'rgba(251, 191, 36, 0.25)',
           title: 'Info',
         };
     }
   };
 
-  const { icon, containerStyle, title } = getStatusDetails();
+  const { icon, borderColor, title } = getStatusDetails();
 
   return (
     <Animated.View
@@ -82,23 +82,22 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
         {
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
+          borderColor: borderColor,
         },
       ]}
     >
       <View style={styles.contentContainer}>
         <View style={styles.messageRow}>
-          <View style={[styles.iconWrapper, containerStyle]}>
+          <View style={styles.iconWrapper}>
             {icon}
           </View>
           <View style={styles.textContainer}>
-            <Text style={styles.messageText}>
-              <Text style={styles.titleText}>{title}: </Text>
-              {toast.message}
-            </Text>
+            <Text style={styles.titleText}>{title}</Text>
+            <Text style={styles.messageText}>{toast.message}</Text>
           </View>
           {(!toast.actions || toast.actions.length === 0) && (
             <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
-              <Ionicons name="close" size={16} color="#98A2B3" />
+              <Ionicons name="close" size={18} color="#98A2B3" />
             </TouchableOpacity>
           )}
         </View>
@@ -161,93 +160,87 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   toastItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingVertical: 10,
+    backgroundColor: '#1E2229',
+    borderRadius: 16,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     marginBottom: 10,
     alignSelf: 'center',
-    maxWidth: '100%',
-    shadowColor: '#101828',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
+    width: '90%',
+    maxWidth: 420,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    elevation: 10,
     borderWidth: 1,
-    borderColor: '#F2F4F7',
   },
   contentContainer: {
-    alignItems: 'center',
     width: '100%',
   },
   messageRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     width: '100%',
   },
   iconWrapper: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
+    marginTop: 2,
   },
   textContainer: {
     flex: 1,
     marginRight: 8,
   },
   titleText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#101828',
-    fontFamily: 'System',
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontFamily: Platform.OS === 'ios' ? 'Outfit_600SemiBold' : 'Outfit',
+    fontWeight: '600',
+    marginBottom: 2,
   },
   messageText: {
     fontSize: 13,
-    color: '#475467',
-    fontWeight: '400',
-    fontFamily: 'System',
+    color: '#D0D5DD',
+    fontFamily: Platform.OS === 'ios' ? 'Inter_400Regular' : 'System',
+    lineHeight: 18,
   },
   closeButton: {
-    padding: 4,
-    marginLeft: 6,
+    padding: 2,
+    marginTop: 2,
   },
   actionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    marginTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F2F4F7',
-    paddingTop: 8,
-    gap: 12,
+    justifyContent: 'flex-end',
+    width: '100%',
+    marginTop: 12,
+    gap: 8,
   },
   actionBtn: {
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.primary || '#FF6600',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   actionBtnDestructive: {
-    borderBottomColor: '#D92D20',
+    backgroundColor: 'rgba(248, 113, 113, 0.15)',
+    borderColor: 'rgba(248, 113, 113, 0.25)',
   },
   actionBtnCancel: {
-    borderBottomColor: '#667085',
+    backgroundColor: 'transparent',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   actionText: {
-    color: COLORS.primary || '#FF6600',
-    fontSize: 13,
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Outfit_600SemiBold' : 'Outfit',
     fontWeight: '600',
-    fontFamily: 'System',
   },
   actionTextDestructive: {
-    color: '#D92D20',
+    color: '#F87171',
   },
   actionTextCancel: {
-    color: '#667085',
+    color: '#98A2B3',
   },
 });

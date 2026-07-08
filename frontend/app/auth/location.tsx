@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -7,7 +7,10 @@ import {
   ScrollView, 
   ActivityIndicator, 
   Platform, 
-  TextInput 
+  TextInput,
+  KeyboardAvoidingView,
+  Keyboard,
+  Dimensions
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +21,7 @@ import Svg, { Path } from 'react-native-svg';
 import { updateExtendedProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLanguageStore } from '../../src/utils/i18n';
+import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 
 export default function LocationSetupScreen() {
   const router = useRouter();
@@ -77,7 +81,6 @@ export default function LocationSetupScreen() {
   const [place, setPlace] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [suggestions, setSuggestions] = useState<any[]>([]);
 
   // DateTimePicker states
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -101,14 +104,9 @@ export default function LocationSetupScreen() {
   };
 
   const fetchSuggestions = async (query: string) => {
-    if (!query || query.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`,
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10`,
         {
           headers: {
             'User-Agent': 'BrahmandApp/1.0',
@@ -117,11 +115,12 @@ export default function LocationSetupScreen() {
       );
       const data = await response.json();
       if (Array.isArray(data)) {
-        setSuggestions(data);
+        return data;
       }
     } catch (err) {
       console.warn('Error fetching place suggestions:', err);
     }
+    return [];
   };
 
   const handleNext = async () => {
@@ -169,18 +168,22 @@ export default function LocationSetupScreen() {
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
     >
-      <ScrollWrapper style={styles.safeArea}>
-        <ScrollView 
-          contentContainerStyle={[
-            styles.scrollContent,
-            Platform.OS === 'android' && {
-              paddingTop: Math.max(insets.top, 10),
-              paddingBottom: Math.max(insets.bottom, 10),
-            }
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollWrapper style={styles.safeArea}>
+          <ScrollView 
+            contentContainerStyle={[
+              styles.scrollContent,
+              Platform.OS === 'android' && {
+                paddingTop: Math.max(insets.top, 10),
+                paddingBottom: Math.max(insets.bottom, 10),
+              }
+            ]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <View style={styles.content}>
             <View style={styles.topSection}>
               {/* Header Badge */}
@@ -358,49 +361,26 @@ export default function LocationSetupScreen() {
               <Ionicons name="location-outline" size={16} color="#584235" style={styles.labelIcon} />
               <Text style={styles.label}>{getTranslation('placeOfBirth')}</Text>
             </View>
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder={getTranslation('cityStateCountry')}
-                placeholderTextColor="#C5B49F"
-                value={place}
-                onChangeText={(text) => {
-                  setPlace(text);
-                  setError('');
-                  fetchSuggestions(text);
-                }}
-              />
-              <TouchableOpacity onPress={() => {
-                if (suggestions.length > 0) {
-                  setSuggestions([]);
-                } else {
-                  fetchSuggestions(place || 'Delhi');
-                }
-              }}>
-                <Ionicons name={suggestions.length > 0 ? "chevron-up-outline" : "chevron-down-outline"} size={20} color="#C5B49F" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Suggestions list */}
-            {suggestions.length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                {suggestions.map((item, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.suggestionItem}
-                    onPress={() => {
-                      setPlace(item.display_name);
-                      setSuggestions([]);
-                    }}
-                  >
-                    <Ionicons name="location-outline" size={16} color="#723600" style={{ marginRight: 8 }} />
-                    <Text style={styles.suggestionText} numberOfLines={1}>
-                      {item.display_name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+            <AutocompleteInput
+              placeholder={getTranslation('cityStateCountry')}
+              placeholderTextColor="#C5B49F"
+              value={place}
+              onChangeText={(text) => {
+                setPlace(text);
+                setError('');
+              }}
+              onSelect={(item) => {
+                setPlace(item.label);
+              }}
+              onSearch={fetchSuggestions}
+              minimumQueryLength={3}
+              inputContainerStyle={styles.inputContainer}
+              inputStyle={styles.textInput}
+              dropdownStyle={styles.suggestionsContainer}
+              itemStyle={styles.suggestionItem}
+              itemTextStyle={styles.suggestionText}
+              showChevron={true}
+            />
 
             {/* Error Message */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -451,8 +431,9 @@ export default function LocationSetupScreen() {
             </View>
           </ScrollView>
         </ScrollWrapper>
-      </LinearGradient>
-    );
+      </KeyboardAvoidingView>
+    </LinearGradient>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -604,16 +585,27 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   suggestionsContainer: {
-    alignSelf: 'stretch',
+    position: 'absolute',
+    left: 0,
+    right: 0,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0C0AF',
-    marginTop: -8,
-    marginBottom: 10,
-    maxHeight: 180,
+    maxHeight: 200,
     overflow: 'hidden',
-    zIndex: 10,
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  suggestionsBelow: {
+    top: 52,
+  },
+  suggestionsAbove: {
+    bottom: Platform.OS === 'android' ? 66 : 62,
   },
   suggestionItem: {
     flexDirection: 'row',

@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: '#FF6B00',
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 45,
     alignItems: 'center',
     paddingVertical: SPACING.lg,
   },

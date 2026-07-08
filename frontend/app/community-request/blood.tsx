@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 45,
     paddingVertical: SPACING.lg,
     alignItems: 'center',
     marginBottom: SPACING.md,

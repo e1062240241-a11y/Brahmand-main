@@ -428,7 +428,7 @@ const styles = StyleSheet.create({
   segmentButtonTextSelected: { color: '#111' },
   segmentButtonTextSelectedUrgent: { color: '#FF5252' },
   
-  continueButton: { marginTop: 10, borderRadius: 18, overflow: 'hidden' },
+  continueButton: { marginTop: 10, borderRadius: 45, overflow: 'hidden' },
   continueGradient: { flexDirection: 'row', paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
   continueButtonText: { color: '#FFFFFF', fontSize: 17, fontFamily: FONTS.bold },
   bottomDisclaimer: { textAlign: 'center', color: '#BBB', fontSize: 12, marginTop: 18, fontFamily: FONTS.regular },

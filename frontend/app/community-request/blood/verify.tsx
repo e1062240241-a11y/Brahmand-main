@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: '#FF6B00',
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 45,
     paddingVertical: SPACING.lg,
     alignItems: 'center',
   },
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   outlineButton: {
     borderWidth: 1,
     borderColor: '#FF6B00',
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 45,
     paddingVertical: SPACING.lg,
     alignItems: 'center',
   },
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     backgroundColor: '#FF6B00',
-    borderRadius: BORDER_RADIUS.xl,
+    borderRadius: 45,
     alignItems: 'center',
     paddingVertical: SPACING.lg,
   },

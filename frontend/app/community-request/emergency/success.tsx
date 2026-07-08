@@ -7,7 +7,8 @@ import {
   BackHandler, 
   Image, 
   ScrollView, 
-  Dimensions 
+  Dimensions,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -222,9 +223,9 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    height: 56,
+    height: Platform.OS === 'android' ? 48 : 56,
     backgroundColor: '#FF6B00',
-    borderRadius: 28,
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -241,9 +242,9 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     width: '100%',
-    height: 56,
+    height: Platform.OS === 'android' ? 48 : 56,
     backgroundColor: '#FFF5EF',
-    borderRadius: 28,
+    borderRadius: 45,
     borderWidth: 1,
     borderColor: '#FF6B00',
     justifyContent: 'center',
