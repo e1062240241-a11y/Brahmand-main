@@ -716,7 +716,6 @@ export default function TempleDetailScreen() {
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
-  const isCurrentlyLive = temple ? checkIsAartiLive(getTempleAartiSessions(temple.aarti_timings || {}, temple.name || '')) : false;
 
   const loadLocalTempleData = async () => {
     try {
@@ -921,6 +920,7 @@ if (!temple) {
   const hasSpecialDetails = Boolean(specialTempleData);
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
+  const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const hasSpecialMap = Boolean(resolvedCoords);
   const displayName = templeKey || temple.name || 'Temple';
@@ -1096,12 +1096,12 @@ if (!temple) {
        </Text>
      </View>
    ) : (
-     <View style={{ flexDirection: 'row', alignItems: 'center', opacity: 0.8 }}>
-       <Ionicons name="play-circle" size={20} color="#DDD" style={{ marginRight: 8 }} />
+     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+       <Ionicons name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
        <Text style={styles.youtubeLinkText}>
          {isYoutubeUrl
-           ? (t('language') === 'hi' ? 'आरती अभी लाइव नहीं है' : 'Aarti Not Live')
-           : (t('language') === 'hi' ? 'दर्शन ऑफ़लाइन' : 'Darshan Offline')}
+           ? (t('language') === 'hi' ? 'यूट्यूब पर आरती देखें' : 'Watch Aarti on YouTube')
+           : (t('language') === 'hi' ? 'लाइव दर्शन देखें' : 'Watch Live Darshan')}
        </Text>
      </View>
    )}
