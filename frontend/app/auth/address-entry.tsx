@@ -16,7 +16,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Button } from '../../src/components/Button';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 
 // Indian cities with areas
 const CITIES_DATA: Record<string, string[]> = {
@@ -47,8 +46,83 @@ export default function AddressEntryScreen() {
   const [officeCity, setOfficeCity] = useState('');
   const [officeArea, setOfficeArea] = useState('');
   
+  const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
+  const [areaSuggestions, setAreaSuggestions] = useState<string[]>([]);
+  const [activeField, setActiveField] = useState<'homeCity' | 'homeArea' | 'officeCity' | 'officeArea' | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Filter cities based on input
+  const filterCities = useCallback((text: string) => {
+    if (!text) return [];
+    return ALL_CITIES.filter(city => 
+      city.toLowerCase().includes(text.toLowerCase())
+    ).slice(0, 5);
+  }, []);
+
+  // Filter areas based on city and input
+  const filterAreas = useCallback((city: string, text: string) => {
+    const areas = CITIES_DATA[city] || [];
+    if (!text) return areas.slice(0, 5);
+    return areas.filter(area => 
+      area.toLowerCase().includes(text.toLowerCase())
+    ).slice(0, 5);
+  }, []);
+
+  // Handle city input
+  const handleCityChange = (text: string, type: 'home' | 'office') => {
+    if (type === 'home') {
+      setHomeCity(text);
+      setCitySuggestions(filterCities(text));
+      setActiveField('homeCity');
+      // Reset area when city changes
+      if (text !== homeCity) setHomeArea('');
+    } else {
+      setOfficeCity(text);
+      setCitySuggestions(filterCities(text));
+      setActiveField('officeCity');
+      if (text !== officeCity) setOfficeArea('');
+    }
+  };
+
+  // Handle area input
+  const handleAreaChange = (text: string, type: 'home' | 'office') => {
+    const city = type === 'home' ? homeCity : officeCity;
+    if (type === 'home') {
+      setHomeArea(text);
+      setAreaSuggestions(filterAreas(city, text));
+      setActiveField('homeArea');
+    } else {
+      setOfficeArea(text);
+      setAreaSuggestions(filterAreas(city, text));
+      setActiveField('officeArea');
+    }
+  };
+
+  // Select city from suggestions
+  const selectCity = (city: string, type: 'home' | 'office') => {
+    if (type === 'home') {
+      setHomeCity(city);
+      setHomeArea('');
+    } else {
+      setOfficeCity(city);
+      setOfficeArea('');
+    }
+    setCitySuggestions([]);
+    setActiveField(null);
+  };
+
+  // Select area from suggestions
+  const selectArea = (area: string, type: 'home' | 'office') => {
+    if (type === 'home') {
+      setHomeArea(area);
+    } else {
+      setOfficeArea(area);
+    }
+    setAreaSuggestions([]);
+    setActiveField(null);
+    Keyboard.dismiss();
+  };
 
   const handleContinue = async () => {
     if (!homeCity || !homeArea) {
@@ -75,6 +149,25 @@ export default function AddressEntryScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderSuggestions = (suggestions: string[], onSelect: (item: string) => void) => {
+    if (suggestions.length === 0) return null;
+    
+    return (
+      <View style={styles.suggestionsContainer}>
+        {suggestions.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={styles.suggestionItem}
+            onPress={() => onSelect(item)}
+          >
+            <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
+            <Text style={styles.suggestionText}>{item}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
   };
 
   return (
@@ -109,47 +202,32 @@ export default function AddressEntryScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>City</Text>
-              <AutocompleteInput
+              <TextInput
+                style={styles.input}
                 placeholder="Enter city name"
-                placeholderTextColor={COLORS.textLight}
                 value={homeCity}
-                onChangeText={(text) => {
-                  setHomeCity(text);
-                  if (text !== homeCity) setHomeArea('');
-                }}
-                onSelect={(item) => {
-                  setHomeCity(item.label);
-                  setHomeArea('');
-                }}
-                data={ALL_CITIES}
-                inputContainerStyle={styles.input}
-                inputStyle={{ paddingVertical: 0 }}
-                dropdownStyle={styles.suggestionsContainer}
-                itemStyle={styles.suggestionItem}
-                itemTextStyle={styles.suggestionText}
-                showChevron={false}
+                onChangeText={(text) => handleCityChange(text, 'home')}
+                onFocus={() => setActiveField('homeCity')}
+                placeholderTextColor={COLORS.textLight}
               />
+              {activeField === 'homeCity' && renderSuggestions(citySuggestions, (city) => selectCity(city, 'home'))}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Area / Locality</Text>
-              <AutocompleteInput
+              <TextInput
+                style={[styles.input, !homeCity && styles.inputDisabled]}
                 placeholder={homeCity ? "Enter area name" : "Select city first"}
-                placeholderTextColor={COLORS.textLight}
                 value={homeArea}
-                onChangeText={setHomeArea}
-                onSelect={(item) => setHomeArea(item.label)}
-                data={CITIES_DATA[homeCity] || []}
-                showSuggestionsOnFocusEmpty={true}
-                minimumQueryLength={0}
+                onChangeText={(text) => handleAreaChange(text, 'home')}
+                onFocus={() => {
+                  setActiveField('homeArea');
+                  if (homeCity) setAreaSuggestions(filterAreas(homeCity, ''));
+                }}
                 editable={!!homeCity}
-                inputContainerStyle={[styles.input, !homeCity && styles.inputDisabled]}
-                inputStyle={{ paddingVertical: 0 }}
-                dropdownStyle={styles.suggestionsContainer}
-                itemStyle={styles.suggestionItem}
-                itemTextStyle={styles.suggestionText}
-                showChevron={false}
+                placeholderTextColor={COLORS.textLight}
               />
+              {activeField === 'homeArea' && renderSuggestions(areaSuggestions, (area) => selectArea(area, 'home'))}
             </View>
           </View>
 
@@ -165,47 +243,32 @@ export default function AddressEntryScreen() {
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>City</Text>
-              <AutocompleteInput
+              <TextInput
+                style={styles.input}
                 placeholder="Enter city name"
-                placeholderTextColor={COLORS.textLight}
                 value={officeCity}
-                onChangeText={(text) => {
-                  setOfficeCity(text);
-                  if (text !== officeCity) setOfficeArea('');
-                }}
-                onSelect={(item) => {
-                  setOfficeCity(item.label);
-                  setOfficeArea('');
-                }}
-                data={ALL_CITIES}
-                inputContainerStyle={styles.input}
-                inputStyle={{ paddingVertical: 0 }}
-                dropdownStyle={styles.suggestionsContainer}
-                itemStyle={styles.suggestionItem}
-                itemTextStyle={styles.suggestionText}
-                showChevron={false}
+                onChangeText={(text) => handleCityChange(text, 'office')}
+                onFocus={() => setActiveField('officeCity')}
+                placeholderTextColor={COLORS.textLight}
               />
+              {activeField === 'officeCity' && renderSuggestions(citySuggestions, (city) => selectCity(city, 'office'))}
             </View>
 
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Area / Locality</Text>
-              <AutocompleteInput
+              <TextInput
+                style={[styles.input, !officeCity && styles.inputDisabled]}
                 placeholder={officeCity ? "Enter area name" : "Select city first"}
-                placeholderTextColor={COLORS.textLight}
                 value={officeArea}
-                onChangeText={setOfficeArea}
-                onSelect={(item) => setOfficeArea(item.label)}
-                data={CITIES_DATA[officeCity] || []}
-                showSuggestionsOnFocusEmpty={true}
-                minimumQueryLength={0}
+                onChangeText={(text) => handleAreaChange(text, 'office')}
+                onFocus={() => {
+                  setActiveField('officeArea');
+                  if (officeCity) setAreaSuggestions(filterAreas(officeCity, ''));
+                }}
                 editable={!!officeCity}
-                inputContainerStyle={[styles.input, !officeCity && styles.inputDisabled]}
-                inputStyle={{ paddingVertical: 0 }}
-                dropdownStyle={styles.suggestionsContainer}
-                itemStyle={styles.suggestionItem}
-                itemTextStyle={styles.suggestionText}
-                showChevron={false}
+                placeholderTextColor={COLORS.textLight}
               />
+              {activeField === 'officeArea' && renderSuggestions(areaSuggestions, (area) => selectArea(area, 'office'))}
             </View>
           </View>
 

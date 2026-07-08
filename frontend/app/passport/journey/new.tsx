@@ -20,7 +20,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { BlurView } from 'expo-blur';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { AutocompleteInput } from '../../../src/components/AutocompleteInput';
 import { usePassportStore } from '../../../src/store/passportStore';
 import { PassportAnswer, PassportMediaItem, PassportJourneyVisibility } from '../../../src/types/passport';
 import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
@@ -79,6 +78,8 @@ export default function NewPassportJourneyScreen() {
   const [stayType, setStayType] = useState('');
   const [distance, setDistance] = useState('');
   const [isStayDropdownOpen, setIsStayDropdownOpen] = useState(false);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const [showLocationSuggestionsStep1, setShowLocationSuggestionsStep1] = useState(false);
   const [showStep1DatePicker, setShowStep1DatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
 
@@ -114,6 +115,15 @@ export default function NewPassportJourneyScreen() {
       setDuration('');
     }
   };
+
+  // Derived state for suggestions
+  const filteredLocations = startLocation.trim()
+    ? indianCities.filter(city => city.toLowerCase().includes(startLocation.toLowerCase()))
+    : [];
+
+  const filteredLocationsStep1 = location.trim()
+    ? indianCities.filter(city => city.toLowerCase().includes(location.toLowerCase()))
+    : indianCities;
 
   // Step 3 State
   const [firstFeeling, setFirstFeeling] = useState('');
@@ -350,24 +360,40 @@ export default function NewPassportJourneyScreen() {
           </View>
 
           <Text style={styles.inputLabel}>LOCATION</Text>
-          <AutocompleteInput
-            placeholder="Kedarnath, Uttarakhand"
-            placeholderTextColor="#999"
-            value={location}
-            onChangeText={setLocation}
-            onSelect={(item) => setLocation(item.label)}
-            data={indianCities}
-            showSuggestionsOnFocusEmpty={true}
-            minimumQueryLength={0}
-            inputContainerStyle={styles.inputContainer}
-            inputStyle={styles.inputText}
-            dropdownStyle={styles.dropdownContainer}
-            itemStyle={styles.dropdownOption}
-            itemTextStyle={styles.dropdownOptionText}
-            iconName="location-outline"
-            iconColor="#E87030"
-            showChevron={false}
-          />
+          <View style={[styles.inputContainer, (showLocationSuggestionsStep1 && filteredLocationsStep1.length > 0) && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginBottom: 0, borderBottomWidth: 0 }]}>
+            <Ionicons name="location-outline" size={18} color="#E87030" style={{ marginRight: 8 }} />
+            <TextInput
+              value={location}
+              onChangeText={(text) => {
+                setLocation(text);
+                setShowLocationSuggestionsStep1(true);
+              }}
+              onFocus={() => setShowLocationSuggestionsStep1(true)}
+              onBlur={() => setTimeout(() => setShowLocationSuggestionsStep1(false), 250)}
+              placeholder="Kedarnath, Uttarakhand"
+              placeholderTextColor="#999"
+              style={styles.inputText}
+            />
+          </View>
+          {showLocationSuggestionsStep1 && filteredLocationsStep1.length > 0 && (
+            <View style={styles.dropdownContainer}>
+              {filteredLocationsStep1.slice(0, 5).map((city, index) => (
+                <TouchableOpacity
+                  key={city}
+                  style={[
+                    styles.dropdownOption,
+                    index === Math.min(filteredLocationsStep1.length, 5) - 1 && { borderBottomWidth: 0 }
+                  ]}
+                  onPress={() => {
+                    setLocation(city);
+                    setShowLocationSuggestionsStep1(false);
+                  }}
+                >
+                  <Text style={styles.dropdownOptionText}>{city}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <Text style={styles.inputLabel}>DATE</Text>
           <TouchableOpacity 

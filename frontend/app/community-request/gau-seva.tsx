@@ -20,6 +20,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
+import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
@@ -54,41 +55,13 @@ export default function GauSevaRequestScreen() {
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
-  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'help' | 'contact' | null>(null);
 
-  // Debounced Location Search
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (location.length >= 3 && !selectedLocation) {
-        setIsSearchingLocation(true);
-        try {
-          const response = await forwardGeocode(location);
-          setLocationSuggestions(response.data || []);
-        } catch (error) {
-          console.warn('Location search failed', error);
-        } finally {
-          setIsSearchingLocation(false);
-        }
-      } else {
-        setLocationSuggestions([]);
-      }
-    }, 500);
 
-    return () => clearTimeout(timer);
-  }, [location, selectedLocation]);
-
-  const handleLocationSelect = (item: any) => {
-    const name = item.display_name || item.formatted_address || item.name;
-    setLocation(name);
-    setSelectedLocation(item);
-    setLocationSuggestions([]);
-  };
 
   const openModal = (type: 'help' | 'contact') => {
     setModalType(type);
@@ -229,27 +202,40 @@ export default function GauSevaRequestScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="location-sharp" size={18} color="#43A047" style={{ marginRight: 10 }} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search area or location"
-                    placeholderTextColor="#BBB"
-                    value={location}
-                    onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
-                  />
-                  {isSearchingLocation ? <ActivityIndicator size="small" color="#43A047" /> : <Ionicons name="search" size={18} color="#BBB" />}
-                </View>
-                {locationSuggestions.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    {locationSuggestions.map((item, i) => (
-                      <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                        <Ionicons name="navigate-circle-outline" size={20} color="#666" />
-                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                <AutocompleteInput
+                  placeholder="Search area or location"
+                  placeholderTextColor="#BBB"
+                  value={location}
+                  onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
+                  onSelect={(item) => {
+                    const name = item.isCustom ? item.name : item.label;
+                    setLocation(name);
+                    setSelectedLocation(item);
+                  }}
+                  onSearch={async (query) => {
+                    const response = await forwardGeocode(query);
+                    const results = response.data || [];
+                    if (query.trim()) {
+                      results.push({
+                        display_name: `Use "${query}" as typed`,
+                        name: query,
+                        value: query,
+                        label: `Use "${query}" as typed`,
+                        isCustom: true
+                      });
+                    }
+                    return results;
+                  }}
+                  minimumQueryLength={2}
+                  inputContainerStyle={styles.searchInputContainer}
+                  inputStyle={styles.searchInput}
+                  dropdownStyle={styles.suggestionsContainer}
+                  itemStyle={styles.suggestionItem}
+                  itemTextStyle={styles.suggestionText}
+                  iconName="location-sharp"
+                  iconColor="#43A047"
+                  showChevron={false}
+                />
               </View>
 
               <View style={styles.fieldSection}>

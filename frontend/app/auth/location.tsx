@@ -21,7 +21,6 @@ import Svg, { Path } from 'react-native-svg';
 import { updateExtendedProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLanguageStore } from '../../src/utils/i18n';
-import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 
 export default function LocationSetupScreen() {
   const router = useRouter();
@@ -81,6 +80,51 @@ export default function LocationSetupScreen() {
   const [place, setPlace] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  const inputContainerRef = useRef<View>(null);
+  const [showAbove, setShowAbove] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setShowAbove(false);
+      }
+    );
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const checkSpace = () => {
+    if (inputContainerRef.current) {
+      inputContainerRef.current.measureInWindow((x, y, width, height) => {
+        const windowHeight = Dimensions.get('window').height;
+        const spaceBelow = windowHeight - y - height - keyboardHeight;
+        if (keyboardHeight > 0 && spaceBelow < 220) {
+          setShowAbove(true);
+        } else {
+          setShowAbove(false);
+        }
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (suggestions.length > 0) {
+      checkSpace();
+    }
+  }, [suggestions, keyboardHeight]);
 
   // DateTimePicker states
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -103,7 +147,32 @@ export default function LocationSetupScreen() {
     return `${h}:${m}:${s}`;
   };
 
+  const getCleanPlaceName = (item: any): string => {
+    if (!item || !item.address) return item?.display_name || '';
+
+    const addr = item.address;
+    const city = addr.city || addr.town || addr.village || addr.municipality || addr.city_district || addr.suburb || addr.hamlet;
+    const state = addr.state || addr.region || addr.province || addr.state_district;
+    const country = addr.country;
+
+    const parts = [];
+    if (city) parts.push(city);
+    if (state) parts.push(state);
+    if (country) parts.push(country);
+
+    if (parts.length === 0) {
+      return item.display_name;
+    }
+
+    return parts.join(', ');
+  };
+
   const fetchSuggestions = async (query: string) => {
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10`,
@@ -115,12 +184,22 @@ export default function LocationSetupScreen() {
       );
       const data = await response.json();
       if (Array.isArray(data)) {
-        return data;
+        const formatted = data.map((item: any) => ({
+          ...item,
+          formatted_name: getCleanPlaceName(item),
+        }));
+        
+        // Remove duplicates and entries with empty formatted_name
+        const unique = formatted.filter((item, index, self) => 
+          item.formatted_name && 
+          self.findIndex(t => t.formatted_name === item.formatted_name) === index
+        );
+        
+        setSuggestions(unique.slice(0, 5));
       }
     } catch (err) {
       console.warn('Error fetching place suggestions:', err);
     }
-    return [];
   };
 
   const handleNext = async () => {
@@ -361,26 +440,70 @@ export default function LocationSetupScreen() {
               <Ionicons name="location-outline" size={16} color="#584235" style={styles.labelIcon} />
               <Text style={styles.label}>{getTranslation('placeOfBirth')}</Text>
             </View>
-            <AutocompleteInput
-              placeholder={getTranslation('cityStateCountry')}
-              placeholderTextColor="#C5B49F"
-              value={place}
-              onChangeText={(text) => {
-                setPlace(text);
-                setError('');
-              }}
-              onSelect={(item) => {
-                setPlace(item.label);
-              }}
-              onSearch={fetchSuggestions}
-              minimumQueryLength={3}
-              inputContainerStyle={styles.inputContainer}
-              inputStyle={styles.textInput}
-              dropdownStyle={styles.suggestionsContainer}
-              itemStyle={styles.suggestionItem}
-              itemTextStyle={styles.suggestionText}
-              showChevron={true}
-            />
+            <View 
+              ref={inputContainerRef}
+              style={{ zIndex: 100, position: 'relative', width: '100%' }}
+            >
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder={getTranslation('cityStateCountry')}
+                  placeholderTextColor="#C5B49F"
+                  value={place}
+                  onChangeText={(text) => {
+                    setPlace(text);
+                    setError('');
+                    fetchSuggestions(text);
+                  }}
+                  onFocus={() => {
+                    if (suggestions.length > 0) {
+                      setTimeout(checkSpace, 100);
+                    }
+                  }}
+                />
+                <TouchableOpacity onPress={() => {
+                  if (suggestions.length > 0) {
+                    setSuggestions([]);
+                  } else {
+                    fetchSuggestions(place || 'Delhi');
+                  }
+                }}>
+                  <Ionicons name={suggestions.length > 0 ? "chevron-up-outline" : "chevron-down-outline"} size={20} color="#C5B49F" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Suggestions list */}
+              {suggestions.length > 0 && (
+                <View 
+                  style={[
+                    styles.suggestionsContainer,
+                    showAbove ? styles.suggestionsAbove : styles.suggestionsBelow
+                  ]}
+                >
+                  <ScrollView
+                    nestedScrollEnabled={true}
+                    style={{ maxHeight: 200 }}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    {suggestions.map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setPlace(item.formatted_name);
+                          setSuggestions([]);
+                        }}
+                      >
+                        <Ionicons name="location-outline" size={16} color="#723600" style={{ marginRight: 8 }} />
+                        <Text style={styles.suggestionText} numberOfLines={1}>
+                          {item.formatted_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
 
             {/* Error Message */}
             {error ? <Text style={styles.errorText}>{error}</Text> : null}

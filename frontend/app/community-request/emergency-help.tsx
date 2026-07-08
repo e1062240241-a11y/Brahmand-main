@@ -19,6 +19,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
+import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const EMERGENCY_TYPES = [
@@ -51,41 +52,13 @@ export default function EmergencyHelpScreen() {
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
-  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'type' | 'contact' | null>(null);
 
-  // Debounced Location Search
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      if (location.length >= 2 && !selectedLocation) {
-        setIsSearchingLocation(true);
-        try {
-          const response = await forwardGeocode(location);
-          setLocationSuggestions(response.data || []);
-        } catch (error) {
-          console.warn('Location search failed', error);
-        } finally {
-          setIsSearchingLocation(false);
-        }
-      } else {
-        setLocationSuggestions([]);
-      }
-    }, 500);
 
-    return () => clearTimeout(timer);
-  }, [location, selectedLocation]);
-
-  const handleLocationSelect = (item: any) => {
-    const name = item.display_name || item.formatted_address || item.name;
-    setLocation(name);
-    setSelectedLocation(item);
-    setLocationSuggestions([]);
-  };
 
   const openModal = (type: 'type' | 'contact') => {
     setModalType(type);
@@ -233,39 +206,40 @@ export default function EmergencyHelpScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Exact Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="location-sharp" size={18} color="#FB8C00" style={{ marginRight: 10 }} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search location or landmark"
-                    placeholderTextColor="#BBB"
-                    value={location}
-                    onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
-                  />
-                  {isSearchingLocation ? <ActivityIndicator size="small" color="#FB8C00" /> : <Ionicons name="search" size={18} color="#BBB" />}
-                </View>
-                {location.trim().length >= 2 && !selectedLocation && (
-                  <View style={styles.suggestionsContainer}>
-                    {locationSuggestions.map((item, i) => (
-                      <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                        <Ionicons name="navigate-circle-outline" size={20} color="#666" />
-                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address || item.name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                    <TouchableOpacity
-                      style={styles.suggestionItem}
-                      onPress={() => {
-                        setSelectedLocation({ display_name: location, name: location });
-                        setLocationSuggestions([]);
-                      }}
-                    >
-                      <Ionicons name="add-circle-outline" size={20} color="#FB8C00" />
-                      <Text style={[styles.suggestionText, { color: '#FB8C00', fontWeight: 'bold' }]}>
-                        Use "{location}" as typed
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                <AutocompleteInput
+                  placeholder="Search location or landmark"
+                  placeholderTextColor="#BBB"
+                  value={location}
+                  onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
+                  onSelect={(item) => {
+                    const name = item.isCustom ? item.name : item.label;
+                    setLocation(name);
+                    setSelectedLocation(item);
+                  }}
+                  onSearch={async (query) => {
+                    const response = await forwardGeocode(query);
+                    const results = response.data || [];
+                    if (query.trim()) {
+                      results.push({
+                        display_name: `Use "${query}" as typed`,
+                        name: query,
+                        value: query,
+                        label: `Use "${query}" as typed`,
+                        isCustom: true
+                      });
+                    }
+                    return results;
+                  }}
+                  minimumQueryLength={2}
+                  inputContainerStyle={styles.searchInputContainer}
+                  inputStyle={styles.searchInput}
+                  dropdownStyle={styles.suggestionsContainer}
+                  itemStyle={styles.suggestionItem}
+                  itemTextStyle={styles.suggestionText}
+                  iconName="location-sharp"
+                  iconColor="#FB8C00"
+                  showChevron={false}
+                />
               </View>
 
               <View style={styles.fieldSection}>

@@ -26,7 +26,6 @@ import { registerUser } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { COLORS } from '../../src/constants/theme';
 import { useLanguageStore } from '../../src/utils/i18n';
-import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 
 const { width } = Dimensions.get('window');
 
@@ -65,6 +64,10 @@ export default function ProfileScreen() {
   const [currentCity, setCurrentCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Android autocomplete city states
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
+  const [isSearchingCity, setIsSearchingCity] = useState(false);
 
   const getTranslation = (key: string) => {
     if (Platform.OS === 'android') {
@@ -118,7 +121,13 @@ export default function ProfileScreen() {
     }
   };
 
-  const searchCitySuggestions = async (query: string) => {
+  const handleSearchCity = async (query: string) => {
+    if (!query || query.length < 3) {
+      setCitySuggestions([]);
+      return;
+    }
+
+    setIsSearchingCity(true);
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`,
@@ -130,12 +139,13 @@ export default function ProfileScreen() {
       );
       const data = await response.json();
       if (Array.isArray(data)) {
-        return data;
+        setCitySuggestions(data);
       }
     } catch (err) {
       console.warn('Error fetching city suggestions:', err);
+    } finally {
+      setIsSearchingCity(false);
     }
-    return [];
   };
 
   const handleFetchLocation = async () => {
@@ -335,34 +345,52 @@ export default function ProfileScreen() {
                 <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
                   {getTranslation('currentCity')} <Text style={{ color: '#E53935' }}>*</Text>
                 </Text>
-                <AutocompleteInput
-                  placeholder={getTranslation('enterCurrentCity')}
-                  placeholderTextColor="#C5B49F"
-                  value={city}
-                  onChangeText={(text) => {
-                    setCity(text);
-                    setLocation(text);
-                  }}
-                  onSelect={(item) => {
-                    const cityName = item.address?.city || 
-                                      item.address?.town || 
-                                      item.address?.village || 
-                                      item.address?.suburb || 
-                                      item.label.split(',')[0];
-                    setCity(cityName);
-                    setLocation(cityName);
-                  }}
-                  onSearch={searchCitySuggestions}
-                  minimumQueryLength={3}
-                  inputContainerStyle={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}
-                  inputStyle={styles.autocompleteInput}
-                  dropdownStyle={styles.suggestionsContainer}
-                  itemStyle={styles.suggestionItem}
-                  itemTextStyle={styles.suggestionText}
-                  iconName="location-outline"
-                  iconColor="#C5B49F"
-                  showChevron={false}
-                />
+                <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
+                  <View style={styles.dropdownLeft}>
+                    <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
+                    <TextInput
+                      style={styles.autocompleteInput}
+                      placeholder={getTranslation('enterCurrentCity')}
+                      placeholderTextColor="#C5B49F"
+                      value={city}
+                      onChangeText={(text) => {
+                        setCity(text);
+                        setLocation(text);
+                        handleSearchCity(text);
+                      }}
+                    />
+                  </View>
+                  {isSearchingCity && <ActivityIndicator size="small" color="#FF7B00" />}
+                </View>
+
+                {/* City Autocomplete Suggestions Dropdown */}
+                {citySuggestions.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+                      {citySuggestions.map((item, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          style={styles.suggestionItem}
+                          onPress={() => {
+                            const cityName = item.address.city || 
+                                              item.address.town || 
+                                              item.address.village || 
+                                              item.address.suburb || 
+                                              item.display_name.split(',')[0];
+                            setCity(cityName);
+                            setLocation(cityName);
+                            setCitySuggestions([]);
+                          }}
+                        >
+                          <Ionicons name="location-outline" size={16} color="#FF7B00" style={{ marginRight: 8 }} />
+                          <Text style={styles.suggestionText} numberOfLines={1}>
+                            {item.display_name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
                 {/* Location Selection (GPS) */}
                 <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
