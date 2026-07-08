@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useVendorStore, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
 import { useAuthStore } from '../../src/store/authStore';
+import { toast } from '../../src/store/toastStore';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -590,10 +591,10 @@ export default function VendorDashboardScreen() {
         });
       }
 
-      Alert.alert('Success', 'Business profile updated successfully!');
+      toast.success('Business profile updated successfully!');
       router.replace(`/vendor/${myVendor.id}`);
     } catch (err: any) {
-      Alert.alert('Error', err?.response?.data?.detail || err?.message || 'Failed to update profile');
+      toast.error(err?.response?.data?.detail || err?.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
