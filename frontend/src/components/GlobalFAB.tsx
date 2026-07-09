@@ -28,7 +28,6 @@ import { useTranslation } from '../utils/i18n';
 import LocationService from '../services/location';
 import { useAuthStore } from '../store/authStore';
 import { socketService } from '../services/socket';
-import { useCoachMarkStore } from '../utils/coachMarkState';
 
 export function GlobalFAB() {
   const router = useRouter();
@@ -367,37 +366,21 @@ export function GlobalFAB() {
     expandFab(!fabExpanded);
   }, [fabExpanded, expandFab]);
 
-  const { showCoachMarks, coachMarkStep } = useCoachMarkStore();
 
-  useEffect(() => {
-    if (!showCoachMarks) {
-      expandFab(false);
-      return;
-    }
-    // Expand FAB only during the FAB coach mark step (step 5)
-    if (coachMarkStep === 5) {
-      expandFab(true);
-    } else {
-      expandFab(false);
-    }
-  }, [showCoachMarks, coachMarkStep, expandFab]);
 
   // Do not show FAB on authentication screens
   if (!pathname || pathname === '/' || pathname === '/index' || pathname.startsWith('/auth')) {
     return null;
   }
 
-  const OverlayComponent = showCoachMarks ? View : TouchableOpacity;
-
   return (
     <>
       {/* ─── Floating Action Button (FAB) Overlay ─── */}
       {fabExpanded && (
-        <OverlayComponent
-          style={[fabStyles.overlay, showCoachMarks && { backgroundColor: 'transparent' }]}
+        <TouchableOpacity
+          style={fabStyles.overlay}
           activeOpacity={1}
-          onPress={showCoachMarks ? undefined : toggleFab}
-          pointerEvents={showCoachMarks ? "box-none" : "auto"}
+          onPress={toggleFab}
         >
           <Animated.View
             style={[
@@ -407,17 +390,14 @@ export function GlobalFAB() {
                 opacity: fabScale,
               },
             ]}
-            pointerEvents={showCoachMarks ? "box-none" : "auto"}
           >
             {/* Outer decorative ring */}
             <View 
               style={[fabStyles.outerRing, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#FFEBEE' }]}
-              pointerEvents={showCoachMarks ? "box-none" : "auto"}
             >
               {/* Inner circle with items */}
               <View 
                 style={[fabStyles.innerCircle, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F' }]}
-                pointerEvents={showCoachMarks ? "box-none" : "auto"}
               >
                 {/* Decorative dotted ring */}
                 <View 
@@ -663,7 +643,6 @@ export function GlobalFAB() {
                         opacity: fabItemAnims[6],
                       },
                     ]}
-                    pointerEvents={showCoachMarks ? "box-none" : "auto"}
                   >
                     <TouchableOpacity
                       style={fabStyles.centerButtonInner}
@@ -687,7 +666,7 @@ export function GlobalFAB() {
               </View>
             </View>
           </Animated.View>
-        </OverlayComponent>
+        </TouchableOpacity>
       )}
 
       {/* FAB trigger button */}

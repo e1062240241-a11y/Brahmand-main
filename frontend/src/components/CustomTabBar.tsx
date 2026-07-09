@@ -5,7 +5,6 @@ import Animated, { useAnimatedStyle, interpolate } from 'react-native-reanimated
 import { useTabBar } from '../contexts/TabBarContext';
 import { Svg, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
-import { useCoachMarkStore } from '../utils/coachMarkState';
 import { useTranslation } from '../utils/i18n';
 
 const ACTIVE_ORANGE = '#FF8A00';
@@ -159,7 +158,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
   const visibleRoutes = state.routes.filter((route: any) => !HIDDEN_ROUTES.has(route.name));
 
-  const { showCoachMarks, coachMarkStep } = useCoachMarkStore();
+
 
   let activeRoute = visibleRoutes.find(
     (route: any) => state.routes.findIndex((r: any) => r.key === route.key) === state.index
@@ -167,15 +166,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
   let activeIndex = visibleRoutes.findIndex((r: any) => r.key === activeRoute.key);
 
-  if (showCoachMarks) {
-    if (coachMarkStep === 6) {
-      activeIndex = 1;
-      activeRoute = visibleRoutes[1] || activeRoute;
-    } else if (coachMarkStep === 7 || coachMarkStep === 8) {
-      activeIndex = 2;
-      activeRoute = visibleRoutes[2] || activeRoute;
-    }
-  }
+
 
   const onTabPress = (route: any, isFocused: boolean) => {
     const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });

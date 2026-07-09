@@ -717,6 +717,11 @@ export default function TempleDetailScreen() {
 
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
+  const templeKey = getSpecialTempleKey(temple?.name || '');
+  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
+  const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
+  const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
+
   const loadLocalTempleData = async () => {
     try {
       const localTemples = await database.get('temples').query(Q.where('temple_id', resolvedTempleId)).fetch();
@@ -913,14 +918,10 @@ if (!temple) {
   };
 
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
-  const templeKey = getSpecialTempleKey(temple.name);
-  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
   const templeImageSource = getTempleImageById(resolvedTempleId);
   const isMiraRoadTemple = templeKey === 'ISKCON Mira Road';
   const hasSpecialDetails = Boolean(specialTempleData);
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
-  const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
-  const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const hasSpecialMap = Boolean(resolvedCoords);
   const displayName = templeKey || temple.name || 'Temple';

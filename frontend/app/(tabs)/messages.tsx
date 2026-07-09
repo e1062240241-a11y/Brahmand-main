@@ -33,7 +33,6 @@ import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme
 import { useAuthStore } from '../../src/store/authStore';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { useCoachMarkStore, getNextStep } from '../../src/utils/coachMarkState';
 import Svg, { Path } from 'react-native-svg';
 import {
   getCircles,
@@ -202,38 +201,8 @@ function MessagesScreen({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { coachMarkStep, setCoachMarkStep, showCoachMarks, setShowCoachMarks, seenFlags, loadFlags, setFlagSeen } = useCoachMarkStore();
   const [communityHeaderLayout, setCommunityHeaderLayout] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const onMessagesScrollTabBar = useScrollToHideTabBar();
-
-  useEffect(() => {
-    if (!isFocused) return;
-    const checkFeedCoach = async () => {
-      const userId = user?.id;
-      await loadFlags(userId);
-      const latestFlags = useCoachMarkStore.getState().seenFlags;
-      
-      if (!latestFlags.feedCoachSeen) {
-        const latestState = useCoachMarkStore.getState();
-        if (!latestState.showCoachMarks || latestState.coachMarkStep < 6) {
-          setShowCoachMarks(true);
-          setCoachMarkStep(6);
-        }
-      } else {
-        const latestState = useCoachMarkStore.getState();
-        if (latestState.showCoachMarks && latestState.coachMarkStep === 6) {
-          const next = getNextStep(6, latestFlags);
-          if (next <= 8) {
-            setCoachMarkStep(next);
-            router.push('/(tabs)/vendor');
-          } else {
-            setShowCoachMarks(false);
-          }
-        }
-      }
-    };
-    checkFeedCoach();
-  }, [isFocused, user?.id]);
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
   const [searchQuery, setSearchQuery] = useState('');
@@ -1474,114 +1443,7 @@ function MessagesScreen({
     );
   };
 
-  // ─── Community Coach Mark (Step 5) ────────────────────────────────────────
-  const renderCommunityCoachMark = () => {
-    const tX = 0;
-    const tY = (insets.top || 0) + 4;
-    const tW = width;
-    const tH = communityHeaderLayout?.height ?? 56;
-    const cardW = 320;
-    const cardLeft = (width - cardW) / 2;
-    const cardTop = tY + tH + 14;
-    const arrowX = width / 2 - cardLeft;
 
-    const handleSkip = async () => {
-      setCoachMarkStep(1);
-      setShowCoachMarks(false);
-      try {
-        const userId = user?.id;
-        await setFlagSeen(userId, 'feedCoachSeen');
-      } catch (_) {}
-    };
-    const handleNext = async () => {
-      try {
-        const userId = user?.id;
-        await setFlagSeen(userId, 'feedCoachSeen');
-        
-        const latestFlags = useCoachMarkStore.getState().seenFlags;
-        const next = getNextStep(6, latestFlags);
-        if (next <= 8) {
-          setCoachMarkStep(next);
-          router.push('/(tabs)/vendor');
-        } else {
-          setShowCoachMarks(false);
-        }
-      } catch (err) {
-        console.warn('Error in community coach mark next:', err);
-        setCoachMarkStep(7);
-        setShowCoachMarks(false);
-      }
-    };
-
-    return (
-      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }} pointerEvents="box-none">
-        {/* Dark overlays */}
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: tY, backgroundColor: 'rgba(0,0,0,0.72)' }} />
-        <View style={{ position: 'absolute', top: tY + tH + 2, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.72)' }} />
-
-        {/* Coach card */}
-        <View style={[communityCoachStyles.card, { top: cardTop, left: cardLeft, width: cardW }]} pointerEvents="auto">
-          {/* Arrow */}
-          <View style={{
-            position: 'absolute', top: -8, left: arrowX,
-            width: 0, height: 0,
-            borderLeftWidth: 8, borderRightWidth: 8, borderBottomWidth: 8,
-            borderLeftColor: 'transparent', borderRightColor: 'transparent',
-            borderBottomColor: '#FCF3EE',
-          }} />
-
-          <TouchableOpacity style={communityCoachStyles.skip} onPress={handleSkip}>
-            <Text style={communityCoachStyles.skipText}>Skip</Text>
-          </TouchableOpacity>
-
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 }}>
-            <View style={communityCoachStyles.iconWrap}>
-              <Ionicons name="people" size={22} color="#FF701F" />
-            </View>
-            <Text style={communityCoachStyles.title}>Connect, Share & Grow</Text>
-          </View>
-
-          <Text style={communityCoachStyles.desc}>
-            Stay connected with your local Sanatani community. Discover temple events, share updates, seek support and grow together in Dharma.
-          </Text>
-
-          <View style={communityCoachStyles.callout}>
-            <Ionicons name="shield-checkmark" size={14} color="#FF701F" style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={communityCoachStyles.calloutText}>
-                Join your city, state, and national Brahmand communities to stay connected with fellow Sanatanis.
-              </Text>
-            </View>
-          </View>
-
-          {/* Bullets */}
-          <View style={communityCoachStyles.bulletsRow}>
-            {[{ icon: 'flag', label: 'TEMPLE\nUPDATES' }, { icon: 'calendar', label: 'EVENTS' }, { icon: 'search', label: 'LOST &\nFOUND' }].map((b, i) => (
-              <View key={i} style={communityCoachStyles.bullet}>
-                <Ionicons name={b.icon as any} size={13} color="#FF701F" />
-                <Text style={communityCoachStyles.bulletText}>{b.label}</Text>
-              </View>
-            ))}
-          </View>
-
-          <View style={communityCoachStyles.footer}>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              <View style={[communityCoachStyles.dot, communityCoachStyles.dotActive]} />
-              <View style={communityCoachStyles.dot} />
-            </View>
-            <TouchableOpacity style={communityCoachStyles.nextBtn} onPress={handleNext} activeOpacity={0.85}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={communityCoachStyles.nextText}>Next</Text>
-                <Svg width={7.4} height={12} viewBox="0 0 8 12">
-                  <Path d="M4.6 6L0 1.4L1.4 0L7.4 6L1.4 12L0 10.6L4.6 6Z" fill="white" />
-                </Svg>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    );
-  };
   // ────────────────────────────────────────────────────────────────────────────
 
   return (
@@ -2036,8 +1898,7 @@ function MessagesScreen({
           </View>
         </View>
       )}
-      {/* Community Coach Mark (Step 5) */}
-      {showCoachMarks && coachMarkStep === 6 && renderCommunityCoachMark()}
+
     </LinearGradient>
   );
 }
@@ -2787,60 +2648,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#FFDDCC',
   },
-});
-
-const communityCoachStyles = StyleSheet.create({
-  card: {
-    position: 'absolute',
-    backgroundColor: '#FCF3EE',
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: '#FFEFE5',
-    paddingTop: 16,
-    paddingHorizontal: 18,
-    paddingBottom: 72,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-    zIndex: 100000,
-  },
-  skip: { position: 'absolute', top: 12, right: 16 },
-  skipText: { color: '#8E7D90', fontSize: 13, fontWeight: '600' },
-  iconWrap: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#FFF3EC', borderWidth: 1, borderColor: '#FFCFAA',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  title: { flex: 1, color: '#000', fontSize: 15, fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
-  desc: { marginTop: 10, color: '#444', fontSize: 12, fontWeight: '500', lineHeight: 18,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
-  callout: {
-    flexDirection: 'row', backgroundColor: '#FFF', borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.10)', borderRadius: 7,
-    paddingVertical: 8, paddingHorizontal: 8, alignItems: 'center', marginTop: 10,
-  },
-  calloutText: { fontSize: 9, color: '#444', fontWeight: '400', lineHeight: 13,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
-  bulletsRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 12 },
-  bullet: { alignItems: 'center', gap: 4 },
-  bulletText: { fontSize: 7.5, fontWeight: '700', color: '#8B5B34', textAlign: 'center' },
-  footer: {
-    position: 'absolute', bottom: 14, left: 18, right: 18,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-  },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E6DDD5' },
-  dotActive: { backgroundColor: '#FF701F', width: 12 },
-  nextBtn: {
-    backgroundColor: '#FF701F', width: 120, height: 44, borderRadius: 50,
-    justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#A04100', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18, shadowRadius: 12, elevation: 4,
-  },
-  nextText: { color: '#FFF', fontSize: 15, fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto' },
 });
 
 const enhance = withObservables([], () => ({

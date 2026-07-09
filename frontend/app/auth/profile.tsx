@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -13,7 +13,8 @@ import {
   Image,
   ScrollView,
   Alert,
-  Modal
+  Modal,
+  Keyboard
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -68,6 +69,53 @@ export default function ProfileScreen() {
   // Android autocomplete city states
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
   const [isSearchingCity, setIsSearchingCity] = useState(false);
+
+  // Keyboard-adaptive suggestion positioning
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [showCityAbove, setShowCityAbove] = useState(false);
+  const [isCityFocused, setIsCityFocused] = useState(false);
+  const cityInputRef = useRef<View>(null);
+
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
+    );
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setShowCityAbove(false);
+      }
+    );
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const checkCitySpace = useCallback(() => {
+    if (cityInputRef.current) {
+      cityInputRef.current.measureInWindow((x, y, width, height) => {
+        const windowHeight = Dimensions.get('window').height;
+        const spaceBelow = windowHeight - y - height - keyboardHeight;
+        console.log('[checkCitySpace]', { y, height, windowHeight, keyboardHeight, spaceBelow });
+        if (keyboardHeight > 0 && spaceBelow < 220) {
+          setShowCityAbove(true);
+        } else {
+          setShowCityAbove(false);
+        }
+      });
+    }
+  }, [keyboardHeight]);
+
+  useEffect(() => {
+    if (citySuggestions.length > 0) {
+      checkCitySpace();
+    }
+  }, [citySuggestions, keyboardHeight, checkCitySpace]);
 
   const getTranslation = (key: string) => {
     if (Platform.OS === 'android') {
@@ -345,52 +393,59 @@ export default function ProfileScreen() {
                 <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
                   {getTranslation('currentCity')} <Text style={{ color: '#E53935' }}>*</Text>
                 </Text>
-                <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
-                  <View style={styles.dropdownLeft}>
-                    <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
-                    <TextInput
-                      style={styles.autocompleteInput}
-                      placeholder={getTranslation('enterCurrentCity')}
-                      placeholderTextColor="#C5B49F"
-                      value={city}
-                      onChangeText={(text) => {
-                        setCity(text);
-                        setLocation(text);
-                        handleSearchCity(text);
-                      }}
-                    />
+                <View ref={cityInputRef} style={styles.cityInputWrapper}>
+                  <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
+                    <View style={styles.dropdownLeft}>
+                      <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
+                      <TextInput
+                        style={styles.autocompleteInput}
+                        placeholder={getTranslation('enterCurrentCity')}
+                        placeholderTextColor="#C5B49F"
+                        value={city}
+                        onFocus={() => setIsCityFocused(true)}
+                        onBlur={() => setIsCityFocused(false)}
+                        onChangeText={(text) => {
+                          setCity(text);
+                          setLocation(text);
+                          handleSearchCity(text);
+                        }}
+                      />
+                    </View>
+                    {isSearchingCity && <ActivityIndicator size="small" color="#FF7B00" />}
                   </View>
-                  {isSearchingCity && <ActivityIndicator size="small" color="#FF7B00" />}
-                </View>
 
-                {/* City Autocomplete Suggestions Dropdown */}
-                {citySuggestions.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
-                      {citySuggestions.map((item, index) => (
-                        <TouchableOpacity
-                          key={index}
-                          style={styles.suggestionItem}
-                          onPress={() => {
-                            const cityName = item.address.city || 
-                                              item.address.town || 
-                                              item.address.village || 
-                                              item.address.suburb || 
-                                              item.display_name.split(',')[0];
-                            setCity(cityName);
-                            setLocation(cityName);
-                            setCitySuggestions([]);
-                          }}
-                        >
-                          <Ionicons name="location-outline" size={16} color="#FF7B00" style={{ marginRight: 8 }} />
-                          <Text style={styles.suggestionText} numberOfLines={1}>
-                            {item.display_name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
+                  {/* City Autocomplete Suggestions Dropdown */}
+                  {citySuggestions.length > 0 && (
+                    <View style={[
+                      styles.suggestionsContainer,
+                      showCityAbove ? styles.suggestionsAbove : styles.suggestionsBelow
+                    ]}>
+                      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+                        {citySuggestions.map((item, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.suggestionItem}
+                            onPress={() => {
+                              const cityName = item.address.city || 
+                                                item.address.town || 
+                                                item.address.village || 
+                                                item.address.suburb || 
+                                                item.display_name.split(',')[0];
+                              setCity(cityName);
+                              setLocation(cityName);
+                              setCitySuggestions([]);
+                            }}
+                          >
+                            <Ionicons name="location-outline" size={16} color="#FF7B00" style={{ marginRight: 8 }} />
+                            <Text style={styles.suggestionText} numberOfLines={1}>
+                              {item.display_name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
 
                 {/* Location Selection (GPS) */}
                 <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
@@ -894,21 +949,32 @@ const styles = StyleSheet.create({
     paddingRight: 0,
     paddingVertical: 0,
   },
+  cityInputWrapper: {
+    position: 'relative',
+    zIndex: 1000,
+    alignSelf: 'stretch',
+  },
   suggestionsContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E0C0AF',
     borderRadius: 12,
-    marginTop: -8,
-    marginBottom: 16,
     maxHeight: 200,
-    elevation: 3,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     zIndex: 1000,
-    alignSelf: 'stretch',
+  },
+  suggestionsBelow: {
+    top: Platform.OS === 'android' ? 50 : 56,
+  },
+  suggestionsAbove: {
+    bottom: Platform.OS === 'android' ? 50 : 56,
   },
   suggestionItem: {
     flexDirection: 'row',

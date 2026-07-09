@@ -186,19 +186,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('[Auth] Failed to clear local database on logout:', dbErr);
     }
 
-    // 5. Clear AsyncStorage caches, preserving language settings and coach mark states
+    // 5. Clear AsyncStorage caches, preserving language settings
     try {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const lang = await AsyncStorage.getItem('app_language');
-      const allKeys = await AsyncStorage.getAllKeys();
-      const coachMarkKeys = allKeys.filter((k: string) => k.startsWith('coachmark_'));
-      const coachMarkPairs = await AsyncStorage.multiGet(coachMarkKeys);
       await AsyncStorage.clear();
       if (lang) {
         await AsyncStorage.setItem('app_language', lang);
-      }
-      if (coachMarkPairs.length > 0) {
-        await AsyncStorage.multiSet(coachMarkPairs);
       }
       if (typeof window !== 'undefined' && window.localStorage) {
         window.localStorage.removeItem('brahmand_sync_queue');

@@ -132,6 +132,7 @@ export default function LocationSetupScreen() {
   const [dobValue, setDobValue] = useState<Date | null>(null);
   const [tobValue, setTobValue] = useState<Date | null>(null);
   const [seconds, setSeconds] = useState('00');
+  const [showSecondsInput, setShowSecondsInput] = useState(false);
 
   const formatDate = (date: Date) => {
     const d = date.getDate().toString().padStart(2, '0');
@@ -376,15 +377,17 @@ export default function LocationSetupScreen() {
                       value={seconds}
                       onChangeText={(val) => {
                         const cleanVal = val.replace(/[^0-9]/g, '');
+                        setSeconds(cleanVal);
                         const secNum = Math.min(59, parseInt(cleanVal) || 0);
-                        const secStr = cleanVal ? secNum.toString().padStart(2, '0') : '';
-                        setSeconds(secStr);
-                        const activeSec = cleanVal ? secNum : 0;
                         
                         let baseTime = tobValue ? new Date(tobValue) : new Date();
-                        baseTime.setSeconds(activeSec);
+                        baseTime.setSeconds(secNum);
                         setTobValue(baseTime);
                         setTob(formatTime(baseTime));
+                      }}
+                      onBlur={() => {
+                        const padded = (seconds || '00').padStart(2, '0');
+                        setSeconds(padded);
                       }}
                     />
                   </View>
@@ -402,6 +405,7 @@ export default function LocationSetupScreen() {
                       newTime.setSeconds(parseInt(seconds) || 0);
                       setTobValue(newTime);
                       setTob(formatTime(newTime));
+                      setShowSecondsInput(true);
                     }
                   }}
                 />
@@ -409,7 +413,7 @@ export default function LocationSetupScreen() {
             )}
 
             {/* Android Standalone Seconds Input */}
-            {Platform.OS === 'android' && tob ? (
+            {Platform.OS === 'android' && tob && showSecondsInput ? (
               <View style={styles.androidSecondsContainer}>
                 <Text style={styles.secondsLabel}>{getTranslation('seconds')}</Text>
                 <TextInput
@@ -421,16 +425,23 @@ export default function LocationSetupScreen() {
                   value={seconds}
                   onChangeText={(val) => {
                     const cleanVal = val.replace(/[^0-9]/g, '');
+                    setSeconds(cleanVal);
                     const secNum = Math.min(59, parseInt(cleanVal) || 0);
-                    const secStr = cleanVal ? secNum.toString().padStart(2, '0') : '';
-                    setSeconds(secStr);
-                    const activeSec = cleanVal ? secNum : 0;
                     
                     let baseTime = tobValue ? new Date(tobValue) : new Date();
-                    baseTime.setSeconds(activeSec);
+                    baseTime.setSeconds(secNum);
                     setTobValue(baseTime);
                     setTob(formatTime(baseTime));
                   }}
+                  onBlur={() => {
+                    const padded = (seconds || '00').padStart(2, '0');
+                    setSeconds(padded);
+                    setShowSecondsInput(false);
+                  }}
+                  onSubmitEditing={() => {
+                    setShowSecondsInput(false);
+                  }}
+                  returnKeyType="done"
                 />
               </View>
             ) : null}
@@ -856,5 +867,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#8B4F3B',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+    paddingVertical: 0,
   },
 });

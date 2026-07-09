@@ -148,7 +148,10 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     if (containerRef.current) {
       containerRef.current.measureInWindow((x, y, width, height) => {
         const windowHeight = Dimensions.get('window').height;
-        const spaceBelow = windowHeight - y - height - keyboardHeight;
+        // On Android with resize mode, windowHeight is already adjusted.
+        // On iOS, we need to subtract keyboardHeight.
+        const adjustedWindowHeight = Platform.OS === 'ios' ? windowHeight - keyboardHeight : windowHeight;
+        const spaceBelow = adjustedWindowHeight - y - height;
         // Flip if space below is less than dropdown height + margin (approx 220px)
         if (spaceBelow < 220 && (keyboardHeight > 0 || y > windowHeight / 2)) {
           setShowAbove(true);
@@ -164,7 +167,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     if (suggestions.length > 0 && isFocused) {
       checkSpace();
     }
-  }, [suggestions, isFocused, checkSpace]);
+  }, [suggestions, isFocused, keyboardHeight, checkSpace]);
 
   // Run local filtering or trigger async search
   const handleQuery = useCallback(async (query: string) => {
@@ -263,93 +266,95 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   );
 
   return (
-    <View ref={containerRef} style={[styles.container, containerStyle]}>
+    <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
       
-      <View style={[
-        styles.inputWrapper,
-        error && styles.inputWrapperError,
-        inputContainerStyle
-      ]}>
-        {iconName && (
-          <Ionicons name={iconName} size={18} color={iconColor} style={styles.leftIcon} />
-        )}
-        
-        <TextInput
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          placeholderTextColor={placeholderTextColor}
-          style={[styles.input, inputStyle, style]}
-          {...textInputProps}
-        />
-        
-        {loading && (
-          <ActivityIndicator size="small" color={COLORS.primary} style={styles.rightIcon} />
-        )}
-        
-        {!loading && showChevron && (
-          <TouchableOpacity 
-            onPress={() => {
-              if (suggestions.length > 0) {
-                setSuggestions([]);
-              } else {
-                handleQuery(value || ' ');
-              }
-            }}
-            style={styles.rightIcon}
-          >
-            <Ionicons 
-              name={showSuggestions && suggestions.length > 0 ? "chevron-up-outline" : "chevron-down-outline"} 
-              size={18} 
-              color={iconColor} 
-            />
-          </TouchableOpacity>
+      <View ref={containerRef} style={styles.inputWrapperContainer}>
+        <View style={[
+          styles.inputWrapper,
+          error && styles.inputWrapperError,
+          inputContainerStyle
+        ]}>
+          {iconName && (
+            <Ionicons name={iconName} size={18} color={iconColor} style={styles.leftIcon} />
+          )}
+          
+          <TextInput
+            value={value}
+            onChangeText={onChangeText}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            placeholderTextColor={placeholderTextColor}
+            style={[styles.input, inputStyle, style]}
+            {...textInputProps}
+          />
+          
+          {loading && (
+            <ActivityIndicator size="small" color={COLORS.primary} style={styles.rightIcon} />
+          )}
+          
+          {!loading && showChevron && (
+            <TouchableOpacity 
+              onPress={() => {
+                if (suggestions.length > 0) {
+                  setSuggestions([]);
+                } else {
+                  handleQuery(value || ' ');
+                }
+              }}
+              style={styles.rightIcon}
+            >
+              <Ionicons 
+                name={showSuggestions && suggestions.length > 0 ? "chevron-up-outline" : "chevron-down-outline"} 
+                size={18} 
+                color={iconColor} 
+              />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Inline Dropdown */}
+        {showSuggestions && (
+          <View style={[
+            styles.dropdown,
+            showAbove ? styles.dropdownAbove : styles.dropdownBelow,
+            dropdownStyle
+          ]}>
+            <ScrollView
+              nestedScrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              style={styles.scrollView}
+            >
+              {suggestions.length > 0 ? (
+                suggestions.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.item,
+                      index === suggestions.length - 1 && styles.lastItem,
+                      itemStyle
+                    ]}
+                    onPress={() => handleSelect(item)}
+                  >
+                    <Ionicons name="location-outline" size={16} color={COLORS.primary} style={styles.itemIcon} />
+                    <Text style={[styles.itemText, itemTextStyle]} numberOfLines={1}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View style={styles.noResults}>
+                  <Text style={[styles.noResultsText, noResultsStyle]}>
+                    No results found
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
         )}
       </View>
       
       {error && <Text style={styles.error}>{error}</Text>}
-
-      {/* Inline Dropdown */}
-      {showSuggestions && (
-        <View style={[
-          styles.dropdown,
-          showAbove ? styles.dropdownAbove : styles.dropdownBelow,
-          dropdownStyle
-        ]}>
-          <ScrollView
-            nestedScrollEnabled={true}
-            keyboardShouldPersistTaps="handled"
-            style={styles.scrollView}
-          >
-            {suggestions.length > 0 ? (
-              suggestions.map((item, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.item,
-                    index === suggestions.length - 1 && styles.lastItem,
-                    itemStyle
-                  ]}
-                  onPress={() => handleSelect(item)}
-                >
-                  <Ionicons name="location-outline" size={16} color={COLORS.primary} style={styles.itemIcon} />
-                  <Text style={[styles.itemText, itemTextStyle]} numberOfLines={1}>
-                    {item.label}
-                  </Text>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View style={styles.noResults}>
-                <Text style={[styles.noResultsText, noResultsStyle]}>
-                  No results found
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        </View>
-      )}
     </View>
   );
 };
@@ -357,6 +362,8 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 const styles = StyleSheet.create({
   container: {
     marginBottom: SPACING.md,
+  },
+  inputWrapperContainer: {
     position: 'relative',
     zIndex: 50,
   },
