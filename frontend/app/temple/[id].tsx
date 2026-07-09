@@ -716,7 +716,13 @@ export default function TempleDetailScreen() {
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
-
+  const isCurrentlyLive = React.useMemo(() => {
+    if (!temple) return false;
+    const templeKey = getSpecialTempleKey(temple.name);
+    const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
+    const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
+    return Boolean(resolvedYoutubeUrl);
+  }, [temple]);
   const loadLocalTempleData = async () => {
     try {
       const localTemples = await database.get('temples').query(Q.where('temple_id', resolvedTempleId)).fetch();
@@ -839,9 +845,13 @@ export default function TempleDetailScreen() {
  };
 
   const handleGoBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/temple');
+      }
+    } catch (error) {
       router.replace('/(tabs)/temple');
     }
   };
@@ -920,7 +930,6 @@ if (!temple) {
   const hasSpecialDetails = Boolean(specialTempleData);
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
-  const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const hasSpecialMap = Boolean(resolvedCoords);
   const displayName = templeKey || temple.name || 'Temple';
