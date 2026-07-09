@@ -719,6 +719,7 @@ export default function TempleDetailScreen() {
 
   const templeKey = getSpecialTempleKey(temple?.name || '');
   const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
+  const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
 
@@ -844,9 +845,13 @@ export default function TempleDetailScreen() {
  };
 
   const handleGoBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/temple');
+      }
+    } catch (error) {
       router.replace('/(tabs)/temple');
     }
   };
@@ -921,7 +926,6 @@ if (!temple) {
   const templeImageSource = getTempleImageById(resolvedTempleId);
   const isMiraRoadTemple = templeKey === 'ISKCON Mira Road';
   const hasSpecialDetails = Boolean(specialTempleData);
-  const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const hasSpecialMap = Boolean(resolvedCoords);
   const displayName = templeKey || temple.name || 'Temple';
