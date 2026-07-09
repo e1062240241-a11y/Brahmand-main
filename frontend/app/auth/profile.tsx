@@ -12,8 +12,6 @@ import {
   ActivityIndicator,
   Image,
   ScrollView,
-  Alert,
-  Modal,
   Keyboard
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -25,10 +23,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerUser } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
-import { COLORS } from '../../src/constants/theme';
 import { useLanguageStore } from '../../src/utils/i18n';
-
-const { width } = Dimensions.get('window');
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -38,24 +33,97 @@ export default function ProfileScreen() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isAndroid = Platform.OS === 'android';
 
-  // Responsive layouts for Android to prevent clipping/distortion
-  const photoSize = isAndroid ? Math.min(96, Math.max(80, windowWidth * 0.24)) : 128;
-  const photoEditBadgeSize = isAndroid ? Math.round(photoSize * 0.3) : 36;
-  const photoEditBadgeRight = isAndroid ? 0 : 4;
-  const inputHeight = isAndroid ? 44 : 56;
-  const buttonHeight = isAndroid ? 44 : 56;
-  const labelFontSize = isAndroid ? (windowWidth < 360 ? 12 : 13) : 16;
-  const labelMarginTop = isAndroid ? 6 : 12;
-  const labelMarginBottom = isAndroid ? 3 : 8;
-  const inputMarginBottom = isAndroid ? 8 : 16;
-  const titleFontSize = isAndroid ? (windowWidth < 360 ? 18 : 20) : 24;
-  const captionFontSize = isAndroid ? (windowWidth < 360 ? 11 : 12) : 14;
-  const languageButtonHeight = isAndroid ? 34 : 44;
+  // Responsive layouts to prevent clipping/distortion and fit screen on iOS & Android
+  const photoSize = Platform.OS === 'ios' 
+    ? (windowHeight < 700 ? 76 : (windowHeight < 850 ? 88 : 100)) 
+    : Math.min(96, Math.max(80, windowWidth * 0.24));
+  const photoEditBadgeSize = Platform.OS === 'ios' 
+    ? (windowHeight < 700 ? 24 : 28) 
+    : Math.round(photoSize * 0.3);
+  const photoEditBadgeRight = Platform.OS === 'ios' ? 4 : 0;
+  const inputHeight = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 40 : (windowHeight < 850 ? 44 : 48))
+    : 44;
+  const buttonHeight = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 40 : (windowHeight < 850 ? 44 : 48))
+    : 44;
+  const labelFontSize = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 13 : 14)
+    : (windowWidth < 360 ? 12 : 13);
+  const labelMarginTop = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 4 : (windowHeight < 850 ? 6 : 8))
+    : 6;
+  const labelMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 2 : (windowHeight < 850 ? 3 : 4))
+    : 3;
+  const inputMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 6 : (windowHeight < 850 ? 8 : 10))
+    : 8;
+  const titleFontSize = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 18 : (windowHeight < 850 ? 20 : 22))
+    : (windowWidth < 360 ? 18 : 20);
+  const captionFontSize = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 11 : (windowHeight < 850 ? 12 : 13))
+    : (windowWidth < 360 ? 11 : 12);
+  const languageButtonHeight = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 34 : (windowHeight < 850 ? 36 : 40))
+    : 34;
+
+  const sacredLanguageMarginTop = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 4 : 6)
+    : 4;
+  const sacredLanguageMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 2 : 4)
+    : 2;
+  const languageContainerMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 8 : (windowHeight < 850 ? 10 : 12))
+    : 12;
+  const languageContainerMarginTop = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 2 : 4)
+    : 2;
+  const continueButtonMarginTop = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 6 : 8)
+    : 10;
+  const continueButtonMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 8 : (windowHeight < 850 ? 10 : 12))
+    : 12;
+  const continueButtonFontSize = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 15 : (windowHeight < 850 ? 16 : 17))
+    : (windowWidth < 360 ? 16 : 18);
+  const continueButtonLineHeight = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 20 : (windowHeight < 850 ? 22 : 23))
+    : (windowWidth < 360 ? 22 : 24);
+  const footerFontSize = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 9 : (windowHeight < 850 ? 10 : 11))
+    : (windowWidth < 360 ? 10 : 11);
+  const footerLineHeight = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 12 : (windowHeight < 850 ? 13 : 14))
+    : (windowWidth < 360 ? 13 : 14);
+  const footerMarginTop = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 2 : 4)
+    : 4;
+  const infoCardPadding = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 8 : (windowHeight < 850 ? 10 : 12))
+    : 10;
+  const infoCardMarginTop = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 2 : 4)
+    : 4;
+  const infoCardMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 4 : 6)
+    : 16;
+  const titleMarginTop = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 6 : 8)
+    : 10;
+  const titleMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 6 : 8)
+    : 10;
+  const captionMarginBottom = Platform.OS === 'ios'
+    ? (windowHeight < 700 ? 10 : (windowHeight < 850 ? 12 : 14))
+    : 12;
 
   const storeLanguage = useLanguageStore((state) => state.language);
   const storeSetLanguage = useLanguageStore((state) => state.setLanguage);
   
-  const [name, setName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [surname, setSurname] = useState('');
   const [photo, setPhoto] = useState<string | null>(null);
@@ -118,55 +186,31 @@ export default function ProfileScreen() {
   }, [citySuggestions, keyboardHeight, checkCitySpace]);
 
   const getTranslation = (key: string) => {
-    if (Platform.OS === 'android') {
-      const isHi = storeLanguage === 'hi';
-      const dict: Record<string, { en: string; hi: string }> = {
-        beginYourJourney: { en: 'Begin Your Journey', hi: 'अपनी यात्रा शुरू करें' },
-        awakenVisualEssence: { en: 'Awaken your visual essence', hi: 'अपनी दृश्य सार को जगाएं' },
-        fullName: { en: 'Full Name', hi: 'पूरा नाम' },
-        firstName: { en: 'First name', hi: 'पहला नाम' },
-        surname: { en: 'Surname', hi: 'उपनाम' },
-        currentCity: { en: 'Current City', hi: 'वर्तमान शहर' },
-        enterCurrentCity: { en: 'Enter current city...', hi: 'वर्तमान शहर दर्ज करें...' },
-        location: { en: 'Location', hi: 'स्थान' },
-        locationNotDetected: { en: 'Location not detected', hi: 'स्थान का पता नहीं चला' },
-        detectingLocation: { en: 'Detecting Location...', hi: 'स्थान का पता लगाया जा रहा है...' },
-        detect: { en: 'Detect', hi: 'पता करें' },
-        infoText: { 
-          en: 'Your selected location will help us connect you with nearby devotees, temples, and your local Sanatan community. 🕉️🙏', 
-          hi: 'आपका चयनित स्थान हमें आपको आस-पास के भक्तों, मंदिरों और आपके स्थानीय सनातन समुदाय से जोड़ने में मदद करेगा। 🕉️🙏' 
-        },
-        sacredLanguage: { en: 'Sacred Language', hi: 'पवित्र भाषा' },
-        continueToMyJourney: { en: 'Continue to My Journey ', hi: 'मेरी यात्रा पर आगे बढ़ें ' },
-        footerText: { en: 'By beginning, you align with our Terms of Spiritual Connection and Privacy Sanctuary.', hi: 'शुरुआत करके, आप हमारे आध्यात्मिक जुड़ाव की शर्तों और गोपनीयता अभयारण्य के साथ संरेखित होते हैं।' },
-        pleaseEnterFullname: { en: 'Please enter your full name', hi: 'कृपया अपना पूरा नाम दर्ज करें' },
-        enterCityAndDetectLocation: { en: 'Please enter your current city and auto-detect your location', hi: 'कृपया अपना वर्तमान शहर दर्ज करें और अपना स्थान स्वचालित रूप से पता करें' },
-        cityLocationMustMatch: { en: 'Your current city and detected location must match', hi: 'आपका वर्तमान शहर और स्थान का मिलान होना चाहिए' }
-      };
-      return dict[key]?.[isHi ? 'hi' : 'en'] || key;
-    } else {
-      const dict: Record<string, string> = {
-        beginYourJourney: 'Begin Your Journey',
-        awakenVisualEssence: 'Awaken your visual essence',
-        fullName: 'Full Name',
-        firstName: 'First name',
-        surname: 'Surname',
-        currentCity: 'Current City',
-        enterCurrentCity: 'Enter current city...',
-        location: 'Location',
-        locationNotDetected: 'Location not detected',
-        detectingLocation: 'Detecting Location...',
-        detect: 'Detect',
-        infoText: 'Your selected location will help us connect you with nearby devotees, temples, and your local Sanatan community. 🕉️🙏',
-        sacredLanguage: 'Sacred Language',
-        continueToMyJourney: 'Continue to My Journey ',
-        footerText: 'By beginning, you align with our Terms of Spiritual Connection and Privacy Sanctuary.',
-        pleaseEnterFullname: 'Please enter your full name',
-        enterCityAndDetectLocation: 'Please enter your current city and auto-detect your location',
-        cityLocationMustMatch: 'Your current city and detected location must match'
-      };
-      return dict[key] || key;
-    }
+    const isHi = storeLanguage === 'hi';
+    const dict: Record<string, { en: string; hi: string }> = {
+      beginYourJourney: { en: 'Begin Your Journey', hi: 'अपनी यात्रा शुरू करें' },
+      awakenVisualEssence: { en: 'Awaken your visual essence', hi: 'अपनी दृश्य सार को जगाएं' },
+      fullName: { en: 'Full Name', hi: 'पूरा नाम' },
+      firstName: { en: 'First name', hi: 'पहला नाम' },
+      surname: { en: 'Surname', hi: 'उपनाम' },
+      currentCity: { en: 'Current City', hi: 'वर्तमान शहर' },
+      enterCurrentCity: { en: 'Enter current city...', hi: 'वर्तमान शहर दर्ज करें...' },
+      location: { en: 'Location', hi: 'स्थान' },
+      locationNotDetected: { en: 'Location not detected', hi: 'स्थान का पता नहीं चला' },
+      detectingLocation: { en: 'Detecting Location...', hi: 'स्थान का पता लगाया जा रहा है...' },
+      detect: { en: 'Detect', hi: 'पता करें' },
+      infoText: { 
+        en: 'Your selected location will help us connect you with nearby devotees, temples, and your local Sanatan community. 🕉️🙏', 
+        hi: 'का चयनित स्थान हमें आपको आस-पास के भक्तों, मंदिरों और आपके स्थानीय सनातन समुदाय से जोड़ने में मदद करेगा। 🕉️🙏' 
+      },
+      sacredLanguage: { en: 'Sacred Language', hi: 'पवित्र भाषा' },
+      continueToMyJourney: { en: 'Continue to My Journey ', hi: 'मेरी यात्रा पर आगे बढ़ें ' },
+      footerText: { en: 'By beginning, you align with our Terms of Spiritual Connection and Privacy Sanctuary.', hi: 'शुरुआत करके, आप हमारे आध्यात्मिक जुड़ाव की शर्तों और गोपनीयता अभयारण्य के साथ संरेखित होते हैं।' },
+      pleaseEnterFullname: { en: 'Please enter your full name', hi: 'कृपया अपना पूरा नाम दर्ज करें' },
+      enterCityAndDetectLocation: { en: 'Please enter your current city and auto-detect your location', hi: 'कृपया अपना वर्तमान शहर दर्ज करें और अपना स्थान स्वचालित रूप से पता करें' },
+      cityLocationMustMatch: { en: 'Your current city and detected location must match', hi: 'आपका वर्तमान शहर और स्थान का मिलान होना चाहिए' }
+    };
+    return dict[key]?.[isHi ? 'hi' : 'en'] || key;
   };
 
   const handleSearchCity = async (query: string) => {
@@ -255,39 +299,28 @@ export default function ProfileScreen() {
   };
 
   const isButtonDisabled = () => {
-    if (Platform.OS === 'android') {
-      const c = city.trim().toLowerCase();
-      const cc = currentCity.trim().toLowerCase();
-      const isMatching = c && cc && (cc.includes(c) || c.includes(cc));
-      return !firstName.trim() || !surname.trim() || !city.trim() || !currentCity.trim() || !isMatching;
-    }
-    return !name.trim();
+    const c = city.trim().toLowerCase();
+    const cc = currentCity.trim().toLowerCase();
+    const isMatching = c && cc && (cc.includes(c) || c.includes(cc));
+    return !firstName.trim() || !surname.trim() || !city.trim() || !currentCity.trim() || !isMatching;
   };
 
   const handleContinue = async () => {
-    let trimmed = name.trim();
-    if (Platform.OS === 'android') {
-      trimmed = `${firstName.trim()} ${surname.trim()}`.trim();
-      if (!firstName.trim() || !surname.trim()) {
-        setError(getTranslation('pleaseEnterFullname'));
-        return;
-      }
-      if (!city.trim() || !currentCity.trim()) {
-        setError(getTranslation('enterCityAndDetectLocation'));
-        return;
-      }
-      const c = city.trim().toLowerCase();
-      const cc = currentCity.trim().toLowerCase();
-      const isMatching = cc.includes(c) || c.includes(cc);
-      if (!isMatching) {
-        setError(getTranslation('cityLocationMustMatch'));
-        return;
-      }
-    } else {
-      if (!trimmed) {
-        setError(getTranslation('pleaseEnterYourName'));
-        return;
-      }
+    const trimmed = `${firstName.trim()} ${surname.trim()}`.trim();
+    if (!firstName.trim() || !surname.trim()) {
+      setError(getTranslation('pleaseEnterFullname'));
+      return;
+    }
+    if (!city.trim() || !currentCity.trim()) {
+      setError(getTranslation('enterCityAndDetectLocation'));
+      return;
+    }
+    const c = city.trim().toLowerCase();
+    const cc = currentCity.trim().toLowerCase();
+    const isMatching = cc.includes(c) || c.includes(cc);
+    if (!isMatching) {
+      setError(getTranslation('cityLocationMustMatch'));
+      return;
     }
 
     setLoading(true);
@@ -326,16 +359,18 @@ export default function ProfileScreen() {
         <ScrollView 
           contentContainerStyle={[
             styles.scrollContent,
-            Platform.OS === 'android' && {
+            {
               paddingTop: Math.max(insets.top, 10),
-              paddingBottom: Math.max(insets.bottom, 8) + 8,
+              paddingBottom: Platform.OS === 'ios' 
+                ? Math.max(insets.bottom, 10) 
+                : Math.max(insets.bottom, 8) + 8,
             }
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.content}>
-            <Text style={[styles.title, isAndroid && { fontSize: titleFontSize, marginBottom: isAndroid ? 6 : 8 }]}>{getTranslation('beginYourJourney')}</Text>
+            <Text style={[styles.title, { fontSize: titleFontSize, marginTop: titleMarginTop, marginBottom: titleMarginBottom }]}>{getTranslation('beginYourJourney')}</Text>
 
             {/* Profile Photo */}
             <TouchableOpacity style={[styles.photoContainer, { width: photoSize, height: photoSize }]} onPress={pickImage}>
@@ -349,171 +384,135 @@ export default function ProfileScreen() {
               </View>
             </TouchableOpacity>
 
-            <Text style={[styles.caption, isAndroid && { fontSize: captionFontSize, marginBottom: isAndroid ? 12 : 20 }]}>{getTranslation('awakenVisualEssence')}</Text>
+            <Text style={[styles.caption, { fontSize: captionFontSize, marginBottom: captionMarginBottom }]}>{getTranslation('awakenVisualEssence')}</Text>
 
-            {Platform.OS === 'android' ? (
-              <>
-                {/* Full Name */}
-                {/* Full Name */}
-                <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
-                  {getTranslation('fullName')} <Text style={{ color: '#E53935' }}>*</Text>
-                </Text>
-                <View style={[styles.sideBySideContainer, isAndroid && { marginBottom: inputMarginBottom }]}>
-                  <View style={[styles.halfInputContainer, { height: inputHeight }]}>
-                    <TextInput
-                      style={styles.androidTextInput}
-                      placeholder={getTranslation('firstName')}
-                      placeholderTextColor="#C5B49F"
-                      value={firstName}
-                      onChangeText={(text) => {
-                        const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
-                        setFirstName(formattedText);
-                        setError('');
-                      }}
-                      autoCapitalize="words"
-                    />
-                  </View>
-                  <View style={[styles.halfInputContainer, { height: inputHeight }]}>
-                    <TextInput
-                      style={styles.androidTextInput}
-                      placeholder={getTranslation('surname')}
-                      placeholderTextColor="#C5B49F"
-                      value={surname}
-                      onChangeText={(text) => {
-                        const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
-                        setSurname(formattedText);
-                        setError('');
-                      }}
-                      autoCapitalize="words"
-                    />
-                  </View>
-                </View>
+            {/* Full Name */}
+            <Text style={[styles.label, { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
+              {getTranslation('fullName')} <Text style={{ color: '#E53935' }}>*</Text>
+            </Text>
+            <View style={[styles.sideBySideContainer, { marginBottom: inputMarginBottom }]}>
+              <View style={[styles.halfInputContainer, { height: inputHeight }]}>
+                <TextInput
+                  style={styles.androidTextInput}
+                  placeholder={getTranslation('firstName')}
+                  placeholderTextColor="#C5B49F"
+                  value={firstName}
+                  onChangeText={(text) => {
+                    const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+                    setFirstName(formattedText);
+                    setError('');
+                  }}
+                  autoCapitalize="words"
+                />
+              </View>
+              <View style={[styles.halfInputContainer, { height: inputHeight }]}>
+                <TextInput
+                  style={styles.androidTextInput}
+                  placeholder={getTranslation('surname')}
+                  placeholderTextColor="#C5B49F"
+                  value={surname}
+                  onChangeText={(text) => {
+                    const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
+                    setSurname(formattedText);
+                    setError('');
+                  }}
+                  autoCapitalize="words"
+                />
+              </View>
+            </View>
 
-                {/* Current City Selection */}
-                <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
-                  {getTranslation('currentCity')} <Text style={{ color: '#E53935' }}>*</Text>
-                </Text>
-                <View ref={cityInputRef} style={styles.cityInputWrapper}>
-                  <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
-                    <View style={styles.dropdownLeft}>
-                      <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
-                      <TextInput
-                        style={styles.autocompleteInput}
-                        placeholder={getTranslation('enterCurrentCity')}
-                        placeholderTextColor="#C5B49F"
-                        value={city}
-                        onFocus={() => setIsCityFocused(true)}
-                        onBlur={() => setIsCityFocused(false)}
-                        onChangeText={(text) => {
-                          setCity(text);
-                          setLocation(text);
-                          handleSearchCity(text);
-                        }}
-                      />
-                    </View>
-                    {isSearchingCity && <ActivityIndicator size="small" color="#FF7B00" />}
-                  </View>
-
-                  {/* City Autocomplete Suggestions Dropdown */}
-                  {citySuggestions.length > 0 && (
-                    <View style={[
-                      styles.suggestionsContainer,
-                      showCityAbove ? styles.suggestionsAbove : styles.suggestionsBelow
-                    ]}>
-                      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
-                        {citySuggestions.map((item, index) => (
-                          <TouchableOpacity
-                            key={index}
-                            style={styles.suggestionItem}
-                            onPress={() => {
-                              const cityName = item.address.city || 
-                                                item.address.town || 
-                                                item.address.village || 
-                                                item.address.suburb || 
-                                                item.display_name.split(',')[0];
-                              setCity(cityName);
-                              setLocation(cityName);
-                              setCitySuggestions([]);
-                            }}
-                          >
-                            <Ionicons name="location-outline" size={16} color="#FF7B00" style={{ marginRight: 8 }} />
-                            <Text style={styles.suggestionText} numberOfLines={1}>
-                              {item.display_name}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
-
-                {/* Location Selection (GPS) */}
-                <Text style={[styles.label, isAndroid && { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
-                  {getTranslation('location')} <Text style={{ color: '#E53935' }}>*</Text>
-                </Text>
-                <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
-                  <View style={styles.dropdownLeft}>
-                    <Ionicons name="locate-outline" size={22} color="#FF7B00" style={{ marginRight: 8 }} />
-                    <Text style={currentCity ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
-                      {loading ? getTranslation('detectingLocation') : (currentCity || getTranslation('locationNotDetected'))}
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.detectButtonInline, { height: isAndroid ? (windowHeight < 700 ? 32 : 36) : 36 }]}
-                    onPress={handleFetchLocation}
-                    disabled={loading}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    {loading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.detectButtonTextInline}>{getTranslation('detect')}</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                {/* Full Name */}
-                <Text style={styles.label}>{getTranslation('fullName')}</Text>
-                <View style={styles.inputContainer}>
-                  <View style={styles.inputIconContainer}>
-                    <Ionicons name="person-outline" size={22} color="#C5B49F" />
-                  </View>
+            {/* Current City Selection */}
+            <Text style={[styles.label, { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
+              {getTranslation('currentCity')} <Text style={{ color: '#E53935' }}>*</Text>
+            </Text>
+            <View ref={cityInputRef} style={styles.cityInputWrapper}>
+              <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
+                <View style={styles.dropdownLeft}>
+                  <Ionicons name="location-outline" size={22} color="#C5B49F" style={{ marginRight: 8 }} />
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="Soul name or legal name"
+                    style={styles.autocompleteInput}
+                    placeholder={getTranslation('enterCurrentCity')}
                     placeholderTextColor="#C5B49F"
-                    value={name}
+                    value={city}
+                    onFocus={() => setIsCityFocused(true)}
+                    onBlur={() => setIsCityFocused(false)}
                     onChangeText={(text) => {
-                      let formattedText = text;
-                      setName(formattedText);
-                      setError('');
+                      setCity(text);
+                      setLocation(text);
+                      handleSearchCity(text);
                     }}
-                    autoCapitalize="words"
                   />
                 </View>
+                {isSearchingCity ? (
+                  <ActivityIndicator size="small" color="#FF7B00" />
+                ) : (
+                  <Ionicons name="chevron-down" size={20} color="#8B4F3B" />
+                )}
+              </View>
 
-                {/* Location */}
-                <Text style={styles.label}>{getTranslation('location')}</Text>
-                <View style={styles.inputContainer}>
-                  <TouchableOpacity onPress={handleFetchLocation} style={styles.inputIconContainer} disabled={loading}>
-                    <Ionicons name="location-outline" size={22} color="#C5B49F" />
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Your current coordinates..."
-                    placeholderTextColor="#C5B49F"
-                    value={location}
-                    onChangeText={(text) => setLocation(text)}
-                  />
+              {/* City Autocomplete Suggestions Dropdown */}
+              {citySuggestions.length > 0 && (
+                <View style={[
+                  styles.suggestionsContainer,
+                  Platform.OS === 'ios'
+                    ? { bottom: inputHeight + inputMarginBottom }
+                    : (showCityAbove ? styles.suggestionsAbove : styles.suggestionsBelow)
+                ]}>
+                  <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+                    {citySuggestions.map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          const cityName = item.address.city || 
+                                            item.address.town || 
+                                            item.address.village || 
+                                            item.address.suburb || 
+                                            item.display_name.split(',')[0];
+                          setCity(cityName);
+                          setLocation(cityName);
+                          setCitySuggestions([]);
+                        }}
+                      >
+                        <Ionicons name="location-outline" size={16} color="#FF7B00" style={{ marginRight: 8 }} />
+                        <Text style={styles.suggestionText} numberOfLines={1}>
+                          {item.display_name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
                 </View>
-              </>
-            )}
+              )}
+            </View>
+
+            {/* Location Selection (GPS) */}
+            <Text style={[styles.label, { fontSize: labelFontSize, marginTop: labelMarginTop, marginBottom: labelMarginBottom }]}>
+              {getTranslation('location')} <Text style={{ color: '#E53935' }}>*</Text>
+            </Text>
+            <View style={[styles.dropdownContainer, { height: inputHeight, marginBottom: inputMarginBottom }]}>
+              <View style={styles.dropdownLeft}>
+                <Ionicons name="locate-outline" size={22} color="#FF7B00" style={{ marginRight: 8 }} />
+                <Text style={currentCity ? styles.dropdownText : styles.dropdownPlaceholder} numberOfLines={1}>
+                  {loading ? getTranslation('detectingLocation') : (currentCity || getTranslation('locationNotDetected'))}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.detectButtonInline, { height: isAndroid ? (windowHeight < 700 ? 32 : 36) : 36 }]}
+                onPress={handleFetchLocation}
+                disabled={loading}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.detectButtonTextInline}>{getTranslation('detect')}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
 
             {/* Information Card */}
-            <View style={styles.infoCard}>
+            <View style={[styles.infoCard, { padding: infoCardPadding, marginTop: infoCardMarginTop, marginBottom: infoCardMarginBottom }]}>
               <Ionicons name="information-circle-outline" size={24} color="#FF7B00" />
               <Text style={styles.infoText}>
                 {getTranslation('infoText')}
@@ -521,8 +520,8 @@ export default function ProfileScreen() {
             </View>
 
              {/* Sacred Language */}
-            <Text style={[styles.sacredLanguageLabel, isAndroid && { marginTop: isAndroid ? 4 : 6, marginBottom: isAndroid ? 2 : 4 }]}>{getTranslation('sacredLanguage')}</Text>
-            <View style={[styles.languageContainer, isAndroid && { marginBottom: isAndroid ? 12 : 24, marginTop: isAndroid ? 2 : 4 }]}>
+            <Text style={[styles.sacredLanguageLabel, { marginTop: sacredLanguageMarginTop, marginBottom: sacredLanguageMarginBottom }]}>{getTranslation('sacredLanguage')}</Text>
+            <View style={[styles.languageContainer, { marginBottom: languageContainerMarginBottom, marginTop: languageContainerMarginTop }]}>
               <TouchableOpacity 
                 style={[
                   styles.languageButton, 
@@ -570,7 +569,7 @@ export default function ProfileScreen() {
             <TouchableOpacity
               style={[
                 styles.continueButton,
-                { height: buttonHeight, marginTop: isAndroid ? 10 : 10, marginBottom: isAndroid ? 12 : 16 },
+                { height: buttonHeight, marginTop: continueButtonMarginTop, marginBottom: continueButtonMarginBottom },
                 isButtonDisabled() && styles.continueButtonEmpty,
               ]}
               onPress={handleContinue}
@@ -580,7 +579,7 @@ export default function ProfileScreen() {
                 <ActivityIndicator color="#FF7B00" />
               ) : (
                 <View style={styles.continueButtonContent}>
-                  <Text style={[styles.continueButtonText, isAndroid && { fontSize: isAndroid ? (windowWidth < 360 ? 16 : 18) : 20, lineHeight: isAndroid ? (windowWidth < 360 ? 22 : 24) : 28 }, isButtonDisabled() && styles.continueButtonTextEmpty]}>{getTranslation('continueToMyJourney')}</Text>
+                  <Text style={[styles.continueButtonText, { fontSize: continueButtonFontSize, lineHeight: continueButtonLineHeight }, isButtonDisabled() && styles.continueButtonTextEmpty]}>{getTranslation('continueToMyJourney')}</Text>
                   <Svg width={22} height={22} viewBox="0 0 22 22" fill="none">
                     <Path d="M18 8L16.75 5.25L14 4L16.75 2.75L18 0L19.25 2.75L22 4L19.25 5.25L18 8ZM18 22L16.75 19.25L14 18L16.75 16.75L18 14L19.25 16.75L22 18L19.25 19.25L18 22ZM8 19L5.5 13.5L0 11L5.5 8.5L8 3L10.5 8.5L16 11L10.5 13.5L8 19Z" fill={isButtonDisabled() ? '#FF7B00' : 'white'}/>
                   </Svg>
@@ -589,7 +588,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Footer Text */}
-            <Text style={[styles.footerText, isAndroid && { fontSize: isAndroid ? (windowWidth < 360 ? 10 : 11) : 12, lineHeight: isAndroid ? (windowWidth < 360 ? 13 : 14) : 16, marginTop: isAndroid ? 4 : 8 }]}>
+            <Text style={[styles.footerText, { fontSize: footerFontSize, lineHeight: footerLineHeight, marginTop: footerMarginTop }]}>
               {getTranslation('footerText')}
             </Text>
           </View>
@@ -901,7 +900,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 16,
     color: '#8B4F3B',
-    fontFamily: 'System',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     paddingHorizontal: 16,
     paddingVertical: 0,
   },
@@ -926,17 +925,17 @@ const styles = StyleSheet.create({
   dropdownText: {
     fontSize: 16,
     color: '#8B4F3B',
-    fontFamily: 'System',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
   dropdownPlaceholder: {
     fontSize: 16,
     color: '#C5B49F',
-    fontFamily: 'System',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
   autoDetectButtonText: {
     fontSize: 16,
     color: '#FF7B00',
-    fontFamily: 'System',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     fontWeight: '500',
   },
   autocompleteInput: {
@@ -944,7 +943,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 16,
     color: '#8B4F3B',
-    fontFamily: 'System',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
     paddingLeft: 8,
     paddingRight: 0,
     paddingVertical: 0,
@@ -1001,6 +1000,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
-    fontFamily: 'System',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
 });

@@ -309,6 +309,7 @@ export default function LocationSetupScreen() {
                     value={dobValue || new Date()}
                     mode="date"
                     display="inline"
+                    maximumDate={new Date()}
                     onChange={(event, selectedDate) => {
                       if (selectedDate) {
                         setDobValue(selectedDate);
@@ -488,7 +489,9 @@ export default function LocationSetupScreen() {
                 <View 
                   style={[
                     styles.suggestionsContainer,
-                    showAbove ? styles.suggestionsAbove : styles.suggestionsBelow
+                    Platform.OS === 'ios'
+                      ? { bottom: 60 }
+                      : (showAbove ? styles.suggestionsAbove : styles.suggestionsBelow)
                   ]}
                 >
                   <ScrollView

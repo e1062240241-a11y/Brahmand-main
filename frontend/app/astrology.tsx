@@ -690,7 +690,7 @@ export default function AstrologyScreen() {
               <Avatar 
                 name={user?.name || 'User'} 
                 photo={user?.photo} 
-                size={48} 
+                size={Platform.OS === 'android' ? 36 : 48} 
               />
             </View>
             <View style={styles.profileCardText}>
@@ -786,13 +786,13 @@ export default function AstrologyScreen() {
           {!error && (
             <View style={styles.insightsCard}>
               <View style={styles.insightBox}>
-                <Text style={styles.insightLabel}>NAKSHATRA</Text>
-                <Text style={styles.insightValue}>{details.Naksahtra || '-'}</Text>
+                <Text style={styles.insightLabel} numberOfLines={1}>NAKSHATRA</Text>
+                <Text style={styles.insightValue} numberOfLines={1}>{details.Naksahtra || '-'}</Text>
               </View>
               <View style={styles.insightDivider} />
               <View style={styles.insightBox}>
-                <Text style={styles.insightLabel}>RASHI</Text>
-                <Text style={styles.insightValue}>{details.sign || '-'}</Text>
+                <Text style={styles.insightLabel} numberOfLines={1}>RASHI</Text>
+                <Text style={styles.insightValue} numberOfLines={1}>{details.sign || '-'}</Text>
               </View>
             </View>
           )}
@@ -1342,22 +1342,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     marginHorizontal: 20,
     marginTop: 16,
-    height: 80,
+    height: Platform.OS === 'android' ? 62 : 80,
     alignSelf: 'center',
-    borderRadius: 48,
+    borderRadius: Platform.OS === 'android' ? 32 : 48,
     paddingHorizontal: 16,
     shadowColor: 'rgba(150, 73, 0, 1)',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 20,
     elevation: 2,
-    width: 350,
+    width: Platform.OS === 'android' ? 310 : 350,
   },
   profileCardAvatarWrapper: {
-    borderWidth: 2,
+    borderWidth: Platform.OS === 'android' ? 1.5 : 2,
     borderColor: '#FF7B00',
-    borderRadius: 26,
-    padding: 1.5,
+    borderRadius: Platform.OS === 'android' ? 20 : 26,
+    padding: Platform.OS === 'android' ? 1 : 1.5,
     marginRight: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1368,17 +1368,17 @@ const styles = StyleSheet.create({
   profileCardName: {
     color: '#1A1C1C',
     fontFamily: 'System',
-    fontSize: 20,
+    fontSize: Platform.OS === 'android' ? 16 : 20,
     fontWeight: '600',
-    lineHeight: 20,
+    lineHeight: Platform.OS === 'android' ? 18 : 20,
   },
   profileCardSub: {
     color: '#564337',
     fontFamily: 'System',
-    fontSize: 14,
+    fontSize: Platform.OS === 'android' ? 11 : 14,
     fontWeight: '500',
-    lineHeight: 20,
-    marginTop: 2,
+    lineHeight: Platform.OS === 'android' ? 14 : 20,
+    marginTop: Platform.OS === 'android' ? 1 : 2,
   },
 
   // Kundli Chart
@@ -1519,8 +1519,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   insightBox: { flex: 1, alignItems: 'center' },
-  insightLabel: { fontSize: 12, color: '#584235', fontWeight: '700', lineHeight: 16, letterSpacing: 1.2, textTransform: 'uppercase', textAlign: 'center', fontStyle: 'normal' },
-  insightValue: { fontSize: 18, fontWeight: '600', color: '#994700', marginTop: 4, lineHeight: 24, textAlign: 'center', fontStyle: 'normal' },
+  insightLabel: { 
+    fontSize: Platform.OS === 'android' ? 10 : 12, 
+    color: '#584235', 
+    fontWeight: '700', 
+    lineHeight: Platform.OS === 'android' ? 14 : 16, 
+    letterSpacing: Platform.OS === 'android' ? 0.6 : 1.2, 
+    textTransform: 'uppercase', 
+    textAlign: 'center', 
+    fontStyle: 'normal' 
+  },
+  insightValue: { 
+    fontSize: Platform.OS === 'android' ? 16 : 18, 
+    fontWeight: '600', 
+    color: '#994700', 
+    marginTop: 4, 
+    lineHeight: Platform.OS === 'android' ? 22 : 24, 
+    textAlign: 'center', 
+    fontStyle: 'normal' 
+  },
   insightDivider: { width: 1, backgroundColor: '#F0E0D0' },
 
   // Section

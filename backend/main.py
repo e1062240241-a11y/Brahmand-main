@@ -6536,6 +6536,19 @@ async def toggle_community_message_like(
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
+    # Enforce verification check
+    community = await db.get_document('communities', community_id)
+    if community:
+        comm_type = community.get('type')
+        if comm_type in ['state', 'country']:
+            user = await db.get_document('users', user_id)
+            is_verified = user.get('is_verified', False) if user else False
+            verification_level = user.get('verification_level', 'state') if user else 'state'
+            if not is_verified:
+                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
+            if comm_type == 'country' and verification_level != 'national':
+                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
+        
     liked_by = msg.get('liked_by', []) or []
     liked = user_id in liked_by
     
@@ -6614,6 +6627,19 @@ async def add_community_message_comment(
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
+    # Enforce verification check
+    community = await db.get_document('communities', community_id)
+    if community:
+        comm_type = community.get('type')
+        if comm_type in ['state', 'country']:
+            user = await db.get_document('users', user_id)
+            is_verified = user.get('is_verified', False) if user else False
+            verification_level = user.get('verification_level', 'state') if user else 'state'
+            if not is_verified:
+                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
+            if comm_type == 'country' and verification_level != 'national':
+                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
+        
     text = str(data.get('text') or '').strip()
     if not text:
         raise HTTPException(status_code=400, detail='Comment text is required')
@@ -6647,6 +6673,21 @@ async def get_community_message_comments(
     token_data: dict = Depends(verify_token)
 ):
     db = await get_db()
+    
+    # Enforce verification check
+    community = await db.get_document('communities', community_id)
+    if community:
+        comm_type = community.get('type')
+        if comm_type in ['state', 'country']:
+            user_id = token_data['user_id']
+            user = await db.get_document('users', user_id)
+            is_verified = user.get('is_verified', False) if user else False
+            verification_level = user.get('verification_level', 'state') if user else 'state'
+            if not is_verified:
+                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
+            if comm_type == 'country' and verification_level != 'national':
+                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
+                
     comments = await db.query_documents(
         'post_comments',
         filters=[('post_id', '==', message_id)]
