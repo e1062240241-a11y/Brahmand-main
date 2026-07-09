@@ -18,6 +18,7 @@ import {
 import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FlashList } from '@shopify/flash-list';
 import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
@@ -36,6 +37,82 @@ const JYOTIRLING_TEMPLES = [
   { id: 'jyotirling-ramanathaswamy-temple-rameswaram', name: 'Ramanathaswamy Temple', location: 'Tamil Nadu', deity: 'Lord Shiva' },
 ];
 
+const getTempleDisplayName = (item: any) => item.name;
+
+const getTempleLocation = (item: any) => {
+  if (typeof item.location === 'string') return item.location;
+  if (typeof item.location === 'object' && item.location !== null) {
+    const { area, city, state } = item.location;
+    return [area, city, state].filter(Boolean).join(', ');
+  }
+  return item.location || 'Unknown Location';
+};
+
+const getTempleDeityLabel = (item: any) => item.deity;
+
+interface TempleCardProps {
+  item: any;
+  onPress: (item: any) => void;
+  t: (key: string) => string;
+}
+
+const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
+  const displayName = getTempleDisplayName(item);
+  const location = getTempleLocation(item);
+  const deityLabel = getTempleDeityLabel(item);
+  const categoryLabel = t('language') === 'hi' && item.category === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (item.category || 'Sacred');
+
+  return (
+    <TouchableOpacity 
+      style={styles.templeItemCard}
+      activeOpacity={0.7}
+      onPress={() => onPress(item)}
+    >
+      <Image 
+        source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} 
+        style={styles.templeItemImage} 
+      />
+      <View style={styles.templeItemInfo}>
+        <Text style={styles.templeItemName}>{displayName}</Text>
+        <View style={styles.templeItemLocRow}>
+          <Ionicons name="location" size={14} color="#888" />
+          <Text style={styles.templeItemLocText}>{location}</Text>
+        </View>
+        <Text style={styles.templeItemDeity}>
+          {t('language') === 'hi' ? `${deityLabel} को समर्पित` : `Dedicated to ${deityLabel}`}
+        </Text>
+        <View style={styles.templeItemTag}>
+          <Ionicons name="sparkles" size={12} color="#D35400" />
+          <Text style={styles.templeItemTagText}>{categoryLabel}</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color="#BBB" />
+    </TouchableOpacity>
+  );
+});
+
+interface FilterOptionProps {
+  location: string;
+  isSelected: boolean;
+  onPress: (location: string) => void;
+}
+
+const FilterOption = React.memo(({ location, isSelected, onPress }: FilterOptionProps) => {
+  return (
+    <TouchableOpacity
+      style={styles.filterOption}
+      onPress={() => onPress(location)}
+    >
+      <View style={[styles.filterCheckbox, isSelected && styles.filterCheckboxActive]}>
+        {isSelected && <Ionicons name="checkmark" size={16} color="#FF6600" />}
+      </View>
+      <Text style={[styles.filterOptionText, isSelected && styles.filterOptionTextActive]}>
+        {location}
+      </Text>
+    </TouchableOpacity>
+  );
+});
+
 export default function TempleScreen() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -43,13 +120,90 @@ export default function TempleScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
-  const [temples, setTemples] = useState<any[]>([]);
+  const [temples, setTemples] = useState<any[]>([]); // Synced temples for uniqueLocations
+  const [displayTemples, setDisplayTemples] = useState<any[]>([]); // Paginated display items
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Sacred'>('All');
   const [loading, setLoading] = useState(true);
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
 
-  const loadLocalTemples = async () => {
+  const PAGE_SIZE = 20;
+
+  const loadMoreTemples = useCallback(async (pageNum: number, isReset: boolean = false) => {
+    try {
+      setLoading(true);
+      const queryClauses = [];
+
+      // Category filter
+      if (selectedCategory !== 'All') {
+        if (selectedCategory === 'Jyotirlinga') {
+          queryClauses.push(Q.where('category', 'Jyotirlinga'));
+        } else {
+          queryClauses.push(Q.where('category', Q.notEq('Jyotirlinga')));
+        }
+      }
+
+      // Search Query filter
+      if (searchQuery.trim().length > 0) {
+        const pattern = `%${searchQuery.trim().toLowerCase()}%`;
+        queryClauses.push(
+          Q.or(
+            Q.where('name', Q.like(pattern)),
+            Q.where('location', Q.like(pattern)),
+            Q.where('deity', Q.like(pattern))
+          )
+        );
+      }
+
+      // Location filter
+      if (selectedLocations.size > 0) {
+        const locClauses = Array.from(selectedLocations).map(loc => 
+          Q.where('location', Q.like(`%${loc}%`))
+        );
+        queryClauses.push(Q.or(...locClauses));
+      }
+
+      const skipCount = (pageNum - 1) * PAGE_SIZE;
+      const dbQuery = database.get('temples').query(
+        ...queryClauses,
+        Q.skip(skipCount),
+        Q.take(PAGE_SIZE)
+      );
+
+      const results = await dbQuery.fetch();
+      const formatted = results.map((t: any) => ({
+        id: t.templeId,
+        name: t.name,
+        location: t.location,
+        deity: t.deity,
+        category: t.category,
+        image_url: t.imageUrl,
+        is_verified: t.isVerified,
+      }));
+
+      if (isReset) {
+        setDisplayTemples(formatted);
+      } else {
+        setDisplayTemples(prev => [...prev, ...formatted]);
+      }
+
+      setHasMore(results.length === PAGE_SIZE);
+      setPage(pageNum);
+    } catch (err) {
+      console.error('Error loading temples from DB:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, selectedCategory, selectedLocations]);
+
+  // Reset pagination on filter or search parameters change
+  useEffect(() => {
+    loadMoreTemples(1, true);
+  }, [searchQuery, selectedCategory, selectedLocations, loadMoreTemples]);
+
+  const loadLocalTemples = useCallback(async () => {
     try {
       const localTemples = await database.get('temples').query().fetch();
       if (localTemples && localTemples.length > 0) {
@@ -64,14 +218,13 @@ export default function TempleScreen() {
           is_verified: t.isVerified,
         }));
         setTemples(formattedTemples);
-        setLoading(false); // We have local data, so we can stop showing the main loader
       }
     } catch (error) {
       console.error('Error loading local temples:', error);
     }
-  };
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setRefreshing(true);
       const response = await getTemples();
@@ -121,57 +274,174 @@ export default function TempleScreen() {
       console.error('Error fetching temples from API:', error);
     } finally {
       setRefreshing(false);
-      setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadLocalTemples();
     fetchData();
+  }, [loadLocalTemples, fetchData]);
+
+  const openTempleDetails = useCallback((item: any) => {
+    router.push(`/temple/${encodeURIComponent(String(item.id))}`);
+  }, [router]);
+
+  const uniqueLocations = useMemo(() => {
+    return Array.from(new Set((temples || []).map(t => {
+      const loc = getTempleLocation(t);
+      return loc.split(',').pop()?.trim() || loc;
+    }))).sort();
+  }, [temples]);
+
+  const toggleLocationFilter = useCallback((location: string) => {
+    setSelectedLocations(prev => {
+      const newLocs = new Set(prev);
+      if (newLocs.has(location)) newLocs.delete(location);
+      else newLocs.add(location);
+      return newLocs;
+    });
   }, []);
 
-  const openTempleDetails = (item: any) => {
-    router.push(`/temple/${encodeURIComponent(String(item.id))}`);
-  };
+  const onPressAll = useCallback(() => setSelectedCategory('All'), []);
+  const onPressJyotirlinga = useCallback(() => setSelectedCategory('Jyotirlinga'), []);
+  const onPressSacred = useCallback(() => setSelectedCategory('Sacred'), []);
 
-  const getTempleDisplayName = (item: any) => item.name;
-  const getTempleLocation = (item: any) => {
-    if (typeof item.location === 'string') return item.location;
-    if (typeof item.location === 'object' && item.location !== null) {
-      const { area, city, state } = item.location;
-      return [area, city, state].filter(Boolean).join(', ');
+  const onPressCloseFilter = useCallback(() => setShowFilterModal(false), []);
+  const onPressOpenFilter = useCallback(() => setShowFilterModal(true), []);
+  const onPressGoBack = useCallback(() => router.back(), [router]);
+  const onPressJaapTab = useCallback(() => router.push('/jaap' as any), [router]);
+
+  const onEndReached = useCallback(() => {
+    if (hasMore && !loading) {
+      loadMoreTemples(page + 1, false);
     }
-    return item.location || 'Unknown Location';
-  };
-  const getTempleDeityLabel = (item: any) => item.deity;
+  }, [hasMore, loading, page, loadMoreTemples]);
 
-  const filteredTempleList = (temples || []).filter(t => {
-    const loc = getTempleLocation(t);
-    const matchesSearch = (t.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     loc.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesLocation = (selectedLocations.size === 0 || selectedLocations.has(loc.split(',').pop()?.trim() || loc));
-    
-    let matchesCategory = true;
-    if (selectedCategory === 'Jyotirlinga') {
-      matchesCategory = t.category === 'Jyotirlinga';
-    } else if (selectedCategory === 'Sacred') {
-      matchesCategory = t.category !== 'Jyotirlinga';
-    }
+  const onRefresh = useCallback(async () => {
+    await fetchData();
+    await loadMoreTemples(1, true);
+  }, [fetchData, loadMoreTemples]);
 
-    return matchesSearch && matchesLocation && matchesCategory;
-  });
+  const renderItem = useCallback(({ item }: { item: any }) => (
+    <View style={{ paddingHorizontal: 20 }}>
+      <TempleCard
+        item={item}
+        onPress={openTempleDetails}
+        t={t}
+      />
+    </View>
+  ), [openTempleDetails, t]);
 
-  const uniqueLocations = Array.from(new Set((temples || []).map(t => {
-    const loc = getTempleLocation(t);
-    return loc.split(',').pop()?.trim() || loc;
-  }))).sort();
+  const keyExtractor = useCallback((item: any) => item.id, []);
 
-  const toggleLocationFilter = (location: string) => {
-    const newLocs = new Set(selectedLocations);
-    if (newLocs.has(location)) newLocs.delete(location);
-    else newLocs.add(location);
-    setSelectedLocations(newLocs);
-  };
+  const ListHeader = useCallback(() => (
+    <View>
+      {/* Hero Section */}
+      <View style={styles.heroRowLayout}>
+        <View style={styles.heroLeftContent}>
+          <TouchableOpacity style={styles.heroBackButton} onPress={onPressGoBack}>
+            <Ionicons name="arrow-back" size={28} color="#2D1B13" />
+          </TouchableOpacity>
+          
+          <Text style={styles.heroDiscoverText}>{t('language') === 'hi' ? 'खोजें' : 'Discover'}</Text>
+          <Text style={styles.heroSacredText}>{t('language') === 'hi' ? 'पवित्र' : 'Sacred'}</Text>
+          <Text style={styles.heroSacredText}>{t('language') === 'hi' ? 'मंदिर' : 'Temples'}</Text>
+          
+          <View style={styles.ornateDivider}>
+            <LinearGradient
+              colors={['rgba(255, 102, 0, 0)', 'rgba(255, 102, 0, 0.5)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.ornateLineGradient}
+            />
+            <View style={styles.ornateDiamond}>
+              <View style={styles.diamondInner} />
+            </View>
+            <LinearGradient
+              colors={['rgba(255, 102, 0, 0.5)', 'rgba(255, 102, 0, 0)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.ornateLineGradient}
+            />
+          </View>
+
+          <Text style={styles.heroSubtitleBlended}>
+            {t('language') === 'hi' 
+              ? 'दिव्य स्थानों की यात्रा करें, आशीर्वाद लें\nऔर आध्यात्मिकता से जुड़ें।' 
+              : 'Explore divine places, seek blessings\nand connect with spirituality.'}
+          </Text>
+        </View>
+
+        <View style={styles.heroRightImageContainer}>
+          <Image 
+            source={require('../../assets/images/image temple/SomnathTemple.jpg')} 
+            style={styles.heroSideImage} 
+            resizeMode="cover"
+          />
+          <LinearGradient
+            colors={['#FFFCEB', 'rgba(255, 252, 235, 0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.heroLeftMask}
+          />
+          <View style={styles.heroAncientOverlay} />
+        </View>
+      </View>
+
+      <View style={styles.searchSection}>
+        <View style={styles.searchBarWrapper}>
+          <Ionicons name="search-outline" size={22} color="#111" style={{ marginRight: 12 }} />
+          <TextInput 
+            placeholder={t('language') === 'hi' ? 'मंदिर का नाम खोजें...' : 'Search temple name...'}
+            style={styles.searchInputField}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#888"
+          />
+          <TouchableOpacity onPress={onPressOpenFilter}>
+            <Ionicons name="options-outline" size={22} color="#FF6600" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Category Pills */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPillsRow} contentContainerStyle={{ paddingHorizontal: 20 }}>
+        <TouchableOpacity 
+          style={[styles.catPill, selectedCategory === 'All' && styles.catPillActive]}
+          onPress={onPressAll}
+        >
+          <MaterialCommunityIcons name="home-variant" size={18} color={selectedCategory === 'All' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
+          <Text style={[styles.catPillText, selectedCategory === 'All' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'सभी मंदिर' : 'All Temples'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.catPill, selectedCategory === 'Jyotirlinga' && styles.catPillActive]}
+          onPress={onPressJyotirlinga}
+        >
+          <Text style={{ fontSize: 18, marginRight: 6 }}>🔱</Text>
+          <Text style={[styles.catPillText, selectedCategory === 'Jyotirlinga' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'ज्योतिर्लिंग' : 'Jyotirlinga'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.catPill, selectedCategory === 'Sacred' && styles.catPillActive]}
+          onPress={onPressSacred}
+        >
+          <Ionicons name="sparkles-outline" size={16} color={selectedCategory === 'Sacred' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
+          <Text style={[styles.catPillText, selectedCategory === 'Sacred' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'पवित्र' : 'Sacred'}</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  ), [searchQuery, selectedCategory, onPressAll, onPressJyotirlinga, onPressSacred, onPressOpenFilter, onPressGoBack, t]);
+
+  const ListEmpty = useCallback(() => (
+    <View style={{ alignItems: 'center', marginTop: 40 }}>
+      {loading && displayTemples.length === 0 ? (
+        <ActivityIndicator size="large" color="#FF6600" />
+      ) : (
+        <Text style={{ color: '#888', fontFamily: FONTS.medium }}>
+          {t('language') === 'hi' ? 'आपकी खोज से मेल खाता कोई मंदिर नहीं मिला।' : 'No temples found matching your search.'}
+        </Text>
+      )}
+    </View>
+  ), [loading, displayTemples.length, t]);
 
   return (
     <LinearGradient
@@ -185,7 +455,7 @@ export default function TempleScreen() {
         <View style={styles.topTabsInner}>
           <TouchableOpacity 
             style={styles.topTabButton}
-            onPress={() => router.push('/jaap' as any)}
+            onPress={onPressJaapTab}
           >
             <Text style={styles.topTabText}>{t('jaap')}</Text>
           </TouchableOpacity>
@@ -198,190 +468,48 @@ export default function TempleScreen() {
         </View>
       </View>
 
-      <Animated.ScrollView
-        style={styles.contentScroll}
-        showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false }
-        )}
-        scrollEventThrottle={16}
-        stickyHeaderIndices={[2]}
+      <FlashList
+        data={displayTemples}
+        renderItem={renderItem}
+        estimatedItemSize={127}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={fetchData} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        {/* Hero Section */}
-        <View style={styles.heroRowLayout}>
-          <View style={styles.heroLeftContent}>
-            <TouchableOpacity style={styles.heroBackButton} onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={28} color="#2D1B13" />
-            </TouchableOpacity>
-            
-            <Text style={styles.heroDiscoverText}>{t('language') === 'hi' ? 'खोजें' : 'Discover'}</Text>
-            <Text style={styles.heroSacredText}>{t('language') === 'hi' ? 'पवित्र' : 'Sacred'}</Text>
-            <Text style={styles.heroSacredText}>{t('language') === 'hi' ? 'मंदिर' : 'Temples'}</Text>
-            
-            <View style={styles.ornateDivider}>
-              <LinearGradient
-                colors={['rgba(255, 102, 0, 0)', 'rgba(255, 102, 0, 0.5)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ornateLineGradient}
-              />
-              <View style={styles.ornateDiamond}>
-                <View style={styles.diamondInner} />
-              </View>
-              <LinearGradient
-                colors={['rgba(255, 102, 0, 0.5)', 'rgba(255, 102, 0, 0)']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.ornateLineGradient}
-              />
-            </View>
-
-            <Text style={styles.heroSubtitleBlended}>
-              {t('language') === 'hi' 
-                ? 'दिव्य स्थानों की यात्रा करें, आशीर्वाद लें\nऔर आध्यात्मिकता से जुड़ें।' 
-                : 'Explore divine places, seek blessings\nand connect with spirituality.'}
-            </Text>
-          </View>
-
-          <View style={styles.heroRightImageContainer}>
-            <Image 
-              source={require('../../assets/images/image temple/SomnathTemple.jpg')} 
-              style={styles.heroSideImage} 
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={['#FFFCEB', 'rgba(255, 252, 235, 0)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.heroLeftMask}
-            />
-            <View style={styles.heroAncientOverlay} />
-          </View>
-        </View>
-
-        <View style={styles.searchSection}>
-          <View style={styles.searchBarWrapper}>
-            <Ionicons name="search-outline" size={22} color="#111" style={{ marginRight: 12 }} />
-            <TextInput 
-              placeholder={t('language') === 'hi' ? 'मंदिर का नाम खोजें...' : 'Search temple name...'}
-              style={styles.searchInputField}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#888"
-            />
-            <TouchableOpacity onPress={() => setShowFilterModal(true)}>
-              <Ionicons name="options-outline" size={22} color="#FF6600" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Category Pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryPillsRow} contentContainerStyle={{ paddingHorizontal: 20 }}>
-          <TouchableOpacity 
-            style={[styles.catPill, selectedCategory === 'All' && styles.catPillActive]}
-            onPress={() => setSelectedCategory('All')}
-          >
-            <MaterialCommunityIcons name="home-variant" size={18} color={selectedCategory === 'All' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
-            <Text style={[styles.catPillText, selectedCategory === 'All' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'सभी मंदिर' : 'All Temples'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.catPill, selectedCategory === 'Jyotirlinga' && styles.catPillActive]}
-            onPress={() => setSelectedCategory('Jyotirlinga')}
-          >
-            <Text style={{ fontSize: 18, marginRight: 6 }}>🔱</Text>
-            <Text style={[styles.catPillText, selectedCategory === 'Jyotirlinga' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'ज्योतिर्लिंग' : 'Jyotirlinga'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.catPill, selectedCategory === 'Sacred' && styles.catPillActive]}
-            onPress={() => setSelectedCategory('Sacred')}
-          >
-            <Ionicons name="sparkles-outline" size={16} color={selectedCategory === 'Sacred' ? "#FF6600" : "#555"} style={{ marginRight: 6 }} />
-            <Text style={[styles.catPillText, selectedCategory === 'Sacred' && styles.catPillTextActive]}>{t('language') === 'hi' ? 'पवित्र' : 'Sacred'}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Temple List */}
-        <View style={styles.templeListContainer}>
-          {loading && !refreshing ? (
-            <ActivityIndicator size="large" color="#FF6600" style={{ marginTop: 40 }} />
-          ) : filteredTempleList.length > 0 ? (
-            filteredTempleList.map((item) => (
-              <Link href={`/temple/${encodeURIComponent(String(item.id))}`} asChild key={item.id}>
-                <TouchableOpacity 
-                  style={styles.templeItemCard}
-                  activeOpacity={0.7}
-                >
-                  <Image 
-                    source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} 
-                    style={styles.templeItemImage} 
-                  />
-                  <View style={styles.templeItemInfo}>
-                    <Text style={styles.templeItemName}>{getTempleDisplayName(item)}</Text>
-                    <View style={styles.templeItemLocRow}>
-                      <Ionicons name="location" size={14} color="#888" />
-                      <Text style={styles.templeItemLocText}>{getTempleLocation(item)}</Text>
-                    </View>
-                    <Text style={styles.templeItemDeity}>
-                      {t('language') === 'hi' ? `${getTempleDeityLabel(item)} को समर्पित` : `Dedicated to ${getTempleDeityLabel(item)}`}
-                    </Text>
-                    <View style={styles.templeItemTag}>
-                      <Ionicons name="sparkles" size={12} color="#D35400" />
-                      <Text style={styles.templeItemTagText}>
-                        {t('language') === 'hi' && item.category === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (item.category || 'Sacred')}
-                      </Text>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#BBB" />
-                </TouchableOpacity>
-              </Link>
-            ))
-          ) : (
-            <View style={{ alignItems: 'center', marginTop: 40 }}>
-              <Text style={{ color: '#888', fontFamily: FONTS.medium }}>
-                {t('language') === 'hi' ? 'आपकी खोज से मेल खाता कोई मंदिर नहीं मिला।' : 'No temples found matching your search.'}
-              </Text>
-            </View>
-          )}
-        </View>
-      </Animated.ScrollView>
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.5}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      />
 
       {/* Filter Modal */}
       <Modal
         visible={showFilterModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowFilterModal(false)}
+        onRequestClose={onPressCloseFilter}
       >
         <TouchableOpacity 
           style={styles.filterModalOverlay} 
           activeOpacity={1} 
-          onPress={() => setShowFilterModal(false)}
+          onPress={onPressCloseFilter}
         >
           <View style={styles.filterModalContent}>
             <View style={styles.filterModalHeader}>
               <Text style={styles.filterModalTitle}>{t('language') === 'hi' ? 'स्थान अनुसार फ़िल्टर करें' : 'Filter by Location'}</Text>
-              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+              <TouchableOpacity onPress={onPressCloseFilter}>
                 <Ionicons name="close" size={24} color="#111" />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.filterOptionsList}>
               {uniqueLocations.map((location) => (
-                <TouchableOpacity
+                <FilterOption
                   key={location}
-                  style={styles.filterOption}
-                  onPress={() => toggleLocationFilter(location)}
-                >
-                  <View style={[styles.filterCheckbox, selectedLocations.has(location) && styles.filterCheckboxActive]}>
-                    {selectedLocations.has(location) && <Ionicons name="checkmark" size={16} color="#FF6600" />}
-                  </View>
-                  <Text style={[styles.filterOptionText, selectedLocations.has(location) && styles.filterOptionTextActive]}>
-                    {location}
-                  </Text>
-                </TouchableOpacity>
+                  location={location}
+                  isSelected={selectedLocations.has(location)}
+                  onPress={toggleLocationFilter}
+                />
               ))}
             </ScrollView>
           </View>
