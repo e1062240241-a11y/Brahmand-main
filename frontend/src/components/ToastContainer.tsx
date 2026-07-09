@@ -54,26 +54,29 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
     switch (toast.type) {
       case 'success':
         return {
-          icon: <Ionicons name="checkmark-circle" size={20} color="#34D399" />,
-          borderColor: 'rgba(52, 211, 153, 0.25)',
+          icon: <Ionicons name="checkmark-circle" size={20} color="#10B981" />,
+          borderColor: '#FCD3C1',
+          backgroundColor: '#FFF3EB',
           title: 'Success',
         };
       case 'error':
         return {
-          icon: <Ionicons name="alert-circle" size={20} color="#F87171" />,
-          borderColor: 'rgba(248, 113, 113, 0.25)',
+          icon: <Ionicons name="alert-circle" size={20} color="#EF4444" />,
+          borderColor: '#FFC5C5',
+          backgroundColor: '#FFF2F2',
           title: 'Error',
         };
       default:
         return {
-          icon: <Ionicons name="information-circle" size={20} color="#FBBF24" />,
-          borderColor: 'rgba(251, 191, 36, 0.25)',
+          icon: <Ionicons name="information-circle" size={20} color="#F59E0B" />,
+          borderColor: '#FED7AA',
+          backgroundColor: '#FFF7ED',
           title: 'Info',
         };
     }
   };
 
-  const { icon, borderColor, title } = getStatusDetails();
+  const { icon, borderColor, backgroundColor, title } = getStatusDetails();
 
   return (
     <Animated.View
@@ -83,6 +86,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
           borderColor: borderColor,
+          backgroundColor: backgroundColor,
         },
       ]}
     >
@@ -97,7 +101,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
           </View>
           {(!toast.actions || toast.actions.length === 0) && (
             <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
-              <Ionicons name="close" size={18} color="#98A2B3" />
+              <Ionicons name="close" size={18} color="#8C7370" />
             </TouchableOpacity>
           )}
         </View>
@@ -160,7 +164,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   toastItem: {
-    backgroundColor: '#1E2229',
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -168,11 +171,11 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '90%',
     maxWidth: 420,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 18,
-    elevation: 10,
+    shadowColor: '#2E1C1A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 6,
     borderWidth: 1,
   },
   contentContainer: {
@@ -193,14 +196,14 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#2E1C1A',
     fontFamily: Platform.OS === 'ios' ? 'Outfit_600SemiBold' : 'Outfit',
     fontWeight: '600',
     marginBottom: 2,
   },
   messageText: {
     fontSize: 13,
-    color: '#D0D5DD',
+    color: '#5C4643',
     fontFamily: Platform.OS === 'ios' ? 'Inter_400Regular' : 'System',
     lineHeight: 18,
   },
@@ -219,28 +222,28 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(46, 28, 26, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(46, 28, 26, 0.1)',
   },
   actionBtnDestructive: {
-    backgroundColor: 'rgba(248, 113, 113, 0.15)',
-    borderColor: 'rgba(248, 113, 113, 0.25)',
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
   },
   actionBtnCancel: {
     backgroundColor: 'transparent',
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(46, 28, 26, 0.15)',
   },
   actionText: {
-    color: '#FFFFFF',
+    color: '#2E1C1A',
     fontSize: 12,
     fontFamily: Platform.OS === 'ios' ? 'Outfit_600SemiBold' : 'Outfit',
     fontWeight: '600',
   },
   actionTextDestructive: {
-    color: '#F87171',
+    color: '#EF4444',
   },
   actionTextCancel: {
-    color: '#98A2B3',
+    color: '#5C4643',
   },
 });

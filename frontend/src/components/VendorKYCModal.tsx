@@ -559,7 +559,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
           return;
         }
 
-        await submitKYC({
+        const res = await submitKYC({
           kyc_role: 'organizer',
           id_type: 'pan',
           id_number: idNumber.trim().toUpperCase(),
@@ -570,7 +570,8 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         if (onKycUpdated) {
           onKycUpdated();
         }
-        Alert.alert('Submitted', 'Your KYC was submitted and sent for review.');
+        const reqNo = res?.data?.kyc_request_no;
+        Alert.alert('Submitted', reqNo ? `Your KYC was submitted. Request ID: ${reqNo}` : 'Your KYC was submitted and sent for review.');
         closeAndReset();
         return;
       }
@@ -606,14 +607,15 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         throw new Error('Upload did not return valid URL');
       }
 
-      await updateVendor(vendorId, {
+      const res = await updateVendor(vendorId, {
         aadhar_url: null,
         pan_url: idDocumentUrl,
         face_scan_url: faceScanUrl,
         kyc_status: 'pending',
       });
 
-      Alert.alert('Success', 'Your KYC documents were uploaded and submitted for review.');
+      const reqNo = res?.data?.kyc_request_no;
+      Alert.alert('Success', reqNo ? `Your KYC documents were uploaded. Request ID: ${reqNo}` : 'Your KYC documents were uploaded and submitted for review.');
       await fetchMyVendor();
       if (onKycUpdated) {
         onKycUpdated();
@@ -676,7 +678,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
           return;
         }
 
-        await submitKYC({
+        const res = await submitKYC({
           kyc_role: 'organizer',
           id_type: 'aadhaar',
           id_number: idNumber.trim(),
@@ -687,7 +689,8 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         if (onKycUpdated) {
           onKycUpdated();
         }
-        Alert.alert('Submitted', 'Aadhaar OTP verified. KYC sent for review.');
+        const reqNo = res?.data?.kyc_request_no;
+        Alert.alert('Submitted', reqNo ? `Aadhaar OTP verified. Request ID: ${reqNo}` : 'Aadhaar OTP verified. KYC sent for review.');
         closeAndReset();
         return;
       }
@@ -734,7 +737,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
       }
 
       // 3. Update Vendor profile with URLs and kyc_status
-      await updateVendor(vendorId, {
+      const res = await updateVendor(vendorId, {
         aadhar_url: idDocumentUrl,
         pan_url: null,
         face_scan_url: faceScanUrl,
@@ -745,7 +748,8 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
       if (onKycUpdated) {
         onKycUpdated();
       }
-      Alert.alert('Submitted', 'Aadhaar OTP verified and documents uploaded. KYC sent to admin for review.');
+      const reqNo = res?.data?.kyc_request_no;
+      Alert.alert('Submitted', reqNo ? `Aadhaar OTP verified and documents uploaded. Request ID: ${reqNo}` : 'Aadhaar OTP verified and documents uploaded. KYC sent to admin for review.');
       closeAndReset();
     } catch (error: any) {
       console.error('[KYC] OTP Verification/Upload error details:', {

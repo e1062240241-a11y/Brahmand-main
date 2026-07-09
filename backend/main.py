@@ -928,6 +928,7 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'menu_items': vendor.get('menu_items', []),
         'offers_home_delivery': vendor.get('offers_home_delivery', False),
         'kyc_status': vendor.get('kyc_status', 'pending'),
+        'kyc_request_no': vendor.get('kyc_request_no'),
         'aadhaar_otp_verified_at': vendor.get('aadhaar_otp_verified_at'),
         'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
         'review_status': 'pending' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else vendor.get('kyc_status'),
@@ -7292,13 +7293,18 @@ async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_toke
         logger.error("Error clearing DM messages: %s", e)
         raise HTTPException(status_code=500, detail="Failed to clear messages")
 
-    # Reset chat preview
-    await db.update_document('chats', chat_id, {
-        'last_message': '',
-        'updated_at': datetime.utcnow()
-    })
+    # Delete chat document entirely so it is removed from conversations list
+    try:
+        await db.delete_document('chats', chat_id)
+    except Exception as e:
+        logger.error("Error deleting chat document: %s", e)
+        # Fallback to resetting preview if deletion fails
+        await db.update_document('chats', chat_id, {
+            'last_message': '',
+            'updated_at': datetime.utcnow()
+        })
 
-    return {"message": f"Cleared {deleted} messages"}
+    return {"message": f"Cleared {deleted} messages and deleted chat document"}
 
 
 @api_router.post("/dm/{chat_id}/read")
@@ -8430,6 +8436,9 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     
     db = await get_db()
     user_id = token_data["user_id"]
+    user_doc = await db.get_document('users', user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
     
     kyc_role = data.get('kyc_role')
     if kyc_role not in ['temple', 'vendor', 'organizer']:
@@ -8449,8 +8458,28 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     if id_type == 'pan' and len(id_number) != 10:
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
 
+    # Generate request number
+    kyc_request_no = user_doc.get('kyc_request_no')
+    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
+    vendor_id = user_doc.get('vendor_id')
+    if not vendor_id and (kyc_role == 'vendor' or is_vendor_user):
+        v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+        if v_list:
+            vendor_id = v_list[0]['id']
+            
+    if vendor_id:
+        vendor_doc = await db.get_document('vendors', vendor_id)
+        if vendor_doc and vendor_doc.get('kyc_request_no'):
+            kyc_request_no = vendor_doc.get('kyc_request_no')
+            
+    if not kyc_request_no:
+        import random
+        from datetime import datetime
+        date_str = datetime.utcnow().strftime("%Y%m%d")
+        rand_num = random.randint(1000, 9999)
+        kyc_request_no = f"REQ-{date_str}-{rand_num}"
+
     if id_type == 'aadhaar':
-        user_doc = await db.get_document('users', user_id)
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
         otp_aadhaar = (user_doc.get('kyc_aadhaar_number') or '').strip()
@@ -8488,6 +8517,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_rejection_reason': None,
         'kyc_verified_at': None,
         'is_verified': False,
+        'kyc_request_no': kyc_request_no,
     }
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
@@ -8503,18 +8533,12 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     await db.update_document('users', user_id, kyc_data)
 
-    user_doc = await db.get_document('users', user_id)
-    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
     if kyc_role == 'vendor' or is_vendor_user:
-        vendor_id = user_doc.get('vendor_id')
-        if not vendor_id:
-            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
-            if v_list:
-                vendor_id = v_list[0]['id']
         if vendor_id:
             vendor_updates = {
                 'kyc_status': kyc_data['kyc_status'],
-                'kyc_rejection_reason': None
+                'kyc_rejection_reason': None,
+                'kyc_request_no': kyc_request_no
             }
             if id_type == 'aadhaar':
                 vendor_updates['aadhar_url'] = id_photo
@@ -8555,7 +8579,8 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         "message": "KYC submitted successfully",
         "status": kyc_data['kyc_status'],
         "match_distance": kyc_data.get('kyc_match_distance'),
-        "match_reason": kyc_data.get('kyc_match_reason')
+        "match_reason": kyc_data.get('kyc_match_reason'),
+        "kyc_request_no": kyc_request_no
     }
 
 
@@ -10738,6 +10763,31 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
     if 'kyc_status' in update_data:
         if update_data['kyc_status'] in ['verified', 'approved']:
             raise HTTPException(status_code=403, detail="Cannot directly set KYC status to verified or approved")
+            
+        # If setting to pending (submission), generate/sync request number
+        if update_data['kyc_status'] == 'pending':
+            kyc_request_no = vendor.get('kyc_request_no')
+            if not kyc_request_no:
+                # Also check user doc for kyc_request_no
+                user_doc = await db.get_document('users', user_id)
+                if user_doc and user_doc.get('kyc_request_no'):
+                    kyc_request_no = user_doc.get('kyc_request_no')
+                    
+            if not kyc_request_no:
+                import random
+                from datetime import datetime
+                date_str = datetime.utcnow().strftime("%Y%m%d")
+                rand_num = random.randint(1000, 9999)
+                kyc_request_no = f"REQ-{date_str}-{rand_num}"
+                
+            update_data['kyc_request_no'] = kyc_request_no
+            
+            # Also sync to user document
+            await db.update_document('users', user_id, {
+                'kyc_status': 'pending',
+                'kyc_request_no': kyc_request_no,
+                'kyc_role': 'vendor'
+            })
     
     # Handle new categories
     if 'categories' in update_data:

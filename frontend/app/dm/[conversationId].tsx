@@ -1898,9 +1898,10 @@ const DirectMessageScreen = () => {
 
       <View style={[
         styles.header,
-        Platform.OS === 'android'
-          ? { height: insets.top + 60, paddingTop: insets.top }
-          : { paddingTop: Math.max(insets.top, 0) }
+        {
+          height: insets.top + 68,
+          paddingTop: insets.top
+        }
       ]}>
         <TouchableOpacity style={styles.backButton} onPress={handleBackNavigation} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Svg width={12} height={20} viewBox="0 0 12 20" fill="none">
@@ -2224,8 +2225,7 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     paddingHorizontal: 16,
     backgroundColor: 'rgba(255, 250, 248, 0.50)',
-    height: Platform.OS === 'android' ? undefined : 103,
-    minHeight: Platform.OS === 'android' ? 56 : undefined,
+    // Height is set dynamically in inline style based on insets.top
     shadowColor: 'rgba(0, 0, 0, 0.15)',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 1,

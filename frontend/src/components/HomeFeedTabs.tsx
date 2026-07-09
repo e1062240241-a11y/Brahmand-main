@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
   },
   activeTabBtn: {
     borderBottomWidth: 3,
-    borderBottomColor: Platform.OS === 'android' ? '#FF6B00' : '#000',
+    borderBottomColor: '#FF6B00',
   },
   tabText: {
     color: '#666',
@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   activeTabText: {
-    color: Platform.OS === 'android' ? '#FF6B00' : '#000',
+    color: '#FF6B00',
     fontWeight: '900',
   },
   newPostButton: {
