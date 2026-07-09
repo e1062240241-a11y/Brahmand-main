@@ -50,6 +50,25 @@ export default function CommunityRequestHub() {
     Boolean((user as any)?.is_verified) ||
     myVendor?.kyc_status === 'verified';
 
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await getKYCStatus();
+        const serverStatus = response?.data?.kyc_status || null;
+        updateUser({
+          kyc_status: serverStatus,
+          is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+          kyc_submitted_at: response?.data?.submitted_at || null,
+          kyc_verified_at: response?.data?.verified_at || null,
+          kyc_request_no: response?.data?.kyc_request_no || null,
+        } as any);
+      } catch (error) {
+        console.warn('Failed to refresh KYC status in Hub:', error);
+      }
+    };
+    fetchStatus();
+  }, [updateUser]);
+
   const navigateToCategory = (categoryId: string) => {
     const params = community_id ? { community_id } : {};
     switch (categoryId) {
@@ -66,7 +85,12 @@ export default function CommunityRequestHub() {
   };
   const handleSelectCategory = async (categoryId: string) => {
     if (!isKycVerified) {
-      router.push('/kyc');
+      const status = (user as any)?.kyc_status;
+      if (status === 'pending' || status === 'manual_review') {
+        router.push('/community-request/kyc-success');
+      } else {
+        router.push('/community-request/kyc');
+      }
       return;
     }
 

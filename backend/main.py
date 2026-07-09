@@ -8474,7 +8474,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
             
     if not kyc_request_no:
         import random
-        from datetime import datetime
         date_str = datetime.utcnow().strftime("%Y%m%d")
         rand_num = random.randint(1000, 9999)
         kyc_request_no = f"REQ-{date_str}-{rand_num}"
@@ -8512,7 +8511,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_id_type': id_type,
         'kyc_id_number': id_number,
         'kyc_id_photo': id_photo,
-        'kyc_selfie_photo': selfie_photo if id_type == 'pan' else None,
+        'kyc_selfie_photo': selfie_photo if (id_type == 'pan' or kyc_role == 'organizer') else None,
         'kyc_submitted_at': datetime.utcnow().isoformat() + 'Z',
         'kyc_rejection_reason': None,
         'kyc_verified_at': None,
@@ -8718,6 +8717,64 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
     
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
+
+
+@api_router.delete("/admin/kyc/{user_id}")
+async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
+    """Admin: delete a user's KYC verification request and reset their status."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Reset owner's KYC
+    await db.update_document('users', user_id, {
+        'kyc_status': None,
+        'kyc_role': None,
+        'kyc_id_type': None,
+        'kyc_id_number': None,
+        'kyc_id_photo': None,
+        'kyc_selfie_photo': None,
+        'kyc_submitted_at': None,
+        'kyc_verified_at': None,
+        'kyc_rejection_reason': None,
+        'is_verified': False
+    })
+
+    # Remove verified badges
+    badges_to_remove = ['Verified Temple', 'Verified Vendor', 'Verified Organizer']
+    current_badges = target_user.get('badges', [])
+    updated_badges = [b for b in current_badges if b not in badges_to_remove]
+    if len(updated_badges) != len(current_badges):
+        await db.update_document('users', user_id, {'badges': updated_badges})
+
+    # If the user is a vendor, also reset the vendor profile kyc status
+    if target_user.get('is_vendor') or target_user.get('vendor_id'):
+        vendor_id = target_user.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
+        if vendor_id:
+            vendor = await db.get_document('vendors', vendor_id)
+            if vendor:
+                await db.update_document('vendors', vendor_id, {
+                    'kyc_status': None,
+                    'kyc_reviewed_by': None,
+                    'kyc_reviewed_at': None,
+                    'kyc_rejection_reason': None
+                })
+                # Remove from vendor admin reviews
+                try:
+                    await db.delete_document('vendor_admin_reviews', vendor_id)
+                except Exception:
+                    pass
+
+    logger.info(f"KYC deleted/reset for user {user_id}")
+    return {"message": "User KYC deleted and reset successfully"}
+
+
 @api_router.get("/admin/kyc/pending")
 async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
     """Get all users with pending or verified KYC (admin only)"""
@@ -8752,6 +8809,7 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
         'kyc_id_photo': u.get('kyc_id_photo'),
         'kyc_selfie_photo': u.get('kyc_selfie_photo'),
         'kyc_id_number': u.get('kyc_id_number'),
+        'kyc_request_no': u.get('kyc_request_no'),
     } for u in pending]
 
 
@@ -10775,7 +10833,6 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
                     
             if not kyc_request_no:
                 import random
-                from datetime import datetime
                 date_str = datetime.utcnow().strftime("%Y%m%d")
                 rand_num = random.randint(1000, 9999)
                 kyc_request_no = f"REQ-{date_str}-{rand_num}"

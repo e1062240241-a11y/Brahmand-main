@@ -636,6 +636,7 @@ export interface AdminUserKycRequest {
   kyc_id_photo?: string;
   kyc_selfie_photo?: string;
   kyc_id_number?: string;
+  kyc_request_no?: string;
 }
 
 export interface AdminPostReport {
@@ -755,6 +756,13 @@ export const adminVerifyUserKyc = (
       : { action },
     { headers: { Authorization: `Bearer ${adminToken}` } },
   );
+
+export const adminDeleteUserKyc = (adminToken: string, userId: string) =>
+  adminApi.delete(
+    `/admin/kyc/${userId}`,
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+
 
 export const getAdminReports = (
   adminToken: string,

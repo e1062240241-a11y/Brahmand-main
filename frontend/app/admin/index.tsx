@@ -36,6 +36,7 @@ import {
   adminBlockSOS,
   adminUnblockSOS,
   adminDeleteVendor,
+  adminDeleteUserKyc,
 } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -311,6 +312,35 @@ export default function AdminPanelScreen() {
     }
   };
 
+  const handleDeleteUserKyc = async (userId: string) => {
+    if (!adminToken) return;
+    Alert.alert(
+      'Confirm Reset',
+      "Are you sure you want to permanently delete/reset this user's KYC? This will reset their KYC status, remove their verified badge, and clear all submitted documents.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete & Reset',
+          style: 'destructive',
+          onPress: async () => {
+            setProcessingKey(`user:${userId}`);
+            try {
+              await adminDeleteUserKyc(adminToken, userId);
+              await loadRequests();
+              Alert.alert('Success', 'User KYC deleted and reset successfully.');
+            } catch (error: any) {
+              const detail = error?.response?.data?.detail || 'Delete failed';
+              Alert.alert('Error', detail);
+            } finally {
+              setProcessingKey(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+
   const handleApprovePost = async (reportId: string) => {
     if (!adminToken) return;
     setProcessingKey(`report:${reportId}`);
@@ -564,6 +594,7 @@ export default function AdminPanelScreen() {
         <View style={styles.cardBody}>
           <InfoRow icon="finger-print-outline" label="SL ID" value={item.sl_id || 'N/A'} />
           <InfoRow icon="briefcase-outline" label="Role" value={item.kyc_role || 'N/A'} />
+          <InfoRow icon="document-text-outline" label="Request No" value={item.kyc_request_no || 'N/A'} />
 
           {isExpanded ? (
             <View style={styles.expandedContent}>
@@ -638,6 +669,18 @@ export default function AdminPanelScreen() {
             <View style={styles.buttonInner}>
               <Ionicons name="close-circle-outline" size={16} color="#fff" />
               <Text style={styles.buttonText}>Deny</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.deleteButton, busy && styles.buttonDisabled]}
+            disabled={busy}
+            onPress={() => handleDeleteUserKyc(item.id)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.buttonInner}>
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Delete</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -1032,6 +1075,7 @@ export default function AdminPanelScreen() {
   };
 
   const renderApprovedUserKycItem = ({ item }: { item: AdminUserKycRequest }) => {
+    const busy = processingKey === `user:${item.id}`;
     const isExpanded = expandedId === item.id;
 
     return (
@@ -1051,6 +1095,7 @@ export default function AdminPanelScreen() {
         <View style={styles.cardBody}>
           <InfoRow icon="finger-print-outline" label="SL ID" value={item.sl_id || 'N/A'} />
           <InfoRow icon="briefcase-outline" label="Role" value={item.kyc_role || 'N/A'} />
+          <InfoRow icon="document-text-outline" label="Request No" value={item.kyc_request_no || 'N/A'} />
 
           {isExpanded ? (
             <View style={styles.expandedContent}>
@@ -1097,6 +1142,32 @@ export default function AdminPanelScreen() {
               <Text style={styles.expandHint}>Tap to view details & documents</Text>
             </View>
           )}
+        </View>
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.denyButton, busy && styles.buttonDisabled]}
+            disabled={busy}
+            onPress={() => handleDenyUserKyc(item.id)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.buttonInner}>
+              <Ionicons name="close-circle-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Deny</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.deleteButton, busy && styles.buttonDisabled]}
+            disabled={busy}
+            onPress={() => handleDeleteUserKyc(item.id)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.buttonInner}>
+              <Ionicons name="trash-outline" size={16} color="#fff" />
+              <Text style={styles.buttonText}>Delete</Text>
+            </View>
+          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
@@ -1239,7 +1310,7 @@ export default function AdminPanelScreen() {
             <View style={styles.footerSection}>
               <View style={styles.divider} />
               
-              <SectionHeader title="User KYC Queue" count={pendingUserKycRequests.length} />
+              <SectionHeader title="Request KYC Queue" count={pendingUserKycRequests.length} />
               {pendingUserKycRequests.length === 0 ? (
                 <View style={styles.centeredCompact}>
                   <Text style={styles.emptyTextCompact}>No pending user KYC requests.</Text>
