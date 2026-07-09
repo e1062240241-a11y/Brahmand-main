@@ -761,23 +761,24 @@ export default function LiveJaapRoomView() {
     };
     initAudioMode();
 
-    Animated.loop(
+    const glowAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(glowOpacity, { toValue: 0.9, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(glowOpacity, { toValue: 0.3, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
-    ).start();
-
-    Animated.loop(
+    );
+    const fadeAnim = Animated.loop(
       Animated.sequence([
         Animated.timing(upcomingFade, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(upcomingFade, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.delay(1600),
       ])
-    ).start();
+    );
+    glowAnim.start();
+    fadeAnim.start();
 
     setupAgora();
-    return () => { cleanupAgora(); };
+    return () => { glowAnim.stop(); fadeAnim.stop(); cleanupAgora(); };
   }, []);
 
   const navigation = useNavigation();

@@ -164,6 +164,10 @@ export default function RamcharitmanasPage() {
     );
   }, []);
 
+  useEffect(() => {
+    StatusBar.setBarStyle(nightMode ? 'light-content' : 'dark-content');
+  }, [nightMode]);
+
   const handleOpenBook = () => {
     if (isOpened) return;
     
@@ -230,7 +234,6 @@ export default function RamcharitmanasPage() {
 
   return (
     <View style={styles.root}>
-      <StatusBar translucent backgroundColor="transparent" barStyle={nightMode ? "light-content" : "dark-content"} />
       
       {!isOpened ? (
         <LinearGradient

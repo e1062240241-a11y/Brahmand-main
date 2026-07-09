@@ -168,7 +168,8 @@
       [
         "expo-video",
         {
-          "supportsBackgroundPlayback": false
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": true
         }
       ],
       "expo-web-browser",

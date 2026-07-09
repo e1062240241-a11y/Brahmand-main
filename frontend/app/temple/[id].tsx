@@ -715,6 +715,22 @@ export default function TempleDetailScreen() {
  const [isFollowing, setIsFollowing] = useState(false);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
+  // Memoize WebView content to prevent re-renders during playback
+  const youtubeWebViewContent = React.useMemo(() => {
+    if (!resolvedYoutubeUrl) return null;
+    return (
+      <WebView
+        source={{ uri: getYoutubeMobileUrl(resolvedYoutubeUrl) }}
+        style={styles.youtubeFrame}
+        javaScriptEnabled
+        domStorageEnabled
+        allowsFullscreenVideo
+        allowsInlineMediaPlayback
+        mediaPlaybackRequiresUserAction={false}
+      />
+    );
+  }, [resolvedYoutubeUrl]);
+
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
   const templeKey = getSpecialTempleKey(temple?.name || '');
@@ -757,7 +773,7 @@ export default function TempleDetailScreen() {
   }, [id]);
 
   useEffect(() => {
-    if (isCurrentlyLive) {
+    if (isCurrentlyLive && !isYoutubeModalVisible) {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -773,9 +789,10 @@ export default function TempleDetailScreen() {
         ])
       ).start();
     } else {
+      pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
     }
-  }, [isCurrentlyLive, pulseAnim]);
+  }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
 
  const fetchTempleData = async () => {
  try {
@@ -1154,7 +1171,7 @@ if (!temple) {
   animationType="fade"
   onRequestClose={() => setIsYoutubeModalVisible(false)}
   >
-  <View style={styles.modalBackdrop}>
+  <View style={styles.modalBackdrop} pointerEvents="box-none">
   <View style={styles.modalCard}>
   <View style={styles.modalHeader}>
   <Text style={styles.modalTitle}>
@@ -1177,15 +1194,7 @@ if (!temple) {
   allowFullScreen
   />
   ) : (
-  <WebView
-  source={{ uri: resolvedYoutubeUrl ? getYoutubeMobileUrl(resolvedYoutubeUrl) : 'about:blank' }}
-  style={styles.youtubeFrame}
-  javaScriptEnabled
-  domStorageEnabled
-  allowsFullscreenVideo
-  allowsInlineMediaPlayback
-  mediaPlaybackRequiresUserAction={false}
-  />
+  youtubeWebViewContent
   )}
   </View>
   </View>

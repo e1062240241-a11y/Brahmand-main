@@ -675,11 +675,15 @@ export default function RootLayout() {
     }
   }, []);
 
+  const lastNavColorRef = useRef<string>('');
   useEffect(() => {
     if (Platform.OS === 'android') {
       const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
       const buttonStyle = isDark ? 'light' : 'dark';
       const navBgColor = isDark ? '#000000' : '#FFFFFF';
+      const colorKey = `${navBgColor}:${buttonStyle}`;
+      if (lastNavColorRef.current === colorKey) return;
+      lastNavColorRef.current = colorKey;
 
       NavigationBar.setBackgroundColorAsync(navBgColor).catch((e) => {
         console.warn('[NavigationBar] Failed to set background color:', e);
@@ -989,7 +993,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar
-          style={Platform.OS === 'android' ? 'dark' : isDarkScreen ? 'light' : 'dark'}
+          style={isDarkScreen ? 'light' : 'dark'}
           backgroundColor="transparent"
           translucent={true}
         />

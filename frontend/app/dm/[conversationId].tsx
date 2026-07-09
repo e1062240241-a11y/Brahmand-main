@@ -2182,7 +2182,6 @@ const DirectMessageScreen = () => {
 
   return (
     <>
-      <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
       <SafeAreaView
         style={styles.container}
         edges={['left', 'right']}
