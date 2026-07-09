@@ -38,6 +38,7 @@
     "crypto-js": "^4.2.0",
     "expo": "~55.0.26",
     "expo-audio": "~55.0.14",
+    "expo-asset": "~55.0.17",
     "expo-blur": "~55.0.14",
     "expo-build-properties": "~55.0.14",
     "expo-camera": "~55.0.19",
@@ -53,7 +54,7 @@
     "expo-image": "~55.0.11",
     "expo-image-manipulator": "~55.0.17",
     "expo-image-picker": "~55.0.20",
-    "expo-keep-awake": "~15.0.0",
+    "expo-keep-awake": "~55.0.8",
     "expo-linear-gradient": "~55.0.14",
     "expo-linking": "~55.0.15",
     "expo-location": "~55.1.10",
@@ -105,7 +106,7 @@
     "fb-dotslash": "^0.5.8",
     "patch-package": "^6.5.1",
     "stream-browserify": "^3.0.0",
-    "typescript": "^6.0.3",
+    "typescript": "~5.9.2",
     "util": "^0.12.5",
     "vm-browserify": "^1.1.2"
   },
@@ -124,7 +125,8 @@
       "reactNativeDirectoryCheck": {
         "exclude": [
           "expo-face-detector",
-          "expo-text-recognition"
+          "expo-text-recognition",
+          "@nozbe/watermelondb"
         ],
         "listUnknownPackages": false
       }
