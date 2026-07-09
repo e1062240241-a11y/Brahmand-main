@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   eyebrow: {
+    fontFamily: 'Cinzel',
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,

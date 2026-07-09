@@ -669,6 +669,20 @@ const UserProfileScreen = () => {
     setDeleteConfirmVisible(true);
   };
 
+  const onConfirmDelete = async () => {
+    if (!postToDelete?.id) return;
+    try {
+      await deletePost(postToDelete.id);
+      setPosts(prev => prev.filter(p => p.id !== postToDelete.id));
+      setTotalPosts(prev => Math.max(0, prev - 1));
+      setPostModalVisible(false);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to delete post. Please try again.');
+    } finally {
+      setPostToDelete(null);
+    }
+  };
+
   const handlePostMenuPress = useCallback((post: any) => {
     if (!currentUserId) return;
     if (profile?.id === currentUserId || post?.user_id === currentUserId) {
@@ -1483,6 +1497,14 @@ const UserProfileScreen = () => {
               maxToRenderPerBatch={2}
               removeClippedSubviews={(Platform.OS as string) === 'android'}
             />
+            <DeleteConfirmationModal
+              visible={deleteConfirmVisible}
+              onClose={() => {
+                setDeleteConfirmVisible(false);
+                setPostToDelete(null);
+              }}
+              onConfirm={onConfirmDelete}
+            />
           </View>
         </Modal>
       ) : (
@@ -1521,6 +1543,14 @@ const UserProfileScreen = () => {
               initialNumToRender={1}
               maxToRenderPerBatch={2}
               removeClippedSubviews={(Platform.OS as string) === 'android'}
+            />
+            <DeleteConfirmationModal
+              visible={deleteConfirmVisible}
+              onClose={() => {
+                setDeleteConfirmVisible(false);
+                setPostToDelete(null);
+              }}
+              onConfirm={onConfirmDelete}
             />
           </View>
         )
@@ -1661,26 +1691,6 @@ const UserProfileScreen = () => {
         />
       )}
 
-      <DeleteConfirmationModal
-        visible={deleteConfirmVisible}
-        onClose={() => {
-          setDeleteConfirmVisible(false);
-          setPostToDelete(null);
-        }}
-        onConfirm={async () => {
-          if (!postToDelete?.id) return;
-          try {
-            await deletePost(postToDelete.id);
-            setPosts(prev => prev.filter(p => p.id !== postToDelete.id));
-            setTotalPosts(prev => Math.max(0, prev - 1));
-            setPostModalVisible(false);
-          } catch (error) {
-            Alert.alert('Error', 'Failed to delete post. Please try again.');
-          } finally {
-            setPostToDelete(null);
-          }
-        }}
-      />
     </SafeAreaView>
   );
 };

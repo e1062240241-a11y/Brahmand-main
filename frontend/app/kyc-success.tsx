@@ -10,7 +10,7 @@ import {
   Platform,
   Share,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -22,6 +22,7 @@ const { width } = Dimensions.get('window');
 export default function KYCSuccessScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { requestNo } = useLocalSearchParams<{ requestNo?: string }>();
 
   const handleClose = () => {
     router.replace('/(tabs)/vendor' as any);
@@ -76,6 +77,15 @@ export default function KYCSuccessScreen() {
               ? 'सत्यापन पूरा होने पर आपको सूचित किया जाएगा।' 
               : 'You’ll be notified once when you’re verification is complete.'}
           </Text>
+
+          {requestNo && (
+            <View style={styles.requestNoBadge}>
+              <Text style={styles.requestNoLabel}>
+                {isHindi ? 'अनुरोध संख्या:' : 'Request ID:'}
+              </Text>
+              <Text style={styles.requestNoValue}>{requestNo}</Text>
+            </View>
+          )}
 
           {/* Info Card / Box */}
           <View style={styles.infoBox}>
@@ -301,5 +311,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     marginBottom: 30,
+  },
+  requestNoBadge: {
+    backgroundColor: '#FFF0E6',
+    borderWidth: 1,
+    borderColor: '#FFD3B6',
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  requestNoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#D25F27',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  requestNoValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FF6600',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 });

@@ -1940,6 +1940,20 @@ export default function ProfileScreen() {
                 </View>
               </KeyboardAvoidingView>
             </Modal>
+
+            <DeleteConfirmationModal
+              visible={deleteConfirmVisible}
+              onClose={() => {
+                setDeleteConfirmVisible(false);
+                setPostToDelete(null);
+              }}
+              onConfirm={async () => {
+                if (postToDelete) {
+                  await handleDeletePost(postToDelete);
+                  setPostToDelete(null);
+                }
+              }}
+            />
           </View>
         </Modal>
 
@@ -2076,19 +2090,6 @@ export default function ProfileScreen() {
           </View>
         </Modal>
 
-        <DeleteConfirmationModal
-          visible={deleteConfirmVisible}
-          onClose={() => {
-            setDeleteConfirmVisible(false);
-            setPostToDelete(null);
-          }}
-          onConfirm={async () => {
-            if (postToDelete) {
-              await handleDeletePost(postToDelete);
-              setPostToDelete(null);
-            }
-          }}
-        />
       </View>
     </View>
   );

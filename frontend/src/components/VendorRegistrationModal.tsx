@@ -1185,61 +1185,59 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             </View>
 
             {/* Search or Type Custom Category Input */}
-            {Platform.OS === 'android' && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 12, gap: 8 }}>
-                <View style={[styles.selectorSearchContainer, { flex: 1, marginHorizontal: 0, marginBottom: 0 }]}>
-                  <Ionicons name="search" size={20} color="#85736E" style={styles.selectorSearchIcon} />
-                  <TextInput
-                    style={styles.selectorSearchInput}
-                    placeholder="Search or type a custom category"
-                    placeholderTextColor="#85736E"
-                    value={customCategoryQuery}
-                    onChangeText={(text) => {
-                      const filtered = text.replace(/[^a-zA-Z0-9\s&.,'-\/]/g, '');
-                      setCustomCategoryQuery(filtered.slice(0, 40));
-                    }}
-                  />
-                  {customCategoryQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setCustomCategoryQuery('')} style={{ marginRight: 4 }}>
-                      <Ionicons name="close-circle" size={18} color="#85736E" />
-                    </TouchableOpacity>
-                  )}
-                </View>
-                {customCategoryQuery.trim().length > 0 && (
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: '#F97316',
-                      paddingHorizontal: 16,
-                      height: 48,
-                      borderRadius: 8,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      flexDirection: 'row',
-                      gap: 4,
-                    }}
-                    onPress={() => {
-                      const newCat = customCategoryQuery.trim();
-                      if (selectedTempCategories.includes(newCat)) {
-                        Alert.alert('Already Selected', 'This category is already selected.');
-                        return;
-                      }
-                      if (selectedTempCategories.length >= 5) {
-                        Alert.alert('Limit reached', 'Maximum 5 categories allowed');
-                        return;
-                      }
-                      setSelectedTempCategories(prev => [...prev, newCat]);
-                      setCustomCategoryQuery('');
-                    }}
-                  >
-                    <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>Add</Text>
-                    <Ionicons name="add" size={16} color="#FFFFFF" />
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 12, gap: 8 }}>
+              <View style={[styles.selectorSearchContainer, { flex: 1, marginHorizontal: 0, marginBottom: 0 }]}>
+                <Ionicons name="search" size={20} color="#85736E" style={styles.selectorSearchIcon} />
+                <TextInput
+                  style={styles.selectorSearchInput}
+                  placeholder="Search or type a custom category"
+                  placeholderTextColor="#85736E"
+                  value={customCategoryQuery}
+                  onChangeText={(text) => {
+                    const filtered = text.replace(/[^a-zA-Z0-9\s&.,'-\/]/g, '');
+                    setCustomCategoryQuery(filtered.slice(0, 40));
+                  }}
+                />
+                {customCategoryQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setCustomCategoryQuery('')} style={{ marginRight: 4 }}>
+                    <Ionicons name="close-circle" size={18} color="#85736E" />
                   </TouchableOpacity>
                 )}
               </View>
-            )}
+              {customCategoryQuery.trim().length > 0 && (
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: '#F97316',
+                    paddingHorizontal: 16,
+                    height: 48,
+                    borderRadius: 8,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    flexDirection: 'row',
+                    gap: 4,
+                  }}
+                  onPress={() => {
+                    const newCat = customCategoryQuery.trim();
+                    if (selectedTempCategories.includes(newCat)) {
+                      Alert.alert('Already Selected', 'This category is already selected.');
+                      return;
+                    }
+                    if (selectedTempCategories.length >= 5) {
+                      Alert.alert('Limit reached', 'Maximum 5 categories allowed');
+                      return;
+                    }
+                    setSelectedTempCategories(prev => [...prev, newCat]);
+                    setCustomCategoryQuery('');
+                  }}
+                >
+                  <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>Add</Text>
+                  <Ionicons name="add" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </View>
 
             {/* Selected Temp Categories Tags inside selector modal */}
-            {Platform.OS === 'android' && selectedTempCategories.length > 0 && (
+            {selectedTempCategories.length > 0 && (
               <View style={{
                 flexDirection: 'row',
                 flexWrap: 'wrap',
@@ -1270,17 +1268,14 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Categories FlatList */}
             <FlatList
-              data={Platform.OS === 'android'
-                ? [
-                    ...(customCategoryQuery.trim() && !ALL_FIGMA_CATEGORIES.some(c => c.toLowerCase() === customCategoryQuery.trim().toLowerCase())
-                      ? [`ADD_CUSTOM:${customCategoryQuery.trim()}`]
-                      : []),
-                    ...(customCategoryQuery.trim()
-                      ? ALL_FIGMA_CATEGORIES.filter(c => c.toLowerCase().includes(customCategoryQuery.toLowerCase()))
-                      : ALL_FIGMA_CATEGORIES)
-                  ]
-                : ALL_FIGMA_CATEGORIES
-              }
+              data={[
+                ...(customCategoryQuery.trim() && !ALL_FIGMA_CATEGORIES.some(c => c.toLowerCase() === customCategoryQuery.trim().toLowerCase())
+                  ? [`ADD_CUSTOM:${customCategoryQuery.trim()}`]
+                  : []),
+                ...(customCategoryQuery.trim()
+                  ? ALL_FIGMA_CATEGORIES.filter(c => c.toLowerCase().includes(customCategoryQuery.toLowerCase()))
+                  : ALL_FIGMA_CATEGORIES)
+              ]}
               keyExtractor={(item) => item}
               contentContainerStyle={styles.selectorListContent}
               renderItem={({ item }) => {

@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 24,
     textAlign: 'center',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+    fontFamily: 'Cinzel',
   },
   lastUpdatedText: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',

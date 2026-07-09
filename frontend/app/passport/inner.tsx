@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: '#000',
-    fontFamily: 'SF Pro',
+    fontFamily: 'Cinzel',
     fontSize: 12,
     fontStyle: 'normal',
     fontWeight: '700',

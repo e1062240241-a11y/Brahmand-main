@@ -78,7 +78,6 @@ const setCachedData = async (key: string, data: any) => {
 
 const formatLastMessage = (lastMessage: string | undefined, isHindi: boolean): string => {
   if (!lastMessage) return '';
-  if (Platform.OS !== 'android') return lastMessage;
 
   const trimmed = lastMessage.trim();
 

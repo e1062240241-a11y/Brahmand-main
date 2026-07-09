@@ -266,10 +266,18 @@ export default function KycSubmitScreen() {
       });
 
       const newStatus = (response?.data?.status || 'pending') as KycStatus;
+      const requestNo = response?.data?.kyc_request_no;
       setKycStatus(newStatus);
       updateUser({ kyc_status: newStatus } as any);
 
-      router.replace('/kyc-success');
+      if (requestNo) {
+        router.replace({
+          pathname: '/kyc-success',
+          params: { requestNo }
+        } as any);
+      } else {
+        router.replace('/kyc-success' as any);
+      }
     } catch (error: any) {
       const message = error?.response?.data?.detail || error?.message || 'Failed to submit KYC.';
       Alert.alert('Submission Failed', message);
