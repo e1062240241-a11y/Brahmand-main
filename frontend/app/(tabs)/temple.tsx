@@ -19,6 +19,7 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
+const AnyFlashList = FlashList as any;
 import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
@@ -468,7 +469,7 @@ export default function TempleScreen() {
         </View>
       </View>
 
-      <FlashList
+      <AnyFlashList
         data={displayTemples}
         renderItem={renderItem}
         estimatedItemSize={127}
