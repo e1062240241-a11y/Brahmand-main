@@ -22,6 +22,7 @@ import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode 
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
+const SafeFlashList = FlashList as any;
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
 const URGENCY_LEVELS = ['Low', 'Medium', 'High', 'Urgent'];
@@ -155,7 +156,7 @@ export default function BloodRequestScreen() {
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>
-          <FlashList
+          <SafeFlashList
             data={options}
             keyExtractor={(item) => item}
             contentContainerStyle={{ paddingBottom: 30 }}
