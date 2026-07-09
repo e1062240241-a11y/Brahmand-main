@@ -158,11 +158,11 @@ export default function BloodRequestScreen() {
           </View>
           <SafeFlashList
             data={options}
-            keyExtractor={(item) => item}
+            keyExtractor={(item: string) => item}
             contentContainerStyle={{ paddingBottom: 30 }}
             numColumns={modalType === 'blood' ? 3 : 1}
             estimatedItemSize={60}
-            renderItem={({ item }) => (
+            renderItem={({ item }: { item: string }) => (
               <TouchableOpacity
                 style={[
                   styles.optionItem,
