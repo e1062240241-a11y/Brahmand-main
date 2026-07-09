@@ -17,7 +17,7 @@ import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } fro
 const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // On Android physical devices the effective screen area is smaller due to status bar + nav bar
 // Use a proportional map height so all content fits without scrolling
-const MAP_HEIGHT = Platform.OS === 'android' ? Math.min(180, SCREEN_HEIGHT * 0.22) : 200;
+const MAP_HEIGHT = Math.min(150, SCREEN_HEIGHT * 0.18);
 
 // Robust Promise wrappers with hard Javascript timeouts to prevent native Expo hanging bugs
 const getCurrentPositionWithTimeout = async (options: any, timeoutMs: number): Promise<Location.LocationObject> => {
@@ -444,7 +444,7 @@ export default function SOSScreen() {
                 paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 8) : Math.max(insets.bottom, 20)
               }}
             >
-              <View style={[styles.mapContainer, Platform.OS === 'android' && { height: MAP_HEIGHT }]}>
+              <View style={[styles.mapContainer, { height: MAP_HEIGHT }]}>
                 {location ? (
                   <SOSMap 
                     latitude={location.coords.latitude} 
@@ -460,8 +460,8 @@ export default function SOSScreen() {
 
               {location ? (
                 <View style={styles.warningContainer}>
-                  <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB', width: 60, height: 60, marginTop: 10 }]}>
-                    <Ionicons name="location" size={30} color="#34C759" />
+                  <View style={[styles.warningIconBg, { backgroundColor: '#E5F6EB', width: 50, height: 50, borderRadius: 25, marginTop: 4, marginBottom: 4 }]}>
+                    <Ionicons name="location" size={24} color="#34C759" />
                   </View>
                   <Text style={styles.warningTitle}>Location Detected</Text>
                   {location.coords.accuracy && (
@@ -483,7 +483,7 @@ export default function SOSScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity 
-                    style={[styles.mapsLinkBtn, { marginTop: 10, backgroundColor: '#FFF5EB', borderColor: '#FFD7C2' }]} 
+                    style={[styles.mapsLinkBtn, { marginTop: 6, backgroundColor: '#FFF5EB', borderColor: '#FFD7C2' }]} 
                     onPress={() => setPickerVisible(true)}
                     activeOpacity={0.7}
                   >
@@ -645,7 +645,7 @@ export default function SOSScreen() {
               <View style={{ height: Platform.OS === 'android' ? 8 : 16 }} />
 
               <TouchableOpacity 
-                style={[styles.primaryButton, !location && styles.primaryButtonDisabled]} 
+                style={[styles.primaryButton, !location && styles.primaryButtonDisabled, { paddingVertical: 14 }]} 
                 onPress={handleStartCountdown}
                 disabled={!location}
                 activeOpacity={0.8}
@@ -653,7 +653,7 @@ export default function SOSScreen() {
                 <Text style={styles.primaryButtonText}>CREATE SOS</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.secondaryButton} onPress={handleBack}>
+              <TouchableOpacity style={[styles.secondaryButton, { paddingVertical: 14 }]} onPress={handleBack}>
                 <Text style={styles.secondaryButtonText}>Back</Text>
               </TouchableOpacity>
             </ScrollView>
@@ -672,7 +672,7 @@ export default function SOSScreen() {
               
               <View style={{ flex: 1 }} />
               
-              <TouchableOpacity style={[styles.secondaryButton, { width: '100%' }]} onPress={handleCancelCountdown}>
+              <TouchableOpacity style={[styles.secondaryButton, { width: '100%', marginBottom: Platform.OS === 'ios' ? 40 : 20 }]} onPress={handleCancelCountdown}>
                 <Text style={styles.secondaryButtonText}>Cancel SOS</Text>
               </TouchableOpacity>
             </View>
@@ -771,7 +771,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
   },
   warningContainer: {
     alignItems: 'center',
@@ -940,7 +941,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Platform.OS === 'android' ? 'transparent' : '#FFF',
+    backgroundColor: 'transparent',
   },
   activatingText: {
     marginTop: 40,
@@ -997,14 +998,14 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   inputContainer: {
-    marginTop: Platform.OS === 'android' ? 6 : 10,
-    marginBottom: Platform.OS === 'android' ? 10 : 20,
+    marginTop: Platform.OS === 'android' ? 4 : 8,
+    marginBottom: Platform.OS === 'android' ? 6 : 12,
   },
   inputLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#1A1A1A',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   mapContainer: {
     height: 200,
@@ -1024,10 +1025,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
     borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
     color: '#333',
-    minHeight: 100,
+    minHeight: 50,
   },
   countdownContainer: {
     flex: 1,
@@ -1046,10 +1048,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF0F0',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
-    marginTop: 12,
+    marginTop: 6,
     borderWidth: 1,
     borderColor: '#FFC1C1',
     gap: 8,
