@@ -18,7 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS } from '../../src/constants/theme';
-import { getKYCStatus, submitKYC } from '../../src/services/api';
+import { getKYCStatus, submitKYC, validateKYCImage } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect } from 'react-native-svg';
@@ -61,6 +61,7 @@ export default function CommunityKycSubmitScreen() {
   const [idNumber, setIdNumber] = useState('');
   const [idPhotoBase64, setIdPhotoBase64] = useState<string | undefined>(undefined);
   const [idPhotoUri, setIdPhotoUri] = useState<string | undefined>(undefined);
+  const [isValidatingImage, setIsValidatingImage] = useState<boolean>(false);
   
   const [selfieBase64, setSelfieBase64] = useState<string | undefined>(undefined);
   const [selfieUri, setSelfieUri] = useState<string | undefined>(undefined);
@@ -127,10 +128,27 @@ export default function CommunityKycSubmitScreen() {
     });
 
     if (result.canceled || !result.assets?.length) return;
-    const base64 = result.assets[0]?.base64;
-    const uri = result.assets[0]?.uri;
+    const asset = result.assets[0];
+    const base64 = asset?.base64;
+    const uri = asset?.uri;
     if (!base64) {
       Alert.alert('Upload Error', 'Unable to read selected image.');
+      return;
+    }
+
+    // Strict file type validation on the frontend
+    const fileExtension = uri ? uri.split('.').pop()?.toLowerCase() : '';
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    if (fileExtension && !allowedExtensions.includes(fileExtension)) {
+      Alert.alert('Invalid Format', 'Only JPG, JPEG, PNG, or WEBP images are allowed.');
+      return;
+    }
+
+    // Size limit check: 5MB (5242880 bytes)
+    const fileSize = asset.fileSize || Math.round((base64.length * 3) / 4);
+    const maxSize = 5 * 1024 * 1024;
+    if (fileSize > maxSize) {
+      Alert.alert('File Too Large', 'Maximum file size allowed is 5MB.');
       return;
     }
 
@@ -138,8 +156,32 @@ export default function CommunityKycSubmitScreen() {
       setSelfieBase64(base64);
       setSelfieUri(uri);
     } else {
-      setIdPhotoBase64(base64);
-      setIdPhotoUri(uri);
+      setIsValidatingImage(true);
+      try {
+        const response = await validateKYCImage({
+          id_photo: base64,
+          id_type: idType,
+          id_number: idNumber.trim() || undefined,
+        });
+        
+        if (response?.data?.valid) {
+          setIdPhotoBase64(base64);
+          setIdPhotoUri(uri);
+          Alert.alert('Verification Successful', 'Your document is valid and matches expected details.');
+        } else {
+          Alert.alert(
+            'Document Rejected',
+            response?.data?.reason || 'Uploaded image is not a valid government ID. Please try again.'
+          );
+        }
+      } catch (error: any) {
+        console.warn('Immediate verification failed:', error);
+        // Fallback: keep image if connection error to avoid locking user
+        setIdPhotoBase64(base64);
+        setIdPhotoUri(uri);
+      } finally {
+        setIsValidatingImage(false);
+      }
     }
   };
 
@@ -161,6 +203,7 @@ export default function CommunityKycSubmitScreen() {
         id_number: '123456789012',
         id_photo: idPhotoBase64,
         selfie_photo: selfieBase64,
+        bypass_validation: false,
       });
 
       const newStatus = (response?.data?.status || 'pending') as KycStatus;
@@ -178,7 +221,16 @@ export default function CommunityKycSubmitScreen() {
       }
     } catch (error: any) {
       const message = error?.response?.data?.detail || error?.message || 'Failed to submit KYC.';
-      Alert.alert('Submission Failed', message);
+      
+      // If the backend validation fails with 400 Bad Request, strictly reject
+      if (error?.response?.status === 400) {
+        Alert.alert(
+          'Document Rejected',
+          `${message}\n\nPlease try again with a clearer, higher-resolution photo under good lighting.`
+        );
+      } else {
+        Alert.alert('Submission Failed', message);
+      }
     } finally {
       setSubmitLoading(false);
     }
@@ -323,9 +375,16 @@ export default function CommunityKycSubmitScreen() {
                       {/* Dashed Upload Card */}
                       <TouchableOpacity 
                         style={styles.dashedCard} 
-                        onPress={() => pickImageAsBase64(false)}
+                        onPress={() => !isValidatingImage && pickImageAsBase64(false)}
+                        disabled={isValidatingImage}
                       >
-                        {idPhotoUri ? (
+                        {isValidatingImage ? (
+                          <View style={styles.dashedCardInner}>
+                            <ActivityIndicator size="large" color="#F26522" />
+                            <Text style={[styles.uploadMainText, { marginTop: 12 }]}>Validating ID Card...</Text>
+                            <Text style={styles.uploadSubText}>Checking quality and information using AI</Text>
+                          </View>
+                        ) : idPhotoUri ? (
                           <View style={styles.previewContainer}>
                             <Image source={{ uri: idPhotoUri }} style={styles.previewImage} />
                             <View style={styles.changeOverlay}>

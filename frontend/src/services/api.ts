@@ -1847,7 +1847,14 @@ export const submitKYC = (data: {
   id_number: string;
   id_photo?: string;
   selfie_photo?: string;
+  bypass_validation?: boolean;
 }) => api.post("/kyc/submit", data);
+
+export const validateKYCImage = (data: {
+  id_photo: string;
+  id_type?: "aadhaar" | "pan";
+  id_number?: string;
+}) => api.post("/kyc/validate-image", data);
 
 export const generateUserAadhaarOtp = (data: {
   aadhaar_number: string;

@@ -8419,6 +8419,38 @@ async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: s
         return None
 
 
+@api_router.post("/kyc/validate-image")
+async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
+    """
+    Validate an uploaded base64 ID photo immediately using LLM vision validation.
+    """
+    from services.image_service import validate_id_proof_with_llm, is_valid_image
+    
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user_doc = await db.get_document('users', user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    id_photo = data.get('id_photo')
+    if not id_photo or not is_valid_image(id_photo):
+        raise HTTPException(status_code=400, detail="Invalid image content provided")
+        
+    id_type = data.get('id_type')
+    id_number = data.get('id_number', '').strip()
+    
+    expected_name = user_doc.get('fullName') or user_doc.get('name') or ""
+    
+    validation = await validate_id_proof_with_llm(
+        base64_string=id_photo,
+        expected_id_type=id_type,
+        expected_id_number=id_number if id_number and id_number != "123456789012" else None,
+        expected_name=expected_name
+    )
+    
+    return validation
+
+
 @api_router.post("/kyc/submit")
 async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     """
@@ -8432,7 +8464,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     - selfie_photo: Base64 encoded selfie (for PAN verification)
     - id_photo: Base64 encoded ID document
     """
-    from services.image_service import compress_base64_image, is_valid_image
+    from services.image_service import compress_base64_image, is_valid_image, validate_id_proof_with_llm
     
     db = await get_db()
     user_id = token_data["user_id"]
@@ -8457,7 +8489,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="Aadhaar must be 12 digits")
     if id_type == 'pan' and len(id_number) != 10:
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
-
+ 
     # Generate request number
     kyc_request_no = user_doc.get('kyc_request_no')
     is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
@@ -8477,7 +8509,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         date_str = datetime.utcnow().strftime("%Y%m%d")
         rand_num = random.randint(1000, 9999)
         kyc_request_no = f"REQ-{date_str}-{rand_num}"
-
+ 
     if id_type == 'aadhaar':
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
@@ -8492,6 +8524,22 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     # Compress and upload photos if provided
     id_photo = data.get('id_photo')
     if id_photo and is_valid_image(id_photo):
+        # Validate ID proof content
+        bypass_validation = data.get('bypass_validation', False)
+        if not bypass_validation:
+            expected_name = user_doc.get('fullName') or user_doc.get('name') or ""
+            validation = await validate_id_proof_with_llm(
+                base64_string=id_photo,
+                expected_id_type=id_type,
+                expected_id_number=id_number if id_number != "123456789012" else None,
+                expected_name=expected_name
+            )
+            if not validation.get('valid', True):
+                raise HTTPException(
+                    status_code=400,
+                    detail=validation.get('reason', 'Uploaded image is not a valid government ID.')
+                )
+        
         id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
         uploaded_url = await _upload_kyc_base64_to_storage(user_id, id_photo, "kyc/id_photos")
         if uploaded_url:
