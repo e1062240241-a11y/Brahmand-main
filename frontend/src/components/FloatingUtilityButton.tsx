@@ -1374,7 +1374,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.75)',
+    backgroundColor: Platform.OS === 'android' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.75)',
     zIndex: 999,
   },
   overlayBackground: { ...StyleSheet.absoluteFillObject },

@@ -19,6 +19,7 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
+const SafeFlashList = FlashList as any;
 import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
@@ -27,6 +28,7 @@ import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } from '../..
 import { useTranslation } from '../../src/utils/i18n';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const FLASH_LIST_CONTENT_STYLE = { paddingBottom: 40 } as const;
 
 const JYOTIRLING_TEMPLES = [
   { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Temple', location: 'Gujarat', deity: 'Lord Shiva' },
@@ -468,7 +470,7 @@ export default function TempleScreen() {
         </View>
       </View>
 
-      <FlashList
+      <SafeFlashList
         data={displayTemples}
         renderItem={renderItem}
         estimatedItemSize={127}
@@ -480,7 +482,7 @@ export default function TempleScreen() {
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         keyExtractor={keyExtractor}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={FLASH_LIST_CONTENT_STYLE}
       />
 
       {/* Filter Modal */}

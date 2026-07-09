@@ -90,7 +90,6 @@ export default function SacredScripturesPage() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Community tab background */}
       <LinearGradient

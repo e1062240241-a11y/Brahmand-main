@@ -30,7 +30,6 @@ export default function JaapCompleted() {
       style={styles.container}
       resizeMode="cover"
     >
-      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       <ScrollView
         contentContainerStyle={[
           styles.safeArea,

@@ -16,30 +16,32 @@ export const BrandedLoading: React.FC<BrandedLoadingProps> = ({
   const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const animateDot = (dot: Animated.Value, delay: number) => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(dot, {
-            toValue: -15,
-            duration: 300,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.ease),
-          }),
-          Animated.timing(dot, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-            easing: Easing.inOut(Easing.ease),
-          }),
-          Animated.delay(400),
-        ])
-      ).start();
-    };
-
-    animateDot(dot1, 0);
-    animateDot(dot2, 150);
-    animateDot(dot3, 300);
+    const anim1 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(0),
+        Animated.timing(dot1, { toValue: -15, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(dot1, { toValue: 0, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.delay(400),
+      ])
+    );
+    const anim2 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(150),
+        Animated.timing(dot2, { toValue: -15, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(dot2, { toValue: 0, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.delay(400),
+      ])
+    );
+    const anim3 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(300),
+        Animated.timing(dot3, { toValue: -15, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.timing(dot3, { toValue: 0, duration: 300, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
+        Animated.delay(400),
+      ])
+    );
+    anim1.start(); anim2.start(); anim3.start();
+    return () => { anim1.stop(); anim2.stop(); anim3.stop(); };
   }, [dot1, dot2, dot3]);
 
   return (

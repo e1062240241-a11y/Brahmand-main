@@ -415,7 +415,7 @@ export const LiveMantraRoom = () => {
   }, [isMicEnabled, roomMuted, isConnected]);
 
   useEffect(() => {
-    Animated.loop(
+    const anim1 = Animated.loop(
       Animated.sequence([
         Animated.timing(glowOpacity, {
           toValue: 0.9,
@@ -430,11 +430,13 @@ export const LiveMantraRoom = () => {
           useNativeDriver: true,
         }),
       ])
-    ).start();
+    );
+    anim1.start();
+    return () => anim1.stop();
   }, [glowOpacity]);
 
   useEffect(() => {
-    Animated.loop(
+    const anim2 = Animated.loop(
       Animated.sequence([
         Animated.timing(upcomingFade, {
           toValue: 1,
@@ -450,7 +452,9 @@ export const LiveMantraRoom = () => {
         }),
         Animated.delay(1600),
       ])
-    ).start();
+    );
+    anim2.start();
+    return () => anim2.stop();
   }, [upcomingFade]);
 
   useEffect(() => {

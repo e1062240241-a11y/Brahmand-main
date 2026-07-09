@@ -9,7 +9,7 @@ import { useTranslation } from '../utils/i18n';
 
 const ACTIVE_ORANGE = '#FF8A00';
 const INACTIVE_COLOR = '#FFFFFF';
-const CAPSULE_BG = '#1C1C1C';
+const CAPSULE_BG = Platform.OS === 'android' ? 'rgba(28, 28, 28, 0.85)' : '#1C1C1C';
 
 // Horizontal padding applied to the outer wrapper on each side
 const OUTER_H_PADDING = 14;

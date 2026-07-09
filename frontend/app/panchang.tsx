@@ -787,7 +787,6 @@ export default function PanchangScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
       
       {/* Premium Peach-Pinkish Background Gradient matching Figma */}
       <LinearGradient

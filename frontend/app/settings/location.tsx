@@ -50,13 +50,15 @@ const CustomLoader = ({ color }: { color: string }) => {
   const spinValue = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
-    Animated.loop(
+    const anim = Animated.loop(
       Animated.timing(spinValue, {
         toValue: 1,
         duration: 1000,
         useNativeDriver: true,
       }),
-    ).start();
+    );
+    anim.start();
+    return () => anim.stop();
   }, []);
 
   const spin = spinValue.interpolate({

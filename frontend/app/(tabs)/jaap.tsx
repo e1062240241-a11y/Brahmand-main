@@ -544,7 +544,6 @@ export default function JaapLandingScreen() {
       style={{ flex: 1 }}
     >
       <View style={styles.container}>
-        <StatusBar style="dark" translucent />
 
       <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
         <View style={styles.topTabsContainer}>

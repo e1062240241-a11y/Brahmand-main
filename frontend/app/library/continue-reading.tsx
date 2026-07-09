@@ -61,7 +61,6 @@ export default function ContinueReadingPage() {
 
   return (
     <View style={s.root}>
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* ── Orange Gradient Header ── */}
       <LinearGradient

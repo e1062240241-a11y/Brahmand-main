@@ -110,7 +110,6 @@ function LibraryPage() {
   return (
     <View style={styles.root}>
       <Stack.Screen options={{ animation: 'slide_from_right' }} />
-      <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
 
       {/* Community tab background */}
       <LinearGradient

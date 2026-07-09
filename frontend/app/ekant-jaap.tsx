@@ -208,14 +208,17 @@ const EkantJaapPage = () => {
     const blobAnim2 = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        let anim: Animated.CompositeAnimation | null = null;
         if (isRunning) {
-            Animated.loop(
+            anim = Animated.loop(
                 Animated.sequence([
                     Animated.timing(glowPulse, { toValue: 1, duration: 3000, useNativeDriver: true }),
                     Animated.timing(glowPulse, { toValue: 0.7, duration: 3000, useNativeDriver: true }),
                 ])
-            ).start();
+            );
+            anim.start();
         }
+        return () => { anim?.stop(); };
     }, [isRunning]);
 
     const bgOpacity = glowPulse;

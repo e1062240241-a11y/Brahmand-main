@@ -405,12 +405,14 @@ const baseQuickAccess = [
 const AnimatedSkeleton = ({ children, style }: { children: React.ReactNode; style?: any }) => {
   const opacity = useRef(new Animated.Value(0.4)).current;
   useEffect(() => {
-    Animated.loop(
+    const anim = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
         Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
       ])
-    ).start();
+    );
+    anim.start();
+    return () => anim.stop();
   }, [opacity]);
   return <Animated.View style={[{ opacity }, style]}>{children}</Animated.View>;
 };

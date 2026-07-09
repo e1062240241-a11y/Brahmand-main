@@ -218,6 +218,10 @@ export default function BhagavadGita3DPage() {
     );
   }, []);
 
+  useEffect(() => {
+    StatusBar.setBarStyle(nightMode ? 'light-content' : 'dark-content');
+  }, [nightMode]);
+
   const handleOpenBook = () => {
     if (isOpened) return;
     
@@ -284,7 +288,6 @@ export default function BhagavadGita3DPage() {
 
   return (
     <View style={styles.root}>
-      <StatusBar translucent backgroundColor="transparent" barStyle={nightMode ? "light-content" : "dark-content"} />
       
       {!isOpened ? (
         <LinearGradient

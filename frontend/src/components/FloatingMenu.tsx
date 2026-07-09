@@ -123,7 +123,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
     <>
       {fabExpanded && (
         <TouchableOpacity style={fabStyles.overlay} activeOpacity={1} onPress={toggleFab}>
-          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill}>
+          <BlurView intensity={20} tint={Platform.OS === 'android' ? 'light' : 'dark'} style={StyleSheet.absoluteFill}>
             <View style={StyleSheet.absoluteFill}>
               <Animated.View
                 style={[

@@ -74,19 +74,32 @@ function TypingDots() {
   const dot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const bounce = (dot: Animated.Value, delay: number) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(dot, { toValue: -6, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
-          Animated.delay(600),
-        ])
-      ).start();
-
-    bounce(dot1, 0);
-    bounce(dot2, 150);
-    bounce(dot3, 300);
+    const anim1 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(0),
+        Animated.timing(dot1, { toValue: -6, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot1, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    );
+    const anim2 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(150),
+        Animated.timing(dot2, { toValue: -6, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot2, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    );
+    const anim3 = Animated.loop(
+      Animated.sequence([
+        Animated.delay(300),
+        Animated.timing(dot3, { toValue: -6, duration: 300, useNativeDriver: true }),
+        Animated.timing(dot3, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.delay(600),
+      ])
+    );
+    anim1.start(); anim2.start(); anim3.start();
+    return () => { anim1.stop(); anim2.stop(); anim3.stop(); };
   }, []);
 
   return (
