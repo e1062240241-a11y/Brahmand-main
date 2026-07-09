@@ -8220,7 +8220,7 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
 
     if not use_mock:
         try:
-            headers = _get_sandbox_headers()
+            headers = await _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp"
             import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
@@ -8302,7 +8302,7 @@ async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Dep
             "otp": otp,
         }
         try:
-            headers = _get_sandbox_headers()
+            headers = await _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp/verify"
             import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
@@ -11220,7 +11220,7 @@ async def extract_user_kyc_text_from_image(
         raise HTTPException(status_code=500, detail=f"Vision extraction failed (library path): {str(exc)}")
 
 
-def _get_sandbox_headers() -> dict:
+async def _get_sandbox_headers() -> dict:
     sandbox_api_key = os.getenv("SANDBOX_API_KEY")
     sandbox_auth = os.getenv("SANDBOX_AUTHORIZATION") or os.getenv("SANDBOX_ACCESS_TOKEN")
     sandbox_api_secret = os.getenv("SANDBOX_API_SECRET")
@@ -11250,7 +11250,8 @@ def _get_sandbox_headers() -> dict:
                 "x-api-version": str(sandbox_api_version),
             }
             try:
-                auth_resp = requests.post(auth_url, headers=auth_headers, timeout=20)
+                import asyncio
+                auth_resp = await asyncio.to_thread(requests.post, auth_url, headers=auth_headers, timeout=20)
                 auth_data = auth_resp.json() if auth_resp.content else {}
             except Exception as exc:
                 raise HTTPException(status_code=502, detail=f"Sandbox authenticate failed: {str(exc)}")
@@ -11321,7 +11322,7 @@ async def generate_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), to
 
     if not use_mock:
         try:
-            headers = _get_sandbox_headers()
+            headers = await _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp"
             import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
@@ -11393,7 +11394,7 @@ async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), toke
             "otp": otp,
         }
         try:
-            headers = _get_sandbox_headers()
+            headers = await _get_sandbox_headers()
             sandbox_url = f"{os.getenv('SANDBOX_BASE_URL', 'https://api.sandbox.co.in').rstrip('/')}/kyc/aadhaar/okyc/otp/verify"
             import asyncio; resp = await asyncio.to_thread(requests.post, sandbox_url, json=payload, headers=headers, timeout=30)
             resp_data = resp.json() if resp.content else {}
@@ -13470,8 +13471,9 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     except Exception as e:
         logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
-    def _call():
+    async def _call():
         import requests
+        import asyncio
         nvidia_key = os.environ.get("NVIDIA_API_KEY")
         invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
@@ -13508,13 +13510,13 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             "chat_template_kwargs": {"enable_thinking": False}
         }
 
-        response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
+        response = await asyncio.to_thread(requests.post, invoke_url, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
         
     try:
-        text = await asyncio.to_thread(_call)
+        text = await _call()
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
         if "lucky_color_hex" not in data:

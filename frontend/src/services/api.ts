@@ -6,8 +6,23 @@ import * as FileSystem from "expo-file-system/legacy";
 import Constants from "expo-constants";
 import { secureStorage } from "../utils/secureStorage";
 
-const configuredApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-const configuredWebApiUrl = process.env.EXPO_PUBLIC_BACKEND_URL_WEB;
+const PRODUCTION_BACKEND_URL = "https://brahmand-backend-hi4rz6fdrq-uc.a.run.app";
+
+const getResolvedConfiguredUrl = (envVal: string | undefined): string | undefined => {
+  if (__DEV__) {
+    return envVal;
+  }
+  // In production (release mode), if URL is missing, localhost, or a local network IP, force production backend
+  if (!envVal || /localhost|127\.0\.0\.1|192\.168\.|10\.0\./.test(envVal)) {
+    return PRODUCTION_BACKEND_URL;
+  }
+  return envVal;
+};
+
+const configuredApiUrl = getResolvedConfiguredUrl(process.env.EXPO_PUBLIC_BACKEND_URL);
+const configuredWebApiUrl = getResolvedConfiguredUrl(process.env.EXPO_PUBLIC_BACKEND_URL_WEB);
+
+
 
 const getRuntimeWebApiUrl = (): string | undefined => {
   if (Platform.OS !== "web" || typeof window === "undefined") {
