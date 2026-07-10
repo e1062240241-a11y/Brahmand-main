@@ -22,6 +22,7 @@ import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode 
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
+const SafeFlashList = FlashList as any;
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
 const URGENCY_LEVELS = ['Low', 'Medium', 'High', 'Urgent'];
@@ -128,7 +129,8 @@ export default function BloodRequestScreen() {
 
     router.push({
       pathname: '/community-request/blood/review',
-      params: { community_id: params.community_id,
+      params: {
+        community_id: params.community_id,
         bloodGroup: bloodGroup,
         hospitalName: location, // Using location as hospital name or vice versa
         location: location,
@@ -155,26 +157,24 @@ export default function BloodRequestScreen() {
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>
-          <FlashList
+          <SafeFlashList
             data={options}
-            {...({
-              keyExtractor: (item: string) => item,
-              contentContainerStyle: { paddingBottom: 30 },
-              numColumns: modalType === 'blood' ? 3 : 1,
-              estimatedItemSize: 60,
-              renderItem: ({ item }: { item: string }) => (
-                <TouchableOpacity
-                  style={[
-                    styles.optionItem,
-                    (bloodGroup === item || contactPref === item) && styles.optionItemSelected,
-                    modalType === 'blood' && styles.bloodOptionItem
-                  ]}
-                  onPress={() => handleSelectOption(item)}
-                >
-                  <Text style={[styles.optionText, (bloodGroup === item || contactPref === item) && styles.optionTextSelected]}>{item}</Text>
-                </TouchableOpacity>
-              )
-            } as any)}
+            keyExtractor={(item: string) => item}
+            contentContainerStyle={{ paddingBottom: 30 }}
+            numColumns={modalType === 'blood' ? 3 : 1}
+            estimatedItemSize={60}
+            renderItem={({ item }: { item: string }) => (
+              <TouchableOpacity
+                style={[
+                  styles.optionItem,
+                  (bloodGroup === item || contactPref === item) && styles.optionItemSelected,
+                  modalType === 'blood' && styles.bloodOptionItem
+                ]}
+                onPress={() => handleSelectOption(item)}
+              >
+                <Text style={[styles.optionText, (bloodGroup === item || contactPref === item) && styles.optionTextSelected]}>{item}</Text>
+              </TouchableOpacity>
+            )}
           />
         </View>
       </View>
