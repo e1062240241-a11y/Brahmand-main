@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 const CATEGORY_IMAGES: Record<string, any> = {
   gym: require('../../assets/images/tab-bar/rashi/vendor/gym.png'),
   travel: require('../../assets/images/tab-bar/rashi/vendor/travel.png'),
-  halvai: require('../../assets/images/tab-bar/rashi/vendor/halvai.png'),
+  catering: require('../../assets/images/tab-bar/rashi/vendor/halvai.png'),
   beauty: require('../../assets/images/tab-bar/rashi/vendor/Beauty.png'),
   decorator: require('../../assets/images/tab-bar/rashi/vendor/Decorator.png'),
   astrologer: require('../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg'),
@@ -67,7 +67,7 @@ export interface VendorCategoriesProps {
 }
 
 export const VendorCategories: React.FC<VendorCategoriesProps> = ({
-  categories = ['GYM', 'Travel', 'Halvai', 'Beauty', 'Decorator'],
+  categories = ['GYM', 'Travel', 'Catering', 'Beauty', 'Decorator'],
   activeCategory,
   onCategoryPress,
   horizontal = true,
@@ -78,6 +78,16 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
   imageSize = 24,
 }) => {
   const router = useRouter();
+
+  // Shuffle categories once on mount to keep order stable per session/mount lifecycle
+  const [shuffledCategories] = React.useState(() => {
+    const list = [...categories];
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+  });
 
   const handlePress = (category: string) => {
     if (onCategoryPress) {
@@ -140,14 +150,14 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={[styles.horizontalContainer, containerStyle]}
       >
-        {categories.map((cat, i) => renderItem(cat, i))}
+        {shuffledCategories.map((cat, i) => renderItem(cat, i))}
       </ScrollView>
     );
   }
 
   return (
     <View style={[styles.gridContainer, containerStyle]}>
-      {categories.map((cat, i) => renderItem(cat, i))}
+      {shuffledCategories.map((cat, i) => renderItem(cat, i))}
     </View>
   );
 };
