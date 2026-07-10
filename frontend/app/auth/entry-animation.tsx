@@ -241,9 +241,9 @@ const styles = StyleSheet.create({
     fontSize: Platform.OS === 'android' ? 20 : 32,
     fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
-    letterSpacing: 14,
+    letterSpacing: Platform.OS === 'android' ? 8 : 14,
     textAlign: 'center',
-    paddingLeft: 14,
+    paddingLeft: Platform.OS === 'android' ? 8 : 14,
     fontStyle: 'normal',
     lineHeight: Platform.OS === 'android' ? 26 : 36,
     marginTop: 2,
