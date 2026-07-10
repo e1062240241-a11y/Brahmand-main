@@ -723,10 +723,10 @@ function getYoutubeAppUrl(url: string) {
 
 function getYoutubeEmbedUrl(url: string) {
   if (url.includes('embed/live_stream')) {
-    return url + '&autoplay=1';
+    return url + '&autoplay=1&enablejsapi=1';
   }
   const videoId = getYoutubeVideoId(url);
-  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
   return url;
 }
 
@@ -753,7 +753,7 @@ export default function TempleDetailScreen() {
   const templeKey = getSpecialTempleKey(temple?.name || '');
   const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
-  const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
+  const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
 
   // Memoize WebView content to prevent re-renders during playback
@@ -763,7 +763,11 @@ export default function TempleDetailScreen() {
     return (
       <WebView
         source={{
-          html: getYoutubeHtml(embedUrl),
+          uri: embedUrl,
+          headers: {
+            Referer: 'https://brahmand.app',
+            'X-Requested-With': 'com.android.chrome',
+          },
         }}
         originWhitelist={['*']}
         userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
