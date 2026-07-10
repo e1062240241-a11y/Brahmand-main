@@ -1,5 +1,29 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
-import { Slot, usePathname, useRouter, Stack } from 'expo-router';
+import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
+
+// Safe global navigation back override to prevent "GO_BACK was not handled by any navigator" error
+try {
+  if (router && typeof router.back === 'function') {
+    const originalBack = router.back;
+    Object.defineProperty(router, 'back', {
+      value: function() {
+        try {
+          if (router.canGoBack()) {
+            originalBack.call(router);
+          } else {
+            router.replace('/(tabs)/home');
+          }
+        } catch (err) {
+          originalBack.call(router);
+        }
+      },
+      configurable: true,
+      writable: true
+    });
+  }
+} catch (e) {
+  console.warn('Failed to override router.back:', e);
+}
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +57,8 @@ import { setAudioModeAsync } from 'expo-audio';
 LogBox.ignoreLogs([
   'UIKitCore] RCTScrollViewComponentView',
   'RCTScrollViewComponentView implements focusItemsInRect:',
-  "Can't perform a React state update on a component that hasn't mounted yet"
+  "Can't perform a React state update on a component that hasn't mounted yet",
+  "The action 'GO_BACK' was not handled by any navigator"
 ]);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {

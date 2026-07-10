@@ -17,7 +17,7 @@ const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
  'Shirdi Sai Baba Temple': 'Shirdi, Maharashtra',
  'Tirupati Balaji Temple – Andhra Pradesh': 'Tirupati, Andhra Pradesh',
  'Vaishno Devi Temple – Jammu & Kashmir': 'Katra, Jammu & Kashmir',
- 'Siddhivinayak Temple – Mumbai': 'Prabhadevi, Mumbai',
+ 'Shree Siddhivinayak Ganapati Temple': 'Prabhadevi, Mumbai',
  'Jagannath Temple – Puri': 'Puri, Odisha',
  'Golden Temple – Amritsar': 'Amritsar, Punjab',
  'Meenakshi Temple – Madurai': 'Madurai, Tamil Nadu',
@@ -29,7 +29,7 @@ const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
  'Bhimashankar Temple – Maharashtra': 'Pune district, Maharashtra',
  'Ramanathaswamy Temple – Rameswaram': 'Rameswaram, Tamil Nadu',
  'Grishneshwar Temple – Ellora': 'Ellora, Maharashtra',
- 'Mahalaxmi Temple – Mumbai': 'Mahalaxmi, Mumbai',
+ 'Shri Mahalakshmi Mandir': 'Mahalaxmi, Mumbai',
  'Omkareshwar Temple – Madhya Pradesh': 'Khandwa, Madhya Pradesh',
  'Trimbakeshwar Temple – Nashik': 'Nashik, Maharashtra',
  'Nageshwar Temple – Dwarka': 'Dwarka, Gujarat',
@@ -90,7 +90,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Somnath Temple is one of the twelve sacred Jyotirling shrines of Lord Shiva, located at Prabhas Patan on the Gujarat coast. Revered for its deep spiritual significance and long history of restoration, Somnath remains a major pilgrimage destination where devotees gather for daily darshan, aarti, and temple rituals.',
  guidance: 'Guidance: To reach Somnath Temple, travel to Veraval railway station (about 7 km) or Diu airport (about 80 km), then continue by taxi or local transport to Prabhas Patan. The temple complex is well signposted from Somnath town roads and has organized entry lanes for darshan. Visit during early morning or evening aarti for a smoother experience and less crowding.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCXhail7h5FDRbHprlR56nIw',
+ youtubeUrl: 'https://www.youtube.com/live/wuDNumfi05g?si=zxOX4lB_2ZWoA8nS',
  },
  'Kedarnath Temple – Uttarakhand': {
  aliases: ['kedarnath'],
@@ -116,7 +116,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Mahakaleshwar Jyotirling in Ujjain is renowned for its ancient worship traditions and the iconic Bhasma Aarti. It is one of the most significant Shiva temples in central India.',
  guidance: 'Guidance: Reach Ujjain by rail or via Indore airport and continue by road to Mahakal area. Early-morning slots are preferred for Bhasma Aarti; follow queue instructions and dress-code guidance near the inner sanctum.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCQE_hlxeDSuw4YpuAkDmrMg',
+ youtubeUrl: 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
  },
  'Kashi Vishwanath Temple – Varanasi': {
  aliases: ['kashi vishwanath', 'vishwanath temple varanasi'],
@@ -129,7 +129,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Kashi Vishwanath Jyotirling at Varanasi is one of India’s most sacred Shiva shrines, closely associated with the spiritual heart of Kashi and the Ganga ghats.',
  guidance: 'Guidance: Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area. Use designated entry gates, carry minimal belongings, and plan darshan outside peak festival windows when possible.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCijUmzuXOxyLWv0APau_5xw',
+ youtubeUrl: 'https://www.youtube.com/live/smCgjXxP0KE?si=7Iy0KthoRO550Pzl',
  },
  'Bhimashankar Temple – Maharashtra': {
  aliases: ['bhimashankar'],
@@ -246,7 +246,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Tirupati Balaji Temple at Tirumala is one of the most visited pilgrimage shrines in India, dedicated to Lord Venkateswara. The temple is known for disciplined darshan systems, daily sevas, and large-scale prasadam distribution for devotees.',
  guidance: 'Guidance: Reach Tirupati by rail/air, then continue to Tirumala via ghat road buses or private vehicles. Book darshan slots in advance when possible and arrive early to accommodate queue and security procedures.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCS2Y83GD-fc7qqgNW5uj41g',
+ youtubeUrl: 'https://www.youtube.com/live/dwsS3bxweBw?si=xXBaEmNuLGksiJ4R',
  },
  'Vaishno Devi Temple – Jammu & Kashmir': {
  aliases: ['vaishno devi', 'mata vaishno devi', 'katra shrine'],
@@ -261,19 +261,19 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  guidance: 'Guidance: Travel to Katra by rail/road and complete yatra registration before starting the trek. Use official pony, palki, battery car, or helicopter services as needed, and follow route advisories during peak season.',
  youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC5SVw4I1kK4xB0h60Tdk5lQ',
  },
- 'Siddhivinayak Temple – Mumbai': {
- aliases: ['siddhivinayak', 'prabhadevi ganpati', 'siddhivinayak temple mumbai'],
- locationLabel: 'Prabhadevi, Mumbai',
- coords: { latitude: 19.0166, longitude: 72.8302 },
- aartiSessions: [
- { title: 'Kakad Aarti', time: '5:30 AM' },
- { title: 'Madhyan Aarti', time: '12:00 PM' },
- { title: 'Shej Aarti', time: '8:45 PM' },
- ],
- description: 'Siddhivinayak Temple in Mumbai is one of India’s most prominent Lord Ganesha temples, known for daily aarti, darshan, and strong devotional traditions among local and visiting devotees.',
- guidance: 'Guidance: Reach Prabhadevi via local train (Dadar/Prabhadevi area) or metro-road connections. Prefer non-peak hours for shorter queues and follow temple guidelines for entry and offerings.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCmVh_JJg-jurl1G-8opW1zw',
- },
+ 'Shree Siddhivinayak Ganapati Temple': {
+  aliases: ['siddhivinayak', 'prabhadevi ganpati', 'siddhivinayak temple mumbai', 'shree siddhivinayak ganapati temple'],
+  locationLabel: 'Prabhadevi, Mumbai',
+  coords: { latitude: 19.0166, longitude: 72.8302 },
+  aartiSessions: [
+  { title: 'Kakad Aarti', time: '5:30 AM' },
+  { title: 'Madhyan Aarti', time: '12:00 PM' },
+  { title: 'Shej Aarti', time: '8:45 PM' },
+  ],
+  description: 'Siddhivinayak Temple in Mumbai is one of India’s most prominent Lord Ganesha temples, known for daily aarti, darshan, and strong devotional traditions among local and visiting devotees.',
+  guidance: 'Guidance: Reach Prabhadevi via local train (Dadar/Prabhadevi area) or metro-road connections. Prefer non-peak hours for shorter queues and follow temple guidelines for entry and offerings.',
+  youtubeUrl: 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
+  },
  'Jagannath Temple – Puri': {
  aliases: ['jagannath temple', 'puri jagannath', 'jagannath puri'],
  locationLabel: 'Puri, Odisha',
@@ -324,21 +324,21 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'ISKCON Temple Bangalore is a major devotional center dedicated to Sri Radha Krishna, offering daily darshan, kirtan, spiritual classes, and festival celebrations for devotees and families.',
  guidance: 'Guidance: Reach Rajajinagar via metro or city roads and use the designated temple entry gates. Visit during non-peak evening hours for shorter queues and better access to darshan halls.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+ youtubeUrl: 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
  },
- 'Mahalaxmi Temple – Mumbai': {
- aliases: ['mahalaxmi', 'mahalakshmi', 'mahalakshmi temple', 'mahalakshmi mumbai', 'mahalakshmi mandir'],
- locationLabel: 'Mahalaxmi, Mumbai',
- coords: { latitude: 18.9774, longitude: 72.8066 },
- aartiSessions: [
- { title: 'Morning Aarti', time: '7:00 AM' },
- { title: 'Dhoop Aarti', time: '6:30 PM' },
- { title: 'Shej Aarti', time: '10:00 PM' },
- ],
- description: 'Mahalaxmi Temple is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area. It is dedicated to Mahalakshmi the central deity of Devi Mahatmyam. The temple was built in 1831 by Dhakji Dadaji.',
- guidance: 'Guidance: Reach Mahalaxmi railway station (Western Line) and take a short taxi or walk towards Bhulabhai Desai Road. Expect heavy crowds during Navratri festivals, so plan your visit during early morning hours for peaceful darshan.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCcMSlXWOYWCPiFR3-sM-rEg',
- },
+ 'Shri Mahalakshmi Mandir': {
+  aliases: ['mahalaxmi', 'mahalakshmi', 'mahalakshmi temple', 'mahalakshmi mumbai', 'mahalakshmi mandir', 'shri mahalakshmi mandir'],
+  locationLabel: 'Mahalaxmi, Mumbai',
+  coords: { latitude: 18.9774, longitude: 72.8066 },
+  aartiSessions: [
+  { title: 'Morning Aarti', time: '7:00 AM' },
+  { title: 'Dhoop Aarti', time: '6:30 PM' },
+  { title: 'Shej Aarti', time: '10:00 PM' },
+  ],
+  description: 'Shri Mahalakshmi Mandir is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area. It is dedicated to Mahalakshmi the central deity of Devi Mahatmyam. The temple was built in 1831 by Dhakji Dadaji.',
+  guidance: 'Guidance: Reach Mahalaxmi railway station (Western Line) and take a short taxi or walk towards Bhulabhai Desai Road. Expect heavy crowds during Navratri festivals, so plan your visit during early morning hours for peaceful darshan.',
+  youtubeUrl: 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
+  },
  'ISKCON Juhu Mumbai': {
  aliases: ['iskcon juhu', 'iskcon mumbai', 'juhu temple', 'radha rasabihari'],
  locationLabel: 'Juhu, Mumbai',
@@ -531,7 +531,7 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
  is_following: false,
  },
  'other-siddhivinayak-temple-mumbai': {
- name: 'Siddhivinayak Temple – Mumbai',
+ name: 'Shree Siddhivinayak Ganapati Temple',
  deity: 'Lord Ganesha',
  description: 'Siddhivinayak Temple in Mumbai is one of the most prominent Ganesha temples, known for its devotional significance and regular darshan queues.',
  location: 'Prabhadevi, Mumbai',
@@ -611,7 +611,7 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
     is_following: false,
   },
   'other-mahalaxmi-temple': {
-    name: 'Mahalaxmi Temple – Mumbai',
+    name: 'Shri Mahalakshmi Mandir',
     deity: 'Goddess Mahalaxmi',
     description: 'Mahalaxmi Temple is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area.',
     location: 'Mahalaxmi, Mumbai',
@@ -729,8 +729,8 @@ const getYoutubeMobileUrl = (url: string) => {
     return `https://m.youtube.com/playlist?list=${listId}`;
   }
   const videoId = getYoutubeVideoId(url);
-  if (videoId) return `https://m.youtube.com/watch?v=${videoId}`;
-  return url.replace('www.youtube.com', 'm.youtube.com');
+  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  return url;
 };
 
 export default function TempleDetailScreen() {
@@ -755,7 +755,13 @@ export default function TempleDetailScreen() {
     if (!resolvedYoutubeUrl) return null;
     return (
       <WebView
-        source={{ uri: getYoutubeMobileUrl(resolvedYoutubeUrl) }}
+        source={{
+          uri: getYoutubeMobileUrl(resolvedYoutubeUrl),
+          headers: {
+            Referer: 'https://www.youtube.com',
+          },
+        }}
+        userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
         style={styles.youtubeFrame}
         javaScriptEnabled
         domStorageEnabled
