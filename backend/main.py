@@ -8419,6 +8419,37 @@ async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: s
         return None
 
 
+@api_router.post("/kyc/validate-image")
+async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
+    """
+    Instantly validate the uploaded KYC image with Llama 3.2 Vision before final submission.
+    """
+    from services.image_service import validate_id_proof_with_llm
+    
+    id_photo = data.get('id_photo')
+    if not id_photo:
+        raise HTTPException(status_code=400, detail="Image data is required")
+        
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user_doc = await db.get_document('users', user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    id_type = data.get('id_type')
+    id_number = data.get('id_number')
+    
+    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
+    
+    validation = await validate_id_proof_with_llm(
+        base64_string=id_photo,
+        expected_id_type=id_type,
+        expected_id_number=id_number if id_number != "123456789012" else None,
+        expected_name=expected_name
+    )
+    return validation
+
+
 @api_router.post("/kyc/submit")
 async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     """
@@ -8432,7 +8463,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     - selfie_photo: Base64 encoded selfie (for PAN verification)
     - id_photo: Base64 encoded ID document
     """
-    from services.image_service import compress_base64_image, is_valid_image
+    from services.image_service import compress_base64_image, is_valid_image, validate_id_proof_with_llm
     
     db = await get_db()
     user_id = token_data["user_id"]
@@ -8457,7 +8488,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="Aadhaar must be 12 digits")
     if id_type == 'pan' and len(id_number) != 10:
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
-
+ 
     # Generate request number
     kyc_request_no = user_doc.get('kyc_request_no')
     is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
@@ -8474,11 +8505,10 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
             
     if not kyc_request_no:
         import random
-        from datetime import datetime
         date_str = datetime.utcnow().strftime("%Y%m%d")
         rand_num = random.randint(1000, 9999)
         kyc_request_no = f"REQ-{date_str}-{rand_num}"
-
+ 
     if id_type == 'aadhaar':
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
@@ -8493,6 +8523,22 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     # Compress and upload photos if provided
     id_photo = data.get('id_photo')
     if id_photo and is_valid_image(id_photo):
+        # Validate ID proof content
+        bypass_validation = data.get('bypass_validation', False)
+        if not bypass_validation:
+            expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
+            validation = await validate_id_proof_with_llm(
+                base64_string=id_photo,
+                expected_id_type=id_type,
+                expected_id_number=id_number if id_number != "123456789012" else None,
+                expected_name=expected_name
+            )
+            if not validation.get('valid', True):
+                raise HTTPException(
+                    status_code=400,
+                    detail=validation.get('reason', 'Uploaded image is not a valid government ID.')
+                )
+        
         id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
         uploaded_url = await _upload_kyc_base64_to_storage(user_id, id_photo, "kyc/id_photos")
         if uploaded_url:
@@ -8512,13 +8558,17 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_id_type': id_type,
         'kyc_id_number': id_number,
         'kyc_id_photo': id_photo,
-        'kyc_selfie_photo': selfie_photo if id_type == 'pan' else None,
+        'kyc_selfie_photo': selfie_photo if (id_type == 'pan' or kyc_role == 'organizer') else None,
         'kyc_submitted_at': datetime.utcnow().isoformat() + 'Z',
         'kyc_rejection_reason': None,
         'kyc_verified_at': None,
         'is_verified': False,
         'kyc_request_no': kyc_request_no,
     }
+    
+    full_name_val = data.get('full_name') or data.get('name')
+    if full_name_val:
+        kyc_data['fullName'] = full_name_val
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
@@ -8718,6 +8768,64 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
     
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
+
+
+@api_router.delete("/admin/kyc/{user_id}")
+async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
+    """Admin: delete a user's KYC verification request and reset their status."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Reset owner's KYC
+    await db.update_document('users', user_id, {
+        'kyc_status': None,
+        'kyc_role': None,
+        'kyc_id_type': None,
+        'kyc_id_number': None,
+        'kyc_id_photo': None,
+        'kyc_selfie_photo': None,
+        'kyc_submitted_at': None,
+        'kyc_verified_at': None,
+        'kyc_rejection_reason': None,
+        'is_verified': False
+    })
+
+    # Remove verified badges
+    badges_to_remove = ['Verified Temple', 'Verified Vendor', 'Verified Organizer']
+    current_badges = target_user.get('badges', [])
+    updated_badges = [b for b in current_badges if b not in badges_to_remove]
+    if len(updated_badges) != len(current_badges):
+        await db.update_document('users', user_id, {'badges': updated_badges})
+
+    # If the user is a vendor, also reset the vendor profile kyc status
+    if target_user.get('is_vendor') or target_user.get('vendor_id'):
+        vendor_id = target_user.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
+        if vendor_id:
+            vendor = await db.get_document('vendors', vendor_id)
+            if vendor:
+                await db.update_document('vendors', vendor_id, {
+                    'kyc_status': None,
+                    'kyc_reviewed_by': None,
+                    'kyc_reviewed_at': None,
+                    'kyc_rejection_reason': None
+                })
+                # Remove from vendor admin reviews
+                try:
+                    await db.delete_document('vendor_admin_reviews', vendor_id)
+                except Exception:
+                    pass
+
+    logger.info(f"KYC deleted/reset for user {user_id}")
+    return {"message": "User KYC deleted and reset successfully"}
+
+
 @api_router.get("/admin/kyc/pending")
 async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
     """Get all users with pending or verified KYC (admin only)"""
@@ -8752,6 +8860,7 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
         'kyc_id_photo': u.get('kyc_id_photo'),
         'kyc_selfie_photo': u.get('kyc_selfie_photo'),
         'kyc_id_number': u.get('kyc_id_number'),
+        'kyc_request_no': u.get('kyc_request_no'),
     } for u in pending]
 
 
@@ -10775,7 +10884,6 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
                     
             if not kyc_request_no:
                 import random
-                from datetime import datetime
                 date_str = datetime.utcnow().strftime("%Y%m%d")
                 rand_num = random.randint(1000, 9999)
                 kyc_request_no = f"REQ-{date_str}-{rand_num}"

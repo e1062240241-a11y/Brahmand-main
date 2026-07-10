@@ -48,6 +48,7 @@ export const FONTS = {
   medium: 'Inter_500Medium',
   semiBold: 'Inter_600SemiBold',
   bold: 'Inter_700Bold',
+  brandTitle: 'Cinzel', // NON-NEGOTIABLE BRANDING IDENTITY FONT - DO NOT ALTER OR REMOVE
 };
 
 export const SPACING = {

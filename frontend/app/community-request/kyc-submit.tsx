@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,19 +11,17 @@ import {
   View,
   Image,
   TextInput,
-  Dimensions,
   Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
-import { generateUserAadhaarOtp, getKYCStatus, submitKYC, verifyUserAadhaarOtp, validateKYCImage } from '../src/services/api';
-import { useAuthStore } from '../src/store/authStore';
+import { COLORS } from '../../src/constants/theme';
+import { getKYCStatus, submitKYC, validateKYCImage } from '../../src/services/api';
+import { useAuthStore } from '../../src/store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Rect, Circle } from 'react-native-svg';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import Svg, { Path, Rect } from 'react-native-svg';
 
 type KycStatus = 'pending' | 'manual_review' | 'verified' | 'rejected' | null;
 
@@ -40,11 +38,11 @@ const COUNTRY_CODES = [
 const LockIcon = () => (
   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
     <Rect x={3} y={11} width={18} height={11} rx={2} stroke="#666666" strokeWidth={2} />
-    <Path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="#666666" strokeWidth={2} strokeLinecap="round" />
+    <Path d="M7 11V7C7 4.23858 9.23858 2 12 2C14.7614 2 17 4.23858 17 7V11" stroke="#666666" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
 
-export default function KycSubmitScreen() {
+export default function CommunityKycSubmitScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ verifiedPhone?: string }>();
   const { user, updateUser } = useAuthStore();
@@ -56,12 +54,7 @@ export default function KycSubmitScreen() {
   
   // Form States
   const [fullName, setFullName] = useState('');
-  const [dob, setDob] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  
-  // Custom Date and Country Picker States
-  const [dobDate, setDobDate] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [countryCode, setCountryCode] = useState('+91');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   
@@ -72,26 +65,6 @@ export default function KycSubmitScreen() {
   
   const [selfieBase64, setSelfieBase64] = useState<string | undefined>(undefined);
   const [selfieUri, setSelfieUri] = useState<string | undefined>(undefined);
-
-  // OTP States
-  const [otpFlowActive, setOtpFlowActive] = useState(false);
-  const [otpReferenceId, setOtpReferenceId] = useState('');
-  const [otpValue, setOtpValue] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
-
-  const handleDobChange = (text: string) => {
-    // Remove all non-digits
-    const cleaned = text.replace(/\D/g, '');
-    let formatted = cleaned;
-    if (cleaned.length > 2) {
-      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
-    }
-    if (cleaned.length > 4) {
-      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
-    }
-    setDob(formatted);
-  };
 
   useEffect(() => {
     if (params.verifiedPhone) {
@@ -191,14 +164,13 @@ export default function KycSubmitScreen() {
       try {
         const response = await validateKYCImage({
           id_photo: base64,
-          id_type: idType,
-          id_number: idNumber.trim() || undefined,
+          id_type: 'aadhaar',
           full_name: fullName,
         });
         if (response?.data && !response.data.valid) {
           Alert.alert(
             'Validation Failed',
-            response.data.reason || `The uploaded document is invalid or blurry. Please upload a clear photo of your ${idType.toUpperCase()} card.`
+            response.data.reason || 'The uploaded document is invalid or blurry. Please upload a clear photo of your Aadhaar card.'
           );
           setIdPhotoBase64(undefined);
           setIdPhotoUri(undefined);
@@ -213,97 +185,22 @@ export default function KycSubmitScreen() {
     }
   };
 
-  useEffect(() => {
-    setOtpFlowActive(false);
-    setOtpReferenceId('');
-    setOtpValue('');
-    setOtpVerified(false);
-  }, [idType]);
-
-  useEffect(() => {
-    if (idType === 'aadhaar' && otpVerified) {
-      setOtpVerified(false);
-      setOtpFlowActive(false);
-      setOtpReferenceId('');
-      setOtpValue('');
-    }
-  }, [idNumber, idType, otpVerified]);
-
-  const handleGenerateOtp = async () => {
-    const trimmed = idNumber.trim();
-    if (trimmed.length !== 12) {
-      Alert.alert('Invalid Aadhaar', 'Aadhaar number must be 12 digits.');
-      return;
-    }
-
-    setOtpLoading(true);
-    try {
-      const response = await generateUserAadhaarOtp({
-        aadhaar_number: trimmed,
-        consent: 'Y',
-        reason: 'Jobs KYC verification',
-      });
-      const referenceId =
-        response?.data?.reference_id ||
-        response?.data?.sandbox_response?.reference_id ||
-        response?.data?.sandbox_response?.data?.reference_id ||
-        '';
-
-      if (!referenceId) {
-        Alert.alert('OTP Error', 'OTP generated but reference ID is missing. Please retry.');
-        return;
-      }
-
-      setOtpReferenceId(referenceId);
-      setOtpFlowActive(true);
-      setOtpVerified(false);
-      Alert.alert('OTP Sent', 'OTP sent to your Aadhaar-linked mobile number.');
-    } catch (error: any) {
-      const message = error?.response?.data?.detail || error?.message || 'Failed to generate OTP.';
-      Alert.alert('OTP Failed', typeof message === 'string' ? message : 'Failed to generate OTP.');
-    } finally {
-      setOtpLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otpReferenceId) {
-      Alert.alert('Missing Reference', 'Please generate OTP first.');
-      return;
-    }
-    if (!otpValue.trim()) {
-      Alert.alert('Missing OTP', 'Please enter the OTP.');
-      return;
-    }
-
-    setOtpLoading(true);
-    try {
-      await verifyUserAadhaarOtp({
-        reference_id: otpReferenceId,
-        otp: otpValue.trim(),
-      });
-      setOtpVerified(true);
-      Alert.alert('Verified', 'Aadhaar OTP verified successfully.');
-    } catch (error: any) {
-      const message = error?.response?.data?.detail || error?.message || 'Failed to verify OTP.';
-      Alert.alert('Verification Failed', typeof message === 'string' ? message : 'Failed to verify OTP.');
-    } finally {
-      setOtpLoading(false);
-    }
-  };
-
   const submit = async () => {
     if (!fullName.trim()) {
       Alert.alert('Missing Details', 'Please enter your Full Name.');
+      return;
+    }
+    if (!idPhotoBase64) {
+      Alert.alert('Missing Proof', 'Please upload a photo of your ID proof.');
       return;
     }
 
     setSubmitLoading(true);
     try {
       const response = await submitKYC({
-        kyc_role: 'vendor',
+        kyc_role: 'organizer', // Community KYC role is organizer
         id_type: 'aadhaar',
-        id_number: idNumber.trim() || '123456789012',
+        id_number: '123456789012',
         id_photo: idPhotoBase64,
         selfie_photo: selfieBase64,
         bypass_validation: false,
@@ -317,11 +214,11 @@ export default function KycSubmitScreen() {
 
       if (requestNo) {
         router.replace({
-          pathname: '/kyc-success',
+          pathname: '/community-request/kyc-success',
           params: { requestNo }
         } as any);
       } else {
-        router.replace('/kyc-success' as any);
+        router.replace('/community-request/kyc-success' as any);
       }
     } catch (error: any) {
       const message = error?.response?.data?.detail || error?.message || 'Failed to submit KYC.';
@@ -372,7 +269,7 @@ export default function KycSubmitScreen() {
               keyboardShouldPersistTaps="handled"
             >
               <Image 
-                source={require('../assets/images/verification_header_illustration.png')} 
+                source={require('../../assets/images/verification_header_illustration.png')} 
                 style={styles.illustrationHeaderImage}
               />
 
@@ -399,7 +296,7 @@ export default function KycSubmitScreen() {
                   </View>
                   <TouchableOpacity 
                     style={styles.primaryBtn} 
-                    onPress={() => router.replace('/kyc')}
+                    onPress={() => router.replace('/community-request/kyc')}
                   >
                     <Text style={styles.primaryBtnText}>Go Back</Text>
                   </TouchableOpacity>
@@ -436,92 +333,6 @@ export default function KycSubmitScreen() {
                         </View>
                       </View>
 
-                      {/* DOB input */}
-                      <View style={styles.inputContainer}>
-                        <TouchableOpacity 
-                          style={styles.inputWrapper} 
-                          onPress={() => setShowDatePicker(true)}
-                          activeOpacity={0.7}
-                        >
-                          <Svg width={18} height={20} viewBox="0 0 18 20" fill="none" style={{ marginLeft: 12, marginRight: 8, width: 17.78 }}>
-                            <Path d="M5.92664 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                            <Path d="M11.8534 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                            <Path d="M3.7042 4.07422H14.0759C14.8936 4.07422 15.5575 4.73813 15.5575 5.55589V15.9276C15.5575 16.7453 14.8936 17.4092 14.0759 17.4092H3.7042C2.88645 17.4092 2.22253 16.7453 2.22253 15.9276V5.55589C2.22253 4.73813 2.88645 4.07422 3.7042 4.07422V4.07422" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                            <Path d="M2.22253 8.51758H15.5575" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                          </Svg>
-                          <TextInput
-                            style={styles.textInput}
-                            placeholder="DD/MM/YYYY"
-                            placeholderTextColor="#9CA3AF"
-                            value={dob}
-                            onChangeText={handleDobChange}
-                            keyboardType="numeric"
-                            maxLength={10}
-                            editable={false}
-                            pointerEvents="none"
-                          />
-                        </TouchableOpacity>
-                      </View>
-
-                      {showDatePicker && (
-                        Platform.OS === 'ios' ? (
-                          <Modal
-                            transparent={true}
-                            animationType="fade"
-                            visible={showDatePicker}
-                            onRequestClose={() => setShowDatePicker(false)}
-                          >
-                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                              <View style={{ backgroundColor: '#FFF', borderRadius: 16, padding: 16, width: 320 }}>
-                                <DateTimePicker
-                                  value={dobDate || new Date()}
-                                  mode="date"
-                                  display="inline"
-                                  maximumDate={new Date()}
-                                  onChange={(event, selectedDate) => {
-                                    if (selectedDate) {
-                                      setDobDate(selectedDate);
-                                    }
-                                  }}
-                                />
-                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
-                                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                    <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
-                                  </TouchableOpacity>
-                                  <TouchableOpacity onPress={() => {
-                                    setShowDatePicker(false);
-                                    const dateToUse = dobDate || new Date();
-                                    const day = String(dateToUse.getDate()).padStart(2, '0');
-                                    const month = String(dateToUse.getMonth() + 1).padStart(2, '0');
-                                    const year = dateToUse.getFullYear();
-                                    setDob(`${day}/${month}/${year}`);
-                                  }}>
-                                    <Text style={{ color: '#F26522', fontWeight: '600', fontSize: 14 }}>OK</Text>
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-                            </View>
-                          </Modal>
-                        ) : (
-                          <DateTimePicker
-                            value={dobDate || new Date()}
-                            mode="date"
-                            display="default"
-                            maximumDate={new Date()}
-                            onChange={(event, selectedDate) => {
-                              setShowDatePicker(false);
-                              if (selectedDate) {
-                                setDobDate(selectedDate);
-                                const day = String(selectedDate.getDate()).padStart(2, '0');
-                                const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                                const year = selectedDate.getFullYear();
-                                setDob(`${day}/${month}/${year}`);
-                              }
-                            }}
-                          />
-                        )
-                      )}
-
                       {/* Phone input */}
                       <View style={styles.inputContainer}>
                         <View style={styles.inputWrapper}>
@@ -542,6 +353,7 @@ export default function KycSubmitScreen() {
                             onChangeText={setPhoneNumber}
                             keyboardType="phone-pad"
                             maxLength={10}
+                            editable={false}
                           />
                         </View>
                       </View>
@@ -594,48 +406,6 @@ export default function KycSubmitScreen() {
                       </TouchableOpacity>
                     </View>
                   </View>
-
-                  {/* Card 3: Selfie Verification (Bypassed for testing ID) */}
-                  {/*
-                  <View style={styles.whiteCard}>
-                    <View style={styles.cardHeader}>
-                      <View style={styles.badgeCircle}>
-                        <Text style={styles.badgeText}>3</Text>
-                      </View>
-                      <View style={styles.cardHeaderTexts}>
-                        <Text style={styles.cardTitle}>Selfie Verification</Text>
-                        <Text style={styles.cardDescription}>Take a clear selfie for verification.</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.fieldsContainer}>
-                      <TouchableOpacity 
-                        style={styles.dashedCard} 
-                        onPress={() => pickImageAsBase64(true)}
-                      >
-                        {selfieUri ? (
-                          <View style={styles.previewContainer}>
-                            <Image source={{ uri: selfieUri }} style={styles.previewImage} />
-                            <View style={styles.changeOverlay}>
-                              <Ionicons name="camera" size={24} color="#FFF" />
-                              <Text style={styles.changeText}>Retake Selfie</Text>
-                            </View>
-                          </View>
-                        ) : (
-                          <View style={styles.dashedCardInner}>
-                            <View style={styles.cloudCircle}>
-                              <Ionicons name="camera-outline" size={24} color="#F26522" />
-                            </View>
-                            <Text style={styles.uploadMainText}>Take Selfie</Text>
-                            <Text style={styles.uploadSubText}>
-                              Make sure your face is clearly visible.
-                            </Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  */}
 
                   {/* Submit Button */}
                   <TouchableOpacity 
@@ -820,12 +590,6 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: 6,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-  },
   inputWrapper: {
     width: '100%',
     height: 48,
@@ -861,34 +625,6 @@ const styles = StyleSheet.create({
     height: 20,
     backgroundColor: '#E5E5E5',
     marginRight: 12,
-  },
-  segmentRow: {
-    flexDirection: 'row',
-    width: '100%',
-    gap: 8,
-    marginTop: 8,
-  },
-  segmentButton: {
-    flex: 1,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E5E5E5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  segmentActive: {
-    backgroundColor: '#F26522',
-    borderColor: '#F26522',
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666666',
-  },
-  segmentTextActive: {
-    color: '#FFFFFF',
   },
   dashedCard: {
     display: 'flex',
@@ -942,20 +678,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 15,
   },
-  tagLabel: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: '#FFEFE7',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  tagLabelText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#F26522',
-  },
   previewContainer: {
     width: '100%',
     height: '100%',
@@ -976,30 +698,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-  },
-  otpVerifyBlock: {
-    width: '100%',
-    marginTop: 10,
-  },
-  outlineBtn: {
-    width: '100%',
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F26522',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-  },
-  outlineBtnText: {
-    color: '#F26522',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  otpActionRow: {
-    flexDirection: 'row',
-    gap: 8,
-    width: '100%',
   },
   primaryBtn: {
     width: Platform.OS === 'android' ? 320 : 361,

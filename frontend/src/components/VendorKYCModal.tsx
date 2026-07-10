@@ -259,6 +259,23 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         const asset = result.assets[0];
         const uri = asset.uri;
         const fileName = (asset as any).fileName || null;
+
+        // Strict file type validation on the frontend
+        const fileExtension = uri ? uri.split('.').pop()?.toLowerCase() : '';
+        const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+        if (fileExtension && !allowedExtensions.includes(fileExtension)) {
+          Alert.alert('Invalid Format', 'Only JPG, JPEG, PNG, or WEBP images are allowed.');
+          return;
+        }
+
+        // Size limit check: 5MB (5242880 bytes)
+        const fileSize = asset.fileSize || 0;
+        const maxSize = 5 * 1024 * 1024;
+        if (fileSize > maxSize) {
+          Alert.alert('File Too Large', 'Maximum file size allowed is 5MB.');
+          return;
+        }
+
         setIdDocumentUri(uri);
         setHasAutoExtracted(false);
         // Reset OTP verification states when a new document is picked

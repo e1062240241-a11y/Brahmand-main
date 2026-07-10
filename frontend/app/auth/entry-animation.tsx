@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, 
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, Mask } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
+import { FONTS } from '../../src/constants/theme';
 
 const LotusOrnament = () => (
   <Svg width={12} height={12} viewBox="0 0 12 12" fill="none" style={{ aspectRatio: 1 }}>
@@ -84,8 +85,7 @@ export default function EntryAnimationScreen() {
   const cardHeight = isAndroid ? (screenHeight < 700 ? Math.min(380, screenHeight * 0.48) : 474) : 474;
   const imageContainerHeight = isAndroid ? (screenHeight < 700 ? Math.min(280, cardHeight - 100) : 364) : 364;
 
-  const titleFontSize = isAndroid ? (screenHeight < 700 ? 26 : 32) : 32;
-  const titleBottom = isAndroid ? (screenHeight < 700 ? 6 : 10) : 10;
+  const titleFontSize = isAndroid ? (screenHeight < 700 ? 22 : 28) : 28;
 
   const iconsRowWidth = isAndroid ? Math.min(329, screenWidth - 32) : 329;
   const iconsRowGap = isAndroid ? (screenWidth < 360 ? 12 : 32) : 32;
@@ -137,10 +137,10 @@ export default function EntryAnimationScreen() {
               style={styles.lotusImage}
               resizeMode="contain"
             />
-            <Text style={[styles.title, { fontSize: titleFontSize, bottom: titleBottom }]}>BRAHMAND</Text>
           </View>
           
           <View style={styles.contentContainer}>
+            <Text style={[styles.title, { fontSize: titleFontSize }]}>BRAHMAND</Text>
             <View style={styles.dividerContainer}>
               <View style={styles.line} />
               <View style={styles.ornamentWrapper}>
@@ -235,22 +235,19 @@ const styles = StyleSheet.create({
   lotusImage: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.5 }, { translateY: -15 }],
+    transform: [{ scale: 1.0 }],
   },
   title: {
-    position: 'absolute',
-    bottom: 10,
-    left: 0,
-    right: 0,
     fontSize: 32,
-    fontFamily: 'Cinzel',
-    fontWeight: '500',
+    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
     letterSpacing: 14,
     textAlign: 'center',
     paddingLeft: 14,
     fontStyle: 'normal',
     lineHeight: 36,
+    marginTop: 2,
+    marginBottom: 5,
   },
   contentContainer: {
     flex: 1,
@@ -258,13 +255,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingHorizontal: 20,
+    paddingTop: 5,
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: 248,
     height: 12,
-    marginVertical: 12,
+    marginTop: 4,
+    marginBottom: 8,
   },
   line: {
     flex: 1,
@@ -278,12 +277,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: 'Poppins',
     color: '#F5EEDC',
     letterSpacing: 1,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   iconsRow: {
     flexDirection: 'row',

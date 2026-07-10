@@ -45,6 +45,124 @@ const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void)
   return ExpoVideoModule.useVideoPlayer(source || null, setup);
 };
 
+const NativeVideoPlayer = memo(({
+  mediaUrl,
+  isMuted,
+  shouldPlay,
+  cropStyle,
+  filterName,
+  setMediaLoading,
+  setMediaError,
+  videoPosterUrl,
+  handlePosterError,
+  mediaLoading,
+}: {
+  mediaUrl: string;
+  isMuted: boolean;
+  shouldPlay: boolean;
+  cropStyle: any;
+  filterName: string;
+  setMediaLoading: (loading: boolean) => void;
+  setMediaError: (error: string | null) => void;
+  videoPosterUrl: string;
+  handlePosterError: () => void;
+  mediaLoading: boolean;
+}) => {
+  const player = useSafeVideoPlayer(mediaUrl, (p) => {
+    if (p) {
+      p.loop = true;
+      p.muted = isMuted;
+      if (Platform.OS !== 'web') {
+        p.bufferOptions = {
+          preferredForwardBufferDuration: 2, 
+          waitsToMinimizeStalling: true,
+          minBufferForPlayback: 0.5, 
+          maxBufferBytes: 2 * 1024 * 1024,
+        };
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (player) {
+      try {
+        player.muted = isMuted;
+      } catch (e) {}
+    }
+  }, [isMuted, player]);
+
+  useEffect(() => {
+    if (player) {
+      try {
+        if (shouldPlay) {
+          player.play();
+        } else {
+          player.pause();
+        }
+      } catch (e) {
+        console.warn('[PostFeedCard] player play/pause error:', e);
+      }
+    }
+  }, [shouldPlay, player]);
+
+  // Clean up player on unmount
+  useEffect(() => {
+    return () => {
+      if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
+  if (!ExpoVideoModule?.VideoView || !player) {
+    return (
+      <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
+        {videoPosterUrl ? (
+          <Image
+            source={{ uri: videoPosterUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            onError={handlePosterError}
+          />
+        ) : (
+          <Ionicons name="videocam-outline" size={32} color="#444" />
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <ExpoVideoModule.VideoView
+        player={player}
+        style={cropStyle || styles.videoBackground}
+        contentFit="cover"
+        nativeControls={false}
+        onFirstFrameRender={() => setMediaLoading(false)}
+        onError={(e: any) => {
+          setMediaLoading(false);
+          setMediaError('Video player error');
+        }}
+      />
+      {filterName !== 'Normal' && (
+        <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
+      )}
+      {mediaLoading && videoPosterUrl ? (
+        <Image
+          source={{ uri: videoPosterUrl }}
+          style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
+          contentFit="cover"
+          pointerEvents="none"
+          onError={handlePosterError}
+        />
+      ) : null}
+    </>
+  );
+});
+NativeVideoPlayer.displayName = 'NativeVideoPlayer';
+
 type PostFeedCardProps = {
   post: any;
   onLike?: (post: any) => void;
@@ -267,34 +385,11 @@ export const PostFeedCard = memo(({
   const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen;
   const videoRef = useRef<any>(null);
 
-  // CRITICAL OPTIMIZATION: Only pass the media source to the native player if the post is active.
-  // This prevents 50+ off-screen AVPlayers from hoarding memory and heating up the phone!
-  const playerSource = (Platform.OS === 'web' || !isVideo || !isActive || !mediaUrl) ? null : mediaUrl;
-  const player = useSafeVideoPlayer(playerSource, (p) => {
-    if (p) {
-      p.loop = true;
-      p.muted = isMuted;
-      if (Platform.OS !== 'web') {
-        p.bufferOptions = {
-          preferredForwardBufferDuration: 2, 
-          waitsToMinimizeStalling: true,
-          minBufferForPlayback: 0.5, 
-          maxBufferBytes: 2 * 1024 * 1024, // Reduced from 15MB to 2MB to save data traffic
-        };
-      }
-    }
-  });
-
   useEffect(() => {
-    if (player) {
-      try {
-        player.muted = isMuted;
-      } catch (e) {}
-    }
     if (Platform.OS === 'web' && videoRef.current) {
       videoRef.current.muted = isMuted;
     }
-  }, [isMuted, player]);
+  }, [isMuted]);
 
   useEffect(() => {
     let timer: any;
@@ -308,45 +403,27 @@ export const PostFeedCard = memo(({
   }, [mediaLoading]);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      if (videoRef.current) {
-        if (shouldPlay) {
-          videoRef.current.play().catch((e: any) => {
-            console.warn('[PostFeedCard] Web Video Play Error:', e);
-          });
-        } else {
-          videoRef.current.pause();
-        }
-      }
-    } else if (player) {
-      try {
-        if (shouldPlay) {
-          player.play();
-        } else {
-          player.pause();
-        }
-      } catch (e) {
-        console.warn('[PostFeedCard] player play/pause error:', e);
+    if (Platform.OS === 'web' && videoRef.current) {
+      if (shouldPlay) {
+        videoRef.current.play().catch((e: any) => {
+          console.warn('[PostFeedCard] Web Video Play Error:', e);
+        });
+      } else {
+        videoRef.current.pause();
       }
     }
-  }, [shouldPlay, player]);
+  }, [shouldPlay]);
 
-  // Clean up player on unmount to prevent audio leaks
+  // Clean up player on unmount
   useEffect(() => {
     return () => {
-      if (Platform.OS === 'web') {
-        if (videoRef.current) {
-          try {
-            videoRef.current.pause();
-          } catch (e) {}
-        }
-      } else if (player) {
+      if (Platform.OS === 'web' && videoRef.current) {
         try {
-          player.pause();
+          videoRef.current.pause();
         } catch (e) {}
       }
     };
-  }, [player]);
+  }, []);
 
   const prevIsActive = useRef(isActive);
   useEffect(() => {
@@ -568,32 +645,19 @@ export const PostFeedCard = memo(({
                     <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
                   )}
                 </>
-              ) : ExpoVideoModule?.VideoView && player && isActive ? (
-                <>
-                  <ExpoVideoModule.VideoView
-                    player={player}
-                    style={cropStyle || styles.videoBackground}
-                    contentFit="cover"
-                    nativeControls={false}
-                    onFirstFrameRender={() => setMediaLoading(false)}
-                    onError={(e: any) => {
-                      setMediaLoading(false);
-                      setMediaError('Video player error');
-                    }}
-                  />
-                  {(Platform.OS as string) !== 'web' && filterName !== 'Normal' && (
-                    <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
-                  )}
-                  {mediaLoading && videoPosterUrl ? (
-                    <Image
-                      source={{ uri: videoPosterUrl }}
-                      style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
-                      contentFit="cover"
-                      pointerEvents="none"
-                      onError={handlePosterError}
-                    />
-                  ) : null}
-                </>
+              ) : isActive ? (
+                <NativeVideoPlayer
+                  mediaUrl={mediaUrl}
+                  isMuted={isMuted}
+                  shouldPlay={shouldPlay}
+                  cropStyle={cropStyle}
+                  filterName={filterName}
+                  setMediaLoading={setMediaLoading}
+                  setMediaError={setMediaError}
+                  videoPosterUrl={videoPosterUrl}
+                  handlePosterError={handlePosterError}
+                  mediaLoading={mediaLoading}
+                />
               ) : (
                 <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
                   {videoPosterUrl ? (
@@ -606,7 +670,6 @@ export const PostFeedCard = memo(({
                   ) : (
                     <Ionicons name="videocam-outline" size={32} color="#444" />
                   )}
-                  {isActive && !player && <Text style={{ color: '#666', fontSize: 10, marginTop: 8 }}>{t('language') === 'hi' ? 'प्लेयर अनुपलब्ध' : 'Player unavailable'}</Text>}
                 </View>
               )}
               <Pressable

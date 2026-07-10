@@ -442,6 +442,104 @@ try {
   ExpoVideoModule = require('expo-video');
 } catch (error) {}
 
+const CommunityNativeVideoPlayer = React.memo(({
+  mediaUrl,
+  isMuted,
+  style,
+  onPress,
+  shouldPlay,
+  toggleMute,
+}: {
+  mediaUrl: string;
+  isMuted: boolean;
+  style: any;
+  onPress?: () => void;
+  shouldPlay: boolean;
+  toggleMute: () => void;
+}) => {
+  const player = ExpoVideoModule?.useVideoPlayer ? ExpoVideoModule.useVideoPlayer(mediaUrl, (p: any) => {
+    if (p) {
+      p.loop = true;
+      p.muted = isMuted;
+    }
+  }) : null;
+
+  useEffect(() => {
+    if (player) {
+      try {
+        player.muted = isMuted;
+      } catch (e) {}
+    }
+  }, [isMuted, player]);
+
+  useEffect(() => {
+    if (player) {
+      try {
+        if (shouldPlay) {
+          player.play();
+        } else {
+          player.pause();
+        }
+      } catch (e) {}
+    }
+  }, [shouldPlay, player]);
+
+  // Clean up player on unmount
+  useEffect(() => {
+    return () => {
+      if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
+  if (!ExpoVideoModule?.VideoView || !player) {
+    return <View style={[style, { backgroundColor: '#000' }]} />;
+  }
+
+  const Wrapper = onPress ? TouchableOpacity : View;
+  const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
+
+  return (
+    <Wrapper {...wrapperProps} style={[StyleSheet.flatten(style), { position: 'relative', overflow: 'hidden', backgroundColor: '#000' }]}>
+      <ExpoVideoModule.VideoView
+        player={player}
+        style={{ width: '100%', height: '100%' }}
+        contentFit="contain"
+        nativeControls={false}
+      />
+      <TouchableOpacity
+        style={{
+          position: 'absolute',
+          bottom: 8,
+          right: 8,
+          zIndex: 10,
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}
+        onPress={(e) => {
+          e.stopPropagation();
+          toggleMute();
+        }}
+        activeOpacity={0.8}
+      >
+        <Ionicons
+          name={isMuted ? 'volume-mute' : 'volume-medium'}
+          size={18}
+          color="#FFF"
+        />
+      </TouchableOpacity>
+    </Wrapper>
+  );
+});
+CommunityNativeVideoPlayer.displayName = 'CommunityNativeVideoPlayer';
+
 const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media: string | any, style: any, onPress?: () => void, isActive?: boolean }) => {
   const mediaUrl = typeof media === 'string' ? media : (media?.uri || '');
   const isVideo = (
@@ -462,83 +560,31 @@ const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media:
   const isFocused = useIsFocused();
   const shouldPlay = isFocused && isActive;
 
-  const player = ExpoVideoModule?.useVideoPlayer ? ExpoVideoModule.useVideoPlayer(isVideo && shouldPlay ? mediaUrl : null, (p: any) => {
-    if (p) {
-      p.loop = true;
-      p.muted = isMuted;
-      if (shouldPlay) {
-        p.play();
-      } else {
-        p.pause();
-      }
+  if (isVideo) {
+    if (shouldPlay) {
+      return (
+        <CommunityNativeVideoPlayer
+          mediaUrl={mediaUrl}
+          isMuted={isMuted}
+          style={style}
+          onPress={onPress}
+          shouldPlay={shouldPlay}
+          toggleMute={toggleMute}
+        />
+      );
+    } else {
+      const Wrapper = onPress ? TouchableOpacity : View;
+      const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
+      return (
+        <Wrapper {...wrapperProps} style={[StyleSheet.flatten(style), { backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }]}>
+          <Ionicons name="play-circle-outline" size={40} color="rgba(255,255,255,0.6)" />
+        </Wrapper>
+      );
     }
-  }) : null;
-
-  useEffect(() => {
-    if (player) {
-      try {
-        player.muted = isMuted;
-      } catch (e) {
-        console.warn('[CommunityVideo] Muted state change failed:', e);
-      }
-    }
-  }, [isMuted, player]);
-
-  useEffect(() => {
-    if (player) {
-      try {
-        if (shouldPlay) {
-          player.play();
-        } else {
-          player.pause();
-        }
-      } catch (e) {
-        console.warn('[CommunityVideo] Play/pause state change failed:', e);
-      }
-    }
-  }, [shouldPlay, player]);
+  }
 
   const Wrapper = onPress ? TouchableOpacity : View;
   const wrapperProps = onPress ? { activeOpacity: 0.9, onPress } : {};
-
-  if (isVideo && ExpoVideoModule?.VideoView && player) {
-    const flattenedStyle = StyleSheet.flatten(style) || {};
-    return (
-      <Wrapper {...wrapperProps} style={[flattenedStyle, { position: 'relative', overflow: 'hidden', backgroundColor: '#000' }]}>
-        <ExpoVideoModule.VideoView
-          player={player}
-          style={{ width: '100%', height: '100%' }}
-          contentFit="contain"
-          nativeControls={false}
-        />
-        <TouchableOpacity
-          style={{
-            position: 'absolute',
-            bottom: 8,
-            right: 8,
-            zIndex: 10,
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-          onPress={(e) => {
-            e.stopPropagation();
-            toggleMute();
-          }}
-          activeOpacity={0.8}
-        >
-          <Ionicons
-            name={isMuted ? 'volume-mute' : 'volume-medium'}
-            size={18}
-            color="#FFF"
-          />
-        </TouchableOpacity>
-      </Wrapper>
-    );
-  }
 
   return (
     <Wrapper {...wrapperProps}>

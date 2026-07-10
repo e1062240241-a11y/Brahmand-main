@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, Image, Platform, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../src/store/authStore';
+import { FONTS } from '../src/constants/theme';
 import Svg, { Path } from 'react-native-svg';
 
 const LotusOrnament = () => (
@@ -50,10 +51,10 @@ export default function IndexRoute() {
             style={styles.lotusImage}
             resizeMode="contain"
           />
-          <Text style={styles.title}>BRAHMAND</Text>
         </View>
         
         <View style={styles.contentContainer}>
+          <Text style={styles.title}>BRAHMAND</Text>
           
           <View style={styles.dividerContainer}>
             <View style={styles.line} />
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
   lotusImage: {
     width: '100%',
     height: '100%',
-    transform: [{ scale: 1.5 }, { translateY: -15 }],
+    transform: [{ scale: 1.0 }],
   },
   contentContainer: {
     flex: 1,
@@ -115,29 +116,27 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingBottom: 38,
     paddingHorizontal: 20,
-    marginTop: -10,
+    marginTop: 0,
   },
   title: {
-    position: 'absolute',
-    bottom: 10,
-    left: 0,
-    right: 0,
-    fontSize: 28,
-    fontFamily: 'Cinzel',
-    fontWeight: '500',
+    fontSize: 24,
+    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
     letterSpacing: 14,
     textAlign: 'center',
     paddingLeft: 14,
     fontStyle: 'normal',
-    lineHeight: 36,
+    lineHeight: 30,
+    marginTop: 2,
+    marginBottom: 5,
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: 248,
     height: 12,
-    marginVertical: 12,
+    marginTop: 4,
+    marginBottom: 8,
   },
   line: {
     flex: 1,
@@ -151,12 +150,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontFamily: 'Poppins',
     color: '#F5EEDC',
     letterSpacing: 1,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   tagline: {
     fontSize: 14,

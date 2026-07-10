@@ -1,13 +1,13 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import { useAuthStore } from '../../../src/store/authStore';
 import { useVendorStore } from '../../../src/store/vendorStore';
 
-import { getKYCStatus } from '../../../src/services/api';
+import { getKYCStatus, createCommunityRequest, parseApiError } from '../../../src/services/api';
 
 export default function CommunityRequestBloodVerifyPage() {
   const router = useRouter();
@@ -27,24 +27,54 @@ export default function CommunityRequestBloodVerifyPage() {
   const [phoneNumber, setPhoneNumber] = React.useState(
     rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone
   );
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
 
   React.useEffect(() => {
     fetchMyVendor();
   }, [fetchMyVendor]);
 
+  React.useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const response = await getKYCStatus();
+        const serverStatus = response?.data?.kyc_status || null;
+        updateUser({
+          kyc_status: serverStatus,
+          is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+          kyc_submitted_at: response?.data?.submitted_at || null,
+          kyc_verified_at: response?.data?.verified_at || null,
+          kyc_request_no: response?.data?.kyc_request_no || null,
+        } as any);
+      } catch (error) {
+        console.warn('Failed to refresh KYC status in Blood Verify:', error);
+      }
+    };
+    fetchStatus();
+  }, [updateUser]);
+
   const isKycVerified =
     (user as any)?.kyc_status === 'verified' ||
     Boolean((user as any)?.is_verified) ||
     myVendor?.kyc_status === 'verified';
 
-  const handleCompleteKyc = async () => {
-    router.push('/kyc');
+  const handleCompleteKyc = () => {
+    const status = (user as any)?.kyc_status;
+    if (status === 'pending' || status === 'manual_review') {
+      router.push('/community-request/kyc-success');
+    } else {
+      router.push('/community-request/kyc');
+    }
   };
 
   const handleSendOtp = () => {
     if (!isKycVerified) {
-      router.push('/kyc');
+      const status = (user as any)?.kyc_status;
+      if (status === 'pending' || status === 'manual_review') {
+        router.push('/community-request/kyc-success');
+      } else {
+        router.push('/community-request/kyc');
+      }
       return;
     }
     if (!phoneNumber || phoneNumber.length < 10) {
@@ -118,8 +148,17 @@ export default function CommunityRequestBloodVerifyPage() {
               </View>
             </View>
             {!isKycVerified && (
-              <TouchableOpacity style={styles.outlineButton} onPress={handleCompleteKyc} activeOpacity={0.8}>
-                <Text style={styles.outlineButtonText}>Complete KYC Now</Text>
+              <TouchableOpacity 
+                style={styles.outlineButton} 
+                onPress={handleCompleteKyc} 
+                activeOpacity={0.8}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#FF6B00" />
+                ) : (
+                  <Text style={styles.outlineButtonText}>Complete KYC Now</Text>
+                )}
               </TouchableOpacity>
             )}
           </View>
