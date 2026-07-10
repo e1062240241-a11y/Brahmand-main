@@ -655,15 +655,15 @@ export default function ProfileScreen() {
       return;
     }
 
-    setShowSettingsModal(false);
-    if (item.disabled) return;
     if (item.action === 'logout') {
-      // ponytail: Defer native prompt until settings modal finishes dismissing to avoid iOS UI lock
-      setTimeout(() => {
-        handleLogout();
-      }, Platform.OS === 'ios' ? 400 : 50);
+      // Do not dismiss settings modal first, show the native confirmation prompt directly on top of it.
+      // This prevents the UIKit transition conflict that causes the sheet to auto-dismiss and freeze the app.
+      handleLogout();
       return;
     }
+
+    setShowSettingsModal(false);
+    if (item.disabled) return;
     if (item.id === 'personality_verification') {
       setShowSettingsModal(false);
       const status = user?.personality_verification_status;
@@ -682,6 +682,8 @@ export default function ProfileScreen() {
 
 
   const performLogout = async () => {
+    // Dismiss the settings modal now that the user has confirmed logout
+    setShowSettingsModal(false);
     try {
       await logout();
       if (Platform.OS === 'web') {
@@ -718,6 +720,9 @@ export default function ProfileScreen() {
         (buttonIndex) => {
           if (buttonIndex === 1) {
             performLogout();
+          } else {
+            // Dismiss the settings modal overlay if the user cancels
+            setShowSettingsModal(false);
           }
         }
       );
@@ -726,9 +731,10 @@ export default function ProfileScreen() {
         t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
         t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
         [
-          { text: t('cancel'), style: 'cancel' },
+          { text: t('cancel'), style: 'cancel', onPress: () => setShowSettingsModal(false) },
           { text: t('language') === 'hi' ? 'लॉगआउट' : 'Logout', style: 'destructive', onPress: performLogout },
-        ]
+        ],
+        { cancelable: true, onDismiss: () => setShowSettingsModal(false) }
       );
     }
   };

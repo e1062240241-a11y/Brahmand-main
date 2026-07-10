@@ -120,166 +120,30 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    // 1. Call backend logout API to clean up FCM token and anonymous account if authenticated
-    try {
-      const token = get().token;
-      const fcmToken = get().fcmToken;
-      if (token) {
-        const { logoutUser } = require('../services/api');
-        await logoutUser(fcmToken);
-      }
-    } catch (apiErr) {
-      console.warn('[Auth] Backend logout request failed:', apiErr);
-    }
+    const token = get().token;
+    const fcmToken = get().fcmToken;
 
-    // 2. Firebase sign out
-    try {
-      const { signOutFirebase } = require('../services/firebase/authService');
-      await signOutFirebase();
-    } catch (error) {
-      console.warn('[Auth] Firebase signOut failed (ignored):', error);
-    }
-
-    // 3. Clear secure storage
-    await secureStorage.removeItem('auth_token');
-    await secureStorage.removeItem('user');
-
-    // 4. Clear all local WatermelonDB database tables to prevent cross-user leakage!
-    try {
-      const { database } = require('../database');
-      if (database && typeof database.write === 'function') {
-        await database.write(async () => {
-          const tables = [
-            'passport_journeys',
-            'passport_badges',
-            'passport_certificates',
-            'temples',
-            'users',
-            'feeds',
-            'chats',
-            'community_messages',
-            'follows',
-            'communities',
-            'conversations',
-            'library_progress',
-            'vendors',
-            'sync_queue'
-          ];
-          const operations: any[] = [];
-          for (const tableName of tables) {
-            try {
-              const collection = database.get(tableName);
-              const records = await collection.query().fetch();
-              for (const record of records) {
-                operations.push(record.prepareDestroyPermanently());
-              }
-            } catch (tableErr) {
-              console.warn(`[Auth] Failed to query table ${tableName}:`, tableErr);
-            }
-          }
-          if (operations.length > 0) {
-            await database.batch(...operations);
-          }
-        });
-      }
-    } catch (dbErr) {
-      console.warn('[Auth] Failed to clear local database on logout:', dbErr);
-    }
-
-    // 5. Clear AsyncStorage caches, preserving language settings
-    try {
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      const lang = await AsyncStorage.getItem('app_language');
-      await AsyncStorage.clear();
-      if (lang) {
-        await AsyncStorage.setItem('app_language', lang);
-      }
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.removeItem('brahmand_sync_queue');
-      }
-    } catch (asyncStorageErr) {
-      console.warn('[Auth] Failed to clear AsyncStorage on logout:', asyncStorageErr);
-    }
-
-    // 6. Reset all Zustand stores to their initial states
-    try {
-      const { useFeedStore } = require('./feedStore');
-      useFeedStore.getState().clearCache();
-      useFeedStore.getState().clearRotation();
-    } catch (err) {
-      console.warn('[Auth] Failed to clear feedStore:', err);
-    }
-
-    try {
-      const { useBlockStore } = require('./blockStore');
-      useBlockStore.getState().reset();
-    } catch (err) {
-      console.warn('[Auth] Failed to clear blockStore:', err);
-    }
-
-    try {
-      const { useChatStore } = require('./chatStore');
-      useChatStore.getState().clearCache();
-    } catch (err) {
-      console.warn('[Auth] Failed to clear chatStore:', err);
-    }
-
-    try {
-      const { useNotificationStore } = require('./notificationStore');
-      useNotificationStore.getState().clearRecentNotifications();
-      useNotificationStore.getState().setUnreadCount(0);
-    } catch (err) {
-      console.warn('[Auth] Failed to clear notificationStore:', err);
-    }
-
-    try {
-      const { useVendorStore } = require('./vendorStore');
-      useVendorStore.setState({ myVendor: null, vendors: [] });
-    } catch (err) {
-      console.warn('[Auth] Failed to clear vendorStore:', err);
-    }
-
-    try {
-      const { useHelpRequestStore } = require('./helpRequestStore');
-      useHelpRequestStore.setState({ activeRequest: null, allRequests: [], myRequests: [] });
-    } catch (err) {
-      console.warn('[Auth] Failed to clear helpRequestStore:', err);
-    }
-
-    try {
-      const { usePassportStore } = require('./passportStore');
-      usePassportStore.setState({
-        journeys: [],
-        badges: [],
-        certificates: [],
-        total_jaap: 0,
-        books_completed: 0,
-        daily_hanuman_count: {},
-        daily_other_jaap_count: {}
-      });
-    } catch (err) {
-      console.warn('[Auth] Failed to clear passportStore:', err);
-    }
-
-    try {
-      const { useJyotishStore } = require('./jyotishStore');
-      useJyotishStore.setState({ dob: null, tob: null, pob: null });
-      // jyotish AsyncStorage keys are wiped by the AsyncStorage.clear() above (step 5)
-    } catch (err) {
-      console.warn('[Auth] Failed to clear jyotishStore:', err);
-    }
-
-    try {
-      const { useUploadStore } = require('./uploadStore');
-      useUploadStore.getState().reset();
-    } catch (err) {
-      console.warn('[Auth] Failed to clear uploadStore:', err);
-    }
-
-    // 7. Reset auth store state
+    // 1. Reset auth store state immediately so the UI responds instantly
     set({ user: null, token: null, isAuthenticated: false, fcmToken: null });
 
-    // 8. Centralized redirect to index.tsx
+    // 2. Perform backend API logout and Firebase sign out in the background (non-blocking)
+    if (token) {
+      const { logoutUser } = require('../services/api');
+      logoutUser(fcmToken).catch((apiErr: any) => {
+        console.warn('[Auth] Backend logout request failed:', apiErr);
+      });
+    }
+
+    try {
+      const { signOutFirebase } = require('../services/firebase/authService');
+      signOutFirebase().catch((error: any) => {
+        console.warn('[Auth] Firebase signOut failed (ignored):', error);
+      });
+    } catch (error) {
+      console.warn('[Auth] Firebase signOut require failed:', error);
+    }
+
+    // 3. Centralized redirect to index.tsx immediately
     try {
       const { Platform } = require('react-native');
       if (Platform.OS === 'web') {
@@ -295,6 +159,120 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (routerErr) {
       console.warn('[Auth] Failed to redirect to index route:', routerErr);
     }
+
+    // 4. Defer database resetting and storage clearing to a background task/timeout
+    // This allows active UI screens to unmount and unsubscribe from WatermelonDB first,
+    // avoiding UIKit transition issues and unexpected database subscriber error crashes.
+    setTimeout(async () => {
+      // Clear secure storage
+      try {
+        await secureStorage.removeItem('auth_token');
+        await secureStorage.removeItem('user');
+      } catch (err) {
+        console.warn('[Auth] Failed to clear secure storage:', err);
+      }
+
+      // Clear all local WatermelonDB database tables cleanly and fast using SQLite reset
+      try {
+        const { database } = require('../database');
+        if (database && typeof database.unsafeResetDatabase === 'function') {
+          await database.write(async () => {
+            await database.unsafeResetDatabase();
+          });
+        }
+      } catch (dbErr) {
+        console.warn('[Auth] Failed to clear local database on logout:', dbErr);
+      }
+
+      // Clear AsyncStorage caches, preserving language settings
+      try {
+        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+        const lang = await AsyncStorage.getItem('app_language');
+        await AsyncStorage.clear();
+        if (lang) {
+          await AsyncStorage.setItem('app_language', lang);
+        }
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem('brahmand_sync_queue');
+        }
+      } catch (asyncStorageErr) {
+        console.warn('[Auth] Failed to clear AsyncStorage on logout:', asyncStorageErr);
+      }
+
+      // Reset all other Zustand stores to their initial states
+      try {
+        const { useFeedStore } = require('./feedStore');
+        useFeedStore.getState().clearCache();
+        useFeedStore.getState().clearRotation();
+      } catch (err) {
+        console.warn('[Auth] Failed to clear feedStore:', err);
+      }
+
+      try {
+        const { useBlockStore } = require('./blockStore');
+        useBlockStore.getState().reset();
+      } catch (err) {
+        console.warn('[Auth] Failed to clear blockStore:', err);
+      }
+
+      try {
+        const { useChatStore } = require('./chatStore');
+        useChatStore.getState().clearCache();
+      } catch (err) {
+        console.warn('[Auth] Failed to clear chatStore:', err);
+      }
+
+      try {
+        const { useNotificationStore } = require('./notificationStore');
+        useNotificationStore.getState().clearRecentNotifications();
+        useNotificationStore.getState().setUnreadCount(0);
+      } catch (err) {
+        console.warn('[Auth] Failed to clear notificationStore:', err);
+      }
+
+      try {
+        const { useVendorStore } = require('./vendorStore');
+        useVendorStore.setState({ myVendor: null, vendors: [] });
+      } catch (err) {
+        console.warn('[Auth] Failed to clear vendorStore:', err);
+      }
+
+      try {
+        const { useHelpRequestStore } = require('./helpRequestStore');
+        useHelpRequestStore.setState({ activeRequest: null, allRequests: [], myRequests: [] });
+      } catch (err) {
+        console.warn('[Auth] Failed to clear helpRequestStore:', err);
+      }
+
+      try {
+        const { usePassportStore } = require('./passportStore');
+        usePassportStore.setState({
+          journeys: [],
+          badges: [],
+          certificates: [],
+          total_jaap: 0,
+          books_completed: 0,
+          daily_hanuman_count: {},
+          daily_other_jaap_count: {}
+        });
+      } catch (err) {
+        console.warn('[Auth] Failed to clear passportStore:', err);
+      }
+
+      try {
+        const { useJyotishStore } = require('./jyotishStore');
+        useJyotishStore.setState({ dob: null, tob: null, pob: null });
+      } catch (err) {
+        console.warn('[Auth] Failed to clear jyotishStore:', err);
+      }
+
+      try {
+        const { useUploadStore } = require('./uploadStore');
+        useUploadStore.getState().reset();
+      } catch (err) {
+        console.warn('[Auth] Failed to clear uploadStore:', err);
+      }
+    }, 500);
   },
 
   loadStoredAuth: async () => {

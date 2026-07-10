@@ -161,7 +161,7 @@ export default function PhoneScreen() {
                     setError('');
                   }}
                   keyboardType="phone-pad"
-                  maxLength={phone.length >= 10 ? 10 : 30}
+                  maxLength={25}
                   autoFocus
                   showSoftInputOnFocus={true}
                   textContentType="telephoneNumber"
