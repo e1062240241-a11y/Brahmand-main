@@ -50,6 +50,8 @@ export default function TabLayout() {
           tabBar={(props) => <CustomTabBar {...props} />}
           screenOptions={{
             headerShown: false,
+            // ponytail: Preload all tabs on startup to make tab-switching completely instant
+            lazy: false,
           }}
       >
       {/* 1. Home */}

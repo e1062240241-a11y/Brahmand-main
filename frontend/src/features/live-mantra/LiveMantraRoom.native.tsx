@@ -377,6 +377,8 @@ export const LiveMantraRoom = () => {
     const initAudioMode = async () => {
       try {
         await setAudioModeAsync({
+          // ponytail: Enable background play so jaap continues on home screen / locked screen
+          shouldPlayInBackground: true,
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
