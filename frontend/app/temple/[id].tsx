@@ -704,6 +704,35 @@ const checkIsAartiLive = (sessions: [string, string][]) => {
   return false;
 };
 
+const getYoutubeVideoId = (url: string) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
+const getYoutubeEmbedUrl = (url: string) => {
+  if (url.includes('embed/live_stream')) {
+    return url + '&autoplay=1';
+  }
+  const videoId = getYoutubeVideoId(url);
+  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  return url;
+};
+
+const getYoutubeMobileUrl = (url: string) => {
+  if (url.includes('embed/live_stream')) {
+    return url + '&autoplay=1'; // Direct embed URL works in WebView
+  }
+  if (url.includes('embed?listType=playlist&list=')) {
+    const listId = url.split('&list=')[1].split('&')[0];
+    return `https://m.youtube.com/playlist?list=${listId}`;
+  }
+  const videoId = getYoutubeVideoId(url);
+  if (videoId) return `https://m.youtube.com/watch?v=${videoId}`;
+  return url.replace('www.youtube.com', 'm.youtube.com');
+};
+
 export default function TempleDetailScreen() {
  const { id } = useLocalSearchParams<{ id: string }>();
  const { t } = useTranslation();
@@ -910,34 +939,7 @@ if (!temple) {
 
 
 
-  const getYoutubeVideoId = (url: string) => {
-    if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
-  };
 
-  const getYoutubeEmbedUrl = (url: string) => {
-    if (url.includes('embed/live_stream')) {
-      return url + '&autoplay=1';
-    }
-    const videoId = getYoutubeVideoId(url);
-    if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-    return url;
-  };
-
-  const getYoutubeMobileUrl = (url: string) => {
-    if (url.includes('embed/live_stream')) {
-      return url + '&autoplay=1'; // Direct embed URL works in WebView
-    }
-    if (url.includes('embed?listType=playlist&list=')) {
-      const listId = url.split('&list=')[1].split('&')[0];
-      return `https://m.youtube.com/playlist?list=${listId}`;
-    }
-    const videoId = getYoutubeVideoId(url);
-    if (videoId) return `https://m.youtube.com/watch?v=${videoId}`;
-    return url.replace('www.youtube.com', 'm.youtube.com');
-  };
 
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
   const templeImageSource = getTempleImageById(resolvedTempleId);
