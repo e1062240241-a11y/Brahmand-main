@@ -9,6 +9,23 @@ import { useVendorStore } from '../../../src/store/vendorStore';
 
 import { getKYCStatus, createCommunityRequest, parseApiError } from '../../../src/services/api';
 
+const formatPhoneNumber = (text: string) => {
+  // Keep only numbers and plus sign (for country code detection)
+  let cleaned = text.replace(/[^0-9+]/g, '');
+
+  // Normalize leading +91, 91, or 0
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // Keep only digits and slice to 10
+  return cleaned.replace(/[^0-9]/g, '').slice(0, 10);
+};
+
 export default function CommunityRequestBloodVerifyPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string,
@@ -23,10 +40,8 @@ export default function CommunityRequestBloodVerifyPage() {
   const { user, updateUser } = useAuthStore();
   const { myVendor, fetchMyVendor } = useVendorStore();
 
-  const rawPhone = (params.contactNumber || user?.phone || '').replace(/[^0-9]/g, '');
-  const [phoneNumber, setPhoneNumber] = React.useState(
-    rawPhone.length > 10 ? rawPhone.slice(-10) : rawPhone
-  );
+  const rawPhone = params.contactNumber || user?.phone || '';
+  const [phoneNumber, setPhoneNumber] = React.useState(formatPhoneNumber(rawPhone));
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
 
@@ -123,8 +138,11 @@ export default function CommunityRequestBloodVerifyPage() {
                 placeholderTextColor={COLORS.textSecondary}
                 keyboardType="phone-pad"
                 value={phoneNumber}
-                onChangeText={(text) => setPhoneNumber(text.replace(/[^0-9]/g, ''))}
-                maxLength={10}
+                onChangeText={(text) => {
+                  const formatted = formatPhoneNumber(text);
+                  setPhoneNumber(formatted);
+                }}
+                maxLength={phoneNumber.length >= 10 ? 10 : 30}
               />
             </View>
             <TouchableOpacity style={styles.primaryButton} onPress={handleSendOtp} activeOpacity={0.8}>

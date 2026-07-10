@@ -28,10 +28,27 @@ if (typeof window !== 'undefined' && Platform.OS === 'web') {
   });
 }
 
+const formatPhoneNumber = (text: string) => {
+  // Keep only numbers and plus sign (for country code detection)
+  let cleaned = text.replace(/[^0-9+]/g, '');
+
+  // Normalize leading +91, 91, or 0
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // Keep only digits and slice to 10
+  return cleaned.replace(/[^0-9]/g, '').slice(0, 10);
+};
+
 export default function PhoneScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ phone?: string }>();
-  const [phone, setPhone] = useState<string>((params.phone?.toString() || '').replace(/[^0-9]/g, '').replace(/^91/, ''));
+  const [phone, setPhone] = useState<string>(formatPhoneNumber(params.phone?.toString() || ''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -139,11 +156,12 @@ export default function PhoneScreen() {
                   placeholderTextColor="#F5EEDC"
                   value={phone}
                   onChangeText={(text) => {
-                    setPhone(text.replace(/[^0-9]/g, ''));
+                    const formatted = formatPhoneNumber(text);
+                    setPhone(formatted);
                     setError('');
                   }}
                   keyboardType="phone-pad"
-                  maxLength={10}
+                  maxLength={phone.length >= 10 ? 10 : 30}
                   autoFocus
                   showSoftInputOnFocus={true}
                   textContentType="telephoneNumber"

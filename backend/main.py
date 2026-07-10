@@ -907,6 +907,13 @@ async def _ensure_admin_user(token_data: dict):
 
 def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     """Build admin-facing snapshot of vendor profile and KYC fields."""
+    # Normalize kyc_status to plain string to avoid Pydantic enum objects
+    # being stored in Firestore, which would break equality queries.
+    raw_kyc_status = vendor.get('kyc_status')
+    kyc_status_str = str(raw_kyc_status.value if hasattr(raw_kyc_status, 'value') else raw_kyc_status or 'pending')
+    is_pending = kyc_status_str in ('pending', 'manual_review', 'None', 'none', '')
+    if raw_kyc_status is None:
+        is_pending = True
     return {
         'vendor_id': vendor.get('id'),
         'owner_id': vendor.get('owner_id'),
@@ -927,12 +934,12 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'business_gallery_images': vendor.get('business_gallery_images', []),
         'menu_items': vendor.get('menu_items', []),
         'offers_home_delivery': vendor.get('offers_home_delivery', False),
-        'kyc_status': vendor.get('kyc_status', 'pending'),
+        'kyc_status': kyc_status_str,
         'kyc_request_no': vendor.get('kyc_request_no'),
         'aadhaar_otp_verified_at': vendor.get('aadhaar_otp_verified_at'),
         'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
-        'review_status': 'pending' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else vendor.get('kyc_status'),
-        'review_state': 'needs_admin_action' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else 'closed',
+        'review_status': 'pending' if is_pending else kyc_status_str,
+        'review_state': 'needs_admin_action' if is_pending else 'closed',
         'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.utcnow().isoformat() + 'Z'),
     }
 
@@ -10867,7 +10874,12 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
         raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
     
     update_data = data.dict(exclude_unset=True, exclude_none=True)
-    
+
+    # Normalize enum values to plain strings so Firestore stores and queries correctly.
+    if 'kyc_status' in update_data:
+        kyc_val = update_data['kyc_status']
+        update_data['kyc_status'] = str(kyc_val.value if hasattr(kyc_val, 'value') else kyc_val)
+
     # Do not allow setting kyc_status to verified or approved directly by vendor owner
     if 'kyc_status' in update_data:
         if update_data['kyc_status'] in ['verified', 'approved']:
@@ -10896,6 +10908,9 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
                 'kyc_request_no': kyc_request_no,
                 'kyc_role': 'vendor'
             })
+
+    # Always stamp updated_at so ordering queries and the admin snapshot stay fresh.
+    update_data['updated_at'] = datetime.utcnow().isoformat() + 'Z'
     
     # Handle new categories
     if 'categories' in update_data:
@@ -11990,6 +12005,50 @@ async def get_vendor_review_queue(
         except Exception as fallback_exc:
             with open(log_path, 'a') as f:
                 f.write(f"Fallback query or sort failed: {fallback_exc}\n")
+
+    # Self-healing: if status=pending and 0 results, re-sync all vendors whose
+    # kyc_status is pending/manual_review but whose snapshots are stale (enum stored
+    # as non-string, or snapshot missing). This fixes data from before the enum fix.
+    if status == 'pending' and not records:
+        with open(log_path, 'a') as f:
+            f.write("Zero pending snapshots found — running self-heal resync from vendors collection...\n")
+        try:
+            pending_vendors = await db.query_documents(
+                'vendors',
+                filters=[('kyc_status', 'in', ['pending', 'manual_review'])],
+            )
+            if not pending_vendors:
+                # Also scan without filter for stale enum values stored differently
+                all_vendors = await db.query_documents('vendors')
+                pending_vendors = [
+                    v for v in (all_vendors or [])
+                    if str(v.get('kyc_status', '')).lower() in ('pending', 'manual_review')
+                ]
+
+            resynced = 0
+            for v in (pending_vendors or []):
+                vid = v.get('id')
+                if vid:
+                    await _sync_vendor_to_admin_queue(db, vid)
+                    resynced += 1
+
+            with open(log_path, 'a') as f:
+                f.write(f"Self-heal resynced {resynced} vendor snapshots.\n")
+
+            if resynced > 0:
+                # Retry the query after resyncing
+                try:
+                    records = await db.query_documents(
+                        'vendor_admin_reviews',
+                        filters=[('review_status', '==', 'pending')],
+                    )
+                    with open(log_path, 'a') as f:
+                        f.write(f"Post-resync query: {len(records)} pending records found.\n")
+                except Exception:
+                    pass
+        except Exception as heal_exc:
+            with open(log_path, 'a') as f:
+                f.write(f"Self-heal failed: {heal_exc}\n")
 
     return records
 

@@ -201,6 +201,23 @@ const TimelineItem = ({ isCompleted, isActive, title, description, iconName, sho
   );
 };
 
+const formatPhoneNumber = (text: string) => {
+  // Keep only numbers and plus sign (for country code detection)
+  let cleaned = text.replace(/[^0-9+]/g, '');
+
+  // Normalize leading +91, 91, or 0
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // Keep only digits and slice to 10
+  return cleaned.replace(/[^0-9]/g, '').slice(0, 10);
+};
+
 export default function CommunityKYCStatusScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -209,13 +226,7 @@ export default function CommunityKYCStatusScreen() {
 
   // Phone state
   const initialPhone = user?.phone || '';
-  const cleanedPhone = initialPhone.startsWith('+91') 
-    ? initialPhone.slice(3) 
-    : initialPhone.startsWith('91') && initialPhone.length > 10 
-      ? initialPhone.slice(2) 
-      : initialPhone;
-
-  const [phoneNumber, setPhoneNumber] = useState(cleanedPhone);
+  const [phoneNumber, setPhoneNumber] = useState(formatPhoneNumber(initialPhone));
   const [countryCode] = useState('+91');
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [otpLoading, setOtpLoading] = useState(false);
@@ -460,7 +471,7 @@ export default function CommunityKYCStatusScreen() {
               ) : null}
 
               <View style={styles.otpResendContainer}>
-                <Text style={styles.otpDidNotReceiveText}>Didn't receive OTP?</Text>
+                <Text style={styles.otpDidNotReceiveText}>{"Didn't receive OTP?"}</Text>
                 <TouchableOpacity 
                   onPress={handleResend} 
                   disabled={resendTimer > 0}
@@ -671,7 +682,7 @@ export default function CommunityKYCStatusScreen() {
                     </View>
                     <View style={styles.cardHeaderTexts}>
                       <Text style={styles.cardTitle}>Verify Your Number</Text>
-                      <Text style={styles.cardDescription}>We'll send a 4 digit OTP to verify your{"\n"}mobile number.</Text>
+                      <Text style={styles.cardDescription}>{"We'll send a 4 digit OTP to verify your"}{"\n"}mobile number.</Text>
                     </View>
                   </View>
 
@@ -686,11 +697,11 @@ export default function CommunityKYCStatusScreen() {
                       placeholderTextColor="#999999"
                       value={phoneNumber}
                       onChangeText={(text) => {
-                        const cleanText = text.replace(/\D/g, '');
-                        setPhoneNumber(cleanText.slice(0, 10));
+                        const formatted = formatPhoneNumber(text);
+                        setPhoneNumber(formatted);
                       }}
                       keyboardType="phone-pad"
-                      maxLength={10}
+                      maxLength={phoneNumber.length >= 10 ? 10 : 30}
                       editable={!phoneVerified}
                     />
                   </View>
