@@ -706,9 +706,19 @@ const checkIsAartiLive = (sessions: [string, string][]) => {
 
 function getYoutubeVideoId(url: string) {
   if (!url) return null;
+  if (url.includes('live_stream')) return null; // Prevent matching "live_stream" as 11-char video ID
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
+}
+
+function getYoutubeAppUrl(url: string) {
+  if (!url) return '';
+  if (url.includes('channel=')) {
+    const channelId = url.split('channel=')[1].split('&')[0];
+    return `https://www.youtube.com/channel/${channelId}/live`;
+  }
+  return url;
 }
 
 function getYoutubeEmbedUrl(url: string) {
@@ -749,14 +759,13 @@ export default function TempleDetailScreen() {
   // Memoize WebView content to prevent re-renders during playback
   const youtubeWebViewContent = React.useMemo(() => {
     if (!resolvedYoutubeUrl) return null;
+    const embedUrl = getYoutubeEmbedUrl(resolvedYoutubeUrl);
     return (
       <WebView
         source={{
-          uri: getYoutubeMobileUrl(resolvedYoutubeUrl),
-          headers: {
-            Referer: 'https://www.youtube.com',
-          },
+          html: getYoutubeHtml(embedUrl),
         }}
+        originWhitelist={['*']}
         userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
         style={styles.youtubeFrame}
         javaScriptEnabled
@@ -1186,7 +1195,7 @@ if (!temple) {
   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
     {isYoutubeUrl && resolvedYoutubeUrl && (
       <TouchableOpacity 
-        onPress={() => Linking.openURL(resolvedYoutubeUrl)} 
+        onPress={() => Linking.openURL(getYoutubeAppUrl(resolvedYoutubeUrl))} 
         style={{ padding: 4 }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
