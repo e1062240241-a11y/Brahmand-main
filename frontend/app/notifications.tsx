@@ -507,9 +507,7 @@ export default function NotificationsScreen() {
             <Image source={{ uri: actorPhoto }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Text style={styles.avatarText}>
-                {actorName ? actorName.charAt(0).toUpperCase() : '?'}
-              </Text>
+              <Ionicons name="notifications-outline" size={22} color={COLORS.primary} />
             </View>
           )}
           

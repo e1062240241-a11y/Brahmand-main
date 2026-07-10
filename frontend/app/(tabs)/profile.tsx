@@ -19,7 +19,7 @@ import {
   Keyboard,
   Pressable,
   StatusBar
-, DeviceEventEmitter , KeyboardAvoidingView, Share } from 'react-native';
+, DeviceEventEmitter , KeyboardAvoidingView, Share, ActionSheetIOS } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -357,10 +357,22 @@ export default function ProfileScreen() {
       if (source === 'camera') {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert(
-            t('language') === 'hi' ? 'अनुमति की आवश्यकता है' : 'Permission needed',
-            t('language') === 'hi' ? 'फ़ोटो लेने के लिए कैमरा एक्सेस की अनुमति दें।' : 'Allow camera access to take a photo.'
-          );
+          if (Platform.OS === 'ios') {
+            ActionSheetIOS.showActionSheetWithOptions(
+              {
+                title: t('language') === 'hi' ? 'अनुमति की आवश्यकता है' : 'Permission needed',
+                message: t('language') === 'hi' ? 'फ़ोटो लेने के लिए कैमरा एक्सेस की अनुमति दें।' : 'Allow camera access to take a photo.',
+                options: ['OK'],
+                cancelButtonIndex: 0,
+              },
+              () => {}
+            );
+          } else {
+            Alert.alert(
+              t('language') === 'hi' ? 'अनुमति की आवश्यकता है' : 'Permission needed',
+              t('language') === 'hi' ? 'फ़ोटो लेने के लिए कैमरा एक्सेस की अनुमति दें।' : 'Allow camera access to take a photo.'
+            );
+          }
           return;
         }
       }
@@ -391,55 +403,42 @@ export default function ProfileScreen() {
       pickProfileImage(field, 'library');
       return;
     }
-    Alert.alert(
-      title,
-      t('language') === 'hi' ? 'स्रोत चुनें' : 'Choose a source',
-      [
-        { text: t('language') === 'hi' ? 'गैलरी' : 'Gallery', onPress: () => pickProfileImage(field, 'library') },
-        { text: t('language') === 'hi' ? 'कैमरा' : 'Camera', onPress: () => pickProfileImage(field, 'camera') },
-        { text: t('cancel'), style: 'cancel' },
-      ]
-    );
-  };
 
-  const handleRemoveProfilePhoto = async () => {
-    try {
-      await updateProfile({ photo: '' } as any);
-      await fetchProfile(false);
-      showToast(t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो हटा दी गई' : 'Profile photo removed');
-    } catch {
-      showToast(t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो नहीं हटाई जा सकी' : 'Could not remove profile photo');
+    const optionsList = [
+      { text: t('language') === 'hi' ? 'गैलरी' : 'Gallery', onPress: () => pickProfileImage(field, 'library') },
+      { text: t('language') === 'hi' ? 'कैमरा' : 'Camera', onPress: () => pickProfileImage(field, 'camera') },
+      { text: t('cancel'), onPress: () => {}, style: 'cancel' },
+    ];
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: optionsList.map(o => o.text),
+          cancelButtonIndex: 2,
+          title,
+          message: t('language') === 'hi' ? 'स्रोत चुनें' : 'Choose a source',
+        },
+        (buttonIndex) => {
+          optionsList[buttonIndex]?.onPress();
+        }
+      );
+    } else {
+      Alert.alert(
+        title,
+        t('language') === 'hi' ? 'स्रोत चुनें' : 'Choose a source',
+        optionsList.map(o => ({
+          text: o.text,
+          onPress: o.onPress,
+          style: o.style as any,
+        })),
+        { cancelable: true }
+      );
     }
   };
+
 
   const showAvatarOptions = () => {
-    const currentPhoto = profile?.photo || user?.photo;
-    const hasPhoto = !!(
-      currentPhoto &&
-      currentPhoto !== 'nan' &&
-      currentPhoto !== 'NaN' &&
-      currentPhoto !== 'None' &&
-      currentPhoto !== ''
-    );
-    if (Platform.OS === 'web') {
-      showImageSourcePicker('photo');
-      return;
-    }
-    Alert.alert(
-      t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo',
-      undefined,
-      [
-        ...(hasPhoto
-          ? [{ text: t('language') === 'hi' ? 'फ़ोटो देखें' : 'View photo', onPress: () => setAvatarModalVisible(true) }]
-          : []),
-        { text: t('language') === 'hi' ? 'गैलरी से चुनें' : 'Choose from gallery', onPress: () => pickProfileImage('photo', 'library') },
-        { text: t('language') === 'hi' ? 'फ़ोटो खींचें' : 'Take photo', onPress: () => pickProfileImage('photo', 'camera') },
-        ...(hasPhoto
-          ? [{ text: t('language') === 'hi' ? 'फ़ोटो हटाएं' : 'Remove photo', style: 'destructive' as const, onPress: handleRemoveProfilePhoto }]
-          : []),
-        { text: t('cancel'), style: 'cancel' as const },
-      ]
-    );
+    setAvatarModalVisible(true);
   };
 
   const handleShareProfile = async () => {
@@ -491,10 +490,22 @@ export default function ProfileScreen() {
   const saveLocation = async () => {
     const parts = locationDraft.split(',').map((p) => p.trim()).filter(Boolean);
     if (parts.length < 2) {
-      Alert.alert(
-        t('language') === 'hi' ? 'स्थान' : 'Location',
-        t('language') === 'hi' ? 'स्थान को शहर, राज्य के रूप में दर्ज करें' : 'Enter location as City, State'
-      );
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            title: t('language') === 'hi' ? 'स्थान' : 'Location',
+            message: t('language') === 'hi' ? 'स्थान को शहर, राज्य के रूप में दर्ज करें' : 'Enter location as City, State',
+            options: ['OK'],
+            cancelButtonIndex: 0,
+          },
+          () => {}
+        );
+      } else {
+        Alert.alert(
+          t('language') === 'hi' ? 'स्थान' : 'Location',
+          t('language') === 'hi' ? 'स्थान को शहर, राज्य के रूप में दर्ज करें' : 'Enter location as City, State'
+        );
+      }
       return;
     }
     setSavingProfileField(true);
@@ -689,14 +700,34 @@ export default function ProfileScreen() {
       return;
     }
 
-    Alert.alert(
-      t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
-      t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
-      [
-        { text: t('cancel'), style: 'cancel' },
-        { text: t('language') === 'hi' ? 'लॉगआउट' : 'Logout', style: 'destructive', onPress: performLogout },
-      ]
-    );
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
+          message: t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
+          options: [
+            t('cancel'),
+            t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
+          ],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            performLogout();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
+        t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
+        [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('language') === 'hi' ? 'लॉगआउट' : 'Logout', style: 'destructive', onPress: performLogout },
+        ]
+      );
+    }
   };
 
   const handleDeletePost = async (post: any) => {

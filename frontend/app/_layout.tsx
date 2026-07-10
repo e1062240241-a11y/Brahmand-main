@@ -38,15 +38,28 @@ LogBox.ignoreLogs([
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
   const titleStr = typeof title === 'string' ? title : '';
-  const bodyStr = typeof message === 'string' ? message : '';
-  const displayMsg = titleStr && bodyStr && titleStr !== 'Success' && titleStr !== 'Error' && titleStr !== 'Info'
-    ? `${titleStr}: ${bodyStr}`
-    : (bodyStr || titleStr);
+  let bodyStr = typeof message === 'string' ? message : '';
+
+  // Get user name and personalize message if applicable
+  const { user } = useAuthStore.getState();
+  const userName = user?.name || '';
+  if (userName && bodyStr && !bodyStr.includes(userName)) {
+    if (bodyStr.startsWith('Your ')) {
+      bodyStr = `Hey ${userName}, your ${bodyStr.slice(5)}`;
+    } else {
+      bodyStr = `${userName}, ${bodyStr}`;
+    }
+  }
+
+  // If there's no body, bodyStr should default to titleStr
+  const finalMsg = bodyStr || titleStr;
+  // Use titleStr as toast title only if it is not a generic/redundant status label
+  const finalTitle = bodyStr && titleStr && titleStr !== 'Success' && titleStr !== 'Error' && titleStr !== 'Info' ? titleStr : undefined;
 
   const isError = titleStr.toLowerCase().includes('error') || titleStr.toLowerCase().includes('fail') ||
-    displayMsg.toLowerCase().includes('error') || displayMsg.toLowerCase().includes('fail');
+    finalMsg.toLowerCase().includes('error') || finalMsg.toLowerCase().includes('fail');
   const isSuccess = titleStr.toLowerCase().includes('success') || titleStr.toLowerCase().includes('saved') ||
-    titleStr.toLowerCase().includes('updated') || displayMsg.toLowerCase().includes('success');
+    titleStr.toLowerCase().includes('updated') || finalMsg.toLowerCase().includes('success');
 
   const mappedActions = buttons?.map(btn => ({
     text: btn.text || 'OK',
@@ -54,7 +67,7 @@ RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any
     onPress: btn.onPress || (() => { })
   }));
 
-  toast.show(displayMsg, isSuccess ? 'success' : (isError ? 'error' : 'info'), 10000, mappedActions);
+  toast.show(finalMsg, isSuccess ? 'success' : (isError ? 'error' : 'info'), 10000, mappedActions, undefined, finalTitle);
 };
 
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
@@ -584,6 +597,7 @@ function SafeSlot() {
 import { useLanguageStore } from '../src/utils/i18n';
 
 export default function RootLayout() {
+  const router = useRouter();
   const pathname = usePathname();
   const isDarkScreen =
     pathname.includes('/profile') ||
@@ -834,13 +848,119 @@ export default function RootLayout() {
         console.warn('[Socket] Global connection failed:', err);
       });
 
+      const handleNotificationTap = (notification: any) => {
+        if (!notification) return;
+        const data = notification.data || notification;
+        const type = data.type;
+        console.log('[NotificationTap] Toast tapped, routing type:', type, data);
+
+        const navigateOrQueue = (path: string) => {
+          const { token, isAuthenticated, user } = useAuthStore.getState();
+          if (token && isAuthenticated && user?.name) {
+            router.push(path as any);
+          } else {
+            useAuthStore.getState().setPendingDeepLink(path);
+          }
+        };
+
+        if (type === 'dm' && data.chat_id) {
+          if (Platform.OS !== 'web') {
+            try {
+              const { syncDatabase } = require('../src/database/sync');
+              syncDatabase().catch((err: any) => console.warn('[NotificationTap] Background sync failed:', err));
+            } catch (e) {
+              console.warn('[NotificationTap] Failed to require syncDatabase:', e);
+            }
+          }
+          navigateOrQueue(`/dm/${data.chat_id}`);
+          return;
+        }
+
+        if (type === 'follow' && data.actor_user_id) {
+          navigateOrQueue(`/profile/${data.actor_user_id}`);
+          return;
+        }
+
+        if (type === 'community_like' && data.community_id && data.message_id) {
+          navigateOrQueue(`/community/${data.community_id}?postId=${data.message_id}`);
+          return;
+        }
+
+        if (type === 'community_request' && data.requestId) {
+          navigateOrQueue(`/community-request/list?requestId=${data.requestId}`);
+          return;
+        }
+
+        if (type === 'post_like') {
+          if (data.post_id) {
+            navigateOrQueue(`/post/${data.post_id}`);
+            return;
+          }
+          if (data.actor_user_id) {
+            navigateOrQueue(`/profile/${data.actor_user_id}`);
+            return;
+          }
+        }
+
+        if (type === 'post_comment') {
+          if (data.post_id) {
+            navigateOrQueue(`/post/${data.post_id}`);
+            return;
+          }
+          if (data.actor_user_id) {
+            navigateOrQueue(`/profile/${data.actor_user_id}`);
+            return;
+          }
+        }
+
+        if (type === 'jaap_reminder' && data.mantra_type) {
+          let titleVal = '';
+          if (data.mantra_type === 'hanuman') titleVal = 'Hanuman Chalisa';
+          else if (data.mantra_type === 'krishna') titleVal = 'Hare Krishna Jaap';
+          else if (data.mantra_type === 'shiva') titleVal = 'Om Namah Shivaya';
+          else if (data.mantra_type === 'gayatri') titleVal = 'Gayatri Mantra';
+          else if (data.mantra_type === 'ganesh') titleVal = 'Ganesh Mantra';
+          else if (data.mantra_type === 'laxmi') titleVal = 'Laxmi Mantra';
+          else if (data.mantra_type === 'mrityunjaya') titleVal = 'Maha Mrityunjaya';
+          else titleVal = data.mantra_type.charAt(0).toUpperCase() + data.mantra_type.slice(1);
+
+          navigateOrQueue(`/live-jaap-welcome?mantraType=${data.mantra_type}&title=${encodeURIComponent(titleVal)}`);
+          return;
+        }
+
+        if (type === 'sos_alert') {
+          if (typeof window !== 'undefined') {
+            (window as any).__PENDING_SOS = data;
+          }
+          return;
+        }
+      };
+
       const handleNewNotification = (notification: any) => {
         try {
           const { unreadCount, setUnreadCount, addRecentNotification } = useNotificationStore.getState();
           addRecentNotification(notification);
           setUnreadCount(unreadCount + 1);
           if (pathname !== '/notifications' && pathname !== '/(tabs)/notifications') {
-            toast.show(notification.title || 'New Notification', 'info');
+            let displayMsg = notification.body || notification.message || 'New Notification';
+            const displayTitle = notification.title || 'Notification';
+            const actorPhoto = 
+              notification.actor_user?.photo || 
+              notification.actorUser?.photo ||
+              notification.data?.actor_user?.photo ||
+              notification.data?.actorUser?.photo;
+
+            // Personalize the message for the user
+            const { user } = useAuthStore.getState();
+            if (user?.name && !displayMsg.includes(user.name)) {
+              if (displayMsg.startsWith('Your ')) {
+                displayMsg = `Hey ${user.name}, your ${displayMsg.slice(5)}`;
+              } else {
+                displayMsg = `${user.name}, ${displayMsg}`;
+              }
+            }
+
+            toast.show(displayMsg, 'info', 3000, undefined, actorPhoto, displayTitle, () => handleNotificationTap(notification));
           }
         } catch (e) {
           console.warn('[Socket] Failed to process real-time notification:', e);

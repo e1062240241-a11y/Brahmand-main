@@ -1,8 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View, TouchableOpacity, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Animated, StyleSheet, Text, View, TouchableOpacity, Platform, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { ToastMessage, useToastStore } from '../store/toastStore';
+import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../store/authStore';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 const ToastItem = ({ toast }: { toast: ToastMessage }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -50,60 +54,61 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
     });
   };
 
-  const getStatusDetails = () => {
-    switch (toast.type) {
-      case 'success':
-        return {
-          icon: <Ionicons name="checkmark-circle" size={20} color="#10B981" />,
-          borderColor: '#FCD3C1',
-          backgroundColor: '#FFF3EB',
-          title: 'Success',
-        };
-      case 'error':
-        return {
-          icon: <Ionicons name="alert-circle" size={20} color="#EF4444" />,
-          borderColor: '#FFC5C5',
-          backgroundColor: '#FFF2F2',
-          title: 'Error',
-        };
-      default:
-        return {
-          icon: <Ionicons name="information-circle" size={20} color="#F59E0B" />,
-          borderColor: '#FED7AA',
-          backgroundColor: '#FFF7ED',
-          title: 'Info',
-        };
+  const handleTap = () => {
+    if (toast.onPress) {
+      toast.onPress();
+    } else if (toast.actions && toast.actions.length > 0) {
+      toast.actions[0].onPress();
     }
+    dismiss();
   };
 
-  const { icon, borderColor, backgroundColor, title } = getStatusDetails();
+  const { user } = useAuthStore();
+  const displayPhoto = toast.avatarUrl || user?.photo;
+  const hasPhoto = !!(
+    displayPhoto &&
+    displayPhoto !== 'nan' &&
+    displayPhoto !== 'NaN' &&
+    displayPhoto !== 'None' &&
+    displayPhoto !== ''
+  );
 
   return (
-    <Animated.View
+    <AnimatedTouchableOpacity
+      activeOpacity={0.9}
       style={[
         styles.toastItem,
         {
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
-          borderColor: borderColor,
-          backgroundColor: backgroundColor,
+          minHeight: 62,
+          paddingRight: 11,
         },
-      ]}
+      ] as any}
+      onPress={handleTap}
     >
+      {Platform.OS !== 'web' ? (
+        <BlurView intensity={60} tint="light" style={StyleSheet.absoluteFillObject} />
+      ) : (
+        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255, 255, 255, 0.35)', backdropFilter: 'blur(10px)' } as any]} />
+      )}
       <View style={styles.contentContainer}>
         <View style={styles.messageRow}>
-          <View style={styles.iconWrapper}>
-            {icon}
-          </View>
+          {hasPhoto ? (
+            <Image source={{ uri: displayPhoto }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="notifications-outline" size={20} color="#FF6600" />
+            </View>
+          )}
           <View style={styles.textContainer}>
-            <Text style={styles.titleText}>{title}</Text>
+            {toast.title ? (
+              <Text style={styles.titleText} numberOfLines={2} ellipsizeMode="tail">
+                {toast.title}
+              </Text>
+            ) : null}
             <Text style={styles.messageText}>{toast.message}</Text>
           </View>
-          {(!toast.actions || toast.actions.length === 0) && (
-            <TouchableOpacity onPress={dismiss} style={styles.closeButton}>
-              <Ionicons name="close" size={18} color="#8C7370" />
-            </TouchableOpacity>
-          )}
         </View>
 
         {toast.actions && toast.actions.length > 0 && (
@@ -135,7 +140,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
           </View>
         )}
       </View>
-    </Animated.View>
+    </AnimatedTouchableOpacity>
   );
 };
 
@@ -146,7 +151,7 @@ export const ToastContainer = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <View style={[styles.container, { top: insets.top + 16 }]} pointerEvents="box-none">
+    <View style={[styles.container, { top: insets.top + 16 }] as any} pointerEvents="box-none">
       {toasts.map((item) => (
         <ToastItem key={item.id} toast={item} />
       ))}
@@ -164,19 +169,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   toastItem: {
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    width: 373,
+    maxWidth: '90%',
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingLeft: 11,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    shadowColor: 'rgba(0, 0, 0, 0.50)',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
+    elevation: 6,
     marginBottom: 10,
     alignSelf: 'center',
-    width: '90%',
-    maxWidth: 420,
-    shadowColor: '#2E1C1A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 6,
-    borderWidth: 1,
+    overflow: 'hidden',
+    justifyContent: 'center',
   },
   contentContainer: {
     width: '100%',
@@ -186,31 +196,41 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     width: '100%',
   },
-  iconWrapper: {
-    marginRight: 12,
-    marginTop: 2,
+  avatarImage: {
+    width: 39,
+    height: 39,
+    borderRadius: 19.5,
+    marginRight: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.10)',
+  },
+  avatarPlaceholder: {
+    width: 39,
+    height: 39,
+    borderRadius: 19.5,
+    backgroundColor: 'rgba(255, 102, 0, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 9,
   },
   textContainer: {
     flex: 1,
     marginRight: 8,
   },
   titleText: {
-    fontSize: 14,
-    color: '#2E1C1A',
+    fontSize: 12,
+    color: '#000000',
     fontFamily: Platform.OS === 'ios' ? 'Outfit_600SemiBold' : 'Outfit',
     fontWeight: '600',
-    marginBottom: 2,
   },
   messageText: {
-    fontSize: 13,
-    color: '#5C4643',
+    fontSize: 12,
+    color: '#000000',
     fontFamily: Platform.OS === 'ios' ? 'Inter_400Regular' : 'System',
-    lineHeight: 18,
+    fontWeight: '400',
+    lineHeight: 14,
   },
-  closeButton: {
-    padding: 2,
-    marginTop: 2,
-  },
+
   actionsContainer: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
