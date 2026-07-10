@@ -129,7 +129,8 @@ export default function BloodRequestScreen() {
 
     router.push({
       pathname: '/community-request/blood/review',
-      params: { community_id: params.community_id,
+      params: {
+        community_id: params.community_id,
         bloodGroup: bloodGroup,
         hospitalName: location, // Using location as hospital name or vice versa
         location: location,
