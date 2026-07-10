@@ -729,8 +729,8 @@ const getYoutubeMobileUrl = (url: string) => {
     return `https://m.youtube.com/playlist?list=${listId}`;
   }
   const videoId = getYoutubeVideoId(url);
-  if (videoId) return `https://m.youtube.com/watch?v=${videoId}`;
-  return url.replace('www.youtube.com', 'm.youtube.com');
+  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  return url;
 };
 
 export default function TempleDetailScreen() {
@@ -755,7 +755,13 @@ export default function TempleDetailScreen() {
     if (!resolvedYoutubeUrl) return null;
     return (
       <WebView
-        source={{ uri: getYoutubeMobileUrl(resolvedYoutubeUrl) }}
+        source={{
+          uri: getYoutubeMobileUrl(resolvedYoutubeUrl),
+          headers: {
+            Referer: 'https://www.youtube.com',
+          },
+        }}
+        userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
         style={styles.youtubeFrame}
         javaScriptEnabled
         domStorageEnabled

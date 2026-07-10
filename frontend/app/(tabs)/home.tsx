@@ -606,8 +606,8 @@ export default function HomeScreen() {
       return `https://m.youtube.com/playlist?list=${listId}`;
     }
     const videoId = getYoutubeVideoId(url);
-    if (videoId) return `https://m.youtube.com/watch?v=${videoId}`;
-    return url.replace('www.youtube.com', 'm.youtube.com');
+    if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    return url;
   };
 
   const [activeVendorIndex, setActiveVendorIndex] = useState(0);
@@ -4246,7 +4246,13 @@ export default function HomeScreen() {
             />
           ) : (
             <WebView
-              source={{ uri: selectedAartiUrl ? getAartiMobileUrl(selectedAartiUrl) : 'about:blank' }}
+              source={{
+                uri: selectedAartiUrl ? getAartiMobileUrl(selectedAartiUrl) : 'about:blank',
+                headers: {
+                  Referer: 'https://www.youtube.com',
+                },
+              }}
+              userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
               style={{ width: '100%', height: '100%' }}
               javaScriptEnabled
               domStorageEnabled
