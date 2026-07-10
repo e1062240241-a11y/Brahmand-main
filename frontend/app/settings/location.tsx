@@ -448,7 +448,7 @@ export default function ChangeLocationScreen() {
         t("language") === "hi"
           ? "आपके नए स्थानों के आधार पर आपके समुदायों को अपडेट कर दिया गया है।"
           : "Your communities have been updated based on your new locations.",
-        [{ text: "OK", onPress: handleBack }],
+        [{ text: "OK", onPress: () => router.replace("/(tabs)/messages") }],
       );
     } catch (err: any) {
       setError(

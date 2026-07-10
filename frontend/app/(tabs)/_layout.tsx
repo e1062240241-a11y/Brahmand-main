@@ -31,16 +31,7 @@ export default function TabLayout() {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading } = useAuthStore();
 
-  useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      const homeLoc = user?.home_location;
-      const hasValidLocation = !!(homeLoc && typeof homeLoc === 'object' && homeLoc.city && homeLoc.area && homeLoc.state);
-      if (!hasValidLocation) {
-        console.log('[TabLayout] Mandatory location is missing. Redirecting to /settings/location');
-        router.replace('/settings/location');
-      }
-    }
-  }, [isLoading, isAuthenticated, user, pathname, router]);
+
 
   return (
     <ThemeProvider value={MyTheme}>

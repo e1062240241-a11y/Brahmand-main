@@ -704,34 +704,26 @@ const checkIsAartiLive = (sessions: [string, string][]) => {
   return false;
 };
 
-const getYoutubeVideoId = (url: string) => {
+function getYoutubeVideoId(url: string) {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
-};
+}
 
-const getYoutubeEmbedUrl = (url: string) => {
+function getYoutubeEmbedUrl(url: string) {
   if (url.includes('embed/live_stream')) {
     return url + '&autoplay=1';
   }
   const videoId = getYoutubeVideoId(url);
   if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
   return url;
-};
+}
 
-const getYoutubeMobileUrl = (url: string) => {
-  if (url.includes('embed/live_stream')) {
-    return url + '&autoplay=1'; // Direct embed URL works in WebView
-  }
-  if (url.includes('embed?listType=playlist&list=')) {
-    const listId = url.split('&list=')[1].split('&')[0];
-    return `https://m.youtube.com/playlist?list=${listId}`;
-  }
-  const videoId = getYoutubeVideoId(url);
-  if (videoId) return `https://m.youtube.com/watch?v=${videoId}`;
-  return url.replace('www.youtube.com', 'm.youtube.com');
-};
+function getYoutubeMobileUrl(url: string) {
+  // ponytail: Use the clean embed URL on native too since it is verified working on web
+  return getYoutubeEmbedUrl(url);
+}
 
 export default function TempleDetailScreen() {
  const { id } = useLocalSearchParams<{ id: string }>();
@@ -1181,9 +1173,20 @@ if (!temple) {
       ? (t('language') === 'hi' ? 'लाइव आरती' : 'Live Aarti') 
       : (t('language') === 'hi' ? 'लाइव दर्शन' : 'Live Darshan')}
   </Text>
-  <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
-  <Ionicons name="close" size={20} color={COLORS.text} />
-  </TouchableOpacity>
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    {isYoutubeUrl && resolvedYoutubeUrl && (
+      <TouchableOpacity 
+        onPress={() => Linking.openURL(resolvedYoutubeUrl)} 
+        style={{ padding: 4 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="logo-youtube" size={22} color="#FF0000" />
+      </TouchableOpacity>
+    )}
+    <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
+      <Ionicons name="close" size={20} color={COLORS.text} />
+    </TouchableOpacity>
+  </View>
   </View>
   <View style={styles.youtubeModalBody}>
   {isWeb ? (

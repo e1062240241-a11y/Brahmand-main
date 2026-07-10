@@ -197,6 +197,8 @@ function MessagesScreen({
   const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
   const { user, logout } = useAuthStore();
+  const homeLoc = user?.home_location;
+  const hasValidLocation = !!(homeLoc && typeof homeLoc === 'object' && homeLoc.city && homeLoc.area && homeLoc.state);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -1511,7 +1513,31 @@ function MessagesScreen({
         scrollEventThrottle={16}
       >
         {activeTopTab === 'Community' ? (
-          <View style={styles.communityContent}>
+          !hasValidLocation ? (
+            <View style={styles.noLocationContainer}>
+              <Ionicons name="location-outline" size={64} color="#FF8A00" style={{ marginBottom: 16 }} />
+              <Text style={styles.noLocationTitle}>
+                {t('language') === 'hi'
+                  ? 'आप कम्युनिटी ग्रुप में नहीं जुड़े हैं'
+                  : 'You are not added in community groups'}
+              </Text>
+              <Text style={styles.noLocationSub}>
+                {t('language') === 'hi'
+                  ? 'कम्युनिटी ग्रुप्स में जुड़ने के लिए कृपया अपना स्थान सेट करें।'
+                  : 'To get added, please configure your home location.'}
+              </Text>
+              <TouchableOpacity
+                style={styles.noLocationButton}
+                activeOpacity={0.8}
+                onPress={() => router.push('/settings/location')}
+              >
+                <Text style={styles.noLocationButtonText}>
+                  {t('language') === 'hi' ? 'स्थान सेट करें' : 'Configure Location'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.communityContent}>
             {loading && communities.length === 0 && requests.length === 0 ? (
               <View style={styles.skeletonContainer}>
                 <View style={styles.skeletonBanner} />
@@ -1608,6 +1634,7 @@ function MessagesScreen({
 
             <View style={{ height: 90 }} />
           </View>
+          )
         ) : (
           <View style={styles.privateChatContent}>
             {/* Search Bar */}
@@ -1904,6 +1931,44 @@ function MessagesScreen({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  noLocationContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 80,
+  },
+  noLocationTitle: {
+    fontSize: 18,
+    fontFamily: FONTS.bold,
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noLocationSub: {
+    fontSize: 14,
+    fontFamily: FONTS.regular,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  noLocationButton: {
+    backgroundColor: '#FF8A00',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+    shadowColor: '#FF8A00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  noLocationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+  },
   headerPadding: { paddingBottom: 12 },
   segmentedTrack: {
     flexDirection: 'row',
