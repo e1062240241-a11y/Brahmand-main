@@ -21,7 +21,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Location from 'expo-location';
 import { SvgXml } from 'react-native-svg';
 
-import { getNakshatraReport, updateExtendedProfile, getProfile } from '../src/services/api';
+import { getNakshatraReport, updateExtendedProfile, getProfile, forwardGeocode } from '../src/services/api';
 import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
@@ -133,7 +133,11 @@ export default function AstrologyScreen() {
   const [timeOfBirth, setTimeOfBirth] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('female');
   const [placeOfBirth, setPlaceOfBirth] = useState('');
-  const [filteredCities, setFilteredCities] = useState<string[]>([]);
+  const [filteredCities, setFilteredCities] = useState<any[]>([]);
+  const [selectedLat, setSelectedLat] = useState<number | null>(null);
+  const [selectedLon, setSelectedLon] = useState<number | null>(null);
+  const [isFocusedMain, setIsFocusedMain] = useState(false);
+  const [isFocusedModal, setIsFocusedModal] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [calculating, setCalculating] = useState(false);
 
@@ -321,6 +325,43 @@ export default function AstrologyScreen() {
     return d;
   };
 
+  const handlePlaceOfBirthChange = async (val: string) => {
+    setPlaceOfBirth(val);
+    setSelectedLat(null);
+    setSelectedLon(null);
+    
+    if (val.trim().length >= 2) {
+      // Instant local search suggestions first
+      const localFiltered = CITIES_DB.filter(city =>
+        city.toLowerCase().includes(val.toLowerCase())
+      ).map(city => ({
+        display_name: city,
+        latitude: null,
+        longitude: null
+      }));
+      setFilteredCities(localFiltered.slice(0, 5));
+
+      // Network API search suggestions
+      try {
+        const response = await forwardGeocode(val);
+        if (response && response.data && Array.isArray(response.data)) {
+          const apiSuggestions = response.data.map((item: any) => ({
+            display_name: item.display_name,
+            latitude: item.latitude,
+            longitude: item.longitude
+          }));
+          if (apiSuggestions.length > 0) {
+            setFilteredCities(apiSuggestions.slice(0, 5));
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch place of birth suggestions:', err);
+      }
+    } else {
+      setFilteredCities([]);
+    }
+  };
+
   const handleCalculate = async () => {
     if (!date || !timeOfBirth.trim() || !placeOfBirth.trim()) {
       setValidationError('All fields (Date, Time, and Place of Birth) are mandatory.');
@@ -330,25 +371,27 @@ export default function AstrologyScreen() {
     setCalculating(true);
 
     try {
-      let lat = 28.6139; // Default New Delhi
-      let lon = 77.2090;
+      let lat = selectedLat !== null ? selectedLat : 28.6139;
+      let lon = selectedLon !== null ? selectedLon : 77.2090;
 
-      try {
-        const results = await Location.geocodeAsync(placeOfBirth.trim());
-        if (Array.isArray(results) && results.length > 0) {
-          lat = results[0].latitude;
-          lon = results[0].longitude;
-        }
-      } catch (err) {
+      if (selectedLat === null || selectedLon === null) {
         try {
-          const q = encodeURIComponent(placeOfBirth.trim());
-          const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
-          const data = await resp.json();
-          if (Array.isArray(data) && data.length > 0) {
-            lat = parseFloat(data[0].lat);
-            lon = parseFloat(data[0].lon);
+          const results = await Location.geocodeAsync(placeOfBirth.trim());
+          if (Array.isArray(results) && results.length > 0) {
+            lat = results[0].latitude;
+            lon = results[0].longitude;
           }
-        } catch {}
+        } catch (err) {
+          try {
+            const q = encodeURIComponent(placeOfBirth.trim());
+            const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${q}`);
+            const data = await resp.json();
+            if (Array.isArray(data) && data.length > 0) {
+              lat = parseFloat(data[0].lat);
+              lon = parseFloat(data[0].lon);
+            }
+          } catch {}
+        }
       }
 
       const year = date.getFullYear();
@@ -614,40 +657,44 @@ export default function AstrologyScreen() {
                 <Ionicons name="location-outline" size={15} color="#5A4136" />
                 <Text style={styles.inputLabel}>Place of Birth</Text>
               </View>
-              <TextInput
-                style={styles.textInput}
-                placeholder="City, State or Country"
-                placeholderTextColor="#A9968F"
-                value={placeOfBirth}
-                onChangeText={(val) => {
-                  setPlaceOfBirth(val);
-                  if (val.trim().length >= 2) {
-                    const filtered = CITIES_DB.filter(city =>
-                      city.toLowerCase().includes(val.toLowerCase())
-                    );
-                    setFilteredCities(filtered.slice(0, 5));
-                  } else {
-                    setFilteredCities([]);
-                  }
-                }}
-              />
-              {filteredCities.length > 0 && (
-                <View style={styles.suggestionsContainer}>
+              {filteredCities.length > 0 && isFocusedMain && (
+                <View style={styles.suggestionsContainerAbove}>
                   {filteredCities.map((city, idx) => (
                     <TouchableOpacity
                       key={idx}
                       style={styles.suggestionItem}
                       onPress={() => {
-                        setPlaceOfBirth(city);
+                        setPlaceOfBirth(city.display_name);
+                        setSelectedLat(city.latitude);
+                        setSelectedLon(city.longitude);
                         setFilteredCities([]);
+                        setIsFocusedMain(false);
                       }}
                     >
                       <Ionicons name="location-outline" size={14} color="#7D685E" style={{ marginRight: 8 }} />
-                      <Text style={styles.suggestionText}>{city}</Text>
+                      <Text style={styles.suggestionText}>{city.display_name}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               )}
+              <TextInput
+                style={styles.textInput}
+                placeholder="City, State or Country"
+                placeholderTextColor="#A9968F"
+                value={placeOfBirth}
+                onFocus={() => {
+                  setIsFocusedMain(true);
+                  if (placeOfBirth.trim().length >= 2) {
+                    handlePlaceOfBirthChange(placeOfBirth);
+                  }
+                }}
+                onBlur={() => {
+                  setTimeout(() => {
+                    setIsFocusedMain(false);
+                  }, 250);
+                }}
+                onChangeText={handlePlaceOfBirthChange}
+              />
             </View>
 
             {/* Info Box */}
@@ -1059,40 +1106,44 @@ export default function AstrologyScreen() {
                   <Ionicons name="location-outline" size={15} color="#5A4136" />
                   <Text style={styles.inputLabel}>Place of Birth</Text>
                 </View>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="City, State or Country"
-                  placeholderTextColor="#A9968F"
-                  value={placeOfBirth}
-                  onChangeText={(val) => {
-                    setPlaceOfBirth(val);
-                    if (val.trim().length >= 2) {
-                      const filtered = CITIES_DB.filter(city =>
-                        city.toLowerCase().includes(val.toLowerCase())
-                      );
-                      setFilteredCities(filtered.slice(0, 5));
-                    } else {
-                      setFilteredCities([]);
-                    }
-                  }}
-                />
-                {filteredCities.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
+                {filteredCities.length > 0 && isFocusedModal && (
+                  <View style={styles.suggestionsContainerAbove}>
                     {filteredCities.map((city, idx) => (
                       <TouchableOpacity
                         key={idx}
                         style={styles.suggestionItem}
                         onPress={() => {
-                          setPlaceOfBirth(city);
+                          setPlaceOfBirth(city.display_name);
+                          setSelectedLat(city.latitude);
+                          setSelectedLon(city.longitude);
                           setFilteredCities([]);
+                          setIsFocusedModal(false);
                         }}
                       >
                         <Ionicons name="location-outline" size={14} color="#7D685E" style={{ marginRight: 8 }} />
-                        <Text style={styles.suggestionText}>{city}</Text>
+                        <Text style={styles.suggestionText}>{city.display_name}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="City, State or Country"
+                  placeholderTextColor="#A9968F"
+                  value={placeOfBirth}
+                  onFocus={() => {
+                    setIsFocusedModal(true);
+                    if (placeOfBirth.trim().length >= 2) {
+                      handlePlaceOfBirthChange(placeOfBirth);
+                    }
+                  }}
+                  onBlur={() => {
+                    setTimeout(() => {
+                      setIsFocusedModal(false);
+                    }, 250);
+                  }}
+                  onChangeText={handlePlaceOfBirthChange}
+                />
               </View>
 
               {/* Info Box */}
@@ -1270,6 +1321,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  suggestionsContainerAbove: {
+    position: 'absolute',
+    bottom: 54,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFF',
+    borderColor: '#E2BFB0',
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    zIndex: 9999,
   },
   suggestionItem: {
     flexDirection: 'row',

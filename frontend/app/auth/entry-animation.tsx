@@ -238,14 +238,14 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.0 }],
   },
   title: {
-    fontSize: 32,
+    fontSize: Platform.OS === 'android' ? 20 : 32,
     fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
     letterSpacing: 14,
     textAlign: 'center',
     paddingLeft: 14,
     fontStyle: 'normal',
-    lineHeight: 36,
+    lineHeight: Platform.OS === 'android' ? 26 : 36,
     marginTop: 2,
     marginBottom: 5,
   },

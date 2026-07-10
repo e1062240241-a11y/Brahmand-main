@@ -119,14 +119,14 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   title: {
-    fontSize: 24,
+    fontSize: Platform.OS === 'android' ? 20 : 24,
     fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
     letterSpacing: 14,
     textAlign: 'center',
     paddingLeft: 14,
     fontStyle: 'normal',
-    lineHeight: 30,
+    lineHeight: Platform.OS === 'android' ? 26 : 30,
     marginTop: 2,
     marginBottom: 5,
   },
