@@ -58,10 +58,7 @@ async def attend_event(
     token_data: dict = Depends(verify_token)
 ):
     """Mark attendance for an event"""
-    try:
-        return await EventService.attend_event(token_data["user_id"], event_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return await EventService.attend_event(token_data["user_id"], event_id)
 
 
 @router.post("/{event_id}/cancel-attendance")
@@ -70,7 +67,4 @@ async def cancel_attendance(
     token_data: dict = Depends(verify_token)
 ):
     """Cancel attendance for an event"""
-    try:
-        return await EventService.cancel_attendance(token_data["user_id"], event_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    return await EventService.cancel_attendance(token_data["user_id"], event_id)

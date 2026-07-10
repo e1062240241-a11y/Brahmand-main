@@ -17,7 +17,7 @@ class EventService:
     async def get_db() -> FirestoreDB:
         client = await get_firestore()
         return FirestoreDB(client)
-
+    
     @staticmethod
     async def create_event(
         organizer_id: str,
@@ -84,32 +84,28 @@ class EventService:
             return []
         user_location = user.get("location", {})
         
-        # Get upcoming events
+        # Get events in user's city
         today = datetime.utcnow().strftime("%Y-%m-%d")
+        filters = [('date', '>=', today)]
         
-        # To avoid Firestore composite index requirement, fetch upcoming events and filter by city in-memory
+        if user_location.get("city"):
+            filters.append(('location.city', '==', user_location["city"]))
+        
         events = await db.query_documents(
             'events',
-            filters=[('date', '>=', today)],
+            filters=filters,
             order_by='date',
             order_direction='ASCENDING',
-            limit=100
+            limit=20
         )
         
-        # Filter by city in memory if city is present
-        city = user_location.get("city")
+        # Add distance info (simplified)
         result = []
         for e in events:
             event = serialize_doc(e)
-            if city:
-                event_location = event.get("location") or {}
-                if event_location.get("city") != city:
-                    continue
             event["distance"] = "2.5 km"  # Placeholder - calculate actual distance
             result.append(event)
-            if len(result) >= 20:
-                break
-                
+        
         return result
     
     @staticmethod
@@ -125,10 +121,6 @@ class EventService:
     async def attend_event(user_id: str, event_id: str) -> Dict[str, Any]:
         """Mark attendance for an event"""
         db = await EventService.get_db()
-        
-        event = await db.get_document('events', event_id)
-        if not event:
-            raise ValueError("Event not found")
         
         from google.cloud import firestore
         def _attend():
@@ -148,10 +140,6 @@ class EventService:
         """Cancel attendance for an event"""
         db = await EventService.get_db()
         
-        event = await db.get_document('events', event_id)
-        if not event:
-            raise ValueError("Event not found")
-            
         from google.cloud import firestore
         def _cancel():
             doc_ref = db.client.collection('events').document(event_id)

@@ -472,10 +472,8 @@ function MessagesScreen({
 
     if (type === 'blood' || title.includes('blood') || desc.includes('blood') || support === 'blood') {
       return {
-        gradColors: Platform.OS === 'android'
-          ? ['#FFEBEB', '#FFD6D6'] as const
-          : ['#FFF0F0', '#FFE8E8'] as const,
-        border: Platform.OS === 'android' ? '#FFA8A8' : 'rgba(255, 100, 100, 0.2)',
+        gradColors: ['#FFEBEB', '#FFD6D6'] as const,
+        border: '#FFA8A8',
         icon: 'water',
         iconColor: '#E53935',
         btnBorderColor: '#E53935',
@@ -484,10 +482,8 @@ function MessagesScreen({
     }
     if (title.includes('elder') || desc.includes('elder') || title.includes('senior') || desc.includes('senior') || title.includes('old') || desc.includes('old') || type === 'elderly' || support === 'elderly care' || support === 'elderly') {
       return {
-        gradColors: Platform.OS === 'android'
-          ? ['#EBF7EB', '#D6F0D6'] as const
-          : ['#E8F5E9', '#C8E6C9'] as const,
-        border: Platform.OS === 'android' ? '#A8E0A8' : 'rgba(76, 175, 80, 0.2)',
+        gradColors: ['#EBF7EB', '#D6F0D6'] as const,
+        border: '#A8E0A8',
         icon: 'human-cane',
         iconColor: '#2E7D32',
         btnBorderColor: '#2E7D32',
@@ -496,10 +492,8 @@ function MessagesScreen({
     }
     if (title.includes('food') || desc.includes('food') || title.includes('baby') || desc.includes('baby') || support === 'food') {
       return {
-        gradColors: Platform.OS === 'android'
-          ? ['#FFFDEB', '#FFF9C4'] as const
-          : ['#FFFAF0', '#FFF3CC'] as const,
-        border: Platform.OS === 'android' ? '#FFE082' : 'rgba(255, 160, 0, 0.2)',
+        gradColors: ['#FFFDEB', '#FFF9C4'] as const,
+        border: '#FFE082',
         icon: 'baby-face',
         iconColor: '#F57F17',
         btnBorderColor: '#F57F17',
@@ -855,7 +849,6 @@ function MessagesScreen({
   };
 
   const renderCommunityBanner = () => {
-    const isAndroid = Platform.OS === 'android';
     return (
       <View style={styles.heroBanner}>
         <LinearGradient
@@ -873,17 +866,15 @@ function MessagesScreen({
             <Text style={styles.heroSubtitle}>
               {t('language') === 'hi' ? 'हम मिलकर बदलाव ला सकते हैं' : 'Together we can make a difference'}
             </Text>
-            {isAndroid && (
-              <TouchableOpacity
-                style={[styles.heroButton, { marginTop: 10, alignSelf: 'flex-start' }]}
-                activeOpacity={0.9}
-                onPress={() => router.push('/community-request')}
-              >
-                <Text style={styles.heroButtonText}>
-                  {t('language') === 'hi' ? '+ अनुरोध बनाएं' : '+ Create Request'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[styles.heroButton, { marginTop: 10, alignSelf: 'flex-start' }]}
+              activeOpacity={0.9}
+              onPress={() => router.push('/community-request')}
+            >
+              <Text style={styles.heroButtonText}>
+                {t('language') === 'hi' ? '+ अनुरोध बनाएं' : '+ Create Request'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Centered Background Illustration */}
@@ -892,20 +883,6 @@ function MessagesScreen({
             style={styles.heroImageDeco}
             resizeMode="contain"
           />
-
-          {!isAndroid && (
-            <View style={styles.heroActionCol}>
-              <TouchableOpacity
-                style={styles.heroButton}
-                activeOpacity={0.9}
-                onPress={() => router.push('/community-request')}
-              >
-                <Text style={styles.heroButtonText}>
-                  {t('language') === 'hi' ? '+ अनुरोध बनाएं' : '+ Create Request'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
       </View>
     );
@@ -1364,11 +1341,7 @@ function MessagesScreen({
 
 
   const renderLocalCommunityCard = (item: Community, index: number) => {
-    const isTeal = index % 2 === 1 || (item.label || '').toLowerCase().includes('youth');
-    const cardBg = isTeal ? '#E0F2F1' : '#EEF5EA';
-    const borderColor = Platform.OS === 'android' ? '#397339' : (isTeal ? '#00796B' : '#437953');
-    const badgeBg = '#FFFFFF';
-    const pillText = isTeal ? 'Youth' : 'Seva';
+    const borderColor = '#397339';
     const isJoined = joinedLocalIds.has(item.id) || (item as any).is_member || communities.some(c => c.id === item.id);
     const isJoining = joiningLocalId === item.id;
     const isPending = (item as any).is_pending;
@@ -1378,15 +1351,13 @@ function MessagesScreen({
         key={`${item.id}-${index}`}
         style={({ pressed }) => [
           styles.localCommCard,
-          Platform.OS === 'android' ? {
+          {
             borderRadius: 10,
             borderWidth: 1,
             borderStyle: 'solid',
             borderColor: '#397339',
             backgroundColor: '#ECF4E3',
             overflow: 'hidden',
-          } : {
-            backgroundColor: cardBg,
           },
           isPending && { opacity: 0.8 },
           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
@@ -1407,12 +1378,7 @@ function MessagesScreen({
           <Text style={styles.localCommMembers}>{(item.member_count || (item as any).members_count || (item as any).memberCount || 0)} members</Text>
         </View>
 
-        <View style={{ alignItems: Platform.OS === 'android' ? 'center' : 'flex-end', gap: 4 }}>
-          {Platform.OS !== 'android' && (
-            <View style={[styles.localCommPill, { backgroundColor: badgeBg, borderColor }]}>
-              <Text style={[styles.localCommPillText, { color: borderColor }]}>{pillText}</Text>
-            </View>
-          )}
+        <View style={{ alignItems: 'center', gap: 4 }}>
           {!isPending && (
             <TouchableOpacity
               style={[styles.localJoinBtn, { borderColor }, isJoined && { borderColor: '#CCC' }]}
@@ -2080,21 +2046,10 @@ const styles = StyleSheet.create({
     aspectRatio: 69 / 25,
     zIndex: 0,
     opacity: 1,
-    ...Platform.select({
-      android: {
-        width: 220,
-        height: 80,
-        right: -10,
-        transform: [{ scaleX: 2.25 }, { scaleY: 2.7 }],
-      },
-      default: {
-        width: 207,
-        height: 75,
-        left: '50%',
-        marginLeft: -103.5,
-        transform: [{ scaleX: 2.15 }, { scaleY: 2.6 }],
-      },
-    }),
+    width: 220,
+    height: 80,
+    right: -10,
+    transform: [{ scaleX: 2.25 }, { scaleY: 2.7 }],
   },
   heroTextCol: {
     flex: 1,
@@ -2102,39 +2057,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroTitle: {
-    ...Platform.select({
-      android: {
-        fontSize: 12,
-        fontFamily: 'sans-serif',
-        fontWeight: '700',
-        color: '#000000',
-        marginBottom: 4,
-      },
-      default: {
-        fontSize: 15,
-        fontFamily: FONTS.bold,
-        color: '#000000',
-        marginBottom: 4,
-      }
-    }),
+    fontSize: 12,
+    fontFamily: 'sans-serif',
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 4,
   },
   heroSubtitle: {
-    ...Platform.select({
-      android: {
-        width: 150,
-        fontSize: 10,
-        fontFamily: 'sans-serif',
-        fontWeight: '400',
-        color: '#000000',
-      },
-      default: {
-        width: 135,
-        height: 32,
-        fontSize: 12,
-        fontFamily: FONTS.regular,
-        color: '#000000',
-      }
-    }),
+    width: 150,
+    fontSize: 10,
+    fontFamily: 'sans-serif',
+    fontWeight: '400',
+    color: '#000000',
   },
   heroActionCol: {
     zIndex: 2,

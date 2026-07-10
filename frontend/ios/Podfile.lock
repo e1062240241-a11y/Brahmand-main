@@ -258,7 +258,7 @@ PODS:
     - SDWebImageWebPCoder
   - ExpoImagePicker (55.0.21):
     - ExpoModulesCore
-  - ExpoKeepAwake (55.0.8):
+  - ExpoKeepAwake (15.0.8):
     - ExpoModulesCore
   - ExpoLinearGradient (55.0.15):
     - ExpoModulesCore
@@ -4175,7 +4175,7 @@ SPEC CHECKSUMS:
   ExpoImage: eeba1f2a1c6f89ba079e832dfef2b29a5ed1d8ca
   ExpoImageManipulator: db004c4e9451e57cc75c5a27386e6bd3d944512b
   ExpoImagePicker: b196ac5579b9fe28acc36fae58c7a86f201fd20a
-  ExpoKeepAwake: 45e456e29335bbd400554646a2f29e628c24072e
+  ExpoKeepAwake: 44bf6715bc1d2ddb17afe19d927cd039cda123f0
   ExpoLinearGradient: 5d25eea186a32f0883d0f8c67046e80d2e444c6e
   ExpoLinking: abf95031c60f85361943f4f72942db0bc41e0f1b
   ExpoLocation: c742dc9e12af2d3b030ce0146e2145d43215c700

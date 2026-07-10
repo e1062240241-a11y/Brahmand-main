@@ -166,10 +166,11 @@ const styles = StyleSheet.create({
   horizontalContainer: {
     paddingHorizontal: 24,
     marginBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
     ...Platform.select({
       android: {
-        flexGrow: 1,
-        justifyContent: 'space-between',
+        gap: 24,
       },
       default: {
         gap: 40,
