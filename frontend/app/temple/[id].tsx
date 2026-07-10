@@ -704,34 +704,40 @@ const checkIsAartiLive = (sessions: [string, string][]) => {
   return false;
 };
 
-const getYoutubeVideoId = (url: string) => {
+function getYoutubeVideoId(url: string) {
   if (!url) return null;
+  if (url.includes('live_stream')) return null; // Prevent matching "live_stream" as 11-char video ID
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
   const match = url.match(regExp);
   return (match && match[2].length === 11) ? match[2] : null;
-};
+}
 
-const getYoutubeEmbedUrl = (url: string) => {
+function getYoutubeAppUrl(url: string) {
+  if (!url) return '';
+  if (url.includes('channel=')) {
+    const channelId = url.split('channel=')[1].split('&')[0];
+    return `https://www.youtube.com/channel/${channelId}/live`;
+  }
+  return url;
+}
+
+function getYoutubeEmbedUrl(url: string) {
   if (url.includes('embed/live_stream')) {
-    return url + '&autoplay=1';
+    return url + '&autoplay=1&enablejsapi=1';
   }
   const videoId = getYoutubeVideoId(url);
-  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
   return url;
-};
+}
 
-const getYoutubeMobileUrl = (url: string) => {
-  if (url.includes('embed/live_stream')) {
-    return url + '&autoplay=1'; // Direct embed URL works in WebView
-  }
+function getYoutubeMobileUrl(url: string) {
   if (url.includes('embed?listType=playlist&list=')) {
     const listId = url.split('&list=')[1].split('&')[0];
     return `https://m.youtube.com/playlist?list=${listId}`;
   }
-  const videoId = getYoutubeVideoId(url);
-  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-  return url;
-};
+  // ponytail: Use the clean embed URL on native too since it is verified working on web
+  return getYoutubeEmbedUrl(url);
+}
 
 export default function TempleDetailScreen() {
  const { id } = useLocalSearchParams<{ id: string }>();
@@ -747,20 +753,23 @@ export default function TempleDetailScreen() {
   const templeKey = getSpecialTempleKey(temple?.name || '');
   const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
-  const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
+  const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
 
   // Memoize WebView content to prevent re-renders during playback
   const youtubeWebViewContent = React.useMemo(() => {
     if (!resolvedYoutubeUrl) return null;
+    const embedUrl = getYoutubeEmbedUrl(resolvedYoutubeUrl);
     return (
       <WebView
         source={{
-          uri: getYoutubeMobileUrl(resolvedYoutubeUrl),
+          uri: embedUrl,
           headers: {
-            Referer: 'https://www.youtube.com',
+            Referer: 'https://brahmand.app',
+            'X-Requested-With': 'com.android.chrome',
           },
         }}
+        originWhitelist={['*']}
         userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
         style={styles.youtubeFrame}
         javaScriptEnabled
@@ -1187,9 +1196,20 @@ if (!temple) {
       ? (t('language') === 'hi' ? 'लाइव आरती' : 'Live Aarti') 
       : (t('language') === 'hi' ? 'लाइव दर्शन' : 'Live Darshan')}
   </Text>
-  <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
-  <Ionicons name="close" size={20} color={COLORS.text} />
-  </TouchableOpacity>
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+    {isYoutubeUrl && resolvedYoutubeUrl && (
+      <TouchableOpacity 
+        onPress={() => Linking.openURL(getYoutubeAppUrl(resolvedYoutubeUrl))} 
+        style={{ padding: 4 }}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons name="logo-youtube" size={22} color="#FF0000" />
+      </TouchableOpacity>
+    )}
+    <TouchableOpacity onPress={() => setIsYoutubeModalVisible(false)} style={styles.modalClose}>
+      <Ionicons name="close" size={20} color={COLORS.text} />
+    </TouchableOpacity>
+  </View>
   </View>
   <View style={styles.youtubeModalBody}>
   {isWeb ? (

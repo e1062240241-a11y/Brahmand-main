@@ -658,7 +658,10 @@ export default function ProfileScreen() {
     setShowSettingsModal(false);
     if (item.disabled) return;
     if (item.action === 'logout') {
-      handleLogout();
+      // ponytail: Defer native prompt until settings modal finishes dismissing to avoid iOS UI lock
+      setTimeout(() => {
+        handleLogout();
+      }, Platform.OS === 'ios' ? 400 : 50);
       return;
     }
     if (item.id === 'personality_verification') {

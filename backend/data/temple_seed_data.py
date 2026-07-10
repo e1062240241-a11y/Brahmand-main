@@ -49,7 +49,7 @@ TEMPLE_SEED_DATA = [
         "deity": "Lord Shiva",
         "aarti_timings": {"Mangala Aarti": "3:00 AM", "Bhog Aarti": "11:15 AM", "Sapt Rishi Aarti": "7:00 PM"},
         "guidance": "Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area. Use designated entry gates, carry minimal belongings, and plan darshan outside peak festival windows when possible.",
-        "youtube_url": "https://www.youtube.com/live/smCgjXxP0KE?si=7Iy0KthoRO550Pzl",
+        "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCi59YQ8Z8_907R211OQW41w",
         "coords": {"latitude": 25.3109, "longitude": 83.0107},
         "timings": {"Darshan": "4:00 AM - 11:00 PM"},
         "contact": "0542 239 2629",

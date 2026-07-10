@@ -947,7 +947,14 @@ export const FloatingUtilityButton = () => {
       <Animated.View
         style={[
           styles.modalOverlay,
-          { opacity: overlayFade, pointerEvents: modalVisible ? 'auto' : 'none' }
+          {
+            opacity: overlayFade,
+            pointerEvents: modalVisible ? 'auto' : 'none',
+            backgroundColor: overlayFade.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['rgba(0,0,0,0)', Platform.OS === 'android' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.75)']
+            })
+          }
         ]}
       >
         <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} />
@@ -1291,6 +1298,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255, 213, 79, 0.85)',
     backgroundColor: 'rgba(255, 248, 240, 0.25)',
+    top: -3,
+    left: -3,
   },
   fabRingSOS: {
     borderColor: 'rgba(255, 255, 255, 0.9)',
@@ -1374,7 +1383,6 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Platform.OS === 'android' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.75)',
     zIndex: 999,
   },
   overlayBackground: { ...StyleSheet.absoluteFillObject },
