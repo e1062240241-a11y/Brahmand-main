@@ -440,10 +440,23 @@ export default function JaapLandingScreen() {
   };
 
   const getTranslatedTempleName = (name: string) => {
+    const lower = name.toLowerCase();
+    if (lower.includes('mahalaxmi') || lower.includes('mahalakshmi')) {
+      return t('language') === 'hi' ? 'श्री महालक्ष्मी मंदिर' : 'Shri Mahalakshmi Mandir';
+    }
+    if (lower.includes('siddhivinayak')) {
+      return t('language') === 'hi' ? 'श्री सिद्धिविनायक गणपति मंदिर' : 'Shree Siddhivinayak Ganapati Temple';
+    }
+    if (lower.includes('iskcon') && lower.includes('bangalore')) {
+      return t('language') === 'hi' ? 'श्री इस्कॉन मंदिर बेंगलुरु' : 'ISKCON Bangalore';
+    }
+    if (lower.includes('tirupati') || lower.includes('tirumala')) {
+      return t('language') === 'hi' ? 'श्री तिरुपति बालाजी मंदिर' : 'Tirupati Balaji Temple';
+    }
     if (t('language') === 'hi') {
       if (name.includes('Kedarnath')) return 'श्री केदारनाथ मंदिर';
       if (name.includes('Somnath')) return 'श्री सोमनाथ ज्योतिर्लिंग';
-      if (name.includes('Kashi')) return 'श्री काशी विश्वनाथ';
+      if (name.includes('Kashi')) return 'श्री काशी विश्वनाथ मंदिर';
       if (name.includes('Badrinath')) return 'श्री बद्रीनाथ मंदिर';
       if (name.includes('Mahakaleshwar')) return 'श्री महाकालेश्वर ज्योतिर्लिंग';
       if (name.includes('Omkareshwar')) return 'श्री ओंकारेश्वर ज्योतिर्लिंग';

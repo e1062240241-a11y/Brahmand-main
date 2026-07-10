@@ -558,15 +558,23 @@ export default function HomeScreen() {
     { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Aarti' },
     { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Aarti' },
     { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakal Aarti' },
-    { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Aarti' }
+    { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Aarti' },
+    { id: 'shri-mahalakshmi-mandir', name: 'Shri Mahalakshmi Mandir' },
+    { id: 'other-iskcon-temple-bangalore-karnataka', name: 'ISKCON Bangalore' },
+    { id: 'other-siddhivinayak-temple-mumbai', name: 'Shree Siddhivinayak Ganapati Temple' },
+    { id: 'other-tirupati-balaji-temple-andhra-pradesh', name: 'Tirupati Balaji Temple' }
   ];
   const [activeAartiIndex, setActiveAartiIndex] = useState(0);
 
   const AARTI_YOUTUBE_URLS: Record<string, string> = {
     'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
-    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/embed/live_stream?channel=UCXhail7h5FDRbHprlR56nIw',
-    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/embed/live_stream?channel=UCQE_hlxeDSuw4YpuAkDmrMg',
-    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/embed/live_stream?channel=UCijUmzuXOxyLWv0APau_5xw'
+    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/live/wuDNumfi05g?si=zxOX4lB_2ZWoA8nS',
+    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
+    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/live/smCgjXxP0KE?si=7Iy0KthoRO550Pzl',
+    'shri-mahalakshmi-mandir': 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
+    'other-iskcon-temple-bangalore-karnataka': 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
+    'other-siddhivinayak-temple-mumbai': 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
+    'other-tirupati-balaji-temple-andhra-pradesh': 'https://www.youtube.com/live/dwsS3bxweBw?si=xXBaEmNuLGksiJ4R'
   };
 
   const [isAartiModalVisible, setIsAartiModalVisible] = useState(false);

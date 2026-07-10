@@ -2,6 +2,20 @@
 // This provides a dummy database object to satisfy imports on the web.
 import { of } from 'rxjs';
 
+class DummyRecord {
+  constructor(data: any = {}) {
+    Object.assign(this, data);
+  }
+  prepareUpdate(fn: (record: any) => void) {
+    fn(this);
+    return this;
+  }
+  update(fn: (record: any) => void) {
+    fn(this);
+    return Promise.resolve(this);
+  }
+}
+
 class DummyCollection {
   query() { 
     return { 
@@ -10,8 +24,20 @@ class DummyCollection {
     };
   }
   find() { return Promise.resolve(null) }
-  create(fn: (record: any) => void) { return Promise.resolve({ update: async () => {} }) }
-  update(record: any, fn: (record: any) => void) { return Promise.resolve({}) }
+  create(fn: (record: any) => void) {
+    const record = new DummyRecord();
+    fn(record);
+    return Promise.resolve(record);
+  }
+  prepareCreate(fn: (record: any) => void) {
+    const record = new DummyRecord();
+    fn(record);
+    return record;
+  }
+  update(record: any, fn: (record: any) => void) {
+    fn(record);
+    return Promise.resolve(record);
+  }
 }
 
 export const database = {
