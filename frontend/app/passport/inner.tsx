@@ -19,6 +19,7 @@ import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FONTS } from '../../src/constants/theme';
 
 const { width: windowWidth } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(windowWidth - 32, 361);
@@ -348,7 +349,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: '#000',
-    fontFamily: 'Cinzel',
+    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     fontSize: 12,
     fontStyle: 'normal',
     fontWeight: '700',

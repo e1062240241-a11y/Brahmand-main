@@ -21,8 +21,7 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { blockUserApi, unblockUserApi, checkUserBlockedApi } from '../api';
-import { initializeFirebase } from './config';
-import { getAuth } from 'firebase/auth';
+import { initializeFirebase, getFirebaseAuth } from './config';
 
 export type ReportReason =
   | 'spam'
@@ -159,7 +158,7 @@ export async function isUserBlocked(
   blockedUid: string,
 ): Promise<boolean> {
   try {
-    const auth = getAuth();
+    const auth = getFirebaseAuth();
     const currentUserId = auth.currentUser?.uid;
 
     if (blockerUid === currentUserId) {

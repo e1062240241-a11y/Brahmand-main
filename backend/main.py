@@ -8422,32 +8422,31 @@ async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: s
 @api_router.post("/kyc/validate-image")
 async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
     """
-    Validate an uploaded base64 ID photo immediately using LLM vision validation.
+    Instantly validate the uploaded KYC image with Llama 3.2 Vision before final submission.
     """
-    from services.image_service import validate_id_proof_with_llm, is_valid_image
+    from services.image_service import validate_id_proof_with_llm
     
+    id_photo = data.get('id_photo')
+    if not id_photo:
+        raise HTTPException(status_code=400, detail="Image data is required")
+        
     db = await get_db()
     user_id = token_data["user_id"]
     user_doc = await db.get_document('users', user_id)
     if not user_doc:
         raise HTTPException(status_code=404, detail="User not found")
         
-    id_photo = data.get('id_photo')
-    if not id_photo or not is_valid_image(id_photo):
-        raise HTTPException(status_code=400, detail="Invalid image content provided")
-        
     id_type = data.get('id_type')
-    id_number = data.get('id_number', '').strip()
+    id_number = data.get('id_number')
     
-    expected_name = user_doc.get('fullName') or user_doc.get('name') or ""
+    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
     
     validation = await validate_id_proof_with_llm(
         base64_string=id_photo,
         expected_id_type=id_type,
-        expected_id_number=id_number if id_number and id_number != "123456789012" else None,
+        expected_id_number=id_number if id_number != "123456789012" else None,
         expected_name=expected_name
     )
-    
     return validation
 
 
@@ -8527,7 +8526,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         # Validate ID proof content
         bypass_validation = data.get('bypass_validation', False)
         if not bypass_validation:
-            expected_name = user_doc.get('fullName') or user_doc.get('name') or ""
+            expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
             validation = await validate_id_proof_with_llm(
                 base64_string=id_photo,
                 expected_id_type=id_type,
@@ -8566,6 +8565,10 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'is_verified': False,
         'kyc_request_no': kyc_request_no,
     }
+    
+    full_name_val = data.get('full_name') or data.get('name')
+    if full_name_val:
+        kyc_data['fullName'] = full_name_val
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:

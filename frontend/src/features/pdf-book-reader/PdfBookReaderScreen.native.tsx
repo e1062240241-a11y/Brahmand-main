@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { BORDER_RADIUS, COLORS, SPACING } from '../../constants/theme';
+import { BORDER_RADIUS, COLORS, SPACING, FONTS } from '../../constants/theme';
 
 type Props = {
   bookId?: string;
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   eyebrow: {
-    fontFamily: 'Cinzel',
+    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 1,

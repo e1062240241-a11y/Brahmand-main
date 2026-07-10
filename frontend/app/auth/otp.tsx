@@ -69,7 +69,7 @@ export default function OTPScreen() {
   const handleOtpChange = (value: string, index: number) => {
     const cleanValue = value.replace(/[^0-9]/g, '');
 
-    if (Platform.OS === 'android' && cleanValue.length > 1) {
+    if (cleanValue.length > 1) {
       const digits = cleanValue.split('');
       const newOtp = [...otp];
       const startIdx = cleanValue.length === 6 ? 0 : index;
@@ -91,7 +91,7 @@ export default function OTPScreen() {
     }
 
     const newOtp = [...otp];
-    newOtp[index] = Platform.OS === 'android' ? cleanValue.slice(-1) : cleanValue;
+    newOtp[index] = cleanValue.slice(-1);
     setOtp(newOtp);
     setError('');
 
@@ -225,7 +225,7 @@ export default function OTPScreen() {
                   onChangeText={(value) => handleOtpChange(value, index)}
                   onKeyPress={(e) => handleKeyPress(e, index)}
                   keyboardType="number-pad"
-                  maxLength={Platform.OS === 'android' ? 6 : 1}
+                  maxLength={6}
                   selectTextOnFocus
                   autoFocus={index === 0}
                   textContentType="oneTimeCode"

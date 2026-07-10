@@ -1,7 +1,6 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { getAuth } from 'firebase/auth';
 import { Platform } from 'react-native';
 
 // Firebase configuration for Sanatan Lok - loaded from environment variables
@@ -111,6 +110,7 @@ export function getFirebaseAuth() {
   if (!auth) {
     if (Platform.OS === 'web') {
       const firebaseApp = initializeFirebase();
+      const { getAuth } = require('firebase/auth');
       auth = getAuth(firebaseApp);
     } else {
       const authModule = getNativeAuthModule();

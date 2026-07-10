@@ -46,6 +46,59 @@ const useSafeVideoPlayer = (
   return ExpoVideoModule.useVideoPlayer(source, setup);
 };
 
+const UploadVideoPreview = React.memo(({
+  uri,
+  style,
+  selectedFilter,
+}: {
+  uri: string;
+  style: any;
+  selectedFilter: any;
+}) => {
+  const player = useSafeVideoPlayer(uri, (p) => {
+    if (p) {
+      p.loop = true;
+      p.muted = false;
+    }
+  });
+
+  useEffect(() => {
+    if (player) {
+      try {
+        player.play();
+      } catch (e) {
+        console.warn('[UploadVideoPreview] play failed:', e);
+      }
+    }
+  }, [player]);
+
+  // Clean up player on unmount
+  useEffect(() => {
+    return () => {
+      if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
+  if (!ExpoVideoModule?.VideoView || !player) {
+    return <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
+  }
+
+  return (
+    <ExpoVideoModule.VideoView
+      player={player}
+      style={style}
+      contentFit="cover"
+      nativeControls={false}
+      playsInline
+    />
+  );
+});
+UploadVideoPreview.displayName = 'UploadVideoPreview';
+
 let UploadDocumentPicker: any = null;
 const getUploadDocumentPicker = async () => {
   if (!UploadDocumentPicker) {
@@ -271,28 +324,7 @@ export const UploadPostModal = ({
     "1:1" | "4:5" | "1.91:1" | "9:16"
   >("4:5");
 
-  const previewVideoSource =
-    visible && selectedMedia?.mediaType === "video" ? selectedMedia.uri : null;
-  const previewPlayer = useSafeVideoPlayer(
-    Platform.OS === "web" ? null : previewVideoSource,
-    (p) => {
-      p.loop = true;
-      p.muted = false;
-    },
-  );
-
-  useEffect(() => {
-    if (!previewPlayer) return;
-    try {
-      if (visible && previewVideoSource) {
-        previewPlayer.play();
-      } else {
-        previewPlayer.pause();
-      }
-    } catch (e) {
-      console.warn('[UploadPostModal] previewPlayer control failed:', e);
-    }
-  }, [previewPlayer, previewVideoSource, visible]);
+  // Video player is now fully encapsulated within UploadVideoPreview component to manage lifecycle safely.
 
   useEffect(() => {
     if (selectedMedia?.width && selectedMedia?.height) {
@@ -850,13 +882,11 @@ export const UploadPostModal = ({
                             ...getFilterStyle(selectedFilter),
                           }}
                         />
-                      ) : ExpoVideoModule?.VideoView && previewPlayer ? (
-                        <ExpoVideoModule.VideoView
-                          player={previewPlayer}
+                      ) : selectedMedia?.uri ? (
+                        <UploadVideoPreview
+                          uri={selectedMedia.uri}
                           style={{ width: "100%", height: "100%" }}
-                          contentFit="cover"
-                          nativeControls={false}
-                          playsInline
+                          selectedFilter={selectedFilter}
                         />
                       ) : (
                         <View

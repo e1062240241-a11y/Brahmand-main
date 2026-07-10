@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, Image, Platform, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../src/store/authStore';
+import { FONTS } from '../src/constants/theme';
 import Svg, { Path } from 'react-native-svg';
 
 const LotusOrnament = () => (
@@ -119,8 +120,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontFamily: 'Cinzel',
-    fontWeight: '700',
+    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
     letterSpacing: 14,
     textAlign: 'center',

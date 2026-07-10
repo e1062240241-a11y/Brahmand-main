@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, 
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, Mask } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
+import { FONTS } from '../../src/constants/theme';
 
 const LotusOrnament = () => (
   <Svg width={12} height={12} viewBox="0 0 12 12" fill="none" style={{ aspectRatio: 1 }}>
@@ -238,8 +239,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontFamily: 'Cinzel',
-    fontWeight: '700',
+    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
     color: '#E6C87A',
     letterSpacing: 14,
     textAlign: 'center',

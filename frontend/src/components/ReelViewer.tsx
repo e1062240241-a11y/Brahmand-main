@@ -59,6 +59,94 @@ const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void)
   return ExpoVideoModule.useVideoPlayer(source, setup);
 };
 
+const NativeVideoPlayer = React.memo(({
+  mediaUrl,
+  isMuted,
+  contentFitMode,
+  setIsVideoLoading,
+  videoPosterUrl,
+  handlePosterError,
+  onPlayerReady,
+  onPlayerDestroy,
+  isVideoLoading,
+}: {
+  mediaUrl: string;
+  isMuted: boolean;
+  contentFitMode: any;
+  setIsVideoLoading: (loading: boolean) => void;
+  videoPosterUrl: string;
+  handlePosterError: () => void;
+  onPlayerReady: (player: any) => void;
+  onPlayerDestroy: () => void;
+  isVideoLoading: boolean;
+}) => {
+  const player = useSafeVideoPlayer(mediaUrl, (p) => {
+    if (p) {
+      p.loop = true;
+      p.muted = isMuted;
+      p.staysActiveInBackground = false;
+      if (Platform.OS !== 'web') {
+        p.bufferOptions = {
+          preferredForwardBufferDuration: 2,
+          waitsToMinimizeStalling: true,    
+          minBufferForPlayback: 0.3,
+          maxBufferBytes: 10 * 1024 * 1024,
+          prioritizeTimeOverSizeThreshold: true,
+        };
+      }
+    }
+  });
+
+  useEffect(() => {
+    if (player) {
+      onPlayerReady(player);
+    }
+    return () => {
+      onPlayerDestroy();
+    };
+  }, [player]);
+
+  // Clean up player on unmount
+  useEffect(() => {
+    return () => {
+      if (player) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
+
+  if (!ExpoVideoModule?.VideoView || !player) {
+    return <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
+  }
+
+  return (
+    <>
+      <ExpoVideoModule.VideoView
+        player={player}
+        style={{ width: '100%', height: '100%' }}
+        contentFit={contentFitMode}
+        allowsPictureInPicture={false}
+        nativeControls={false}
+        useExoShutter={false}
+        playsInline={true}
+        onFirstFrameRender={() => setIsVideoLoading(false)}
+      />
+      {isVideoLoading && videoPosterUrl && (
+        <Image
+          source={{ uri: videoPosterUrl }}
+          style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
+          contentFit={contentFitMode}
+          pointerEvents="none"
+          onError={handlePosterError}
+        />
+      )}
+    </>
+  );
+});
+NativeVideoPlayer.displayName = 'NativeVideoPlayer';
+
 const SPEEDS = [1, 1.5, 2, 0.5];
 const SEEK_STEP = 10;
 
@@ -307,21 +395,7 @@ const ReelVideoItem = React.memo(({
   const isPortrait = aspectRatio ? (aspectRatio < 1) : (mediaHeight > mediaWidth);
   const contentFitMode = isVideo ? 'cover' : (isPortrait ? 'cover' : 'contain');
 
-  const playerSource = (Platform.OS === 'web' || !isVideo || !shouldLoad) ? null : mediaUrl;
-  const player = useSafeVideoPlayer(playerSource, (p) => {
-    p.loop = !autoScroll;
-    p.muted = isMuted;
-    p.staysActiveInBackground = false;
-    if (Platform.OS !== 'web') {
-      p.bufferOptions = {
-        preferredForwardBufferDuration: 2, // Smaller look-ahead to prioritize start
-        waitsToMinimizeStalling: true,    
-        minBufferForPlayback: 0.3,        // Start faster (0.3s instead of 0.5s)
-        maxBufferBytes: 10 * 1024 * 1024,  // 10MB limit
-        prioritizeTimeOverSizeThreshold: true,
-      };
-    }
-  });
+  const [player, setPlayer] = useState<any>(null);
 
   useEffect(() => {
     if (player && Platform.OS !== 'web') {
@@ -593,30 +667,29 @@ const ReelVideoItem = React.memo(({
                 />
               )}
             </>
-          ) : ExpoVideoModule?.VideoView && player ? (
-            <>
-              <ExpoVideoModule.VideoView
-                player={player}
-                style={{ width: '100%', height: '100%' }}
-                contentFit={contentFitMode}
-                allowsPictureInPicture={false}
-                nativeControls={false}
-                useExoShutter={false}
-                playsInline={true}
-                onFirstFrameRender={() => setIsVideoLoading(false)}
-              />
-              {isVideoLoading && videoPosterUrl && (
+          ) : shouldLoad ? (
+            <NativeVideoPlayer
+              mediaUrl={mediaUrl}
+              isMuted={isMuted}
+              contentFitMode={contentFitMode}
+              setIsVideoLoading={setIsVideoLoading}
+              videoPosterUrl={videoPosterUrl}
+              handlePosterError={handlePosterError}
+              onPlayerReady={setPlayer}
+              onPlayerDestroy={() => setPlayer(null)}
+              isVideoLoading={isVideoLoading}
+            />
+          ) : (
+            <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }}>
+              {videoPosterUrl && (
                 <Image
                   source={{ uri: videoPosterUrl }}
-                  style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
+                  style={StyleSheet.absoluteFill}
                   contentFit={contentFitMode}
-                  pointerEvents="none"
                   onError={handlePosterError}
                 />
               )}
-            </>
-          ) : (
-            <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />
+            </View>
           )}
           {Platform.OS !== 'web' && filterName !== 'Normal' && (
             <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />

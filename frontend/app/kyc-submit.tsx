@@ -51,6 +51,7 @@ export default function KycSubmitScreen() {
 
   const [statusLoading, setStatusLoading] = useState(true);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [validatingImage, setValidatingImage] = useState(false);
   const [kycStatus, setKycStatus] = useState<KycStatus>(null);
   
   // Form States
@@ -68,7 +69,6 @@ export default function KycSubmitScreen() {
   const [idNumber, setIdNumber] = useState('');
   const [idPhotoBase64, setIdPhotoBase64] = useState<string | undefined>(undefined);
   const [idPhotoUri, setIdPhotoUri] = useState<string | undefined>(undefined);
-  const [isValidatingImage, setIsValidatingImage] = useState<boolean>(false);
   
   const [selfieBase64, setSelfieBase64] = useState<string | undefined>(undefined);
   const [selfieUri, setSelfieUri] = useState<string | undefined>(undefined);
@@ -183,31 +183,32 @@ export default function KycSubmitScreen() {
       setSelfieBase64(base64);
       setSelfieUri(uri);
     } else {
-      setIsValidatingImage(true);
+      setIdPhotoBase64(base64);
+      setIdPhotoUri(uri);
+
+      // Instantly validate document content
+      setValidatingImage(true);
       try {
         const response = await validateKYCImage({
           id_photo: base64,
           id_type: idType,
           id_number: idNumber.trim() || undefined,
+          full_name: fullName,
         });
-        
-        if (response?.data?.valid) {
-          setIdPhotoBase64(base64);
-          setIdPhotoUri(uri);
-          Alert.alert('Verification Successful', 'Your document is valid and matches expected details.');
-        } else {
+        if (response?.data && !response.data.valid) {
           Alert.alert(
-            'Document Rejected',
-            response?.data?.reason || 'Uploaded image is not a valid government ID. Please try again.'
+            'Validation Failed',
+            response.data.reason || `The uploaded document is invalid or blurry. Please upload a clear photo of your ${idType.toUpperCase()} card.`
           );
+          setIdPhotoBase64(undefined);
+          setIdPhotoUri(undefined);
+        } else {
+          Alert.alert('Validation Successful', 'Your document matches the verification standards.');
         }
-      } catch (error: any) {
-        console.warn('Immediate verification failed:', error);
-        // Fallback: keep image if connection error to avoid locking user
-        setIdPhotoBase64(base64);
-        setIdPhotoUri(uri);
+      } catch (err: any) {
+        console.warn('Instant validation check failed', err);
       } finally {
-        setIsValidatingImage(false);
+        setValidatingImage(false);
       }
     }
   };
@@ -306,6 +307,7 @@ export default function KycSubmitScreen() {
         id_photo: idPhotoBase64,
         selfie_photo: selfieBase64,
         bypass_validation: false,
+        full_name: fullName,
       });
 
       const newStatus = (response?.data?.status || 'pending') as KycStatus;
@@ -562,14 +564,13 @@ export default function KycSubmitScreen() {
                       {/* Dashed Upload Card */}
                       <TouchableOpacity 
                         style={styles.dashedCard} 
-                        onPress={() => !isValidatingImage && pickImageAsBase64(false)}
-                        disabled={isValidatingImage}
+                        onPress={() => pickImageAsBase64(false)}
                       >
-                        {isValidatingImage ? (
+                        {validatingImage ? (
                           <View style={styles.dashedCardInner}>
-                            <ActivityIndicator size="large" color="#F26522" />
-                            <Text style={[styles.uploadMainText, { marginTop: 12 }]}>Validating ID Card...</Text>
-                            <Text style={styles.uploadSubText}>Checking quality and information using AI</Text>
+                            <ActivityIndicator color="#F26522" size="large" />
+                            <Text style={styles.uploadMainText}>Verifying document details...</Text>
+                            <Text style={styles.uploadSubText}>Please wait while our AI scans your ID document.</Text>
                           </View>
                         ) : idPhotoUri ? (
                           <View style={styles.previewContainer}>

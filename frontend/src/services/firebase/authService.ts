@@ -1,14 +1,21 @@
-import { 
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
-  ConfirmationResult
-} from 'firebase/auth';
+import type { ConfirmationResult } from 'firebase/auth';
 import { Platform } from 'react-native';
 import { getFirebaseAuth } from './config';
 
 let auth: any;
 let webRecaptchaVerifier: any = null;
 let confirmationResult: ConfirmationResult | null = null;
+
+let RecaptchaVerifierClass: any = null;
+let signInWithPhoneNumberFn: any = null;
+
+function getWebAuthLib() {
+  if (Platform.OS === 'web' && (!RecaptchaVerifierClass || !signInWithPhoneNumberFn)) {
+    const authLib = require('firebase/auth');
+    RecaptchaVerifierClass = authLib.RecaptchaVerifier;
+    signInWithPhoneNumberFn = authLib.signInWithPhoneNumber;
+  }
+}
 
 const RECAPTCHA_CONTAINER_ID = 'recaptcha-container-fixed';
 
@@ -58,7 +65,8 @@ function getWebRecaptchaVerifier(authInstance: any): any {
   container.style.top = '-9999px';
   document.body.appendChild(container);
 
-  const verifier = new RecaptchaVerifier(authInstance, RECAPTCHA_CONTAINER_ID, {
+  getWebAuthLib();
+  const verifier = new RecaptchaVerifierClass(authInstance, RECAPTCHA_CONTAINER_ID, {
     size: 'invisible',
   });
 
@@ -121,7 +129,8 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
 
       try {
         await usedVerifier.render();
-        confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
+        getWebAuthLib();
+        confirmationResult = await signInWithPhoneNumberFn(auth, formattedPhone, usedVerifier);
       } catch (firstError: any) {
         const message = String(firstError?.message || '');
         
@@ -136,7 +145,8 @@ export async function sendFirebaseOTP(phoneNumber: string, verifier?: any): Prom
           usedVerifier = getWebRecaptchaVerifier(auth);
           await usedVerifier.render();
           try {
-            confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, usedVerifier);
+            getWebAuthLib();
+            confirmationResult = await signInWithPhoneNumberFn(auth, formattedPhone, usedVerifier);
           } catch (retryError: any) {
             cleanupRecaptchaVerifier();
             throw retryError;

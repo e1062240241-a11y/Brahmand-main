@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FONTS } from '../src/constants/theme';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
@@ -699,7 +700,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 24,
     textAlign: 'center',
-    fontFamily: 'Cinzel',
+    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
   },
   lastUpdatedText: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',

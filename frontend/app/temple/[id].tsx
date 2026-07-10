@@ -715,6 +715,12 @@ export default function TempleDetailScreen() {
  const [isFollowing, setIsFollowing] = useState(false);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
+  const templeKey = getSpecialTempleKey(temple?.name || '');
+  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
+  const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
+  const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
+  const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
+
   // Memoize WebView content to prevent re-renders during playback
   const youtubeWebViewContent = React.useMemo(() => {
     if (!resolvedYoutubeUrl) return null;
@@ -732,12 +738,6 @@ export default function TempleDetailScreen() {
   }, [resolvedYoutubeUrl]);
 
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
-
-  const templeKey = getSpecialTempleKey(temple?.name || '');
-  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
-  const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
-  const resolvedYoutubeUrl = specialTempleData?.youtubeUrl || temple?.youtube_url || null;
-  const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
 
   const loadLocalTempleData = async () => {
     try {

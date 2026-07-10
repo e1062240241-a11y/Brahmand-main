@@ -212,12 +212,14 @@ const getResolvedApiUrl = (): string => {
   const baseApiUrl = configuredApiUrl || "http://127.0.0.1:8000";
 
   if (!Device.isDevice) {
-    // Use 127.0.0.1 for both Android emulator (adb reverse) and iOS simulator.
-    // Run: adb reverse tcp:8000 tcp:8000 to forward the port before starting.
+    // Use 10.0.2.2 for Android emulator to reference host computer, 127.0.0.1 for iOS simulator.
     const portMatch = baseApiUrl.match(/:(\d+)(?:\/|$)/);
     const port = portMatch ? portMatch[1] : "8000";
     const configuredHost = baseApiUrl.match(/\/\/([\d.]+|localhost)/)?.[1] || "127.0.0.1";
-    const targetHost = configuredHost.replace("localhost", "127.0.0.1");
+    let targetHost = configuredHost.replace("localhost", "127.0.0.1");
+    if (Platform.OS === "android" && targetHost === "127.0.0.1") {
+      targetHost = "10.0.2.2";
+    }
     return `http://${targetHost}:${port}`;
   }
 
@@ -1848,12 +1850,14 @@ export const submitKYC = (data: {
   id_photo?: string;
   selfie_photo?: string;
   bypass_validation?: boolean;
+  full_name?: string;
 }) => api.post("/kyc/submit", data);
 
 export const validateKYCImage = (data: {
   id_photo: string;
-  id_type?: "aadhaar" | "pan";
+  id_type: "aadhaar" | "pan";
   id_number?: string;
+  full_name?: string;
 }) => api.post("/kyc/validate-image", data);
 
 export const generateUserAadhaarOtp = (data: {

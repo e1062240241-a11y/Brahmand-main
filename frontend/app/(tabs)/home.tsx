@@ -2593,7 +2593,7 @@ export default function HomeScreen() {
                         <Text style={{
                           color: '#000',
                           textAlign: 'center',
-                          fontFamily: 'Cinzel',
+                          fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
                           fontSize: Platform.OS === 'android' ? 26 : 28,
                           fontStyle: 'normal',
                           fontWeight: '500',
@@ -4849,6 +4849,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
+    ...(Platform.OS === 'android' ? {
+      flexBasis: '48%',
+      maxWidth: '49%',
+      flexShrink: 1,
+    } : {}),
   },
   miniCardIconBox: {
     width: 36,

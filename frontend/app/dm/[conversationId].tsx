@@ -185,20 +185,24 @@ const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void)
   return ExpoVideoModule.useVideoPlayer(source, setup);
 };
 
-const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contain', isLooping = false }: any) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = useRef<any>(null);
-  const playerSource = (Platform.OS === 'web' || !isPlaying) ? null : uri;
-  const player = useSafeVideoPlayer(playerSource, (p) => {
-    p.loop = isLooping;
-  });
-  const videoStyle = StyleSheet.flatten(style) as any || {};
-
-  useEffect(() => {
-    if (Platform.OS === 'web' && videoRef.current) {
-      videoRef.current.loop = isLooping;
+const DMNativeVideoPlayer = React.memo(({
+  uri,
+  style,
+  resizeMode,
+  isLooping,
+  isPlaying,
+}: {
+  uri: string;
+  style: any;
+  resizeMode: any;
+  isLooping: boolean;
+  isPlaying: boolean;
+}) => {
+  const player = useSafeVideoPlayer(uri, (p) => {
+    if (p) {
+      p.loop = isLooping;
     }
-  }, [isLooping]);
+  });
 
   useEffect(() => {
     if (player && isPlaying) {
@@ -213,19 +217,41 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
   // Clean up player on unmount to prevent audio leaks
   useEffect(() => {
     return () => {
-      if (Platform.OS === 'web') {
-        if (videoRef.current) {
-          try {
-            videoRef.current.pause();
-          } catch (e) { }
-        }
-      } else if (player) {
+      if (player) {
         try {
           player.pause();
-        } catch (e) { }
+        } catch (e) {}
       }
     };
   }, [player]);
+
+  if (!ExpoVideoModule?.VideoView || !player) {
+    return <View style={[style, { backgroundColor: '#1C1C1E' }]} />;
+  }
+
+  return (
+    <ExpoVideoModule.VideoView
+      player={player}
+      style={style}
+      contentFit={resizeMode}
+      allowsPictureInPicture={false}
+      nativeControls={true}
+      playsInline
+    />
+  );
+});
+DMNativeVideoPlayer.displayName = 'DMNativeVideoPlayer';
+
+const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contain', isLooping = false }: any) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const videoRef = useRef<any>(null);
+  const videoStyle = StyleSheet.flatten(style) as any || {};
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && videoRef.current) {
+      videoRef.current.loop = isLooping;
+    }
+  }, [isLooping]);
 
   if (Platform.OS === 'web') {
     return (
@@ -238,15 +264,14 @@ const ChatVideo = ({ uri, style, useNativeControls = false, resizeMode = 'contai
     );
   }
 
-  if (isPlaying && ExpoVideoModule?.VideoView && player) {
+  if (isPlaying) {
     return (
-      <ExpoVideoModule.VideoView
-        player={player}
+      <DMNativeVideoPlayer
+        uri={uri}
         style={style}
-        contentFit={resizeMode}
-        allowsPictureInPicture={false}
-        nativeControls={true}
-        playsInline
+        resizeMode={resizeMode}
+        isLooping={isLooping}
+        isPlaying={isPlaying}
       />
     );
   }
