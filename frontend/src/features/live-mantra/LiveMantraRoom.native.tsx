@@ -49,7 +49,7 @@ const WORD_TIMING_MS = [
 
 const TOTAL_MANTRA_DURATION = 29276;
 
-const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
+const BG_MUSIC = require('../../../assets/audio/audio_ekant/leberch-yoga-509070.mp3');
 
 type VoiceTransport = 'sfu' | 'agora';
 
@@ -86,7 +86,7 @@ export const LiveMantraRoom = () => {
   const micPermissionGrantedRef = useRef(micPermissionGranted);
   const roomMutedRef = useRef(roomMuted);
 
-  const bgPlayer = useAudioPlayer(BG_MUSIC);
+  const bgPlayer = useAudioPlayer(BG_MUSIC, { keepAudioSessionActive: true });
   const playerStatus = useAudioPlayerStatus(bgPlayer);
   const syncStartTimeRef = useRef<number>(0);
 
@@ -382,6 +382,8 @@ export const LiveMantraRoom = () => {
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
+          allowsRecording: true,
+          allowsBackgroundRecording: true,
         });
       } catch (error) {
         console.warn('Failed to set audio mode in LiveMantraRoom:', error);

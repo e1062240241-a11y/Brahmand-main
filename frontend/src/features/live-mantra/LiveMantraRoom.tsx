@@ -30,7 +30,7 @@ const WORD_TIMING_MS = [
 
 const TOTAL_MANTRA_DURATION = 29276;
 
-const BG_MUSIC = require('../../../assets/audio/audio ekant/leberch-yoga-509070.mp3');
+const BG_MUSIC = require('../../../assets/audio/audio_ekant/leberch-yoga-509070.mp3');
 
 export const LiveMantraRoom = () => {
   const router = useRouter();

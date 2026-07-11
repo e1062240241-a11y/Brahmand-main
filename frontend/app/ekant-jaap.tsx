@@ -136,13 +136,13 @@ const TIME_SLOTS = [
 ];
 
 const MUSIC_OPTIONS = [
-    { id: 'waterfall', name: 'Peaceful Waterfall', hindiName: 'शांत झरना', icon: 'water', file: require('../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
-    { id: 'yoga-zen', name: 'Yoga Zen Ambience', hindiName: 'योग ध्यान वातावरण', icon: 'leaf', file: require('../assets/audio/audio ekant/leberch-yoga-509070.mp3') },
-    { id: 'yoga-meditation', name: 'Deep Meditation', hindiName: 'गहरा ध्यान', icon: 'musical-notes', file: require('../assets/audio/audio ekant/leberch-yoga-509709.mp3') },
-    { id: 'nature', name: 'Birds & Waterfall', hindiName: 'पक्षी और झरना', icon: 'sunny', file: require('../assets/audio/audio ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
+    { id: 'waterfall', name: 'Peaceful Waterfall', hindiName: 'शांत झरना', icon: 'water', file: require('../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
+    { id: 'yoga-zen', name: 'Yoga Zen Ambience', hindiName: 'योग ध्यान वातावरण', icon: 'leaf', file: require('../assets/audio/audio_ekant/leberch-yoga-509070.mp3') },
+    { id: 'yoga-meditation', name: 'Deep Meditation', hindiName: 'गहरा ध्यान', icon: 'musical-notes', file: require('../assets/audio/audio_ekant/leberch-yoga-509709.mp3') },
+    { id: 'nature', name: 'Birds & Waterfall', hindiName: 'पक्षी और झरना', icon: 'sunny', file: require('../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
 ];
 
-const HANUMAN_CHALISA_AUDIO = require('../assets/audio/audio ekant/Hanuman chalisa.mp3');
+const HANUMAN_CHALISA_AUDIO = require('../assets/audio/audio_ekant/hanuman_chalisa.mp3');
 const HANUMAN_CHALISA_KARAOKE: KaraokeData = hanumanChalisaData as unknown as KaraokeData;
 
 const getKaraokeDuration = (): number => {
