@@ -40,16 +40,16 @@ import * as Location from 'expo-location';
 const VSCREEN_WIDTH = Dimensions.get('window').width;
 const VSCREEN_HEIGHT = Dimensions.get('window').height;
 
-// Responsive variables for Android to prevent horizontal scroll/layout cuts
-const wrapperWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 16 : 394;
+// Responsive variables to prevent horizontal scroll/layout cuts on both platforms
+const wrapperWidth = Math.min(394, VSCREEN_WIDTH - 16);
 const gridPadding = 16;
 const gap = 8;
-const cardWidth = Platform.OS === 'android' ? (wrapperWidth - (gridPadding * 2) - (gap * 2) - 4) / 3 : 110;
-const rightColWidth = Platform.OS === 'android' ? cardWidth * 2 + gap : 228;
+const cardWidth = (wrapperWidth - (gridPadding * 2) - (gap * 2) - 4) / 3;
+const rightColWidth = cardWidth * 2 + gap;
 
-const businessGridWidth = Platform.OS === 'android' ? VSCREEN_WIDTH - 16 : 347;
-const businessRightColWidth = Platform.OS === 'android' ? (businessGridWidth - 12) / 3.13 : 107;
-const businessLeftColWidth = Platform.OS === 'android' ? businessRightColWidth * 2.13 : 228;
+const businessGridWidth = Math.min(347, VSCREEN_WIDTH - 16);
+const businessRightColWidth = (businessGridWidth - 12) / 3.13;
+const businessLeftColWidth = businessRightColWidth * 2.13;
 
 const TABS = ['Nearby'];
 const MAIN_SECTIONS = ['Services', 'Jobs'];
@@ -1218,8 +1218,8 @@ export default function VendorScreen() {
           <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
             <Image 
               source={require('../../assets/images/tab-bar/rashi/vendor/background.png')} 
-              style={{ position: 'absolute', width: Platform.OS === 'android' ? VSCREEN_WIDTH : 487, height: 364, top: 0 }} 
-              resizeMode={Platform.OS === 'android' ? 'cover' : 'stretch'} 
+              style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }} 
+              resizeMode="cover" 
             />
             
             {/* Business Header */}
@@ -1857,7 +1857,7 @@ const styles = StyleSheet.create({
   },
   figmaRegisterBtn: {
     flexDirection: 'row',
-    width: Platform.OS === 'android' ? VSCREEN_WIDTH - 16 : 361,
+    width: Math.min(361, VSCREEN_WIDTH - 32),
     paddingVertical: 12,
     paddingHorizontal: 16,
     justifyContent: 'center',

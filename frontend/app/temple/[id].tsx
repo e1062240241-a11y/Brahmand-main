@@ -233,7 +233,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Baidyanath Jyotirling in Deoghar is one of the most visited Shiva pilgrimage sites, especially during the Shravan month Kanwar yatra season.',
  guidance: 'Guidance: Reach Jasidih railway junction and take local transport to Deoghar temple complex. During Shravan and major festivals, use the designated darshan queues and buffer extra time for entry.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCXKgkQYWYVFM6HpCkmuOFFw',
+ youtubeUrl: 'https://www.youtube.com/live/gMoEnxZtxzg?si=9mVi5xNLD9CmPuDH-',
  },
  'Tirupati Balaji Temple – Andhra Pradesh': {
  aliases: ['tirupati balaji', 'tirumala', 'venkateswara temple'],
@@ -246,7 +246,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Tirupati Balaji Temple at Tirumala is one of the most visited pilgrimage shrines in India, dedicated to Lord Venkateswara. The temple is known for disciplined darshan systems, daily sevas, and large-scale prasadam distribution for devotees.',
  guidance: 'Guidance: Reach Tirupati by rail/air, then continue to Tirumala via ghat road buses or private vehicles. Book darshan slots in advance when possible and arrive early to accommodate queue and security procedures.',
- youtubeUrl: 'https://www.youtube.com/live/dwsS3bxweBw?si=xXBaEmNuLGksiJ4R',
+ youtubeUrl: 'https://www.youtube.com/live/dwsS3bxweBw?si=QsVpIa_kHuh0FPB6',
  },
  'Vaishno Devi Temple – Jammu & Kashmir': {
  aliases: ['vaishno devi', 'mata vaishno devi', 'katra shrine'],
@@ -740,7 +740,7 @@ function getYoutubeMobileUrl(url: string) {
 }
 
 export default function TempleDetailScreen() {
- const { id } = useLocalSearchParams<{ id: string }>();
+ const { id, autoplayAarti } = useLocalSearchParams<{ id: string; autoplayAarti?: string }>();
  const { t } = useTranslation();
  const resolvedTempleId = decodeURIComponent(String(id || '')).trim();
  const router = useRouter();
@@ -755,6 +755,12 @@ export default function TempleDetailScreen() {
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
+
+  useEffect(() => {
+    if (autoplayAarti === 'true' && resolvedYoutubeUrl) {
+      setIsYoutubeModalVisible(true);
+    }
+  }, [autoplayAarti, resolvedYoutubeUrl]);
 
   // Memoize WebView content to prevent re-renders during playback
   const youtubeWebViewContent = React.useMemo(() => {

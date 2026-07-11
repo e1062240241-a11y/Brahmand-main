@@ -285,7 +285,7 @@ function PassportInnerScreen({
             activeOpacity={0.8}
             onPress={() => router.push('/passport/timeline' as any)}
           >
-            <Text style={styles.primaryButtonText}>Passport Timeline</Text>
+            <Text style={styles.primaryButtonText} numberOfLines={1}>Passport Timeline</Text>
             <Ionicons name="arrow-forward" size={16} color="#000" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
 
@@ -577,7 +577,6 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 15,
     fontWeight: '600',
-    width: 134,
   },
   secondaryButton: {
     flexDirection: 'row',

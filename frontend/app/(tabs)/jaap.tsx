@@ -998,6 +998,15 @@ export default function JaapLandingScreen() {
                         pressed && Platform.OS === 'ios' && { opacity: 0.8 }
                       ]}
                       android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/temple/[id]',
+                          params: {
+                            id: 'jyotirling-somnath-temple-gujarat',
+                            autoplayAarti: 'true',
+                          },
+                        })
+                      }
                     >
                       <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
                         <Text style={styles.mockupJoinJaapText}>

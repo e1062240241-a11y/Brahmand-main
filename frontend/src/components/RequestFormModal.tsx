@@ -6,7 +6,6 @@ import {
   Modal,
   Pressable,
   TextInput,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { HospitalSearchInput } from './HospitalSearchInput';
 import { sendBloodRequestOTP, verifyBloodRequestOTP } from '../services/api';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 interface CommunityOption {
   id: string;
@@ -744,7 +744,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             </Pressable>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             style={styles.form}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -772,7 +772,7 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             </Pressable>
 
             <View style={{ height: 40 }} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

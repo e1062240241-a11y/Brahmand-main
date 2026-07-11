@@ -574,7 +574,7 @@ export default function HomeScreen() {
     'shri-mahalakshmi-mandir': 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
     'other-iskcon-temple-bangalore-karnataka': 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
     'other-siddhivinayak-temple-mumbai': 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
-    'other-tirupati-balaji-temple-andhra-pradesh': 'https://www.youtube.com/live/dwsS3bxweBw?si=xXBaEmNuLGksiJ4R'
+    'other-tirupati-balaji-temple-andhra-pradesh': 'https://www.youtube.com/live/dwsS3bxweBw?si=QsVpIa_kHuh0FPB6'
   };
 
   const [isAartiModalVisible, setIsAartiModalVisible] = useState(false);

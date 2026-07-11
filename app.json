@@ -7,6 +7,9 @@
     },
     "android": {
       "package": "com.virralpatel.brahmandmain"
+    },
+    "ios": {
+      "bundleIdentifier": "com.virralpatel.brahmandmain"
     }
   }
 }

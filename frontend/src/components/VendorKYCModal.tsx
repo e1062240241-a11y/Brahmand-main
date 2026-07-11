@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, StyleSheet, Modal, TouchableOpacity, Pressable, Image, Alert, ActivityIndicator, Dimensions, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Modal, Pressable, Image, Alert, ActivityIndicator, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +20,7 @@ import { useVendorStore } from '../store/vendorStore';
 import { useAuthStore } from '../store/authStore';
 import { uploadFileToFirebase } from '../services/firebase/storageService';
 import * as FileSystem from 'expo-file-system';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 let TextRecognition: typeof import('expo-text-recognition') | null = null;
 try {
@@ -929,7 +930,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
             </Pressable>
           </View>
 
-          <ScrollView
+          <KeyboardAwareScrollView
             style={styles.content}
             contentContainerStyle={styles.contentContainer}
             keyboardShouldPersistTaps="handled"
@@ -1073,7 +1074,7 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
               </>
             )}
 
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

@@ -265,6 +265,17 @@ export default function LiveJaapWelcomeScreen() {
               }}
             />
 
+            <Text style={{
+              color: '#7B6A58',
+              fontSize: 12,
+              marginTop: 8,
+              fontWeight: '600',
+              opacity: 0.8,
+              textAlign: 'center'
+            }}>
+              {t('language') === 'hi' ? 'प्रवेश करने के लिए ॐ बटन को दाईं ओर स्वाइप करें' : 'Swipe the ॐ button to the right to enter'}
+            </Text>
+
             <View style={styles.privacyNote}>
               <Ionicons name="lock-closed-outline" size={14} color="#7B6A58" />
               <Text style={styles.privacyText}>

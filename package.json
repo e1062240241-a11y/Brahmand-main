@@ -6,9 +6,15 @@
     "eas-cli": "^18.7.0",
     "expo-blur": "^56.0.3",
     "expo-sharing": "^55.0.18",
-    "npm": "^11.12.1"
+    "npm": "^11.12.1",
+    "expo": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.0"
   },
   "devDependencies": {
     "@types/react": "~19.2.10"
-  }
+  },
+  "name": "Brahmand-main 2",
+  "version": "1.0.0",
+  "scripts": {}
 }
