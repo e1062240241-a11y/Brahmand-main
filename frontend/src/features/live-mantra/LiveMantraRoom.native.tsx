@@ -86,7 +86,7 @@ export const LiveMantraRoom = () => {
   const micPermissionGrantedRef = useRef(micPermissionGranted);
   const roomMutedRef = useRef(roomMuted);
 
-  const bgPlayer = useAudioPlayer(BG_MUSIC);
+  const bgPlayer = useAudioPlayer(BG_MUSIC, { keepAudioSessionActive: true });
   const playerStatus = useAudioPlayerStatus(bgPlayer);
   const syncStartTimeRef = useRef<number>(0);
 
@@ -382,6 +382,8 @@ export const LiveMantraRoom = () => {
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
+          allowsRecording: true,
+          allowsBackgroundRecording: true,
         });
       } catch (error) {
         console.warn('Failed to set audio mode in LiveMantraRoom:', error);

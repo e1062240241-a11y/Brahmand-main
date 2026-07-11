@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect } from 'react-native-svg';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -78,10 +78,10 @@ const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
 };
 
 const MANTRA_BG_AUDIO: Record<string, any> = {
-  gayatri: require('../../../assets/audio/audio_ekant/gaytry_mantra.wav'),
-  hanuman: require('../../../assets/audio/audio_ekant/Hanuman_chalisa.mp3'),
-  krishna: require('../../../assets/audio/audio_ekant/Krishna_jaap.m4a.mp4'),
-  shiva: require('../../../assets/audio/audio_ekant/Final_Om_Namah_Shivaay_2026-05-23_17_09.m4a.mp4'),
+  gayatri: require('../../../assets/audio/audio_ekant/gayatri_mantra.wav'),
+  hanuman: require('../../../assets/audio/audio_ekant/hanuman_chalisa.mp3'),
+  krishna: require('../../../assets/audio/audio_ekant/krishna_jaap.mp4'),
+  shiva: require('../../../assets/audio/audio_ekant/final_om_namah_shivaay.mp4'),
   mrityunjaya: require('../../../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
   ganesh: require('../../../assets/audio/audio_ekant/leberch-yoga-509070.mp3'),
   laxmi: require('../../../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
@@ -383,7 +383,7 @@ export default function LiveJaapRoomView() {
   const agoraJoinedRef = useRef(false);
   const agoraInitializedRef = useRef(false);
   
-  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 50 });
+  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 50, keepAudioSessionActive: true });
   const audioStatus = useAudioPlayerStatus(bgPlayer);
 
   // Polling loop for smooth subtitle highlight updates on Native
@@ -754,6 +754,8 @@ export default function LiveJaapRoomView() {
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
           shouldPlayInBackground: true,
+          allowsRecording: true,
+          allowsBackgroundRecording: true,
         });
       } catch (error) {
         console.warn('Failed to set audio mode in LiveJaapRoom:', error);
@@ -1052,6 +1054,7 @@ export default function LiveJaapRoomView() {
 
   return (
     <ImageBackground source={require('../../../assets/images/live_jaap_room_bg.png')} style={styles.container} resizeMode="cover">
+      <Stack.Screen options={{ gestureEnabled: false }} />
       <StatusBar barStyle="dark-content" />
       <View style={[styles.safeArea, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {/* NEW HEADER */}

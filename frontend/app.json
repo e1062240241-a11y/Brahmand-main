@@ -11,9 +11,6 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.brahmand.app",
       "googleServicesFile": "./GoogleService-Info.plist",
-      "backgroundModes": [
-        "audio"
-      ],
       "config": {
         "googleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
       },

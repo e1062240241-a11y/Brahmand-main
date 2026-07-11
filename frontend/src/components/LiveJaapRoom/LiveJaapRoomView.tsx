@@ -207,10 +207,10 @@ const HANUMAN_CHALISA_SEGMENTS = [
 ];
 
 const MANTRA_AUDIO: Record<string, any> = {
-  hanuman: require('../../../assets/audio/audio_ekant/Hanuman_chalisa.mp3'),
-  gayatri: require('../../../assets/audio/audio_ekant/gaytry_mantra.wav'),
-  krishna: require('../../../assets/audio/audio_ekant/Krishna_jaap.m4a.mp4'),
-  shiva: require('../../../assets/audio/audio_ekant/Final_Om_Namah_Shivaay_2026-05-23_17_09.m4a.mp4'),
+  hanuman: require('../../../assets/audio/audio_ekant/hanuman_chalisa.mp3'),
+  gayatri: require('../../../assets/audio/audio_ekant/gayatri_mantra.wav'),
+  krishna: require('../../../assets/audio/audio_ekant/krishna_jaap.mp4'),
+  shiva: require('../../../assets/audio/audio_ekant/final_om_namah_shivaay.mp4'),
   mrityunjaya: require('../../../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),
   ganesh: require('../../../assets/audio/audio_ekant/leberch-yoga-509070.mp3'),
   laxmi: require('../../../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3'),

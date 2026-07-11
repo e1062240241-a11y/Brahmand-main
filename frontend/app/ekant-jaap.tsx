@@ -142,7 +142,7 @@ const MUSIC_OPTIONS = [
     { id: 'nature', name: 'Birds & Waterfall', hindiName: 'पक्षी और झरना', icon: 'sunny', file: require('../assets/audio/audio_ekant/rmultimediaeu-birds-and-waterfall-250309.mp3') },
 ];
 
-const HANUMAN_CHALISA_AUDIO = require('../assets/audio/audio_ekant/Hanuman_chalisa.mp3');
+const HANUMAN_CHALISA_AUDIO = require('../assets/audio/audio_ekant/hanuman_chalisa.mp3');
 const HANUMAN_CHALISA_KARAOKE: KaraokeData = hanumanChalisaData as unknown as KaraokeData;
 
 const getKaraokeDuration = (): number => {
