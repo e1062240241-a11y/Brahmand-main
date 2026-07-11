@@ -1,7 +1,6 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TextInput,
@@ -10,13 +9,11 @@ import {
   Platform,
   Image,
   Animated,
-  ScrollView,
   Alert,
   Pressable,
   ActivityIndicator,
   Keyboard,
-  Dimensions,
-} from 'react-native';
+  Dimensions} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +24,7 @@ import { FONTS } from '../src/constants/theme';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 import { useAuthStore } from '../src/store/authStore';
 import Svg, { Path } from 'react-native-svg';
+import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -448,7 +446,7 @@ export default function MyKrishnaChat() {
 
           {/* ── Suggestions chips (only shown before first user message) ── */}
           {showSuggestions && !historyLoading && (
-            <ScrollView
+            <KeyboardAwareScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.suggestionsScroll}
@@ -464,7 +462,7 @@ export default function MyKrishnaChat() {
                   <Text style={styles.chipText}>{s}</Text>
                 </Pressable>
               ))}
-            </ScrollView>
+            </KeyboardAwareScrollView>
           )}
 
           {/* ── Info Banner ── */}

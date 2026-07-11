@@ -26,6 +26,7 @@ import { BORDER_RADIUS, COLORS, SPACING } from '../src/constants/theme';
 import { useAuthStore } from '../src/store/authStore';
 import { Avatar } from '../src/components/Avatar';
 import { BrandedLoading } from '../src/components/BrandedLoading';
+import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -513,7 +514,7 @@ export default function AstrologyScreen() {
       </SafeAreaView>
 
       {showForm ? (
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.content}
           contentContainerStyle={styles.formScrollContent}
           keyboardShouldPersistTaps="handled"
@@ -724,7 +725,7 @@ export default function AstrologyScreen() {
             </TouchableOpacity>
           </View>
           <View style={{ height: 40 }} />
-        </ScrollView>
+        </KeyboardAwareScrollView>
       ) : (
         <ScrollView 
           style={styles.content}
@@ -966,7 +967,7 @@ export default function AstrologyScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView
+            <KeyboardAwareScrollView
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.modalScrollContent}
@@ -1171,7 +1172,7 @@ export default function AstrologyScreen() {
                 </Text>
                 {!calculating && <Ionicons name="chevron-forward" size={18} color="#FFF" />}
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>

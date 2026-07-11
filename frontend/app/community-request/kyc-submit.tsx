@@ -1,18 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
+import {ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   Image,
   TextInput,
-  Modal,
-} from 'react-native';
+  Modal} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +19,7 @@ import { getKYCStatus, submitKYC, validateKYCImage } from '../../src/services/ap
 import { useAuthStore } from '../../src/store/authStore';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect } from 'react-native-svg';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 type KycStatus = 'pending' | 'manual_review' | 'verified' | 'rejected' | null;
 
@@ -262,7 +260,7 @@ export default function CommunityKycSubmitScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={{ flex: 1 }}
           >
-            <ScrollView
+            <KeyboardAwareScrollView
               style={styles.scrollContainer}
               contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
@@ -435,7 +433,7 @@ export default function CommunityKycSubmitScreen() {
               </View>
 
               <View style={{ height: 40 }} />
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </KeyboardAvoidingView>
         )}
 
@@ -453,7 +451,7 @@ export default function CommunityKycSubmitScreen() {
                   <Ionicons name="close" size={24} color="#000" />
                 </TouchableOpacity>
               </View>
-              <ScrollView>
+              <KeyboardAwareScrollView>
                 {COUNTRY_CODES.map((item) => (
                   <TouchableOpacity
                     key={item.code}
@@ -466,7 +464,7 @@ export default function CommunityKycSubmitScreen() {
                     <Text style={styles.countryItemText}>{item.code} ({item.name})</Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </View>
           </View>
         </Modal>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  View, 
+import {View, 
   Text, 
   StyleSheet, 
   TextInput, 
@@ -11,9 +10,7 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Image,
-  ScrollView,
-  Keyboard
-} from 'react-native';
+  Keyboard} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { registerUser } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLanguageStore } from '../../src/utils/i18n';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -356,7 +354,7 @@ export default function ProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}
       >
-        <ScrollView 
+        <KeyboardAwareScrollView 
           contentContainerStyle={[
             styles.scrollContent,
             {
@@ -458,7 +456,7 @@ export default function ProfileScreen() {
                     ? { bottom: inputHeight + inputMarginBottom }
                     : (showCityAbove ? styles.suggestionsAbove : styles.suggestionsBelow)
                 ]}>
-                  <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
+                  <KeyboardAwareScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
                     {citySuggestions.map((item, index) => (
                       <TouchableOpacity
                         key={index}
@@ -480,7 +478,7 @@ export default function ProfileScreen() {
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
+                  </KeyboardAwareScrollView>
                 </View>
               )}
             </View>
@@ -592,7 +590,7 @@ export default function ProfileScreen() {
               {getTranslation('footerText')}
             </Text>
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );

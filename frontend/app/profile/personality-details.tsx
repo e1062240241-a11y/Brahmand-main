@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   TextInput,
   Dimensions,
   KeyboardAvoidingView,
   Platform,
   Modal,
-  FlatList,
-} from 'react-native';
+  FlatList} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePersonalityStore } from '../../src/store/personalityStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useTranslation } from '../../src/utils/i18n';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');
 
@@ -140,7 +138,7 @@ export default function PersonalityDetailsScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={{ flex: 1 }}
         >
-          <ScrollView 
+          <KeyboardAwareScrollView 
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
           >
@@ -259,7 +257,7 @@ export default function PersonalityDetailsScreen() {
                 {t('language') === 'hi' ? 'जारी रखें' : 'Continue'}
               </Text>
             </TouchableOpacity>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
 

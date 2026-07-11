@@ -1,20 +1,17 @@
 import React, { useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
   TextInput,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
   Alert,
   Keyboard,
   Image,
-  FlatList,
-} from 'react-native';
+  FlatList} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +21,6 @@ import { GooglePlacesAutocomplete } from 'react-native-google-places-autocomplet
 import { DEFAULT_CATEGORIES } from '../store/vendorStore';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
-import api from '../services/api';
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 
@@ -775,7 +771,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               
               {showCountryDropdown && (
                 <View style={[styles.dropdownListContainer, { position: 'absolute', top: 52, left: 0, width: 140, zIndex: 100, maxHeight: 200 }]}>
-                  <ScrollView nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                  <KeyboardAwareScrollView nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
                     {COUNTRY_CODES.map((item) => (
                       <TouchableOpacity
                         key={item.code}
@@ -788,7 +784,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                         <Text style={{ fontSize: 14, color: COLORS.text }}>{item.label}</Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
+                  </KeyboardAwareScrollView>
                 </View>
               )}
             </View>
@@ -888,7 +884,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               {/* Sub Category Dropdown List */}
               {showSubCategoryDropdown && (
                 <View style={styles.dropdownListContainer}>
-                  <ScrollView
+                  <KeyboardAwareScrollView
                     style={{ maxHeight: 200 }}
                     nestedScrollEnabled={true}
                     keyboardShouldPersistTaps="handled"
@@ -938,7 +934,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                         <Ionicons name="add-circle" size={18} color={COLORS.primary} />
                       </TouchableOpacity>
                     )}
-                  </ScrollView>
+                  </KeyboardAwareScrollView>
                 </View>
               )}
             </View>
@@ -996,7 +992,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
             {/* Selected Photos Previews */}
             {selectedPhotos.length > 0 && (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewScroll}>
+              <KeyboardAwareScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.previewScroll}>
                 {selectedPhotos.map((photo, index) => (
                   <View key={index} style={styles.previewWrapper}>
                     <Image source={{ uri: photo.uri }} style={styles.previewImage} />
@@ -1005,7 +1001,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     </TouchableOpacity>
                   </View>
                 ))}
-              </ScrollView>
+              </KeyboardAwareScrollView>
             )}
 
             {/* Inline Error Banner */}

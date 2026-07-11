@@ -1,8 +1,7 @@
 // accessibility: placeholder
 // Trigger watch rebuild
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   ScrollView,
@@ -23,8 +22,7 @@ import {
   Alert,
   ActionSheetIOS,
   RefreshControl,
-  Animated,
-} from 'react-native';
+  Animated} from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -315,6 +313,7 @@ import { originalAlert } from '../../src/utils/nativeAlert';
 import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
@@ -663,7 +662,7 @@ export default function HomeScreen() {
     }
     setLocationPickerVisible(false);
   };
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
   const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
@@ -2489,7 +2488,7 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
-          <ScrollView
+          <KeyboardAwareScrollView
             ref={scrollViewRef}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
@@ -3728,7 +3727,7 @@ export default function HomeScreen() {
             )}
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
 
 

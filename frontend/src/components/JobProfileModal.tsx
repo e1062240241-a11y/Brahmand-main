@@ -1,17 +1,14 @@
 import React, { useMemo, useState } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   Modal,
   TouchableOpacity,
   TextInput,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
-} from 'react-native';
+  Alert} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
@@ -536,7 +533,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             />
             {showProfessionDropdown && (
               <View style={styles.dropdown}>
-                <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
+                <KeyboardAwareScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
                   {filteredRoles.map((role) => (
                     <TouchableOpacity
                       key={role}
@@ -550,7 +547,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                       <Text style={styles.dropdownItemText}>{getRoleTranslation(role)}</Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </KeyboardAwareScrollView>
               </View>
             )}
 
@@ -568,7 +565,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             />
             {showCityDropdown && (
               <View style={styles.dropdown}>
-                <ScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
+                <KeyboardAwareScrollView style={{ maxHeight: 180 }} keyboardShouldPersistTaps="handled">
                   {filteredCities.map((city) => (
                     <TouchableOpacity
                       key={city}
@@ -582,7 +579,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                       <Text style={styles.dropdownItemText}>{getCityTranslation(city)}</Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </KeyboardAwareScrollView>
               </View>
             )}
 

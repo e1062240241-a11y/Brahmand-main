@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Image,
   TextInput,
   FlatList,
@@ -12,8 +10,7 @@ import {
   Dimensions,
   Platform,
   Alert,
-  KeyboardAvoidingView,
-} from 'react-native';
+  KeyboardAvoidingView} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
@@ -22,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { getAllUsers, createCommunity, parseApiError } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');
 
@@ -168,7 +166,7 @@ export default function CreateCommunityScreen() {
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Create a Community</Text>
         <Text style={styles.subtitle}>Build a trusted and active community{"\n"}with a strong founding team.</Text>
 
@@ -213,7 +211,7 @@ export default function CreateCommunityScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
@@ -228,7 +226,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Community</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.tabsContainer}>
           <View style={styles.activeTab}><Text style={styles.activeTabText}>My Communities</Text></View>
           <TouchableOpacity
@@ -269,7 +267,7 @@ export default function CreateCommunityScreen() {
             <Text style={styles.howText}>Community goes live!</Text>
           </View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 
@@ -284,7 +282,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 1 of 5</Text>
         </View>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionTitle}>Select Community Type</Text>
 
         {[
@@ -317,7 +315,7 @@ export default function CreateCommunityScreen() {
             </View>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
@@ -335,7 +333,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 2 of 5</Text>
         </View>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.sectionTitle}>Basic Information</Text>
 
         <View style={styles.inputGroup}>
@@ -409,7 +407,7 @@ export default function CreateCommunityScreen() {
           )}
         </View>
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <TouchableOpacity
         style={[styles.continueButton, !formData.name || !formData.description ? styles.disabledButton : null]}
         onPress={handleNext}
@@ -431,7 +429,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 3 of 5</Text>
         </View>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         <Text style={styles.inputLabel}>Community Picture</Text>
          <TouchableOpacity
            style={styles.imageUploadBox}
@@ -496,7 +494,7 @@ export default function CreateCommunityScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
@@ -661,7 +659,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 6 of 6</Text>
         </View>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.reviewCard}>
           <Text style={styles.reviewLabel}>COMMUNITY NAME</Text>
           <Text style={styles.reviewValue}>{formData.name}</Text>
@@ -696,7 +694,7 @@ export default function CreateCommunityScreen() {
            <Ionicons name="information-circle" size={20} color="#FF6600" />
            <Text style={styles.infoText}>By clicking "Create Community", you agree to our community guidelines and terms.</Text>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
       <TouchableOpacity
         style={[styles.continueButton, loading && styles.disabledButton]}
         onPress={handleSubmit}

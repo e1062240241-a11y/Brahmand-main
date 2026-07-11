@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
+import {View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
   TouchableOpacity, 
   TextInput,
   Alert,
@@ -11,8 +9,7 @@ import {
   ActivityIndicator,
   BackHandler,
   KeyboardAvoidingView,
-  Platform
-} from 'react-native';
+  Platform} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,6 +24,7 @@ import Svg, { Path } from 'react-native-svg';
 import { Avatar } from '../../src/components/Avatar';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 import api, { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const PersonalInfoIcon = () => (
   <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
@@ -750,7 +748,7 @@ export default function VendorDashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {!isVerified && (isUserPending || isVendorPending) && (
           <View style={{
@@ -992,7 +990,7 @@ export default function VendorDashboardScreen() {
             )}
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
+          <KeyboardAwareScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
             {galleryPhotos.map((item, idx) => (
               <View key={idx} style={styles.galleryImageContainer}>
                 {item.url ? (
@@ -1012,7 +1010,7 @@ export default function VendorDashboardScreen() {
             {galleryPhotos.length === 0 && (
               <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
 
         {/* Section: Offers & Deals */}
@@ -1067,7 +1065,7 @@ export default function VendorDashboardScreen() {
             </View>
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Edit Modal (used for Category/Phone verification/Hours popups) */}
       <Modal

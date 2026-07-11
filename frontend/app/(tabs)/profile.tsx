@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -13,13 +12,12 @@ import {
   RefreshControl,
   Platform,
   Alert,
-  ScrollView,
   TextInput,
   Animated,
   Keyboard,
   Pressable,
   StatusBar
-, DeviceEventEmitter , KeyboardAvoidingView, Share, ActionSheetIOS } from 'react-native';
+, DeviceEventEmitter , KeyboardAvoidingView, Share, ActionSheetIOS} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -57,6 +55,7 @@ import { MentionText } from '../../src/components/MentionText';
 import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');
 const GRID_GAP = 2;
@@ -1283,7 +1282,7 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
             {Platform.OS === 'android' ? (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
                 {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
                   <View key={section.id} style={styles.settingsSection}>
                     <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
@@ -1340,9 +1339,9 @@ export default function ProfileScreen() {
                   </View>
                 ))}
                 <View style={styles.bottomSpacer} />
-              </ScrollView>
+              </KeyboardAwareScrollView>
             ) : (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
                 {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
                   <View key={section.id} style={styles.settingsSection}>
                     <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
@@ -1393,7 +1392,7 @@ export default function ProfileScreen() {
                   </View>
                 ))}
                 <View style={styles.bottomSpacer} />
-              </ScrollView>
+              </KeyboardAwareScrollView>
             )}
           </View>
         </View>

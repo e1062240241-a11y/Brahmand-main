@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Platform,
   KeyboardAvoidingView,
@@ -13,14 +11,14 @@ import {
   Modal,
   FlatList,
   Dimensions,
-  BackHandler,
-} from 'react-native';
+  BackHandler} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');
 const HELP_TYPES = [
@@ -210,7 +208,7 @@ export default function TempleHelpRequestScreen() {
 
         <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.cardContainer}>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               
               <View style={styles.bannerContainer}>
                 <View style={styles.headerBar}>
@@ -329,7 +327,7 @@ export default function TempleHelpRequestScreen() {
               
               <Text style={styles.bottomDisclaimer}>Volunteers will contact you for details</Text>
               <View style={{ height: 40 }} />
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </KeyboardAvoidingView>
 

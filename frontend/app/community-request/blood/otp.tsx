@@ -1,7 +1,7 @@
 // accessibility: placeholder
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Alert} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import api, { createCommunityRequest, parseApiError } from '../../../src/service
 // import { getCurrentUserToken } from '../../../src/services/firebase/authService';
 import { useAuthStore } from '../../../src/store/authStore';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
+import { KeyboardAwareScrollView } from '../../../src/components/KeyboardAwareScrollView';
 
 export default function CommunityRequestBloodOtpPage() {
   const router = useRouter();
@@ -184,7 +185,7 @@ export default function CommunityRequestBloodOtpPage() {
           <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
         </TouchableOpacity>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           <Text style={styles.title}>Enter OTP</Text>
           <Text style={styles.subtitle}>We have sent a 4 digit OTP to +91 {phone}</Text>
 
@@ -222,7 +223,7 @@ export default function CommunityRequestBloodOtpPage() {
           <TouchableOpacity style={styles.primaryButton} onPress={() => verifyCode(otp.join(''))} disabled={loading || otp.some((digit) => !digit)} activeOpacity={0.8}>
             {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryButtonText}>Verify & Continue</Text>}
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );

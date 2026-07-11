@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from 'react';
-import { 
-  View, 
+import {View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
@@ -8,11 +7,9 @@ import {
   ActivityIndicator, 
   Alert,
   TextInput,
-  ScrollView,
   Platform,
   KeyboardAvoidingView,
-  Linking
-} from 'react-native';
+  Linking} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -22,6 +19,7 @@ import { getKYCStatus, sendNettyfishOTP, verifyNettyfishOTP } from '../../src/se
 import { useTranslation } from '../../src/utils/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, G, Circle } from 'react-native-svg';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const PadlockIcon = () => (
   <Svg width={32} height={32} viewBox="0 0 32 32" fill="none">
@@ -440,7 +438,7 @@ export default function CommunityKYCStatusScreen() {
           </View>
 
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-            <ScrollView contentContainerStyle={styles.otpScrollContent} showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView contentContainerStyle={styles.otpScrollContent} showsVerticalScrollIndicator={false}>
               <Text style={styles.otpSubtitle}>
                 We have sent a 4 digit OTP to{"\n"}
                 <Text style={styles.otpSubtitleBold}>+91 {phoneNumber}</Text>
@@ -491,7 +489,7 @@ export default function CommunityKYCStatusScreen() {
                 </Svg>
                 <Text style={styles.otpNoteText}>This number will be used for all future communications regarding your request.</Text>
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <View style={styles.otpBottomButtonContainer}>
               <TouchableOpacity 
@@ -548,7 +546,7 @@ export default function CommunityKYCStatusScreen() {
             <ActivityIndicator size="large" color="#F26522" />
           </View>
         ) : (
-          <ScrollView 
+          <KeyboardAwareScrollView 
             style={styles.scrollContainer}
             contentContainerStyle={isReview ? styles.scrollContentStatus : styles.scrollContent}
             showsVerticalScrollIndicator={false}
@@ -780,7 +778,7 @@ export default function CommunityKYCStatusScreen() {
                 </View>
               </>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         )}
       </SafeAreaView>
     </LinearGradient>

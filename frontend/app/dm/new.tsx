@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, ScrollView, Image } from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, TextInput, Image} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { getAllUsers, getConversations, sendDirectMessage } from '../../src/serv
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { Avatar } from '../../src/components/Avatar';
 import { useAuthStore } from '../../src/store/authStore';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const toParamString = (value: string | string[] | undefined): string => {
   if (Array.isArray(value)) {
@@ -222,7 +223,7 @@ export default function NewDMScreen() {
             <Text style={styles.headerTitle}>New Chat</Text>
           </View>
 
-          <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView style={styles.content} keyboardShouldPersistTaps="handled">
             {/* If no user is selected yet, show search + list */}
             {!foundUser && (
               <>
@@ -336,7 +337,7 @@ export default function NewDMScreen() {
                 </View>
               </View>
             )}
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>

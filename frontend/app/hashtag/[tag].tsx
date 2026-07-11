@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, Keyboard} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,6 +9,7 @@ import { PostFeedCard } from '../../src/components/PostFeedCard';
 import { Avatar } from '../../src/components/Avatar';
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 
 
@@ -348,7 +349,7 @@ const HashtagPage = () => {
               {commentsLoading ? (
                 <Text style={styles.commentEmptyText}>Loading comments...</Text>
               ) : postComments.length > 0 ? (
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
                   {(() => {
                     const parentComments = postComments.filter(c => !c.parent_id);
                     const repliesMap = postComments.reduce((acc, c) => {
@@ -453,7 +454,7 @@ const HashtagPage = () => {
                       );
                     });
                   })()}
-                </ScrollView>
+                </KeyboardAwareScrollView>
               ) : (
                 <View style={styles.commentEmptyState}>
                   <Ionicons name="chatbubble-ellipses-outline" size={48} color={COLORS.border} />

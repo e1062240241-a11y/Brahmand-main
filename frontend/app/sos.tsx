@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, ScrollView, Linking, Vibration, Animated, DeviceEventEmitter, StatusBar } from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, TextInput, KeyboardAvoidingView, Platform, Linking, Vibration, Animated, DeviceEventEmitter, StatusBar} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { LocationPickerModal, LocationData } from '../src/components/LocationPic
 
 import { useAuthStore } from '../src/store/authStore';
 import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } from '../src/services/api';
+import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // On Android physical devices the effective screen area is smaller due to status bar + nav bar
@@ -355,7 +356,7 @@ export default function SOSScreen() {
           style={styles.content}
         >
           {stage === 'type' && (
-            <ScrollView 
+            <KeyboardAwareScrollView 
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ flexGrow: 1 }}
             >
@@ -433,11 +434,11 @@ export default function SOSScreen() {
               <TouchableOpacity style={styles.cancelButton} onPress={handleBack} activeOpacity={0.8}>
                 <Text style={styles.cancelButtonText}>Cancel SOS</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           )}
 
           {stage === 'location' && (
-            <ScrollView 
+            <KeyboardAwareScrollView 
               showsVerticalScrollIndicator={false} 
               contentContainerStyle={{ 
                 flexGrow: 1, 
@@ -656,7 +657,7 @@ export default function SOSScreen() {
               <TouchableOpacity style={[styles.secondaryButton, { paddingVertical: 14 }]} onPress={handleBack}>
                 <Text style={styles.secondaryButtonText}>Back</Text>
               </TouchableOpacity>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           )}
 
           {stage === 'countdown' && (

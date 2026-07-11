@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { KeyboardAwareScrollView as RNKeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { StyleProp, ViewStyle, ScrollViewProps } from 'react-native';
 
@@ -8,15 +8,16 @@ interface KeyboardAwareScrollViewProps extends ScrollViewProps {
   extraHeight?: number;
 }
 
-export const KeyboardAwareScrollView: React.FC<KeyboardAwareScrollViewProps> = ({
+export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, KeyboardAwareScrollViewProps>(({
   children,
   style,
   contentContainerStyle,
   extraHeight = 100,
   ...props
-}) => {
+}, ref) => {
   return (
     <RNKeyboardAwareScrollView
+      ref={ref}
       style={style}
       contentContainerStyle={contentContainerStyle}
       enableOnAndroid={true}
@@ -32,4 +33,6 @@ export const KeyboardAwareScrollView: React.FC<KeyboardAwareScrollViewProps> = (
       {children}
     </RNKeyboardAwareScrollView>
   );
-};
+});
+
+KeyboardAwareScrollView.displayName = 'KeyboardAwareScrollView';

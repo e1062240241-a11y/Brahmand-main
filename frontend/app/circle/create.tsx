@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  View, 
+import {View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   KeyboardAvoidingView, 
   Platform, 
-  ScrollView,
   FlatList,
   TextInput,
   Image,
   Alert,
   Share,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
@@ -25,6 +22,7 @@ import { Button } from '../../src/components/Button';
 import { createCircle, getAllUsers, joinCircle, updateCircle } from '../../src/services/api';
 import { getFirebaseAuth } from '../../src/services/firebase/config';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 type PrivacyType = 'private' | 'invite_code';
 
@@ -270,7 +268,7 @@ const CreateCircleScreen = () => {
           <View style={{ width: 24 }} />
         </View>
 
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        <KeyboardAwareScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           {!createdCircle ? (
             <>
               <View style={styles.profileImageSection}>
@@ -485,7 +483,7 @@ const CreateCircleScreen = () => {
               />
             </View>
           )}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

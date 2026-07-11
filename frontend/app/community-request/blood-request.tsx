@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Platform,
   KeyboardAvoidingView,
@@ -12,8 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
-  BackHandler,
-} from 'react-native';
+  BackHandler} from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -22,6 +19,7 @@ import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode 
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 const SafeFlashList = FlashList as any;
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
@@ -216,7 +214,7 @@ export default function BloodRequestScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <View style={styles.cardContainer}>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
               <View style={styles.headerBar}>
                 <LinearGradient colors={['#FFEBEE', '#FFCDD2']} style={styles.iconCircle}>
@@ -350,7 +348,7 @@ export default function BloodRequestScreen() {
 
               <Text style={styles.bottomDisclaimer}>Verified donors will be notified instantly</Text>
               <View style={{ height: Math.max(insets.bottom, 20) }} />
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </KeyboardAvoidingView>
 

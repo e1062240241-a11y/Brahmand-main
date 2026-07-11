@@ -1,11 +1,12 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView, BackHandler } from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView, BackHandler} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS } from '../../src/constants/theme';
 import { searchHospitals } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const EMERGENCY_TYPES = ['Medical', 'Accident', 'Fire', 'Police', 'Other'];
 const URGENCY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
@@ -134,7 +135,7 @@ export default function CommunityRequestEmergencyPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.cardContainer}>
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             
             {/* Inner Header */}
             <View style={styles.headerBar}>
@@ -278,7 +279,7 @@ export default function CommunityRequestEmergencyPage() {
             <Text style={styles.bottomDisclaimer}>You will review your request in the next step</Text>
 
             <View style={{ height: 40 }} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
 

@@ -1,7 +1,6 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   FlatList,
@@ -12,7 +11,6 @@ import {
   Platform,
   InteractionManager,
   RefreshControl,
-  ScrollView,
   Alert,
   ActionSheetIOS,
   Share,
@@ -22,8 +20,7 @@ import {
   Dimensions,
   Keyboard,
   LayoutAnimation,
-  UIManager,
-} from 'react-native';
+  UIManager} from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -436,6 +433,7 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 ];
 
 import { useGlobalMute } from '../../src/contexts/MuteContext';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 let ExpoVideoModule: any = null;
 try {
@@ -2258,7 +2256,7 @@ export default function CommunityDetailScreen() {
       </Text>
 
       {/* Tabs list scroll */}
-      <ScrollView
+      <KeyboardAwareScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.tabsContainer}
@@ -2293,7 +2291,7 @@ export default function CommunityDetailScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </LinearGradient>
   );
   const formatRelativeTime = (ts: string) => {
@@ -4252,7 +4250,7 @@ export default function CommunityDetailScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={{ flex: 1, paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView style={{ flex: 1, paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
               <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
                 <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
                 <View style={{ flex: 1, marginLeft: 12 }}>
@@ -4491,7 +4489,7 @@ export default function CommunityDetailScreen() {
                 </View>
               </View>
 
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Keyboard-docked toolbar with minimalist layout matching premium look */}
             <View style={{
@@ -4562,7 +4560,7 @@ export default function CommunityDetailScreen() {
               Choose a Category
             </Text>
 
-            <ScrollView
+            <KeyboardAwareScrollView
               style={{ maxHeight: 400, paddingHorizontal: 16 }}
               showsVerticalScrollIndicator={false}
             >
@@ -4644,7 +4642,7 @@ export default function CommunityDetailScreen() {
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -4691,7 +4689,7 @@ export default function CommunityDetailScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView style={styles.commentsList} keyboardShouldPersistTaps="handled">
               {activeComments.filter(comment => {
                 const uid = comment.userId || comment.user_id || comment.sender_id || comment.user?.id;
                 return !uid || !blockedUserIds.includes(String(uid));
@@ -4746,7 +4744,7 @@ export default function CommunityDetailScreen() {
                   </Text>
                 </View>
               )}
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             <View style={styles.commentInputRow}>
               <Avatar name={user?.name || '?'} photo={user?.photo} size={32} />
@@ -4841,7 +4839,7 @@ export default function CommunityDetailScreen() {
                 <Ionicons name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
               <Text style={{ fontSize: 14, color: '#536471', marginBottom: 20, lineHeight: 20 }}>
                 {community?.description || 'Connect with your local community. Share updates, requests, and engage with devotees.'}
               </Text>
@@ -4900,7 +4898,7 @@ export default function CommunityDetailScreen() {
                   </>
                 )}
               </View>
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -4917,7 +4915,7 @@ export default function CommunityDetailScreen() {
           onPress={() => setShowFilterDropdown(false)}
         >
           <View style={[styles.twitterDropdownMenu, { top: 220, right: 20 }]}> 
-            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true}>
+            <KeyboardAwareScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true}>
               {[
                 { label: 'All Festivals', value: null },
                 ...allFestivals.map(f => ({ label: f.name, value: f.name })),
@@ -4933,7 +4931,7 @@ export default function CommunityDetailScreen() {
                   <Text style={styles.twitterDropdownText}>{opt.label}</Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </TouchableOpacity>
       </Modal>

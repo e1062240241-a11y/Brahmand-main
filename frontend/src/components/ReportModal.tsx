@@ -1,19 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Modal,
+import {Modal,
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  ScrollView,
   Platform,
   TextInput,
-  KeyboardAvoidingView,
-} from 'react-native';
+  KeyboardAvoidingView} from 'react-native';
 import { useSafeAreaInsets, SafeAreaView as ContextSafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 import {
   submitReport,
   ReportReason,
@@ -146,7 +144,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
 
             <Text style={styles.subtitle}>Why are you reporting this?</Text>
 
-            <ScrollView
+            <KeyboardAwareScrollView
               style={Platform.OS === 'android' ? styles.scrollView : undefined}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.reasonList}
@@ -194,7 +192,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 numberOfLines={3}
                 maxLength={200}
               />
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 

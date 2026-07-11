@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Alert,
   BackHandler,
@@ -14,8 +12,7 @@ import {
   KeyboardAvoidingView,
   Keyboard,
   Animated,
-  Dimensions,
-} from "react-native";
+  Dimensions} from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +26,7 @@ import {
 import { useAuthStore } from "../../src/store/authStore";
 import { COLORS, SPACING, BORDER_RADIUS } from "../../src/constants/theme";
 import { useTranslation } from "../../src/utils/i18n";
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 let MapView: any = null;
 let Marker: any = null;
@@ -593,7 +591,7 @@ export default function ChangeLocationScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
+      <KeyboardAwareScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
@@ -678,7 +676,7 @@ export default function ChangeLocationScreen() {
             />
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Map Picker & Search Modal */}
       <Modal
@@ -744,7 +742,7 @@ export default function ChangeLocationScreen() {
 
             {/* Search Suggestions */}
             {searchResults.length > 0 && (
-              <ScrollView
+              <KeyboardAwareScrollView
                 style={styles.suggestionsList}
                 keyboardShouldPersistTaps="handled"
               >
@@ -765,7 +763,7 @@ export default function ChangeLocationScreen() {
                     </Text>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </KeyboardAwareScrollView>
             )}
           </View>
 

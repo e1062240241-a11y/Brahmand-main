@@ -1,17 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
+import {View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  ScrollView, 
   ActivityIndicator, 
   Platform, 
   TextInput,
   KeyboardAvoidingView,
   Keyboard,
-  Dimensions
-} from 'react-native';
+  Dimensions} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +18,7 @@ import Svg, { Path } from 'react-native-svg';
 import { updateExtendedProfile } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLanguageStore } from '../../src/utils/i18n';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 export default function LocationSetupScreen() {
   const router = useRouter();
@@ -253,7 +251,7 @@ export default function LocationSetupScreen() {
         style={{ flex: 1 }}
       >
         <ScrollWrapper style={styles.safeArea}>
-          <ScrollView 
+          <KeyboardAwareScrollView 
             contentContainerStyle={[
               styles.scrollContent,
               Platform.OS === 'android' && {
@@ -494,7 +492,7 @@ export default function LocationSetupScreen() {
                       : (showAbove ? styles.suggestionsAbove : styles.suggestionsBelow)
                   ]}
                 >
-                  <ScrollView
+                  <KeyboardAwareScrollView
                     nestedScrollEnabled={true}
                     style={{ maxHeight: 200 }}
                     keyboardShouldPersistTaps="handled"
@@ -514,7 +512,7 @@ export default function LocationSetupScreen() {
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </ScrollView>
+                  </KeyboardAwareScrollView>
                 </View>
               )}
             </View>
@@ -566,7 +564,7 @@ export default function LocationSetupScreen() {
               </TouchableOpacity>
             </View>
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </ScrollWrapper>
       </KeyboardAvoidingView>
     </LinearGradient>

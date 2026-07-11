@@ -1,10 +1,8 @@
 import React, { useMemo, useState, useEffect, useRef } from "react";
 // Touch file to force Metro bundler rebuild after correcting JSX tags
-import {
-  ActivityIndicator,
+import {ActivityIndicator,
   Modal,
   Platform,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -16,8 +14,7 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   PanResponder,
-  Image as RNImage,
-} from "react-native";
+  Image as RNImage} from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
@@ -29,6 +26,7 @@ import { MentionInput } from "./MentionInput";
 import { getFilterStyle, getOverlayStyle } from "../utils/filters";
 import { useTranslation } from "../utils/i18n";
 import { useUploadStore } from "../store/uploadStore";
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 let ExpoVideoModule: any = null;
 try {
@@ -804,7 +802,7 @@ export const UploadPostModal = ({
             </Text>
             <View style={styles.iconBtn} />
           </View>
-          <ScrollView
+          <KeyboardAwareScrollView
             scrollEnabled={scrollEnabled}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
@@ -1067,7 +1065,7 @@ export const UploadPostModal = ({
             {selectedMedia && (
               <View style={styles.sectionContainer}>
                 <Text style={styles.sectionTitle}>{t("applyFilter")}</Text>
-                <ScrollView
+                <KeyboardAwareScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.filterRow}
@@ -1120,7 +1118,7 @@ export const UploadPostModal = ({
                       </Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </KeyboardAwareScrollView>
               </View>
             )}
 
@@ -1215,7 +1213,7 @@ export const UploadPostModal = ({
                 </View>
               )}
             </View>
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </KeyboardAvoidingView>
       </View>
     </Modal>

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
+import {View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Platform,
   KeyboardAvoidingView,
@@ -12,8 +10,7 @@ import {
   ActivityIndicator,
   Modal,
   FlatList,
-  Dimensions,
-} from 'react-native';
+  Dimensions} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +18,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
 import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import { LinearGradient } from 'expo-linear-gradient';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');
 const URGENCY_LEVELS = ['Low', 'Medium', 'High', 'Urgent'];
@@ -152,7 +150,7 @@ export default function SeniorCitizenRequestScreen() {
 
         <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.cardContainer}>
-            <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               
               <View style={styles.headerBar}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
@@ -267,7 +265,7 @@ export default function SeniorCitizenRequestScreen() {
               
               <Text style={styles.bottomDisclaimer}>Your request will be visible to nearby volunteers</Text>
               <View style={{ height: 40 }} />
-            </ScrollView>
+            </KeyboardAwareScrollView>
           </View>
         </KeyboardAvoidingView>
 

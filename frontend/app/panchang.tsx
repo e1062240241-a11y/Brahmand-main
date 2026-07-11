@@ -1,9 +1,7 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Platform,
+import {Platform,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,8 +13,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Image,
-  ActivityIndicator,
-} from 'react-native';
+  ActivityIndicator} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -26,6 +23,7 @@ import { getPanchang, askAstrologyAI } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
 import { useJyotishStore } from '../src/store/jyotishStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
+import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -163,7 +161,7 @@ export default function PanchangScreen() {
   const [activeHoraIdx, setActiveHoraIdx] = useState<number>(1);
 
   const isMountedRef = useRef(true);
-  const mainScrollRef = useRef<ScrollView>(null);
+  const mainScrollRef = useRef<KeyboardAwareScrollView>(null);
   const horaCardYPositions = useRef<number[]>([]);
 
   const fetchPanchang = useCallback(async (lat?: number, lng?: number, forceRefresh = false, targetDate?: Date) => {
@@ -835,7 +833,7 @@ export default function PanchangScreen() {
       </View>
 
       {/* Main Content Area */}
-      <ScrollView
+      <KeyboardAwareScrollView
         ref={mainScrollRef}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 110 }}
@@ -853,7 +851,7 @@ export default function PanchangScreen() {
             {activeTab === 'planets' && renderPlanetsTab()}
           </>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
 
 
@@ -881,7 +879,7 @@ export default function PanchangScreen() {
             </View>
 
             {/* Chat List */}
-            <ScrollView 
+            <KeyboardAwareScrollView 
               style={styles.chatScroll}
               contentContainerStyle={{ paddingBottom: 20 }}
               showsVerticalScrollIndicator={false}
@@ -909,7 +907,7 @@ export default function PanchangScreen() {
                   </View>
                 ))
               )}
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Input Wrap */}
             <View style={styles.modalInputWrap}>

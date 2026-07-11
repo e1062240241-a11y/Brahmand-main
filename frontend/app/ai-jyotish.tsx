@@ -1,18 +1,15 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../src/utils/dateUtils';
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  StyleSheet,
+import {StyleSheet,
   Text,
   View,
   TouchableOpacity,
   TextInput,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   Image,
   Modal,
-  TouchableWithoutFeedback,
-} from 'react-native';
+  TouchableWithoutFeedback} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -21,6 +18,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../src/store/authStore';
 import { useJyotishStore } from '../src/store/jyotishStore';
+import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
 
 type ChatMessage = {
   id: string;
@@ -144,7 +142,7 @@ export default function AIJyotishScreen() {
   const [placeOfBirth, setPlaceOfBirth] = useState('');
   const [filteredCities, setFilteredCities] = useState<string[]>([]);
   const [validationError, setValidationError] = useState('');
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
 
   useEffect(() => {
     loadBirthDetails();
@@ -327,7 +325,7 @@ export default function AIJyotishScreen() {
         </View>
 
         {/* Chat Area */}
-        <ScrollView 
+        <KeyboardAwareScrollView 
           ref={scrollViewRef}
           style={styles.chatContainer} 
           contentContainerStyle={styles.chatContent}
@@ -372,7 +370,7 @@ export default function AIJyotishScreen() {
               );
             });
           })()}
-        </ScrollView>
+        </KeyboardAwareScrollView>
 
         {/* Bottom Input Area */}
         <View style={styles.inputContainer}>
@@ -408,7 +406,7 @@ export default function AIJyotishScreen() {
               <View style={[styles.askNowModal, { maxHeight: '80%' }]}>
                 <Text style={styles.askNowTitle}>Enter Birth Details</Text>
                 
-                <ScrollView 
+                <KeyboardAwareScrollView 
                   style={{ width: '100%', flexGrow: 0 }}
                   contentContainerStyle={{ gap: 16 }}
                   showsVerticalScrollIndicator={false}
@@ -541,7 +539,7 @@ export default function AIJyotishScreen() {
                     <Text style={styles.askNowCalcBtnText}>Calculate Horoscope</Text>
                     <Ionicons name="chevron-forward" size={18} color="#FFF" />
                   </TouchableOpacity>
-                </ScrollView>
+                </KeyboardAwareScrollView>
               </View>
             </View>
           </KeyboardAvoidingView>
