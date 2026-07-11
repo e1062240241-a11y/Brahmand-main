@@ -145,13 +145,9 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
 
   if (horizontal) {
     return (
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.horizontalContainer, containerStyle]}
-      >
+      <View style={[styles.horizontalContainer, containerStyle]}>
         {shuffledCategories.map((cat, i) => renderItem(cat, i))}
-      </ScrollView>
+      </View>
     );
   }
 
@@ -164,18 +160,11 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
 
 const styles = StyleSheet.create({
   horizontalContainer: {
-    paddingHorizontal: 24,
+    marginHorizontal: 24,
     marginBottom: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    ...Platform.select({
-      android: {
-        gap: 24,
-      },
-      default: {
-        gap: 40,
-      },
-    }),
+    justifyContent: 'space-between',
   },
   gridContainer: {
     flexDirection: 'row',

@@ -30,19 +30,15 @@ export default function JaapCompleted() {
       style={styles.container}
       resizeMode="cover"
     >
-      <ScrollView
-        contentContainerStyle={[
+      <View
+        style={[
           styles.safeArea,
           {
-            paddingTop: Math.max(insets.top, 24),
-            paddingBottom: Math.max(insets.bottom, 24),
+            paddingTop: Math.max(insets.top, 16),
+            paddingBottom: Math.max(insets.bottom, 16),
           },
         ]}
-        showsVerticalScrollIndicator={false}
       >
-        {/* Top Spacer to replace header back button */}
-        <View style={{ height: 20 }} />
-
         {/* Header Section */}
         <View style={styles.headerContainer}>
           {/* Header Lotus Icon */}
@@ -58,7 +54,7 @@ export default function JaapCompleted() {
           <View style={styles.titleContainer}>
             <Text style={styles.title}>You Have Done It!</Text>
             {user?.name ? (
-              <Text style={styles.userName}>{user.name}</Text>
+              <Text style={styles.userName}>{user.name.trim()}</Text>
             ) : null}
           </View>
           
@@ -78,8 +74,7 @@ export default function JaapCompleted() {
             <View style={[StyleSheet.absoluteFillObject, styles.cardAndroidBg]} />
           )}
           <Text style={styles.cardText1}>
-            Your journey and records are now stored in your{' '}
-            <Text style={{ fontFamily: 'Outfit_700Bold', fontWeight: '700' }}>Brahmand Passport</Text>.
+            Your journey and records are now stored in your <Text style={styles.cardText1Bold}>Brahmand Passport</Text>.
           </Text>
           <Text style={styles.cardText2}>
             Carry this feeling forward.{"\n"}You're capable of amazing things. ✨
@@ -96,13 +91,13 @@ export default function JaapCompleted() {
         </View>
 
         {/* Space after card */}
-        <View style={{ height: 28 }} />
+        <View style={{ height: 12 }} />
 
         {/* Footer Mantra */}
         <View style={styles.footerContainer}>
           <Text style={styles.footerMantra}>PURPOSE • PROGRESS • PEACE</Text>
         </View>
-      </ScrollView>
+      </View>
     </ImageBackground>
   );
 }
@@ -114,7 +109,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   safeArea: {
-    flexGrow: 1,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
@@ -123,13 +118,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     width: '100%',
-    marginTop: 10,
-    gap: 12,
+    marginTop: 2,
+    gap: 8,
   },
   lotusContainer: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -139,7 +134,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   lotusImage: {
     width: '100%',
@@ -182,7 +177,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   middleSpacer: {
-    height: 160,
+    flex: 1,
+    minHeight: 12,
+    maxHeight: 120,
     alignSelf: 'center',
   },
   cardWrapper: {
@@ -190,7 +187,7 @@ const styles = StyleSheet.create({
     maxWidth: 360,
     borderRadius: 24,
     paddingHorizontal: 24,
-    paddingVertical: 28,
+    paddingVertical: 20,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.25)',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -214,9 +211,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
     lineHeight: 24,
-    marginBottom: 16,
+    marginBottom: 12,
     zIndex: 1,
     fontFamily: 'Outfit_600SemiBold',
+  },
+  cardText1Bold: {
+    fontFamily: 'Outfit_700Bold',
+    fontWeight: '700',
+    fontSize: 17,
+    lineHeight: 24,
+    color: '#FFF',
   },
   cardText2: {
     fontSize: 14,
@@ -225,17 +229,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '400',
     lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: 16,
     zIndex: 1,
     fontFamily: 'Outfit_400Regular',
   },
   button: {
-    height: 52,
+    height: 48,
     paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'stretch',
-    borderRadius: 26,
+    borderRadius: 24,
     backgroundColor: '#FF6B00',
     shadowColor: '#FF6B00',
     shadowOpacity: 0.2,

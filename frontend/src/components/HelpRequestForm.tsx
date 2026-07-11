@@ -6,7 +6,6 @@ import {
   Modal,
   TouchableOpacity,
   TextInput,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -16,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useHelpRequestStore, HelpRequest } from '../store/helpRequestStore';
 import { useAuthStore } from '../store/authStore';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 interface HelpRequestFormProps {
   visible: boolean;
@@ -143,7 +143,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.form} showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView style={styles.form} showsVerticalScrollIndicator={false}>
             {/* Help Type */}
             <Text style={styles.label}>Help Type *</Text>
             <View style={styles.typeContainer}>
@@ -262,7 +262,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
             </TouchableOpacity>
 
             <View style={{ height: 40 }} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>

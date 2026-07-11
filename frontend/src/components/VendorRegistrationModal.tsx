@@ -25,6 +25,7 @@ import { DEFAULT_CATEGORIES } from '../store/vendorStore';
 import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
 import api from '../services/api';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 
 const AddressIcon = ({ width = 24, height = 24, color = '#94A3B8' }) => (
@@ -709,7 +710,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             </TouchableOpacity>
           </View>
 
-          <ScrollView 
+          <KeyboardAwareScrollView 
             style={styles.form} 
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
@@ -932,7 +933,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                         }}
                       >
                         <Text style={[styles.dropdownListItemText, { color: COLORS.primary, fontWeight: '600' }]}>
-                          Add "{subCategoryInput.trim()}"
+                          {`Add "${subCategoryInput.trim()}"`}
                         </Text>
                         <Ionicons name="add-circle" size={18} color={COLORS.primary} />
                       </TouchableOpacity>
@@ -1040,7 +1041,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
 
             <View style={{ height: 40 }} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
 

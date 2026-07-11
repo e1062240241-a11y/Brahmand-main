@@ -17,6 +17,7 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useTranslation } from '../utils/i18n';
+import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
 
 let hasLoggedDocumentPickerError = false;
 const getDocumentPickerModule = async () => {
@@ -485,7 +486,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView style={styles.form} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={styles.label}>{isHi ? 'नाम *' : 'Name *'}</Text>
             <TextInput style={styles.input} value={name} onChangeText={setName} placeholder={isHi ? 'पूरा नाम दर्ज करें' : 'Enter full name'} placeholderTextColor={COLORS.textLight} />
 
@@ -634,7 +635,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             </TouchableOpacity>
 
             <View style={{ height: 40 }} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
