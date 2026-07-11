@@ -5,13 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   ImageBackground,
-  StatusBar,
-  ScrollView,
   Platform,
   Image,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '../src/store/authStore';
 
@@ -68,26 +66,28 @@ export default function JaapCompleted() {
 
         {/* Glassmorphic Card */}
         <View style={styles.cardWrapper}>
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFillObject} />
-          ) : (
-            <View style={[StyleSheet.absoluteFillObject, styles.cardAndroidBg]} />
-          )}
-          <Text style={styles.cardText1}>
-            Your journey and records are now stored in your <Text style={styles.cardText1Bold}>Brahmand Passport</Text>.
-          </Text>
-          <Text style={styles.cardText2}>
-            Carry this feeling forward.{"\n"}You're capable of amazing things. ✨
-          </Text>
+          <BlurView 
+            intensity={35} 
+            tint="light" 
+            style={[StyleSheet.absoluteFillObject, { borderRadius: 24 }]} 
+          />
+          <View style={styles.cardContent}>
+            <Text style={styles.cardText1}>
+              Your journey and records are now stored in your <Text style={styles.cardText1Bold}>Brahmand Passport</Text>.
+            </Text>
+            <Text style={styles.cardText2}>
+              {"Carry this feeling forward.\nYou're capable of amazing things. ✨"}
+            </Text>
 
-          {/* Button */}
-          <TouchableOpacity
-            style={styles.button}
-            activeOpacity={0.85}
-            onPress={handlePressContinue}
-          >
-            <Text style={styles.buttonText}>BACK TO HOME</Text>
-          </TouchableOpacity>
+            {/* Button */}
+            <TouchableOpacity
+              style={styles.button}
+              activeOpacity={0.85}
+              onPress={handlePressContinue}
+            >
+              <Text style={styles.buttonText}>BACK TO HOME</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Space after card */}
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
   },
   headerContainer: {
     alignItems: 'center',
@@ -184,26 +184,25 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     width: '100%',
-    maxWidth: 360,
+    maxWidth: 380,
     borderRadius: 24,
-    paddingHorizontal: 24,
-    paddingVertical: 20,
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.25)',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
     alignSelf: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    elevation: Platform.OS === 'android' ? 0 : 8,
     overflow: 'hidden',
   },
-  cardAndroidBg: {
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.20)',
+  cardContent: {
+    paddingHorizontal: 28,
+    paddingVertical: 32,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardText1: {
     fontSize: 17,

@@ -189,6 +189,7 @@ export default function ProfileScreen() {
   const [postModalVisible, setPostModalVisible] = useState(false);
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [editedCaption, setEditedCaption] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const postOffsetsRef = useRef<Record<string, number>>({});
   const postHeightsRef = useRef<Record<string, number>>({});
@@ -793,22 +794,29 @@ export default function ProfileScreen() {
   const cancelEdit = () => {
     setEditingPostId(null);
     setEditedCaption('');
+    setSavingEdit(false);
   };
 
   const savePostEdit = async () => {
-    if (!selectedPost?.id) return;
+    if (!selectedPost?.id || savingEdit) return;
     const postId = selectedPost.id;
+    setSavingEdit(true);
 
     try {
       const response = await updatePost(postId, { caption: editedCaption });
       const updatedPost = response.data?.post ? response.data.post : { ...selectedPost, caption: editedCaption };
       setSelectedPost(updatedPost);
       setPosts((prev) => prev.map((item) => item.id === postId ? updatedPost : item));
-      showToast('Post updated successfully');
+      showToast(t('language') === 'hi' ? 'पोस्ट सफलतापूर्वक अपडेट हो गई!' : 'Post updated successfully');
       setEditingPostId(null);
     } catch (error) {
       console.warn('Failed to update post:', error);
-      Alert.alert('Unable to save changes', 'Please try again later.');
+      Alert.alert(
+        t('language') === 'hi' ? 'बदलाव सहेजने में असमर्थ' : 'Unable to save changes', 
+        t('language') === 'hi' ? 'कृपया बाद में पुनः प्रयास करें।' : 'Please try again later.'
+      );
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -1566,29 +1574,13 @@ export default function ProfileScreen() {
                         onPostMenuPress={confirmDeletePost}
                         theme="dark"
                         isBlackBackground={true}
+                        isEditing={editingPostId === item.id}
+                        editedCaption={editedCaption}
+                        onChangeEditedCaption={setEditedCaption}
+                        onCancelEdit={cancelEdit}
+                        onSaveEdit={savePostEdit}
+                        isSavingEdit={savingEdit}
                       />
-                      {editingPostId === item.id ? (
-                        <View style={styles.editPostInline}>
-                          <TextInput
-                            value={editedCaption}
-                            onChangeText={setEditedCaption}
-                            style={styles.editCaptionInput}
-                            multiline
-                            placeholder={t('language') === 'hi' ? 'कैप्शन संपादित करें...' : 'Edit caption...'}
-                            placeholderTextColor="rgba(255,255,255,0.4)"
-                          />
-                          <View style={styles.editPostActions}>
-                            <TouchableOpacity style={styles.cancelEditBtn} onPress={cancelEdit}>
-                              <Text style={styles.cancelEditText}>{t('cancel')}</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.saveEditBtn} onPress={savePostEdit}>
-                              <Text style={styles.saveEditBtnText}>
-                                {t('language') === 'hi' ? 'सहेजें' : 'Save'}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      ) : null}
                     </View>
                   );
                 }}

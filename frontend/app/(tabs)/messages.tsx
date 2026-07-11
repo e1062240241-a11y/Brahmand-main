@@ -2111,10 +2111,10 @@ const styles = StyleSheet.create({
     aspectRatio: 69 / 25,
     zIndex: 0,
     opacity: 1,
-    width: 220,
+    width: 280,
     height: 80,
     right: -10,
-    transform: [{ scaleX: 2.25 }, { scaleY: 2.7 }],
+    transform: [{ scaleX: 3.0 }, { scaleY: 2.7 }],
   },
   heroTextCol: {
     flex: 1,

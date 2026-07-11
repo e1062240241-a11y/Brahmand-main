@@ -971,7 +971,7 @@ export default function NewPassportJourneyScreen() {
                   <Path d="M15.375 5.25L8.625 12L15.375 18.75" stroke="black" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round"/>
                 </Svg>
               </TouchableOpacity>
-              <Text style={[styles.introTitle, { marginBottom: 0, flex: 1 }]}>Story Summary Generated{"\n"}by Brahmand</Text>
+              <Text style={[styles.introTitle, { marginBottom: 0, flex: 1 }]}>Story Summary{"\n"}Generated{"\n"}by Brahmand</Text>
             </View>
             
             {/* Hero Section */}
@@ -1053,7 +1053,7 @@ export default function NewPassportJourneyScreen() {
 
           </View>
 
-          <View style={{ flex: 1 }} />
+          <View style={{ height: 24 }} />
 
           {/* Tagline wrapper with background only up to Om (🕉️) */}
           <View style={styles.taglineBgWrapper}>
@@ -2177,10 +2177,10 @@ const styles = StyleSheet.create({
   introTitle: {
     color: '#1E1B17',
     fontFamily: 'SF Pro',
-    fontSize: 23,
+    fontSize: 24,
     fontStyle: 'normal',
     fontWeight: '700',
-    lineHeight: 30,
+    lineHeight: 32,
     textAlign: 'center',
     marginBottom: 10,
   },

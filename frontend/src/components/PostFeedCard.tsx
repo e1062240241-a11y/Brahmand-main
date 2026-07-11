@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Animated,
+  TextInput,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -180,6 +181,12 @@ type PostFeedCardProps = {
   openCommentsOnCaptionPress?: boolean;
   isBlackBackground?: boolean;
   isFirstReel?: boolean;
+  isEditing?: boolean;
+  editedCaption?: string;
+  onChangeEditedCaption?: (text: string) => void;
+  onCancelEdit?: () => void;
+  onSaveEdit?: () => void;
+  isSavingEdit?: boolean;
 };
 
 const formatTime = (raw: any) => {
@@ -215,6 +222,12 @@ export const PostFeedCard = memo(({
   openCommentsOnCaptionPress = false,
   isBlackBackground = false,
   isFirstReel = false,
+  isEditing = false,
+  editedCaption = '',
+  onChangeEditedCaption,
+  onCancelEdit,
+  onSaveEdit,
+  isSavingEdit = false,
 }: PostFeedCardProps) => {
   const { t, language } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
@@ -547,43 +560,59 @@ export const PostFeedCard = memo(({
   return (
     <View style={[styles.card, isBlackBackground && { backgroundColor: '#000' }]} onLayout={onLayout}>
       {/* Header */}
-      <View style={[styles.headerRow, isFirstReel && { backgroundColor: '#FFFFFF', paddingTop: SPACING.md, paddingBottom: SPACING.md }]}>
-        <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
-          <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
-          <View style={styles.userMeta}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={[styles.username, (theme === 'light' || isFirstReel) ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
-              {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-            </View>
-            <Text style={[styles.timeText, (theme === 'light' || isFirstReel) ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
-          </View>
-        </TouchableOpacity>
-
-        {onPostMenuPress && postMenuType && (
-          <View style={styles.menuWrap}>
-            <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
-              <Ionicons name="ellipsis-horizontal" size={18} color={(theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF'} />
-            </TouchableOpacity>
-            {menuVisible && (
-              <View style={styles.dropdownMenu}>
-                {postMenuType === 'delete' && onEdit && (
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onEdit?.(post); }}>
-                    <Text style={styles.dropdownText}>{t('language') === 'hi' ? 'संपादित करें' : 'Edit'}</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onPostMenuPress?.(post); }}>
-                  <Text style={[styles.dropdownText, postMenuType !== 'delete' && styles.dropdownDangerText]}>
-                    {postMenuType === 'delete' ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post') : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => setMenuVisible(false)}>
-                  <Text style={styles.dropdownText}>{t('cancel')}</Text>
-                </TouchableOpacity>
-              </View>
+      {isEditing ? (
+        <View style={styles.editHeaderRow}>
+          <TouchableOpacity onPress={onCancelEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
+            <Text style={styles.editHeaderCancelText}>{t('cancel')}</Text>
+          </TouchableOpacity>
+          <Text style={styles.editHeaderTitle}>{t('language') === 'hi' ? 'जानकारी संपादित करें' : 'Edit Info'}</Text>
+          <TouchableOpacity onPress={onSaveEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
+            {isSavingEdit ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <Text style={styles.editHeaderDoneText}>{t('language') === 'hi' ? 'हो गया' : 'Done'}</Text>
             )}
-          </View>
-        )}
-      </View>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={[styles.headerRow, isFirstReel && { backgroundColor: '#FFFFFF', paddingTop: SPACING.md, paddingBottom: SPACING.md }]}>
+          <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
+            <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
+            <View style={styles.userMeta}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.username, (theme === 'light' || isFirstReel) ? styles.usernameLight : { color: '#FFF' }]}>{post?.username || 'User'}</Text>
+                {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+              </View>
+              <Text style={[styles.timeText, (theme === 'light' || isFirstReel) ? styles.timeTextLight : { color: '#FFFFFF', fontWeight: '900' }]}>{postTimeText}</Text>
+            </View>
+          </TouchableOpacity>
+
+          {onPostMenuPress && postMenuType && (
+            <View style={styles.menuWrap}>
+              <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
+                <Ionicons name="ellipsis-horizontal" size={18} color={(theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF'} />
+              </TouchableOpacity>
+              {menuVisible && (
+                <View style={styles.dropdownMenu}>
+                  {postMenuType === 'delete' && onEdit && (
+                    <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onEdit?.(post); }}>
+                      <Text style={styles.dropdownText}>{t('language') === 'hi' ? 'संपादित करें' : 'Edit'}</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onPostMenuPress?.(post); }}>
+                    <Text style={[styles.dropdownText, postMenuType !== 'delete' && styles.dropdownDangerText]}>
+                      {postMenuType === 'delete' ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post') : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() => setMenuVisible(false)}>
+                    <Text style={styles.dropdownText}>{t('cancel')}</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Media */}
       <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight, backgroundColor: theme === 'light' ? '#F5F5F5' : '#111' }]}>
@@ -772,94 +801,144 @@ export const PostFeedCard = memo(({
       </View>
 
       {/* Actions */}
-      <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
-          <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={26} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#000' : '#FFFFFF')} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
-          <Ionicons name="chatbubble-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
-          {commentsCount > 0 && (
-            <Text style={[styles.actionText, theme === 'light' ? styles.actionTextLight : { color: '#FFF' }]}>
-              {commentsCount}
-            </Text>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
-          <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
-          <Ionicons name="repeat-outline" size={26} color={theme === 'light' ? '#000' : '#FFFFFF'} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Stats Summary */}
-      <View style={{ paddingHorizontal: SPACING.md, paddingBottom: 2 }}>
-        <Text style={{
-          color: theme === 'light' ? '#000' : '#FFFFFF',
-          fontWeight: '900',
-          fontSize: 14
-        }}>
-          {likesCount > 0 ? (
-            t('language') === 'hi' 
-              ? `${likesCount.toLocaleString()} पसंद` 
-              : `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}`
-          ) : (
-            t('language') === 'hi' ? 'पसंद करने वाले पहले बनें' : 'Be the first to like'
-          )}
-        </Text>
-      </View>
-
-      {/* Caption */}
-      {captionSegments.length > 0 && (
-        <View style={{ paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm }}>
-          <Pressable
-            onPress={() => {
-              if (!isLongCaption) return;
-              const nextExpanded = !isCaptionExpanded;
-              setIsCaptionExpanded(nextExpanded);
-              if (nextExpanded && onComment && openCommentsOnCaptionPress) {
-                setTimeout(() => onComment(post), 150);
-              }
-            }}
-          >
-            <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
-              <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
-                {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
-              </Text> 
-              {isCaptionExpanded ? captionSegments.map((seg, idx) =>
-                seg.isHashtag ? (
-                  <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
-                    {seg.text}
-                  </Text>
-                ) : seg.isMention ? (
-                  <Text key={idx} style={{ color: '#8C36DB', fontWeight: '800' }} onPress={() => handleMentionPress(seg.text.slice(1))}>
-                    {seg.text}
-                  </Text>
-                ) : (
-                  <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#FFFFFF', fontWeight: '900' }}>{seg.text}</Text>
-                )
-              ) : collapsedCaption}
-            </Text>
-            {isLongCaption && (
-              <Text style={{ color: COLORS.primary, marginTop: 4, fontWeight: '900' }}>
-                {isCaptionExpanded ? (t('language') === 'hi' ? 'कम दिखाएं' : 'Show less') : (t('language') === 'hi' ? 'अधिक' : 'More')}
+      {!isEditing && (
+        <View style={styles.actionRow}>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
+            <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={26} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#000' : '#FFFFFF')} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
+            <Ionicons name="chatbubble-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+            {commentsCount > 0 && (
+              <Text style={[styles.actionText, theme === 'light' ? styles.actionTextLight : { color: '#FFF' }]}>
+                {commentsCount}
               </Text>
             )}
-          </Pressable>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
+            <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
+            <Ionicons name="repeat-outline" size={26} color={theme === 'light' ? '#000' : '#FFFFFF'} />
+          </TouchableOpacity>
         </View>
       )}
 
-      {viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} {t('language') === 'hi' ? 'व्यूज' : 'views'}</Text>}
+      {/* Stats Summary */}
+      {!isEditing && (
+        <View style={{ paddingHorizontal: SPACING.md, paddingBottom: 2 }}>
+          <Text style={{
+            color: theme === 'light' ? '#000' : '#FFFFFF',
+            fontWeight: '900',
+            fontSize: 14
+          }}>
+            {likesCount > 0 ? (
+              t('language') === 'hi' 
+                ? `${likesCount.toLocaleString()} पसंद` 
+                : `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}`
+            ) : (
+              t('language') === 'hi' ? 'पसंद करने वाले पहले बनें' : 'Be the first to like'
+            )}
+          </Text>
+        </View>
+      )}
 
-      <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
-        <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
-          {commentsCount > 0 
-            ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
-            : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
-        </Text>
-      </TouchableOpacity>
+      {/* Caption */}
+      {isEditing ? (
+        <View style={styles.editCaptionContainer}>
+          <View style={styles.editCaptionRow}>
+            <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={30} />
+            <View style={{ flex: 1, marginLeft: 8 }}>
+              <TextInput
+                value={editedCaption}
+                onChangeText={onChangeEditedCaption}
+                style={styles.editCaptionInputInline}
+                multiline
+                maxLength={500}
+                placeholder={t('language') === 'hi' ? 'एक कैप्शन लिखें...' : 'Write a caption...'}
+                placeholderTextColor="rgba(255,255,255,0.4)"
+              />
+              <Text style={styles.charCountTextInline}>{editedCaption?.length || 0}/500</Text>
+            </View>
+          </View>
+          
+          {/* Quick Emoji Helper */}
+          <View style={styles.quickEmojisContainerInline}>
+            {['✨', '🙏', '🕉️', '🌸', '🚩', '📿'].map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                style={styles.quickEmojiBtnInline}
+                onPress={() => onChangeEditedCaption?.(((editedCaption || '') + emoji).slice(0, 500))}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.quickEmojiTextInline}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.clearCaptionBtnInline}
+              onPress={() => onChangeEditedCaption?.('')}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="trash-outline" size={11} color="#FF6B00" />
+              <Text style={styles.clearCaptionTextInline}>
+                {t('language') === 'hi' ? 'साफ़ करें' : 'Clear'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        captionSegments.length > 0 && (
+          <View style={{ paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm }}>
+            <Pressable
+              onPress={() => {
+                if (!isLongCaption) return;
+                const nextExpanded = !isCaptionExpanded;
+                setIsCaptionExpanded(nextExpanded);
+                if (nextExpanded && onComment && openCommentsOnCaptionPress) {
+                  setTimeout(() => onComment(post), 150);
+                }
+              }}
+            >
+              <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
+                <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
+                  {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
+                </Text> 
+                {isCaptionExpanded ? captionSegments.map((seg, idx) =>
+                  seg.isHashtag ? (
+                    <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
+                      {seg.text}
+                    </Text>
+                  ) : seg.isMention ? (
+                    <Text key={idx} style={{ color: '#8C36DB', fontWeight: '800' }} onPress={() => handleMentionPress(seg.text.slice(1))}>
+                      {seg.text}
+                    </Text>
+                  ) : (
+                    <Text key={idx} style={{ color: theme === 'light' ? '#222' : '#FFFFFF', fontWeight: '900' }}>{seg.text}</Text>
+                  )
+                ) : collapsedCaption}
+              </Text>
+              {isLongCaption && (
+                <Text style={{ color: COLORS.primary, marginTop: 4, fontWeight: '900' }}>
+                  {isCaptionExpanded ? (t('language') === 'hi' ? 'कम दिखाएं' : 'Show less') : (t('language') === 'hi' ? 'अधिक' : 'More')}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        )
+      )}
 
-      {topComments.length > 0 && (
+      {!isEditing && viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} {t('language') === 'hi' ? 'व्यूज' : 'views'}</Text>}
+
+      {!isEditing && (
+        <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
+          <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
+            {commentsCount > 0 
+              ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
+              : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {!isEditing && topComments.length > 0 && (
         <View style={styles.topCommentsWrap}>
           {topComments.map((comment: any, index: number) => (
             <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
@@ -947,6 +1026,100 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 4 },
     textShadowRadius: 6,
   },
+  editHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    height: 48,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  editHeaderBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editHeaderCancelText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  editHeaderTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  editHeaderDoneText: {
+    color: COLORS.primary,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  editCaptionContainer: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  editCaptionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  editCaptionInputInline: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 18,
+    minHeight: 60,
+    maxHeight: 120,
+    padding: 0,
+    textAlignVertical: 'top',
+  },
+  charCountTextInline: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    fontWeight: '600',
+    alignSelf: 'flex-end',
+    marginTop: 4,
+  },
+  quickEmojisContainerInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  quickEmojiBtnInline: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  quickEmojiTextInline: {
+    fontSize: 14,
+  },
+  clearCaptionBtnInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 107, 0, 0.1)',
+    marginLeft: 'auto',
+    gap: 4,
+  },
+  clearCaptionTextInline: {
+    color: '#FF6B00',
+    fontSize: 10,
+    fontWeight: '700',
+  },
 });
+
+PostFeedCard.displayName = 'PostFeedCard';
 
 export default PostFeedCard;
