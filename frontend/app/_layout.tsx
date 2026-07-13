@@ -68,7 +68,19 @@ RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any
   // Get user name and personalize message if applicable
   const { user } = useAuthStore.getState();
   const userName = user?.name || '';
-  if (userName && bodyStr && !bodyStr.includes(userName)) {
+  const isChoicePrompt = bodyStr && (
+    bodyStr.includes('Choose') ||
+    bodyStr.includes('Select') ||
+    bodyStr.includes('option') ||
+    bodyStr.includes('source') ||
+    bodyStr.includes('sure') ||
+    bodyStr.includes('विकल्प') ||
+    bodyStr.includes('स्रोत') ||
+    bodyStr.includes('चुनें') ||
+    bodyStr.includes('वाकई')
+  );
+
+  if (userName && bodyStr && !bodyStr.includes(userName) && !isChoicePrompt) {
     if (bodyStr.startsWith('Your ')) {
       bodyStr = `Hey ${userName}, your ${bodyStr.slice(5)}`;
     } else {
@@ -78,8 +90,8 @@ RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any
 
   // If there's no body, bodyStr should default to titleStr
   const finalMsg = bodyStr || titleStr;
-  // Use titleStr as toast title only if it is not a generic/redundant status label
-  const finalTitle = bodyStr && titleStr && titleStr !== 'Success' && titleStr !== 'Error' && titleStr !== 'Info' ? titleStr : undefined;
+  // Use titleStr as toast title only if it is not a generic/redundant status label and not a choice prompt
+  const finalTitle = bodyStr && titleStr && titleStr !== 'Success' && titleStr !== 'Error' && titleStr !== 'Info' && !isChoicePrompt ? titleStr : undefined;
 
   const isError = titleStr.toLowerCase().includes('error') || titleStr.toLowerCase().includes('fail') ||
     finalMsg.toLowerCase().includes('error') || finalMsg.toLowerCase().includes('fail');

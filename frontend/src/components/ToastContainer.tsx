@@ -112,12 +112,22 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
         </View>
 
         {toast.actions && toast.actions.length > 0 && (
-          <View style={styles.actionsContainer}>
+          <View style={[
+            styles.actionsContainer,
+            toast.actions.length > 2 && {
+              flexDirection: 'column',
+              alignItems: 'stretch',
+            }
+          ]}>
             {toast.actions.map((action, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
                   styles.actionBtn,
+                  toast.actions.length > 2 && {
+                    width: '100%',
+                    paddingVertical: 10,
+                  },
                   action.style === 'destructive' && styles.actionBtnDestructive,
                   action.style === 'cancel' && styles.actionBtnCancel,
                 ]}
@@ -245,6 +255,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(46, 28, 26, 0.06)',
     borderWidth: 1,
     borderColor: 'rgba(46, 28, 26, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnDestructive: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
@@ -259,6 +271,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: Platform.OS === 'ios' ? 'Outfit_600SemiBold' : 'Outfit',
     fontWeight: '600',
+    textAlign: 'center',
   },
   actionTextDestructive: {
     color: '#EF4444',

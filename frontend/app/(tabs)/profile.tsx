@@ -48,7 +48,7 @@ import api, {
 } from '../../src/services/api';
 import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
-import { Avatar } from '../../src/components/Avatar';
+import { Avatar, hasCustomPhoto } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
@@ -346,6 +346,17 @@ export default function ProfileScreen() {
     if (!url) throw new Error('Upload failed');
     await updateProfile({ [field]: url } as any);
     await fetchProfile(false);
+
+    // Invalidate image cache so updates show immediately
+    if (Platform.OS !== 'web') {
+      try {
+        const { Image: ExpoImage } = require('expo-image');
+        await ExpoImage.clearMemoryCache();
+      } catch (err) {
+        console.warn('Failed to clear Expo Image memory cache:', err);
+      }
+    }
+
     showToast(field === 'photo'
       ? (t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो अपडेट हो गई!' : 'Profile photo updated!')
       : (t('language') === 'hi' ? 'कवर फ़ोटो अपडेट हो गई!' : 'Cover photo updated!')
@@ -383,7 +394,7 @@ export default function ProfileScreen() {
       const result = await launcher({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: field === 'photo' ? [1, 1] : [16, 9],
+        aspect: field === 'photo' ? [1, 1] : undefined,
         quality: 0.85,
       });
       if (!result.canceled && result.assets?.length) {
@@ -437,8 +448,101 @@ export default function ProfileScreen() {
   };
 
 
+  const removeProfilePhoto = async () => {
+    showToast(t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो हटाई जा रही है...' : 'Removing profile photo...');
+    try {
+      await updateProfile({ photo: '' });
+      await fetchProfile(false);
+
+      // Invalidate image cache so updates show immediately
+      if (Platform.OS !== 'web') {
+        try {
+          const { Image: ExpoImage } = require('expo-image');
+          await ExpoImage.clearMemoryCache();
+        } catch (err) {
+          console.warn('Failed to clear Expo Image memory cache:', err);
+        }
+      }
+
+      showToast(t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो हटा दी गई!' : 'Profile photo removed!');
+    } catch (error) {
+      console.error(error);
+      showToast(t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो हटाने में विफल' : 'Failed to remove profile photo');
+    }
+  };
+
+  const confirmRemoveProfilePhoto = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो हटाएँ' : 'Remove Profile Photo',
+          message: t('language') === 'hi' ? 'क्या आप वाकई अपनी प्रोफ़ाइल फ़ोटो हटाना चाहते हैं?' : 'Are you sure you want to remove your profile photo?',
+          options: [
+            t('cancel'),
+            t('language') === 'hi' ? 'हटाएँ' : 'Remove',
+          ],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            removeProfilePhoto();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो हटाएँ' : 'Remove Profile Photo',
+        t('language') === 'hi' ? 'क्या आप वाकई अपनी प्रोफ़ाइल फ़ोटो हटाना चाहते हैं?' : 'Are you sure you want to remove your profile photo?',
+        [
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('language') === 'hi' ? 'हटाएँ' : 'Remove', style: 'destructive', onPress: removeProfilePhoto },
+        ],
+        { cancelable: true }
+      );
+    }
+  };
+
   const showAvatarOptions = () => {
-    setAvatarModalVisible(true);
+    const photoUrl = profile?.photo || user?.photo;
+    const hasPhoto = hasCustomPhoto(photoUrl);
+
+    if (!hasPhoto) {
+      showImageSourcePicker('photo');
+    } else {
+      const title = t('language') === 'hi' ? 'प्रोफ़ाइल फ़ोटो' : 'Profile photo';
+      const optionsList = [
+        { text: t('language') === 'hi' ? 'फ़ोटो देखें' : 'View Profile Photo', onPress: () => setAvatarModalVisible(true) },
+        { text: t('language') === 'hi' ? 'फ़ोटो बदलें' : 'Change Profile Photo', onPress: () => showImageSourcePicker('photo') },
+        { text: t('language') === 'hi' ? 'फ़ोटो हटाएँ' : 'Remove Profile Photo', onPress: confirmRemoveProfilePhoto, style: 'destructive' },
+        { text: t('cancel'), onPress: () => {}, style: 'cancel' },
+      ];
+
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            options: optionsList.map(o => o.text),
+            cancelButtonIndex: 3,
+            destructiveButtonIndex: 2,
+            title,
+          },
+          (buttonIndex) => {
+            optionsList[buttonIndex]?.onPress();
+          }
+        );
+      } else {
+        Alert.alert(
+          title,
+          t('language') === 'hi' ? 'विकल्प चुनें' : 'Choose an option',
+          optionsList.map(o => ({
+            text: o.text,
+            onPress: o.onPress,
+            style: o.style as any,
+          })),
+          { cancelable: true }
+        );
+      }
+    }
   };
 
   const handleShareProfile = async () => {
