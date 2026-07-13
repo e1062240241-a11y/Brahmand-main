@@ -1665,7 +1665,7 @@ export default function CommunityDetailScreen() {
         await ensureCategoriesLoaded();
       }
       const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
-      if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 900000) {
+      if (!force && cachedData && Date.now() - (cachedData.lastFetched || 0) < 120000) {
         console.log('[Community] Using fresh cache, skipping fetchCommunity');
         setCommunity(cachedData.community);
         setRequests(cachedData.requests || []);
@@ -2120,7 +2120,7 @@ export default function CommunityDetailScreen() {
   };
 
   const handleLoadMore = async () => {
-    if (loadingMore || !hasMorePosts || communityPosts.length < 10) return;
+    if (loadingMore || !hasMorePosts) return;
     setLoadingMore(true);
     try {
       const { getCommunityMessages } = require('../../src/services/api');
