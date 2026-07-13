@@ -1302,7 +1302,7 @@ api_router.include_router(jaap_routes_router)
 api_router.include_router(upanishads_router)
 api_router.include_router(auth_router)
 api_router.include_router(user_router)
-api_router.include_router(community_router)
+# api_router.include_router(community_router)  # Commented out to prevent overriding main.py routes
 api_router.include_router(messaging_router)
 api_router.include_router(temple_router)
 api_router.include_router(event_router)
