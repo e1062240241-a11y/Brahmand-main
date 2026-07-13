@@ -360,7 +360,6 @@ class FirestoreDB:
         def _get():
             from google.cloud import firestore
             from google.cloud.firestore_v1.base_query import FieldFilter
-            from google.cloud.firestore_v1 import Timestamp as FireTimestamp
             
             query = self.client.collection('chats').document(chat_id).collection('messages')
             
@@ -369,7 +368,7 @@ class FirestoreDB:
             query = query.order_by('timestamp', direction=firestore.Query.DESCENDING)
             
             if before_timestamp:
-                # Convert before_timestamp to Firestore Timestamp for comparison
+                # Convert before_timestamp to datetime for Firestore Timestamp comparison
                 if isinstance(before_timestamp, datetime):
                     if before_timestamp.tzinfo is not None:
                         dt_utc = before_timestamp.astimezone(timezone.utc).replace(tzinfo=None)
@@ -378,14 +377,13 @@ class FirestoreDB:
                 else:
                     # Parse string timestamp to datetime
                     ts_str = str(before_timestamp)
-                    # Handle both formats: "2026-06-14T19:32:39.544680Z" and "2026-03-12 18:19:06.861115+00:00"
                     ts_str = ts_str.replace('Z', '+00:00')
                     dt_utc = datetime.fromisoformat(ts_str)
                     if dt_utc.tzinfo is not None:
                         dt_utc = dt_utc.astimezone(timezone.utc).replace(tzinfo=None)
                 
-                before_fire_ts = FireTimestamp.from_datetime(dt_utc)
-                query = query.where(filter=FieldFilter('timestamp', '<', before_fire_ts))
+                # Firestore client auto-converts datetime to Timestamp for comparisons
+                query = query.where(filter=FieldFilter('timestamp', '<', dt_utc))
             
             query = query.limit(limit)
             
