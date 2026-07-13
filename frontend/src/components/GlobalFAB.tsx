@@ -81,7 +81,14 @@ export function GlobalFAB() {
 
       let { lat, lng } = lastKnownLocationRef.current;
       const now = Date.now();
-      const shouldRefreshLocation = Boolean(options?.forceLocation || fabExpanded || !lat || !lng || now - lastLocationFetchRef.current > 120000);
+      // Throttle GPS querying to at most once per 30 seconds when expanded (or 2 minutes when collapsed) to prevent heating & lag
+      const shouldRefreshLocation = Boolean(
+        options?.forceLocation || 
+        !lat || 
+        !lng || 
+        (fabExpanded && now - lastLocationFetchRef.current > 30000) || 
+        now - lastLocationFetchRef.current > 120000
+      );
       if (shouldRefreshLocation && !keyboardVisibleRef.current) {
         try {
           const ok = await LocationService.ensureForegroundPermission();

@@ -569,7 +569,7 @@ export default function HomeScreen() {
     'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
     'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/live/wuDNumfi05g?si=zxOX4lB_2ZWoA8nS',
     'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
-    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/live/smCgjXxP0KE?si=7Iy0KthoRO550Pzl',
+    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/watch?v=kYJqO005yK0',
     'shri-mahalakshmi-mandir': 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
     'other-iskcon-temple-bangalore-karnataka': 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
     'other-siddhivinayak-temple-mumbai': 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',

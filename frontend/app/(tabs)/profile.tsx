@@ -1409,9 +1409,10 @@ export default function ProfileScreen() {
                           <Pressable
                             style={({ pressed }) => [
                               styles.settingsRow,
+                              { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Instant background highlight on press for Android too
                               pressed && Platform.OS === 'ios' && { opacity: 0.7 }
                             ]}
-                            android_ripple={{ color: 'rgba(255, 107, 0, 0.35)', borderless: false }}
+                            android_ripple={{ color: 'rgba(255, 107, 0, 0.25)', borderless: false }}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled && item.id !== 'location'}
                           >
@@ -1463,12 +1464,12 @@ export default function ProfileScreen() {
 
                       return (
                         <View key={item.id}>
-                          <TouchableOpacity
-                            style={[
+                          <Pressable
+                            style={({ pressed }) => [
                               styles.settingsRow,
+                              { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Highlight background on tap on iOS
                               item.disabled && styles.settingsRowDisabled,
                             ]}
-                            activeOpacity={0.7}
                             onPress={() => handleMenuPress(item)}
                             disabled={item.disabled}
                           >
@@ -1494,7 +1495,7 @@ export default function ProfileScreen() {
                                 />
                               )}
                             </View>
-                          </TouchableOpacity>
+                          </Pressable>
                           {index < section.items.length - 1 && (
                             <View style={styles.settingsSeparator} />
                           )}
@@ -1520,16 +1521,24 @@ export default function ProfileScreen() {
             </Text>
           </TouchableOpacity>
           <View style={styles.navRightGroup}>
-            <TouchableOpacity style={styles.navRightBtn} onPress={() => showImageSourcePicker('cover_photo')}>
+            <Pressable
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 20 }}
+              style={({ pressed }) => [styles.navRightBtn, Platform.OS === 'ios' && pressed && { opacity: 0.6 }]}
+              onPress={() => showImageSourcePicker('cover_photo')}
+            >
               <Svg width={16} height={16} viewBox="0 0 16 17" fill="none">
                 <Path d="M15.5625 4.12027L12.0589 0.617491C11.5691 0.127503 10.7747 0.127503 10.2848 0.617491L0.617688 10.2846C0.381388 10.5191 0.248944 10.8384 0.250006 11.1713V14.6749C0.250006 15.3676 0.811619 15.9292 1.50436 15.9292H14.675C15.1579 15.9287 15.4591 15.4058 15.2173 14.9879C15.1053 14.7944 14.8987 14.6751 14.675 14.6749H6.78204L15.5625 5.89439C16.0525 5.40452 16.0525 4.61015 15.5625 4.12027ZM5.00792 14.6749H1.50436V11.1713L8.40329 4.27236L11.9069 7.77592L5.00792 14.6749ZM12.7935 6.88925L9.29075 3.38569L11.1723 1.50416L14.6751 5.00772L12.7935 6.88925Z" fill="#FFF" stroke="#FFF" strokeWidth="0.5" />
               </Svg>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navRightBtn} onPress={() => setShowSettingsModal(true)}>
+            </Pressable>
+            <Pressable
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 20 }}
+              style={({ pressed }) => [styles.navRightBtn, Platform.OS === 'ios' && pressed && { opacity: 0.6 }]}
+              onPress={() => setShowSettingsModal(true)}
+            >
               <Svg width={16} height={16} viewBox="24 0 16 17" fill="none">
                 <Path d="M39.9314 8.28457C39.9314 8.80415 39.5102 9.22535 38.9906 9.22537H25.1922C24.468 9.22534 24.0153 8.44132 24.3775 7.81413C24.5455 7.52307 24.8561 7.34377 25.1922 7.34377H38.9906C39.5102 7.3438 39.9314 7.765 39.9314 8.28457ZM25.1922 4.20777H38.9906C39.7148 4.20777 40.1675 3.42377 39.8054 2.79657C39.6373 2.5055 39.3267 2.32618 38.9906 2.32617H25.1922C24.468 2.3262 24.0153 3.11022 24.3775 3.73741C24.5455 4.02847 24.8561 4.20777 25.1922 4.20777ZM38.9906 12.3614H25.1922C24.468 12.3614 24.0153 13.1454 24.3775 13.7726C24.5455 14.0637 24.8561 14.243 25.1922 14.243H38.9906C39.7148 14.243 40.1675 13.459 39.8054 12.8318C39.6373 12.5407 39.3267 12.3614 38.9906 12.3614Z" fill="#FFF" />
               </Svg>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
 
