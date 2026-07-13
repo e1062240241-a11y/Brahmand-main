@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,10 @@ import {
   Platform,
   Alert,
   Dimensions,
-  Modal
+  Modal,
+  findNodeHandle
 } from 'react-native';
+import { KeyboardAwareScrollView } from '../../../src/components/KeyboardAwareScrollView';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -55,6 +57,27 @@ const indianCities = [
 const firstFeelings = ['Awe', 'Peace', 'Gratitude', 'Excitement', 'Emotional', 'Other'];
 
 export default function NewPassportJourneyScreen() {
+  const keyboardScrollRef = useRef<any>(null);
+  const startLocationInputRef = useRef<TextInput>(null);
+  const destinationLocationInputRef = useRef<TextInput>(null);
+
+  const handleInputFocus = (e: any) => {
+    const node = findNodeHandle(e.target);
+    if (node) {
+      setTimeout(() => {
+        keyboardScrollRef.current?.scrollToFocusedInput(node);
+      }, 100);
+    }
+  };
+
+  const handleScrollOnType = (ref: React.RefObject<TextInput>) => {
+    const node = findNodeHandle(ref.current);
+    if (node) {
+      setTimeout(() => {
+        keyboardScrollRef.current?.scrollToFocusedInput(node);
+      }, 50);
+    }
+  };
   const router = useRouter();
   const addJourney = usePassportStore((state) => state.addJourney);
   const awardBadge = usePassportStore((state) => state.awardBadge);
@@ -68,6 +91,20 @@ export default function NewPassportJourneyScreen() {
   const [location, setLocation] = useState('');
   const [date, setDate] = useState('');
   const [visibility, setVisibility] = useState<PassportJourneyVisibility>('private');
+  const [locationError, setLocationError] = useState<string | null>(null);
+
+  const validateLocation = (val: string): boolean => {
+    if (!val.trim()) {
+      setLocationError('Location is required.');
+      return false;
+    }
+    if (val.trim().length < 3) {
+      setLocationError('Location name must be at least 3 characters.');
+      return false;
+    }
+    setLocationError(null);
+    return true;
+  };
 
   // Step 2 State
   const [inspiration, setInspiration] = useState('');
@@ -124,6 +161,31 @@ export default function NewPassportJourneyScreen() {
   const filteredLocationsStep1 = location.trim()
     ? indianCities.filter(city => city.toLowerCase().includes(location.toLowerCase()))
     : indianCities;
+
+  useEffect(() => {
+    const isDropdownOpenStep1 = showLocationSuggestionsStep1 && (
+      filteredLocationsStep1.length > 0 || location.trim() !== ''
+    );
+    if (isDropdownOpenStep1) {
+      const node = findNodeHandle(destinationLocationInputRef.current);
+      if (node) {
+        setTimeout(() => {
+          keyboardScrollRef.current?.scrollToFocusedInput(node);
+        }, 80);
+      }
+    }
+  }, [showLocationSuggestionsStep1, filteredLocationsStep1.length, location]);
+
+  useEffect(() => {
+    if (showLocationSuggestions && filteredLocations.length > 0) {
+      const node = findNodeHandle(startLocationInputRef.current);
+      if (node) {
+        setTimeout(() => {
+          keyboardScrollRef.current?.scrollToFocusedInput(node);
+        }, 80);
+      }
+    }
+  }, [showLocationSuggestions, filteredLocations.length]);
 
   // Step 3 State
   const [firstFeeling, setFirstFeeling] = useState('');
@@ -222,9 +284,16 @@ export default function NewPassportJourneyScreen() {
   }, []);
 
   const handleNext = () => {
-    if (step === 1 && (!location.trim() || !title.trim() || !date.trim())) {
-      Alert.alert('Missing details', 'Please add a title, location, and date before continuing.');
-      return;
+    if (step === 1) {
+      const isLocValid = validateLocation(location);
+      if (!title.trim() || !date.trim() || !isLocValid) {
+        if (!isLocValid) {
+          Alert.alert('Invalid Location', location.trim() ? 'Location name must be at least 3 characters.' : 'Location is required.');
+        } else {
+          Alert.alert('Missing details', 'Please add a title, location, and date before continuing.');
+        }
+        return;
+      }
     }
     if (step === 3) {
       // Collect answers before moving to step 4
@@ -266,8 +335,13 @@ export default function NewPassportJourneyScreen() {
   };
 
   const handleSave = async () => {
-    if (!title.trim() || !location.trim()) {
-      Alert.alert('Missing details', 'Please complete the journey title and location.');
+    const isLocValid = validateLocation(location);
+    if (!title.trim() || !isLocValid) {
+      if (!isLocValid) {
+        Alert.alert('Invalid Location', location.trim() ? 'Location name must be at least 3 characters.' : 'Location is required.');
+      } else {
+        Alert.alert('Missing details', 'Please complete the journey title and location.');
+      }
       return;
     }
 
@@ -360,39 +434,88 @@ export default function NewPassportJourneyScreen() {
           </View>
 
           <Text style={styles.inputLabel}>LOCATION</Text>
-          <View style={[styles.inputContainer, (showLocationSuggestionsStep1 && filteredLocationsStep1.length > 0) && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginBottom: 0, borderBottomWidth: 0 }]}>
-            <Ionicons name="location-outline" size={18} color="#E87030" style={{ marginRight: 8 }} />
-            <TextInput
-              value={location}
-              onChangeText={(text) => {
-                setLocation(text);
-                setShowLocationSuggestionsStep1(true);
-              }}
-              onFocus={() => setShowLocationSuggestionsStep1(true)}
-              onBlur={() => setTimeout(() => setShowLocationSuggestionsStep1(false), 250)}
-              placeholder="Kedarnath, Uttarakhand"
-              placeholderTextColor="#999"
-              style={styles.inputText}
-            />
-          </View>
-          {showLocationSuggestionsStep1 && filteredLocationsStep1.length > 0 && (
-            <View style={styles.dropdownContainer}>
-              {filteredLocationsStep1.slice(0, 5).map((city, index) => (
-                <TouchableOpacity
-                  key={city}
-                  style={[
-                    styles.dropdownOption,
-                    index === Math.min(filteredLocationsStep1.length, 5) - 1 && { borderBottomWidth: 0 }
-                  ]}
-                  onPress={() => {
-                    setLocation(city);
-                    setShowLocationSuggestionsStep1(false);
-                  }}
-                >
-                  <Text style={styles.dropdownOptionText}>{city}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {(() => {
+            const isDropdownOpenStep1 = showLocationSuggestionsStep1 && (
+              filteredLocationsStep1.length > 0 || location.trim() !== ''
+            );
+            return (
+              <>
+                {isDropdownOpenStep1 && (
+                  <View style={[styles.dropdownContainer, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderTopLeftRadius: 12, borderTopRightRadius: 12, borderBottomWidth: 0, marginBottom: 0, borderTopWidth: 1 }]}>
+                    {filteredLocationsStep1.length > 0 ? (
+                      filteredLocationsStep1.slice(0, 5).map((city, index) => (
+                        <TouchableOpacity
+                          key={city}
+                          style={[
+                            styles.dropdownOption,
+                            index === Math.min(filteredLocationsStep1.length, 5) - 1 && { borderBottomWidth: 0 }
+                          ]}
+                          onPress={() => {
+                            setLocation(city);
+                            setLocationError(null);
+                            setShowLocationSuggestionsStep1(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownOptionText}>{city}</Text>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
+                      <TouchableOpacity
+                        style={[styles.dropdownOption, { borderBottomWidth: 0 }]}
+                        onPress={() => {
+                          const trimmed = location.trim();
+                          if (trimmed.length < 3) {
+                            Alert.alert('Invalid Location', 'Location name must be at least 3 characters long.');
+                          } else {
+                            setLocation(trimmed);
+                            setLocationError(null);
+                            setShowLocationSuggestionsStep1(false);
+                          }
+                        }}
+                      >
+                        <View>
+                          <Text style={[styles.dropdownOptionText, { color: '#E87030', fontWeight: '600' }]}>
+                            {`+ Add "${location}" manually`}
+                          </Text>
+                          {location.trim().length < 3 && (
+                            <Text style={{ fontSize: 11, color: '#C0392B', marginTop: 2 }}>
+                              Requires at least 3 characters
+                            </Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
+                <View style={[styles.inputContainer, isDropdownOpenStep1 && { borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTopWidth: 0 }]}>
+                  <Ionicons name="location-outline" size={18} color="#E87030" style={{ marginRight: 8 }} />
+                  <TextInput
+                    ref={destinationLocationInputRef}
+                    value={location}
+                    onChangeText={(text) => {
+                      setLocation(text);
+                      setShowLocationSuggestionsStep1(true);
+                      if (text.trim() === '') {
+                        setLocationError('Location is required.');
+                      } else if (text.trim().length < 3) {
+                        setLocationError('Location name must be at least 3 characters.');
+                      } else {
+                        setLocationError(null);
+                      }
+                      handleScrollOnType(destinationLocationInputRef);
+                    }}
+                    onFocus={() => setShowLocationSuggestionsStep1(true)}
+                    onBlur={() => setTimeout(() => setShowLocationSuggestionsStep1(false), 250)}
+                    placeholder="Kedarnath, Uttarakhand"
+                    placeholderTextColor="#999"
+                    style={styles.inputText}
+                  />
+                </View>
+              </>
+            );
+          })()}
+          {locationError && (
+            <Text style={styles.errorText}>{locationError}</Text>
           )}
 
           <Text style={styles.inputLabel}>DATE</Text>
@@ -472,40 +595,52 @@ export default function NewPassportJourneyScreen() {
           </View>
 
           <Text style={styles.questionTitle}>Where is your journey starting from?</Text>
-          <View style={[styles.whiteInputContainer, (showLocationSuggestions && filteredLocations.length > 0) && { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginBottom: 0, borderBottomWidth: 0 }]}>
-            <Ionicons name="location-outline" size={18} color="#E87030" style={{marginRight: 8}} />
-            <TextInput
-              value={startLocation}
-              onChangeText={(text) => {
-                setStartLocation(text);
-                setShowLocationSuggestions(true);
-              }}
-              onFocus={() => setShowLocationSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
-              placeholder="Enter your city or state"
-              placeholderTextColor="#999"
-              style={styles.whiteInputText}
-            />
-          </View>
-          {showLocationSuggestions && filteredLocations.length > 0 && (
-            <View style={styles.dropdownContainer}>
-              {filteredLocations.slice(0, 5).map((city, index) => (
-                <TouchableOpacity
-                  key={city}
-                  style={[
-                    styles.dropdownOption,
-                    index === Math.min(filteredLocations.length, 5) - 1 && { borderBottomWidth: 0 }
-                  ]}
-                  onPress={() => {
-                    setStartLocation(city);
-                    setShowLocationSuggestions(false);
-                  }}
-                >
-                  <Text style={styles.dropdownOptionText}>{city}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
+          {(() => {
+            const isDropdownOpenStep2 = showLocationSuggestions && filteredLocations.length > 0;
+            return (
+              <>
+                {isDropdownOpenStep2 && (
+                  <View style={[styles.dropdownContainer, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomWidth: 0, marginBottom: 0, borderTopWidth: 1 }]}>
+                    {filteredLocations.slice(0, 5).map((city, index) => (
+                      <TouchableOpacity
+                        key={city}
+                        style={[
+                          styles.dropdownOption,
+                          index === Math.min(filteredLocations.length, 5) - 1 && { borderBottomWidth: 0 }
+                        ]}
+                        onPress={() => {
+                          setStartLocation(city);
+                          setShowLocationSuggestions(false);
+                        }}
+                      >
+                        <Text style={styles.dropdownOptionText}>{city}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                <View style={[styles.whiteInputContainer, isDropdownOpenStep2 && { borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTopWidth: 0 }]}>
+                  <Ionicons name="location-outline" size={18} color="#E87030" style={{marginRight: 8}} />
+                  <TextInput
+                    ref={startLocationInputRef}
+                    value={startLocation}
+                    onChangeText={(text) => {
+                      setStartLocation(text);
+                      setShowLocationSuggestions(true);
+                      handleScrollOnType(startLocationInputRef);
+                    }}
+                    onFocus={(e) => {
+                      setShowLocationSuggestions(true);
+                      handleInputFocus(e);
+                    }}
+                    onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 200)}
+                    placeholder="Enter your city or state"
+                    placeholderTextColor="#999"
+                    style={styles.whiteInputText}
+                  />
+                </View>
+              </>
+            );
+          })()}
 
           <Text style={styles.questionTitle}>How are you traveling?</Text>
           <View style={styles.rowOptions}>
@@ -1058,7 +1193,7 @@ export default function NewPassportJourneyScreen() {
           {/* Tagline wrapper with background only up to Om (🕉️) */}
           <View style={styles.taglineBgWrapper}>
             <Text style={styles.taglineText}>
-              "Not just where you went—but what the journey meant to you. 🕉️"
+              {"\"Not just where you went—but what the journey meant to you. 🕉️\""}
             </Text>
           </View>
 
@@ -1102,7 +1237,7 @@ export default function NewPassportJourneyScreen() {
         style={StyleSheet.absoluteFillObject}
       />
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView ref={keyboardScrollRef} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentWrapper}>
           <View style={styles.header}>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
@@ -1140,7 +1275,7 @@ export default function NewPassportJourneyScreen() {
             </TouchableOpacity>
           </View>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {showStep1DatePicker && (
         Platform.OS === 'ios' ? (
@@ -1338,6 +1473,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#000',
     fontWeight: '500',
+  },
+  errorText: {
+    color: '#C0392B',
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: -10,
+    marginBottom: 15,
+    marginLeft: 4,
   },
   toggleContainer: {
     flexDirection: 'row',

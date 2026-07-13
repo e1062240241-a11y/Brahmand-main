@@ -23,6 +23,32 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useLanguageStore } from '../../src/utils/i18n';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
+const INDIAN_CITIES = [
+  'Agra', 'Ahmedabad', 'Aizawl', 'Ajmer', 'Akola', 'Aligarh', 'Allahabad', 'Alwar',
+  'Ambala', 'Amravati', 'Amritsar', 'Anand', 'Aurangabad', 'Ayodhya',
+  'Bareilly', 'Belgaum', 'Bhopal', 'Bhubaneswar', 'Bikaner', 'Bilaspur',
+  'Chandigarh', 'Chennai', 'Coimbatore', 'Cuttack',
+  'Davanagere', 'Dehradun', 'Delhi', 'Dhanbad', 'Durgapur',
+  'Erode', 'Faridabad', 'Firozabad', 'Gandhinagar', 'Ghaziabad', 'Gorakhpur',
+  'Gulbarga', 'Guntur', 'Gurgaon', 'Guwahati', 'Gwalior',
+  'Hubli', 'Hyderabad',
+  'Imphal', 'Indore', 'Itanagar',
+  'Jabalpur', 'Jaipur', 'Jalandhar', 'Jammu', 'Jamnagar', 'Jamshedpur',
+  'Jodhpur', 'Junagadh',
+  'Kakinada', 'Kanpur', 'Kochi', 'Kohima', 'Kolhapur', 'Kolkata', 'Kota',
+  'Kozhikode', 'Kurnool',
+  'Lucknow', 'Ludhiana',
+  'Madurai', 'Mangalore', 'Mathura', 'Meerut', 'Mumbai', 'Mysore',
+  'Nagpur', 'Nashik', 'Navi Mumbai', 'Noida',
+  'Panaji', 'Patna', 'Pimpri-Chinchwad', 'Puducherry', 'Pune',
+  'Raipur', 'Rajkot', 'Ranchi', 'Rourkela',
+  'Salem', 'Shillong', 'Shimla', 'Siliguri', 'Solapur', 'Srinagar', 'Surat',
+  'Thane', 'Thiruvananthapuram', 'Tiruchirappalli', 'Tirunelveli', 'Tirupati',
+  'Udaipur', 'Ujjain',
+  'Vadodara', 'Varanasi', 'Vijayawada', 'Visakhapatnam',
+  'Warangal',
+];
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone: string }>();
@@ -134,7 +160,7 @@ export default function ProfileScreen() {
 
   // Android autocomplete city states
   const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
-  const [isSearchingCity, setIsSearchingCity] = useState(false);
+
 
   // Keyboard-adaptive suggestion positioning
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -211,32 +237,29 @@ export default function ProfileScreen() {
     return dict[key]?.[isHi ? 'hi' : 'en'] || key;
   };
 
-  const handleSearchCity = async (query: string) => {
-    if (!query || query.length < 3) {
+  const handleSearchCity = (query: string) => {
+    if (!query || query.length < 1) {
       setCitySuggestions([]);
       return;
     }
 
-    setIsSearchingCity(true);
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`,
-        {
-          headers: {
-            'User-Agent': 'BrahmandApp/1.0',
-          },
-        }
-      );
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setCitySuggestions(data);
-      }
-    } catch (err) {
-      console.warn('Error fetching city suggestions:', err);
-    } finally {
-      setIsSearchingCity(false);
+    const q = query.trim().toLowerCase();
+    const matches = INDIAN_CITIES
+      .filter((city) => city.toLowerCase().startsWith(q))
+      .slice(0, 5);
+
+    // If fewer than 5 startsWith matches, fill remaining with contains-matches
+    if (matches.length < 5) {
+      const contains = INDIAN_CITIES
+        .filter((city) => !city.toLowerCase().startsWith(q) && city.toLowerCase().includes(q))
+        .slice(0, 5 - matches.length);
+      setCitySuggestions([...matches, ...contains]);
+    } else {
+      setCitySuggestions(matches);
     }
   };
+
+
 
   const handleFetchLocation = async () => {
     try {
@@ -441,32 +464,21 @@ export default function ProfileScreen() {
                     }}
                   />
                 </View>
-                {isSearchingCity ? (
-                  <ActivityIndicator size="small" color="#FF7B00" />
-                ) : (
-                  <Ionicons name="chevron-down" size={20} color="#8B4F3B" />
-                )}
+                <Ionicons name="chevron-down" size={20} color="#8B4F3B" />
               </View>
 
               {/* City Autocomplete Suggestions Dropdown */}
               {citySuggestions.length > 0 && (
                 <View style={[
                   styles.suggestionsContainer,
-                  Platform.OS === 'ios'
-                    ? { bottom: inputHeight + inputMarginBottom }
-                    : (showCityAbove ? styles.suggestionsAbove : styles.suggestionsBelow)
+                  { bottom: inputHeight + inputMarginBottom }
                 ]}>
                   <KeyboardAwareScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled={true}>
-                    {citySuggestions.map((item, index) => (
+                    {citySuggestions.map((cityName, index) => (
                       <TouchableOpacity
                         key={index}
                         style={styles.suggestionItem}
                         onPress={() => {
-                          const cityName = item.address.city || 
-                                            item.address.town || 
-                                            item.address.village || 
-                                            item.address.suburb || 
-                                            item.display_name.split(',')[0];
                           setCity(cityName);
                           setLocation(cityName);
                           setCitySuggestions([]);
@@ -474,7 +486,7 @@ export default function ProfileScreen() {
                       >
                         <Ionicons name="location-outline" size={16} color="#FF7B00" style={{ marginRight: 8 }} />
                         <Text style={styles.suggestionText} numberOfLines={1}>
-                          {item.display_name}
+                          {cityName}
                         </Text>
                       </TouchableOpacity>
                     ))}

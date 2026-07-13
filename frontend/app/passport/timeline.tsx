@@ -1,6 +1,7 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert, Platform } from 'react-native';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
@@ -342,7 +343,7 @@ function PassportTimelineScreen({
         )}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Subtitle */}
         <Text style={styles.pageSubtitle}>
           Your Yatra memories, jaap milestones and reading badges
@@ -538,7 +539,7 @@ function PassportTimelineScreen({
 
         </View>
 
-      </ScrollView>
+      </KeyboardAwareScrollView>
 
       {/* Options Modal */}
       <Modal
