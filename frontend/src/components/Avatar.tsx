@@ -11,6 +11,16 @@ interface AvatarProps {
   shape?: 'circle' | 'square' | 'rounded';
 }
 
+export const hasCustomPhoto = (photo: any): boolean => {
+  return !!(
+    photo &&
+    photo !== 'nan' &&
+    photo !== 'NaN' &&
+    photo !== 'None' &&
+    photo !== ''
+  );
+};
+
 export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 'circle' }) => {
   const initials = React.useMemo(() => {
     return (name || 'U')
@@ -24,12 +34,7 @@ export const Avatar: React.FC<AvatarProps> = ({ name, photo, size = 48, shape = 
 
   const borderRadius = shape === 'circle' ? size / 2 : shape === 'rounded' ? 12 : 0;
 
-  const hasPhoto =
-    photo &&
-    photo !== 'nan' &&
-    photo !== 'NaN' &&
-    photo !== 'None' &&
-    photo !== '';
+  const hasPhoto = React.useMemo(() => hasCustomPhoto(photo), [photo]);
 
   const source = React.useMemo(() => {
     if (!hasPhoto) return null;
