@@ -401,14 +401,14 @@ function MessagesScreen({
     try {
       await joinCommunityDirect(communityId);
       setJoinedLocalIds(prev => new Set(prev).add(communityId));
-      
+
       // Update cache so it persists when returning to this screen
       try {
         const cached = await AsyncStorage.getItem(USER_GROUPS_CACHE_KEY);
         if (cached) {
           const parsed = JSON.parse(cached);
           if (parsed.data && Array.isArray(parsed.data)) {
-            parsed.data = parsed.data.map((c: any) => 
+            parsed.data = parsed.data.map((c: any) =>
               c.id === communityId ? { ...c, is_member: true } : c
             );
             await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify(parsed));
@@ -429,8 +429,8 @@ function MessagesScreen({
   const handleDeleteChat = (conversationId: string) => {
     Alert.alert(
       t('language') === 'hi' ? 'चैट हटाएं' : 'Delete Chat',
-      t('language') === 'hi' 
-        ? 'क्या आप वाकई इस चैट को हटाना चाहते हैं? इससे सभी संदेश हट जाएंगे।' 
+      t('language') === 'hi'
+        ? 'क्या आप वाकई इस चैट को हटाना चाहते हैं? इससे सभी संदेश हट जाएंगे।'
         : 'Are you sure you want to delete this chat? This will remove all messages.',
       [
         { text: t('language') === 'hi' ? 'रद्द करें' : 'Cancel', style: 'cancel' },
@@ -441,7 +441,7 @@ function MessagesScreen({
             try {
               // 1. Call API to clear messages on backend
               await clearDirectMessages(conversationId);
-              
+
               // 2. Delete locally in WatermelonDB (if not Web)
               if (Platform.OS !== 'web') {
                 try {
@@ -957,7 +957,7 @@ function MessagesScreen({
 
         if (Platform.OS === 'web') {
           setApiCommunities(allComms);
-          AsyncStorage.setItem('web_communities_cache', JSON.stringify(allComms)).catch(() => {});
+          AsyncStorage.setItem('web_communities_cache', JSON.stringify(allComms)).catch(() => { });
         }
 
         // Persist to WatermelonDB (non-blocking - failure here should not break the UI)
@@ -1004,12 +1004,12 @@ function MessagesScreen({
 
         // Fetch ALL user_group communities — load from cache first, then refresh
         try {
-            const pendingGroups = (myPendingRes.data || []).map((req: any) => ({
-              ...req,
-              type: req.type || 'local',
-              is_pending: true,
-              member_count: req.member_ids?.length || 1,
-            }));
+          const pendingGroups = (myPendingRes.data || []).map((req: any) => ({
+            ...req,
+            type: req.type || 'local',
+            is_pending: true,
+            member_count: req.member_ids?.length || 1,
+          }));
           console.log('[DEBUG] pendingGroups:', pendingGroups.length);
 
           // Fetch fresh from discover endpoint EVERY TIME for now to avoid stale cache issues
@@ -1023,12 +1023,12 @@ function MessagesScreen({
           // Also include any user_group the current user is a member of (from getCommunities)
           const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group' || item.type === 'local');
           console.log('[DEBUG] allComms total:', allComms.length, 'myUserGroups:', myUserGroups.length);
-          
+
           // Merge and deduplicate by id, prioritize pending ones for the current user
           const merged = [...pendingGroups, ...allUserGroups, ...myUserGroups];
           const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
           console.log('[DEBUG] final unique userGroups:', unique.length, unique.map((c: any) => c.name));
-          
+
           setUserGroups(unique);
           // Persist to cache
           await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify({ data: unique, timestamp: Date.now() }));
@@ -1055,12 +1055,12 @@ function MessagesScreen({
           if (circles.length > 0 || conversations.length > 0) return false;
           return true;
         });
-        
+
         const [circlesRes, convRes] = await Promise.all([
           getCircles(),
           getConversations()
         ]);
-        
+
         const allCircles = circlesRes.data || [];
         const allDMs = convRes.data || [];
 
@@ -1076,10 +1076,10 @@ function MessagesScreen({
           };
         }
         setDmMetadataMap(metaMap);
-        AsyncStorage.setItem('dm_metadata_map', JSON.stringify(metaMap)).catch(() => {});
+        AsyncStorage.setItem('dm_metadata_map', JSON.stringify(metaMap)).catch(() => { });
         if (Platform.OS === 'web') {
-          AsyncStorage.setItem('web_circles_cache', JSON.stringify(allCircles)).catch(() => {});
-          AsyncStorage.setItem('web_dms_cache', JSON.stringify(allDMs)).catch(() => {});
+          AsyncStorage.setItem('web_circles_cache', JSON.stringify(allCircles)).catch(() => { });
+          AsyncStorage.setItem('web_dms_cache', JSON.stringify(allDMs)).catch(() => { });
         }
 
         // Persist to WatermelonDB
@@ -1279,7 +1279,7 @@ function MessagesScreen({
 
   const getTimeAgo = (dateString?: string) => {
     if (!dateString) return 'Just now';
-    
+
     // Ensure UTC interpretation if missing timezone suffix
     let ds = String(dateString);
     if (!ds.includes('Z') && !ds.includes('+')) {
@@ -1402,7 +1402,7 @@ function MessagesScreen({
           )}
           {isPending && (
             <View style={[styles.localJoinBtn, { borderColor: '#FFA500', backgroundColor: '#FFFBEB' }]}>
-               <Text style={[styles.localJoinBtnText, { color: '#D97706' }]}>Pending</Text>
+              <Text style={[styles.localJoinBtnText, { color: '#D97706' }]}>Pending</Text>
             </View>
           )}
         </View>
@@ -1504,102 +1504,102 @@ function MessagesScreen({
             </View>
           ) : (
             <View style={styles.communityContent}>
-            {loading && communities.length === 0 && requests.length === 0 ? (
-              <View style={styles.skeletonContainer}>
-                <View style={styles.skeletonBanner} />
-                <View style={styles.skeletonSectionHeader}>
-                  <View style={styles.skeletonSectionTitle} />
-                  <View style={styles.skeletonChip} />
-                </View>
-                <View style={styles.skeletonSlider}>
-                  {[1, 2, 3].map((i) => (
-                    <View key={i} style={styles.skeletonCard} />
-                  ))}
-                </View>
-                <View style={styles.skeletonSectionHeader}>
-                  <View style={styles.skeletonSectionTitle} />
-                </View>
-                <View style={styles.skeletonSlider}>
-                  {[1, 2, 3].map((i) => (
-                    <View key={i} style={styles.skeletonRequestCard} />
-                  ))}
-                </View>
-              </View>
-            ) : (
-              <>
-                {renderCommunityBanner()}
-                {renderOurCommunitiesSection()}
-
-                <View style={styles.sectionHeader}>
-                  <View style={styles.sectionTitleRow}>
-                    <MaterialCommunityIcons name="account-group-outline" size={22} color="#FF6600" />
-                    <Text style={styles.sectionTitle}>
-                      {t('language') === 'hi' ? 'स्थानीय समुदाय ' : 'Local Communities '}
-                      <Text style={styles.subTitleSmall}>
-                        {t('language') === 'hi' ? '(उपयोगकर्ता समूह)' : '(User groups)'}
-                      </Text>
-                    </Text>
+              {loading && communities.length === 0 && requests.length === 0 ? (
+                <View style={styles.skeletonContainer}>
+                  <View style={styles.skeletonBanner} />
+                  <View style={styles.skeletonSectionHeader}>
+                    <View style={styles.skeletonSectionTitle} />
+                    <View style={styles.skeletonChip} />
                   </View>
-                  <TouchableOpacity onPress={() => router.push('/community/discover')}>
-                    <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
-                  </TouchableOpacity>
+                  <View style={styles.skeletonSlider}>
+                    {[1, 2, 3].map((i) => (
+                      <View key={i} style={styles.skeletonCard} />
+                    ))}
+                  </View>
+                  <View style={styles.skeletonSectionHeader}>
+                    <View style={styles.skeletonSectionTitle} />
+                  </View>
+                  <View style={styles.skeletonSlider}>
+                    {[1, 2, 3].map((i) => (
+                      <View key={i} style={styles.skeletonRequestCard} />
+                    ))}
+                  </View>
                 </View>
+              ) : (
+                <>
+                  {renderCommunityBanner()}
+                  {renderOurCommunitiesSection()}
 
-                {/* Local Communities Slider */}
-                {userGroupsToRender.length > 0 ? (
-                  <View style={{ marginBottom: 10, minHeight: 190 }}>
+                  <View style={styles.sectionHeader}>
+                    <View style={styles.sectionTitleRow}>
+                      <MaterialCommunityIcons name="account-group-outline" size={22} color="#FF6600" />
+                      <Text style={styles.sectionTitle}>
+                        {t('language') === 'hi' ? 'स्थानीय समुदाय ' : 'Local Communities '}
+                        <Text style={styles.subTitleSmall}>
+                          {t('language') === 'hi' ? '(उपयोगकर्ता समूह)' : '(User groups)'}
+                        </Text>
+                      </Text>
+                    </View>
+                    <TouchableOpacity onPress={() => router.push('/community/discover')}>
+                      <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Local Communities Slider */}
+                  {userGroupsToRender.length > 0 ? (
+                    <View style={{ marginBottom: 10, minHeight: 190 }}>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+                      >
+                        {userGroupsToRender.map((item, idx) => renderLocalCommunityCard(item, idx))}
+                      </ScrollView>
+                    </View>
+                  ) : (
+                    <View style={styles.localCommEmptyBox}>
+                      <Text style={styles.localCommEmptyText}>
+                        {t('language') === 'hi' ? 'अभी तक कोई उपयोगकर्ता समूह नहीं बनाया गया है। शुरुआत करने वाले पहले बनें!' : 'No user groups created yet. Be the first to start one!'}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+
+              {/* Active Requests */}
+              {requestsToRender.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>
+                      {t('language') === 'hi' ? 'सक्रिय सामुदायिक अनुरोध' : 'Active Community Requests'}
+                    </Text>
+                    <TouchableOpacity onPress={() => router.push('/community-request/list')}>
+                      <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ marginTop: 10, minHeight: 230 }}>
                     <ScrollView
+                      ref={activeRequestScrollRef}
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20 }}
+                      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
+                      snapToInterval={132}
+                      decelerationRate="fast"
+                      snapToAlignment="start"
+                      style={Platform.OS === 'web' ? ({ cursor: 'grab' } as any) : {}}
+                      onMomentumScrollEnd={(e) => {
+                        const x = e.nativeEvent.contentOffset.x;
+                        setActiveRequestIndex(Math.round(x / 132));
+                      }}
                     >
-                      {userGroupsToRender.map((item, idx) => renderLocalCommunityCard(item, idx))}
+                      {requestsToRender.map((item, index) => renderActiveRequestCard(item, index))}
                     </ScrollView>
                   </View>
-                ) : (
-                  <View style={styles.localCommEmptyBox}>
-                    <Text style={styles.localCommEmptyText}>
-                      {t('language') === 'hi' ? 'अभी तक कोई उपयोगकर्ता समूह नहीं बनाया गया है। शुरुआत करने वाले पहले बनें!' : 'No user groups created yet. Be the first to start one!'}
-                    </Text>
-                  </View>
-                )}
-              </>
-            )}
+                </>
+              )}
 
-            {/* Active Requests */}
-            {requestsToRender.length > 0 && (
-              <>
-                <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionTitle}>
-                    {t('language') === 'hi' ? 'सक्रिय सामुदायिक अनुरोध' : 'Active Community Requests'}
-                  </Text>
-                  <TouchableOpacity onPress={() => router.push('/community-request/list')}>
-                    <Text style={styles.viewAllText}>{t('language') === 'hi' ? 'सभी देखें' : 'View All'}</Text>
-                  </TouchableOpacity>
-                </View>
-                <View style={{ marginTop: 10, minHeight: 230 }}>
-                  <ScrollView
-                    ref={activeRequestScrollRef}
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10 }}
-                    snapToInterval={132}
-                    decelerationRate="fast"
-                    snapToAlignment="start"
-                    style={Platform.OS === 'web' ? ({ cursor: 'grab' } as any) : {}}
-                    onMomentumScrollEnd={(e) => {
-                      const x = e.nativeEvent.contentOffset.x;
-                      setActiveRequestIndex(Math.round(x / 132));
-                    }}
-                  >
-                    {requestsToRender.map((item, index) => renderActiveRequestCard(item, index))}
-                  </ScrollView>
-                </View>
-              </>
-            )}
-
-            <View style={{ height: 90 }} />
-          </View>
+              <View style={{ height: 90 }} />
+            </View>
           )
         ) : (
           <View style={styles.privateChatContent}>
@@ -1875,7 +1875,7 @@ function MessagesScreen({
                 </TouchableOpacity>
 
                 {selectedRequest.user_id === user?.id && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={[styles.sheetBtn, styles.sheetFulfillBtn]}
                     onPress={() => handleResolveRequest(selectedRequest.id)}
                   >
@@ -2228,13 +2228,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
   },
-  localCommAvatarWrapper: { 
+  localCommAvatarWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: 56, 
-    height: 56, 
-    borderRadius: 28, 
-    marginTop: 2 
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    marginTop: 2
   },
   localCommAvatar: { width: 56, height: 56, borderRadius: 28 },
   localCommContent: { alignItems: 'center', marginTop: 4 },
