@@ -831,15 +831,20 @@ export default function ProfileScreen() {
         }
       );
     } else {
-      Alert.alert(
-        t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
-        t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
-        [
-          { text: t('cancel'), style: 'cancel', onPress: () => setShowSettingsModal(false) },
-          { text: t('language') === 'hi' ? 'लॉगआउट' : 'Logout', style: 'destructive', onPress: performLogout },
-        ],
-        { cancelable: true, onDismiss: () => setShowSettingsModal(false) }
-      );
+      // On Android, Alert renders behind an open Modal due to native z-order.
+      // Dismiss the modal first, then show Alert after modal fully closes.
+      setShowSettingsModal(false);
+      setTimeout(() => {
+        Alert.alert(
+          t('language') === 'hi' ? 'लॉगआउट' : 'Logout',
+          t('language') === 'hi' ? 'क्या आप सचमुच लॉगआउट करना चाहते हैं?' : 'Are you sure you want to logout?',
+          [
+            { text: t('cancel'), style: 'cancel' },
+            { text: t('language') === 'hi' ? 'लॉगआउट' : 'Logout', style: 'destructive', onPress: performLogout },
+          ],
+          { cancelable: true }
+        );
+      }, 300);
     }
   };
 

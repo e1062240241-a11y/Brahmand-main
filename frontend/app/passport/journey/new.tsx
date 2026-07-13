@@ -288,14 +288,36 @@ export default function NewPassportJourneyScreen() {
       const isLocValid = validateLocation(location);
       if (!title.trim() || !date.trim() || !isLocValid) {
         if (!isLocValid) {
-          Alert.alert('Invalid Location', location.trim() ? 'Location name must be at least 3 characters.' : 'Location is required.');
+          Alert.alert('Missing details', location.trim() ? 'Location name must be at least 3 characters.' : 'Location is required.');
         } else {
           Alert.alert('Missing details', 'Please add a title, location, and date before continuing.');
         }
         return;
       }
     }
+    if (step === 2) {
+      if (!inspiration || !travelWith || !startLocation.trim() || !travelMode || !duration || !stayType || !distance) {
+        Alert.alert('Missing details', 'Please fill out all fields on this page before continuing.');
+        return;
+      }
+      if (startLocation.trim().length < 3) {
+        Alert.alert('Invalid Location', 'Start location must be at least 3 characters.');
+        return;
+      }
+    }
     if (step === 3) {
+      if (!firstFeeling || !touchedHeart.trim() || !prasadExperience.trim()) {
+        Alert.alert('Missing details', 'Please fill out all fields on this page before continuing.');
+        return;
+      }
+      if (participatedPuja && !pujaDetails.trim()) {
+        Alert.alert('Missing details', 'Please specify the Puja/Seva details.');
+        return;
+      }
+      if (media.length === 0) {
+        Alert.alert('Missing details', 'Please upload a photo or memory before continuing.');
+        return;
+      }
       // Collect answers before moving to step 4
       const newAnswers: PassportAnswer[] = [
         { question: 'What inspired you to take this journey?', answer: inspiration },
@@ -338,10 +360,19 @@ export default function NewPassportJourneyScreen() {
     const isLocValid = validateLocation(location);
     if (!title.trim() || !isLocValid) {
       if (!isLocValid) {
-        Alert.alert('Invalid Location', location.trim() ? 'Location name must be at least 3 characters.' : 'Location is required.');
+        Alert.alert('Missing details', location.trim() ? 'Location name must be at least 3 characters.' : 'Location is required.');
       } else {
         Alert.alert('Missing details', 'Please complete the journey title and location.');
       }
+      return;
+    }
+
+    if (!darshanExperience.trim() || !blessingCarried.trim() || journeyFeelings.length === 0 || !unforgettableMemory.trim() || !accommodationRecommend || !rememberBecause.trim()) {
+      Alert.alert('Missing details', 'Please fill out all fields on this page before recording the journey.');
+      return;
+    }
+    if (accommodationRecommend === 'Yes' && !accommodationWhy.trim()) {
+      Alert.alert('Missing details', 'Please specify the accommodation recommendation details.');
       return;
     }
 
@@ -435,9 +466,7 @@ export default function NewPassportJourneyScreen() {
 
           <Text style={styles.inputLabel}>LOCATION</Text>
           {(() => {
-            const isDropdownOpenStep1 = showLocationSuggestionsStep1 && (
-              filteredLocationsStep1.length > 0 || location.trim() !== ''
-            );
+            const isDropdownOpenStep1 = showLocationSuggestionsStep1 && location.trim() !== '';
             return (
               <>
                 {isDropdownOpenStep1 && (
@@ -596,26 +625,52 @@ export default function NewPassportJourneyScreen() {
 
           <Text style={styles.questionTitle}>Where is your journey starting from?</Text>
           {(() => {
-            const isDropdownOpenStep2 = showLocationSuggestions && filteredLocations.length > 0;
+            const isDropdownOpenStep2 = showLocationSuggestions && startLocation.trim() !== '';
             return (
               <>
                 {isDropdownOpenStep2 && (
                   <View style={[styles.dropdownContainer, { borderBottomLeftRadius: 0, borderBottomRightRadius: 0, borderTopLeftRadius: 8, borderTopRightRadius: 8, borderBottomWidth: 0, marginBottom: 0, borderTopWidth: 1 }]}>
-                    {filteredLocations.slice(0, 5).map((city, index) => (
+                    {filteredLocations.length > 0 ? (
+                      filteredLocations.slice(0, 5).map((city, index) => (
+                        <TouchableOpacity
+                          key={city}
+                          style={[
+                            styles.dropdownOption,
+                            index === Math.min(filteredLocations.length, 5) - 1 && { borderBottomWidth: 0 }
+                          ]}
+                          onPress={() => {
+                            setStartLocation(city);
+                            setShowLocationSuggestions(false);
+                          }}
+                        >
+                          <Text style={styles.dropdownOptionText}>{city}</Text>
+                        </TouchableOpacity>
+                      ))
+                    ) : (
                       <TouchableOpacity
-                        key={city}
-                        style={[
-                          styles.dropdownOption,
-                          index === Math.min(filteredLocations.length, 5) - 1 && { borderBottomWidth: 0 }
-                        ]}
+                        style={[styles.dropdownOption, { borderBottomWidth: 0 }]}
                         onPress={() => {
-                          setStartLocation(city);
-                          setShowLocationSuggestions(false);
+                          const trimmed = startLocation.trim();
+                          if (trimmed.length < 3) {
+                            Alert.alert('Invalid Location', 'Location name must be at least 3 characters long.');
+                          } else {
+                            setStartLocation(trimmed);
+                            setShowLocationSuggestions(false);
+                          }
                         }}
                       >
-                        <Text style={styles.dropdownOptionText}>{city}</Text>
+                        <View>
+                          <Text style={[styles.dropdownOptionText, { color: '#E87030', fontWeight: '600' }]}>
+                            {`+ Add "${startLocation}" manually`}
+                          </Text>
+                          {startLocation.trim().length < 3 && (
+                            <Text style={{ fontSize: 11, color: '#C0392B', marginTop: 2 }}>
+                              Requires at least 3 characters
+                            </Text>
+                          )}
+                        </View>
                       </TouchableOpacity>
-                    ))}
+                    )}
                   </View>
                 )}
                 <View style={[styles.whiteInputContainer, isDropdownOpenStep2 && { borderTopLeftRadius: 0, borderTopRightRadius: 0, borderTopWidth: 0 }]}>
@@ -1188,7 +1243,7 @@ export default function NewPassportJourneyScreen() {
 
           </View>
 
-          <View style={{ height: 24 }} />
+          <View style={{ height: Platform.OS === 'ios' ? 8 : 24 }} />
 
           {/* Tagline wrapper with background only up to Om (🕉️) */}
           <View style={styles.taglineBgWrapper}>
@@ -1473,6 +1528,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#000',
     fontWeight: '500',
+    paddingVertical: 0,
   },
   errorText: {
     color: '#C0392B',
@@ -1647,7 +1703,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     borderRadius: 8,
     paddingHorizontal: 20,
-    paddingVertical: 13,
     height: 48,
     borderWidth: 1,
     borderColor: '#DDC1B1',
@@ -1657,6 +1712,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#000',
     fontWeight: '500',
+    paddingVertical: 0,
   },
   rowOptions: {
     flexDirection: 'row',
@@ -2382,7 +2438,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 140, 50, 0.30)',
     borderStyle: 'dashed',
     overflow: 'hidden',
-    marginBottom: 14,
+    marginBottom: Platform.OS === 'ios' ? 8 : 14,
   },
   shareableBlur: {
     flex: 1,
