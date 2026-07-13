@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert, TouchableOpacity } from 'react-native';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../../src/components/Button';
 import { usePassportStore } from '../../src/store/passportStore';
@@ -83,7 +84,7 @@ function PassportProgressScreen({
         <Text style={styles.headerTitle}>Passport Progress</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.subtitle}>Update jaap, awards and reading achievements instantly.</Text>
 
         <View style={styles.statsRow}>
@@ -166,7 +167,7 @@ function PassportProgressScreen({
             ))
           )}
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
