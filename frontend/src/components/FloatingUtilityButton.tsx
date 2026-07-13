@@ -757,6 +757,17 @@ export const FloatingUtilityButton = () => {
       await respondToSOS(sosId, 'coming');
       setRespondedSOSIds(prev => new Set([...prev, sosId]));
 
+      // Update nearbySOSAlerts so responders array reflects current user
+      setNearbySOSAlerts(prev => prev.map(sos => {
+        if (sos.id === sosId) {
+          const responders = sos.responders || [];
+          if (!responders.some((r: any) => r.user_id === user?.id)) {
+            return { ...sos, responders: [...responders, { user_id: user?.id, status: 'coming' }] };
+          }
+        }
+        return sos;
+      }));
+
       // Auto-open map for directions when responding
       const sos = nearbySOSAlerts.find(s => s.id === sosId) || incomingSOS;
       if (sos) {

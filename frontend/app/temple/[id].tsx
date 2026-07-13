@@ -129,7 +129,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  ],
  description: 'Kashi Vishwanath Jyotirling at Varanasi is one of India’s most sacred Shiva shrines, closely associated with the spiritual heart of Kashi and the Ganga ghats.',
  guidance: 'Guidance: Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area. Use designated entry gates, carry minimal belongings, and plan darshan outside peak festival windows when possible.',
- youtubeUrl: 'https://www.youtube.com/live/smCgjXxP0KE?si=7Iy0KthoRO550Pzl',
+ youtubeUrl: 'https://www.youtube.com/watch?v=kYJqO005yK0',
  },
  'Bhimashankar Temple – Maharashtra': {
  aliases: ['bhimashankar'],

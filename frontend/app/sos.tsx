@@ -266,6 +266,7 @@ export default function SOSScreen() {
     }
     return () => {
       if (timer) clearTimeout(timer);
+      Vibration.cancel(); // Stop loop vibration when countdown unmounts or exits
     };
   }, [stage, countdown]);
 

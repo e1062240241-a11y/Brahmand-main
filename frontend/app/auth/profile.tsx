@@ -18,7 +18,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { registerUser } from '../../src/services/api';
+import { registerUser, setupLocation } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { useLanguageStore } from '../../src/utils/i18n';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
@@ -155,6 +155,7 @@ export default function ProfileScreen() {
   const [location, setLocation] = useState('');
   const [city, setCity] = useState('');
   const [currentCity, setCurrentCity] = useState('');
+  const [geocodeAddress, setGeocodeAddress] = useState<{city?: string; region?: string; country?: string} | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -286,6 +287,7 @@ export default function ProfileScreen() {
         const finalLoc = readableLocation || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
         setCurrentCity(finalLoc);
         setLocation(finalLoc);
+        setGeocodeAddress({ city: address.city || address.subregion || address.district || '', region: address.region || '', country: address.country || '' });
       } else {
         const fallbackLoc = `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
         setCurrentCity(fallbackLoc);
@@ -356,6 +358,20 @@ export default function ProfileScreen() {
       });
 
       await login(response.data.user, response.data.token);
+
+      // Join communities based on location
+      try {
+        const locData = geocodeAddress || { city: city.trim(), region: '', country: '' };
+        await setupLocation({
+          country: locData.country || 'Bharat',
+          state: locData.region || '',
+          city: locData.city || city.trim(),
+          area: '',
+        });
+      } catch (locErr) {
+        console.warn('Community join failed (non-blocking):', locErr);
+      }
+
       router.replace('/auth/location');
     } catch (err: any) {
       console.warn('Registration failed/warning, proceeding anyway:', err);
