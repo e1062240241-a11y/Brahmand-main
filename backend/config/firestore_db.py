@@ -323,7 +323,9 @@ class FirestoreDB:
         """Add a message to chat's messages subcollection"""
         from google.cloud import firestore
         
-        message_data['created_at'] = datetime.utcnow().isoformat() + 'Z'
+        # ponytail: normalize to consistent ISO format with T separator and Z suffix
+        now = datetime.utcnow()
+        message_data['created_at'] = now.strftime('%Y-%m-%dT%H:%M:%S.') + f'{now.microsecond:06d}Z'
         message_data['timestamp'] = firestore.SERVER_TIMESTAMP
         
         def _add():
@@ -331,6 +333,22 @@ class FirestoreDB:
             return doc_ref.id
         
         return await self._run_sync(_add)
+    
+    @staticmethod
+    def _normalize_timestamp(ts_str: str) -> str:
+        """Normalize any timestamp string to consistent ISO format: YYYY-MM-DDTHH:MM:SS.ffffffZ"""
+        try:
+            # Handle Z suffix
+            ts_str = ts_str.rstrip('Z')
+            # Handle timezone offset (+00:00, +05:30, etc.)
+            if '+' in ts_str[10:] or (ts_str.count('-') > 2):
+                dt = datetime.fromisoformat(ts_str)
+                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+            else:
+                dt = datetime.fromisoformat(ts_str)
+            return dt.strftime('%Y-%m-%dT%H:%M:%S.') + f'{dt.microsecond:06d}Z'
+        except Exception:
+            return ts_str
     
     async def get_chat_messages(
         self, 
@@ -342,26 +360,32 @@ class FirestoreDB:
         def _get():
             from google.cloud import firestore
             from google.cloud.firestore_v1.base_query import FieldFilter
+            from google.cloud.firestore_v1 import Timestamp as FireTimestamp
             
             query = self.client.collection('chats').document(chat_id).collection('messages')
-            query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
+            
+            # Use timestamp field (Firestore Timestamp type) for reliable ordering
+            # instead of created_at string which has inconsistent formats
+            query = query.order_by('timestamp', direction=firestore.Query.DESCENDING)
             
             if before_timestamp:
-                before_str = before_timestamp
+                # Convert before_timestamp to Firestore Timestamp for comparison
                 if isinstance(before_timestamp, datetime):
-                    # Convert to UTC naive representation to match created_at format
                     if before_timestamp.tzinfo is not None:
-                        # timezone is imported from datetime
                         dt_utc = before_timestamp.astimezone(timezone.utc).replace(tzinfo=None)
                     else:
                         dt_utc = before_timestamp
-                    before_str = dt_utc.isoformat()
-                    if not before_str.endswith('Z'):
-                        before_str += 'Z'
                 else:
-                    before_str = str(before_timestamp)
+                    # Parse string timestamp to datetime
+                    ts_str = str(before_timestamp)
+                    # Handle both formats: "2026-06-14T19:32:39.544680Z" and "2026-03-12 18:19:06.861115+00:00"
+                    ts_str = ts_str.replace('Z', '+00:00')
+                    dt_utc = datetime.fromisoformat(ts_str)
+                    if dt_utc.tzinfo is not None:
+                        dt_utc = dt_utc.astimezone(timezone.utc).replace(tzinfo=None)
                 
-                query = query.where(filter=FieldFilter('created_at', '<', before_str))
+                before_fire_ts = FireTimestamp.from_datetime(dt_utc)
+                query = query.where(filter=FieldFilter('timestamp', '<', before_fire_ts))
             
             query = query.limit(limit)
             
