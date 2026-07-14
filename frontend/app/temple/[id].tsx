@@ -9,7 +9,7 @@ import { getTemple, getTemplePosts, followTemple, unfollowTemple } from '../../s
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { getTempleImageById } from '../../src/constants/templeImages';
+import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 
 const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
@@ -963,7 +963,7 @@ if (!temple) {
 
 
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
-  const templeImageSource = getTempleImageById(resolvedTempleId);
+  const templeImageSource = TEMPLE_IMAGES[resolvedTempleId] || getTempleImageByName(temple.name || '') || (temple.image_url ? { uri: temple.image_url } : DEFAULT_TEMPLE_IMAGE);
   const isMiraRoadTemple = templeKey === 'ISKCON Mira Road';
   const hasSpecialDetails = Boolean(specialTempleData);
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));

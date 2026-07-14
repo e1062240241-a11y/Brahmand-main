@@ -105,7 +105,7 @@ export default function AdminPanelScreen() {
 
   const approvedKycRequests = useMemo(
     () => (verifiedVendorRequests || [])
-      .filter((record) => record.review_status === 'approved')
+      .filter((record) => record.review_status === 'approved' || record.review_status === 'verified')
       .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()),
     [verifiedVendorRequests]
   );

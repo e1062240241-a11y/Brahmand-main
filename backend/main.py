@@ -905,7 +905,7 @@ async def _ensure_admin_user(token_data: dict):
     return db, user_id
 
 
-def _build_vendor_admin_snapshot(vendor: dict) -> dict:
+def _build_vendor_admin_snapshot(vendor: dict, user: Optional[dict] = None) -> dict:
     """Build admin-facing snapshot of vendor profile and KYC fields."""
     # Normalize kyc_status to plain string to avoid Pydantic enum objects
     # being stored in Firestore, which would break equality queries.
@@ -914,6 +914,25 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     is_pending = kyc_status_str in ('pending', 'manual_review', 'None', 'none', '')
     if raw_kyc_status is None:
         is_pending = True
+
+    # Pull government ID documents from owner user document if they are missing in the vendor document
+    aadhar_url = vendor.get('aadhar_url')
+    pan_url = vendor.get('pan_url')
+    face_scan_url = vendor.get('face_scan_url')
+    
+    if user:
+        id_type = user.get('kyc_id_type')
+        id_photo = user.get('kyc_id_photo')
+        selfie_photo = user.get('kyc_selfie_photo')
+        if not aadhar_url and id_type == 'aadhaar' and id_photo:
+            aadhar_url = id_photo
+        if not pan_url and id_type == 'pan' and id_photo:
+            pan_url = id_photo
+        if not face_scan_url and id_type == 'pan' and selfie_photo:
+            face_scan_url = selfie_photo
+
+    review_status = 'pending' if is_pending else ('approved' if kyc_status_str == 'verified' else kyc_status_str)
+
     return {
         'vendor_id': vendor.get('id'),
         'owner_id': vendor.get('owner_id'),
@@ -928,9 +947,9 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'longitude': vendor.get('longitude'),
         'photos': vendor.get('photos', []),
         'business_description': vendor.get('business_description'),
-        'aadhar_url': vendor.get('aadhar_url'),
-        'pan_url': vendor.get('pan_url'),
-        'face_scan_url': vendor.get('face_scan_url'),
+        'aadhar_url': aadhar_url,
+        'pan_url': pan_url,
+        'face_scan_url': face_scan_url,
         'business_gallery_images': vendor.get('business_gallery_images', []),
         'menu_items': vendor.get('menu_items', []),
         'offers_home_delivery': vendor.get('offers_home_delivery', False),
@@ -938,7 +957,7 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'kyc_request_no': vendor.get('kyc_request_no'),
         'aadhaar_otp_verified_at': vendor.get('aadhaar_otp_verified_at'),
         'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
-        'review_status': 'pending' if is_pending else kyc_status_str,
+        'review_status': review_status,
         'review_state': 'needs_admin_action' if is_pending else 'closed',
         'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.utcnow().isoformat() + 'Z'),
     }
@@ -950,7 +969,12 @@ async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str):
     if not vendor:
         return
 
-    snapshot = _build_vendor_admin_snapshot(vendor)
+    owner_id = vendor.get('owner_id')
+    user = None
+    if owner_id:
+        user = await db.get_document('users', owner_id)
+
+    snapshot = _build_vendor_admin_snapshot(vendor, user)
     await db.set_document('vendor_admin_reviews', vendor_id, snapshot)
 
 
