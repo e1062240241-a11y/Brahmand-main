@@ -1,38 +1,81 @@
-# Ignore backend directory (contains python code, large data, and long filenames)
+# ============================================================
+# Backend & Python Artifacts
+# ============================================================
 backend/
-
-# Ignore Python virtual environments and cache directories
+backend/**/*
 .venv/
+.venv/**/*
 __pycache__/
+__pycache__/**/*
 *.pyc
 .pytest_cache/
+.pytest_cache/**/*
 
-# Ignore local node_modules
+# ============================================================
+# Root Native Folders (unused by frontend Expo build)
+# ============================================================
+ios/
+ios/**/*
+app/
+app/**/*
+gradle/
+gradle/**/*
+.deploy/
+.deploy/**/*
+tmp_home/
+tmp_home/**/*
 node_modules/
+node_modules/**/*
+
+# Root files
+gradlew
+gradlew.bat
+gradle.properties
+settings.gradle.kts
+build.gradle.kts
+chariot_decoded.png
+test_cert.html
+window_dump.xml
+e={
+parth.txt
+debug_admin.log
+app.json.bak
+eas.json.bak
+
+# ============================================================
+# Frontend Build & Cache Artifacts
+# ============================================================
 frontend/node_modules/
+frontend/node_modules/**/*
+frontend/.expo/
+frontend/.expo/**/*
+frontend/dist/
+frontend/dist/**/*
+frontend/web-build/
+frontend/web-build/**/*
+frontend/web/
+frontend/web/**/*
 
-# Ignore development / agent tools
-.agent/
-.emergent/
-scratch_*.py
-fix_*.py
-test_*.py
+# Frontend Android caches
+frontend/android/build/
+frontend/android/build/**/*
+frontend/android/app/build/
+frontend/android/app/build/**/*
+frontend/android/app/.cxx/
+frontend/android/app/.cxx/**/*
+frontend/android/.gradle/
+frontend/android/.gradle/**/*
 
-# Ignore local tests and scripts
-tests/
-backend_test.py
-beta_launch_test.py
-help_request_test.py
-sanatan_lok_v1_test.py
-simple_test.py
-temp-check-frontend.sh
-temp-check-pdf.sh
-deploy-backend.sh
-deploy-gcp-full.sh
-patch_global_fab.py
-search_ocr.py
+# Frontend iOS caches & Pods
+frontend/ios/build/
+frontend/ios/build/**/*
+frontend/ios/Pods/
+frontend/ios/Pods/**/*
+frontend/ios/Podfile.lock
 
-# System files
+# ============================================================
+# General / System Files
+# ============================================================
 .DS_Store
 *.pem
 *.log
@@ -40,3 +83,10 @@ search_ocr.py
 *.txt
 tmp/
 /Library/
+.agent/
+.agent/**/*
+.emergent/
+.emergent/**/*
+scratch_*
+fix_*
+test_*
