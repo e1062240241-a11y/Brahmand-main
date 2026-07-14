@@ -1,29 +1,51 @@
 # Node
+node_modules
 node_modules/
-../node_modules/
+node_modules/**/*
 
 # Expo
+.expo
 .expo/
+.expo/**/*
+dist
 dist/
+dist/**/*
+web-build
 web-build/
+web-build/**/*
 expo-env.d.ts
+.agent
 .agent/
+.agent/**/*
 
 # Metro
 .metro-health-check*
+.metro-cache
 .metro-cache/
+.metro-cache/**/*
 
 # Android
+android/build
 android/build/
+android/build/**/*
+android/app/build
 android/app/build/
+android/app/build/**/*
+android/app/.cxx
+android/app/.cxx/
+android/app/.cxx/**/*
+android/.gradle
 android/.gradle/
-../android/
+android/.gradle/**/*
 
 # iOS
+ios/build
 ios/build/
+ios/build/**/*
+ios/Pods
 ios/Pods/
+ios/Pods/**/*
 ios/Podfile.lock
-../ios/
 
 # macOS
 .DS_Store
@@ -33,6 +55,8 @@ ios/Podfile.lock
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
+scratch*
 
 # local env files
 .env.local
@@ -41,13 +65,10 @@ yarn-error.*
 .env.production.local
 
 # Firebase / Expo hosting artifacts
+.firebase
 .firebase/
+.firebase/**/*
 .firebaserc
+.next
 .next/
-
-# Backend and root folders
-../backend/
-../.git/
-../tests/
-scratch*
-*.log
+.next/**/*
