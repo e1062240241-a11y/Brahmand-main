@@ -141,41 +141,75 @@ const normalizeNativeUploadFile = async (file: {
     fileUri = `file://${fileUri}`;
   }
 
+  const isHeicImage = fileUri && (
+    fileUri.toLowerCase().endsWith(".heic") ||
+    fileUri.toLowerCase().endsWith(".heif") ||
+    fileType?.toLowerCase().includes("heic") ||
+    fileType?.toLowerCase().includes("heif") ||
+    fileName?.toLowerCase().endsWith(".heic") ||
+    fileName?.toLowerCase().endsWith(".heif")
+  );
+
+  let finalUri = fileUri;
+  let finalName = fileName;
+  let finalType = fileType;
+
+  if (isHeicImage && Platform.OS !== "web") {
+    try {
+      const { manipulateAsync, SaveFormat } = require('expo-image-manipulator');
+      console.log("[API] HEIC/HEIF image detected. Converting to JPEG on client...");
+      const manipulated = await manipulateAsync(
+        fileUri,
+        [],
+        { compress: 0.8, format: SaveFormat.JPEG }
+      );
+      finalUri = manipulated.uri;
+      finalName = fileName.replace(/\.(heic|heif)$/i, ".jpg");
+      if (!finalName.endsWith(".jpg") && !finalName.endsWith(".jpeg")) {
+        finalName += ".jpg";
+      }
+      finalType = "image/jpeg";
+      console.log("[API] Client-side HEIC/HEIF conversion successful:", finalUri);
+    } catch (err) {
+      console.warn("[API] Failed to convert HEIC/HEIF to JPEG, uploading raw file:", err);
+    }
+  }
+
   if (
     Platform.OS !== "web" &&
-    (fileUri.startsWith("content://") ||
-      fileUri.startsWith("ph://") ||
-      fileUri.startsWith("assets-library://"))
+    (finalUri.startsWith("content://") ||
+      finalUri.startsWith("ph://") ||
+      finalUri.startsWith("assets-library://"))
   ) {
     try {
       const fileSystem = FileSystem as any;
       const cacheDir =
         fileSystem.cacheDirectory || fileSystem.documentDirectory || "";
-      const localUri = `${cacheDir}upload-${Date.now()}-${fileName}`;
+      const localUri = `${cacheDir}upload-${Date.now()}-${finalName}`;
       if (typeof fileSystem.copyAsync === "function") {
-        await fileSystem.copyAsync({ from: fileUri, to: localUri });
+        await fileSystem.copyAsync({ from: finalUri, to: localUri });
       } else {
-        await FileSystem.downloadAsync(fileUri, localUri);
+        await FileSystem.downloadAsync(finalUri, localUri);
       }
       return {
         uri: localUri,
-        name: fileName,
-        type: fileType,
+        name: finalName,
+        type: finalType,
       };
     } catch (error) {
       console.warn("[API] Failed to convert content URI to local file:", error);
       return {
-        uri: fileUri,
-        name: fileName,
-        type: fileType,
+        uri: finalUri,
+        name: finalName,
+        type: finalType,
       };
     }
   }
 
   return {
-    uri: fileUri,
-    name: fileName,
-    type: fileType,
+    uri: finalUri,
+    name: finalName,
+    type: finalType,
   };
 };
 

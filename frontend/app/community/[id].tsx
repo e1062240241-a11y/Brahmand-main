@@ -3708,7 +3708,7 @@ export default function CommunityDetailScreen() {
     // Attempt real API send if text or image is present
     (async () => {
       let uploadedUrl: string | undefined = undefined;
-      const localImageToUpload = selectedImage;
+      let localImageToUpload = selectedImage;
       if (localImageToUpload) {
         try {
           const { uploadChatMedia } = require('../../src/services/api');
@@ -3720,6 +3720,27 @@ export default function CommunityDetailScreen() {
             localImageToUpload.toLowerCase().includes('/video/') ||
             localImageToUpload.toLowerCase().includes('video=true')
           ));
+
+          if (!isVideoFile && Platform.OS !== 'web') {
+            try {
+              const { manipulateAsync, SaveFormat } = require('expo-image-manipulator');
+              console.log('[Community] Compressing and converting image to JPEG...');
+              const compressedResult = await manipulateAsync(
+                localImageToUpload,
+                [],
+                { compress: 0.8, format: SaveFormat.JPEG }
+              );
+              localImageToUpload = compressedResult.uri;
+              console.log('[Community] Image compression successful:', localImageToUpload);
+            } catch (compressErr) {
+              console.warn('[Community] Image compression failed, uploading original:', compressErr);
+            }
+          }
+
+          if (!localImageToUpload) {
+            throw new Error('Image URI is null');
+          }
+
           const fileExtension = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4') : 'jpg';
           const fileMime = isVideoFile ? (localImageToUpload.toLowerCase().endsWith('.mov') ? 'video/quicktime' : 'video/mp4') : 'image/jpeg';
 
@@ -3732,6 +3753,22 @@ export default function CommunityDetailScreen() {
           console.log('[Community] Media uploaded successfully:', uploadedUrl);
         } catch (error) {
           console.error('[Community] Media upload failed:', error);
+        }
+
+        // If media was selected but upload failed (no uploadedUrl), revert optimistic posts and show alert
+        if (!uploadedUrl) {
+          Alert.alert('Upload Failed', 'Failed to upload media. Please try again.');
+          newPosts.forEach(p => {
+            if (Platform.OS === 'ios') {
+              iosUserCreatedPostIds.delete(String(p.id));
+            }
+          });
+          setCommunityPosts(prev => {
+            const reverted = prev.filter(post => !newPosts.some(np => np.id === post.id));
+            useChatStore.getState().setCommunityScreenCache(cacheKey, { communityPosts: reverted });
+            return reverted;
+          });
+          return;
         }
       }
 

@@ -2980,7 +2980,7 @@ async def _upload_post_impl(
     header = await file.read(32)
     await file.seek(0)
 
-    is_heic = any(brand in header for brand in (b'heic', b'heix', b'hevc', b'mif1'))
+    is_heic = any(brand in header for brand in (b'heic', b'heix', b'mif1'))
     is_actually_video = (b'ftyp' in header and not is_heic) or header.startswith(b'\x00\x00\x00')
     is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG') or is_heic
 
@@ -3226,7 +3226,7 @@ async def _upload_chat_media_impl(
     header = await file.read(32)
     await file.seek(0)
 
-    is_heic = any(brand in header for brand in (b'heic', b'heix', b'hevc', b'mif1'))
+    is_heic = any(brand in header for brand in (b'heic', b'heix', b'mif1'))
     is_actually_video = (b'ftyp' in header and not is_heic) or header.startswith(b'\x00\x00\x00')
     is_actually_image = header.startswith(b'\xff\xd8\xff') or header.startswith(b'\x89PNG') or is_heic
 
