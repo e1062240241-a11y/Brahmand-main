@@ -31,7 +31,6 @@ import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
-import { useAudioPlayer } from 'expo-audio';
 import { useAuthStore } from '../../src/store/authStore';
 import { useNotificationStore } from '../../src/store/notificationStore';
 import { useFeedStore } from '../../src/store/feedStore';
@@ -448,7 +447,7 @@ export default function HomeScreen() {
   const actionCardWidth = Platform.OS === 'android' ? 120 : ACTION_CARD_WIDTH;
   const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
   const actionCardSnapInterval = Platform.OS === 'android' ? 130 : ACTION_CARD_SNAP_INTERVAL;
-  const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
+  const bellPlayerRef = useRef<any>(null);
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
   const navigation = useNavigation();
@@ -1278,7 +1277,11 @@ export default function HomeScreen() {
 
   const handleNotificationPress = () => {
     try {
-      bellPlayer.play();
+      if (!bellPlayerRef.current) {
+        const { createAudioPlayer } = require('expo-audio');
+        bellPlayerRef.current = createAudioPlayer(require('../../assets/notifysound/bell.mp3'));
+      }
+      bellPlayerRef.current.play();
     } catch (err) {
       console.warn('Failed to play bell sound:', err);
     }
