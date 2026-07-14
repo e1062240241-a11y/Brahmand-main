@@ -1147,7 +1147,7 @@ const DirectMessageScreen = () => {
       }
     };
 
-    (async () => {
+    const setupSocket = async () => {
       try {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
@@ -1187,23 +1187,25 @@ const DirectMessageScreen = () => {
           }
         });
       } catch (error) {
-        console.error('[Chat] Socket real-time setup failed:', error);
+        console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
+        if (!pollingInterval) {
+          pollingInterval = setInterval(async () => {
+            if (isBlockedRef.current) {
+              if (pollingInterval) clearInterval(pollingInterval);
+              return;
+            }
+            if (!uploadingMedia) {
+              await Promise.allSettled([
+                fetchMessagesViaAPI(),
+                fetchConversation()
+              ]);
+            }
+          }, 30000);
+        }
       }
-    })();
+    };
 
-    pollingInterval = setInterval(async () => {
-      if (isBlockedRef.current) {
-        if (pollingInterval) clearInterval(pollingInterval);
-        return;
-      }
-      if (!uploadingMedia) {
-        await Promise.allSettled([
-          fetchMessagesViaAPI(),
-          fetchConversation()
-        ]);
-      }
-    }, 30000);
-
+    setupSocket();
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {

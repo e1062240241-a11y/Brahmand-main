@@ -49,6 +49,7 @@ import HomeJyotishSection from '../../src/components/HomeJyotishSection';
 import Svg, { Path, Circle, Rect, G, Text as SvgText } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
+import { socketService } from '../../src/services/socket';
 import {
   rankPosts,
   saveLastTopPostId,
@@ -621,34 +622,7 @@ export default function HomeScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    if (!isFocused) return;
 
-    let active = true;
-    const fetchActiveCounts = async () => {
-      try {
-        const response = await api.get('/jaap/active-count', {
-          params: { rooms: 'jaap_hanuman,jaap_shiva' }
-        });
-        if (active && response && response.data) {
-          const hanuman = response.data.jaap_hanuman || 0;
-          const shiva = response.data.jaap_shiva || 0;
-          // If count is > 10, show count * 18, else show randomized count (2 to 18) directly
-          setHanumanChantCount(hanuman > 10 ? hanuman * 18 : Math.floor(Math.random() * 17) + 2);
-          setShivaChantCount(shiva > 10 ? shiva * 18 : Math.floor(Math.random() * 17) + 2);
-        }
-      } catch (error) {
-        console.warn('Error fetching active jaap counts:', error);
-      }
-    };
-
-    fetchActiveCounts();
-    const interval = setInterval(fetchActiveCounts, 10000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [isFocused]);
 
   const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
   const [liveCoords, setLiveCoords] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -1220,6 +1194,51 @@ export default function HomeScreen() {
   useEffect(() => {
     loadHomeCache();
   }, [loadHomeCache]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+
+    let active = true;
+    const fetchActiveCounts = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: 'jaap_hanuman,jaap_shiva' }
+        });
+        if (active && response && response.data) {
+          const hanuman = response.data.jaap_hanuman || 0;
+          const shiva = response.data.jaap_shiva || 0;
+          // If count is > 10, show count * 18, else show randomized count (2 to 18) directly
+          setHanumanChantCount(hanuman > 10 ? hanuman * 18 : Math.floor(Math.random() * 17) + 2);
+          setShivaChantCount(shiva > 10 ? shiva * 18 : Math.floor(Math.random() * 17) + 2);
+        }
+      } catch (error) {
+        console.warn('Error fetching active jaap counts:', error);
+      }
+    };
+
+    fetchActiveCounts();
+    const interval = setInterval(fetchActiveCounts, 60000); // throttled to 60s
+
+    const handleNewSOSAlert = (data: any) => {
+      console.log('[Socket] New SOS/Blood alert received, refreshing home screen instantly:', data);
+      fetchActiveCounts();
+      initializeHome();
+    };
+
+    socketService.connect().then(() => {
+      socketService.onEvent('new_sos_alert', handleNewSOSAlert);
+      socketService.onEvent('new_community_request', handleNewSOSAlert);
+    }).catch(err => {
+      console.warn('[Socket] Failed to connect for home alerts:', err);
+    });
+
+    return () => {
+      active = false;
+      clearInterval(interval);
+      socketService.offEvent('new_sos_alert', handleNewSOSAlert);
+      socketService.offEvent('new_community_request', handleNewSOSAlert);
+    };
+  }, [isFocused, initializeHome]);
 
   useEffect(() => {
     if (!isFocused) return;

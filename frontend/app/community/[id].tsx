@@ -1324,9 +1324,6 @@ export default function CommunityDetailScreen() {
         .map((p: any) => {
           let eventImage = p.image || p.image_url || p.media_url;
           let resolvedImage = typeof eventImage === 'string' ? { uri: eventImage } : eventImage;
-          if (!resolvedImage) {
-            resolvedImage = require('../../assets/images/image temple/Siddhivinayak-Temple.webp');
-          }
           const diffInSeconds = p.timestamp ? Math.floor((new Date().getTime() - parseUTCDate(p.timestamp).getTime()) / 1000) : 0;
           let timeAgoStr = 'Just now';
           if (diffInSeconds >= 86400) timeAgoStr = `${Math.floor(diffInSeconds / 86400)}d ago`;
@@ -1337,7 +1334,7 @@ export default function CommunityDetailScreen() {
             id: p.id,
             title: p.title || p.content || 'Festival Celebration',
             description: p.description || p.content || 'Join our community celebration!',
-            location: p.location || p.sevaDetails || 'Nearby Community',
+            location: p.location || p.sevaDetails || undefined,
             time: p.time || (p.timestamp ? (() => {
               const d = parseUTCDate(p.timestamp);
               if (isNaN(d.getTime())) return 'Today';
@@ -1345,7 +1342,7 @@ export default function CommunityDetailScreen() {
               const month = String(d.getMonth() + 1).padStart(2, '0');
               return `${day}/${month}/${d.getFullYear()}`;
             })() : 'Today'),
-            image: resolvedImage,
+            image: resolvedImage || undefined,
             organizer: {
               name: p.user?.name || 'Devotee',
               photo: p.user?.photo || null,
@@ -2954,24 +2951,28 @@ export default function CommunityDetailScreen() {
   const renderFestivalEvent = ({ item }: { item: any }) => (
     <View style={styles.festEventCard}>
       <View style={styles.festEventMain}>
-        <CommunityMediaItem
-          media={item.image}
-          style={styles.festEventImage}
-          isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-        />
-        <View style={styles.festEventInfo}>
+        {item.image ? (
+          <CommunityMediaItem
+            media={item.image}
+            style={styles.festEventImage}
+            isActive={activeVideoKey === (item.id ? String(item.id) : '')}
+          />
+        ) : null}
+        <View style={[styles.festEventInfo, !item.image && { marginLeft: 0 }]}>
           <Text style={styles.festEventTitle}>{item.title}</Text>
           <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
           <View style={styles.festEventMeta}>
-            <TouchableOpacity 
-              style={styles.festMetaRow}
-              onPress={() => handleOpenMap(item.location)}
-              disabled={!item.location || item.location === 'Online' || item.location === 'Local'}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="location-outline" size={14} color={item.location && item.location !== 'Online' && item.location !== 'Local' ? "#FF6B00" : "#FF3B30"} />
-              <Text style={[styles.festMetaText, item.location && item.location !== 'Online' && item.location !== 'Local' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location}</Text>
-            </TouchableOpacity>
+            {item.location ? (
+              <TouchableOpacity 
+                style={styles.festMetaRow}
+                onPress={() => handleOpenMap(item.location)}
+                disabled={!item.location || item.location === 'Online' || item.location === 'Local'}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={14} color={item.location && item.location !== 'Online' && item.location !== 'Local' ? "#FF6B00" : "#FF3B30"} />
+                <Text style={[styles.festMetaText, item.location && item.location !== 'Online' && item.location !== 'Local' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location}</Text>
+              </TouchableOpacity>
+            ) : null}
             <View style={styles.festMetaRow}>
               <Ionicons name="time-outline" size={14} color="#FF3B30" />
               <Text style={styles.festMetaText} numberOfLines={1}>{item.time}</Text>
@@ -3626,7 +3627,7 @@ export default function CommunityDetailScreen() {
     const finalCategory = (categoryOverride === 'Others' || !categoryOverride) ? 'Feed' : categoryOverride;
 
     let postLocation: string | undefined = undefined;
-    if (finalCategory === 'Lost & Found') {
+    if (finalCategory === 'Lost & Found' || finalCategory === 'Festivals' || finalCategory === 'Events') {
       try {
         const { ensureForegroundPermission, getCurrentPosition } = require('../../src/services/location');
         const hasPermission = await ensureForegroundPermission();

@@ -10,7 +10,9 @@ import {
   Platform,
   StatusBar,
   ScrollView,
+  AppState,
 } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
@@ -76,18 +78,44 @@ const MANTRA_PREVIEW_EN: Record<string, string> = {
   shani_chalisa: 'Jai Ganesh Girija Suvan Mangal Karan Krupal | Deenan Ke Dukh Door Kari Keejai Nath Nihal || Jai Jai Shree Shanidev Prabhu Sunahu Vinay Maharaj...',
 };
 
-export default function LiveJaapWelcomeScreen() {
+const SessionStatusBanner = ({ mantraType }: { mantraType?: string }) => {
   const { t } = useTranslation();
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { mantraType, title, fromHome } = useLocalSearchParams<{ mantraType?: string, title?: string, fromHome?: string }>();
-  
   const [now, setNow] = useState(new Date());
+  const isFocused = useIsFocused();
 
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const startTimer = () => {
+      if (!timer) {
+        timer = setInterval(() => setNow(new Date()), 1000);
+      }
+    };
+
+    const stopTimer = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    if (isFocused && AppState.currentState === 'active') {
+      startTimer();
+    }
+
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (isFocused && nextAppState === 'active') {
+        startTimer();
+      } else {
+        stopTimer();
+      }
+    });
+
+    return () => {
+      stopTimer();
+      appStateSub.remove();
+    };
+  }, [isFocused]);
 
   const hanumanStatus = getCurrentHanumanStatus(now);
   const otherStatus = getCurrentOtherJaapStatus(now, mantraType);
@@ -96,7 +124,96 @@ export default function LiveJaapWelcomeScreen() {
   const isKedarnath = mantraType === 'kedarnath';
   const isOtherLiveJaap = !isHanuman && !isKedarnath && (mantraType === 'gayatri' || mantraType === 'krishna' || mantraType === 'shiva' || mantraType === 'ganesh' || mantraType === 'laxmi' || mantraType === 'mrityunjaya' || mantraType === 'shani_chalisa');
 
-  const isSessionActive = isHanuman ? hanumanStatus.isActive : (isOtherLiveJaap ? otherStatus.isActive : true);
+  if (isHanuman) {
+    return (
+      <View style={styles.statusBanner}>
+        {hanumanStatus.isActive ? (
+          <View style={styles.activeBannerInner}>
+            <View style={styles.liveDotRing} />
+            <Text style={styles.statusTextActive}>
+              {hanumanStatus.isCompleted
+                ? (t('language') === 'hi' ? 'सत्र समाप्त (अगले सत्र की प्रतीक्षा)' : 'Session Completed (Waiting for next)')
+                : t('language') === 'hi'
+                  ? `${hanumanStatus.sessionName === 'Morning' ? 'सुबह का' : hanumanStatus.sessionName === 'Afternoon' ? 'दोपहर का' : hanumanStatus.sessionName === 'Evening' ? 'शाम का' : 'रात का'} सत्र • राउंड ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} (कुल राउंड ${hanumanStatus.roundOfDay}/51)`
+                  : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.inactiveBannerInner}>
+            <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+            <Text style={styles.statusTextInactive}>
+              {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
+                const sName = hanumanStatus.nextSessionName;
+                if (t('language') === 'hi') {
+                  if (sName === 'Morning') return 'सुबह';
+                  if (sName === 'Afternoon') return 'दोपहर';
+                  if (sName === 'Evening') return 'शाम';
+                  if (sName === 'Night') return 'रात';
+                }
+                return sName;
+              })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Session Starts in'} {(() => {
+                if (!hanumanStatus.nextSessionStart) return '';
+                const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
+                const hrs = Math.max(0, Math.floor(diffMs / 3600000));
+                const mins = Math.max(0, Math.floor((diffMs % 3600000) / 60000));
+                const secs = Math.max(0, Math.floor((diffMs % 60000) / 1000));
+                return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+              })()}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  if (isOtherLiveJaap) {
+    return (
+      <View style={styles.statusBanner}>
+        {otherStatus.isActive ? (
+          <View style={styles.activeBannerInner}>
+            <View style={styles.liveDotRing} />
+            <Text style={styles.statusTextActive}>
+              {t('language') === 'hi'
+                ? `${otherStatus.sessionName === 'Morning' ? 'सुबह का' : otherStatus.sessionName === 'Afternoon' ? 'दोपहर का' : otherStatus.sessionName === 'Evening' ? 'शाम का' : 'रात का'} सत्र • लाइव`
+                : `${otherStatus.sessionName} Session • Live`}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.inactiveBannerInner}>
+            <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
+            <Text style={styles.statusTextInactive}>
+              {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
+                const sName = otherStatus.nextSessionName;
+                if (t('language') === 'hi') {
+                  if (sName === 'Morning') return 'सुबह का';
+                  if (sName === 'Afternoon') return 'दोपहर का';
+                  if (sName === 'Evening') return 'शाम का';
+                  if (sName === 'Night') return 'रात का';
+                }
+                return sName ? `${sName} Session` : '';
+              })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Starts in'} {(() => {
+                if (!otherStatus.nextSessionStart) return '';
+                const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
+                const hrs = Math.max(0, Math.floor(diffMs / 3600000));
+                const mins = Math.max(0, Math.floor((diffMs % 3600000) / 60000));
+                const secs = Math.max(0, Math.floor((diffMs % 60000) / 1000));
+                return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+              })()}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return null;
+};
+
+export default function LiveJaapWelcomeScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { mantraType, title, fromHome } = useLocalSearchParams<{ mantraType?: string, title?: string, fromHome?: string }>();
   
   return (
     <View style={styles.container}>
@@ -132,83 +249,8 @@ export default function LiveJaapWelcomeScreen() {
                <Text style={styles.lotusIcon}>🪷</Text>
              </View>
           </View>
-          {isHanuman && (
-            <View style={styles.statusBanner}>
-              {hanumanStatus.isActive ? (
-                <View style={styles.activeBannerInner}>
-                  <View style={styles.liveDotRing} />
-                  <Text style={styles.statusTextActive}>
-                    {hanumanStatus.isCompleted
-                      ? (t('language') === 'hi' ? 'सत्र समाप्त (अगले सत्र की प्रतीक्षा)' : 'Session Completed (Waiting for next)')
-                      : t('language') === 'hi'
-                        ? `${hanumanStatus.sessionName === 'Morning' ? 'सुबह का' : hanumanStatus.sessionName === 'Afternoon' ? 'दोपहर का' : hanumanStatus.sessionName === 'Evening' ? 'शाम का' : 'रात का'} सत्र • राउंड ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} (कुल राउंड ${hanumanStatus.roundOfDay}/51)`
-                        : `${hanumanStatus.sessionName} Session • Round ${hanumanStatus.roundOfSession} of ${hanumanStatus.totalRepsInSession} (Total Round ${hanumanStatus.roundOfDay}/51)`}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.inactiveBannerInner}>
-                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
-                  <Text style={styles.statusTextInactive}>
-                    {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
-                      const sName = hanumanStatus.nextSessionName;
-                      if (t('language') === 'hi') {
-                        if (sName === 'Morning') return 'सुबह';
-                        if (sName === 'Afternoon') return 'दोपहर';
-                        if (sName === 'Evening') return 'शाम';
-                        if (sName === 'Night') return 'रात';
-                      }
-                      return sName;
-                    })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Session Starts in'} {(() => {
-                      if (!hanumanStatus.nextSessionStart) return '';
-                      const diffMs = hanumanStatus.nextSessionStart.getTime() - now.getTime();
-                      const hrs = Math.floor(diffMs / 3600000);
-                      const mins = Math.floor((diffMs % 3600000) / 60000);
-                      const secs = Math.floor((diffMs % 60000) / 1000);
-                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    })()}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {isOtherLiveJaap && (
-            <View style={styles.statusBanner}>
-              {otherStatus.isActive ? (
-                <View style={styles.activeBannerInner}>
-                  <View style={styles.liveDotRing} />
-                  <Text style={styles.statusTextActive}>
-                    {t('language') === 'hi'
-                      ? `${otherStatus.sessionName === 'Morning' ? 'सुबह का' : otherStatus.sessionName === 'Afternoon' ? 'दोपहर का' : otherStatus.sessionName === 'Evening' ? 'शाम का' : 'रात का'} सत्र • लाइव`
-                      : `${otherStatus.sessionName} Session • Live`}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.inactiveBannerInner}>
-                  <Ionicons name="time-outline" size={16} color="#7B6A58" style={{ marginRight: 6 }} />
-                  <Text style={styles.statusTextInactive}>
-                    {t('language') === 'hi' ? 'अगला लाइव सत्र' : 'Next Live'}: {(() => {
-                      const sName = otherStatus.nextSessionName;
-                      if (t('language') === 'hi') {
-                        if (sName === 'Morning') return 'सुबह का';
-                        if (sName === 'Afternoon') return 'दोपहर का';
-                        if (sName === 'Evening') return 'शाम का';
-                        if (sName === 'Night') return 'रात का';
-                      }
-                      return sName ? `${sName} Session` : '';
-                    })()} {t('language') === 'hi' ? 'शुरू होने में' : 'Starts in'} {(() => {
-                      if (!otherStatus.nextSessionStart) return '';
-                      const diffMs = otherStatus.nextSessionStart.getTime() - now.getTime();
-                      const hrs = Math.floor(diffMs / 3600000);
-                      const mins = Math.floor((diffMs % 3600000) / 60000);
-                      const secs = Math.floor((diffMs % 60000) / 1000);
-                      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-                    })()}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
+          
+          <SessionStatusBanner mantraType={mantraType} />
 
           {/* MANTRA PREVIEW - SCROLLABLE FOR LONG TEXTS LIKE HANUMAN CHALISA */}
           <View style={styles.mantraPreviewBox}>

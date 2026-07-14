@@ -12386,6 +12386,17 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         # Also emit globally
         await sio.emit('new_community_request', request_data)
         logger.info(f"Emitted real-time event for community request {request_id}")
+        
+        if data.request_type.value == 'blood':
+            await sio.emit('new_sos_alert', {
+                'type': 'blood_request',
+                'id': request_id,
+                'user_id': user_id,
+                'user_name': user.get('name'),
+                'blood_group': data.blood_group,
+                'location': data.location or data.hospital_name or '',
+                'message': data.description or ''
+            })
     except Exception as e:
         logger.warning(f"Failed to emit real-time event for community request: {e}")
 
@@ -13030,6 +13041,17 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     
     # Emit SOS alert via socket to nearby users
     await sio.emit('sos_alert', sos_data)
+    try:
+        await sio.emit('new_sos_alert', {
+            'type': 'sos',
+            'id': sos_id,
+            'user_id': user_id,
+            'user_name': user.get('name'),
+            'location': data.micro_location or area or '',
+            'message': f"Emergency type: {data.emergency_type or 'General'}"
+        })
+    except Exception as e:
+        logger.warning(f"Failed to emit new_sos_alert to socket: {e}")
     
     # Start escalation process in background
     await task_queue.enqueue(_escalate_sos_notifications, sos_id, all_target_user_ids)
@@ -14607,10 +14629,32 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
+    jaap_rooms_to_update = []
+    try:
+        namespace_rooms = sio.manager.rooms.get('/', {})
+        for r_name, clients in namespace_rooms.items():
+            if r_name.startswith("jaap_") and sid in clients:
+                jaap_rooms_to_update.append(r_name)
+    except Exception as e:
+        logger.warning(f"Error finding rooms for disconnected socket {sid}: {e}")
+
     await _remove_socket_from_voice_room(sid)
 
+    for r_name in jaap_rooms_to_update:
+        try:
+            room_clients = sio.manager.rooms.get('/', {}).get(r_name, {})
+            count = 0
+            if isinstance(room_clients, dict):
+                count = len(room_clients)
+            elif hasattr(room_clients, '__len__'):
+                count = len(room_clients)
+            if sid in room_clients:
+                count = max(0, count - 1)
+            await sio.emit('room_count_update', {'room': r_name, 'count': count}, room=r_name)
+        except Exception as e:
+            logger.warning(f"Error emitting room count update on disconnect: {e}")
 
-@sio.event
+
 @sio.event
 async def join_room(sid, data):
     room = data.get('room')
@@ -14639,10 +14683,23 @@ async def join_room(sid, data):
     # Always enter the room for general events
     await sio.enter_room(sid, room)
     
+    count = 0
+    if room.startswith("jaap_"):
+        try:
+            room_clients = sio.manager.rooms.get('/', {}).get(room, {})
+            if isinstance(room_clients, dict):
+                count = len(room_clients)
+            elif hasattr(room_clients, '__len__'):
+                count = len(room_clients)
+            await sio.emit('room_count_update', {'room': room, 'count': count}, room=room)
+        except Exception as e:
+            logger.warning(f"Error emitting room count update on join: {e}")
+
     return {
         'status': 'joined',
         'room': room,
         'peerId': peer_id,
+        'count': count,
         'peers': [peer for peer in ROOM_PEERS.get(room, set()) if peer != peer_id] if peer_id else []
     }
 
@@ -14651,9 +14708,22 @@ async def join_room(sid, data):
 async def leave_room(sid, data):
     room = data.get('room')
     peer_id = data.get('peerId')
-    if room and peer_id:
+    if room:
         await sio.leave_room(sid, room)
-        await _remove_socket_from_voice_room(sid)
+        if peer_id:
+            await _remove_socket_from_voice_room(sid)
+        
+        if room.startswith("jaap_"):
+            try:
+                room_clients = sio.manager.rooms.get('/', {}).get(room, {})
+                count = 0
+                if isinstance(room_clients, dict):
+                    count = len(room_clients)
+                elif hasattr(room_clients, '__len__'):
+                    count = len(room_clients)
+                await sio.emit('room_count_update', {'room': room, 'count': count}, room=room)
+            except Exception as e:
+                logger.warning(f"Error emitting room count update on leave: {e}")
         return {"status": "left", "room": room}
 
 

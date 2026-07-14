@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   ScrollView,
   Alert,
   Share,
+  AppState,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -35,7 +36,7 @@ import {
   AudioScenarioType,
   AudioProfileType,
 } from 'react-native-agora';
-import api, { getAgoraToken } from '../../services/api';
+import { getAgoraToken } from '../../services/api';
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
 import { socketService } from '../../services/socket';
@@ -270,6 +271,7 @@ export default function LiveJaapRoomView() {
   };
 
   const [now, setNow] = useState(new Date());
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === 'active');
   const [personalCount, setPersonalCount] = useState(0);
   const lastTimeRef = useRef(0);
   const accumulatedTimeRef = useRef(0);
@@ -316,9 +318,10 @@ export default function LiveJaapRoomView() {
   }, [countKey, accKey]);
 
   useEffect(() => {
+    if (!isAppActive) return;
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [isAppActive]);
 
   const hanumanStatus = getCurrentHanumanStatus(now);
   const otherStatus = getCurrentOtherJaapStatus(now, mantraType);
@@ -374,6 +377,8 @@ export default function LiveJaapRoomView() {
   const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
   const upcomingFade = useRef(new Animated.Value(0)).current;
+  const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
+  const fadeAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   
   // Scroller Animators
   const soloMoveAnim = useRef(new Animated.Value(100)).current;
@@ -383,21 +388,21 @@ export default function LiveJaapRoomView() {
   const agoraJoinedRef = useRef(false);
   const agoraInitializedRef = useRef(false);
   
-  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 50, keepAudioSessionActive: true });
+  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 500, keepAudioSessionActive: true });
   const audioStatus = useAudioPlayerStatus(bgPlayer);
 
   // Polling loop for smooth subtitle highlight updates on Native
   useEffect(() => {
-    if (!bgPlayer) return;
+    if (!bgPlayer || !isAppActive) return;
     const interval = setInterval(() => {
       if (bgPlayer.currentTime !== undefined && bgPlayer.currentTime !== null) {
         const rawTime = bgPlayer.currentTime;
         const elapsed = mantraType === 'gayatri' ? (rawTime - 2.0 + 29.276) % 29.276 : rawTime;
         setCurrentTimeState(elapsed);
       }
-    }, 50);
+    }, 500);
     return () => clearInterval(interval);
-  }, [bgPlayer, mantraType]);
+  }, [bgPlayer, mantraType, isAppActive]);
 
 
   // Get active line and highlighted index
@@ -667,64 +672,46 @@ export default function LiveJaapRoomView() {
   }, [bgPlayer, isMuted, mantraType]);
 
   // Drift check and synchronization for Native player
-  useEffect(() => {
+  const syncPlayback = useCallback(() => {
     if (!bgPlayer || mantraType === 'shani_chalisa') return;
-    
-    let hasInitiallySynced = false;
-    const syncTimer = setInterval(() => {
-      if (mantraType === 'hanuman') {
-        const status = getCurrentHanumanStatus(new Date());
-        if (status.isActive && !status.isCompleted && !status.isBreak) {
-          const expected = status.audioPositionSeconds;
-          const current = bgPlayer.currentTime || 0;
-          const diff = Math.abs(current - expected);
-          
-          if (!hasInitiallySynced || diff > 1.5) {
-            bgPlayer.seekTo(expected);
-            hasInitiallySynced = true;
-          }
-        }
-      } else if (mantraType === 'gayatri') {
-        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
-        if (status.isActive) {
-          const expected = (status.elapsedSeconds + 2.0) % 29.276;
-          const current = bgPlayer.currentTime || 0;
-          const diff = Math.abs(current - expected);
-          
-          if (!hasInitiallySynced || diff > 1.5) {
-            bgPlayer.seekTo(expected);
-            hasInitiallySynced = true;
-          }
-        }
-      } else if (mantraType === 'shiva') {
-        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
-        if (status.isActive) {
-           const expected = status.elapsedSeconds % 8.48;
-           const current = bgPlayer.currentTime || 0;
-           const diff = Math.abs(current - expected);
-           
-           if (!hasInitiallySynced || diff > 1.5) {
-             bgPlayer.seekTo(expected);
-             hasInitiallySynced = true;
-           }
-        }
-      } else if (mantraType === 'krishna') {
-        const status = getCurrentOtherJaapStatus(new Date(), mantraType);
-        if (status.isActive) {
-           const expected = status.elapsedSeconds % 22.77;
-           const current = bgPlayer.currentTime || 0;
-           const diff = Math.abs(current - expected);
-           
-           if (!hasInitiallySynced || diff > 1.5) {
-             bgPlayer.seekTo(expected);
-             hasInitiallySynced = true;
-           }
-        }
+    if (mantraType === 'hanuman') {
+      const status = getCurrentHanumanStatus(new Date());
+      if (status.isActive && !status.isCompleted && !status.isBreak) {
+        bgPlayer.seekTo(status.audioPositionSeconds);
       }
-    }, 1500);
-    
-    return () => clearInterval(syncTimer);
+    } else {
+      const status = getCurrentOtherJaapStatus(new Date(), mantraType);
+      if (status.isActive) {
+        const totalDuration = mantraType === 'gayatri' ? 29.276 : (mantraType === 'krishna' ? 22.77 : 8.48);
+        const expected = mantraType === 'gayatri'
+          ? (status.elapsedSeconds + 2.0) % 29.276
+          : status.elapsedSeconds % totalDuration;
+        bgPlayer.seekTo(expected);
+      }
+    }
   }, [bgPlayer, mantraType]);
+
+  const updateActiveDevotees = useCallback((realCount: number) => {
+    const baseCount = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+    const finalCount = baseCount * 18 + Math.floor(Math.random() * 11) - 5;
+    setActiveDevotees(Math.max(18, finalCount));
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      const active = nextAppState === 'active';
+      setIsAppActive(active);
+      if (active) {
+        syncPlayback();
+        glowAnimRef.current?.start();
+        fadeAnimRef.current?.start();
+      } else {
+        glowAnimRef.current?.stop();
+        fadeAnimRef.current?.stop();
+      }
+    });
+    return () => subscription.remove();
+  }, [syncPlayback]);
 
   // Explicit unmount cleanup for native background audio player
   useEffect(() => {
@@ -763,24 +750,31 @@ export default function LiveJaapRoomView() {
     };
     initAudioMode();
 
-    const glowAnim = Animated.loop(
+    glowAnimRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(glowOpacity, { toValue: 0.9, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(glowOpacity, { toValue: 0.3, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
       ])
     );
-    const fadeAnim = Animated.loop(
+    fadeAnimRef.current = Animated.loop(
       Animated.sequence([
         Animated.timing(upcomingFade, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(upcomingFade, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.delay(1600),
       ])
     );
-    glowAnim.start();
-    fadeAnim.start();
+
+    if (AppState.currentState === 'active') {
+      glowAnimRef.current.start();
+      fadeAnimRef.current.start();
+    }
 
     setupAgora();
-    return () => { glowAnim.stop(); fadeAnim.stop(); cleanupAgora(); };
+    return () => {
+      glowAnimRef.current?.stop();
+      fadeAnimRef.current?.stop();
+      cleanupAgora();
+    };
   }, []);
 
   const navigation = useNavigation();
@@ -800,48 +794,29 @@ export default function LiveJaapRoomView() {
 
   useEffect(() => {
     const rName = 'jaap_' + (mantraType || 'gayatri');
-    let active = true;
     
-    const fetchRoomActiveCount = async () => {
-      try {
-        const response = await api.get('/jaap/active-count', {
-          params: { rooms: rName }
-        });
-        if (active && response && response.data) {
-          const realCount = response.data[rName] || 0;
-          const baseCount = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
-          const finalCount = baseCount * 18 + Math.floor(Math.random() * 11) - 5;
-          setActiveDevotees(Math.max(18, finalCount));
-        }
-      } catch (err) {
-        console.warn('Error fetching active count in room:', err);
-        if (active) {
-          setActiveDevotees(prev => {
-            const diff = Math.floor(Math.random() * 11) - 5;
-            return Math.max(18, prev + diff);
-          });
-        }
-      }
-    };
-
-    fetchRoomActiveCount();
-    const interval = setInterval(fetchRoomActiveCount, 10000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [mantraType]);
-
-  useEffect(() => {
-    const rName = 'jaap_' + (mantraType || 'gayatri');
     socketService.connect().then(() => {
-      socketService.joinRoom(rName);
+      socketService.joinRoom(rName).then((res: any) => {
+        syncPlayback();
+        if (res && typeof res.count === 'number') {
+          updateActiveDevotees(res.count);
+        }
+      });
     }).catch(err => console.warn('Socket connection failed in LiveJaapRoomView.native:', err));
 
+    const handleCountUpdate = (data: { room: string; count: number }) => {
+      if (data.room === rName) {
+        updateActiveDevotees(data.count);
+      }
+    };
+    
+    socketService.onEvent('room_count_update', handleCountUpdate);
+
     return () => {
+      socketService.offEvent('room_count_update', handleCountUpdate);
       socketService.leaveRoom(rName);
     };
-  }, [mantraType]);
+  }, [mantraType, syncPlayback, updateActiveDevotees]);
 
   useEffect(() => {
     if (mantraType === 'hanuman') return;
@@ -890,6 +865,7 @@ export default function LiveJaapRoomView() {
 
   useEffect(() => {
     if (mantraType === 'hanuman' || (isSessionActive && mantraType !== 'shani_chalisa')) return;
+    if (!isAppActive) return;
 
     let timer: ReturnType<typeof setTimeout>;
     const isHanuman = mantraType === 'hanuman';
@@ -923,7 +899,7 @@ export default function LiveJaapRoomView() {
       }
     }, wordDuration);
     return () => clearTimeout(timer);
-  }, [currentIndex, isHolding, WORDS, mantraType, isSessionActive]);
+  }, [currentIndex, isHolding, WORDS, mantraType, isSessionActive, isAppActive]);
 
   const setupAgora = async () => {
     try {
