@@ -70,16 +70,7 @@ const ChatNativeVideoPlayer = React.memo(({
     }
   }, [player, isPlaying]);
 
-  // Clean up player on unmount to prevent audio leaks
-  useEffect(() => {
-    return () => {
-      if (player) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
+
 
   if (!ExpoVideoModule?.VideoView || !player) {
     return <View style={[style, { backgroundColor: '#1C1C1E' }]} />;

@@ -92,12 +92,15 @@ const NativeVideoPlayer = memo(({
     }
   }, [isMuted, player]);
 
+  const hasStartedPlaying = useRef(false);
+
   useEffect(() => {
     if (player) {
       try {
         if (shouldPlay) {
           player.play();
-        } else {
+          hasStartedPlaying.current = true;
+        } else if (hasStartedPlaying.current) {
           player.pause();
         }
       } catch (e) {
@@ -105,17 +108,6 @@ const NativeVideoPlayer = memo(({
       }
     }
   }, [shouldPlay, player]);
-
-  // Clean up player on unmount
-  useEffect(() => {
-    return () => {
-      if (player) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
 
   if (!ExpoVideoModule?.VideoView || !player) {
     return (

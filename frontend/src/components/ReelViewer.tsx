@@ -106,16 +106,7 @@ const NativeVideoPlayer = React.memo(({
     };
   }, [player]);
 
-  // Clean up player on unmount
-  useEffect(() => {
-    return () => {
-      if (player) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
+
 
   if (!ExpoVideoModule?.VideoView || !player) {
     return <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
@@ -308,6 +299,7 @@ const ReelVideoItem = React.memo(({
   const seekingRef = useRef<'left' | 'right' | null>(null);
   const seekIntervalRef = useRef<any>(null);
   const durationRef = useRef(0);
+  const hasStartedPlaying = useRef(false);
   const lastTapRef = useRef<number>(0);
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartOpacity = useRef(new Animated.Value(0)).current;
@@ -453,7 +445,8 @@ const ReelVideoItem = React.memo(({
         player.playbackRate = playbackSpeed;
         if (isActive && !isPaused && appState === 'active') {
           player.play();
-        } else {
+          hasStartedPlaying.current = true;
+        } else if (hasStartedPlaying.current) {
           player.pause();
         }
       } catch (e) {
@@ -481,10 +474,6 @@ const ReelVideoItem = React.memo(({
             videoRef.current.pause();
           } catch (e) {}
         }
-      } else if (player) {
-        try {
-          player.pause();
-        } catch (e) {}
       }
     };
   }, [player]);

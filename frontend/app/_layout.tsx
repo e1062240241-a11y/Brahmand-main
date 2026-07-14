@@ -751,7 +751,10 @@ export default function RootLayout() {
       try {
         await setAudioModeAsync({
           playsInSilentMode: true,
-          interruptionMode: 'doNotMix',
+          // Use mixWithOthers instead of doNotMix to prevent AVAudioSession
+          // conflict with expo-video native shared objects during startup on iOS.
+          // doNotMix was causing NativeSharedObjectNotFoundException on splash screen.
+          interruptionMode: 'mixWithOthers',
           allowsRecording: false,
           shouldRouteThroughEarpiece: false,
           shouldPlayInBackground: true,
@@ -761,7 +764,10 @@ export default function RootLayout() {
       }
     };
     if (Platform.OS !== 'web') {
-      initAudio();
+      // Defer audio session setup by 2s so expo-video native bridge
+      // fully initializes before we modify the shared AVAudioSession on iOS.
+      const timer = setTimeout(initAudio, 2000);
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -881,9 +887,16 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && token) {
-      socketService.connect().catch((err) => {
-        console.warn('[Socket] Global connection failed:', err);
-      });
+      // Defer socket connect by 3s to avoid triggering socket events (new_sos_alert,
+      // new_community_request) that call initializeHome() and cause immediate feed
+      // re-renders during the splash screen-to-app transition on iOS. These rapid
+      // mount/unmount cycles on video components during startup cause
+      // NativeSharedObjectNotFoundException on the expo-video native bridge.
+      const socketTimer = setTimeout(() => {
+        socketService.connect().catch((err) => {
+          console.warn('[Socket] Global connection failed:', err);
+        });
+      }, 3000);
 
       const handleNotificationTap = (notification: any) => {
         if (!notification) return;
@@ -1114,6 +1127,7 @@ export default function RootLayout() {
       socketService.onEvent('user_blocked', handleUserBlocked);
 
       return () => {
+        clearTimeout(socketTimer);
         socketService.offEvent('new_notification', handleNewNotification);
         socketService.offEvent('post_deleted', handlePostDeleted);
         socketService.offEvent('user_blocked', handleUserBlocked);
