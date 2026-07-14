@@ -1168,6 +1168,7 @@ const ChatScreen = ({
       mediaTypes: getPickerMediaTypes(mediaType),
       allowsEditing: false,
       quality: 0.7,
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
     });
 
     if (result.canceled || !result.assets?.length) return;

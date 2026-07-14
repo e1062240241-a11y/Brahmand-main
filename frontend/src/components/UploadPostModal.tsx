@@ -564,6 +564,7 @@ export const UploadPostModal = ({
       allowsEditing: false,
       quality: 0.9,
       videoMaxDuration: 60,
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
     });
     if (result.canceled || !result.assets?.length) return;
     handleAssetSelected(result.assets[0]);
@@ -578,6 +579,7 @@ export const UploadPostModal = ({
       allowsEditing: false,
       quality: 0.9,
       videoMaxDuration: 60,
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
     });
     if (result.canceled || !result.assets?.length) return;
     handleAssetSelected(result.assets[0]);

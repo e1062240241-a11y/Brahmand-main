@@ -459,6 +459,15 @@ const CommunityNativeVideoPlayer = React.memo(({
     if (p) {
       p.loop = true;
       p.muted = isMuted;
+      // Cap ExoPlayer buffer to prevent OOM crash on Android.
+      // Default ExoPlayer buffers up to ~50 MB; multiple simultaneous instances exhaust the 200 MB heap.
+      if (Platform.OS === 'android') {
+        p.bufferOptions = {
+          preferredForwardBufferDuration: 2,
+          minBufferForPlayback: 0.5,
+          maxBufferBytes: 2 * 1024 * 1024, // 2 MB
+        };
+      }
     }
   }) : null;
 
@@ -3368,6 +3377,7 @@ export default function CommunityDetailScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.All,
       allowsEditing: false,
       quality: 0.8,
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
     });
 
     if (!result.canceled && result.assets?.length) {

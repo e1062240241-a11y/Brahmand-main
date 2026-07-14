@@ -75,14 +75,14 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
         style={styles.templeItemImage} 
       />
       <View style={styles.templeItemInfo}>
+        <Text style={styles.templeItemDeity}>
+          {t('language') === 'hi' ? `${deityLabel} को समर्पित` : `Dedicated to ${deityLabel}`}
+        </Text>
         <Text style={styles.templeItemName}>{displayName}</Text>
         <View style={styles.templeItemLocRow}>
           <Ionicons name="location" size={14} color="#888" />
           <Text style={styles.templeItemLocText}>{location}</Text>
         </View>
-        <Text style={styles.templeItemDeity}>
-          {t('language') === 'hi' ? `${deityLabel} को समर्पित` : `Dedicated to ${deityLabel}`}
-        </Text>
         <View style={styles.templeItemTag}>
           <Ionicons name="sparkles" size={12} color="#D35400" />
           <Text style={styles.templeItemTagText}>{categoryLabel}</Text>
@@ -584,13 +584,13 @@ const styles = StyleSheet.create({
   catPillTextActive: { color: '#FF6600' },
 
   templeListContainer: { paddingHorizontal: 20, paddingBottom: 40 },
-  templeItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', height: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 15, elevation: 2, shadowOpacity: 0.05, shadowRadius: 5 },
+  templeItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', minHeight: 120, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 15, elevation: 2, shadowOpacity: 0.05, shadowRadius: 5 },
   templeItemImage: { width: 80, height: 95, borderRadius: 15 },
   templeItemInfo: { flex: 1, marginLeft: 15 },
   templeItemName: { fontSize: 16, fontFamily: FONTS.bold, color: '#111', marginBottom: 4 },
   templeItemLocRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   templeItemLocText: { fontSize: 12, color: '#888', marginLeft: 4, fontFamily: FONTS.medium },
-  templeItemDeity: { fontSize: 11, color: '#555', fontFamily: FONTS.medium, marginBottom: 6 },
+  templeItemDeity: { fontSize: 11, color: '#FF6B35', fontFamily: FONTS.medium, marginBottom: 4 },
   templeItemTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF4E5', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   templeItemTagText: { fontSize: 10, fontFamily: FONTS.bold, color: '#D35400', marginLeft: 4 },
 

@@ -161,7 +161,7 @@ export default function PanchangScreen() {
   const [activeHoraIdx, setActiveHoraIdx] = useState<number>(1);
 
   const isMountedRef = useRef(true);
-  const mainScrollRef = useRef<KeyboardAwareScrollView>(null);
+  const mainScrollRef = useRef<any>(null);
   const horaCardYPositions = useRef<number[]>([]);
 
   const fetchPanchang = useCallback(async (lat?: number, lng?: number, forceRefresh = false, targetDate?: Date) => {
@@ -214,8 +214,15 @@ export default function PanchangScreen() {
         // Delay slightly to ensure layout positions are calculated
         const timer = setTimeout(() => {
           const yPos = horaCardYPositions.current[currentIdx];
-          if (typeof yPos === 'number') {
-            mainScrollRef.current?.scrollTo({ y: yPos, animated: true });
+          if (typeof yPos === 'number' && mainScrollRef.current) {
+            const scrollRef = mainScrollRef.current;
+            if (typeof scrollRef.scrollToPosition === 'function') {
+              scrollRef.scrollToPosition(0, yPos, true);
+            } else if (typeof scrollRef.scrollTo === 'function') {
+              scrollRef.scrollTo({ y: yPos, animated: true });
+            } else if (typeof scrollRef.getScrollResponder === 'function') {
+              scrollRef.getScrollResponder()?.scrollTo({ y: yPos, animated: true });
+            }
           }
         }, 200);
         return () => clearTimeout(timer);

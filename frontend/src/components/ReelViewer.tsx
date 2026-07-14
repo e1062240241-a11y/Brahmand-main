@@ -402,18 +402,18 @@ const ReelVideoItem = React.memo(({
       try {
         if (isActive) {
           player.bufferOptions = {
-            preferredForwardBufferDuration: 8, // Fully buffer active video
+            preferredForwardBufferDuration: 8,
             waitsToMinimizeStalling: true,
-            minBufferForPlayback: 0.1,        // Start almost instantly
-            maxBufferBytes: 25 * 1024 * 1024,  // 25MB limit for full quality
+            minBufferForPlayback: 0.1,
+            maxBufferBytes: 12 * 1024 * 1024, // 12 MB — reduced from 25 MB to prevent OOM on Android
             prioritizeTimeOverSizeThreshold: true,
           };
         } else {
           player.bufferOptions = {
-            preferredForwardBufferDuration: 1, // Only pre-buffer 1 second of next videos
+            preferredForwardBufferDuration: 1,
             waitsToMinimizeStalling: false,
             minBufferForPlayback: 0.8,
-            maxBufferBytes: 1.5 * 1024 * 1024,  // Minimal background buffer
+            maxBufferBytes: 1.5 * 1024 * 1024, // Minimal background buffer
             prioritizeTimeOverSizeThreshold: true,
           };
         }

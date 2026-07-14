@@ -142,7 +142,7 @@ export default function AIJyotishScreen() {
   const [placeOfBirth, setPlaceOfBirth] = useState('');
   const [filteredCities, setFilteredCities] = useState<string[]>([]);
   const [validationError, setValidationError] = useState('');
-  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
 
   useEffect(() => {
     loadBirthDetails();

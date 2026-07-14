@@ -662,7 +662,7 @@ export default function HomeScreen() {
     }
     setLocationPickerVisible(false);
   };
-  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
   const currentScrollY = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
@@ -1718,7 +1718,16 @@ export default function HomeScreen() {
         if (isAtTop) {
           onRefresh();
         } else {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          const scrollRef = scrollViewRef.current;
+          if (scrollRef) {
+            if (typeof scrollRef.scrollToPosition === 'function') {
+              scrollRef.scrollToPosition(0, 0, true);
+            } else if (typeof scrollRef.scrollTo === 'function') {
+              scrollRef.scrollTo({ y: 0, animated: true });
+            } else if (typeof scrollRef.getScrollResponder === 'function') {
+              scrollRef.getScrollResponder()?.scrollTo({ y: 0, animated: true });
+            }
+          }
         }
       }
     });

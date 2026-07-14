@@ -1473,6 +1473,7 @@ const DirectMessageScreen = () => {
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsEditing: false,
         quality: 0.7,
+        videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
       });
 
       if (result.canceled || !result.assets?.length) return;
@@ -1514,6 +1515,7 @@ const DirectMessageScreen = () => {
       mediaTypes: mediaType === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos,
       allowsEditing: false,
       quality: 0.7,
+      videoExportPreset: ImagePicker.VideoExportPreset.H264_1280x720,
     });
 
     if (result.canceled || !result.assets?.length) return;
