@@ -27,20 +27,16 @@ import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedIndex } from '../../features/live-mantra/schedule';
-import {
-  createAgoraRtcEngine,
-  ChannelProfileType,
-  ClientRoleType,
-  IRtcEngine,
-  RtcConnection,
-  AudioScenarioType,
-  AudioProfileType,
-} from 'react-native-agora';
+import type { IRtcEngine, RtcConnection } from 'react-native-agora';
 import { getAgoraToken } from '../../services/api';
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
 import { socketService } from '../../services/socket';
 import { useKeepAwake } from 'expo-keep-awake';
+declare const require: any;
+
+const getAgoraModule = (): typeof import('react-native-agora') => require('react-native-agora');
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
@@ -384,7 +380,7 @@ export default function LiveJaapRoomView() {
   const soloMoveAnim = useRef(new Animated.Value(100)).current;
   const soloFadeAnim = useRef(new Animated.Value(0)).current;
   
-  const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
+  const engine = useRef<IRtcEngine | null>(null);
   const agoraJoinedRef = useRef(false);
   const agoraInitializedRef = useRef(false);
   
@@ -909,12 +905,16 @@ export default function LiveJaapRoomView() {
         setParticipantLabel(t('agoraNotConfigured'));
         return;
       }
-      await engine.current.initialize({
+      const { createAgoraRtcEngine, ChannelProfileType, ClientRoleType } = getAgoraModule();
+      const agoraEngine = createAgoraRtcEngine();
+      engine.current = agoraEngine;
+
+      await agoraEngine.initialize({
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
       });
       agoraInitializedRef.current = true;
-      engine.current.registerEventHandler({
+      agoraEngine.registerEventHandler({
         onJoinChannelSuccess: (connection: RtcConnection) => {
           agoraJoinedRef.current = true;
           setParticipantLabel(`${t('connectedTo')} ${roomTitle || 'Sangat'}`);
@@ -922,7 +922,7 @@ export default function LiveJaapRoomView() {
           
           // Create data stream for reactions
           try {
-            const id = engine.current.createDataStream({
+            const id = agoraEngine.createDataStream({
               syncWithAudio: false,
               ordered: false
             });
@@ -952,8 +952,8 @@ export default function LiveJaapRoomView() {
           console.warn('[Agora] error code:', err, msg);
         }
       });
-      await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-      await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
+      await agoraEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+      await agoraEngine.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
         clientRoleType: ClientRoleType.ClientRoleBroadcaster,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
         publishMicrophoneTrack: false, // Dummy mic: do not publish audio
@@ -968,14 +968,15 @@ export default function LiveJaapRoomView() {
   const cleanupAgora = async () => {
     try {
       if (agoraJoinedRef.current) {
-        await engine.current.leaveChannel();
+        await engine.current?.leaveChannel();
       }
     } catch (e) {
       console.warn('[Agora] leaveChannel error:', e);
     }
     try {
       if (agoraInitializedRef.current) {
-        await engine.current.release();
+        await engine.current?.release();
+        engine.current = null;
         agoraInitializedRef.current = false;
       }
     } catch (e) {
@@ -1002,7 +1003,7 @@ export default function LiveJaapRoomView() {
     if (broadcast && streamIdRef.current !== null) {
       const message = JSON.stringify({ type: 'reaction', emoji });
       const data = new TextEncoder().encode(message);
-      engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
+      engine.current?.sendStreamMessage(streamIdRef.current, data, data.length);
     }
 
     Animated.timing(anim, {

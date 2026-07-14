@@ -18,19 +18,12 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { isWithinGayatriMantraWindow } from './schedule';
 import { getAgoraToken } from '../../services/api';
-import {
-  createAgoraRtcEngine,
-  ChannelProfileType,
-  ClientRoleType,
-  IRtcEngine,
-  RtcConnection,
-  IRtcEngineEventHandler,
-} from 'react-native-agora';
+import type { IRtcEngine, RtcConnection } from 'react-native-agora';
 import { useKeepAwake } from 'expo-keep-awake';
 
-const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || '4f7199e5d22f4aaf936700d75affe65d';
-
 declare const require: any;
+
+const getAgoraModule = (): typeof import('react-native-agora') => require('react-native-agora');
 
 const ROOM_NAME = 'mantra-jaap-live-room';
 const WORDS = [
@@ -70,7 +63,7 @@ export const LiveMantraRoom = () => {
   const [voiceTransport, setVoiceTransport] = useState<VoiceTransport>('sfu');
   const [reactions, setReactions] = useState<{ id: number; emoji: string; anim: Animated.Value }[]>([]);
 
-  const engine = useRef<IRtcEngine>(createAgoraRtcEngine());
+  const engine = useRef<IRtcEngine | null>(null);
   const agoraJoinedRef = useRef(false);
   const agoraInitializedRef = useRef(false);
   const agoraUidRef = useRef(0);
@@ -159,15 +152,18 @@ export const LiveMantraRoom = () => {
         return false;
       }
 
+      const { createAgoraRtcEngine, ChannelProfileType, ClientRoleType } = getAgoraModule();
+      const agoraEngine = createAgoraRtcEngine();
+      engine.current = agoraEngine;
       agoraUidRef.current = config.uid || 0;
       
       console.log('[Agora] Initializing engine with AppID:', config.appId);
-      await engine.current.initialize({
+      await agoraEngine.initialize({
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
       });
       agoraInitializedRef.current = true;
-      engine.current.registerEventHandler({
+      agoraEngine.registerEventHandler({
         onJoinChannelSuccess: (connection: RtcConnection, elapsed: number) => {
           console.log('[Agora] Joined channel successfully:', connection.channelId, 'UID:', connection.localUid);
           agoraJoinedRef.current = true;
@@ -176,11 +172,11 @@ export const LiveMantraRoom = () => {
           setMicStatus('Audio room live');
           
           // Set initial mute state
-          engine.current.muteLocalAudioStream(!isMicEnabled);
+          agoraEngine.muteLocalAudioStream(!isMicEnabled);
 
           // Create data stream for reactions
           try {
-            const id = engine.current.createDataStream({
+            const id = agoraEngine.createDataStream({
               syncWithAudio: false,
               ordered: false
             });
@@ -223,11 +219,11 @@ export const LiveMantraRoom = () => {
         }
       });
 
-      await engine.current.enableAudio();
-      await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+      await agoraEngine.enableAudio();
+      await agoraEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
       
       console.log('[Agora] Attempting to join channel:', ROOM_NAME, 'with UID:', agoraUidRef.current);
-      const joinResult = await engine.current.joinChannel(config.token, ROOM_NAME, agoraUidRef.current, {
+      const joinResult = await agoraEngine.joinChannel(config.token, ROOM_NAME, agoraUidRef.current, {
         clientRoleType: ClientRoleType.ClientRoleBroadcaster,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
         publishMicrophoneTrack: true,
@@ -252,14 +248,15 @@ export const LiveMantraRoom = () => {
     try {
       if (agoraJoinedRef.current) {
         console.log('[Agora] Cleaning up engine...');
-        await engine.current.leaveChannel();
+        await engine.current?.leaveChannel();
       }
     } catch (error) {
       console.warn('[Agora] leaveChannel error', error);
     }
     try {
       if (agoraInitializedRef.current) {
-        await engine.current.release();
+        await engine.current?.release();
+        engine.current = null;
         agoraInitializedRef.current = false;
       }
     } catch (error) {
@@ -270,7 +267,7 @@ export const LiveMantraRoom = () => {
 
   const startVoiceLoop = async () => {
     try {
-      await engine.current.muteLocalAudioStream(false);
+      await engine.current?.muteLocalAudioStream(false);
       setMicStatus('Agora mic live');
     } catch (error) {
       console.warn('Failed to start Agora mic', error);
@@ -281,7 +278,7 @@ export const LiveMantraRoom = () => {
 
   const stopVoiceLoop = async () => {
     try {
-      await engine.current.muteLocalAudioStream(true);
+      await engine.current?.muteLocalAudioStream(true);
       setMicStatus(isMicEnabled ? 'Microphone paused' : 'Microphone off');
     } catch {
       // noop
@@ -336,7 +333,7 @@ export const LiveMantraRoom = () => {
     if (broadcast && streamIdRef.current !== null) {
       const message = JSON.stringify({ type: 'reaction', emoji });
       const data = new TextEncoder().encode(message);
-      engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
+      engine.current?.sendStreamMessage(streamIdRef.current, data, data.length);
     }
 
     Animated.timing(anim, {
