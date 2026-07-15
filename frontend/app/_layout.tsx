@@ -52,6 +52,7 @@ import { initSyncQueueListener } from '../src/services/syncQueueService';
 import { socketService } from '../src/services/socket';
 
 import { originalAlert } from '../src/utils/nativeAlert';
+import { setAudioModeAsync } from 'expo-audio';
 
 LogBox.ignoreLogs([
   'UIKitCore] RCTScrollViewComponentView',
@@ -748,7 +749,6 @@ export default function RootLayout() {
   useEffect(() => {
     const initAudio = async () => {
       try {
-        const { setAudioModeAsync } = require('expo-audio');
         await setAudioModeAsync({
           playsInSilentMode: true,
           // Use mixWithOthers instead of doNotMix to prevent AVAudioSession
