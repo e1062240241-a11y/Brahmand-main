@@ -360,6 +360,8 @@ export default function LiveJaapRoomView() {
   const [isHolding, setIsHolding] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isMicEnabled, setIsMicEnabled] = useState(initialMic === 'true');
+  const isMicEnabledRef = useRef(initialMic === 'true');
+  const micPermissionGrantedRef = useRef(false);
   const [micStatus, setMicStatus] = useState('Joining room...');
   const [participantLabel, setParticipantLabel] = useState('Connecting...');
   const [remotePeers, setRemotePeers] = useState<number>(0);
@@ -899,11 +901,15 @@ export default function LiveJaapRoomView() {
 
   const setupAgora = async () => {
     try {
+      if (engine.current) {
+        return true;
+      }
+      console.log('[Agora] Requesting token for room:', ROOM_NAME);
       const config = await getAgoraToken(ROOM_NAME);
       if (!config.enabled || !config.token || !config.appId) {
-        setMicStatus(isMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+        setMicStatus(isMicEnabledRef.current ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
         setParticipantLabel(t('agoraNotConfigured'));
-        return;
+        return false;
       }
       const { createAgoraRtcEngine, ChannelProfileType, ClientRoleType } = getAgoraModule();
       const agoraEngine = createAgoraRtcEngine();
@@ -918,7 +924,7 @@ export default function LiveJaapRoomView() {
         onJoinChannelSuccess: (connection: RtcConnection) => {
           agoraJoinedRef.current = true;
           setParticipantLabel(`${t('connectedTo')} ${roomTitle || 'Sangat'}`);
-          setMicStatus(isMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+          setMicStatus(isMicEnabledRef.current ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
           
           // Create data stream for reactions
           try {
@@ -952,16 +958,21 @@ export default function LiveJaapRoomView() {
           console.warn('[Agora] error code:', err, msg);
         }
       });
+      await agoraEngine.enableAudio();
       await agoraEngine.setClientRole(ClientRoleType.ClientRoleBroadcaster);
       await agoraEngine.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
         clientRoleType: ClientRoleType.ClientRoleBroadcaster,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
-        publishMicrophoneTrack: false, // Dummy mic: do not publish audio
-        autoSubscribeAudio: false,     // Dummy mic: do not subscribe to others
+        publishMicrophoneTrack: true,
+        autoSubscribeAudio: true,
       });
+      await agoraEngine.muteLocalAudioStream(!isMicEnabledRef.current);
+      console.log('[Agora] Joined live jaap voice room:', ROOM_NAME);
+      return true;
     } catch (error) {
       console.warn('[Agora] setup error:', error);
-      setMicStatus(isMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+      setMicStatus(isMicEnabledRef.current ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+      return false;
     }
   };
 
@@ -985,13 +996,46 @@ export default function LiveJaapRoomView() {
     agoraJoinedRef.current = false;
   };
 
+  const requestMicPermission = async () => {
+    if (micPermissionGrantedRef.current) {
+      return true;
+    }
+    try {
+      const { granted } = await requestRecordingPermissionsAsync();
+      micPermissionGrantedRef.current = granted;
+      if (!granted) {
+        setMicStatus(t('language') === 'hi' ? 'माइक अनुमति नहीं मिली' : 'Microphone permission denied');
+      }
+      return granted;
+    } catch (error) {
+      console.warn('[Agora] Mic permission request failed:', error);
+      setMicStatus(t('language') === 'hi' ? 'माइक उपलब्ध नहीं है' : 'Microphone unavailable');
+      return false;
+    }
+  };
+
   const toggleMic = async () => {
-    if (isMicEnabled) {
-      setIsMicEnabled(false);
-      setMicStatus(t('language') === 'hi' ? 'माइक बंद है' : 'Muted');
-    } else {
-      setIsMicEnabled(true);
-      setMicStatus(t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active');
+    const nextMicEnabled = !isMicEnabledRef.current;
+    if (nextMicEnabled) {
+      const granted = await requestMicPermission();
+      if (!granted) {
+        return;
+      }
+      const connected = await setupAgora();
+      if (!connected) {
+        return;
+      }
+    }
+
+    isMicEnabledRef.current = nextMicEnabled;
+    setIsMicEnabled(nextMicEnabled);
+
+    try {
+      await engine.current?.muteLocalAudioStream(!nextMicEnabled);
+      setMicStatus(nextMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+    } catch (error) {
+      console.warn('[Agora] Failed to toggle microphone:', error);
+      setMicStatus(t('language') === 'hi' ? 'माइक उपलब्ध नहीं है' : 'Microphone unavailable');
     }
   };
 
