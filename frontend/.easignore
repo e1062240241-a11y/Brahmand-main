@@ -62,3 +62,7 @@ nginx.conf
 *.tsbuildinfo
 
 app-example
+
+# local test builds
+.test-build/
+
