@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyDiFc4xPsRp0Bd1AteqkTJmdA2l50cahJ4</string>
+	<string>AIzaSyApq84hFNZSynb267M9t2OSAw7iFSFDxPM</string>
 	<key>GCM_SENDER_ID</key>
-	<string>103222994071</string>
+	<string>278478370742</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.brahmand.app</string>
+	<string>com.brahmand.staging</string>
 	<key>PROJECT_ID</key>
-	<string>sanatan-lok</string>
+	<string>sanatan-lok-staging</string>
 	<key>STORAGE_BUCKET</key>
-	<string>sanatan-lok.firebasestorage.app</string>
+	<string>sanatan-lok-staging.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:103222994071:ios:3b0a738a0cb398f7e8f5d2</string>
+	<string>1:278478370742:ios:cb54abbbbae8b582b47317</string>
 </dict>
 </plist>
