@@ -57,7 +57,10 @@ if env_path.exists():
         items[key.strip()] = value.strip().strip('"').strip("'")
 
 lines = [f"{k}: {json.dumps(v)}" for k, v in items.items()]
-out_path.write_text("\n".join(lines) + "\n")
+if not lines:
+    out_path.write_text("{}\n")
+else:
+    out_path.write_text("\n".join(lines) + "\n")
 print(f"Wrote {out_path}")
 PY
 
