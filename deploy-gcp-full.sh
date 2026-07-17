@@ -48,12 +48,13 @@ env_path = root / "backend" / ".env"
 out_path = root / "backend" / ".gcloud.env.yaml"
 
 items = {}
-for raw in env_path.read_text().splitlines():
-    line = raw.strip()
-    if not line or line.startswith("#") or "=" not in line:
-        continue
-    key, value = line.split("=", 1)
-    items[key.strip()] = value.strip().strip('"').strip("'")
+if env_path.exists():
+    for raw in env_path.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        items[key.strip()] = value.strip().strip('"').strip("'")
 
 lines = [f"{k}: {json.dumps(v)}" for k, v in items.items()]
 out_path.write_text("\n".join(lines) + "\n")
@@ -78,14 +79,23 @@ FRONTEND_DIR="$ROOT_DIR/frontend"
 ENV_FILE="$FRONTEND_DIR/.env"
 TMP_BAK="$FRONTEND_DIR/.env.deploy.bak"
 
-cp "$ENV_FILE" "$TMP_BAK"
-trap 'if [[ -f "$TMP_BAK" ]]; then mv "$TMP_BAK" "$ENV_FILE"; fi' EXIT
+HAS_ENV=0
+if [[ -f "$ENV_FILE" ]]; then
+  cp "$ENV_FILE" "$TMP_BAK"
+  trap 'if [[ -f "$TMP_BAK" ]]; then mv "$TMP_BAK" "$ENV_FILE"; fi' EXIT
+  HAS_ENV=1
+fi
+
 python3 - <<PY
 from pathlib import Path
 
 env_file = Path(r"$ENV_FILE")
 backend_url = r"$BACKEND_URL"
-lines = env_file.read_text().splitlines()
+
+lines = []
+if env_file.exists():
+    lines = env_file.read_text().splitlines()
+
 out = []
 seen_backend = False
 seen_web = False
@@ -120,7 +130,11 @@ if grep -R --binary-files=without-match "loca.lt" dist >/dev/null; then
 fi
 popd >/dev/null
 
-mv "$TMP_BAK" "$ENV_FILE"
+if [[ $HAS_ENV -eq 1 ]]; then
+  mv "$TMP_BAK" "$ENV_FILE"
+else
+  rm -f "$ENV_FILE"
+fi
 trap - EXIT
 
 echo "Deploying frontend Cloud Run service..."
