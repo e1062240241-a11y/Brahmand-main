@@ -33,12 +33,12 @@ const getEnvVar = (key: string, fallback: string = ''): string => {
 const anonymousPhoneList = process.env.EXPO_PUBLIC_ANONYMOUS_PREDEFINED_NUMBERS || '+911234567895,+911234567891,+911234567892,+911234567893,+911234567894,+911234567896,+911234567897,+911234567898,+911234567899';
 
 export const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'AIzaSyApq84hFNZSynb267M9t2OSAw7iFSFDxPM',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'sanatan-lok-staging.firebaseapp.com',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'sanatan-lok-staging',
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'sanatan-lok-staging.firebasestorage.app',
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '278478370742',
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:278478370742:ios:cb54abbbbae8b582b47317',
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'AIzaSyAfMGn2Njs6Wdp8ZTpBS0jDS4KD7B7cTp4',
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'sanatan-lok.firebaseapp.com',
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'sanatan-lok',
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'sanatan-lok.firebasestorage.app',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '103222994071',
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:103222994071:web:bf5b9aa1775e0c84e8f5d2',
   measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || 'G-X7VBBCHKXG'
 };
 

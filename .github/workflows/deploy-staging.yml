@@ -38,6 +38,10 @@ jobs:
           cd frontend
           npm ci
 
+      - name: Create Firebase Config File
+        run: |
+          echo '${{ secrets.FIREBASE_KEY }}' > backend/firebase.json
+
       - name: Run Deploy Script
         run: |
           chmod +x deploy-gcp-full.sh
