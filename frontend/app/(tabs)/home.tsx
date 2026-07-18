@@ -41,6 +41,7 @@ import { useBlockStore } from '../../src/store/blockStore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
+import { socketService } from '../../src/services/socket';
 // ── Smart Feed Optimization (ADD-ONLY, no existing features changed) ─────────
 import { SmartPost } from '../../src/components/SmartPost';
 import { useFeedOptimizationStore } from '../../src/store/feedOptimizationStore';
@@ -643,10 +644,40 @@ export default function HomeScreen() {
     };
 
     fetchActiveCounts();
-    const interval = setInterval(fetchActiveCounts, 10000);
+
+    // Listen for new SOS alerts/active counts via socket to update UI instantly without polling
+    socketService.connect().then(() => {
+      socketService.joinRoom('jaap_hanuman');
+      socketService.joinRoom('jaap_shiva');
+    }).catch(err => console.warn('Socket connect failed on Home:', err));
+
+    const handleNewSOS = () => {
+      fetchActiveCounts();
+    };
+
+    const handleActiveCount = (data: { room: string; count: number }) => {
+      if (data) {
+        const realCount = data.count || 0;
+        const mappedCount = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+        if (data.room === 'jaap_hanuman') {
+          setHanumanChantCount(mappedCount);
+        } else if (data.room === 'jaap_shiva') {
+          setShivaChantCount(mappedCount);
+        }
+      }
+    };
+
+    socketService.onEvent('new_sos_alert', handleNewSOS);
+    socketService.onEvent('sos_alert', handleNewSOS);
+    socketService.onEvent('room_active_count', handleActiveCount);
+
     return () => {
       active = false;
-      clearInterval(interval);
+      socketService.offEvent('new_sos_alert', handleNewSOS);
+      socketService.offEvent('sos_alert', handleNewSOS);
+      socketService.offEvent('room_active_count', handleActiveCount);
+      socketService.leaveRoom('jaap_hanuman');
+      socketService.leaveRoom('jaap_shiva');
     };
   }, [isFocused]);
 

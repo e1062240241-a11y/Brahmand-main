@@ -1114,24 +1114,6 @@ const DirectMessageScreen = () => {
     let pollingInterval: NodeJS.Timeout | null = null;
     const socketListenerId = `dm_${conversationId}_${Date.now()}`;
 
-    if (Platform.OS === 'web') {
-      pollingInterval = setInterval(async () => {
-        if (isBlockedRef.current) {
-          if (pollingInterval) clearInterval(pollingInterval);
-          return;
-        }
-        if (!uploadingMedia) {
-          await fetchMessagesViaAPI();
-          await fetchConversation();
-        }
-      }, 30000);
-      setTimeout(() => markMessagesAsRead(), 1000);
-
-      return () => {
-        if (pollingInterval) clearInterval(pollingInterval);
-      };
-    }
-
     const handleRequestUpdated = (data: any) => {
       if (data && (data.chat_id === conversationId || data.conversation_id === conversationId)) {
         console.log('[Chat] dm_request_updated event received:', data);

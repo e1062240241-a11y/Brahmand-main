@@ -10498,6 +10498,17 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     
     request_id = await db.create_document('help_requests', request_data)
     request_data['id'] = request_id
+
+    # Emit new_sos_alert socket event
+    try:
+        await sio.emit('new_sos_alert', {
+            'type': 'blood_request' if data.type.value == 'blood' else 'help_request',
+            'user_id': user_id,
+            'location': location,
+            'message': data.title
+        })
+    except Exception as e:
+        logger.warning(f"Failed to emit new_sos_alert for help request: {e}")
     
     # Invalidate/consume verification state so it cannot be reused
     if data.type.value == "blood":
@@ -13030,6 +13041,12 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     
     # Emit SOS alert via socket to nearby users
     await sio.emit('sos_alert', sos_data)
+    await sio.emit('new_sos_alert', {
+        'type': 'sos',
+        'user_id': user_id,
+        'location': f"{area}, {city}",
+        'message': f"Emergency: {sos_data.get('emergency_type', 'SOS')}"
+    })
     
     # Start escalation process in background
     await task_queue.enqueue(_escalate_sos_notifications, sos_id, all_target_user_ids)
