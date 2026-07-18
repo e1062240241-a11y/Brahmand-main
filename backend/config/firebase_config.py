@@ -25,28 +25,47 @@ class FirebaseManager:
         try:
             import firebase_admin
             from firebase_admin import credentials, firestore
+            import json
             
-            cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
-            if not cred_path:
-                cred_path = str(Path(__file__).parent.parent / 'firebase.json')
-
-            logger.info(f"Using Firebase credentials path: {cred_path}")
-            if not os.path.exists(cred_path):
-                logger.warning(f'Firebase credentials not found at: {cred_path}')
-                self._firebase_available = False
-                return
+            cred = None
+            firebase_json_env = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
+            
+            if firebase_json_env:
+                try:
+                    cred_info = json.loads(firebase_json_env)
+                    cred = credentials.Certificate(cred_info)
+                    logger.info("Initializing Firebase using FIREBASE_SERVICE_ACCOUNT_JSON env variable.")
+                except Exception as ex:
+                    logger.error(f"Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON env var: {str(ex)}")
+            
+            if not cred:
+                cred_path = os.getenv('GOOGLE_APPLICATION_CREDENTIALS')
+                if not cred_path:
+                    cred_path = str(Path(__file__).parent.parent / 'firebase.json')
+                
+                logger.info(f"Using Firebase credentials path: {cred_path}")
+                if os.path.exists(cred_path):
+                    cred = credentials.Certificate(cred_path)
+                else:
+                    logger.warning(f'Firebase credentials file not found at: {cred_path}')
 
             try:
                 self.app = firebase_admin.get_app()
             except ValueError:
-                cred = credentials.Certificate(cred_path)
                 bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
-                if bucket_name:
-                    self.app = firebase_admin.initialize_app(cred, {
-                        'storageBucket': bucket_name
-                    })
+                if not cred:
+                    logger.info("No credentials provided, initializing Firebase Admin using Application Default Credentials (ADC).")
+                    if bucket_name:
+                        self.app = firebase_admin.initialize_app(options={'storageBucket': bucket_name})
+                    else:
+                        self.app = firebase_admin.initialize_app()
                 else:
-                    self.app = firebase_admin.initialize_app(cred)
+                    if bucket_name:
+                        self.app = firebase_admin.initialize_app(cred, {
+                            'storageBucket': bucket_name
+                        })
+                    else:
+                        self.app = firebase_admin.initialize_app(cred)
             
             self.db = firestore.client()
             self._firebase_available = True
