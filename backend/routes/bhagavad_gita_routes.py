@@ -58,7 +58,10 @@ def _load_bhagavad_gita_chapter(chapter_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{chapter_number}")
 async def get_bhagavad_gita_chapter(chapter_number: int):
-    verses = await asyncio.to_thread(_load_bhagavad_gita_chapter, chapter_number)
+    if chapter_number in _bhagavad_gita_chapter_cache:
+        verses = _bhagavad_gita_chapter_cache[chapter_number]
+    else:
+        verses = await asyncio.to_thread(_load_bhagavad_gita_chapter, chapter_number)
     return {
         "book": "bhagavad-gita",
         "chapter": chapter_number,
@@ -75,9 +78,23 @@ async def get_bhagavad_gita_all(summary: bool = True):
     if not summary and _bhagavad_gita_chapters_full_cache is not None:
         return _bhagavad_gita_chapters_full_cache
 
-    results = await asyncio.gather(*(
-        asyncio.to_thread(_load_bhagavad_gita_chapter, i) for i in range(1, 19)
-    ))
+    results = []
+    tasks = []
+    for i in range(1, 19):
+        if i in _bhagavad_gita_chapter_cache:
+            results.append((i, _bhagavad_gita_chapter_cache[i]))
+        else:
+            tasks.append((i, asyncio.to_thread(_load_bhagavad_gita_chapter, i)))
+            
+    if tasks:
+        indices, awaitables = zip(*tasks)
+        loaded = await asyncio.gather(*awaitables)
+        for idx, res in zip(indices, loaded):
+            results.append((idx, res))
+            
+    results.sort(key=lambda x: x[0])
+    ordered_results = [res for idx, res in results]
+    
     if summary:
         chapters = {
             i: {
@@ -85,10 +102,10 @@ async def get_bhagavad_gita_all(summary: bool = True):
                 "total_verses": len(res),
                 "verses_summary": f"Chapter {i} contains {len(res)} verses."
             }
-            for i, res in enumerate(results, start=1)
+            for i, res in enumerate(ordered_results, start=1)
         }
     else:
-        chapters = {i: res for i, res in enumerate(results, start=1)}
+        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
     
     response_data = {"book": "bhagavad-gita", "chapters": chapters}
     if summary:

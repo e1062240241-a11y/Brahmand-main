@@ -95,7 +95,10 @@ def _find_yajurveda_chapter(chapter_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{chapter_number}")
 async def get_yajurveda_chapter(chapter_number: int):
-    verses = await asyncio.to_thread(_find_yajurveda_chapter, chapter_number)
+    if _yajurveda_kanva_cache and _yajurveda_madhyadina_cache:
+        verses = _find_yajurveda_chapter(chapter_number)
+    else:
+        verses = await asyncio.to_thread(_find_yajurveda_chapter, chapter_number)
     return {
         "book": "yajurveda",
         "chapter": chapter_number,
@@ -112,10 +115,13 @@ async def get_yajurveda_all(summary: bool = True):
     if not summary and _yajurveda_all_full_cache is not None:
         return _yajurveda_all_full_cache
 
-    kanva, madhyadina = await asyncio.gather(
-        asyncio.to_thread(_load_yajurveda_kanva),
-        asyncio.to_thread(_load_yajurveda_madhyadina)
-    )
+    if _yajurveda_kanva_cache and _yajurveda_madhyadina_cache:
+        kanva, madhyadina = _yajurveda_kanva_cache, _yajurveda_madhyadina_cache
+    else:
+        kanva, madhyadina = await asyncio.gather(
+            asyncio.to_thread(_load_yajurveda_kanva),
+            asyncio.to_thread(_load_yajurveda_madhyadina)
+        )
     all_rows = [row.copy() for row in kanva] + [row.copy() for row in madhyadina]
     chapters: Dict[int, list] = {}
     for row in all_rows:

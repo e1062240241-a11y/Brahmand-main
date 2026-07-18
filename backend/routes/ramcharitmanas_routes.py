@@ -80,7 +80,10 @@ def _load_ramcharitmanas_kand(kand_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{kand_number}")
 async def get_ramcharitmanas_kand(kand_number: int):
-    verses = await asyncio.to_thread(_load_ramcharitmanas_kand, kand_number)
+    if kand_number in _ramcharitmanas_kand_cache:
+        verses = _ramcharitmanas_kand_cache[kand_number]
+    else:
+        verses = await asyncio.to_thread(_load_ramcharitmanas_kand, kand_number)
     return {
         "book": "ramcharitmanas",
         "chapter": kand_number,
@@ -97,9 +100,23 @@ async def get_ramcharitmanas_all(summary: bool = True):
     if not summary and _ramcharitmanas_all_full_cache is not None:
         return _ramcharitmanas_all_full_cache
 
-    results = await asyncio.gather(*(
-        asyncio.to_thread(_load_ramcharitmanas_kand, i) for i in range(1, 8)
-    ))
+    results = []
+    tasks = []
+    for i in range(1, 8):
+        if i in _ramcharitmanas_kand_cache:
+            results.append((i, _ramcharitmanas_kand_cache[i]))
+        else:
+            tasks.append((i, asyncio.to_thread(_load_ramcharitmanas_kand, i)))
+            
+    if tasks:
+        indices, awaitables = zip(*tasks)
+        loaded = await asyncio.gather(*awaitables)
+        for idx, res in zip(indices, loaded):
+            results.append((idx, res))
+            
+    results.sort(key=lambda x: x[0])
+    ordered_results = [res for idx, res in results]
+
     if summary:
         chapters = {
             i: {
@@ -107,10 +124,10 @@ async def get_ramcharitmanas_all(summary: bool = True):
                 "total_verses": len(res),
                 "verses_summary": f"Kand {i} contains {len(res)} verses."
             }
-            for i, res in enumerate(results, start=1)
+            for i, res in enumerate(ordered_results, start=1)
         }
     else:
-        chapters = {i: res for i, res in enumerate(results, start=1)}
+        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
         
     response_data = {"book": "ramcharitmanas", "chapters": chapters}
     if summary:

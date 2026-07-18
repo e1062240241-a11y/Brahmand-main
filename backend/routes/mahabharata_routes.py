@@ -63,7 +63,10 @@ def _load_mahabharata_book(book_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/book/{book_number}")
 async def get_mahabharata_book(book_number: int):
-    verses = await asyncio.to_thread(_load_mahabharata_book, book_number)
+    if book_number in _mahabharata_book_cache:
+        verses = _mahabharata_book_cache[book_number]
+    else:
+        verses = await asyncio.to_thread(_load_mahabharata_book, book_number)
     return {
         "book": "mahabharata",
         "chapter": book_number,
@@ -80,9 +83,23 @@ async def get_mahabharata_all(summary: bool = True):
     if not summary and _mahabharata_all_full_cache is not None:
         return _mahabharata_all_full_cache
 
-    results = await asyncio.gather(*(
-        asyncio.to_thread(_load_mahabharata_book, i) for i in range(1, 19)
-    ))
+    results = []
+    tasks = []
+    for i in range(1, 19):
+        if i in _mahabharata_book_cache:
+            results.append((i, _mahabharata_book_cache[i]))
+        else:
+            tasks.append((i, asyncio.to_thread(_load_mahabharata_book, i)))
+            
+    if tasks:
+        indices, awaitables = zip(*tasks)
+        loaded = await asyncio.gather(*awaitables)
+        for idx, res in zip(indices, loaded):
+            results.append((idx, res))
+            
+    results.sort(key=lambda x: x[0])
+    ordered_results = [res for idx, res in results]
+
     if summary:
         chapters = {
             i: {
@@ -90,10 +107,10 @@ async def get_mahabharata_all(summary: bool = True):
                 "total_verses": len(res),
                 "verses_summary": f"Book {i} contains {len(res)} verses."
             }
-            for i, res in enumerate(results, start=1)
+            for i, res in enumerate(ordered_results, start=1)
         }
     else:
-        chapters = {i: res for i, res in enumerate(results, start=1)}
+        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
         
     response_data = {"book": "mahabharata", "chapters": chapters}
     if summary:

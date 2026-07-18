@@ -102,6 +102,9 @@ class CacheManager:
         if ttl is None:
             ttl = settings.CACHE_TTL
             
+        for k, v in mapping.items():
+            self._local_cache[k] = v
+            
         try:
             redis = await self._get_redis()
             serialized_mapping = {k: json.dumps(v, default=str) for k, v in mapping.items()}

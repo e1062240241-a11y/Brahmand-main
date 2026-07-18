@@ -13,6 +13,7 @@ from config.firebase_config import get_firestore, get_firebase_auth, firebase_ma
 from config.firestore_db import FirestoreDB
 from middleware.security import create_jwt_token
 from utils.helpers import generate_sl_id, SUPPORTED_LANGUAGES
+from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
 
@@ -327,10 +328,30 @@ class FirebaseAuthService:
         if not FirebaseAuthService.is_anonymous_phone(normalized_phone):
             raise ValueError("Phone number is not configured for anonymous login")
 
+        # 1. Fast path: check cache first without acquiring lock to avoid lock contention under heavy concurrency
+        existing = await cache_manager.get(f"user_phone:{normalized_phone}")
+        if existing and existing.get('anonymous_account') and not existing.get('anonymous_disabled'):
+            needs_reset = (
+                existing.get('is_verified') is not False or
+                existing.get('kyc_status') is not None or
+                existing.get('kyc_role') is not None or
+                existing.get('kyc_verified_at') is not None or
+                existing.get('badges') != ["Anonymous Member"]
+            )
+            if not needs_reset:
+                await cache_manager.set_user(existing['id'], existing)
+                token = create_jwt_token(existing['id'], existing['sl_id'])
+                return {
+                    "message": "Anonymous login successful",
+                    "token": token,
+                    "user": existing,
+                    "is_new_user": False
+                }
+
         # Concurrency Lock to avoid race conditions/lock contention on user creation or updates
         lock = FirebaseAuthService._login_locks.setdefault(normalized_phone, asyncio.Lock())
         async with lock:
-            # 1. Check cache first
+            # Recheck cache after acquiring lock
             existing = await cache_manager.get(f"user_phone:{normalized_phone}")
             
             db = await FirebaseAuthService.get_db()

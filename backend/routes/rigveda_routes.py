@@ -63,7 +63,10 @@ def _load_rigveda_mandala(mandala_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{mandala_number}")
 async def get_rigveda_mandala(mandala_number: int):
-    verses = await asyncio.to_thread(_load_rigveda_mandala, mandala_number)
+    if mandala_number in _rigveda_mandala_cache:
+        verses = _rigveda_mandala_cache[mandala_number]
+    else:
+        verses = await asyncio.to_thread(_load_rigveda_mandala, mandala_number)
     return {
         "book": "rigveda",
         "chapter": mandala_number,
@@ -80,9 +83,23 @@ async def get_rigveda_all(summary: bool = True):
     if not summary and _rigveda_all_full_cache is not None:
         return _rigveda_all_full_cache
 
-    results = await asyncio.gather(*(
-        asyncio.to_thread(_load_rigveda_mandala, i) for i in range(1, 11)
-    ))
+    results = []
+    tasks = []
+    for i in range(1, 11):
+        if i in _rigveda_mandala_cache:
+            results.append((i, _rigveda_mandala_cache[i]))
+        else:
+            tasks.append((i, asyncio.to_thread(_load_rigveda_mandala, i)))
+            
+    if tasks:
+        indices, awaitables = zip(*tasks)
+        loaded = await asyncio.gather(*awaitables)
+        for idx, res in zip(indices, loaded):
+            results.append((idx, res))
+            
+    results.sort(key=lambda x: x[0])
+    ordered_results = [res for idx, res in results]
+
     if summary:
         chapters = {
             i: {
@@ -90,10 +107,10 @@ async def get_rigveda_all(summary: bool = True):
                 "total_verses": len(res),
                 "verses_summary": f"Mandala {i} contains {len(res)} verses."
             }
-            for i, res in enumerate(results, start=1)
+            for i, res in enumerate(ordered_results, start=1)
         }
     else:
-        chapters = {i: res for i, res in enumerate(results, start=1)}
+        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
         
     response_data = {"book": "rigveda", "chapters": chapters}
     if summary:

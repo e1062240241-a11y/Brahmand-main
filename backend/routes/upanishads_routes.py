@@ -41,7 +41,11 @@ def _load_upanishads() -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{chapter_number}")
 async def get_upanishad_chapter(chapter_number: int):
-    all_verses = await asyncio.to_thread(_load_upanishads)
+    if _upanishads_cache:
+        all_verses = _upanishads_cache
+    else:
+        all_verses = await asyncio.to_thread(_load_upanishads)
+        
     chapter_verses = [v for v in all_verses if v.get("chapter") == chapter_number]
     
     if not chapter_verses:
@@ -63,7 +67,10 @@ async def get_upanishads_all(summary: bool = True):
     if not summary and _upanishads_all_full_cache is not None:
         return _upanishads_all_full_cache
 
-    all_verses = await asyncio.to_thread(_load_upanishads)
+    if _upanishads_cache:
+        all_verses = _upanishads_cache
+    else:
+        all_verses = await asyncio.to_thread(_load_upanishads)
     chapters: Dict[int, list] = {}
     for v in all_verses:
         ch = v.get("chapter")

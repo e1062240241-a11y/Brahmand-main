@@ -63,7 +63,10 @@ def _load_atharvaved_kaanda(kaanda_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{kaanda_number}")
 async def get_atharvaved_kaanda(kaanda_number: int):
-    verses = await asyncio.to_thread(_load_atharvaved_kaanda, kaanda_number)
+    if kaanda_number in _atharvaved_kaanda_cache:
+        verses = _atharvaved_kaanda_cache[kaanda_number]
+    else:
+        verses = await asyncio.to_thread(_load_atharvaved_kaanda, kaanda_number)
     return {
         "book": "atharvaved",
         "chapter": kaanda_number,
@@ -80,9 +83,23 @@ async def get_atharvaved_all(summary: bool = True):
     if not summary and _atharvaved_all_full_cache is not None:
         return _atharvaved_all_full_cache
 
-    results = await asyncio.gather(*(
-        asyncio.to_thread(_load_atharvaved_kaanda, i) for i in range(1, 21)
-    ))
+    results = []
+    tasks = []
+    for i in range(1, 21):
+        if i in _atharvaved_kaanda_cache:
+            results.append((i, _atharvaved_kaanda_cache[i]))
+        else:
+            tasks.append((i, asyncio.to_thread(_load_atharvaved_kaanda, i)))
+            
+    if tasks:
+        indices, awaitables = zip(*tasks)
+        loaded = await asyncio.gather(*awaitables)
+        for idx, res in zip(indices, loaded):
+            results.append((idx, res))
+            
+    results.sort(key=lambda x: x[0])
+    ordered_results = [res for idx, res in results]
+
     if summary:
         chapters = {
             i: {
@@ -90,10 +107,10 @@ async def get_atharvaved_all(summary: bool = True):
                 "total_verses": len(res),
                 "verses_summary": f"Kaanda {i} contains {len(res)} verses."
             }
-            for i, res in enumerate(results, start=1)
+            for i, res in enumerate(ordered_results, start=1)
         }
     else:
-        chapters = {i: res for i, res in enumerate(results, start=1)}
+        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
         
     response_data = {"book": "atharvaved", "chapters": chapters}
     if summary:
