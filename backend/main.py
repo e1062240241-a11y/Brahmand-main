@@ -2848,21 +2848,6 @@ async def get_bunny_media(filepath: str):
 
 
 # ponytail: CDN proxy to avoid CORS issues on web
-@api_router.get("/library-cdn/{filepath:path}")
-async def get_library_cdn(filepath: str):
-    """Proxy library CDN requests to avoid CORS"""
-    cdn_url = f"https://brahmandfeed23.b-cdn.net/library/{filepath}"
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(cdn_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-            if resp.status != 200:
-                from fastapi.responses import JSONResponse
-                return JSONResponse(status_code=resp.status, content={"error": "Not found"})
-            data = await resp.read()
-    from fastapi.responses import Response
-    return Response(content=data, media_type="application/json", headers={
-        "Cache-Control": "public, max-age=3600",
-        "Access-Control-Allow-Origin": "*",
-    })
 
 
 # =================== SOCIAL POSTS ===================
