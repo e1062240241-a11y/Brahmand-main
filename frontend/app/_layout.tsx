@@ -648,6 +648,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     const reportDiagnostics = async () => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        return;
+      }
       try {
         const { Dimensions, PixelRatio } = require('react-native');
         
