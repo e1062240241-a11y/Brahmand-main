@@ -1191,19 +1191,6 @@ const DirectMessageScreen = () => {
       }
     })();
 
-    pollingInterval = setInterval(async () => {
-      if (isBlockedRef.current) {
-        if (pollingInterval) clearInterval(pollingInterval);
-        return;
-      }
-      if (!uploadingMedia) {
-        await Promise.allSettled([
-          fetchMessagesViaAPI(),
-          fetchConversation()
-        ]);
-      }
-    }, 30000);
-
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {

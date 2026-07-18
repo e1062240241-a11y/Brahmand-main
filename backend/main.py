@@ -14564,6 +14564,23 @@ ROOM_PARTICIPANTS: dict[str, dict[str, str]] = {}
 SID_TO_PEER: dict[str, tuple[str, str]] = {}
 
 
+async def _broadcast_room_active_count(room: str, excluding_sid: str = None):
+    try:
+        room_clients = sio.manager.rooms.get('/', {}).get(room, {})
+        count = 0
+        if isinstance(room_clients, dict):
+            count = len(room_clients)
+        elif hasattr(room_clients, '__len__'):
+            count = len(room_clients)
+        
+        if excluding_sid and excluding_sid in room_clients:
+            count = max(0, count - 1)
+            
+        await sio.emit('room_active_count', {'room': room, 'count': count}, room=room)
+    except Exception as e:
+        logger.warning(f"Error broadcasting active count for room {room}: {e}")
+
+
 async def _remove_socket_from_voice_room(sid: str):
     peer_context = SID_TO_PEER.pop(sid, None)
     if not peer_context:
@@ -14607,7 +14624,11 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
+    rooms = sio.rooms(sid) or []
     await _remove_socket_from_voice_room(sid)
+    for room in rooms:
+        if room != sid and not room.startswith("user_"):
+            await _broadcast_room_active_count(room, excluding_sid=sid)
 
 
 @sio.event
@@ -14638,6 +14659,7 @@ async def join_room(sid, data):
 
     # Always enter the room for general events
     await sio.enter_room(sid, room)
+    await _broadcast_room_active_count(room)
     
     return {
         'status': 'joined',
@@ -14654,6 +14676,7 @@ async def leave_room(sid, data):
     if room and peer_id:
         await sio.leave_room(sid, room)
         await _remove_socket_from_voice_room(sid)
+        await _broadcast_room_active_count(room)
         return {"status": "left", "room": room}
 
 
