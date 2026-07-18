@@ -39,8 +39,10 @@ jobs:
           npm ci
 
       - name: Create Firebase Config File
+        env:
+          FIREBASE_KEY_DATA: ${{ secrets.FIREBASE_KEY }}
         run: |
-          echo '${{ secrets.FIREBASE_KEY }}' > backend/firebase.json
+          echo "$FIREBASE_KEY_DATA" > backend/firebase.json
 
       - name: Run Deploy Script
         run: |
