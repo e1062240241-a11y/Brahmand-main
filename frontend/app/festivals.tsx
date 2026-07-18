@@ -9,6 +9,7 @@ import {
   Image,
   Dimensions,
   Platform,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -18,6 +19,8 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
+import { syncFestivalReminders, toggleAllFestivals, getAllFestivalReminders } from '../src/utils/festivalReminders';
+import { useNotificationStore } from '../src/store/notificationStore';
 
 const CARD_COLORS = [
   '#FFE082', // Yellow
@@ -29,64 +32,18 @@ const CARD_COLORS = [
   '#CFD8DC', // Blue Grey
 ];
 
-// Mapping for festival images in assets/images/festival_image/
-const festivalImageMap: Record<string, any> = {
-  'Akshaya Tritiya': require('../assets/images/festival_image/Akshaya Tritiya.jpg'),
-  'Anant Chaturdashi': require('../assets/images/festival_image/Anant Chaturdashi.jpg'),
-  'Ashadhi Ekadashi': require('../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
-  'Bhai Dooj': require('../assets/images/festival_image/Bhai Dooj.jpg'),
-  'Bohag Bihu': require('../assets/images/festival_image/Bohag Bihu.jpg'),
-  'Chaitra Sukhladi': require('../assets/images/festival_image/Chaitra Sukhladi.jpg'),
-  'Chhath Puja': require('../assets/images/festival_image/Chhath Puja.jpg'),
-  'Dhanteras': require('../assets/images/festival_image/Dhanteras.jpg'),
-  'Dhanu Sankranti': require('../assets/images/festival_image/Dhanu Sankranti.jpeg'),
-  'Diwali': require('../assets/images/festival_image/Diwali.jpeg'),
-  'Durga Ashtami': require('../assets/images/festival_image/Durga Ashtami.jpeg'),
-  'Dussehra': require('../assets/images/festival_image/Dussehra.jpg'),
-  'Ganesh Chaturthi': require('../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
-  'Geeta Jayanti': require('../assets/images/festival_image/Geeta Jayanti.jpg'),
-  'Govardhan Puja': require('../assets/images/festival_image/Govardhan Puja.jpg'),
-  'Guru Purnima': require('../assets/images/festival_image/Guru Purnima.jpg'),
-  'Hanuman janmotsav': require('../assets/images/festival_image/Hanuman janmotsav.jpg'),
-  'Holi': require('../assets/images/festival_image/Happy Holi.jpg'),
-  'Hariyali Teej': require('../assets/images/festival_image/Hariyali Teej.jpeg'),
-  'Hindi New Year': require('../assets/images/festival_image/Hindi New Year.jpg'),
-  'Holika Dahan': require('../assets/images/festival_image/Holika Dahan.jpg'),
-  'Jagannath Rath Yatra': require('../assets/images/festival_image/Jagannath Rath Yatra.jpg'),
-  'Janmashtami': require('../assets/images/festival_image/Janmashtami.jpg'),
-  'Kajari Teej': require('../assets/images/festival_image/Kajari Teej.jpeg'),
-  'Kartik Purnima': require('../assets/images/festival_image/Kartik Purnima.jpeg'),
-  'Karva Chauth': require('../assets/images/festival_image/Karva Chauth.jpg'),
-  'Magh Bihu': require('../assets/images/festival_image/Magh Bihu.jpg'),
-  'Maha Navami': require('../assets/images/festival_image/Maha Navami.jpeg'),
-  'Maha Saptami': require('../assets/images/festival_image/Maha Saptami.jpg'),
-  'Maha Shivaratri': require('../assets/images/festival_image/Maha Shivaratri.jpeg'),
-  'Mahalaya Amavasya': require('../assets/images/festival_image/Mahalaya Amavasya.jpg'),
-  'Maharishi Valmiki Jayanti': require('../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
-  'Makar Sankranti': require('../assets/images/festival_image/Makar Sankranti.jpg.webp.jpeg'),
-  'Nag Panchami': require('../assets/images/festival_image/Nag Panchami.jpg'),
-  'Onam': require('../assets/images/festival_image/Onam.jpg'),
-  'Raksha Bandhan': require('../assets/images/festival_image/Raksha Bandhan.jpg'),
-  'Ram Navami': require('../assets/images/festival_image/Ram Navami.jpg'),
-  'Savitri Pooja': require('../assets/images/festival_image/Savitri Pooja_.jpg'),
-  'Sharad Navratri': require('../assets/images/festival_image/Sharad Navratri.jpg'),
-  'Sharad Purnima': require('../assets/images/festival_image/Sharad Purnima.jpg'),
-  'Thaipusam': require('../assets/images/festival_image/Thaipusam.jpg'),
-  'Vaisakhi': require('../assets/images/festival_image/Vaisakhi.jpg'),
-  'Vasant Panchami': require('../assets/images/festival_image/Vasant Panchami.jpg'),
-  'Vishwakarma Puja': require('../assets/images/festival_image/Vishwakarma Puja.jpeg'),
-};
+import { FESTIVAL_IMAGE_MAP } from '../src/constants/festivalImages';
 
 const getFestivalImage = (name: string) => {
   const fallback = require('../assets/images/traditional_diya_footer.png');
   if (!name) return fallback;
   // Try exact match
-  if (festivalImageMap[name]) return festivalImageMap[name];
+  if (FESTIVAL_IMAGE_MAP[name]) return FESTIVAL_IMAGE_MAP[name];
   
   // Try partial case-insensitive match
   const searchName = name.toLowerCase();
-  const key = Object.keys(festivalImageMap).find(k => searchName.includes(k.toLowerCase()) || k.toLowerCase().includes(searchName));
-  return key ? festivalImageMap[key] : fallback;
+  const key = Object.keys(FESTIVAL_IMAGE_MAP).find(k => searchName.includes(k.toLowerCase()) || k.toLowerCase().includes(searchName));
+  return key ? FESTIVAL_IMAGE_MAP[key] : fallback;
 };
 
 const formatFestivalDate = (dateStr: string) => {
@@ -112,6 +69,18 @@ const FestivalPage = () => {
   const [festivals, setFestivals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [allRemindersEnabled, setAllRemindersEnabled] = useState(false);
+  const [isTogglingAll, setIsTogglingAll] = useState(false);
+
+  const checkGlobalReminderState = async () => {
+    try {
+      const allReminders = await getAllFestivalReminders();
+      const hasActive = Object.keys(allReminders).length > 0;
+      setAllRemindersEnabled(hasActive);
+    } catch (e) {
+      console.warn(e);
+    }
+  };
 
   useEffect(() => {
     const loadFestivals = async () => {
@@ -119,6 +88,8 @@ const FestivalPage = () => {
         const response = await getFestivalList();
         const items = response.data || [];
         setFestivals(items);
+        await syncFestivalReminders(items);
+        await checkGlobalReminderState();
       } catch (err) {
         console.warn('Failed to load festivals', err);
         setError('Could not load festivals.');
@@ -129,6 +100,37 @@ const FestivalPage = () => {
 
     loadFestivals();
   }, []);
+
+  const handleToggleAll = async () => {
+    if (isTogglingAll) return;
+    setIsTogglingAll(true);
+    try {
+      const newValue = !allRemindersEnabled;
+      await toggleAllFestivals(festivals, newValue);
+      setAllRemindersEnabled(newValue);
+      
+      if (newValue) {
+        Alert.alert(
+          'All Reminders Set',
+          'You will be notified 1 day before every upcoming festival at 9:00 AM and 9:00 PM.'
+        );
+      } else {
+        Alert.alert(
+          'Reminders Cancelled',
+          'All scheduled festival notifications have been successfully removed.'
+        );
+      }
+    } catch (err: any) {
+      console.warn('Failed to toggle all reminders', err);
+      if (err.message === 'Permission not granted') {
+        Alert.alert('Permission Required', 'Please enable notifications in your device settings.');
+      } else {
+        Alert.alert('Error', 'Could not schedule festival notifications.');
+      }
+    } finally {
+      setIsTogglingAll(false);
+    }
+  };
 
   const userName = user?.name?.split(' ')[0] || 'Daniel';
   const nextFestivalName = festivals[0]?.name || festivals[0]?.festival_name || 'Upcoming';
@@ -161,7 +163,22 @@ const FestivalPage = () => {
           >
             <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
           </TouchableOpacity>
-          <View style={{ width: 44 }} />
+          <TouchableOpacity 
+            onPress={handleToggleAll} 
+            style={styles.headerIcon}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            disabled={isTogglingAll}
+          >
+            {isTogglingAll ? (
+              <Ionicons name="refresh" size={24} color="#FFFFFF" />
+            ) : (
+              <Ionicons 
+                name={allRemindersEnabled ? "notifications" : "notifications-outline"} 
+                size={24} 
+                color="#FFFFFF" 
+              />
+            )}
+          </TouchableOpacity>
         </View>
 
         <ScrollView 

@@ -4,6 +4,7 @@ import { View, ScrollView, ActivityIndicator, Text, StyleSheet, TouchableOpacity
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCard';
@@ -62,37 +63,45 @@ const FestivalSectionDetailPage = () => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace(`/festival-detail?index=${festivalIndex}`);
-            }
-          }}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons name="chevron-back" size={28} color="#000000" />
-        </TouchableOpacity>
-      </View>
-      <ScrollView contentContainerStyle={styles.container}>
-        <FestivalSectionDetailCard
-          festival={festival}
-          section={decodeURIComponent(section)}
-          onBack={() => router.back()}
-        />
-      </ScrollView>
-    </SafeAreaView>
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.1058, 0.2212]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace(`/festival-detail?index=${festivalIndex}`);
+              }
+            }}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons name="chevron-back" size={28} color="#000000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{decodeURIComponent(section)}</Text>
+          <View style={styles.headerPlaceholder} />
+        </View>
+        <ScrollView contentContainerStyle={styles.container}>
+          <FestivalSectionDetailCard
+            festival={festival}
+            section={decodeURIComponent(section)}
+            onBack={() => router.back()}
+          />
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     paddingBottom: SPACING.xl,
-    backgroundColor: COLORS.background,
+    backgroundColor: 'transparent',
   },
   centered: {
     flex: 1,
@@ -108,16 +117,26 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
     paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.background,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    backgroundColor: 'transparent',
   },
   backButton: {
-    padding: SPACING.xs,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+  },
+  headerTitle: {
+    color: '#111827',
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  headerPlaceholder: {
+    width: 40,
   },
 });
 

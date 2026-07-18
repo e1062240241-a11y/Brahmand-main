@@ -56,3 +56,5 @@ app-example
 # local test builds
 .test-build/
 
+# Ignore local festival images
+assets/images/festivals/

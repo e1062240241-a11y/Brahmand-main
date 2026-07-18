@@ -6,6 +6,7 @@ interface NotificationState {
   recentNotifications: any[];
   setUnreadCount: (count: number) => void;
   addRecentNotification: (notification: any) => void;
+  removeRecentNotification: (id: string) => void;
   clearRecentNotifications: () => void;
   dismissBadge: () => void;
   resetBadgeDismissal: () => void;
@@ -36,6 +37,9 @@ export const useNotificationStore = create<NotificationState>((set) => ({
     const withoutDuplicate = state.recentNotifications.filter((item) => (item.id || item._id) !== notificationId);
     return { recentNotifications: [normalized, ...withoutDuplicate].slice(0, 20) };
   }),
+  removeRecentNotification: (id: string) => set((state) => ({
+    recentNotifications: state.recentNotifications.filter((n) => (n.id || n._id) !== id)
+  })),
   clearRecentNotifications: () => set({ recentNotifications: [] }),
   dismissBadge: () => set({ badgeDismissed: true }),
   resetBadgeDismissal: () => set({ badgeDismissed: false }),

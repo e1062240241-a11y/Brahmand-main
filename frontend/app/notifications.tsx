@@ -58,7 +58,7 @@ const getActionBadge = (item: any) => {
   const itemData = typeof item.data === 'string'
     ? (() => { try { return JSON.parse(item.data); } catch { return null; } })()
     : item.data;
-  const action = (itemData?.action || item.type || '').toLowerCase();
+  const action = (itemData?.action || itemData?.type || item.type || '').toLowerCase();
   
   if (action.includes('like')) {
     return { name: 'heart', color: '#FFF', bg: '#FF3B30' };
@@ -141,7 +141,32 @@ export default function NotificationsScreen() {
       const pendingNotifications = recentNotifications.filter((recent) =>
         serverNotifications.every((serverNotif: any) => (serverNotif.id || serverNotif._id) !== (recent.id || recent._id)),
       );
-      let notificationsList = [...pendingNotifications, ...serverNotifications];
+      let rawList = [...pendingNotifications, ...serverNotifications];
+      
+      const uniqueNotifications = [];
+      const seenTitles = new Set();
+      const seenIds = new Set();
+      for (const notif of rawList) {
+        const notifId = notif.id || notif._id;
+        const titleKey = (notif.title || '') + '|' + (notif.body || '');
+        
+        if (notif.title?.includes('Tomorrow:')) {
+          if (!seenTitles.has(titleKey)) {
+            uniqueNotifications.push(notif);
+            seenTitles.add(titleKey);
+            if (notifId) seenIds.add(notifId);
+          }
+        } else {
+          if (notifId && !seenIds.has(notifId)) {
+            uniqueNotifications.push(notif);
+            seenIds.add(notifId);
+          } else if (!notifId) {
+            uniqueNotifications.push(notif);
+          }
+        }
+      }
+      
+      let notificationsList = uniqueNotifications;
       
       if (filter === 'vendor') {
         notificationsList = notificationsList.filter((notif) => {
@@ -507,7 +532,7 @@ export default function NotificationsScreen() {
             <Image source={{ uri: actorPhoto }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="notifications-outline" size={22} color={COLORS.primary} />
+              <Ionicons name={actionBadge?.name === 'calendar' ? 'calendar-outline' : 'notifications-outline'} size={22} color={COLORS.primary} />
             </View>
           )}
           

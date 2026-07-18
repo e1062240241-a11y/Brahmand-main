@@ -106,16 +106,7 @@ const NativeVideoPlayer = React.memo(({
     };
   }, [player]);
 
-  // Clean up player on unmount
-  useEffect(() => {
-    return () => {
-      if (player) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
+
 
   if (!ExpoVideoModule?.VideoView || !player) {
     return <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
@@ -472,22 +463,16 @@ const ReelVideoItem = React.memo(({
     }
   }, [isMuted, player]);
 
-  // Clean up player on unmount to prevent audio leaks
+  // Clean up web player on unmount to prevent audio leaks
   useEffect(() => {
     return () => {
-      if (Platform.OS === 'web') {
-        if (videoRef.current) {
-          try {
-            videoRef.current.pause();
-          } catch (e) {}
-        }
-      } else if (player) {
+      if (Platform.OS === 'web' && videoRef.current) {
         try {
-          player.pause();
+          videoRef.current.pause();
         } catch (e) {}
       }
     };
-  }, [player]);
+  }, []);
 
   useEffect(() => {
     if (player) {

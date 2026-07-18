@@ -22,7 +22,6 @@ async function getNotificationsModule() {
     if (Notifications.setNotificationHandler) {
       Notifications.setNotificationHandler({
         handleNotification: async () => ({
-          shouldShowAlert: true,
           shouldShowBanner: true,
           shouldShowList: true,
           shouldPlaySound: true,
@@ -320,7 +319,7 @@ export async function scheduleEventReminderNotification(
           type: 'event_reminder',
           communityId: communityId || '',
         },
-        sound: Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell',
+        sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
       trigger: Platform.OS === 'android'
         ? { seconds: secondsUntilReminder, channelId } as any
@@ -371,7 +370,7 @@ export async function scheduleLocalNotification(
       data: data || {},
       // iOS picks up the sound from the app bundle using this filename.
       // Android ignores this — it uses the channel's sound setting instead.
-      sound: Platform.OS === 'ios' ? iosSoundFile : androidSoundFile,
+      sound: __DEV__ ? true : (Platform.OS === 'ios' ? iosSoundFile : androidSoundFile),
     },
     trigger: (Platform.OS === 'android'
       ? { channelId }

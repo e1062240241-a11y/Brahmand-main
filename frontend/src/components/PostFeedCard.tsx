@@ -106,16 +106,7 @@ const NativeVideoPlayer = memo(({
     }
   }, [shouldPlay, player]);
 
-  // Clean up player on unmount
-  useEffect(() => {
-    return () => {
-      if (player) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
+
 
   if (!ExpoVideoModule?.VideoView || !player) {
     return (

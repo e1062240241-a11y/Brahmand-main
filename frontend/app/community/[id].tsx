@@ -20,7 +20,9 @@ import {View,
   Dimensions,
   Keyboard,
   LayoutAnimation,
-  UIManager} from 'react-native';
+  UIManager,
+  ScrollView,
+  TouchableWithoutFeedback} from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -234,61 +236,7 @@ function splitTextIntoTweets(text: string, limit = 250): string[] {
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 
-// Festival image map — mirrors the one in festivals.tsx
-const FESTIVAL_IMAGE_MAP: Record<string, any> = {
-  'Akshaya Tritiya': require('../../assets/images/festival_image/Akshaya Tritiya.jpg'),
-  'Anant Chaturdashi': require('../../assets/images/festival_image/Anant Chaturdashi.jpg'),
-  'Ashadhi Ekadashi': require('../../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
-  'Bhai Dooj': require('../../assets/images/festival_image/Bhai Dooj.jpg'),
-  'Bohag Bihu': require('../../assets/images/festival_image/Bohag Bihu.jpg'),
-  'Chaitra Sukhladi': require('../../assets/images/festival_image/Chaitra Sukhladi.jpg'),
-  'Chhath Puja': require('../../assets/images/festival_image/Chhath Puja.jpg'),
-  'Dhanteras': require('../../assets/images/festival_image/Dhanteras.jpg'),
-  'Dhanu Sankranti': require('../../assets/images/festival_image/Dhanu Sankranti.jpeg'),
-  'Diwali': require('../../assets/images/festival_image/Diwali.jpeg'),
-  'Durga Ashtami': require('../../assets/images/festival_image/Durga Ashtami.jpeg'),
-  'Dussehra': require('../../assets/images/festival_image/Dussehra.jpg'),
-  'Ganesh Chaturthi': require('../../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
-  'Geeta Jayanti': require('../../assets/images/festival_image/Geeta Jayanti.jpg'),
-  'Govardhan Puja': require('../../assets/images/festival_image/Govardhan Puja.jpg'),
-  'Guru Purnima': require('../../assets/images/festival_image/Guru Purnima.jpg'),
-  'Hanuman janmotsav': require('../../assets/images/festival_image/Hanuman janmotsav.jpg'),
-  'Holi': require('../../assets/images/festival_image/Happy Holi.jpg'),
-  'Hariyali Teej': require('../../assets/images/festival_image/Hariyali Teej.jpeg'),
-  'Hindi New Year': require('../../assets/images/festival_image/Hindi New Year.jpg'),
-  'Holika Dahan': require('../../assets/images/festival_image/Holika Dahan.jpg'),
-  'Jagannath Rath Yatra': require('../../assets/images/festival_image/Jagannath Rath Yatra.jpg'),
-  'Janmashtami': require('../../assets/images/festival_image/Janmashtami.jpg'),
-  'Kajari Teej': require('../../assets/images/festival_image/Kajari Teej.jpeg'),
-  'Kartik Purnima': require('../../assets/images/festival_image/Kartik Purnima.jpeg'),
-  'Karva Chauth': require('../../assets/images/festival_image/Karva Chauth.jpg'),
-  'Magh Bihu': require('../../assets/images/festival_image/Magh Bihu.jpg'),
-  'Maha Navami': require('../../assets/images/festival_image/Maha Navami.jpeg'),
-  'Maha Saptami': require('../../assets/images/festival_image/Maha Saptami.jpg'),
-  'Maha Shivaratri': require('../../assets/images/festival_image/Maha Shivaratri.jpeg'),
-  'Mahalaya Amavasya': require('../../assets/images/festival_image/Mahalaya Amavasya.jpg'),
-  'Maharishi Valmiki Jayanti': require('../../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
-  'Makar Sankranti': require('../../assets/images/festival_image/Makar Sankranti.jpg.webp.jpeg'),
-  'Nag Panchami': require('../../assets/images/festival_image/Nag Panchami.jpg'),
-  'Navratri': require('../../assets/images/festival_image/Sharad Navratri.jpg'),
-  'Onam': require('../../assets/images/festival_image/Onam.jpg'),
-  'Raksha Bandhan': require('../../assets/images/festival_image/Raksha Bandhan.jpg'),
-  'Ram Navami': require('../../assets/images/festival_image/Ram Navami.jpg'),
-  'Savitri Pooja': require('../../assets/images/festival_image/Savitri Pooja_.jpg'),
-  'Sharad Navratri': require('../../assets/images/festival_image/Sharad Navratri.jpg'),
-  'Sharad Purnima': require('../../assets/images/festival_image/Sharad Purnima.jpg'),
-  'Thaipusam': require('../../assets/images/festival_image/Thaipusam.jpg'),
-  'Vaisakhi': require('../../assets/images/festival_image/Vaisakhi.jpg'),
-  'Vasant Panchami': require('../../assets/images/festival_image/Vasant Panchami.jpg'),
-  'Vishwakarma Puja': require('../../assets/images/festival_image/Vishwakarma Puja.jpeg'),
-};
-
-const getCommunityFestivalImage = (name: string) => {
-  if (!name) return null;
-  if (FESTIVAL_IMAGE_MAP[name]) return FESTIVAL_IMAGE_MAP[name];
-  const key = Object.keys(FESTIVAL_IMAGE_MAP).find(k => name.includes(k) || k.includes(name));
-  return key ? FESTIVAL_IMAGE_MAP[key] : null;
-};
+import { getFestivalImage } from '../../src/constants/festivalImages';
 
 const getCommunityMemberCount = (community?: any) => {
   if (!community) return 0;
@@ -319,7 +267,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Join us for a grand Diwali celebration with prayers, lights & community dinner.',
     location: 'Ramakrishna Math, Andheri West',
     time: '31 Oct 2024, 6:00 PM',
-    image: require('../../assets/images/festival_image/Diwali.jpeg'),
+    image: require('../../assets/images/festivals/Diwali.jpeg'),
     organizer: { name: 'Rahul Joshi', photo: null, isVerified: true },
     timeAgo: '2h ago'
   },
@@ -329,7 +277,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Community aarti and prasad distribution for all devotees.',
     location: 'Lokhandwala, Andheri West',
     time: '7 Sep 2024, 7:00 PM',
-    image: require('../../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
+    image: require('../../assets/images/festivals/Ganesh Chaturthi.jpeg'),
     organizer: { name: 'Neha Sharma', photo: null, isVerified: true },
     timeAgo: '5h ago'
   },
@@ -339,7 +287,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Nine nights of celebration, dance and divine energy.',
     location: 'NSCI Dome, Worli',
     time: '3 Oct 2024, 8:00 PM',
-    image: require('../../assets/images/festival_image/Sharad Navratri.jpg'),
+    image: require('../../assets/images/festivals/Sharad Navratri.jpg'),
     organizer: { name: 'Amit Patel', photo: null, isVerified: true },
     timeAgo: '1d ago'
   }
@@ -1323,7 +1271,7 @@ export default function CommunityDetailScreen() {
 
           return {
             id: p.id,
-            title: p.title || p.content || 'Festival Celebration',
+            title: p.title || null,
             description: p.description || p.content || 'Join our community celebration!',
             location: p.location || p.sevaDetails || undefined,
             time: p.time || (p.timestamp ? (() => {
@@ -2856,7 +2804,7 @@ export default function CommunityDetailScreen() {
     );
   };
   const renderFestivalItem = ({ item, index }: { item: any; index: number }) => {
-    const festImg = getCommunityFestivalImage(item.name);
+    const festImg = getFestivalImage(item.name);
     
     let formattedDate = 'Upcoming';
     if (item.date) {
@@ -2940,55 +2888,12 @@ export default function CommunityDetailScreen() {
   };
 
   const renderFestivalEvent = ({ item }: { item: any }) => (
-    <View style={styles.festEventCard}>
-      <View style={styles.festEventMain}>
-        {item.image ? (
-          <CommunityMediaItem
-            media={item.image}
-            style={styles.festEventImage}
-            isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-          />
-        ) : null}
-        <View style={[styles.festEventInfo, !item.image && { marginLeft: 0 }]}>
-          <Text style={styles.festEventTitle}>{item.title}</Text>
-          <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
-          <View style={styles.festEventMeta}>
-            {item.location ? (
-              <TouchableOpacity 
-                style={styles.festMetaRow}
-                onPress={() => handleOpenMap(item.location)}
-                disabled={item.location === 'Online' || item.location === 'Local'}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="location-outline" size={14} color={item.location !== 'Online' && item.location !== 'Local' ? "#FF6B00" : "#FF3B30"} />
-                <Text style={[styles.festMetaText, item.location !== 'Online' && item.location !== 'Local' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location}</Text>
-              </TouchableOpacity>
-            ) : null}
-            <View style={styles.festMetaRow}>
-              <Ionicons name="time-outline" size={14} color="#FF3B30" />
-              <Text style={styles.festMetaText} numberOfLines={1}>{item.time}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
-      <View style={styles.festEventFooter}>
-        <View style={styles.festOrgDetailsRow}>
-          <Avatar name={item.organizer.name} size={32} photo={item.organizer.photo} />
-          <View style={{ marginLeft: 8, flex: 1 }}>
-            <View style={styles.festOrgNameRow}>
-              <Text style={styles.festOrgName} numberOfLines={1}>{item.organizer.name}</Text>
-              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-            </View>
-            <Text style={styles.festOrgLabel}>Organizer • {item.timeAgo}</Text>
-          </View>
-        </View>
-        <View style={styles.festActionRow}>
-          <TouchableOpacity style={styles.attendBtn} onPress={() => handleFestivalInterest(item)}>
-            <Text style={styles.attendBtnText}>Set a reminder</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
+    <FestivalEventCardItem 
+      item={item} 
+      handleOpenMap={handleOpenMap} 
+      handleFestivalInterest={handleFestivalInterest} 
+      activeVideoKey={activeVideoKey} 
+    />
   );
 
   const getRequestIconDetails = (item: any) => {
@@ -4910,13 +4815,12 @@ export default function CommunityDetailScreen() {
         animationType="fade"
         onRequestClose={() => setShowFilterDropdown(false)}
       >
-        <TouchableOpacity 
-          style={{ flex: 1, backgroundColor: 'transparent' }} 
-          activeOpacity={1} 
-          onPress={() => setShowFilterDropdown(false)}
-        >
-          <View style={[styles.twitterDropdownMenu, { top: 220, right: 20 }]}> 
-            <KeyboardAwareScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true}>
+        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+          <TouchableWithoutFeedback onPress={() => setShowFilterDropdown(false)}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
+          <View style={[styles.twitterDropdownMenu, { top: 220, right: 20 }]} pointerEvents="auto"> 
+            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
               {[
                 { label: 'All Festivals', value: null },
                 ...allFestivals.map(f => ({ label: f.name, value: f.name })),
@@ -4932,9 +4836,9 @@ export default function CommunityDetailScreen() {
                   <Text style={styles.twitterDropdownText}>{opt.label}</Text>
                 </TouchableOpacity>
               ))}
-            </KeyboardAwareScrollView>
+            </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       <Modal
@@ -4943,29 +4847,30 @@ export default function CommunityDetailScreen() {
         animationType="fade"
         onRequestClose={() => setShowSortDropdown(false)}
       >
-        <TouchableOpacity 
-          style={{ flex: 1, backgroundColor: 'transparent' }} 
-          activeOpacity={1} 
-          onPress={() => setShowSortDropdown(false)}
-        >
-          <View style={[styles.twitterDropdownMenu, { top: 400, right: 20 }]}> 
-            {[
-              { label: 'Latest First', value: 'latest' },
-              { label: 'Oldest First', value: 'oldest' },
-            ].map((opt, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={styles.twitterDropdownItem}
-                onPress={() => {
-                  setFestivalSort(opt.value as any);
-                  setShowSortDropdown(false);
-                }}
-              >
-                <Text style={styles.twitterDropdownText}>{opt.label}</Text>
-              </TouchableOpacity>
-            ))}
+        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+          <TouchableWithoutFeedback onPress={() => setShowSortDropdown(false)}>
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
+          <View style={[styles.twitterDropdownMenu, { top: 400, right: 20 }]} pointerEvents="auto"> 
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {[
+                { label: 'Latest First', value: 'latest' },
+                { label: 'Oldest First', value: 'oldest' },
+              ].map((opt, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.twitterDropdownItem}
+                  onPress={() => {
+                    setFestivalSort(opt.value as any);
+                    setShowSortDropdown(false);
+                  }}
+                >
+                  <Text style={styles.twitterDropdownText}>{opt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
-        </TouchableOpacity>
+        </View>
       </Modal>
 
       {/* Apple Guideline 1.2 - Report Community Post Modal */}
@@ -5039,6 +4944,98 @@ export default function CommunityDetailScreen() {
     </KeyboardAvoidingView>
   );
 }
+
+const FestivalEventCardItem = ({ item, handleOpenMap, handleFestivalInterest, activeVideoKey }: any) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [reminderSet, setReminderSet] = useState(false);
+
+  const onReminderPress = () => {
+    if (reminderSet) {
+      setReminderSet(false);
+    } else {
+      handleFestivalInterest(item);
+      setReminderSet(true);
+    }
+  };
+
+  const displayTitle = item.title === item.description ? null : item.title;
+  const displayDescription = item.description;
+  const isLongDescription = displayDescription && displayDescription.length > 120;
+
+  return (
+    <View style={styles.festEventCard}>
+      <View style={styles.festEventMain}>
+        {item.image ? (
+          <CommunityMediaItem
+            media={item.image}
+            style={styles.festEventImage}
+            isActive={activeVideoKey === (item.id ? String(item.id) : '')}
+          />
+        ) : null}
+        <View style={[styles.festEventInfo, !item.image && { marginLeft: 0 }]}>
+          {!!displayTitle && (
+            <Text style={[styles.festEventTitle, { fontWeight: 'normal', color: '#222' }]} numberOfLines={2}>
+              {displayTitle}
+            </Text>
+          )}
+          {!!displayDescription && (
+            <View>
+              <Text style={styles.festEventDesc} numberOfLines={isExpanded ? undefined : 4}>
+                {displayDescription}
+              </Text>
+              {isLongDescription && (
+                <TouchableOpacity onPress={() => setIsExpanded(!isExpanded)} style={{ marginTop: 4, marginBottom: 8, paddingVertical: 2 }}>
+                  <Text style={{ color: '#FF6B00', fontSize: 12, fontWeight: '700' }}>
+                    {isExpanded ? 'View Less' : 'View More'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          <View style={styles.festEventMeta}>
+            {item.location ? (
+              <TouchableOpacity 
+                style={styles.festMetaRow}
+                onPress={() => handleOpenMap(item.location)}
+                disabled={item.location === 'Online' || item.location === 'Local'}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={14} color={item.location !== 'Online' && item.location !== 'Local' ? "#FF6B00" : "#FF3B30"} />
+                <Text style={[styles.festMetaText, item.location !== 'Online' && item.location !== 'Local' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location}</Text>
+              </TouchableOpacity>
+            ) : null}
+            <View style={styles.festMetaRow}>
+              <Ionicons name="time-outline" size={14} color="#FF3B30" />
+              <Text style={styles.festMetaText} numberOfLines={1}>{item.time}</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+      <View style={styles.festEventFooter}>
+        <View style={styles.festOrgDetailsRow}>
+          <Avatar name={item.organizer.name} size={32} photo={item.organizer.photo} />
+          <View style={{ marginLeft: 8, flex: 1 }}>
+            <View style={styles.festOrgNameRow}>
+              <Text style={styles.festOrgName} numberOfLines={1}>{item.organizer.name}</Text>
+              {item.organizer.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+            </View>
+            <Text style={styles.festOrgLabel}>Organizer • {item.timeAgo}</Text>
+          </View>
+        </View>
+        <View style={styles.festActionRow}>
+          <TouchableOpacity 
+            style={[styles.attendBtn, reminderSet && { backgroundColor: '#F0F0F0', borderColor: '#E0E0E0' }]} 
+            onPress={onReminderPress}
+          >
+            <Text style={[styles.attendBtnText, reminderSet && { color: '#888' }]}>
+              {reminderSet ? 'Reminder Set' : 'Set a reminder'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },
@@ -5413,19 +5410,71 @@ const styles = StyleSheet.create({
   filterDropdown: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#EEE', gap: 6 },
   filterText: { fontSize: 13, color: '#444', fontWeight: '600' },
 
-  festivalTypeCard: { width: 100, padding: 15, borderRadius: 20, marginRight: 12, alignItems: 'center' },
-  festivalIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
-  festivalTypeName: { fontSize: 12, fontWeight: '700', color: '#111', marginBottom: 8, textAlign: 'center' },
-  festivalEventCount: { alignItems: 'center' },
+  festivalTypeCard: { 
+    width: 115, 
+    padding: 16, 
+    borderRadius: 24, 
+    marginRight: 16, 
+    alignItems: 'center',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.15)'
+  },
+  festivalIconCircle: { 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    backgroundColor: '#FFF', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4
+  },
+  festivalTypeName: { 
+    fontSize: 13, 
+    fontWeight: '800', 
+    color: '#1A1A1A', 
+    marginBottom: 8, 
+    textAlign: 'center',
+    letterSpacing: 0.2
+  },
+  festivalEventCount: { 
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12
+  },
   festivalEventCountNum: { fontSize: 18, fontWeight: '900', color: '#111' },
-  festivalEventCountText: { fontSize: 10, fontWeight: '600', color: '#666' },
+  festivalEventCountText: { fontSize: 11, fontWeight: '700', color: '#FF6B00' },
 
   requestOwnerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   requestOwnerMeta: { flex: 1, marginLeft: 12 },
   requestOwnerName: { fontSize: 15, fontWeight: '700', color: '#111' },
   requestOwnerSubtext: { fontSize: 12, color: '#64748B', marginTop: 2 },
   requestOwnerTime: { fontSize: 12, color: '#64748B' },
-  festEventCard: { marginHorizontal: 20, backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 15, elevation: 3, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, borderWidth: 1, borderColor: '#F5F5F5' },
+  festEventCard: { 
+    marginHorizontal: 20, 
+    backgroundColor: '#FFF', 
+    borderRadius: 24, 
+    padding: 18, 
+    marginBottom: 18, 
+    elevation: 6, 
+    shadowColor: '#FF6B00', 
+    shadowOpacity: 0.12, 
+    shadowRadius: 12, 
+    shadowOffset: { width: 0, height: 6 }, 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,107,0,0.15)' 
+  },
   festEventMain: { flexDirection: 'row', marginBottom: 12 },
   festEventImage: { width: 90, height: 90, borderRadius: 16 },
   festEventInfo: { flex: 1, marginLeft: 16 },
@@ -5445,7 +5494,21 @@ const styles = StyleSheet.create({
   attendBtnText: { color: '#FF6B00', fontSize: 13, fontWeight: '700', textAlign: 'center' },
   festMiniBtn: { padding: 4 },
 
-  festBanner: { marginHorizontal: 20, backgroundColor: '#FFF5F0', borderRadius: 20, padding: 15, marginTop: 10, marginBottom: 30, borderWidth: 1, borderColor: '#FFEBE0' },
+  festBanner: { 
+    marginHorizontal: 20, 
+    backgroundColor: '#FFF', 
+    borderRadius: 24, 
+    padding: 20, 
+    marginTop: 15, 
+    marginBottom: 30, 
+    borderWidth: 1, 
+    borderColor: '#FFEBE0',
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8 
+  },
   festBannerLeft: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
   festBannerTitle: { fontSize: 15, fontWeight: '800', color: '#111' },
   festBannerSub: { fontSize: 12, color: '#666', marginTop: 2 },

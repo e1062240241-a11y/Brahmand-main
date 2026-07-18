@@ -70,16 +70,7 @@ const UploadVideoPreview = React.memo(({
     }
   }, [player]);
 
-  // Clean up player on unmount
-  useEffect(() => {
-    return () => {
-      if (player) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
+
 
   if (!ExpoVideoModule?.VideoView || !player) {
     return <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
