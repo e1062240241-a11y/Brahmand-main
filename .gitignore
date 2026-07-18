@@ -89,6 +89,7 @@ brahmand.zip
 # Expo / Android generated native files
 /frontend/android/
 /frontend/nginx.conf
+/ios/
 
 # Android native build outputs and generated resources
 /frontend/android/build.log

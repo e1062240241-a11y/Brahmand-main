@@ -46,6 +46,7 @@ web-build/
 
 # Local native build files
 android/
+ios/
 nginx.conf
 
 # typescript
