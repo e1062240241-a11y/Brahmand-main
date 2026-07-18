@@ -88,8 +88,8 @@ class FirestoreDB:
         
         doc_data = await self._run_sync(_get)
         if doc_data:
-            await self._cache.set(cache_key, doc_data)
-        return copy.deepcopy(doc_data) if doc_data else None
+            await self._cache.set(cache_key, copy.deepcopy(doc_data))
+        return doc_data
     
     async def update_document(self, collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
         """Update a document and invalidate cache"""
@@ -323,9 +323,7 @@ class FirestoreDB:
         """Add a message to chat's messages subcollection"""
         from google.cloud import firestore
         
-        # ponytail: normalize to consistent ISO format with T separator and Z suffix
-        now = datetime.utcnow()
-        message_data['created_at'] = now.strftime('%Y-%m-%dT%H:%M:%S.') + f'{now.microsecond:06d}Z'
+        message_data['created_at'] = datetime.utcnow().isoformat() + 'Z'
         message_data['timestamp'] = firestore.SERVER_TIMESTAMP
         
         def _add():
@@ -333,22 +331,6 @@ class FirestoreDB:
             return doc_ref.id
         
         return await self._run_sync(_add)
-    
-    @staticmethod
-    def _normalize_timestamp(ts_str: str) -> str:
-        """Normalize any timestamp string to consistent ISO format: YYYY-MM-DDTHH:MM:SS.ffffffZ"""
-        try:
-            # Handle Z suffix
-            ts_str = ts_str.rstrip('Z')
-            # Handle timezone offset (+00:00, +05:30, etc.)
-            if '+' in ts_str[10:] or (ts_str.count('-') > 2):
-                dt = datetime.fromisoformat(ts_str)
-                dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
-            else:
-                dt = datetime.fromisoformat(ts_str)
-            return dt.strftime('%Y-%m-%dT%H:%M:%S.') + f'{dt.microsecond:06d}Z'
-        except Exception:
-            return ts_str
     
     async def get_chat_messages(
         self, 
@@ -362,28 +344,24 @@ class FirestoreDB:
             from google.cloud.firestore_v1.base_query import FieldFilter
             
             query = self.client.collection('chats').document(chat_id).collection('messages')
-            
-            # Use timestamp field (Firestore Timestamp type) for reliable ordering
-            # instead of created_at string which has inconsistent formats
-            query = query.order_by('timestamp', direction=firestore.Query.DESCENDING)
+            query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
             
             if before_timestamp:
-                # Convert before_timestamp to datetime for Firestore Timestamp comparison
+                before_str = before_timestamp
                 if isinstance(before_timestamp, datetime):
+                    # Convert to UTC naive representation to match created_at format
                     if before_timestamp.tzinfo is not None:
+                        # timezone is imported from datetime
                         dt_utc = before_timestamp.astimezone(timezone.utc).replace(tzinfo=None)
                     else:
                         dt_utc = before_timestamp
+                    before_str = dt_utc.isoformat()
+                    if not before_str.endswith('Z'):
+                        before_str += 'Z'
                 else:
-                    # Parse string timestamp to datetime
-                    ts_str = str(before_timestamp)
-                    ts_str = ts_str.replace('Z', '+00:00')
-                    dt_utc = datetime.fromisoformat(ts_str)
-                    if dt_utc.tzinfo is not None:
-                        dt_utc = dt_utc.astimezone(timezone.utc).replace(tzinfo=None)
+                    before_str = str(before_timestamp)
                 
-                # Firestore client auto-converts datetime to Timestamp for comparisons
-                query = query.where(filter=FieldFilter('timestamp', '<', dt_utc))
+                query = query.where(filter=FieldFilter('created_at', '<', before_str))
             
             query = query.limit(limit)
             
@@ -454,10 +432,10 @@ class FirestoreDB:
         
         # 3. Cache fresh results and add to final results
         if fresh_docs:
-            cache_mapping = {f"{collection}:{doc['id']}": doc for doc in fresh_docs}
+            cache_mapping = {f"{collection}:{doc['id']}": copy.deepcopy(doc) for doc in fresh_docs}
             await self._cache.set_many(cache_mapping)
             for doc in fresh_docs:
-                results.append(copy.deepcopy(doc))
+                results.append(doc)
             
         return results
 
@@ -501,13 +479,17 @@ class FirestoreDB:
         user_doc = await self.get_document('users', user_id)
         if user_doc:
             circle_ids = user_doc.get('circles', [])
-            for cid in circle_ids:
-                chat_id = f"circle_{cid}"
-                chat_doc = await self.get_document('chats', chat_id)
-                if chat_doc:
-                    circle_chats.append(chat_doc)
-                else:
-                    # Fallback if chat doc doesn't exist yet but has messages
-                    circle_chats.append({'id': chat_id, 'type': 'circle', 'circle_id': cid})
+            if circle_ids:
+                chat_ids = [f"circle_{cid}" for cid in circle_ids]
+                chat_docs = await self.get_documents_batch('chats', chat_ids)
+                chat_map = {doc['id']: doc for doc in chat_docs if doc}
+                
+                for cid in circle_ids:
+                    chat_id = f"circle_{cid}"
+                    if chat_id in chat_map:
+                        circle_chats.append(chat_map[chat_id])
+                    else:
+                        # Fallback if chat doc doesn't exist yet but has messages
+                        circle_chats.append({'id': chat_id, 'type': 'circle', 'circle_id': cid})
                     
         return dm_chats + circle_chats

@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -13,6 +14,8 @@ MAHABHARATA_DATA_DIR = (
 )
 
 _mahabharata_book_cache: Dict[int, List[Dict[str, Any]]] = {}
+_mahabharata_all_summary_cache = None
+_mahabharata_all_full_cache = None
 
 
 def _load_mahabharata_book(book_number: int) -> List[Dict[str, Any]]:
@@ -60,7 +63,7 @@ def _load_mahabharata_book(book_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/book/{book_number}")
 async def get_mahabharata_book(book_number: int):
-    verses = _load_mahabharata_book(book_number)
+    verses = await asyncio.to_thread(_load_mahabharata_book, book_number)
     return {
         "book": "mahabharata",
         "chapter": book_number,
@@ -70,8 +73,31 @@ async def get_mahabharata_book(book_number: int):
 
 
 @router.get("/all")
-async def get_mahabharata_all():
-    chapters = {}
-    for i in range(1, 19):
-        chapters[i] = _load_mahabharata_book(i)
-    return {"book": "mahabharata", "chapters": chapters}
+async def get_mahabharata_all(summary: bool = True):
+    global _mahabharata_all_summary_cache, _mahabharata_all_full_cache
+    if summary and _mahabharata_all_summary_cache is not None:
+        return _mahabharata_all_summary_cache
+    if not summary and _mahabharata_all_full_cache is not None:
+        return _mahabharata_all_full_cache
+
+    results = await asyncio.gather(*(
+        asyncio.to_thread(_load_mahabharata_book, i) for i in range(1, 19)
+    ))
+    if summary:
+        chapters = {
+            i: {
+                "chapter": i,
+                "total_verses": len(res),
+                "verses_summary": f"Book {i} contains {len(res)} verses."
+            }
+            for i, res in enumerate(results, start=1)
+        }
+    else:
+        chapters = {i: res for i, res in enumerate(results, start=1)}
+        
+    response_data = {"book": "mahabharata", "chapters": chapters}
+    if summary:
+        _mahabharata_all_summary_cache = response_data
+    else:
+        _mahabharata_all_full_cache = response_data
+    return response_data

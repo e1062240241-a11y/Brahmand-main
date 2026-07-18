@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pathlib import Path
 from typing import Dict, Any, List
 
@@ -13,6 +14,8 @@ BHAGAVAD_GITA_CHAPTER_DATA_DIR = (
 )
 
 _bhagavad_gita_chapter_cache: Dict[int, List[Dict[str, Any]]] = {}
+_bhagavad_gita_chapters_summary_cache = None
+_bhagavad_gita_chapters_full_cache = None
 
 
 def _load_bhagavad_gita_chapter(chapter_number: int) -> List[Dict[str, Any]]:
@@ -55,7 +58,7 @@ def _load_bhagavad_gita_chapter(chapter_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{chapter_number}")
 async def get_bhagavad_gita_chapter(chapter_number: int):
-    verses = _load_bhagavad_gita_chapter(chapter_number)
+    verses = await asyncio.to_thread(_load_bhagavad_gita_chapter, chapter_number)
     return {
         "book": "bhagavad-gita",
         "chapter": chapter_number,
@@ -65,9 +68,32 @@ async def get_bhagavad_gita_chapter(chapter_number: int):
 
 
 @router.get("/all")
-async def get_bhagavad_gita_all():
-    # ponytail: load all 18 chapters in one call, avoids N round-trips
-    chapters = {}
-    for i in range(1, 19):
-        chapters[i] = _load_bhagavad_gita_chapter(i)
-    return {"book": "bhagavad-gita", "chapters": chapters}
+async def get_bhagavad_gita_all(summary: bool = True):
+    global _bhagavad_gita_chapters_summary_cache, _bhagavad_gita_chapters_full_cache
+    if summary and _bhagavad_gita_chapters_summary_cache is not None:
+        return _bhagavad_gita_chapters_summary_cache
+    if not summary and _bhagavad_gita_chapters_full_cache is not None:
+        return _bhagavad_gita_chapters_full_cache
+
+    results = await asyncio.gather(*(
+        asyncio.to_thread(_load_bhagavad_gita_chapter, i) for i in range(1, 19)
+    ))
+    if summary:
+        chapters = {
+            i: {
+                "chapter": i,
+                "total_verses": len(res),
+                "verses_summary": f"Chapter {i} contains {len(res)} verses."
+            }
+            for i, res in enumerate(results, start=1)
+        }
+    else:
+        chapters = {i: res for i, res in enumerate(results, start=1)}
+    
+    response_data = {"book": "bhagavad-gita", "chapters": chapters}
+    if summary:
+        _bhagavad_gita_chapters_summary_cache = response_data
+    else:
+        _bhagavad_gita_chapters_full_cache = response_data
+        
+    return response_data

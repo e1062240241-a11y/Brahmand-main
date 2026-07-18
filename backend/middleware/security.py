@@ -132,35 +132,22 @@ async def get_current_user(
     token_data: Dict[str, Any] = Depends(verify_token)
 ) -> Dict[str, Any]:
     """Get current user from token with caching"""
-    from config.database import get_database, get_redis
-    import json
+    from utils.cache import cache_manager
+    from config.database import get_database
+    from config.firestore_db import FirestoreDB
     
     user_id = token_data["user_id"]
-    cache_key = f"user:{user_id}"
-    
-    # Try cache first
-    redis = await get_redis()
-    cached = await redis.get(cache_key)
-    if cached:
-        try:
-            return json.loads(cached)
-        except:
-            pass
-    
-    # Fetch from database
-    db_client = await get_database()
-    db = FirestoreDB(db_client)
-    user = await db.get_document('users', user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Serialize and cache
-    user_data = serialize_user(user)
-    try:
-        await redis.set(cache_key, json.dumps(user_data, default=str), ex=300)
-    except:
-        pass
-    
+    user_data = await cache_manager.get_user(user_id)
+    if not user_data:
+        db_client = await get_database()
+        db = FirestoreDB(db_client)
+        user = await db.get_document('users', user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_data = serialize_user(user)
+        await cache_manager.set_user(user_id, user_data)
+        
     return user_data
 
 
@@ -177,9 +164,8 @@ def serialize_user(user: dict) -> dict:
 
 async def invalidate_user_cache(user_id: str):
     """Invalidate user cache after updates"""
-    from config.database import get_redis
-    redis = await get_redis()
-    await redis.delete(f"user:{user_id}")
+    from utils.cache import cache_manager
+    await cache_manager.invalidate_user(user_id)
 
 
 # Data encryption helpers

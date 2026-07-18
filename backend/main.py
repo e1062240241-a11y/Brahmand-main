@@ -191,6 +191,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan"""
     logger.info("Starting Sanatan Lok API v2.2.0 (Firestore)...")
     
+    # Set default event loop executor to ThreadPoolExecutor with 1000 workers
+    # to support highly concurrent blocking sync Firestore operations
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+    loop = asyncio.get_running_loop()
+    loop.set_default_executor(ThreadPoolExecutor(max_workers=1000))
+    logger.info("Default ThreadPoolExecutor max_workers set to 1000")
+    
     # Initialize Firebase with Firestore
     await firebase_manager.initialize()
     
@@ -907,13 +915,6 @@ async def _ensure_admin_user(token_data: dict):
 
 def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     """Build admin-facing snapshot of vendor profile and KYC fields."""
-    # Normalize kyc_status to plain string to avoid Pydantic enum objects
-    # being stored in Firestore, which would break equality queries.
-    raw_kyc_status = vendor.get('kyc_status')
-    kyc_status_str = str(raw_kyc_status.value if hasattr(raw_kyc_status, 'value') else raw_kyc_status or 'pending')
-    is_pending = kyc_status_str in ('pending', 'manual_review', 'None', 'none', '')
-    if raw_kyc_status is None:
-        is_pending = True
     return {
         'vendor_id': vendor.get('id'),
         'owner_id': vendor.get('owner_id'),
@@ -934,12 +935,11 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'business_gallery_images': vendor.get('business_gallery_images', []),
         'menu_items': vendor.get('menu_items', []),
         'offers_home_delivery': vendor.get('offers_home_delivery', False),
-        'kyc_status': kyc_status_str,
-        'kyc_request_no': vendor.get('kyc_request_no'),
+        'kyc_status': vendor.get('kyc_status', 'pending'),
         'aadhaar_otp_verified_at': vendor.get('aadhaar_otp_verified_at'),
         'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
-        'review_status': 'pending' if is_pending else kyc_status_str,
-        'review_state': 'needs_admin_action' if is_pending else 'closed',
+        'review_status': 'pending' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else vendor.get('kyc_status'),
+        'review_state': 'needs_admin_action' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else 'closed',
         'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.utcnow().isoformat() + 'Z'),
     }
 
@@ -1302,7 +1302,7 @@ api_router.include_router(jaap_routes_router)
 api_router.include_router(upanishads_router)
 api_router.include_router(auth_router)
 api_router.include_router(user_router)
-# api_router.include_router(community_router)  # Commented out to prevent overriding main.py routes
+api_router.include_router(community_router)
 api_router.include_router(messaging_router)
 api_router.include_router(temple_router)
 api_router.include_router(event_router)
@@ -2163,13 +2163,15 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     non_location_community_ids = []
     old_location_community_ids = []
     
-    for cid in current_communities:
-        comm = await db.get_document('communities', cid)
-        if comm:
-            if comm.get('type') in ['city', 'state', 'country', 'home_area', 'office_area']:
-                old_location_community_ids.append(cid)
-            else:
-                non_location_community_ids.append(cid)
+    if current_communities:
+        comm_docs = await db.get_documents_batch('communities', list(current_communities))
+        for comm in comm_docs:
+            if comm:
+                cid = comm['id']
+                if comm.get('type') in ['city', 'state', 'country', 'home_area', 'office_area']:
+                    old_location_community_ids.append(cid)
+                else:
+                    non_location_community_ids.append(cid)
                 
     # Remove user from the old location-based communities in the communities collection
     for cid in old_location_community_ids:
@@ -2614,26 +2616,30 @@ async def get_blocked_users_endpoint(token_data: dict = Depends(verify_token)):
         # Query blocks where blockerUid is the current user
         blocks = await db.query_documents('user_blocks', filters=[('blockerUid', '==', current_user_id)])
         blocked_users = []
-        for b in blocks:
-            blocked_uid = b.get('blockedUid')
-            if blocked_uid:
-                user_doc = await db.get_document('users', blocked_uid)
-                if user_doc:
-                    blocked_users.append({
-                        'id': user_doc.get('id'),
-                        'name': user_doc.get('name', 'Unknown User'),
-                        'username': user_doc.get('username', ''),
-                        'sl_id': user_doc.get('sl_id', ''),
-                        'photo_url': user_doc.get('photo_url', '') or user_doc.get('photo', '')
-                    })
-                else:
-                    blocked_users.append({
-                        'id': blocked_uid,
-                        'name': 'Unknown User',
-                        'username': 'unknown',
-                        'sl_id': '',
-                        'photo_url': ''
-                    })
+        blocked_uids = [b.get('blockedUid') for b in blocks if b.get('blockedUid')]
+        if blocked_uids:
+            user_docs = await db.get_documents_batch('users', blocked_uids)
+            user_map = {u['id']: u for u in user_docs if u}
+            for b in blocks:
+                blocked_uid = b.get('blockedUid')
+                if blocked_uid:
+                    user_doc = user_map.get(blocked_uid)
+                    if user_doc:
+                        blocked_users.append({
+                            'id': user_doc.get('id'),
+                            'name': user_doc.get('name', 'Unknown User'),
+                            'username': user_doc.get('username', ''),
+                            'sl_id': user_doc.get('sl_id', ''),
+                            'photo_url': user_doc.get('photo_url', '') or user_doc.get('photo', '')
+                        })
+                    else:
+                        blocked_users.append({
+                            'id': blocked_uid,
+                            'name': 'Unknown User',
+                            'username': 'unknown',
+                            'sl_id': '',
+                            'photo_url': ''
+                        })
         return blocked_users
     except Exception as e:
         logger.error(f"Error fetching blocked users: {e}")
@@ -4073,11 +4079,14 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
     authors_by_id = {}
-    for author_id in post_author_ids:
+    if post_author_ids:
         try:
-            authors_by_id[author_id] = await db.get_document('users', author_id)
-        except Exception:
-            authors_by_id[author_id] = None
+            author_docs = await db.get_documents_batch('users', post_author_ids)
+            for u in author_docs:
+                if u:
+                    authors_by_id[u['id']] = u
+        except Exception as e:
+            logger.error(f"Error batch fetching post authors: {e}")
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -4092,8 +4101,19 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
 
+    # Fetch comments for all posts concurrently to avoid N+1 sequential database queries
+    comments_tasks = [
+        db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post.get('id'))],
+            limit=200,
+        )
+        for post in paged_posts
+    ]
+    all_posts_comments = await asyncio.gather(*comments_tasks)
+
     normalized = []
-    for post in paged_posts:
+    for post, top_comments in zip(paged_posts, all_posts_comments):
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4105,11 +4125,6 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = user_id in liked_by
 
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=200,
-        )
         top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
         top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
         post['top_comments'] = top_comments[:5]
@@ -6544,19 +6559,6 @@ async def toggle_community_message_like(
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
-    # Enforce verification check
-    community = await db.get_document('communities', community_id)
-    if community:
-        comm_type = community.get('type')
-        if comm_type in ['state', 'country']:
-            user = await db.get_document('users', user_id)
-            is_verified = user.get('is_verified', False) if user else False
-            verification_level = user.get('verification_level', 'state') if user else 'state'
-            if not is_verified:
-                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
-            if comm_type == 'country' and verification_level != 'national':
-                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
-        
     liked_by = msg.get('liked_by', []) or []
     liked = user_id in liked_by
     
@@ -6635,19 +6637,6 @@ async def add_community_message_comment(
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
-    # Enforce verification check
-    community = await db.get_document('communities', community_id)
-    if community:
-        comm_type = community.get('type')
-        if comm_type in ['state', 'country']:
-            user = await db.get_document('users', user_id)
-            is_verified = user.get('is_verified', False) if user else False
-            verification_level = user.get('verification_level', 'state') if user else 'state'
-            if not is_verified:
-                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
-            if comm_type == 'country' and verification_level != 'national':
-                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
-        
     text = str(data.get('text') or '').strip()
     if not text:
         raise HTTPException(status_code=400, detail='Comment text is required')
@@ -6681,21 +6670,6 @@ async def get_community_message_comments(
     token_data: dict = Depends(verify_token)
 ):
     db = await get_db()
-    
-    # Enforce verification check
-    community = await db.get_document('communities', community_id)
-    if community:
-        comm_type = community.get('type')
-        if comm_type in ['state', 'country']:
-            user_id = token_data['user_id']
-            user = await db.get_document('users', user_id)
-            is_verified = user.get('is_verified', False) if user else False
-            verification_level = user.get('verification_level', 'state') if user else 'state'
-            if not is_verified:
-                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
-            if comm_type == 'country' and verification_level != 'national':
-                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
-                
     comments = await db.query_documents(
         'post_comments',
         filters=[('post_id', '==', message_id)]
@@ -7300,18 +7274,13 @@ async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_toke
         logger.error("Error clearing DM messages: %s", e)
         raise HTTPException(status_code=500, detail="Failed to clear messages")
 
-    # Delete chat document entirely so it is removed from conversations list
-    try:
-        await db.delete_document('chats', chat_id)
-    except Exception as e:
-        logger.error("Error deleting chat document: %s", e)
-        # Fallback to resetting preview if deletion fails
-        await db.update_document('chats', chat_id, {
-            'last_message': '',
-            'updated_at': datetime.utcnow()
-        })
+    # Reset chat preview
+    await db.update_document('chats', chat_id, {
+        'last_message': '',
+        'updated_at': datetime.utcnow()
+    })
 
-    return {"message": f"Cleared {deleted} messages and deleted chat document"}
+    return {"message": f"Cleared {deleted} messages"}
 
 
 @api_router.post("/dm/{chat_id}/read")
@@ -7416,6 +7385,19 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     if user_circle_ids:
         try:
             fetched_circles = await db.get_documents_batch('circles', user_circle_ids)
+            
+            # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
+            all_member_ids = set()
+            for circle in fetched_circles:
+                if circle:
+                    for member_id in circle.get('members', []):
+                        if member_id != user_id:
+                            all_member_ids.add(member_id)
+
+            # Fetch all user details in a single batch query
+            users_data = await db.get_documents_batch('users', list(all_member_ids))
+            users_by_id = {u['id']: u for u in users_data if u and 'id' in u}
+
             for circle in fetched_circles:
                 if circle:
                     cid = circle['id']
@@ -7430,7 +7412,7 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                     for member_id in circle.get('members', []):
                         if member_id == user_id:
                             continue
-                        member_doc = await db.get_document('users', member_id)
+                        member_doc = users_by_id.get(member_id)
                         if member_doc and member_doc.get('name'):
                             member_names.append(member_doc['name'])
 
@@ -7558,15 +7540,17 @@ async def get_circle(circle_id: str, token_data: dict = Depends(verify_token)):
     
     # Get member details
     members_info = []
-    for member_id in circle.get('members', []):
-        member = await db.get_document('users', member_id)
-        if member:
-            members_info.append({
-                "user_id": member_id,
-                "name": member['name'],
-                "sl_id": member.get('sl_id'),
-                "photo": member.get('photo')
-            })
+    member_ids = circle.get('members', [])
+    if member_ids:
+        members = await db.get_documents_batch('users', member_ids)
+        for member in members:
+            if member:
+                members_info.append({
+                    "user_id": member['id'],
+                    "name": member['name'],
+                    "sl_id": member.get('sl_id'),
+                    "photo": member.get('photo')
+                })
     
     return {
         "id": circle['id'],
@@ -8068,24 +8052,17 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
 
 @api_router.get("/temples")
 async def get_temples(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    return await db.query_documents('temples', limit=100)
+    from services.temple_service import TempleService
+    user_id = token_data.get("user_id")
+    return await TempleService.get_temples(user_id)
 
 
 @api_router.get("/temples/nearby")
 async def get_nearby_temples(lat: float = None, lng: float = None, token_data: dict = Depends(verify_token)):
     """Get temples, optionally filtered by location"""
-    db = await get_db()
-    temples = await db.query_documents('temples', limit=100)
-    
-    # Add is_following status for each temple
-    user_id = token_data["user_id"]
-    for temple in temples:
-        followers = temple.get('followers', [])
-        temple['is_following'] = user_id in followers
-        temple['follower_count'] = len(followers)
-    
-    return temples
+    from services.temple_service import TempleService
+    user_id = token_data.get("user_id")
+    return await TempleService.get_temples(user_id)
 
 
 @api_router.get("/temples/{temple_id}")
@@ -8426,37 +8403,6 @@ async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: s
         return None
 
 
-@api_router.post("/kyc/validate-image")
-async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
-    """
-    Instantly validate the uploaded KYC image with Llama 3.2 Vision before final submission.
-    """
-    from services.image_service import validate_id_proof_with_llm
-    
-    id_photo = data.get('id_photo')
-    if not id_photo:
-        raise HTTPException(status_code=400, detail="Image data is required")
-        
-    db = await get_db()
-    user_id = token_data["user_id"]
-    user_doc = await db.get_document('users', user_id)
-    if not user_doc:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    id_type = data.get('id_type')
-    id_number = data.get('id_number')
-    
-    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
-    
-    validation = await validate_id_proof_with_llm(
-        base64_string=id_photo,
-        expected_id_type=id_type,
-        expected_id_number=id_number if id_number != "123456789012" else None,
-        expected_name=expected_name
-    )
-    return validation
-
-
 @api_router.post("/kyc/submit")
 async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     """
@@ -8470,13 +8416,10 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     - selfie_photo: Base64 encoded selfie (for PAN verification)
     - id_photo: Base64 encoded ID document
     """
-    from services.image_service import compress_base64_image, is_valid_image, validate_id_proof_with_llm
+    from services.image_service import compress_base64_image, is_valid_image
     
     db = await get_db()
     user_id = token_data["user_id"]
-    user_doc = await db.get_document('users', user_id)
-    if not user_doc:
-        raise HTTPException(status_code=404, detail="User not found")
     
     kyc_role = data.get('kyc_role')
     if kyc_role not in ['temple', 'vendor', 'organizer']:
@@ -8495,28 +8438,9 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="Aadhaar must be 12 digits")
     if id_type == 'pan' and len(id_number) != 10:
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
- 
-    # Generate request number
-    kyc_request_no = user_doc.get('kyc_request_no')
-    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
-    vendor_id = user_doc.get('vendor_id')
-    if not vendor_id and (kyc_role == 'vendor' or is_vendor_user):
-        v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
-        if v_list:
-            vendor_id = v_list[0]['id']
-            
-    if vendor_id:
-        vendor_doc = await db.get_document('vendors', vendor_id)
-        if vendor_doc and vendor_doc.get('kyc_request_no'):
-            kyc_request_no = vendor_doc.get('kyc_request_no')
-            
-    if not kyc_request_no:
-        import random
-        date_str = datetime.utcnow().strftime("%Y%m%d")
-        rand_num = random.randint(1000, 9999)
-        kyc_request_no = f"REQ-{date_str}-{rand_num}"
- 
+
     if id_type == 'aadhaar':
+        user_doc = await db.get_document('users', user_id)
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
         otp_aadhaar = (user_doc.get('kyc_aadhaar_number') or '').strip()
@@ -8530,22 +8454,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     # Compress and upload photos if provided
     id_photo = data.get('id_photo')
     if id_photo and is_valid_image(id_photo):
-        # Validate ID proof content
-        bypass_validation = data.get('bypass_validation', False)
-        if not bypass_validation:
-            expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
-            validation = await validate_id_proof_with_llm(
-                base64_string=id_photo,
-                expected_id_type=id_type,
-                expected_id_number=id_number if id_number != "123456789012" else None,
-                expected_name=expected_name
-            )
-            if not validation.get('valid', True):
-                raise HTTPException(
-                    status_code=400,
-                    detail=validation.get('reason', 'Uploaded image is not a valid government ID.')
-                )
-        
         id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
         uploaded_url = await _upload_kyc_base64_to_storage(user_id, id_photo, "kyc/id_photos")
         if uploaded_url:
@@ -8565,17 +8473,12 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_id_type': id_type,
         'kyc_id_number': id_number,
         'kyc_id_photo': id_photo,
-        'kyc_selfie_photo': selfie_photo if (id_type == 'pan' or kyc_role == 'organizer') else None,
+        'kyc_selfie_photo': selfie_photo if id_type == 'pan' else None,
         'kyc_submitted_at': datetime.utcnow().isoformat() + 'Z',
         'kyc_rejection_reason': None,
         'kyc_verified_at': None,
         'is_verified': False,
-        'kyc_request_no': kyc_request_no,
     }
-    
-    full_name_val = data.get('full_name') or data.get('name')
-    if full_name_val:
-        kyc_data['fullName'] = full_name_val
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
@@ -8590,12 +8493,18 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     await db.update_document('users', user_id, kyc_data)
 
+    user_doc = await db.get_document('users', user_id)
+    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
     if kyc_role == 'vendor' or is_vendor_user:
+        vendor_id = user_doc.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
         if vendor_id:
             vendor_updates = {
                 'kyc_status': kyc_data['kyc_status'],
-                'kyc_rejection_reason': None,
-                'kyc_request_no': kyc_request_no
+                'kyc_rejection_reason': None
             }
             if id_type == 'aadhaar':
                 vendor_updates['aadhar_url'] = id_photo
@@ -8636,8 +8545,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         "message": "KYC submitted successfully",
         "status": kyc_data['kyc_status'],
         "match_distance": kyc_data.get('kyc_match_distance'),
-        "match_reason": kyc_data.get('kyc_match_reason'),
-        "kyc_request_no": kyc_request_no
+        "match_reason": kyc_data.get('kyc_match_reason')
     }
 
 
@@ -8775,64 +8683,6 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
     
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
-
-
-@api_router.delete("/admin/kyc/{user_id}")
-async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
-    """Admin: delete a user's KYC verification request and reset their status."""
-    db, admin_user_id = await _ensure_admin_user(token_data)
-
-    target_user = await db.get_document('users', user_id)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Reset owner's KYC
-    await db.update_document('users', user_id, {
-        'kyc_status': None,
-        'kyc_role': None,
-        'kyc_id_type': None,
-        'kyc_id_number': None,
-        'kyc_id_photo': None,
-        'kyc_selfie_photo': None,
-        'kyc_submitted_at': None,
-        'kyc_verified_at': None,
-        'kyc_rejection_reason': None,
-        'is_verified': False
-    })
-
-    # Remove verified badges
-    badges_to_remove = ['Verified Temple', 'Verified Vendor', 'Verified Organizer']
-    current_badges = target_user.get('badges', [])
-    updated_badges = [b for b in current_badges if b not in badges_to_remove]
-    if len(updated_badges) != len(current_badges):
-        await db.update_document('users', user_id, {'badges': updated_badges})
-
-    # If the user is a vendor, also reset the vendor profile kyc status
-    if target_user.get('is_vendor') or target_user.get('vendor_id'):
-        vendor_id = target_user.get('vendor_id')
-        if not vendor_id:
-            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
-            if v_list:
-                vendor_id = v_list[0]['id']
-        if vendor_id:
-            vendor = await db.get_document('vendors', vendor_id)
-            if vendor:
-                await db.update_document('vendors', vendor_id, {
-                    'kyc_status': None,
-                    'kyc_reviewed_by': None,
-                    'kyc_reviewed_at': None,
-                    'kyc_rejection_reason': None
-                })
-                # Remove from vendor admin reviews
-                try:
-                    await db.delete_document('vendor_admin_reviews', vendor_id)
-                except Exception:
-                    pass
-
-    logger.info(f"KYC deleted/reset for user {user_id}")
-    return {"message": "User KYC deleted and reset successfully"}
-
-
 @api_router.get("/admin/kyc/pending")
 async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
     """Get all users with pending or verified KYC (admin only)"""
@@ -8867,7 +8717,6 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
         'kyc_id_photo': u.get('kyc_id_photo'),
         'kyc_selfie_photo': u.get('kyc_selfie_photo'),
         'kyc_id_number': u.get('kyc_id_number'),
-        'kyc_request_no': u.get('kyc_request_no'),
     } for u in pending]
 
 
@@ -9046,34 +8895,53 @@ async def get_reports(
         reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
         reports = reports[:max(1, min(limit, 300))]
 
+    # Pre-collect missing post and comment IDs across reports to fetch in batch
+    missing_post_ids = set()
+    missing_comment_ids = set()
+    for r in reports:
+        if not r.get('snapshot') and r.get('content_id'):
+            if r.get('content_type') == 'post':
+                missing_post_ids.add(r.get('content_id'))
+            elif r.get('content_type') == 'comment':
+                missing_comment_ids.add(r.get('content_id'))
+
+    posts_by_id = {}
+    comments_by_id = {}
+    if missing_post_ids:
+        try:
+            fetched_posts = await db.get_documents_batch('posts', list(missing_post_ids))
+            posts_by_id = {p['id']: p for p in fetched_posts if p and 'id' in p}
+        except Exception as e:
+            logger.warning("Failed to batch fetch posts for reports: %s", e)
+    if missing_comment_ids:
+        try:
+            fetched_comments = await db.get_documents_batch('post_comments', list(missing_comment_ids))
+            comments_by_id = {c['id']: c for c in fetched_comments if c and 'id' in c}
+        except Exception as e:
+            logger.warning("Failed to batch fetch comments for reports: %s", e)
+
     for r in reports:
         if not r.get('snapshot') and r.get('content_type') == 'post' and r.get('content_id'):
-            try:
-                post = await db.get_document('posts', r.get('content_id'))
-                if post:
-                    r['snapshot'] = {
-                        'post_id': r.get('content_id'),
-                        'caption': post.get('caption') or '',
-                        'media_url': post.get('media_url'),
-                        'media_type': post.get('media_type'),
-                        'post_user_id': post.get('user_id'),
-                        'post_username': post.get('username'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic snapshot for reports: %s", e)
+            post = posts_by_id.get(r.get('content_id'))
+            if post:
+                r['snapshot'] = {
+                    'post_id': r.get('content_id'),
+                    'caption': post.get('caption') or '',
+                    'media_url': post.get('media_url'),
+                    'media_type': post.get('media_type'),
+                    'post_user_id': post.get('user_id'),
+                    'post_username': post.get('username'),
+                }
         elif not r.get('snapshot') and r.get('content_type') == 'comment' and r.get('content_id'):
-            try:
-                comment = await db.get_document('post_comments', r.get('content_id'))
-                if comment:
-                    r['snapshot'] = {
-                        'comment_id': r.get('content_id'),
-                        'text': comment.get('text') or '',
-                        'comment_user_id': comment.get('user_id'),
-                        'comment_username': comment.get('username'),
-                        'post_id': comment.get('post_id'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic comment snapshot for reports: %s", e)
+            comment = comments_by_id.get(r.get('content_id'))
+            if comment:
+                r['snapshot'] = {
+                    'comment_id': r.get('content_id'),
+                    'text': comment.get('text') or '',
+                    'comment_user_id': comment.get('user_id'),
+                    'comment_username': comment.get('username'),
+                    'post_id': comment.get('post_id'),
+                }
 
     try:
         mod_reports = await db.query_documents(
@@ -9092,6 +8960,34 @@ async def get_reports(
         mod_reports.sort(key=lambda item: _clean_datetime(item.get('createdAt')), reverse=True)
         mod_reports = mod_reports[:max(1, min(limit, 300))]
 
+    # Pre-collect missing post and comment IDs across moderation reports to fetch in batch
+    mod_post_ids = set()
+    mod_comment_ids = set()
+    for r in mod_reports:
+        content_type = r.get('contentType')
+        content_id = r.get('contentId')
+        snapshot = r.get('snapshot') or {}
+        if not snapshot and content_id:
+            if content_type == 'post':
+                mod_post_ids.add(content_id)
+            elif content_type == 'comment':
+                mod_comment_ids.add(content_id)
+
+    mod_posts_by_id = {}
+    mod_comments_by_id = {}
+    if mod_post_ids:
+        try:
+            fetched_mod_posts = await db.get_documents_batch('posts', list(mod_post_ids))
+            mod_posts_by_id = {p['id']: p for p in fetched_mod_posts if p and 'id' in p}
+        except Exception as e:
+            logger.warning("Failed to batch fetch posts for moderation reports: %s", e)
+    if mod_comment_ids:
+        try:
+            fetched_mod_comments = await db.get_documents_batch('post_comments', list(mod_comment_ids))
+            mod_comments_by_id = {c['id']: c for c in fetched_mod_comments if c and 'id' in c}
+        except Exception as e:
+            logger.warning("Failed to batch fetch comments for moderation reports: %s", e)
+
     standardized_mod = []
     for r in mod_reports:
         created_at_val = r.get('createdAt')
@@ -9108,32 +9004,26 @@ async def get_reports(
         content_id = r.get('contentId')
         snapshot = r.get('snapshot') or {}
         if not snapshot and content_type == 'post' and content_id:
-            try:
-                post = await db.get_document('posts', content_id)
-                if post:
-                    snapshot = {
-                        'post_id': content_id,
-                        'caption': post.get('caption') or '',
-                        'media_url': post.get('media_url'),
-                        'media_type': post.get('media_type'),
-                        'post_user_id': post.get('user_id'),
-                        'post_username': post.get('username'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic snapshot for moderation_reports: %s", e)
+            post = mod_posts_by_id.get(content_id)
+            if post:
+                snapshot = {
+                    'post_id': content_id,
+                    'caption': post.get('caption') or '',
+                    'media_url': post.get('media_url'),
+                    'media_type': post.get('media_type'),
+                    'post_user_id': post.get('user_id'),
+                    'post_username': post.get('username'),
+                }
         elif not snapshot and content_type == 'comment' and content_id:
-            try:
-                comment = await db.get_document('post_comments', content_id)
-                if comment:
-                    snapshot = {
-                        'comment_id': content_id,
-                        'text': comment.get('text') or '',
-                        'comment_user_id': comment.get('user_id'),
-                        'comment_username': comment.get('username'),
-                        'post_id': comment.get('post_id'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic comment snapshot: %s", e)
+            comment = mod_comments_by_id.get(content_id)
+            if comment:
+                snapshot = {
+                    'comment_id': content_id,
+                    'text': comment.get('text') or '',
+                    'comment_user_id': comment.get('user_id'),
+                    'comment_username': comment.get('username'),
+                    'post_id': comment.get('post_id'),
+                }
 
         standardized_mod.append({
             'id': r.get('id'),
@@ -10874,43 +10764,11 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
         raise HTTPException(status_code=403, detail="Only the owner can update the vendor")
     
     update_data = data.dict(exclude_unset=True, exclude_none=True)
-
-    # Normalize enum values to plain strings so Firestore stores and queries correctly.
-    if 'kyc_status' in update_data:
-        kyc_val = update_data['kyc_status']
-        update_data['kyc_status'] = str(kyc_val.value if hasattr(kyc_val, 'value') else kyc_val)
-
+    
     # Do not allow setting kyc_status to verified or approved directly by vendor owner
     if 'kyc_status' in update_data:
         if update_data['kyc_status'] in ['verified', 'approved']:
             raise HTTPException(status_code=403, detail="Cannot directly set KYC status to verified or approved")
-            
-        # If setting to pending (submission), generate/sync request number
-        if update_data['kyc_status'] == 'pending':
-            kyc_request_no = vendor.get('kyc_request_no')
-            if not kyc_request_no:
-                # Also check user doc for kyc_request_no
-                user_doc = await db.get_document('users', user_id)
-                if user_doc and user_doc.get('kyc_request_no'):
-                    kyc_request_no = user_doc.get('kyc_request_no')
-                    
-            if not kyc_request_no:
-                import random
-                date_str = datetime.utcnow().strftime("%Y%m%d")
-                rand_num = random.randint(1000, 9999)
-                kyc_request_no = f"REQ-{date_str}-{rand_num}"
-                
-            update_data['kyc_request_no'] = kyc_request_no
-            
-            # Also sync to user document
-            await db.update_document('users', user_id, {
-                'kyc_status': 'pending',
-                'kyc_request_no': kyc_request_no,
-                'kyc_role': 'vendor'
-            })
-
-    # Always stamp updated_at so ordering queries and the admin snapshot stay fresh.
-    update_data['updated_at'] = datetime.utcnow().isoformat() + 'Z'
     
     # Handle new categories
     if 'categories' in update_data:
@@ -11464,8 +11322,9 @@ async def _get_sandbox_headers() -> dict:
                 "x-api-version": str(sandbox_api_version),
             }
             try:
-                import asyncio
-                auth_resp = await asyncio.to_thread(requests.post, auth_url, headers=auth_headers, timeout=20)
+                def _auth():
+                    return requests.post(auth_url, headers=auth_headers, timeout=20)
+                auth_resp = await asyncio.to_thread(_auth)
                 auth_data = auth_resp.json() if auth_resp.content else {}
             except Exception as exc:
                 raise HTTPException(status_code=502, detail=f"Sandbox authenticate failed: {str(exc)}")
@@ -12006,50 +11865,6 @@ async def get_vendor_review_queue(
             with open(log_path, 'a') as f:
                 f.write(f"Fallback query or sort failed: {fallback_exc}\n")
 
-    # Self-healing: if status=pending and 0 results, re-sync all vendors whose
-    # kyc_status is pending/manual_review but whose snapshots are stale (enum stored
-    # as non-string, or snapshot missing). This fixes data from before the enum fix.
-    if status == 'pending' and not records:
-        with open(log_path, 'a') as f:
-            f.write("Zero pending snapshots found — running self-heal resync from vendors collection...\n")
-        try:
-            pending_vendors = await db.query_documents(
-                'vendors',
-                filters=[('kyc_status', 'in', ['pending', 'manual_review'])],
-            )
-            if not pending_vendors:
-                # Also scan without filter for stale enum values stored differently
-                all_vendors = await db.query_documents('vendors')
-                pending_vendors = [
-                    v for v in (all_vendors or [])
-                    if str(v.get('kyc_status', '')).lower() in ('pending', 'manual_review')
-                ]
-
-            resynced = 0
-            for v in (pending_vendors or []):
-                vid = v.get('id')
-                if vid:
-                    await _sync_vendor_to_admin_queue(db, vid)
-                    resynced += 1
-
-            with open(log_path, 'a') as f:
-                f.write(f"Self-heal resynced {resynced} vendor snapshots.\n")
-
-            if resynced > 0:
-                # Retry the query after resyncing
-                try:
-                    records = await db.query_documents(
-                        'vendor_admin_reviews',
-                        filters=[('review_status', '==', 'pending')],
-                    )
-                    with open(log_path, 'a') as f:
-                        f.write(f"Post-resync query: {len(records)} pending records found.\n")
-                except Exception:
-                    pass
-        except Exception as heal_exc:
-            with open(log_path, 'a') as f:
-                f.write(f"Self-heal failed: {heal_exc}\n")
-
     return records
 
 
@@ -12232,9 +12047,14 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     resolved_community_id = data.community_id
     if not resolved_community_id:
         user_community_ids = user.get('communities', []) or []
+        
+        # Batch-fetch all user communities in a single call to avoid N+1 sequential DB queries
+        fetched_comms = await db.get_documents_batch('communities', user_community_ids) if user_community_ids else []
+        comms_by_id = {c['id']: c for c in fetched_comms if c and 'id' in c}
+
         city_comm_id = None
         for comm_id in user_community_ids:
-            comm = await db.get_document('communities', comm_id)
+            comm = comms_by_id.get(comm_id)
             if comm and comm.get('type') == 'city':
                 city_comm_id = comm_id
                 break
@@ -12253,7 +12073,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
             best_match_id = None
             fallback_match_id = None
             for comm_id in user_community_ids:
-                comm = await db.get_document('communities', comm_id)
+                comm = comms_by_id.get(comm_id)
                 if not comm:
                     continue
                 comm_type = comm.get('type')
@@ -12275,7 +12095,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     if not resolved_community_id:
         user_community_ids = user.get('communities', []) or []
         for comm_id in user_community_ids:
-            comm = await db.get_document('communities', comm_id)
+            comm = comms_by_id.get(comm_id)
             if comm and comm.get('type') == 'city':
                 resolved_community_id = comm_id
                 break
@@ -12691,7 +12511,7 @@ async def delete_community_request(request_id: str, token_data: dict = Depends(v
 # =================== SOS EMERGENCY SYSTEM ===================
 
 
-async def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371  # Earth radius in km
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -12707,7 +12527,18 @@ async def _get_nearest_users(
     max_users: int = 200,
     max_distance_km: float = 1.0
 ):
-    users = await db.query_documents('users')
+    # Calculate bounding box for latitude to filter database query (1 degree lat ~= 111 km)
+    # This prevents loading all users into memory (OOM risk) and significantly speeds up lookup.
+    lat_delta = max_distance_km / 111.0
+    lat_min = latitude - lat_delta
+    lat_max = latitude + lat_delta
+
+    filters = [
+        ('current_location.latitude', '>=', lat_min),
+        ('current_location.latitude', '<=', lat_max)
+    ]
+
+    users = await db.query_documents('users', filters=filters)
     candidates = []
     
     # Calculate 10 minutes ago
@@ -12741,7 +12572,7 @@ async def _get_nearest_users(
         except (ValueError, TypeError):
             continue
             
-        distance = await _haversine_distance(latitude, longitude, user_lat, user_lng)
+        distance = _haversine_distance(latitude, longitude, user_lat, user_lng)
         if distance <= max_distance_km:
             candidates.append((distance, user.get('id')))
 
@@ -12852,7 +12683,8 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
 async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, notification_type: str, data: dict):
     if not user_ids:
         return
-    for uid in user_ids:
+
+    async def _save_single_notification(uid):
         try:
             notification_data = {
                 'user_id': uid,
@@ -12874,6 +12706,9 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
                 logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
         except Exception as e:
             logger.error(f"Failed to save bulk notification for user {uid}: {e}")
+
+    # Process all notifications in parallel to avoid sequential database write and socket emission delays
+    await asyncio.gather(*[_save_single_notification(uid) for uid in user_ids])
 
 
 @api_router.post("/sos")
@@ -12964,7 +12799,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
                     continue
             except:
                 continue
-            dist = await _haversine_distance(data.latitude, data.longitude, u_lat, u_lng)
+            dist = _haversine_distance(data.latitude, data.longitude, u_lat, u_lng)
             if dist <= 10.0:
                 expanded_users.append((dist, uid))
         expanded_users.sort(key=lambda x: x[0])
@@ -13729,9 +13564,8 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     except Exception as e:
         logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
-    async def _call():
+    def _call():
         import requests
-        import asyncio
         nvidia_key = os.environ.get("NVIDIA_API_KEY")
         invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
@@ -13768,13 +13602,13 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             "chat_template_kwargs": {"enable_thinking": False}
         }
 
-        response = await asyncio.to_thread(requests.post, invoke_url, headers=headers, json=payload, timeout=45)
+        response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
         
     try:
-        text = await _call()
+        text = await asyncio.to_thread(_call)
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
         if "lucky_color_hex" not in data:
@@ -14098,13 +13932,18 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                 "updated_at": updated_ts
             })
         
-        # Add posts from blocked users to deleted sync so they are cleaned up locally
-        for b_uid in blocked_user_ids:
-            blocked_posts = await db.query_documents('posts', filters=[('user_id', '==', b_uid)])
-            for bp in blocked_posts:
-                bp_id = bp.get('id')
-                if bp_id:
-                    changes["feeds"]["deleted"].append(bp_id)
+        # Add posts from blocked users to deleted sync so they are cleaned up locally (optimized with parallel query gather)
+        if blocked_user_ids:
+            blocked_tasks = [
+                db.query_documents('posts', filters=[('user_id', '==', b_uid)])
+                for b_uid in blocked_user_ids
+            ]
+            all_blocked_posts = await asyncio.gather(*blocked_tasks)
+            for blocked_posts in all_blocked_posts:
+                for bp in blocked_posts:
+                    bp_id = bp.get('id')
+                    if bp_id:
+                        changes["feeds"]["deleted"].append(bp_id)
     except Exception as e:
         logger.error("Error pulling feeds in sync: %s", e)
 

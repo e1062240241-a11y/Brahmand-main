@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -13,6 +14,8 @@ UPANISHADS_DATA_FILE = (
 )
 
 _upanishads_cache: List[Dict[str, Any]] = []
+_upanishads_all_summary_cache = None
+_upanishads_all_full_cache = None
 
 
 def _load_upanishads() -> List[Dict[str, Any]]:
@@ -38,7 +41,7 @@ def _load_upanishads() -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{chapter_number}")
 async def get_upanishad_chapter(chapter_number: int):
-    all_verses = _load_upanishads()
+    all_verses = await asyncio.to_thread(_load_upanishads)
     chapter_verses = [v for v in all_verses if v.get("chapter") == chapter_number]
     
     if not chapter_verses:
@@ -53,11 +56,34 @@ async def get_upanishad_chapter(chapter_number: int):
 
 
 @router.get("/all")
-async def get_upanishads_all():
-    all_verses = _load_upanishads()
+async def get_upanishads_all(summary: bool = True):
+    global _upanishads_all_summary_cache, _upanishads_all_full_cache
+    if summary and _upanishads_all_summary_cache is not None:
+        return _upanishads_all_summary_cache
+    if not summary and _upanishads_all_full_cache is not None:
+        return _upanishads_all_full_cache
+
+    all_verses = await asyncio.to_thread(_load_upanishads)
     chapters: Dict[int, list] = {}
     for v in all_verses:
         ch = v.get("chapter")
         if isinstance(ch, int):
             chapters.setdefault(ch, []).append(v)
-    return {"book": "upanishads", "chapters": chapters}
+    if summary:
+        chapters_summary = {
+            ch: {
+                "chapter": ch,
+                "total_verses": len(verses),
+                "verses_summary": f"Chapter {ch} contains {len(verses)} verses."
+            }
+            for ch, verses in chapters.items()
+        }
+        response_data = {"book": "upanishads", "chapters": chapters_summary}
+    else:
+        response_data = {"book": "upanishads", "chapters": chapters}
+        
+    if summary:
+        _upanishads_all_summary_cache = response_data
+    else:
+        _upanishads_all_full_cache = response_data
+    return response_data

@@ -3,8 +3,7 @@ import logging
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-from config.firebase_config import get_firestore
-from config.firestore_db import FirestoreDB
+from config.database import get_database
 from utils.helpers import serialize_doc
 
 logger = logging.getLogger(__name__)
@@ -12,11 +11,6 @@ logger = logging.getLogger(__name__)
 
 class EventService:
     """Handles event-related operations"""
-    
-    @staticmethod
-    async def get_db() -> FirestoreDB:
-        client = await get_firestore()
-        return FirestoreDB(client)
     
     @staticmethod
     async def create_event(
@@ -30,10 +24,8 @@ class EventService:
         organizer_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """Create a new event"""
-        db = await EventService.get_db()
-        user = await db.get_document('users', organizer_id)
-        if not user:
-            raise ValueError("User not found")
+        db = await get_database()
+        user = await db.users.find_one({"_id": ObjectId(organizer_id)})
         
         # Check if user is verified
         if not user.get("is_verified", False):
@@ -47,16 +39,16 @@ class EventService:
             "date": date,
             "time": time,
             "organizer_id": organizer_id,
-            "organizer_name": organizer_name or user.get("name", "Unknown"),
+            "organizer_name": organizer_name or user["name"],
             "attendees": [organizer_id],
             "attendee_count": 1,
             "status": "upcoming",
-            "created_at": datetime.utcnow().isoformat() + 'Z',
-            "updated_at": datetime.utcnow().isoformat() + 'Z'
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
         }
         
-        doc_id = await db.create_document('events', event)
-        event["id"] = doc_id
+        result = await db.events.insert_one(event)
+        event["_id"] = result.inserted_id
         
         logger.info(f"Event created: {name}")
         return serialize_doc(event)
@@ -64,40 +56,26 @@ class EventService:
     @staticmethod
     async def get_events() -> List[Dict[str, Any]]:
         """Get upcoming events"""
-        db = await EventService.get_db()
+        db = await get_database()
         today = datetime.utcnow().strftime("%Y-%m-%d")
-        events = await db.query_documents(
-            'events',
-            filters=[('date', '>=', today)],
-            order_by='date',
-            order_direction='ASCENDING',
-            limit=20
-        )
+        events = await db.events.find({"date": {"$gte": today}}).sort("date", 1).limit(20).to_list(20)
         return [serialize_doc(e) for e in events]
     
     @staticmethod
     async def get_nearby_events(user_id: str) -> List[Dict[str, Any]]:
         """Get events near user's location"""
-        db = await EventService.get_db()
-        user = await db.get_document('users', user_id)
-        if not user:
-            return []
+        db = await get_database()
+        user = await db.users.find_one({"_id": ObjectId(user_id)})
         user_location = user.get("location", {})
         
         # Get events in user's city
         today = datetime.utcnow().strftime("%Y-%m-%d")
-        filters = [('date', '>=', today)]
+        query = {"date": {"$gte": today}}
         
         if user_location.get("city"):
-            filters.append(('location.city', '==', user_location["city"]))
+            query["location.city"] = user_location["city"]
         
-        events = await db.query_documents(
-            'events',
-            filters=filters,
-            order_by='date',
-            order_direction='ASCENDING',
-            limit=20
-        )
+        events = await db.events.find(query).sort("date", 1).limit(20).to_list(20)
         
         # Add distance info (simplified)
         result = []
@@ -111,8 +89,8 @@ class EventService:
     @staticmethod
     async def get_event(event_id: str) -> Dict[str, Any]:
         """Get event details"""
-        db = await EventService.get_db()
-        event = await db.get_document('events', event_id)
+        db = await get_database()
+        event = await db.events.find_one({"_id": ObjectId(event_id)})
         if not event:
             raise ValueError("Event not found")
         return serialize_doc(event)
@@ -120,35 +98,29 @@ class EventService:
     @staticmethod
     async def attend_event(user_id: str, event_id: str) -> Dict[str, Any]:
         """Mark attendance for an event"""
-        db = await EventService.get_db()
+        db = await get_database()
         
-        from google.cloud import firestore
-        def _attend():
-            doc_ref = db.client.collection('events').document(event_id)
-            doc_ref.update({
-                'attendees': firestore.ArrayUnion([user_id]),
-                'attendee_count': firestore.Increment(1)
-            })
-            
-        await db._run_sync(_attend)
-        await db._cache.delete(f"events:{event_id}")
+        await db.events.update_one(
+            {"_id": ObjectId(event_id)},
+            {
+                "$addToSet": {"attendees": user_id},
+                "$inc": {"attendee_count": 1}
+            }
+        )
         
         return {"message": "You're attending this event"}
     
     @staticmethod
     async def cancel_attendance(user_id: str, event_id: str) -> Dict[str, Any]:
         """Cancel attendance for an event"""
-        db = await EventService.get_db()
+        db = await get_database()
         
-        from google.cloud import firestore
-        def _cancel():
-            doc_ref = db.client.collection('events').document(event_id)
-            doc_ref.update({
-                'attendees': firestore.ArrayRemove([user_id]),
-                'attendee_count': firestore.Increment(-1)
-            })
-            
-        await db._run_sync(_cancel)
-        await db._cache.delete(f"events:{event_id}")
+        await db.events.update_one(
+            {"_id": ObjectId(event_id)},
+            {
+                "$pull": {"attendees": user_id},
+                "$inc": {"attendee_count": -1}
+            }
+        )
         
         return {"message": "Attendance cancelled"}

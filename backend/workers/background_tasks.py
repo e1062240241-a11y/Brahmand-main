@@ -16,10 +16,14 @@ class TaskQueue:
     
     def __init__(self, max_workers: int = 10):
         self.max_workers = max_workers
-        self.queue: deque = deque()
+        self.queue = None
         self.workers: List[asyncio.Task] = []
         self.running = False
-        self._lock = asyncio.Lock()
+
+    def _get_queue(self) -> asyncio.Queue:
+        if self.queue is None:
+            self.queue = asyncio.Queue()
+        return self.queue
     
     async def start(self):
         """Start the task queue workers"""
@@ -44,23 +48,18 @@ class TaskQueue:
     async def _worker(self, worker_id: int):
         """Worker that processes tasks from the queue"""
         logger.info(f"Worker {worker_id} started")
+        q = self._get_queue()
         
         while self.running:
             try:
-                async with self._lock:
-                    if self.queue:
-                        task = self.queue.popleft()
-                    else:
-                        task = None
-                
-                if task:
-                    func, args, kwargs = task
-                    try:
-                        await func(*args, **kwargs)
-                    except Exception as e:
-                        logger.error(f"Worker {worker_id} task error: {e}")
-                else:
-                    await asyncio.sleep(0.1)  # Wait if queue is empty
+                task = await q.get()
+                func, args, kwargs = task
+                try:
+                    await func(*args, **kwargs)
+                except Exception as e:
+                    logger.error(f"Worker {worker_id} task error: {e}")
+                finally:
+                    q.task_done()
                     
             except asyncio.CancelledError:
                 break
@@ -71,13 +70,12 @@ class TaskQueue:
     
     async def enqueue(self, func: Callable, *args, **kwargs):
         """Add a task to the queue"""
-        async with self._lock:
-            self.queue.append((func, args, kwargs))
+        await self._get_queue().put((func, args, kwargs))
         logger.debug(f"Task enqueued: {func.__name__}")
     
     def enqueue_sync(self, func: Callable, *args, **kwargs):
         """Synchronous version of enqueue for use in sync contexts"""
-        self.queue.append((func, args, kwargs))
+        self._get_queue().put_nowait((func, args, kwargs))
     
     @property
     def pending_count(self) -> int:
@@ -113,43 +111,69 @@ async def process_notification(
 async def process_moderation_check(message_id: str, content: str, user_id: str):
     """Background task to check message content"""
     from services.moderation_service import ModerationService
-    from config.database import get_database
+    from config.firebase_config import get_firestore
+    from config.firestore_db import FirestoreDB
     
     is_ok, reason = await ModerationService.auto_moderate_message(content, user_id)
     
     if not is_ok:
         # Flag the message
-        db = await get_database()
-        await db.messages.update_one(
-            {"_id": message_id},
-            {"$set": {"flagged": True, "flag_reason": reason}}
-        )
+        client = await get_firestore()
+        db = FirestoreDB(client)
+        await db.update_document('messages', message_id, {"flagged": True, "flag_reason": reason})
         logger.warning(f"Message {message_id} flagged: {reason}")
 
 
 async def cleanup_expired_otps():
     """Background task to clean up expired OTPs"""
-    from config.database import get_database
+    from config.firebase_config import get_firestore
+    from config.firestore_db import FirestoreDB
     
-    db = await get_database()
-    result = await db.otps.delete_many({
-        "expires_at": {"$lt": datetime.utcnow()}
-    })
-    logger.info(f"Cleaned up {result.deleted_count} expired OTPs")
+    client = await get_firestore()
+    db = FirestoreDB(client)
+    
+    now = datetime.utcnow()
+    otps = await db.query_documents('otps')
+    
+    deleted_count = 0
+    for otp in otps:
+        expires_at_val = otp.get("expires_at")
+        if not expires_at_val:
+            continue
+            
+        try:
+            if isinstance(expires_at_val, str):
+                if expires_at_val.endswith('Z'):
+                    expires_at_val = expires_at_val[:-1]
+                expires_at = datetime.fromisoformat(expires_at_val)
+            elif isinstance(expires_at_val, datetime):
+                expires_at = expires_at_val.replace(tzinfo=None)
+            else:
+                continue
+                
+            if expires_at < now:
+                await db.delete_document('otps', otp['id'])
+                deleted_count += 1
+        except Exception as e:
+            logger.warning(f"Error cleaning up expired OTP document {otp.get('id')}: {e}")
+            
+    logger.info(f"Cleaned up {deleted_count} expired OTPs")
 
 
 async def update_community_stats():
     """Background task to update community statistics"""
-    from config.database import get_database
+    from config.firebase_config import get_firestore
+    from config.firestore_db import FirestoreDB
     
-    db = await get_database()
-    communities = await db.communities.find().to_list(None)
+    client = await get_firestore()
+    db = FirestoreDB(client)
+    communities = await db.query_documents('communities')
     
     for community in communities:
+        cid = community.get('id')
+        if not cid:
+            continue
         member_count = len(community.get("members", []))
-        await db.communities.update_one(
-            {"_id": community["_id"]},
-            {"$set": {"member_count": member_count}}
-        )
+        await db.update_document('communities', cid, {"member_count": member_count})
     
     logger.info(f"Updated stats for {len(communities)} communities")
