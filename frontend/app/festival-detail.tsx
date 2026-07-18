@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalDetailCard from '../src/components/FestivalDetailCard';
+import { toggleFestivalReminder, getFestivalReminderState } from '../src/utils/festivalReminders';
 
 const FestivalDetailPage = () => {
   const params = useLocalSearchParams();
@@ -34,6 +35,9 @@ const FestivalDetailPage = () => {
           setError('Festival not found.');
         } else {
           setFestival(selected);
+          const festivalId = selected.id || selected.name || selected.festival_name;
+          const reminderState = await getFestivalReminderState(festivalId);
+          setReminderEnabled(!!reminderState?.enabled);
         }
       } catch (err) {
         console.warn('Failed to load festival details', err);
@@ -50,63 +54,23 @@ const FestivalDetailPage = () => {
     if (!festival) return;
 
     try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== 'granted') {
-        Alert.alert('Permission required', 'Please enable notifications in settings to set reminders.');
-        return;
-      }
-
-      const enabled = !reminderEnabled;
+      const enabled = await toggleFestivalReminder(festival);
       setReminderEnabled(enabled);
 
       if (enabled) {
-        // Calculate reminder time: 1 day (24 hours) before the festival at 9:00 AM local time
-        const festDateStr = festival.date; // format: "YYYY-MM-DD"
-        const festivalDate = new Date(`${festDateStr}T09:00:00`);
-        const triggerDate = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
-        
-        const now = new Date();
-        let triggerInput: any;
-        let alertMessage = `You will be notified 1 day before the festival at 9:00 AM!`;
-
-        if (triggerDate.getTime() <= now.getTime()) {
-          // Fallback: If the festival is in less than 24 hours (or today), trigger reminder in 5 seconds
-          triggerInput = {
-            seconds: 5,
-            channelId: 'default',
-          };
-          alertMessage = `Since the festival is tomorrow or today, you will receive a test notification in 5 seconds!`;
-        } else {
-          triggerInput = {
-            date: triggerDate,
-            channelId: 'default',
-          };
-        }
-
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `🪔 Festival Tomorrow: ${festival.name || festival.festival_name}`,
-            body: `Get ready! ${festival.name || festival.festival_name} begins in 24 hours.`,
-            sound: 'bell.mp3',
-            priority: Notifications.AndroidNotificationPriority.HIGH,
-          },
-          trigger: triggerInput,
-        });
-        
-        Alert.alert('Reminder Set', alertMessage);
+        Alert.alert('Reminder Set', 'You will be notified 1 day before the festival at 9:00 AM and 9:00 PM local time.');
       } else {
-        await Notifications.cancelAllScheduledNotificationsAsync();
-        Alert.alert('Reminder Removed', 'Notification for this festival has been cancelled.');
+        Alert.alert('Reminder Removed', 'Notifications for this festival have been cancelled.');
       }
-    } catch (err) {
-      console.warn('Failed to set reminder', err);
-      Alert.alert('Error', 'Could not schedule notification.');
+    } catch (err: any) {
+      console.warn('Failed to toggle reminder', err);
+      if (err.message === 'Permission not granted') {
+        Alert.alert('Permission Required', 'Please enable notifications in your device settings.');
+      } else if (err.message === 'Reminder times have already passed for this festival.') {
+        Alert.alert('Too Late', 'Reminder times for this festival have already passed.');
+      } else {
+        Alert.alert('Error', 'Could not schedule notification.');
+      }
     }
   };
 

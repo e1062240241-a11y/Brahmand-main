@@ -307,13 +307,9 @@ const EkantJaapPage = () => {
 
     const confirmStop = () => {
         setShowConfirmDialog(false);
-        if (player) {
-            try {
-                player.pause();
-            } catch (error) {
-                console.warn('Ekant Jaap stop pause failed', error);
-            }
-        }
+        // Do not call player.pause() here directly — setIsRunning(false) below
+        // will trigger the reactive useEffect to pause safely before the native
+        // player is released by useAudioPlayer's internal lifecycle.
         setIsRunning(false);
         setIsComplete(false);
         setIsAudioEnabled(false);
@@ -336,13 +332,8 @@ const EkantJaapPage = () => {
         if (isRunning) {
             handleStop();
         } else {
-            if (player) {
-                try {
-                    player.pause();
-                } catch (error) {
-                    console.warn('Ekant Jaap back pause failed', error);
-                }
-            }
+            // Do not call player.pause() directly here — navigation unmount will
+            // cause useAudioPlayer to release the native player automatically.
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
@@ -397,18 +388,11 @@ const EkantJaapPage = () => {
         }
     }, [player, isRunning, isAudioEnabled, playerStatus?.playing]);
 
-    // Clean up player on unmount to prevent audio leaks
-    useEffect(() => {
-        return () => {
-            if (player) {
-                try {
-                    player.pause();
-                } catch (e) {
-                    console.warn('Failed to pause player on unmount', e);
-                }
-            }
-        };
-    }, [player]);
+    // NOTE: Do NOT call player.pause() on unmount here.
+    // useAudioPlayer internally calls .release() on the native AudioPlayer when
+    // the component unmounts (via useReleasingSharedObject). Calling .pause()
+    // AFTER that release causes NativeSharedObjectNotFoundException on iOS.
+    // The native release already stops playback — no manual cleanup needed.
 
     useEffect(() => {
         if (!player || !isKaraokeMode) return;
