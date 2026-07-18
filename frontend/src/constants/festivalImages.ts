@@ -31,7 +31,7 @@ export const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Maha Shivaratri': require('../../assets/images/festivals/Maha Shivaratri.jpeg'),
   'Mahalaya Amavasya': require('../../assets/images/festivals/Mahalaya Amavasya.jpg'),
   'Maharishi Valmiki Jayanti': require('../../assets/images/festivals/Maharishi Valmiki Jayanti.jpg'),
-  'Makar Sankranti': require('../../assets/images/festivals/Makar Sankranti.jpg.webp.jpeg'),
+  // 'Makar Sankranti': require('../../assets/images/festivals/Makar Sankranti.jpg.webp.jpeg'),
   'Nag Panchami': require('../../assets/images/festivals/Nag Panchami.jpg'),
   'Onam': require('../../assets/images/festivals/Onam.jpg'),
   'Raksha Bandhan': require('../../assets/images/festivals/Raksha Bandhan.jpg'),
