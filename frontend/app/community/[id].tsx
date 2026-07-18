@@ -1289,7 +1289,9 @@ export default function CommunityDetailScreen() {
             },
             timeAgo: timeAgoStr,
             type: 'festival_event',
-            isReal: true
+            isReal: true,
+            timestamp: p.timestamp || p.created_at,
+            festival_name: p.festival_name || p.festival || null
           };
         });
 
@@ -1319,8 +1321,9 @@ export default function CommunityDetailScreen() {
           }
           const title = (e.title || '').toLowerCase();
           const desc = (e.description || '').toLowerCase();
+          const festName = (e.festival_name || '').toLowerCase();
           const name = selectedFestival.toLowerCase();
-          return title.includes(name) || desc.includes(name);
+          return title.includes(name) || desc.includes(name) || festName.includes(name) || festName === name;
         });
       }
 

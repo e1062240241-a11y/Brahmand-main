@@ -1,9 +1,10 @@
 // accessibility: placeholder
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, ImageBackground, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
 import { getTemple, getTemplePosts, followTemple, unfollowTemple } from '../../src/services/api';
 import { database } from '../../src/database';
@@ -995,12 +996,12 @@ if (!temple) {
 
  const templeDescription = getTempleDescription();
  const templeGuidance = getTempleGuidance();
- return (
+  return (
   <View style={styles.container}>
-    <ImageBackground 
-      source={require('../../assets/images/temple_detail_bg.png')} 
+    <LinearGradient 
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
+      locations={[0, 0.1058, 0.2212]}
       style={StyleSheet.absoluteFill}
-      resizeMode="cover"
     >
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         {/* Floating Back Button */}
@@ -1186,7 +1187,7 @@ if (!temple) {
 
     </ScrollView>
     </SafeAreaView>
-  </ImageBackground>
+  </LinearGradient>
 
   <Modal
   visible={isYoutubeModalVisible}
@@ -1247,25 +1248,17 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   floatingBackButtonContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 5,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 100,
   },
   floatingBackButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    padding: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
   },
   loadingContainer: {
     flex: 1,
@@ -1284,20 +1277,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   infoCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     marginHorizontal: 16,
-    marginTop: 20,
-    marginBottom: 20,
-    padding: 28,
-    borderRadius: 32,
+    marginTop: 10,
+    marginBottom: 16,
+    padding: 16,
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 5,
   },
   templeIconLarge: {
     width: 90,
@@ -1368,18 +1352,10 @@ const styles = StyleSheet.create({
  marginLeft: SPACING.xs,
  },
   section: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     marginHorizontal: 16,
-    marginBottom: 20,
-    padding: 24,
-    borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   sectionTitle: {
     fontSize: 18,
@@ -1411,17 +1387,8 @@ const styles = StyleSheet.create({
   },
   aartiCard: {
     width: '48%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
+    paddingVertical: 8,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 2,
   },
   aartiLabel: {
     fontSize: 12,
@@ -1486,6 +1453,7 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     lineHeight: 24,
     fontWeight: '500',
+    textAlign: 'justify',
   },
  mapSection: {
  marginHorizontal: SPACING.md,

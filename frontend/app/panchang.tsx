@@ -214,8 +214,15 @@ export default function PanchangScreen() {
         // Delay slightly to ensure layout positions are calculated
         const timer = setTimeout(() => {
           const yPos = horaCardYPositions.current[currentIdx];
-          if (typeof yPos === 'number') {
-            mainScrollRef.current?.scrollTo({ y: yPos, animated: true });
+          if (typeof yPos === 'number' && mainScrollRef.current) {
+            const scrollRef = mainScrollRef.current as any;
+            if (typeof scrollRef.scrollToPosition === 'function') {
+              scrollRef.scrollToPosition(0, yPos, true);
+            } else if (typeof scrollRef.scrollTo === 'function') {
+              scrollRef.scrollTo({ y: yPos, animated: true });
+            } else if (scrollRef.getScrollResponder && typeof scrollRef.getScrollResponder().scrollTo === 'function') {
+              scrollRef.getScrollResponder().scrollTo({ y: yPos, animated: true });
+            }
           }
         }, 200);
         return () => clearTimeout(timer);

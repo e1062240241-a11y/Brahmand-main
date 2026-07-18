@@ -34,15 +34,16 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   // Sacred / Others
   'other-tirupati-balaji-temple-andhra-pradesh': require('../../assets/images/image temple/Tirumala_090615.jpg'),
   'other-vaishno-devi-temple-jammu-kashmir': require('../../assets/images/image temple/VaishnoDeviTemple.webp'),
-  'other-siddhivinayak-temple-mumbai': require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
-  'other-shree-siddhivinayak-temple': require('../../assets/images/image temple/Siddhivinayak-Temple.webp'),
-  'other-shirdi-sai-baba-temple-maharashtra': require('../../assets/images/image temple/shirdi-sai-baba.jpg'),
+  'other-siddhivinayak-temple-mumbai': require('../../assets/images/image temple/Siddhivinayak.jpg'),
+  'other-shree-siddhivinayak-temple': require('../../assets/images/image temple/Siddhivinayak.jpg'),
+  'other-shirdi-sai-baba-temple-maharashtra': require('../../assets/images/image temple/Sai_Baba.jpg'),
   'other-jagannath-temple-puri': require('../../assets/images/image temple/JagannathTemple.jpeg'),
   'other-golden-temple-amritsar': require('../../assets/images/image temple/GoldenTemple.jpg'),
   'other-meenakshi-temple-madurai': require('../../assets/images/image temple/MeenakshiTemple.jpg'),
-  'other-iskcon-temple-bangalore-karnataka': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
-  'other-iskcon-mira-road-thane': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
-  'other-iskcon-temple-mumbai': require('../../assets/images/image temple/ISKCON-Temple-Mayapur.jpg'),
+  'other-iskcon-temple-bangalore-karnataka': require('../../assets/images/image temple/ISKCON_Bangalore.jpg'),
+  'other-iskcon-mira-road-thane': require('../../assets/images/image temple/ISKCON_Mira_Road.jpg'),
+  'other-iskcon-temple-mumbai': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
+  'other-iskcon-juhu': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
   'other-mahalaxmi-temple': require('../../assets/images/image temple/Mamleshwar.jpg'), // Fallback
 };
 
@@ -64,6 +65,9 @@ const getTempleImageByName = (name: string) => {
   
   if (lowerName.includes('iskcon') && lowerName.includes('bangalore')) {
     return TEMPLE_IMAGES['other-iskcon-temple-bangalore-karnataka'];
+  }
+  if (lowerName.includes('iskcon') && (lowerName.includes('juhu') || lowerName.includes('mumbai'))) {
+    return TEMPLE_IMAGES['other-iskcon-temple-mumbai'];
   }
   if (lowerName.includes('iskcon') && (lowerName.includes('mira') || lowerName.includes('borivali'))) {
     return TEMPLE_IMAGES['other-iskcon-mira-road-thane'];
