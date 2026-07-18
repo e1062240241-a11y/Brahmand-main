@@ -240,12 +240,12 @@ const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Anant Chaturdashi': require('../../assets/images/festival_image/Anant Chaturdashi.jpg'),
   'Ashadhi Ekadashi': require('../../assets/images/festival_image/Ashadhi Ekadashi_.jpg'),
   'Bhai Dooj': require('../../assets/images/festival_image/Bhai Dooj.jpg'),
-  'Bohag Bihu': require('../../assets/images/festival_image/Bohag Bihu .jpg'),
-  'Chaitra Sukhladi': require('../../assets/images/festival_image/Chaitra Sukhladi .jpg'),
+  'Bohag Bihu': require('../../assets/images/festival_image/Bohag Bihu.jpg'),
+  'Chaitra Sukhladi': require('../../assets/images/festival_image/Chaitra Sukhladi.jpg'),
   'Chhath Puja': require('../../assets/images/festival_image/Chhath Puja.jpg'),
   'Dhanteras': require('../../assets/images/festival_image/Dhanteras.jpg'),
   'Dhanu Sankranti': require('../../assets/images/festival_image/Dhanu Sankranti.jpeg'),
-  'Diwali': require('../../assets/images/festival_image/Diwali .jpeg'),
+  'Diwali': require('../../assets/images/festival_image/Diwali.jpeg'),
   'Durga Ashtami': require('../../assets/images/festival_image/Durga Ashtami.jpeg'),
   'Dussehra': require('../../assets/images/festival_image/Dussehra.jpg'),
   'Ganesh Chaturthi': require('../../assets/images/festival_image/Ganesh Chaturthi.jpeg'),
@@ -268,7 +268,7 @@ const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Maha Shivaratri': require('../../assets/images/festival_image/Maha Shivaratri.jpeg'),
   'Mahalaya Amavasya': require('../../assets/images/festival_image/Mahalaya Amavasya.jpg'),
   'Maharishi Valmiki Jayanti': require('../../assets/images/festival_image/Maharishi Valmiki Jayanti.jpg'),
-  'Makar Sankranti': require('../../assets/images/festival_image/Makar Sankranti .jpg.webp.jpeg'),
+  'Makar Sankranti': require('../../assets/images/festival_image/Makar Sankranti.jpg.webp.jpeg'),
   'Nag Panchami': require('../../assets/images/festival_image/Nag Panchami.jpg'),
   'Navratri': require('../../assets/images/festival_image/Sharad Navratri.jpg'),
   'Onam': require('../../assets/images/festival_image/Onam.jpg'),
@@ -319,7 +319,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Join us for a grand Diwali celebration with prayers, lights & community dinner.',
     location: 'Ramakrishna Math, Andheri West',
     time: '31 Oct 2024, 6:00 PM',
-    image: require('../../assets/images/festival_image/Diwali .jpeg'),
+    image: require('../../assets/images/festival_image/Diwali.jpeg'),
     organizer: { name: 'Rahul Joshi', photo: null, isVerified: true },
     timeAgo: '2h ago'
   },
@@ -1315,9 +1315,6 @@ export default function CommunityDetailScreen() {
         .map((p: any) => {
           let eventImage = p.image || p.image_url || p.media_url;
           let resolvedImage = typeof eventImage === 'string' ? { uri: eventImage } : eventImage;
-          if (!resolvedImage) {
-            resolvedImage = require('../../assets/images/image temple/Siddhivinayak-Temple.webp');
-          }
           const diffInSeconds = p.timestamp ? Math.floor((new Date().getTime() - parseUTCDate(p.timestamp).getTime()) / 1000) : 0;
           let timeAgoStr = 'Just now';
           if (diffInSeconds >= 86400) timeAgoStr = `${Math.floor(diffInSeconds / 86400)}d ago`;
@@ -1328,7 +1325,7 @@ export default function CommunityDetailScreen() {
             id: p.id,
             title: p.title || p.content || 'Festival Celebration',
             description: p.description || p.content || 'Join our community celebration!',
-            location: p.location || p.sevaDetails || 'Nearby Community',
+            location: p.location || p.sevaDetails || undefined,
             time: p.time || (p.timestamp ? (() => {
               const d = parseUTCDate(p.timestamp);
               if (isNaN(d.getTime())) return 'Today';
@@ -2945,24 +2942,28 @@ export default function CommunityDetailScreen() {
   const renderFestivalEvent = ({ item }: { item: any }) => (
     <View style={styles.festEventCard}>
       <View style={styles.festEventMain}>
-        <CommunityMediaItem
-          media={item.image}
-          style={styles.festEventImage}
-          isActive={activeVideoKey === (item.id ? String(item.id) : '')}
-        />
-        <View style={styles.festEventInfo}>
+        {item.image ? (
+          <CommunityMediaItem
+            media={item.image}
+            style={styles.festEventImage}
+            isActive={activeVideoKey === (item.id ? String(item.id) : '')}
+          />
+        ) : null}
+        <View style={[styles.festEventInfo, !item.image && { marginLeft: 0 }]}>
           <Text style={styles.festEventTitle}>{item.title}</Text>
           <Text style={styles.festEventDesc} numberOfLines={2}>{item.description}</Text>
           <View style={styles.festEventMeta}>
-            <TouchableOpacity 
-              style={styles.festMetaRow}
-              onPress={() => handleOpenMap(item.location)}
-              disabled={!item.location || item.location === 'Online' || item.location === 'Local'}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="location-outline" size={14} color={item.location && item.location !== 'Online' && item.location !== 'Local' ? "#FF6B00" : "#FF3B30"} />
-              <Text style={[styles.festMetaText, item.location && item.location !== 'Online' && item.location !== 'Local' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location}</Text>
-            </TouchableOpacity>
+            {item.location ? (
+              <TouchableOpacity 
+                style={styles.festMetaRow}
+                onPress={() => handleOpenMap(item.location)}
+                disabled={item.location === 'Online' || item.location === 'Local'}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="location-outline" size={14} color={item.location !== 'Online' && item.location !== 'Local' ? "#FF6B00" : "#FF3B30"} />
+                <Text style={[styles.festMetaText, item.location !== 'Online' && item.location !== 'Local' && { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>{item.location}</Text>
+              </TouchableOpacity>
+            ) : null}
             <View style={styles.festMetaRow}>
               <Ionicons name="time-outline" size={14} color="#FF3B30" />
               <Text style={styles.festMetaText} numberOfLines={1}>{item.time}</Text>
