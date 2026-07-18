@@ -175,3 +175,12 @@ test_result.md
 # Local gradle and settings
 .gradle/
 local.properties
+
+# Ensure credential files never leak
+backend/firebase.json
+frontend/firebase.json
+**/google-services.json
+**/GoogleService-Info.plist
+*.env
+*.env.*
+

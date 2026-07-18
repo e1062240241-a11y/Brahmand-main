@@ -38,6 +38,12 @@ jobs:
           cd frontend
           npm ci
 
+      - name: Create Firebase Config File
+        env:
+          FIREBASE_KEY_DATA: ${{ secrets.FIREBASE_KEY }}
+        run: |
+          printf '%s' "$FIREBASE_KEY_DATA" > backend/firebase.json
+
       - name: Run Deploy Script
         run: |
           chmod +x deploy-gcp-full.sh
