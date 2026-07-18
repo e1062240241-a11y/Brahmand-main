@@ -12,6 +12,7 @@ import {
   Image,
   Modal,
   ActivityIndicator,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -26,6 +27,7 @@ import Animated, {
   Easing,
   interpolate,
   Extrapolate,
+  cancelAnimation,
 } from 'react-native-reanimated';
 import { useScriptureStore } from '../../src/store/scriptureStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
@@ -176,15 +178,33 @@ export default function MahabharataPage() {
   const glowOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Start subtle floating animation while idle
-    floatingY.value = withRepeat(
-      withSequence(
-        withTiming(-12, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      true
-    );
+    const startFloating = () => {
+      floatingY.value = withRepeat(
+        withSequence(
+          withTiming(-12, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+          withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.sin) })
+        ),
+        -1,
+        true
+      );
+    };
+
+    if (AppState.currentState === 'active') {
+      startFloating();
+    }
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        startFloating();
+      } else {
+        cancelAnimation(floatingY);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      cancelAnimation(floatingY);
+    };
   }, []);
 
   useEffect(() => {
