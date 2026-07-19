@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { FlashList } from '@shopify/flash-list';
+import { FlatList } from 'react-native';
+
 import {
+  FlatList,
   View,
   StyleSheet,
   Text,
@@ -14,10 +18,14 @@ import {
   ActivityIndicator,
   AppState,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import {
+  FlatList, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  FlatList, useRouter } from 'expo-router';
+import {
+  FlatList, Ionicons } from '@expo/vector-icons';
+import {
+  FlatList, LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -29,9 +37,12 @@ import Animated, {
   Extrapolate,
   cancelAnimation,
 } from 'react-native-reanimated';
-import { useScriptureStore } from '../../src/store/scriptureStore';
-import { useLibraryStore } from '../../src/store/libraryStore';
-import { loadBhagavadGitaChapter } from '../../src/services/bhagavad-geeta-service';
+import {
+  FlatList, useScriptureStore } from '../../src/store/scriptureStore';
+import {
+  FlatList, useLibraryStore } from '../../src/store/libraryStore';
+import {
+  FlatList, loadBhagavadGitaChapter } from '../../src/services/bhagavad-geeta-service';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -110,7 +121,7 @@ export default function BhagavadGita3DPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const flashListRef = useRef<FlashList<any>>(null);
   
   const { updateProgress } = useLibraryStore();
   const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
@@ -168,7 +179,7 @@ export default function BhagavadGita3DPage() {
     setCurrentChapter(chNum);
     setLastRead(BOOK_ID, chNum, 0, 0);
     setInitialScrollRestored(false);
-    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+    flashListRef.current?.scrollToOffset({ offset: 0, animated: false });
   };
 
   // Fetch chapter data from Backend
@@ -196,7 +207,7 @@ export default function BhagavadGita3DPage() {
     if (!loading && verses.length > 0 && !initialScrollRestored) {
       if (lastReadScrollY > 0) {
         setTimeout(() => {
-          scrollViewRef.current?.scrollTo({ y: lastReadScrollY, animated: true });
+          flashListRef.current?.scrollToOffset({ offset: lastReadScrollY, animated: true });
         }, 300);
       }
       setInitialScrollRestored(true);
@@ -396,14 +407,14 @@ export default function BhagavadGita3DPage() {
               </View>
 
               {/* Sticky Chapter Navigator */}
-              <ScrollView
+              <FlatList
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={[styles.chapterNavContainer, { marginBottom: 0 }]}
-              >
-                {Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1).map((chNum) => (
+                data={Array.from({ length: TOTAL_CHAPTERS }, (_, i) => i + 1)}
+                keyExtractor={(item) => item.toString()}
+                renderItem={({ item: chNum }) => (
                   <TouchableOpacity
-                    key={chNum}
                     style={[
                       styles.chapterTab,
                       nightMode && styles.chapterTabNight,
@@ -419,92 +430,70 @@ export default function BhagavadGita3DPage() {
                       {GITA_CHAPTER_NAMES[chNum - 1]}
                     </Text>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
+                )}
+              />
             </View>
 
-          <ScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onContentSizeChange={(_, h) => setContentHeight(h)}
-            onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
-          >
-            <View style={styles.pageContent}>
-              {/* Subtitle */}
-              <View style={styles.chapterSubHeader}>
-                <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>
-                  {verses.length > 0 ? `कुल श्लोक: ${convertToHindiNumerals(totalVerses || verses.length)}` : ''}
-                </Text>
-              </View>
-
-              {/* Verses */}
-              {loading ? (
-                <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
-                    पाठ्य सामग्री लोड हो रही है...
+          <View style={{ flex: 1, width: '100%' }}>
+            <FlashList
+              ref={flashListRef}
+              data={verses}
+              estimatedItemSize={200}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onContentSizeChange={(_, h) => setContentHeight(h)}
+              onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
+              ListHeaderComponent={() => (
+                <View style={styles.chapterSubHeader}>
+                  <Text style={[styles.subHeaderText, nightMode && styles.textNight]}>
+                    {verses.length > 0 ? `कुल श्लोक: ${convertToHindiNumerals(totalVerses || verses.length)}` : ''}
                   </Text>
                 </View>
-              ) : verses.length === 0 ? (
-                <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
-                  <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
-                    सामग्री लोड करने में विफल। कृपया पुनः प्रयास करें।
-                  </Text>
-                </View>
-              ) : (
-                verses.map((verse: any, index: number) => (
-                  <View key={`verse-${index}`} style={styles.verseContainer}>
-                    {/* Sanskrit Text */}
+              )}
+              ListEmptyComponent={() => (
+                loading ? (
+                  <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
+                      पाठ्य सामग्री लोड हो रही है...
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={{ flex: 1, paddingVertical: 120, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={[{ fontSize: 16, fontWeight: '600' }, nightMode ? styles.textNightLight : { color: '#8C3A00' }]}>
+                      सामग्री लोड करने में विफल। कृपया पुनः प्रयास करें।
+                    </Text>
+                  </View>
+                )
+              )}
+              renderItem={({ item: verse, index }) => {
+                const trans = getTranslations(verse.translations);
+                return (
+                  <View style={styles.verseContainer}>
                     <View style={styles.sanskritWrapper}>
                       <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{verse.text}</Text>
                       <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
                     </View>
-
-                    {(() => {
-                      const trans = getTranslations(verse.translations);
-                      const translationText = trans.hindi || trans.english;
-                      return translationText ? (
-                        <Text style={[styles.hindiText, nightMode && styles.textNightMuted]}>
-                          <Text style={[styles.hindiVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}. </Text>
-                          {translationText}
+                    {trans ? (
+                      <View style={{ marginTop: 8 }}>
+                        <Text style={[styles.hindiText, nightMode && styles.textNightLight]}>
+                          {trans}
                         </Text>
-                      ) : null;
-                    })()}
-
-                    {/* Divider */}
+                      </View>
+                    ) : null}
                     {index < verses.length - 1 && (
                       <View style={styles.dividerContainer}>
-                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
-                        <View style={[styles.dividerDot, nightMode && { backgroundColor: '#6e4733' }]} />
-                        <View style={[styles.dividerLine, nightMode && { backgroundColor: '#6e4733' }]} />
+                        <View style={[styles.dividerLine, nightMode && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]} />
+                        <View style={[styles.dividerDot, nightMode && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]} />
+                        <View style={[styles.dividerLine, nightMode && { backgroundColor: 'rgba(255, 255, 255, 0.2)' }]} />
                       </View>
                     )}
                   </View>
-                ))
-              )}
-              
-              {/* Bottom Chapter Navigation */}
-              <View style={styles.bottomNavContainer}>
-                {currentChapter > 1 ? (
-                  <TouchableOpacity style={[styles.bottomNavBtn, nightMode && styles.bottomNavBtnNight]} onPress={() => handleChapterChange(currentChapter - 1)}>
-                    <Ionicons name="arrow-back" size={16} color={nightMode ? "#EBD7B6" : "#691F0A"} />
-                    <Text style={[styles.bottomNavText, nightMode && styles.textNight]}>पिछला अध्याय</Text>
-                  </TouchableOpacity>
-                ) : <View style={{ width: 100 }} />}
-                
-                {currentChapter < TOTAL_CHAPTERS ? (
-                  <TouchableOpacity style={[styles.bottomNavBtn, nightMode && styles.bottomNavBtnNight]} onPress={() => handleChapterChange(currentChapter + 1)}>
-                    <Text style={[styles.bottomNavText, nightMode && styles.textNight]}>अगला अध्याय</Text>
-                    <Ionicons name="arrow-forward" size={16} color={nightMode ? "#EBD7B6" : "#691F0A"} />
-                  </TouchableOpacity>
-                ) : <View style={{ width: 100 }} />}
-              </View>
-              
-              <View style={styles.bottomPadding} />
-            </View>
-          </ScrollView>
+                );
+              }}
+            />
+          </View>
 
           {/* Fixed Bottom Bar */}
           <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12, backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.95)', borderTopColor: nightMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(140, 58, 0, 0.1)' }]}>
@@ -527,7 +516,7 @@ export default function BhagavadGita3DPage() {
                       const scrollableHeight = contentHeight - layoutHeight;
                       if (scrollableHeight > 0) {
                         const targetY = ratio * scrollableHeight;
-                        scrollViewRef.current?.scrollTo({ y: targetY, animated: true });
+                        flashListRef.current?.scrollToOffset({ offset: targetY, animated: true });
                       }
                     }
                   }}
@@ -568,7 +557,7 @@ export default function BhagavadGita3DPage() {
                       setShowBookmarksMenu(false);
                       handleChapterChange(bm.chapter);
                       setTimeout(() => {
-                        scrollViewRef.current?.scrollTo({ y: bm.scrollY, animated: true });
+                        flashListRef.current?.scrollToOffset({ offset: bm.scrollY, animated: true });
                       }, 400);
                     }}
                   >
