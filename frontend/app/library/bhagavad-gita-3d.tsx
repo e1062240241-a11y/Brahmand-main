@@ -122,6 +122,8 @@ export default function BhagavadGita3DPage() {
   const router = useRouter();
   const [isOpened, setIsOpened] = useState(false);
   const flashListRef = useRef<FlashList<any>>(null);
+  const currentScrollY = useRef(0);
+  const currentProgress = useRef(0);
   
   const { updateProgress } = useLibraryStore();
   const { getBookProgress, setLastRead, toggleBookmark } = useScriptureStore();
@@ -442,7 +444,9 @@ export default function BhagavadGita3DPage() {
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.scrollContent}
               onScroll={handleScroll}
-              scrollEventThrottle={16}
+              onMomentumScrollEnd={handleScrollEnd}
+              onScrollEndDrag={handleScrollEnd}
+              scrollEventThrottle={64}
               onContentSizeChange={(_, h) => setContentHeight(h)}
               onLayout={(e) => setLayoutHeight(e.nativeEvent.layout.height)}
               ListHeaderComponent={() => (
