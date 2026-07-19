@@ -11,7 +11,7 @@ class LibraryCDNUser(HttpUser):
         # Chapters 1-18
         chapter = random.randint(1, 18)
         self.client.get(
-            f"/library-cdn/bhagavad-gita/chapter-{chapter}.json",
+            f"/library/bhagavad-gita/chapter-{chapter}.json",
             name="Library CDN - Bhagavad Gita"
         )
 
@@ -20,7 +20,7 @@ class LibraryCDNUser(HttpUser):
         # Mandalas usually 1-10 (assuming chapter format maps to 1-10)
         chapter = random.randint(1, 10)
         self.client.get(
-            f"/library-cdn/rigveda/chapter-{chapter}.json",
+            f"/library/rigveda/chapter-{chapter}.json",
             name="Library CDN - Rigveda"
         )
 
@@ -29,7 +29,7 @@ class LibraryCDNUser(HttpUser):
         # 7 Kandas
         chapter = random.randint(1, 7)
         self.client.get(
-            f"/library-cdn/ramayan/chapter-{chapter}.json",
+            f"/library/ramayan/chapter-{chapter}.json",
             name="Library CDN - Ramayan"
         )
 
@@ -38,6 +38,6 @@ class LibraryCDNUser(HttpUser):
         # 18 Parvas
         chapter = random.randint(1, 18)
         self.client.get(
-            f"/library-cdn/mahabharata/chapter-{chapter}.json",
+            f"/library/mahabharata/chapter-{chapter}.json",
             name="Library CDN - Mahabharata"
         )

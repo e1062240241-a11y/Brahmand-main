@@ -37,7 +37,7 @@ const clearParsedChapter = async (num: number) => {
 const fetchAndStoreRaw = async (num: number): Promise<boolean> => {
   try {
     try {
-      const res = await fetch(`${CDN_BASE}/ramcharitmanas/chapter-${num}.json`);
+      const res = await fetch(`${CDN_BASE}/ramcharitmanas/chapter-${num}.json`, { mode: 'cors' });
       if (res.ok) { await storeRawChapter(num, await res.text()); return true; }
     } catch {}
     const res = await getRamcharitmanasKand(num);

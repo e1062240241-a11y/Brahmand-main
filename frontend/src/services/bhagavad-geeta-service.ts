@@ -86,7 +86,7 @@ const fetchAndStoreRaw = async (num: number): Promise<boolean> => {
   try {
     // Try CDN first
     try {
-      const res = await fetch(`${CDN_BASE}/bhagavad-gita/chapter-${num}.json`);
+      const res = await fetch(`${CDN_BASE}/bhagavad-gita/chapter-${num}.json`, { mode: 'cors' });
       if (res.ok) {
         const raw = await res.text();
         await storeRawChapter(num, raw);
