@@ -1577,7 +1577,12 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         # Check if user exists
         user = await db.get_user_by_phone(phone)
         
-        if user and user.get('sl_id'):
+        if user:
+            sl_id = user.get('sl_id')
+            if not sl_id:
+                from services.firebase_auth_service import FirebaseAuthService
+                sl_id = await FirebaseAuthService._ensure_sl_id(db, user)
+
             if user.get('is_blocked'):
                 from datetime import datetime, timezone
                 blocked_until_str = user.get('blocked_until')
@@ -1597,7 +1602,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
                     raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
 
             # Existing user - return token
-            token = create_jwt_token(user['id'], user['sl_id'])
+            token = create_jwt_token(user['id'], sl_id)
             return {
                 "message": "Login successful",
                 "token": token,

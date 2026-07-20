@@ -79,6 +79,16 @@ class FirebaseAuthService:
         return FirestoreDB(client)
     
     @staticmethod
+    async def _ensure_sl_id(db, user: Dict[str, Any]) -> str:
+        """Ensure user document has an sl_id, creating one if missing."""
+        if user.get('sl_id'):
+            return user['sl_id']
+        sl_id = f"SL{int(time.time() * 1000)}"
+        user['sl_id'] = sl_id
+        await db.update_user(user['id'], {'sl_id': sl_id})
+        return sl_id
+
+    @staticmethod
     async def send_otp(phone: str) -> Dict[str, Any]:
         """Send OTP to phone number."""
         normalized_phone = FirebaseAuthService.normalize_phone(phone)
@@ -230,7 +240,8 @@ class FirebaseAuthService:
         user = await db.get_user_by_phone(normalized_phone)
         if user:
             # User exists, return token
-            token = create_jwt_token(user['id'], user['sl_id'])
+            sl_id = await FirebaseAuthService._ensure_sl_id(db, user)
+            token = create_jwt_token(user['id'], sl_id)
             return {
                 "message": "Login successful",
                 "token": token,
@@ -447,7 +458,8 @@ class FirebaseAuthService:
             
             if user:
                 # Existing user
-                token = create_jwt_token(user['id'], user['sl_id'])
+                sl_id = await FirebaseAuthService._ensure_sl_id(db, user)
+                token = create_jwt_token(user['id'], sl_id)
                 return {
                     "message": "Login successful",
                     "token": token,

@@ -1273,7 +1273,7 @@ export default function ProfileScreen() {
     const coverUri = profile?.cover_photo || user?.cover_photo || DEFAULT_COVER;
     const navSpacerHeight = insets.top + NAV_BAR_HEIGHT;
 
-    const displayName = profile?.name || user?.name || 'Virral Patel';
+    const displayName = profile?.name || user?.name || (user?.phone ? `Yatri ${user.phone.slice(-4)}` : 'Sanatan Yatri');
     const bioText = profile?.bio || user?.bio || 'Har Har Mahadev 🕉️';
     const locationVal = locationLabel || 'Mumbai, Maharashtra';
 
@@ -1522,7 +1522,7 @@ export default function ProfileScreen() {
           <TouchableOpacity style={styles.navLeftGroup} onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={24} color="#FFF" />
             <Text style={styles.navUsername}>
-              {(profile?.sl_id || user?.sl_id || 'virralpatel').toLowerCase()}
+              {(profile?.sl_id || user?.sl_id || profile?.name || user?.phone || 'yatri').toLowerCase()}
             </Text>
           </TouchableOpacity>
           <View style={styles.navRightGroup}>

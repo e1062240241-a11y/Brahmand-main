@@ -236,12 +236,63 @@ class FirestoreDB:
     # =================== USER OPERATIONS ===================
     
     async def create_user(self, user_data: Dict[str, Any]) -> str:
-        """Create a new user"""
+        """Create a new user with strict phone uniqueness enforcement"""
+        phone = user_data.get('phone')
+        if phone:
+            existing = await self.get_user_by_phone(phone)
+            if existing:
+                logger.warning(f"Integrity Guard: User with phone {phone} already exists (ID: {existing['id']}). Returning existing ID to prevent duplicate user creation.")
+                return existing['id']
         return await self.create_document('users', user_data)
     
     async def get_user_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
-        """Get user by phone number"""
-        return await self.find_one('users', [('phone', '==', phone)])
+        """Get user by phone number (supports multiple formats, prioritizes populated records & cleans duplicates)"""
+        if not phone:
+            return None
+        digits = ''.join(ch for ch in str(phone) if ch.isdigit())
+        last10 = digits[-10:] if len(digits) >= 10 else digits
+        candidates = list(dict.fromkeys([
+            phone,
+            f"+91{last10}",
+            last10,
+            f"91{last10}",
+            f"+91 {last10}",
+        ]))
+        matched_users: List[Dict[str, Any]] = []
+        seen_ids = set()
+        for cand in candidates:
+            docs = await self.query_documents('users', [('phone', '==', cand)])
+            for d in docs:
+                if d['id'] not in seen_ids:
+                    seen_ids.add(d['id'])
+                    matched_users.append(d)
+
+        if not matched_users:
+            return None
+
+        if len(matched_users) == 1:
+            return matched_users[0]
+
+        # If duplicate records exist, prioritize the authentic record with name/posts/created_at
+        populated = [u for u in matched_users if u.get('name') or u.get('bio') or u.get('sl_id')]
+        target_user = None
+        if populated:
+            populated.sort(key=lambda u: str(u.get('created_at') or '9999'))
+            target_user = populated[0]
+        else:
+            matched_users.sort(key=lambda u: str(u.get('created_at') or '9999'))
+            target_user = matched_users[0]
+
+        # Auto-cleanup unpopulated shell duplicate documents to preserve 1:1 database integrity
+        for u in matched_users:
+            if u['id'] != target_user['id'] and not (u.get('name') or u.get('bio')):
+                try:
+                    logger.info(f"Integrity Sweep: Auto-removing duplicate unpopulated shell user doc: {u['id']}")
+                    await self.delete_document('users', u['id'])
+                except Exception as err:
+                    logger.warn(f"Integrity Sweep: Could not delete duplicate user doc {u['id']}: {err}")
+
+        return target_user
     
     async def get_user_by_sl_id(self, sl_id: str) -> Optional[Dict[str, Any]]:
         """Get user by Sanatan Lok ID"""
