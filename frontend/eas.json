@@ -17,7 +17,7 @@
         "disabled": true
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_URL": "https://brahmand-backend-hi4rz6fdrq-uc.a.run.app",
+        "EXPO_PUBLIC_BACKEND_URL": "https://brahmand-backend-fndgi6mi5q-uc.a.run.app",
         "EXPO_PUBLIC_GOOGLE_PLACES_API_KEY": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
       }
     }
