@@ -73,6 +73,9 @@ const NativeVideoPlayer = memo(({
     if (p) {
       p.loop = true;
       p.muted = isMuted;
+      if (shouldPlay) {
+        p.play();
+      }
       if (Platform.OS !== 'web') {
         p.bufferOptions = {
           preferredForwardBufferDuration: 2, 
@@ -141,9 +144,9 @@ const NativeVideoPlayer = memo(({
       {filterName !== 'Normal' && (
         <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
       )}
-      {mediaLoading && videoPosterUrl ? (
+      {mediaLoading ? (
         <Image
-          source={{ uri: videoPosterUrl }}
+          source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
           style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
           contentFit="cover"
           pointerEvents="none"
@@ -520,7 +523,9 @@ export const PostFeedCard = memo(({
       // Single tap: open full screen
       setTimeout(() => {
         if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
-          setIsFullscreen(true);
+          if (isVideo) {
+            setIsFullscreen(true);
+          }
         }
       }, DOUBLE_TAP_DELAY);
     }
@@ -608,9 +613,9 @@ export const PostFeedCard = memo(({
       {/* Media */}
       <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight, backgroundColor: theme === 'light' ? '#F5F5F5' : '#111' }]}>
         {/* Blurred Poster Background for smooth transition */}
-        {(post?.thumbnail_url || post?.metadata?.thumbnail_url) && mediaLoading && (
+        {mediaLoading && (
           <Image
-            source={{ uri: videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url }}
+            source={(videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url) ? { uri: videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url } : require('../../assets/images/app-image.png')}
             style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
             contentFit="cover"
             blurRadius={20}
@@ -680,16 +685,12 @@ export const PostFeedCard = memo(({
                 />
               ) : (
                 <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
-                  {videoPosterUrl ? (
-                    <Image
-                      source={{ uri: videoPosterUrl }}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="cover"
-                      onError={handlePosterError}
-                    />
-                  ) : (
-                    <Ionicons name="videocam-outline" size={32} color="#444" />
-                  )}
+                  <Image
+                    source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                    onError={handlePosterError}
+                  />
                 </View>
               )}
               <Pressable

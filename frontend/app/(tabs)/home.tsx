@@ -485,14 +485,72 @@ export default function HomeScreen() {
   const loadHistory = useFeedStore(state => state.loadHistory);
   const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
   const rawFeedPosts = currentFeed.posts;
+  const [focusTrigger, setFocusTrigger] = useState(0);
   const feedPosts = useMemo(() => {
-    return rawFeedPosts.filter((post: any) => {
+    const filtered = rawFeedPosts.filter((post: any) => {
       const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
       if (!uid) return true;
       const uidStr = String(uid);
       return !blockedUserIds.includes(uidStr) && !blockedByMeUserIds.includes(uidStr);
     });
-  }, [rawFeedPosts, blockedUserIds, blockedByMeUserIds]);
+
+    // Rearrange posts: 1 video, 2-3 images, 1 video, 2-3 images...
+    let videos: any[] = [];
+    let images: any[] = [];
+
+    filtered.forEach((post: any) => {
+      const mediaUrl = post?.media_url || post?.mediaUrl || post?.image_url || post?.imageUrl || post?.image || '';
+      const mediaType = String(post?.media_type || post?.mediaType || post?.type || '').toLowerCase();
+      const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
+
+      if (isVideo) {
+        videos.push(post);
+      } else {
+        images.push(post);
+      }
+    });
+
+    // Deterministically shuffle/rotate videos and images when the tab is refocused
+    if (focusTrigger > 0) {
+      const shuffle = (array: any[], seed: number) => {
+        const arr = [...array];
+        let m = arr.length;
+        while (m) {
+          const i = Math.floor(Math.abs(Math.sin(seed + m)) * m);
+          m--;
+          const t = arr[m];
+          arr[m] = arr[i];
+          arr[i] = t;
+        }
+        return arr;
+      };
+      videos = shuffle(videos, focusTrigger);
+      images = shuffle(images, focusTrigger + 13);
+    }
+
+    const arranged: any[] = [];
+    let videoIndex = 0;
+    let imageIndex = 0;
+    let alternate = 0;
+
+    while (videoIndex < videos.length || imageIndex < images.length) {
+      if (videoIndex < videos.length) {
+        arranged.push(videos[videoIndex++]);
+      }
+
+      // Alternate between 2 and 3 images below the video
+      const imgCount = alternate % 2 === 0 ? 3 : 2;
+      alternate++;
+
+      for (let i = 0; i < imgCount; i++) {
+        if (imageIndex < images.length) {
+          arranged.push(images[imageIndex++]);
+        }
+      }
+    }
+
+    return arranged;
+  }, [rawFeedPosts, blockedUserIds, blockedByMeUserIds, focusTrigger]);
   const feedOffset = currentFeed.offset;
   const hasMoreFeed = currentFeed.hasMore;
   const [loadingFeed, setLoadingFeed] = useState(false);
@@ -1444,14 +1502,12 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       const currentActiveTab = useFeedStore.getState().activeTab;
-      const cached = useFeedStore.getState().tabFeeds[currentActiveTab];
-      const nowTime = Date.now();
-      // Refresh on home visit only if stale (older than 15 minutes) to prevent scroll jumping
-      const staleMs = 900_000;
-      const isStale = !cached || (nowTime - (cached.lastFetched || 0) > staleMs);
-      if (!cached || cached.posts.length === 0 || isStale) {
-        loadFeedPosts(0, false, currentActiveTab);
-      }
+      
+      // Increment focus trigger to rotate/shuffle feed posts deterministically
+      setFocusTrigger(prev => prev + 1);
+
+      // Force reload feed posts on focus
+      loadFeedPosts(0, false, currentActiveTab);
 
       // Load vendor data dynamically for home tab cards
       const store = useVendorStore.getState();
@@ -1749,7 +1805,13 @@ export default function HomeScreen() {
         if (isAtTop) {
           onRefresh();
         } else {
-          scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+          if (scrollViewRef.current) {
+            if (typeof scrollViewRef.current.scrollTo === 'function') {
+              scrollViewRef.current.scrollTo({ y: 0, animated: true });
+            } else if (typeof (scrollViewRef.current as any).scrollToPosition === 'function') {
+              (scrollViewRef.current as any).scrollToPosition(0, 0, true);
+            }
+          }
         }
       }
     });
