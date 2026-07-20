@@ -267,7 +267,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Join us for a grand Diwali celebration with prayers, lights & community dinner.',
     location: 'Ramakrishna Math, Andheri West',
     time: '31 Oct 2024, 6:00 PM',
-    image: require('../../assets/images/festivals/Diwali.jpeg'),
+    image: require('../../assets/images/upcoming_radha_rani.png'),
     organizer: { name: 'Rahul Joshi', photo: null, isVerified: true },
     timeAgo: '2h ago'
   },
@@ -277,7 +277,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Community aarti and prasad distribution for all devotees.',
     location: 'Lokhandwala, Andheri West',
     time: '7 Sep 2024, 7:00 PM',
-    image: require('../../assets/images/festivals/Ganesh Chaturthi.jpeg'),
+    image: require('../../assets/images/upcoming_ganesh.jpg'),
     organizer: { name: 'Neha Sharma', photo: null, isVerified: true },
     timeAgo: '5h ago'
   },
@@ -287,7 +287,7 @@ const MOCK_FESTIVAL_EVENTS = [
     description: 'Nine nights of celebration, dance and divine energy.',
     location: 'NSCI Dome, Worli',
     time: '3 Oct 2024, 8:00 PM',
-    image: require('../../assets/images/festivals/Sharad Navratri.jpg'),
+    image: require('../../assets/images/upcoming_durga.png'),
     organizer: { name: 'Amit Patel', photo: null, isVerified: true },
     timeAgo: '1d ago'
   }
