@@ -219,9 +219,14 @@ export const VendorKYCModal: React.FC<VendorKYCModalProps> = ({ visible, onClose
         const key = getAadhaarStorageKey();
         const saved = await AsyncStorage.getItem(key);
         if (saved) {
-          setIdNumber(saved);
-          setPreviousAadhaar(saved);
-          setHasAutoExtracted(true);
+          if (myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review' || myVendor?.kyc_status === 'verified') {
+            setIdNumber(saved);
+            setPreviousAadhaar(saved);
+            setHasAutoExtracted(true);
+          } else {
+            // Remove stale saved Aadhaar when KYC has been deleted/reset
+            await AsyncStorage.removeItem(key);
+          }
         }
       } catch (error) {
         console.warn('Failed to load saved Aadhaar', error);

@@ -27,7 +27,7 @@ import { getFilterStyle, getOverlayStyle } from "../utils/filters";
 import { useTranslation } from "../utils/i18n";
 import { useUploadStore } from "../store/uploadStore";
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
-import { SafeVideoView, isPlayerValid } from './SafeVideoView';
+import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from './SafeVideoView';
 
 let ExpoVideoModule: any = null;
 try {
@@ -35,15 +35,6 @@ try {
 } catch (error) {
   console.warn("expo-video unavailable:", error);
 }
-
-const useSafeVideoPlayer = (
-  source: string | null,
-  setup: (player: any) => void,
-) => {
-  if (!ExpoVideoModule?.useVideoPlayer) return null;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return ExpoVideoModule.useVideoPlayer(source, setup);
-};
 
 const UploadVideoPreview = React.memo(({
   uri,

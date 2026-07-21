@@ -52,7 +52,11 @@ export const mergeUserProfiles = (current: any, updates: any): any => {
     const currentVal = cleanCurrent[key];
 
     // If new value is null/undefined but current value is valid, keep current
+    // EXCEPT when resetting/clearing explicit properties like KYC status, verification flags, or role fields
     if ((newVal === null || newVal === undefined) && (currentVal !== null && currentVal !== undefined)) {
+      if (key.startsWith('kyc_') || key.startsWith('is_') || key === 'vendor_id') {
+        merged[key] = newVal;
+      }
       continue;
     }
     

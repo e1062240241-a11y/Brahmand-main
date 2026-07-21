@@ -382,7 +382,7 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 
 import { useGlobalMute } from '../../src/contexts/MuteContext';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
-import { SafeVideoView, isPlayerValid } from '../../src/components/SafeVideoView';
+import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../src/components/SafeVideoView';
 
 let ExpoVideoModule: any = null;
 try {
@@ -404,12 +404,12 @@ const CommunityNativeVideoPlayer = React.memo(({
   shouldPlay: boolean;
   toggleMute: () => void;
 }) => {
-  const player = ExpoVideoModule?.useVideoPlayer ? ExpoVideoModule.useVideoPlayer(mediaUrl, (p: any) => {
+  const player = useSafeVideoPlayer(mediaUrl, (p: any) => {
     if (p) {
       p.loop = true;
       p.muted = isMuted;
     }
-  }) : null;
+  });
 
   useEffect(() => {
     if (isPlayerValid(player)) {
@@ -1112,17 +1112,19 @@ export default function CommunityDetailScreen() {
     if (tabName === 'Temple Updates') {
       return {
         id: 'dummy-temple-update-item',
-        isRequestItem: true,
-        title: 'Mock Temple Update: Reconstruction of Inner Sanctum',
-        description: 'The reconstruction of the main Shikhar and Garbhagriha is underway. Daily darshan timings are adjusted to 6 AM - 10 AM and 4 PM - 8 PM.',
-        request_type: 'temple_update',
-        support_needed: 'temple',
-        urgency_level: 'normal',
-        user_name: 'Temple Trustee Board (Mock)',
-        contact_number: '+919876543210',
-        created_at: now,
-        status: 'pending',
-        interested_count: 5
+        isCommunityMsg: true,
+        user: {
+          name: 'Temple Trustee Board',
+          photo: null,
+          isVerified: true,
+          verificationLabel: 'Official',
+        },
+        content: 'Reconstruction of Inner Sanctum\n\nThe reconstruction of the main Shikhar and Garbhagriha is underway. Daily darshan timings are adjusted to 6 AM - 10 AM and 4 PM - 8 PM.',
+        timestamp: 'Just now',
+        likes: 12,
+        comments: 3,
+        reposts: 2,
+        category: 'Temple Updates',
       };
     }
     if (tabName === 'My Posts') {
@@ -1371,26 +1373,37 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Temple Updates') {
-      const apiList = filteredRequestsList.filter((item: any) => isTempleUpdateRequest(item));
-      const localList = filteredCommunityPostsList
-        .filter((p: any) => isTempleUpdateRequest(p))
-        .map((p: any) => ({ 
-          ...p, 
-          isRequestItem: true,
-          title: p.title || 'Temple Update',
-          description: p.description || p.content || '',
-          user_name: p.user_name || p.user?.name || 'Devotee',
-          created_at: p.created_at || p.timestamp || new Date().toISOString(),
-          request_type: 'temple_update',
-          image: p.image || p.image_url || p.media_url,
-          image_url: p.image_url || p.image || p.media_url
-        }));
+      const formatTemplePost = (p: any) => ({
+        ...p,
+        id: p.id || `tu-${Math.random()}`,
+        isCommunityMsg: true,
+        user: p.user || {
+          name: p.user_name || p.creator_name || 'Temple Trustee Board',
+          photo: p.user_photo || p.photo || null,
+          isVerified: true,
+          verificationLabel: 'Official',
+        },
+        content: p.content || (p.title ? (p.description ? `${p.title}\n\n${p.description}` : p.title) : p.description || 'Temple Update'),
+        timestamp: p.timestamp || p.created_at || new Date().toISOString(),
+        category: 'Temple Updates',
+        contact_number: p.contact_number || p.contact || p.user_phone || p.user?.phone || p.user?.phone_number || p.user?.contact_number || p.user?.contact || p.phone || '',
+        likes: p.likes || p.likes_count || 0,
+        comments: p.comments || p.comments_count || 0,
+        reposts: p.reposts || 0,
+        image: p.image || p.image_url || p.media_url,
+      });
+
+      const apiList = filteredRequestsList.filter((item: any) => isTempleUpdateRequest(item)).map(formatTemplePost);
+      const localList = filteredCommunityPostsList.filter((p: any) => isTempleUpdateRequest(p)).map(formatTemplePost);
 
       const tuMap = new Map();
       apiList.forEach(r => tuMap.set(r.id, r));
       localList.forEach(r => tuMap.set(r.id, r));
 
-      const list = Array.from(tuMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
+      let list = Array.from(tuMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
+      if (list.length === 0) {
+        list = [createDummyItem('Temple Updates')];
+      }
       return list;
     }
     if (activeTab === 'Seva') {
@@ -1573,7 +1586,7 @@ export default function CommunityDetailScreen() {
     }
 
     return [];
-  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id, blockedUserIds]);
+  }, [activeTab, requests, events, discussionPosts, communityPosts, filteredRequests, filteredSevaRequests, user?.id, blockedUserIds, festivalSort, selectedFestival, allFestivals]);
 
   // ⚡ Android: Build an O(1) index map so renderDiscussionItem does not need findIndex (O(n)) per render
   const combinedDataIndexMap = useMemo(() => {
@@ -2398,6 +2411,44 @@ export default function CommunityDetailScreen() {
                 onPress={() => setFullScreenMedia(typeof item.image === 'string' ? item.image : ((item.image as any)?.uri || ''))}
               />
             )}
+
+            {(() => {
+              const posterPhone = (item as any).contact_number || 
+                (item as any).contact || 
+                (item as any).user_phone || 
+                (item as any).user?.phone || 
+                (item as any).user?.phone_number || 
+                (item as any).user?.contact_number || 
+                (item as any).user?.contact || 
+                (item as any).phone || 
+                (user?.id && (user.id === (item as any).sender_id || user.id === (item as any).user_id || user.id === (item as any).user?.id) ? ((user as any)?.phone || (user as any)?.phone_number) : '');
+
+              const isTempleUpdate = (item as any).category === 'Temple Updates';
+
+              if (!isTempleUpdate && !posterPhone) return null;
+
+              return (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 4, gap: 10 }}>
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#DCFCE7', gap: 6 }}
+                    onPress={() => handleCallPress(posterPhone)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="call" size={14} color="#16A34A" />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#15803D' }}>{isTempleUpdate ? 'Call Temple' : 'Call'}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: '#D1FAE5', gap: 6 }}
+                    onPress={() => handleWhatsAppPress(posterPhone, (item as any).title || (item as any).content)}
+                    activeOpacity={0.7}
+                  >
+                    <FontAwesome5 name="whatsapp" size={14} color="#059669" />
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#047857' }}>WhatsApp</Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
 
             <View style={styles.postActionRow}>
               <TouchableOpacity
@@ -3374,28 +3425,63 @@ export default function CommunityDetailScreen() {
   };
 
   const handleRepost = (postId: string) => {
-    const postToRepost = discussionPosts.find(p => p.id === postId);
+    const targetId = String(postId);
+    const postToRepost = communityPosts.find(p => String(p.id) === targetId) || discussionPosts.find(p => String(p.id) === targetId);
     if (!postToRepost) return;
 
-    const newRepost: DiscussionPost = {
-      ...postToRepost,
-      id: `repost-${Date.now()}`,
-      isRepost: true,
-      repostedBy: user?.name || 'You',
-      timestamp: 'Just now',
-    };
+    // Determine the actual original post ID if target is already a repost card
+    const realOriginalId = String(postToRepost.originalPostId || postToRepost.id);
 
-    setDiscussionPosts(prev => [newRepost, ...prev]);
+    // Check if user has already reposted this post
+    const existingRepostIndex = communityPosts.findIndex(
+      p => p.isRepost && (String(p.originalPostId) === realOriginalId || String(p.id) === targetId) && p.repostedBy === (user?.name || 'You')
+    );
 
-    // Also update the repost count on the original post
-    setDiscussionPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        return { ...post, reposts: post.reposts + 1 };
-      }
-      return post;
-    }));
+    if (existingRepostIndex !== -1) {
+      // Remove the existing repost card and decrement counter on original post
+      setCommunityPosts(prev =>
+        prev
+          .filter((_, idx) => idx !== existingRepostIndex)
+          .map(post => {
+            if (String(post.id) === realOriginalId) {
+              return {
+                ...post,
+                isRepost: false,
+                reposts: Math.max(0, (post.reposts || 0) - 1),
+              };
+            }
+            return post;
+          })
+      );
+      Alert.alert('Repost Removed', 'Repost has been removed from feed.');
+    } else {
+      // Create a new repost card to insert at top of feed
+      const newRepostCard = {
+        ...postToRepost,
+        id: `repost-${Date.now()}`,
+        originalPostId: realOriginalId,
+        isRepost: true,
+        repostedBy: user?.name || 'You',
+        timestamp: 'Just now',
+        reposts: (postToRepost.reposts || 0) + 1,
+      };
 
-    Alert.alert('Success', 'Post reposted successfully!');
+      setCommunityPosts(prev => [
+        newRepostCard,
+        ...prev.map(post => {
+          if (String(post.id) === realOriginalId) {
+            return {
+              ...post,
+              isRepost: true,
+              reposts: (post.reposts || 0) + 1,
+            };
+          }
+          return post;
+        }),
+      ]);
+
+      Alert.alert('Success', 'Post reposted successfully!');
+    }
   };
 
   const handleDeletePost = (postId: string) => {
@@ -3740,6 +3826,13 @@ export default function CommunityDetailScreen() {
         message: `Check out this community post on Brahmand!\n\n${appLink}`,
       });
 
+      setCommunityPosts(prev => prev.map(post => {
+        if (post.id === postId) {
+          return { ...post, shares: (post.shares || 0) + 1 };
+        }
+        return post;
+      }));
+
       setDiscussionPosts(prev => prev.map(post => {
         if (post.id === postId) {
           return { ...post, shares: (post.shares || 0) + 1 };
@@ -3962,6 +4055,7 @@ export default function CommunityDetailScreen() {
       <FlatList
         ref={listRef}
         data={combinedData}
+        extraData={{ festivalSort, selectedFestival, showSortDropdown, showFilterDropdown }}
         keyExtractor={(item, index) => {
           if (item.id) return String(item.id);
           return `${item.type || 'item'}-${index}`;
@@ -4142,7 +4236,10 @@ export default function CommunityDetailScreen() {
           if (activeTab === 'Seva') {
             return renderSevaItem({ item });
           }
-          if (activeTab === 'Lost & Found' || activeTab === 'Temple Updates') {
+          if (activeTab === 'Temple Updates') {
+            return renderDiscussionItem({ item });
+          }
+          if (activeTab === 'Lost & Found') {
             return renderRequestItem({ item });
           }
           if (item.isRequestItem || item.type === 'request_item') {
@@ -4703,7 +4800,7 @@ export default function CommunityDetailScreen() {
           style={styles.modalOverlay}
         >
           <ToastContainer />
-          <View style={[styles.commentModalContent, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : (keyboardVisible ? 10 : Math.max(insets.bottom, 20)) }]}>
+          <View style={[styles.commentModalContent, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : (keyboardVisible ? 10 : Math.max(insets.bottom, 20)) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>
                 {t('language') === 'hi'
@@ -4779,6 +4876,7 @@ export default function CommunityDetailScreen() {
                 onChangeText={setCommentText}
                 placeholder={t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...'}
                 placeholderTextColor="#888"
+                multiline
                 inputStyle={styles.commentInput}
               />
               <TouchableOpacity onPress={handleAddComment} disabled={!commentText.trim()}>
@@ -4787,7 +4885,7 @@ export default function CommunityDetailScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
             {Platform.OS === 'android' && (
               <ReportModal
                 visible={reportCommentModalVisible}
@@ -5441,8 +5539,8 @@ const styles = StyleSheet.create({
   commentTextBubble: { flex: 1, backgroundColor: '#F8F9FA', padding: 12, borderRadius: 16 },
   commentUserName: { fontSize: 14, fontWeight: '700', color: '#111', marginBottom: 4 },
   commentText: { fontSize: 14, color: '#444', lineHeight: 20 },
-  commentInputRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
-  commentInput: { flex: 1, backgroundColor: '#F8F9FA', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 10, fontSize: 14 },
+  commentInputRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F0F0F0' },
+  commentInput: { flex: 1, backgroundColor: '#F8F9FA', borderRadius: 20, paddingHorizontal: 15, paddingVertical: 8, fontSize: 14, minHeight: 38, maxHeight: 100 },
   postCommentBtn: { color: '#FF3B30', fontWeight: '800', fontSize: 14 },
 
   postContainer: { backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EFF3F4', padding: 12 },

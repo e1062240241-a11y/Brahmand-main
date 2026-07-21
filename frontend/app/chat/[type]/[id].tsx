@@ -20,7 +20,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import withObservables from '@nozbe/with-observables';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../../../src/database';
-import { SafeVideoView, isPlayerValid } from '../../../src/components/SafeVideoView';
+import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../../src/components/SafeVideoView';
 
 let chatImageManipulator: typeof ImageManipulatorType | null = null;
 const getChatImageManipulator = async () => {
@@ -36,11 +36,6 @@ try {
 } catch (error) {
   console.warn('expo-video unavailable:', error);
 }
-
-const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer) return null;
-  return ExpoVideoModule.useVideoPlayer(source, setup);
-};
 
 const ChatNativeVideoPlayer = React.memo(({
   uri,

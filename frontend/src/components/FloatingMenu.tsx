@@ -139,7 +139,6 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                 ]}
               >
                 <View style={fabStyles.menuCircle}>
-                  <View style={fabStyles.dottedRing} pointerEvents="none" />
                     
                     {[
                       { key: 'festival', label: t('festival'), icon: 'calendar-outline' as const, route: '/festivals' },
@@ -153,11 +152,11 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                       const angleStep = (2 * Math.PI) / totalItems;
                       const startAngle = -Math.PI / 2; // Start from top
                       const angle = startAngle + index * angleStep;
-                      const radius = 118;
-                      const itemBgSize = 72;
-                      const itemBgRadius = 36;
-                      const centerX = 180 - itemBgSize / 2;
-                      const centerY = 180 - itemBgSize / 2 - 12;
+                      const radius = 112;
+                      const itemSize = 70;
+                      const itemRadius = 35;
+                      const centerX = 180 - itemSize / 2;
+                      const centerY = 180 - itemSize / 2 - 10;
                       const x = centerX + radius * Math.cos(angle);
                       const y = centerY + radius * Math.sin(angle);
                       
@@ -167,7 +166,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                           style={[
                             fabStyles.menuItem,
                             {
-                              left: x,
+                              left: x - 5,
                               top: y,
                               transform: [
                                 { scale: fabItemAnims[index] },
@@ -188,8 +187,8 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                           >
                             <ImageBackground 
                               source={require('../../assets/images/tab-bar/back.png')} 
-                              style={{ width: itemBgSize, height: itemBgSize, justifyContent: 'center', alignItems: 'center', borderRadius: itemBgRadius, overflow: 'hidden' }} 
-                              imageStyle={{ borderRadius: itemBgRadius, resizeMode: 'cover' }}
+                              style={{ width: itemSize, height: itemSize, justifyContent: 'center', alignItems: 'center', borderRadius: itemRadius, overflow: 'hidden' }} 
+                              imageStyle={{ borderRadius: itemRadius, resizeMode: 'cover' }}
                             >
                               {item.key === 'myKrishna' ? (
                                 <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 48, height: 48 }} contentFit="contain" />
@@ -226,7 +225,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                       ]}
                     >
                       <TouchableOpacity
-                        style={fabStyles.centerButtonInner}
+                        style={fabStyles.centerButtonOuterRing}
                         activeOpacity={0.85}
                         onPress={() => {
                           toggleFab();
@@ -235,16 +234,15 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                           }, 200);
                         }}
                       >
-                        <Image
-                          source={require('../../assets/images/sos_icon_3.png')}
-                          style={{ width: 102, height: 102, borderRadius: 51, alignSelf: 'center' }}
-                          resizeMode="contain"
-                        />
+                        <View style={fabStyles.sosRedButton}>
+                          <Text style={fabStyles.sosRedText}>SOS</Text>
+                        </View>
                       </TouchableOpacity>
                       <Text style={fabStyles.centerLabel}>SOS</Text>
+                    </Animated.View>
                   </View>
-              </Animated.View>
-            </View>
+                </Animated.View>
+              </View>
           </BlurView>
         </TouchableOpacity>
       )}
@@ -288,9 +286,9 @@ const fabStyles = StyleSheet.create({
     width: 360,
     height: 360,
     borderRadius: 180,
-    backgroundColor: '#FFEEE7',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 123, 0, 0.2)',
+    backgroundColor: '#FFEFE8',
+    borderWidth: 7,
+    borderColor: '#FFD5B8',
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -303,21 +301,56 @@ const fabStyles = StyleSheet.create({
         overflow: 'hidden',
       },
       android: {
-        borderWidth: 2,
-        borderColor: '#FFD5B8',
         elevation: 4,
       },
     }),
   },
-  dottedRing: { position: 'absolute', top: 40, left: 40, width: 280, height: 280, borderRadius: 140, borderWidth: 1, borderColor: 'rgba(255, 123, 0, 0.2)', borderStyle: Platform.OS === 'android' ? 'solid' : 'dashed' },
-  menuItem: { position: 'absolute', width: 72, alignItems: 'center' },
-  menuItemButton: { width: 72, height: 72, borderRadius: 36, justifyContent: 'center', alignItems: 'center' },
+  menuItem: { position: 'absolute', width: 80, alignItems: 'center' },
+  menuItemButton: { width: 70, height: 70, borderRadius: 35, justifyContent: 'center', alignItems: 'center' },
   iconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 3 },
-  menuItemLabel: { color: '#000', fontSize: 11, fontWeight: '700', textAlign: 'center', marginTop: 4, lineHeight: 13 },
-  centerButton: { position: 'absolute', left: 130, top: 115, alignItems: 'center', width: 100, height: 100 },
-  centerButtonInner: { width: 100, height: 100, borderRadius: 50, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 4, borderColor: '#FFF', shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 8 },
-  sosImageLarge: { width: 40, height: 40, marginBottom: 2 },
-  centerLabel: { color: '#000', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+  menuItemLabel: { color: '#000', fontSize: 10, fontWeight: '700', textAlign: 'center', marginTop: 3, lineHeight: 12, width: 80 },
+  centerButton: {
+    position: 'absolute',
+    left: 136,
+    top: 126,
+    alignItems: 'center',
+    width: 88,
+  },
+  centerButtonOuterRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FFE3E3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFCDD2',
+    shadowColor: '#FF1744',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sosRedButton: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#FF2A2A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#D32F2F',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  sosRedText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  centerLabel: { color: '#000', fontSize: 10, fontWeight: '700', textAlign: 'center', marginTop: 3 },
   fab: { position: 'absolute', right: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: '#FF7B00', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 8, zIndex: 9999, borderWidth: 3.5, borderColor: '#FFD5B8' },
   fabIcon: { width: 44, height: 44, borderRadius: 22 },
 });

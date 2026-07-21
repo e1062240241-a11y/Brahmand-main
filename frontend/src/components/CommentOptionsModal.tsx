@@ -62,7 +62,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
       <View style={styles.keyboardAvoidingContainer} pointerEvents="box-none">
         <Pressable style={{ flex: 1 }} onPress={onClose} />
         
-        <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }], paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }], paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 16, 28) : Math.max(insets.bottom, 16) }]}>
           {/* Grab Handle */}
           <View style={styles.handleBar} />
 

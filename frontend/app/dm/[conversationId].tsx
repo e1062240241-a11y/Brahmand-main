@@ -59,7 +59,7 @@ import { ReportModal } from '../../src/components/ReportModal';
 import { blockUser, unblockUser, isUserBlocked, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
 import { useBlockStore } from '../../src/store/blockStore';
 import { useLanguageStore } from '../../src/utils/i18n';
-import { SafeVideoView, isPlayerValid } from '../../src/components/SafeVideoView';
+import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../src/components/SafeVideoView';
 
 const DM_STRINGS = {
   en: {
@@ -180,11 +180,6 @@ try {
 } catch (error) {
   console.warn('expo-video unavailable:', error);
 }
-
-const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer) return null;
-  return ExpoVideoModule.useVideoPlayer(source, setup);
-};
 
 const DMNativeVideoPlayer = React.memo(({
   uri,

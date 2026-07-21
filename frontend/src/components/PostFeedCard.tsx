@@ -25,7 +25,7 @@ import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
-import { SafeVideoView, isPlayerValid } from './SafeVideoView';
+import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from './SafeVideoView';
 import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
@@ -39,13 +39,6 @@ try {
 } catch (error) {
   console.warn('expo-video unavailable:', error);
 }
-
-const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer) return null;
-  // DO NOT early return based on `source`. It breaks React Hook order when `source` changes.
-  // expo-video's useVideoPlayer explicitly supports `null` as a source.
-  return ExpoVideoModule.useVideoPlayer(source || null, setup);
-};
 
 const NativeVideoPlayer = memo(({
   mediaUrl,

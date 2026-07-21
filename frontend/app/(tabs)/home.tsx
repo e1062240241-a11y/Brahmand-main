@@ -4250,7 +4250,7 @@ export default function HomeScreen() {
               </View>
             )}
 
-            <View style={[styles.commentInputWrap, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : Math.max(insets.bottom, 12) }]}>
+            <View style={[styles.commentInputWrap, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : Math.max(insets.bottom, 12) }]}>
               <MentionInput
                 value={commentText}
                 onChangeText={setCommentText}
@@ -4271,7 +4271,7 @@ export default function HomeScreen() {
                 )}
               </TouchableOpacity>
             </View>
-            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
             {Platform.OS === 'android' && (
               <ReportModal
                 visible={reportCommentModalVisible}
