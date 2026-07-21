@@ -4592,6 +4592,12 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
         )
     )
 
+    await sio.emit('new_comment', {
+        'comment': comment_doc,
+        'comments_count': comments_count,
+        'post_id': post_id,
+    }, room=f'post_{post_id}')
+
     return {
         'message': 'Comment added',
         'comment': comment_doc,
@@ -4708,6 +4714,12 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
     updated_post['top_comments'] = top_comments[:5]
+
+    await sio.emit('comment_deleted', {
+        'comment_id': comment_id,
+        'comments_count': comments_count,
+        'post_id': post_id,
+    }, room=f'post_{post_id}')
 
     return {
         'message': 'Comment deleted',

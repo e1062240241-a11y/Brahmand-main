@@ -382,8 +382,8 @@ export const LiveMantraRoom = () => {
           playsInSilentMode: true,
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
-          allowsRecording: true,
-          allowsBackgroundRecording: true,
+          allowsRecording: isMicEnabled,
+          allowsBackgroundRecording: isMicEnabled,
         });
       } catch (error) {
         console.warn('Failed to set audio mode in LiveMantraRoom:', error);

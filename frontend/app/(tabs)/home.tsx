@@ -456,6 +456,17 @@ export default function HomeScreen() {
   const { user, updateUser, token, isAuthenticated } = useAuthStore();
 
   const bannerScrollRef = useRef<ScrollView>(null);
+  const isNavigatingRef = useRef(false);
+
+  const handleLiveJaapNavigation = useCallback((mantraType: string, title: string) => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType, title } });
+    setTimeout(() => {
+      isNavigatingRef.current = false;
+    }, 1000);
+  }, [router]);
+
   const [isHomeInitialized, setIsHomeInitialized] = useState(false);
 
 
@@ -3114,7 +3125,7 @@ export default function HomeScreen() {
 
                             {/* Bottom Button Row */}
                             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                              <TouchableOpacity
+                              <Pressable
                                 style={[
                                   styles.joinJaapButton,
                                   {
@@ -3129,10 +3140,11 @@ export default function HomeScreen() {
                                     gap: 10,
                                   }
                                 ]}
-                                onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'hanuman', title: 'Hanuman Chalisa' } })}
+                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
                               >
                                 <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
-                              </TouchableOpacity>
+                              </Pressable>
 
                               <TouchableOpacity
                                 style={{
@@ -3241,7 +3253,7 @@ export default function HomeScreen() {
 
                           {/* Bottom Button Row */}
                           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                            <TouchableOpacity
+                            <Pressable
                               style={[
                                 styles.joinJaapButton,
                                 {
@@ -3256,10 +3268,11 @@ export default function HomeScreen() {
                                   gap: 10,
                                 }
                               ]}
-                              onPress={() => router.push({ pathname: '/live-jaap-welcome', params: { fromHome: 'true', mantraType: 'shiva', title: 'Mahamrityunjaya Mantra' } })}
+                              android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                              onPress={() => handleLiveJaapNavigation('shiva', 'Mahamrityunjaya Mantra')}
                             >
                               <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
-                            </TouchableOpacity>
+                            </Pressable>
 
                             <TouchableOpacity
                               style={{

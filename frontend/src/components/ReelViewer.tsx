@@ -37,6 +37,7 @@ import { useAuthStore } from '../store/authStore';
 import { formatTimeAgo, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { useRouter } from 'expo-router';
+import { socketService } from '../services/socket';
 import SharePostModal from './SharePostModal';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -155,36 +156,24 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
   const durationRef = useRef(0);
   const timeIntervalRef = useRef<any>(null);
 
-  useEffect(() => {
-    if (!player || !isActive) return;
-    try {
-      const dur = player.duration || player.currentTime || 120;
-      if (dur > 0) {
-        setDuration(dur);
-        durationRef.current = dur;
-      }
-    } catch (e) {
-      console.warn('[ReelProgressBar] Initial player state check failed:', e);
-    }
-    timeIntervalRef.current = setInterval(() => {
-      if (player) {
-        try {
-          const ct = player.currentTime || 0;
-          setCurrentTime(ct);
-          const pd = player.duration || durationRef.current;
-          if (pd > 0 && pd !== durationRef.current) {
-            durationRef.current = pd;
-            setDuration(pd);
-          }
-        } catch (e) {
-          // Silent catch to prevent UI crash if player is unmounted/un-associated
+useEffect(() => {
+    if (!player) return;
+    let rafId: number;
+    const tick = () => {
+      try {
+        const ct = player.currentTime || 0;
+        setCurrentTime(ct);
+        const pd = player.duration || durationRef.current;
+        if (pd > 0 && pd !== durationRef.current) {
+          durationRef.current = pd;
+          setDuration(pd);
         }
-      }
-    }, 500);
-    return () => {
-      if (timeIntervalRef.current) clearInterval(timeIntervalRef.current);
+      } catch {}
+      rafId = requestAnimationFrame(tick);
     };
-  }, [player, isActive]);
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [player]);
 
   const seekPlayerRef = useRef<(pageX: number) => void>(() => { });
 
@@ -1277,30 +1266,38 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     }
   }, []);
 
-  // OPT-9: comment poll pauses when app is backgrounded
+  // Listen for new comments via socket — no polling
   useEffect(() => {
     if (!isCommentVisible || !selectedPost?.id) return;
-    if (appState !== 'active') return;
+    const postId = String(selectedPost.id);
+    const room = `post_${postId}`;
 
-    const interval = setInterval(async () => {
-      try {
-        const res = await getPostComments(selectedPost.id);
-        if (Array.isArray(res.data)) {
-          setLocalComments(prev => {
-            const serverComments = res.data;
-            const optimistic = prev.filter(c => c.is_optimistic);
-            const serverIds = new Set(serverComments.map((c: any) => c.id));
-            const filteredOptimistic = optimistic.filter(c => !serverIds.has(c.id));
-            return [...filteredOptimistic, ...serverComments];
-          });
-        }
-      } catch (error) {
-        if (__DEV__) console.warn('[Reel Comments Polling] Failed:', error);
-      }
-    }, 4000);
+    socketService.joinRoom(room).catch(() => {});
 
-    return () => clearInterval(interval);
-  }, [isCommentVisible, selectedPost?.id, appState]);
+    const handleNewComment = (data: any) => {
+      if (String(data.post_id) !== postId) return;
+      setLocalComments(prev => {
+        const comment = data.comment;
+        if (!comment) return prev;
+        if (prev.some((c: any) => c.id === comment.id)) return prev;
+        const optimistic = prev.filter((c: any) => c.is_optimistic);
+        return [...optimistic.filter((c: any) => c.id !== comment.id), comment];
+      });
+    };
+    const handleCommentDeleted = (data: any) => {
+      if (String(data.post_id) !== postId) return;
+      setLocalComments(prev => prev.filter((c: any) => c.id !== data.comment_id));
+    };
+
+    socketService.onEvent('new_comment', handleNewComment);
+    socketService.onEvent('comment_deleted', handleCommentDeleted);
+
+    return () => {
+      socketService.offEvent('new_comment', handleNewComment);
+      socketService.offEvent('comment_deleted', handleCommentDeleted);
+      socketService.leaveRoom(room);
+    };
+  }, [isCommentVisible, selectedPost?.id]);
 
   const submitLocalComment = async () => {
     if (!selectedPost || !newCommentText.trim() || isSubmittingComment) return;

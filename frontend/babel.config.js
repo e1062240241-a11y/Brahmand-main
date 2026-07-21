@@ -8,7 +8,7 @@ module.exports = function(api) {
     plugins: [
       ['@babel/plugin-proposal-decorators', { legacy: true }],
       'react-native-worklets/plugin',
-      ...(isProduction ? [['transform-remove-console', { exclude: ['error', 'warn'] }]] : []),
+      ...(isProduction ? [['transform-remove-console', { exclude: ['error'] }]] : []),
     ],
   };
 };
