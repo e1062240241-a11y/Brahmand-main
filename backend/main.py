@@ -2463,15 +2463,19 @@ async def _get_blocked_user_ids(db: FirestoreDB, user_id: str) -> set:
 
     blocked_ids = set()
     try:
-        # Users blocked by user_id
-        blocks_by_me = await db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+        # Run blocks_by_me and blocks_of_me queries in parallel
+        t1 = db.query_documents('user_blocks', filters=[('blockerUid', '==', user_id)])
+        t2 = db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
+        res1, res2 = await asyncio.gather(t1, t2, return_exceptions=True)
+        
+        blocks_by_me = res1 if not isinstance(res1, Exception) else []
+        blocks_of_me = res2 if not isinstance(res2, Exception) else []
+
         for b in blocks_by_me:
             b_uid = b.get('blockedUid')
             if b_uid:
                 blocked_ids.add(b_uid)
         
-        # Users who blocked user_id
-        blocks_of_me = await db.query_documents('user_blocks', filters=[('blockedUid', '==', user_id)])
         for b in blocks_of_me:
             b_uid = b.get('blockerUid')
             if b_uid:
@@ -2493,11 +2497,19 @@ async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type:
 
     reported_ids = set()
     try:
-        # Query moderation_reports
-        mod_reports = await db.query_documents(
+        t1 = db.query_documents(
             'moderation_reports',
             filters=[('reporterUid', '==', user_id), ('contentType', '==', content_type)]
         )
+        t2 = db.query_documents(
+            'reports',
+            filters=[('reporterUid', '==', user_id), ('contentType', '==', content_type)]
+        )
+        res1, res2 = await asyncio.gather(t1, t2, return_exceptions=True)
+        
+        mod_reports = res1 if not isinstance(res1, Exception) else []
+        legacy_reports = res2 if not isinstance(res2, Exception) else []
+
         for r in mod_reports:
             c_id = r.get('contentId')
             status = r.get('status')
@@ -2506,11 +2518,6 @@ async def _get_reported_content_ids(db: FirestoreDB, user_id: str, content_type:
                     continue
                 reported_ids.add(str(c_id))
                 
-        # Query legacy reports
-        legacy_reports = await db.query_documents(
-            'reports',
-            filters=[('reporterUid', '==', user_id), ('contentType', '==', content_type)]
-        )
         for r in legacy_reports:
             c_id = r.get('contentId')
             status = r.get('status')
@@ -3943,14 +3950,20 @@ async def get_posts_feed(
             try:
                 comments_cnt = post.get('comments_count', 0) or 0
                 if comments_cnt > 0:
-                    top_comments = await db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', '==', post.get('id'))],
-                        limit=10,
-                    )
-                    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-                    top_comments.sort(key=_comment_sort_key, reverse=True)
-                    post['top_comments'] = top_comments[:5]
+                    pid = post.get('id')
+                    comments_cache_key = f"post:comments:{pid}"
+                    top_comments = await cache_manager.get(comments_cache_key)
+                    if top_comments is None:
+                        top_comments = await db.query_documents(
+                            'post_comments',
+                            filters=[('post_id', '==', pid)],
+                            limit=10,
+                        )
+                        top_comments.sort(key=_comment_sort_key, reverse=True)
+                        await cache_manager.set(comments_cache_key, top_comments, ttl=300)
+                    
+                    filtered_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+                    post['top_comments'] = filtered_comments[:5]
                 else:
                     post['top_comments'] = []
             except Exception:
@@ -4129,24 +4142,46 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
     comments_tasks = []
     for post in paged_posts:
         if post.get('comments_count', 0) > 0:
-            comments_tasks.append((
-                post.get('id'),
-                db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=10,
-                )
-            ))
+            pid = post.get('id')
+            comments_tasks.append((pid, f"post:comments:{pid}"))
 
+    comments_by_post_id = {}
     if comments_tasks:
-        post_ids, tasks = zip(*comments_tasks)
-        comments_results = await asyncio.gather(*tasks, return_exceptions=True)
-        comments_by_post_id = {
-            pid: (res if not isinstance(res, Exception) else [])
-            for pid, res in zip(post_ids, comments_results)
-        }
-    else:
-        comments_by_post_id = {}
+        post_ids, cache_keys = zip(*comments_tasks)
+        cached_results = await cache_manager.get_many(list(cache_keys))
+        
+        # Determine which posts have cache misses
+        db_tasks = []
+        for pid, cached_c in zip(post_ids, cached_results):
+            if cached_c is None:
+                db_tasks.append((
+                    pid,
+                    db.query_documents(
+                        'post_comments',
+                        filters=[('post_id', '==', pid)],
+                        limit=10,
+                    )
+                ))
+        
+        if db_tasks:
+            db_pids, db_queries = zip(*db_tasks)
+            db_results = await asyncio.gather(*db_queries, return_exceptions=True)
+            
+            # Cache the newly fetched comments
+            cache_updates = {}
+            for pid, res in zip(db_pids, db_results):
+                comments_list = res if not isinstance(res, Exception) else []
+                comments_list.sort(key=_comment_created_at_sort_key, reverse=True)
+                comments_by_post_id[pid] = comments_list
+                cache_updates[f"post:comments:{pid}"] = comments_list
+            
+            if cache_updates:
+                await cache_manager.set_many(cache_updates, ttl=300)
+                
+        # Fill in the hits
+        for pid, cached_c in zip(post_ids, cached_results):
+            if cached_c is not None:
+                comments_by_post_id[pid] = cached_c
 
     normalized = []
     for post in paged_posts:
@@ -4208,26 +4243,32 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
 
     comments_cnt = post.get('comments_count', 0) or 0
     if comments_cnt > 0:
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=10,
-        )
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+        pid = post.get('id')
+        comments_cache_key = f"post:comments:{pid}"
+        top_comments = await cache_manager.get(comments_cache_key)
+        if top_comments is None:
+            top_comments = await db.query_documents(
+                'post_comments',
+                filters=[('post_id', '==', pid)],
+                limit=10,
+            )
+            
+            def _comment_created_at_sort_key(item: dict):
+                value = item.get('created_at')
+                if isinstance(value, datetime):
+                    return value
+                if isinstance(value, str):
+                    try:
+                        return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    except Exception:
+                        return datetime.min
+                return datetime.min
 
-        def _comment_created_at_sort_key(item: dict):
-            value = item.get('created_at')
-            if isinstance(value, datetime):
-                return value
-            if isinstance(value, str):
-                try:
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
-                except Exception:
-                    return datetime.min
-            return datetime.min
+            top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+            await cache_manager.set(comments_cache_key, top_comments, ttl=300)
 
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
+        filtered_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+        post['top_comments'] = filtered_comments[:5]
     else:
         post['top_comments'] = []
     return post
@@ -4590,6 +4631,7 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
 
     comments_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
     await db.update_document('posts', post_id, {'comments_count': comments_count})
+    await cache_manager.delete(f"post:comments:{post_id}")
 
     updated_post = await db.get_document('posts', post_id)
     if not updated_post:
@@ -4755,6 +4797,7 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
         'comments_count': comments_count,
         'top_comments': top_comments[:5]
     })
+    await cache_manager.delete(f"post:comments:{post_id}")
 
     updated_post = await db.get_document('posts', post_id)
     updated_post['comments_count'] = comments_count
