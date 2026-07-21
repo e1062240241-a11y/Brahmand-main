@@ -265,6 +265,9 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down...")
+    global _shared_client_session
+    if _shared_client_session and not _shared_client_session.closed:
+        await _shared_client_session.close()
     if _panchang_prefetch_task:
         _panchang_prefetch_task.cancel()
         try:
@@ -296,6 +299,16 @@ socket_app = socketio.ASGIApp(sio, app)
 
 
 # =================== HELPER FUNCTIONS ===================
+
+_shared_client_session: Optional[aiohttp.ClientSession] = None
+
+def get_shared_client_session() -> aiohttp.ClientSession:
+    global _shared_client_session
+    if _shared_client_session is None or _shared_client_session.closed:
+        connector = aiohttp.TCPConnector(ssl=False, limit=100, keepalive_timeout=30)
+        _shared_client_session = aiohttp.ClientSession(connector=connector)
+    return _shared_client_session
+
 
 async def get_db() -> FirestoreDB:
     """Get Firestore database wrapper"""
@@ -415,11 +428,11 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
 
     logger.info(f"Uploading {len(file_bytes)} bytes to Bunny.net: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=180, connect=30)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
-            if resp.status not in (200, 201):
-                resp_text = await resp.text()
-                raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
+    session = get_shared_client_session()
+    async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
+        if resp.status not in (200, 201):
+            resp_text = await resp.text()
+            raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
 
     pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     if pull_zone:
@@ -447,12 +460,12 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     logger.info(f"Streaming {file_size} bytes from disk to Bunny.net: {bunny_url}")
 
     timeout = aiohttp.ClientTimeout(total=300, connect=30)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        with open(file_path, 'rb') as f:
-            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
-                if resp.status not in (200, 201):
-                    resp_text = await resp.text()
-                    raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
+    session = get_shared_client_session()
+    with open(file_path, 'rb') as f:
+        async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
+            if resp.status not in (200, 201):
+                resp_text = await resp.text()
+                raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
 
     pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     if pull_zone:
@@ -472,18 +485,18 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     }
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
-            if resp.status != 200:
-                resp_text = await resp.text()
-                raise Exception(f"Failed to download from Bunny.net: {resp.status} - {resp_text}")
-            
-            size = 0
-            with open(local_path, 'wb') as f:
-                async for chunk in resp.content.iter_chunked(65536):
-                    f.write(chunk)
-                    size += len(chunk)
-            return size
+    session = get_shared_client_session()
+    async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
+        if resp.status != 200:
+            resp_text = await resp.text()
+            raise Exception(f"Failed to download from Bunny.net: {resp.status} - {resp_text}")
+        
+        size = 0
+        with open(local_path, 'wb') as f:
+            async for chunk in resp.content.iter_chunked(65536):
+                f.write(chunk)
+                size += len(chunk)
+        return size
 
 
 async def _delete_file_from_bunny(object_path: str):
@@ -495,13 +508,13 @@ async def _delete_file_from_bunny(object_path: str):
     }
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.delete(bunny_url, headers=headers, timeout=timeout) as resp:
-            if resp.status not in (200, 204):
-                resp_text = await resp.text()
-                logger.warning(f"Failed to delete {object_path} from Bunny.net: status {resp.status} - {resp_text}")
-            else:
-                logger.info(f"Successfully deleted {object_path} from Bunny.net")
+    session = get_shared_client_session()
+    async with session.delete(bunny_url, headers=headers, timeout=timeout) as resp:
+        if resp.status not in (200, 204):
+            resp_text = await resp.text()
+            logger.warning(f"Failed to delete {object_path} from Bunny.net: status {resp.status} - {resp_text}")
+        else:
+            logger.info(f"Successfully deleted {object_path} from Bunny.net")
 
 
 async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
@@ -2862,13 +2875,13 @@ async def get_bunny_media(filepath: str):
     async def file_sender():
         try:
             timeout = aiohttp.ClientTimeout(total=60, connect=10)
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
-                    if resp.status == 200:
-                        async for chunk in resp.content.iter_chunked(65536):
-                            yield chunk
-                    else:
-                        logger.error(f"Failed to fetch media from Bunny.net: {resp.status}")
+            session = get_shared_client_session()
+            async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
+                if resp.status == 200:
+                    async for chunk in resp.content.iter_chunked(65536):
+                        yield chunk
+                else:
+                    logger.error(f"Failed to fetch media from Bunny.net: {resp.status}")
         except Exception as e:
             logger.error(f"Error in file_sender streaming: {e}")
             
@@ -2887,12 +2900,12 @@ async def get_bunny_media(filepath: str):
 async def get_library_cdn(filepath: str):
     """Proxy library CDN requests to avoid CORS"""
     cdn_url = f"https://brahmandfeed23.b-cdn.net/library/{filepath}"
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(cdn_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-            if resp.status != 200:
-                from fastapi.responses import JSONResponse
-                return JSONResponse(status_code=resp.status, content={"error": "Not found"})
-            data = await resp.read()
+    session = get_shared_client_session()
+    async with session.get(cdn_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+        if resp.status != 200:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=resp.status, content={"error": "Not found"})
+        data = await resp.read()
     from fastapi.responses import Response
     return Response(content=data, media_type="application/json", headers={
         "Cache-Control": "public, max-age=3600",
@@ -5257,62 +5270,62 @@ async def reverse_geocode(request: dict):
             "language": "en"
         }
         
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=10)) as session:
-            async with session.get(url, params=params) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data.get("status") == "OK" and data.get("results"):
-                        result = data["results"][0]
-                        addr_components = result.get("address_components", [])
+        session = get_shared_client_session()
+        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                if data.get("status") == "OK" and data.get("results"):
+                    result = data["results"][0]
+                    addr_components = result.get("address_components", [])
+                    
+                    city = ""
+                    state = ""
+                    country = ""
+                    area = ""
+                    
+                    for comp in addr_components:
+                        types = comp.get("types", [])
+                        if "country" in types:
+                            country = comp.get("long_name", "").replace("India", "Bharat")
+                        if "administrative_area_level_1" in types:
+                            state = comp.get("long_name", "")
+                        # Try locality first, then administrative_area_level_2 or administrative_area_level_3 as city
+                        if "locality" in types:
+                            city = comp.get("long_name", "")
+                        elif "administrative_area_level_2" in types and not city:
+                            city = comp.get("long_name", "")
+                        elif "administrative_area_level_3" in types and not city:
+                            city = comp.get("long_name", "")
                         
-                        city = ""
-                        state = ""
-                        country = ""
-                        area = ""
-                        
+                        # Sublocality / neighborhood for area
+                        if "sublocality" in types or "sublocality_level_1" in types or "neighborhood" in types:
+                            area = comp.get("long_name", "")
+                            
+                    # Final fallback checks for city and area if still empty
+                    if not city:
                         for comp in addr_components:
                             types = comp.get("types", [])
-                            if "country" in types:
-                                country = comp.get("long_name", "").replace("India", "Bharat")
-                            if "administrative_area_level_1" in types:
-                                state = comp.get("long_name", "")
-                            # Try locality first, then administrative_area_level_2 or administrative_area_level_3 as city
-                            if "locality" in types:
+                            if "administrative_area_level_3" in types:
                                 city = comp.get("long_name", "")
-                            elif "administrative_area_level_2" in types and not city:
-                                city = comp.get("long_name", "")
-                            elif "administrative_area_level_3" in types and not city:
-                                city = comp.get("long_name", "")
-                            
-                            # Sublocality / neighborhood for area
-                            if "sublocality" in types or "sublocality_level_1" in types or "neighborhood" in types:
+                                break
+                    if not area:
+                        for comp in addr_components:
+                            types = comp.get("types", [])
+                            if "sublocality_level_2" in types:
                                 area = comp.get("long_name", "")
-                                
-                        # Final fallback checks for city and area if still empty
-                        if not city:
-                            for comp in addr_components:
-                                types = comp.get("types", [])
-                                if "administrative_area_level_3" in types:
-                                    city = comp.get("long_name", "")
-                                    break
-                        if not area:
-                            for comp in addr_components:
-                                types = comp.get("types", [])
-                                if "sublocality_level_2" in types:
-                                    area = comp.get("long_name", "")
-                                    break
+                                break
 
-                        return normalize_location({
-                            "country": country or "Bharat",
-                            "state": state or "Unknown State",
-                            "city": city or "Unknown City",
-                            "area": area or "Unknown Area",
-                            "display_name": result.get("formatted_address", "")
-                        })
-                    else:
-                        logger.warning(f"Google Geocode API returned status: {data.get('status')}")
+                    return normalize_location({
+                        "country": country or "Bharat",
+                        "state": state or "Unknown State",
+                        "city": city or "Unknown City",
+                        "area": area or "Unknown Area",
+                        "display_name": result.get("formatted_address", "")
+                    })
                 else:
-                    logger.warning(f"Google Geocode API HTTP status: {resp.status}")
+                    logger.warning(f"Google Geocode API returned status: {data.get('status')}")
+            else:
+                logger.warning(f"Google Geocode API HTTP status: {resp.status}")
     except Exception as e:
         logger.error(f"Google Reverse Geocoding error: {e}")
     
@@ -5355,52 +5368,48 @@ async def forward_geocode(request: dict):
             "components": "country:in"
         }
 
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=10)) as session:
-            async with session.get(url, params=params) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data.get("status") == "OK" and data.get("results"):
-                        results = []
-                        for res in data["results"]:
-                            lat = res["geometry"]["location"]["lat"]
-                            lon = res["geometry"]["location"]["lng"]
-                            addr_components = res.get("address_components", [])
-                            
-                            city = ""
-                            state = ""
-                            country = ""
-                            area = ""
-                            
-                            for comp in addr_components:
-                                types = comp.get("types", [])
-                                if "country" in types:
-                                    country = comp.get("long_name", "").replace("India", "Bharat")
-                                if "administrative_area_level_1" in types:
-                                    state = comp.get("long_name", "")
-                                if "locality" in types or "administrative_area_level_2" in types:
-                                    city = comp.get("long_name", "")
-                                if "sublocality" in types or "neighborhood" in types:
-                                    area = comp.get("long_name", "")
-                            
-                            results.append(normalize_location({
-                                "latitude": float(lat),
-                                "longitude": float(lon),
-                                "display_name": res.get("formatted_address", ""),
-                                "country": country or "Bharat",
-                                "state": state or "Unknown",
-                                "city": city or "Unknown",
-                                "area": area or "Unknown",
-                            }))
+        session = get_shared_client_session()
+        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                if data.get("status") == "OK" and data.get("results"):
+                    results = []
+                    for res in data["results"]:
+                        lat = res["geometry"]["location"]["lat"]
+                        lon = res["geometry"]["location"]["lng"]
+                        addr_components = res.get("address_components", [])
                         
-                        # Return first result for single-result compatibility or full list if needed
-                        # The frontend's forwardGeocode usually expects a list or a single object.
-                        # Looking at api.ts: export const forwardGeocode = (query: string) => api.post('/geocode/forward', { query });
-                        # And blood-request.tsx uses response.data which it maps over.
-                        return results
-                    else:
-                        raise HTTPException(status_code=404, detail=f"Location not found: {data.get('status')}")
+                        city = ""
+                        state = ""
+                        country = ""
+                        area = ""
+                        
+                        for comp in addr_components:
+                            types = comp.get("types", [])
+                            if "country" in types:
+                                country = comp.get("long_name", "").replace("India", "Bharat")
+                            if "administrative_area_level_1" in types:
+                                state = comp.get("long_name", "")
+                            if "locality" in types or "administrative_area_level_2" in types:
+                                city = comp.get("long_name", "")
+                            if "sublocality" in types or "neighborhood" in types:
+                                area = comp.get("long_name", "")
+                        
+                        results.append(normalize_location({
+                            "latitude": float(lat),
+                            "longitude": float(lon),
+                            "display_name": res.get("formatted_address", ""),
+                            "country": country or "Bharat",
+                            "state": state or "Unknown",
+                            "city": city or "Unknown",
+                            "area": area or "Unknown",
+                        }))
+                    
+                    return results
                 else:
-                    raise HTTPException(status_code=resp.status, detail="Google Geocode API error")
+                    raise HTTPException(status_code=404, detail=f"Location not found: {data.get('status')}")
+            else:
+                raise HTTPException(status_code=resp.status, detail="Google Geocode API error")
     except HTTPException:
         raise
     except Exception as e:
@@ -9548,9 +9557,9 @@ async def mark_all_notifications_read(token_data: dict = Depends(verify_token)):
     user_id = token_data["user_id"]
     # Get all unread notifications
     notifications = await db.query_documents('notifications', filters=[('user_id', '==', user_id), ('is_read', '==', False)])
-    # Mark each as read
-    for notif in notifications:
-        await db.update_document('notifications', notif['id'], {'is_read': True})
+    if notifications:
+        updates = [(notif['id'], {'is_read': True}) for notif in notifications]
+        await db.batch_update_documents('notifications', updates)
     return {"message": "All notifications marked as read"}
 
 

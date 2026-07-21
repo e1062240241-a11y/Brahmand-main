@@ -286,9 +286,9 @@ class FirestoreDB:
     
     async def _run_sync(self, func, *args, **kwargs):
         """Run sync function in a separate thread to avoid blocking the asyncio event loop"""
-        import asyncio
-        from functools import partial
-        loop = asyncio.get_event_loop()
+        loop = self._loop or asyncio.get_running_loop()
+        if not self._loop:
+            self._loop = loop
         return await loop.run_in_executor(None, partial(func, *args, **kwargs))
     
     # =================== GENERIC OPERATIONS ===================
@@ -378,6 +378,36 @@ class FirestoreDB:
         if result:
             await self._cache.delete(f"{collection}:{doc_id}")
         return result
+
+    async def batch_update_documents(self, collection: str, updates: List[tuple]) -> None:
+        """Update multiple documents in a collection using a batch. updates is a list of (doc_id, data_dict) tuples"""
+        if not updates:
+            return
+            
+        now = datetime.utcnow()
+        if self.use_mock:
+            coll = self._mock_collections.setdefault(collection, {})
+            for doc_id, data in updates:
+                if doc_id in coll:
+                    data_copy = fast_copy(data)
+                    data_copy['updated_at'] = now.isoformat() + 'Z'
+                    coll[doc_id].update(data_copy)
+                    await self._cache.delete(f"{collection}:{doc_id}")
+            return
+
+        def _batch():
+            batch = self.client.batch()
+            coll_ref = self.client.collection(collection)
+            for doc_id, data in updates:
+                data_copy = dict(data)
+                data_copy['updated_at'] = now
+                doc_ref = coll_ref.document(doc_id)
+                batch.update(doc_ref, data_copy)
+            batch.commit()
+
+        await self._run_sync(_batch)
+        for doc_id, _ in updates:
+            await self._cache.delete(f"{collection}:{doc_id}")
     
     async def delete_document(self, collection: str, doc_id: str) -> bool:
         """Delete a document and invalidate cache"""
