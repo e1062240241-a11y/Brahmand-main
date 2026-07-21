@@ -135,7 +135,6 @@ const NativeVideoPlayer = memo(({
   return (
     <>
       <SafeVideoView
-        key={mediaUrl}
         player={player}
         ExpoVideoModule={ExpoVideoModule}
         style={cropStyle || styles.videoBackground}
@@ -295,18 +294,8 @@ export const PostFeedCard = memo(({
     setVideoPosterUrl(posterUrl);
   }, [posterUrl]);
 
-  // Preload the first 1MB of video content so ReelViewer opens instantly when tapped (Web/iOS only)
-  useEffect(() => {
-    const isVideoPost = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
-    if (Platform.OS === 'android' || !mediaUrl || !isVideoPost) return;
-    const ctrl = new AbortController();
-    fetch(mediaUrl, {
-      method: 'GET',
-      headers: { Range: 'bytes=0-1048576' },
-      signal: ctrl.signal,
-    }).catch(() => {});
-    return () => ctrl.abort();
-  }, [mediaUrl]);
+  // ponytail: removed 1MB preload fetch — caused iOS overheating. web preloads fine via <video preload>
+
 
   const handleImageError = (e: any) => {
     console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', imageUri);
@@ -677,28 +666,31 @@ export const PostFeedCard = memo(({
                     <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
                   )}
                 </>
-              ) : isActive ? (
-                <NativeVideoPlayer
-                  mediaUrl={mediaUrl}
-                  isMuted={isMuted}
-                  shouldPlay={shouldPlay}
-                  cropStyle={cropStyle}
-                  filterName={filterName}
-                  setMediaLoading={setMediaLoading}
-                  setMediaError={setMediaError}
-                  videoPosterUrl={videoPosterUrl}
-                  handlePosterError={handlePosterError}
-                  mediaLoading={mediaLoading}
-                />
               ) : (
-                <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
-                  <Image
-                    source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
-                    style={StyleSheet.absoluteFill}
-                    contentFit="cover"
-                    onError={handlePosterError}
+                <>
+                  <NativeVideoPlayer
+                    mediaUrl={mediaUrl}
+                    isMuted={isMuted}
+                    shouldPlay={shouldPlay}
+                    cropStyle={cropStyle}
+                    filterName={filterName}
+                    setMediaLoading={setMediaLoading}
+                    setMediaError={setMediaError}
+                    videoPosterUrl={videoPosterUrl}
+                    handlePosterError={handlePosterError}
+                    mediaLoading={mediaLoading}
                   />
-                </View>
+                  {!isActive && (
+                    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
+                      <Image
+                        source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                        onError={handlePosterError}
+                      />
+                    </View>
+                  )}
+                </>
               )}
               <Pressable
                 style={styles.videoOverlay}
