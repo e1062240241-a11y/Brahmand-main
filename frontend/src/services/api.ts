@@ -6,7 +6,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import Constants from "expo-constants";
 import { secureStorage } from "../utils/secureStorage";
 
-const PRODUCTION_BACKEND_URL = "https://brahmand-backend-hi4rz6fdrq-uc.a.run.app";
+const PRODUCTION_BACKEND_URL = "https://brahmand-backend-fndgi6mi5q-uc.a.run.app";
 
 const getResolvedConfiguredUrl = (envVal: string | undefined): string | undefined => {
   if (__DEV__) {

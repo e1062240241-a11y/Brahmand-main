@@ -31,7 +31,7 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
-      style={({ pressed }) => [
+      style={({ pressed }) => StyleSheet.flatten([
         styles.button,
         variant === 'primary' && styles.primary,
         variant === 'secondary' && styles.secondary,
@@ -39,7 +39,7 @@ export const Button: React.FC<ButtonProps> = ({
         disabled && styles.disabled,
         pressed && !disabled && !loading && { opacity: 0.8 },
         style,
-      ]}
+      ])}
       onPress={onPress}
       disabled={disabled || loading}
       android_ripple={{

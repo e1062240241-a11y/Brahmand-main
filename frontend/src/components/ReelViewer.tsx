@@ -1511,7 +1511,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const allSeenIds = Array.from(seenIdsRef.current).slice(-250).join(',');
 
       const res = await getPostsFeed(20, 0, 'for_you', allSeenIds);
-      const newPosts: any[] = res.data?.items || (Array.isArray(res.data) ? res.data : []);
+      const rawPosts: any[] = res.data?.items || (Array.isArray(res.data) ? res.data : []);
+      
+      // Only keep video posts in the ReelViewer
+      const newPosts = rawPosts.filter((p: any) => {
+        const mediaUrl = p?.media_url || p?.mediaUrl || p?.image_url || p?.imageUrl || p?.image || '';
+        const mediaType = String(p?.media_type || p?.mediaType || p?.type || '').toLowerCase();
+        return mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
+      });
 
       // Add any new posts to the global session pool
       for (const p of newPosts) {
