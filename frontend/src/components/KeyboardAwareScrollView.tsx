@@ -6,6 +6,9 @@ interface KeyboardAwareScrollViewProps extends ScrollViewProps {
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   extraHeight?: number;
+  extraScrollHeight?: number;
+  enableOnAndroid?: boolean;
+  enableAutomaticScroll?: boolean;
 }
 
 export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, KeyboardAwareScrollViewProps>(({
@@ -13,6 +16,7 @@ export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, Key
   style,
   contentContainerStyle,
   extraHeight = 100,
+  extraScrollHeight = 140,
   ...props
 }, ref) => {
   return (
@@ -23,7 +27,7 @@ export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, Key
       enableOnAndroid={true}
       enableAutomaticScroll={true}
       extraHeight={extraHeight}
-      extraScrollHeight={0}
+      extraScrollHeight={extraScrollHeight}
       keyboardShouldPersistTaps="handled"
       // Setting resetScrollToCoords to null lets the component restore the previous scroll position on dismiss
       resetScrollToCoords={null as any}

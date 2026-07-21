@@ -14,6 +14,7 @@ import {ActivityIndicator,
   SafeAreaView,
   KeyboardAvoidingView,
   PanResponder,
+  ScrollView,
   Image as RNImage} from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -92,6 +93,65 @@ const UploadVideoPreview = React.memo(({
   );
 });
 UploadVideoPreview.displayName = 'UploadVideoPreview';
+
+const UploadingProgress = React.memo(({
+  uploadProgress,
+  isCompressing,
+  t,
+}: {
+  uploadProgress: number;
+  isCompressing: boolean;
+  t: any;
+}) => {
+  const progressAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: uploadProgress,
+      duration: 150,
+      useNativeDriver: false,
+    }).start();
+  }, [uploadProgress]);
+
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 100],
+    outputRange: ["0%", "100%"],
+  });
+
+  return (
+    <View style={styles.uploadingContainer}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: SPACING.sm,
+          marginBottom: 8,
+        }}
+      >
+        <ActivityIndicator color={COLORS.primary} size="small" />
+        <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+          {isCompressing
+            ? t("language") === "hi"
+              ? "प्रक्रिया चल रही है..."
+              : "Processing..."
+            : uploadProgress > 0 && uploadProgress < 100
+              ? t("language") === "hi"
+                ? `अपलोड हो रहा है ${uploadProgress}%...`
+                : `Uploading ${uploadProgress}%...`
+              : t("language") === "hi"
+                ? "अपलोड हो रहा है..."
+                : "Uploading..."}
+        </Text>
+      </View>
+      <View style={styles.progressBarBackground}>
+        <Animated.View
+          style={[styles.progressBarFill, { width: progressWidth }]}
+        />
+      </View>
+    </View>
+  );
+});
+UploadingProgress.displayName = "UploadingProgress";
 
 let UploadDocumentPicker: any = null;
 const getUploadDocumentPicker = async () => {
@@ -273,19 +333,7 @@ export const UploadPostModal = ({
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
   const [mutedAudio, setMutedAudio] = useState(false);
 
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const progressWidth = progressAnim.interpolate({
-    inputRange: [0, 100],
-    outputRange: ["0%", "100%"],
-  });
-
-  useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: uploadProgress,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [uploadProgress]);
+  const videoPreviewStyle = useMemo(() => ({ width: "100%", height: "100%" }), []);
 
   const getClosestAspectRatio = (
     width: number,
@@ -724,6 +772,8 @@ export const UploadPostModal = ({
 
     try {
       const fullCaption = caption;
+      let lastProgressTime = 0;
+      let lastPercent = -1;
 
       const response = await uploadUserPost(
         {
@@ -738,9 +788,14 @@ export const UploadPostModal = ({
             const percent = Math.round(
               (progressEvent.loaded * 100) / progressEvent.total,
             );
-            setUploadProgress(percent);
-            if (percent >= 100 && selectedMedia.mediaType === "video")
-              setIsCompressing(true);
+            const now = Date.now();
+            if (percent !== lastPercent && (percent === 100 || now - lastProgressTime > 120)) {
+              lastPercent = percent;
+              lastProgressTime = now;
+              setUploadProgress(percent);
+              if (percent >= 100 && selectedMedia.mediaType === "video")
+                setIsCompressing(true);
+            }
           }
         },
         communityLevel,
@@ -785,432 +840,406 @@ export const UploadPostModal = ({
       onRequestClose={resetAndClose}
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        <View style={styles.appBar}>
+          <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>
+            <MaterialIcons name="close" size={28} color={COLORS.text} />
+          </TouchableOpacity>
+          <Text style={styles.title}>
+            {t("language") === "hi" ? "नई पोस्ट बनाएं" : "Create New Post"}
+          </Text>
+          <View style={styles.iconBtn} />
+        </View>
+        <KeyboardAwareScrollView
+          scrollEnabled={scrollEnabled}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          extraScrollHeight={Platform.OS === 'ios' ? 140 : 160}
+          extraHeight={Platform.OS === 'ios' ? 140 : 160}
+          enableOnAndroid={true}
+          enableAutomaticScroll={true}
         >
-          <View style={styles.appBar}>
-            <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>
-              <MaterialIcons name="close" size={28} color={COLORS.text} />
-            </TouchableOpacity>
-            <Text style={styles.title}>
-              {t("language") === "hi" ? "नई पोस्ट बनाएं" : "Create New Post"}
-            </Text>
-            <View style={styles.iconBtn} />
-          </View>
-          <KeyboardAwareScrollView
-            scrollEnabled={scrollEnabled}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.mediaContainer}>
-              <View
-                style={[
-                  styles.previewBox,
-                  selectedMedia
-                    ? { width: previewWidth, height: previewHeight }
-                    : {},
-                ]}
-              >
-                {!selectedMedia ? (
-                  <View style={styles.emptyPreview}>
-                    <MaterialIcons
-                      name="add-photo-alternate"
-                      size={48}
-                      color={COLORS.textSecondary}
-                    />
-                    <Text style={styles.previewPlaceholder}>
-                      {t("uploadPlaceholder")}
-                    </Text>
-                    <Text style={styles.emptyPreviewDisclaimer}>
-                      {t("language") === "hi"
-                        ? "सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।"
-                        : "By uploading content, you confirm you own or have rights to use the audio and video."}
-                    </Text>
-                  </View>
-                ) : (
-                  <View
+          <View style={styles.mediaContainer}>
+            <View
+              style={[
+                styles.previewBox,
+                selectedMedia
+                  ? { width: previewWidth, height: previewHeight }
+                  : {},
+              ]}
+            >
+              {!selectedMedia ? (
+                <View style={styles.emptyPreview}>
+                  <MaterialIcons
+                    name="add-photo-alternate"
+                    size={48}
+                    color={COLORS.textSecondary}
+                  />
+                  <Text style={styles.previewPlaceholder}>
+                    {t("uploadPlaceholder")}
+                  </Text>
+                  <Text style={styles.emptyPreviewDisclaimer}>
+                    {t("language") === "hi"
+                      ? "सामग्री अपलोड करके, आप पुष्टि करते हैं कि इस ऑडियो और वीडियो का मालिकाना हक आपका है या आपके पास इसे इस्तेमाल करने का अधिकार है।"
+                      : "By uploading content, you confirm you own or have rights to use the audio and video."}
+                  </Text>
+                </View>
+              ) : (
+                <View
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    overflow: "hidden",
+                    backgroundColor: "#000",
+                    position: "relative",
+                  }}
+                  {...panResponder.panHandlers}
+                >
+                  <Animated.View
+                    pointerEvents="none"
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      overflow: "hidden",
-                      backgroundColor: "#000",
-                      position: "relative",
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      width: imgWidth,
+                      height: imgHeight,
+                      transform: [
+                        { translateX: dragX },
+                        { translateY: dragY },
+                      ],
                     }}
-                    {...panResponder.panHandlers}
                   >
-                    <Animated.View
-                      pointerEvents="none"
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        top: 0,
-                        width: imgWidth,
-                        height: imgHeight,
-                        transform: [
-                          { translateX: dragX },
-                          { translateY: dragY },
-                        ],
-                      }}
-                    >
-                      {selectedMedia.mediaType === "image" ? (
-                        <Image
-                          source={{ uri: selectedMedia.uri }}
-                          style={[
-                            { width: "100%", height: "100%" },
-                            getFilterStyle(selectedFilter),
-                          ]}
-                          contentFit="cover"
-                        />
-                      ) : Platform.OS === "web" ? (
-                        <video
-                          src={selectedMedia.uri}
-                          loop
-                          muted
-                          autoPlay
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            objectFit: "cover",
-                            ...getFilterStyle(selectedFilter),
-                          }}
-                        />
-                      ) : selectedMedia?.uri ? (
-                        <UploadVideoPreview
-                          uri={selectedMedia.uri}
-                          style={{ width: "100%", height: "100%" }}
-                          selectedFilter={selectedFilter}
-                        />
-                      ) : (
-                        <View
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            backgroundColor: "#000",
-                          }}
-                        />
-                      )}
-                    </Animated.View>
-                    {Platform.OS !== "web" && selectedFilter !== "Normal" && (
-                      <View
+                    {selectedMedia.mediaType === "image" ? (
+                      <Image
+                        source={{ uri: selectedMedia.uri }}
                         style={[
-                          StyleSheet.absoluteFill,
-                          getOverlayStyle(selectedFilter),
+                          { width: "100%", height: "100%" },
+                          getFilterStyle(selectedFilter),
                         ]}
-                        pointerEvents="none"
+                        contentFit="cover"
+                      />
+                    ) : Platform.OS === "web" ? (
+                      <video
+                        src={selectedMedia.uri}
+                        loop
+                        muted
+                        autoPlay
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          ...getFilterStyle(selectedFilter),
+                        }}
+                      />
+                    ) : selectedMedia?.uri ? (
+                      <UploadVideoPreview
+                        uri={selectedMedia.uri}
+                        style={videoPreviewStyle}
+                        selectedFilter={selectedFilter}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          backgroundColor: "#000",
+                        }}
                       />
                     )}
-
-                    {/* Rule of Thirds Grid Overlay (Fades in on drag) */}
-                    <Animated.View
-                      style={[styles.gridOverlay, { opacity: gridOpacity }]}
+                  </Animated.View>
+                  {Platform.OS !== "web" && selectedFilter !== "Normal" && (
+                    <View
+                      style={[
+                        StyleSheet.absoluteFill,
+                        getOverlayStyle(selectedFilter),
+                      ]}
                       pointerEvents="none"
-                    >
-                      <View style={styles.gridRow}>
-                        <View style={styles.gridCell} />
-                        <View
-                          style={[
-                            styles.gridCell,
-                            styles.gridCellMiddleHorizontal,
-                          ]}
-                        />
-                        <View style={styles.gridCell} />
-                      </View>
+                    />
+                  )}
+
+                  {/* Rule of Thirds Grid Overlay (Fades in on drag) */}
+                  <Animated.View
+                    style={[styles.gridOverlay, { opacity: gridOpacity }]}
+                    pointerEvents="none"
+                  >
+                    <View style={styles.gridRow}>
+                      <View style={styles.gridCell} />
                       <View
-                        style={[styles.gridRow, styles.gridRowMiddleVertical]}
-                      >
-                        <View style={styles.gridCell} />
-                        <View
-                          style={[
-                            styles.gridCell,
-                            styles.gridCellMiddleHorizontal,
-                          ]}
-                        />
-                        <View style={styles.gridCell} />
-                      </View>
-                      <View style={styles.gridRow}>
-                        <View style={styles.gridCell} />
-                        <View
-                          style={[
-                            styles.gridCell,
-                            styles.gridCellMiddleHorizontal,
-                          ]}
-                        />
-                        <View style={styles.gridCell} />
-                      </View>
-                    </Animated.View>
-                  </View>
-                )}
-
-                {selectedMedia && (
-                  <View style={styles.dragTooltip} pointerEvents="none">
-                    <Ionicons name="move" size={14} color="#FFF" />
-                    <Text style={styles.dragTooltipText}>
-                      {t("language") === "hi"
-                        ? isCroppedHorizontally
-                          ? "← फिट समायोजित करने के लिए बाएं/दाएं खींचें →"
-                          : isCroppedVertically
-                            ? "↑ फिट समायोजित करने के लिए ऊपर/नीचे खींचें ↓"
-                            : "फिट समायोजित करने के लिए खींचें"
-                        : tooltipText}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {selectedMedia && (
-                <View style={styles.aspectRatioContainer}>
-                  <TouchableOpacity
-                    onPress={() => setAspectRatioMode("1:1")}
-                    style={[
-                      styles.aspectRatioBtn,
-                      aspectRatioMode === "1:1" && styles.aspectRatioBtnActive,
-                    ]}
-                  >
-                    <Ionicons name="square-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>
-                      {t("language") === "hi" ? "चौकोर (1:1)" : "1:1"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setAspectRatioMode("4:5")}
-                    style={[
-                      styles.aspectRatioBtn,
-                      aspectRatioMode === "4:5" && styles.aspectRatioBtnActive,
-                    ]}
-                  >
-                    <Ionicons name="resize-outline" size={13} color="#fff" />
-                    <Text style={styles.aspectRatioBtnText}>
-                      {t("language") === "hi" ? "पोर्ट्रेट (4:5)" : "4:5"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setAspectRatioMode("1.91:1")}
-                    style={[
-                      styles.aspectRatioBtn,
-                      aspectRatioMode === "1.91:1" &&
-                        styles.aspectRatioBtnActive,
-                    ]}
-                  >
-                    <Ionicons
-                      name="tablet-landscape-outline"
-                      size={13}
-                      color="#fff"
-                    />
-                    <Text style={styles.aspectRatioBtnText}>
-                      {t("language") === "hi" ? "लैंडस्केप (1.91:1)" : "1.91:1"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => setAspectRatioMode("9:16")}
-                    style={[
-                      styles.aspectRatioBtn,
-                      aspectRatioMode === "9:16" && styles.aspectRatioBtnActive,
-                    ]}
-                  >
-                    <Ionicons
-                      name="phone-portrait-outline"
-                      size={13}
-                      color="#fff"
-                    />
-                    <Text style={styles.aspectRatioBtnText}>
-                      {t("language") === "hi" ? "रील्स (9:16)" : "9:16"}
-                    </Text>
-                  </TouchableOpacity>
+                        style={[
+                          styles.gridCell,
+                          styles.gridCellMiddleHorizontal,
+                        ]}
+                      />
+                      <View style={styles.gridCell} />
+                    </View>
+                    <View
+                      style={[styles.gridRow, styles.gridRowMiddleVertical]}
+                    >
+                      <View style={styles.gridCell} />
+                      <View
+                        style={[
+                          styles.gridCell,
+                          styles.gridCellMiddleHorizontal,
+                        ]}
+                      />
+                      <View style={styles.gridCell} />
+                    </View>
+                    <View style={styles.gridRow}>
+                      <View style={styles.gridCell} />
+                      <View
+                        style={[
+                          styles.gridCell,
+                          styles.gridCellMiddleHorizontal,
+                        ]}
+                      />
+                      <View style={styles.gridCell} />
+                    </View>
+                  </Animated.View>
                 </View>
               )}
 
-              <View style={styles.sourceRow}>
-                <TouchableOpacity
-                  style={styles.sourceCard}
-                  onPress={captureFromCamera}
-                >
-                  <MaterialIcons
-                    name="camera-alt"
-                    size={24}
-                    color={COLORS.primary}
-                  />
-                  <Text style={styles.sourceCardText}>{t("camera")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.sourceCard}
-                  onPress={selectFromPhotoGallery}
-                >
-                  <MaterialIcons
-                    name="photo-library"
-                    size={24}
-                    color={COLORS.primary}
-                  />
-                  <Text style={styles.sourceCardText}>{t("gallery")}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.sourceCard}
-                  onPress={selectFromFiles}
-                >
-                  <MaterialIcons
-                    name="folder"
-                    size={24}
-                    color={COLORS.primary}
-                  />
-                  <Text style={styles.sourceCardText}>{t("files")}</Text>
-                </TouchableOpacity>
-              </View>
+              {selectedMedia && (
+                <View style={styles.dragTooltip} pointerEvents="none">
+                  <Ionicons name="move" size={14} color="#FFF" />
+                  <Text style={styles.dragTooltipText}>
+                    {t("language") === "hi"
+                      ? isCroppedHorizontally
+                        ? "← फिट समायोजित करने के लिए बाएं/दाएं खींचें →"
+                        : isCroppedVertically
+                          ? "↑ फिट समायोजित करने के लिए ऊपर/नीचे खींचें ↓"
+                          : "फिट समायोजित करने के लिए खींचें"
+                      : tooltipText}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {selectedMedia && (
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionTitle}>{t("applyFilter")}</Text>
-                <KeyboardAwareScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.filterRow}
+              <View style={styles.aspectRatioContainer}>
+                <TouchableOpacity
+                  onPress={() => setAspectRatioMode("1:1")}
+                  style={[
+                    styles.aspectRatioBtn,
+                    aspectRatioMode === "1:1" && styles.aspectRatioBtnActive,
+                  ]}
                 >
-                  {FILTERS.map((filter) => (
-                    <TouchableOpacity
-                      key={filter}
-                      style={[
-                        styles.filterChip,
-                        selectedFilter === filter && styles.filterChipActive,
-                      ]}
-                      onPress={() => setSelectedFilter(filter)}
-                    >
-                      <Text
-                        style={[
-                          styles.filterChipText,
-                          selectedFilter === filter &&
-                            styles.filterChipTextActive,
-                        ]}
-                      >
-                        {filter === "Normal"
-                          ? t("language") === "hi"
-                            ? "सामान्य"
-                            : "Normal"
-                          : filter === "Warm"
-                            ? t("language") === "hi"
-                              ? "गर्म"
-                              : "Warm"
-                            : filter === "Cool"
-                              ? t("language") === "hi"
-                                ? "ठंडा"
-                                : "Cool"
-                              : filter === "Chrome"
-                                ? t("language") === "hi"
-                                  ? "क्रोम"
-                                  : "Chrome"
-                                : filter === "Fade"
-                                  ? t("language") === "hi"
-                                    ? "धुंधला"
-                                    : "Fade"
-                                  : filter === "Mono"
-                                    ? t("language") === "hi"
-                                      ? "मोनो"
-                                      : "Mono"
-                                    : filter === "Noir"
-                                      ? t("language") === "hi"
-                                        ? "ब्लैक एंड व्हाइट"
-                                        : "Noir"
-                                      : filter}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </KeyboardAwareScrollView>
+                  <Ionicons name="square-outline" size={13} color="#fff" />
+                  <Text style={styles.aspectRatioBtnText}>
+                    {t("language") === "hi" ? "चौकोर (1:1)" : "1:1"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setAspectRatioMode("4:5")}
+                  style={[
+                    styles.aspectRatioBtn,
+                    aspectRatioMode === "4:5" && styles.aspectRatioBtnActive,
+                  ]}
+                >
+                  <Ionicons name="resize-outline" size={13} color="#fff" />
+                  <Text style={styles.aspectRatioBtnText}>
+                    {t("language") === "hi" ? "पोर्ट्रेट (4:5)" : "4:5"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setAspectRatioMode("1.91:1")}
+                  style={[
+                    styles.aspectRatioBtn,
+                    aspectRatioMode === "1.91:1" &&
+                      styles.aspectRatioBtnActive,
+                  ]}
+                >
+                  <Ionicons
+                    name="tablet-landscape-outline"
+                    size={13}
+                    color="#fff"
+                  />
+                  <Text style={styles.aspectRatioBtnText}>
+                    {t("language") === "hi" ? "लैंडस्केप (1.91:1)" : "1.91:1"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setAspectRatioMode("9:16")}
+                  style={[
+                    styles.aspectRatioBtn,
+                    aspectRatioMode === "9:16" && styles.aspectRatioBtnActive,
+                  ]}
+                >
+                  <Ionicons
+                    name="phone-portrait-outline"
+                    size={13}
+                    color="#fff"
+                  />
+                  <Text style={styles.aspectRatioBtnText}>
+                    {t("language") === "hi" ? "रील्स (9:16)" : "9:16"}
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
 
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>
-                {t("language") === "hi" ? "पोस्ट विवरण" : "Post Details"}
-              </Text>
-              <M3OutlinedInput
-                label={
-                  t("language") === "hi"
-                    ? "कैप्शन / विवरण"
-                    : "Caption / Description"
-                }
-                value={caption}
-                onChangeText={setCaption}
-                multiline
-              />
-              {selectedMedia?.mediaType === "video" && (
-                <View style={styles.muteRow}>
-                  <Ionicons
-                    name={mutedAudio ? "volume-mute" : "volume-high"}
-                    size={20}
-                    color="#666"
-                  />
-                  <Text style={styles.muteLabel}>
-                    {t("language") === "hi"
-                      ? "ऑडियो म्यूट करें"
-                      : "Mute Audio"}
-                  </Text>
-                  <Switch
-                    value={mutedAudio}
-                    onValueChange={setMutedAudio}
-                    trackColor={{ false: "#ddd", true: "#FF6B00" }}
-                    thumbColor="#fff"
-                  />
-                </View>
-              )}
+            <View style={styles.sourceRow}>
+              <TouchableOpacity
+                style={styles.sourceCard}
+                onPress={captureFromCamera}
+              >
+                <MaterialIcons
+                  name="camera-alt"
+                  size={24}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.sourceCardText}>{t("camera")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sourceCard}
+                onPress={selectFromPhotoGallery}
+              >
+                <MaterialIcons
+                  name="photo-library"
+                  size={24}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.sourceCardText}>{t("gallery")}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.sourceCard}
+                onPress={selectFromFiles}
+              >
+                <MaterialIcons
+                  name="folder"
+                  size={24}
+                  color={COLORS.primary}
+                />
+                <Text style={styles.sourceCardText}>{t("files")}</Text>
+              </TouchableOpacity>
             </View>
+          </View>
 
-            <View style={styles.bottomBar}>
-              {uploading ? (
-                <View style={styles.uploadingContainer}>
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: SPACING.sm,
-                      marginBottom: 8,
-                    }}
-                  >
-                    <ActivityIndicator color={COLORS.primary} size="small" />
-                    <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-                      {isCompressing
-                        ? t("language") === "hi"
-                          ? "प्रक्रिया चल रही है..."
-                          : "Processing..."
-                        : uploadProgress > 0 && uploadProgress < 100
-                          ? t("language") === "hi"
-                            ? `अपलोड हो रहा है ${uploadProgress}%...`
-                            : `Uploading ${uploadProgress}%...`
-                          : t("language") === "hi"
-                            ? "अपलोड हो रहा है..."
-                            : "Uploading..."}
-                    </Text>
-                  </View>
-                  <View style={styles.progressBarBackground}>
-                    <Animated.View
-                      style={[styles.progressBarFill, { width: progressWidth }]}
-                    />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.actionButtons}>
+          {selectedMedia && (
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>{t("applyFilter")}</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterRow}
+              >
+                {FILTERS.map((filter) => (
                   <TouchableOpacity
-                    style={styles.draftBtn}
-                    onPress={handleSaveDraft}
-                  >
-                    <Text style={styles.draftBtnText}>
-                      {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
+                    key={filter}
                     style={[
-                      styles.submitBtn,
-                      !canUpload && styles.uploadBtnDisabled,
+                      styles.filterChip,
+                      selectedFilter === filter && styles.filterChipActive,
                     ]}
-                    onPress={handleUpload}
-                    disabled={!canUpload}
+                    onPress={() => setSelectedFilter(filter)}
                   >
-                    <Text style={styles.submitBtnText}>{t("createPost")}</Text>
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        selectedFilter === filter &&
+                          styles.filterChipTextActive,
+                      ]}
+                    >
+                      {filter === "Normal"
+                        ? t("language") === "hi"
+                          ? "सामान्य"
+                          : "Normal"
+                        : filter === "Warm"
+                          ? t("language") === "hi"
+                            ? "गर्म"
+                            : "Warm"
+                          : filter === "Cool"
+                            ? t("language") === "hi"
+                              ? "ठंडा"
+                              : "Cool"
+                            : filter === "Chrome"
+                              ? t("language") === "hi"
+                                ? "क्रोम"
+                                : "Chrome"
+                              : filter === "Fade"
+                                ? t("language") === "hi"
+                                  ? "धुंधला"
+                                  : "Fade"
+                                : filter === "Mono"
+                                  ? t("language") === "hi"
+                                    ? "मोनो"
+                                    : "Mono"
+                                  : filter === "Noir"
+                                    ? t("language") === "hi"
+                                      ? "ब्लैक एंड व्हाइट"
+                                      : "Noir"
+                                    : filter}
+                    </Text>
                   </TouchableOpacity>
-                </View>
-              )}
+                ))}
+              </ScrollView>
             </View>
-          </KeyboardAwareScrollView>
-        </KeyboardAvoidingView>
+          )}
+
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>
+              {t("language") === "hi" ? "पोस्ट विवरण" : "Post Details"}
+            </Text>
+            <M3OutlinedInput
+              label={
+                t("language") === "hi"
+                  ? "कैप्शन / विवरण"
+                  : "Caption / Description"
+              }
+              value={caption}
+              onChangeText={setCaption}
+              multiline
+            />
+            {selectedMedia?.mediaType === "video" && (
+              <View style={styles.muteRow}>
+                <Ionicons
+                  name={mutedAudio ? "volume-mute" : "volume-high"}
+                  size={20}
+                  color="#666"
+                />
+                <Text style={styles.muteLabel}>
+                  {t("language") === "hi"
+                    ? "ऑडियो म्यूट करें"
+                    : "Mute Audio"}
+                </Text>
+                <Switch
+                  value={mutedAudio}
+                  onValueChange={setMutedAudio}
+                  trackColor={{ false: "#ddd", true: "#FF6B00" }}
+                  thumbColor="#fff"
+                />
+              </View>
+            )}
+          </View>
+
+          <View style={styles.bottomBar}>
+            {uploading ? (
+              <UploadingProgress
+                uploadProgress={uploadProgress}
+                isCompressing={isCompressing}
+                t={t}
+              />
+            ) : (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity
+                  style={styles.draftBtn}
+                  onPress={handleSaveDraft}
+                >
+                  <Text style={styles.draftBtnText}>
+                    {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.submitBtn,
+                    !canUpload && styles.uploadBtnDisabled,
+                  ]}
+                  onPress={handleUpload}
+                  disabled={!canUpload}
+                >
+                  <Text style={styles.submitBtnText}>{t("createPost")}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </KeyboardAwareScrollView>
       </View>
     </Modal>
   );
@@ -1246,7 +1275,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 30 : 16,
+    paddingBottom: Platform.OS === "ios" ? 140 : 120,
   },
   mediaContainer: {
     marginBottom: 16,
@@ -1508,6 +1537,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E8E8E8",
     marginTop: SPACING.sm,
+    minHeight: 74,
+    justifyContent: "center",
     elevation: 8,
     shadowColor: "#000",
     shadowOpacity: 0.1,

@@ -206,6 +206,19 @@ function MessagesScreen({
   const onMessagesScrollTabBar = useScrollToHideTabBar();
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
+  const segmentAnim = useRef(new Animated.Value(0)).current;
+
+  const handleTabSwitch = (tab: 'Community' | 'Private Chat') => {
+    if (tab === activeTopTab) return;
+    setActiveTopTab(tab);
+    Animated.spring(segmentAnim, {
+      toValue: tab === 'Community' ? 0 : 1,
+      useNativeDriver: true,
+      tension: 80,
+      friction: 12,
+    }).start();
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
   const activeRequestScrollRef = useRef<ScrollView>(null);
@@ -1428,14 +1441,26 @@ function MessagesScreen({
       >
         <SafeAreaView edges={['top']}>
           <View style={styles.segmentedTrack}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.segmentPill,
-                activeTopTab === 'Community' && styles.segmentPillActive,
-                pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+            {/* Animated sliding thumb — single source of truth */}
+            <Animated.View
+              style={[
+                styles.segmentThumb,
+                {
+                  transform: [{
+                    translateX: segmentAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, (width - 32 - 8) / 2],
+                    }),
+                  }],
+                },
               ]}
-              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-              onPress={() => setActiveTopTab('Community')}
+              pointerEvents="none"
+            />
+
+            {/* Community tab */}
+            <Pressable
+              style={styles.segmentPill}
+              onPress={() => handleTabSwitch('Community')}
             >
               <Text
                 style={[
@@ -1447,14 +1472,10 @@ function MessagesScreen({
               </Text>
             </Pressable>
 
+            {/* Private Chat tab */}
             <Pressable
-              style={({ pressed }) => [
-                styles.segmentPill,
-                activeTopTab === 'Private Chat' && styles.segmentPillActive,
-                pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-              ]}
-              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-              onPress={() => setActiveTopTab('Private Chat')}
+              style={styles.segmentPill}
+              onPress={() => handleTabSwitch('Private Chat')}
             >
               <Text
                 style={[
@@ -1940,18 +1961,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginTop: 8,
-    paddingTop: 5,
-    paddingRight: 7.5,
-    paddingBottom: 4,
-    paddingLeft: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 2,
     alignSelf: 'stretch',
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
     height: 48,
+    // relative so the absolute thumb sits inside it
+    position: 'relative',
+    overflow: 'hidden',
+    padding: 4,
+  },
+  // The white sliding thumb — absolutely positioned, z=-1
+  segmentThumb: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: '50%',
+    height: 38,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    zIndex: 0,
   },
   segmentPill: {
     flex: 1,
@@ -1959,19 +1995,16 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
+    // no background — thumb slides behind
+    backgroundColor: 'transparent',
   },
-  segmentPillActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
+  segmentPillActive: {},   // kept for backwards compat — no longer needed
   segmentText: {
     fontSize: 15,
     fontFamily: FONTS.bold,
-    color: '#4A4A4A',
+    // inactive = muted white so it's clearly different from active
+    color: 'rgba(255, 255, 255, 0.75)',
   },
   segmentTextActive: {
     color: '#EA4C0F',

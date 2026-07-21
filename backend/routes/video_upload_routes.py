@@ -28,17 +28,28 @@ READ_CHUNK_SIZE = 1024 * 1024
 
 
 def _get_bin_path(name: str) -> Optional[str]:
+    def _is_executable_valid(bin_path: str) -> bool:
+        if not (os.path.isfile(bin_path) and os.access(bin_path, os.X_OK)):
+            return False
+        try:
+            res = subprocess.run([bin_path, "-version"], capture_output=True, timeout=2)
+            return res.returncode == 0
+        except Exception:
+            return False
+
     path = shutil.which(name)
-    if path:
+    if path and _is_executable_valid(path):
         return path
+
     # Fallback to current virtualenv bin directory
     venv_bin = os.path.join(sys.prefix, "bin", name)
-    if os.path.isfile(venv_bin) and os.access(venv_bin, os.X_OK):
+    if _is_executable_valid(venv_bin):
         return venv_bin
+
     # Common macOS paths + Downloads folder
-    for search_path in ["/usr/local/opt", "/opt/homebrew/cellar", "/Users/developer/Downloads"]:
+    for search_path in ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/opt/homebrew/cellar", "/usr/local/opt", "/Users/developer/Downloads"]:
         bin_path = os.path.join(search_path, name)
-        if os.path.isfile(bin_path) and os.access(bin_path, os.X_OK):
+        if _is_executable_valid(bin_path):
             return bin_path
     return None
 
@@ -119,7 +130,10 @@ def _probe_video_metadata(input_path: str) -> dict:
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
-        raise HTTPException(status_code=400, detail=f"Unable to inspect uploaded video: {exc.stderr.strip()}")
+        raise HTTPException(status_code=400, detail=f"Unable to inspect uploaded video: {exc.stderr.strip() if exc.stderr else str(exc)}")
+    except Exception as exc:
+        logger.warning(f"_probe_video_metadata execution error: {exc}")
+        raise RuntimeError(f"Failed to execute ffprobe binary: {exc}")
 
     try:
         metadata = json.loads(result.stdout or "{}")
@@ -207,7 +221,10 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
     try:
         subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as exc:
-        raise HTTPException(status_code=500, detail=f"Video compression failed: {exc.stderr.strip()}")
+        raise HTTPException(status_code=500, detail=f"Video compression failed: {exc.stderr.strip() if exc.stderr else str(exc)}")
+    except Exception as exc:
+        logger.warning(f"_compress_video execution error: {exc}")
+        raise RuntimeError(f"Failed to execute ffmpeg binary: {exc}")
 
 
 def _generate_video_thumbnail(video_path: str, thumbnail_path: str) -> None:
@@ -321,34 +338,44 @@ async def _upload_and_compress_video_impl(
     try:
         input_path, original_size = await _save_upload_to_temp_file(file)
         if has_ffmpeg:
-            metadata = await asyncio.to_thread(_probe_video_metadata, input_path)
-            duration = metadata.get("duration") or 0.0
+            try:
+                metadata = await asyncio.to_thread(_probe_video_metadata, input_path)
+                duration = metadata.get("duration") or 0.0
 
-            if duration <= 0:
-                raise HTTPException(status_code=400, detail="Unable to determine video duration")
-            if duration > MAX_VIDEO_DURATION_SECONDS:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less",
+                if duration <= 0:
+                    raise HTTPException(status_code=400, detail="Unable to determine video duration")
+                if duration > MAX_VIDEO_DURATION_SECONDS:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Video duration must be {int(MAX_VIDEO_DURATION_SECONDS)} seconds or less",
+                    )
+
+                target_width, target_height, target_label = _pick_target_profile(metadata.get("width"), metadata.get("height"))
+
+                output_file = NamedTemporaryFile(delete=False, suffix=".mp4")
+                output_file.close()
+
+                await asyncio.to_thread(
+                    _compress_video,
+                    input_path,
+                    output_file.name,
+                    target_width,
+                    target_height,
                 )
 
-            target_width, target_height, target_label = _pick_target_profile(metadata.get("width"), metadata.get("height"))
+                compressed_size = os.path.getsize(output_file.name)
+                target_resolution = target_label
+            except HTTPException:
+                raise
+            except Exception as ffmpeg_err:
+                logger.warning(f"[VideoUpload] ffmpeg processing failed ({ffmpeg_err}); falling back to raw upload")
+                has_ffmpeg = False
+                if output_file and os.path.exists(output_file.name):
+                    os.unlink(output_file.name)
+                    output_file = None
 
-            output_file = NamedTemporaryFile(delete=False, suffix=".mp4")
-            output_file.close()
-
-            await asyncio.to_thread(
-                _compress_video,
-                input_path,
-                output_file.name,
-                target_width,
-                target_height,
-            )
-
-            compressed_size = os.path.getsize(output_file.name)
-            target_resolution = target_label
-        else:
-            logger.warning("ffmpeg is not installed on server; bypassing compression")
+        if not has_ffmpeg:
+            logger.warning("ffmpeg is not available or failed; bypassing compression")
             output_file = NamedTemporaryFile(delete=False, suffix=".mp4")
             output_file.close()
             shutil.copy2(input_path, output_file.name)

@@ -16,6 +16,7 @@ import {
   Alert,
   LayoutAnimation,
   UIManager,
+  Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -196,6 +197,7 @@ export default function JaapLandingScreen() {
   const onJaapScrollTabBar = useScrollToHideTabBar();
   const [now, setNow] = useState(new Date());
   const [activeSection, setActiveSection] = useState<'jaap' | 'temple'>('jaap');
+  const sectionAnim = useRef(new Animated.Value(0)).current;
   const [heroBannerIndex, setHeroBannerIndex] = useState(0);
   const hanumanStatus = getCurrentHanumanStatus(now);
   const [invitedJaapId, setInvitedJaapId] = useState<string | null>(null);
@@ -506,31 +508,18 @@ export default function JaapLandingScreen() {
   });
 
   const switchSection = useCallback((section: 'jaap' | 'temple') => {
+    if (section === activeSection) return;
+    setActiveSection(section);
     LayoutAnimation.configureNext(
       LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
     );
-    setActiveSection(section);
-  }, []);
-
-  const renderTopTab = (section: 'jaap' | 'temple', label: string) => {
-    const isActive = activeSection === section;
-    return (
-      <Pressable
-        key={section}
-        style={({ pressed }) => [
-          styles.topTabButton,
-          isActive && styles.topTabButtonActive,
-          pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-        ]}
-        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-        onPress={() => switchSection(section)}
-      >
-        <Text style={[styles.topTabText, isActive && styles.topTabTextActive]}>
-          {label}
-        </Text>
-      </Pressable>
-    );
-  };
+    Animated.spring(sectionAnim, {
+      toValue: section === 'jaap' ? 0 : 1,
+      useNativeDriver: true,
+      tension: 80,
+      friction: 12,
+    }).start();
+  }, [activeSection, sectionAnim]);
 
   const heroTitle = t('language') === 'hi'
     ? (liveActive ? 'महामृत्युंजय मंत्र' : 'सायंकालीन गायत्री जाप')
@@ -561,8 +550,51 @@ export default function JaapLandingScreen() {
       <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
         <View style={styles.topTabsContainer}>
           <View style={styles.topTabsInner}>
-            {renderTopTab('jaap', t('jaap'))}
-            {renderTopTab('temple', t('temple'))}
+            {/* Animated sliding thumb — single source of truth */}
+            <Animated.View
+              style={[
+                styles.topTabThumb,
+                {
+                  transform: [{
+                    translateX: sectionAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, (SCREEN_WIDTH - 40 - 8) / 2],
+                    }),
+                  }],
+                },
+              ]}
+              pointerEvents="none"
+            />
+
+            {/* Jaap tab */}
+            <Pressable
+              style={styles.topTabButton}
+              onPress={() => switchSection('jaap')}
+            >
+              <Text
+                style={[
+                  styles.topTabText,
+                  activeSection === 'jaap' && styles.topTabTextActive,
+                ]}
+              >
+                {t('jaap')}
+              </Text>
+            </Pressable>
+
+            {/* Temple tab */}
+            <Pressable
+              style={styles.topTabButton}
+              onPress={() => switchSection('temple')}
+            >
+              <Text
+                style={[
+                  styles.topTabText,
+                  activeSection === 'temple' && styles.topTabTextActive,
+                ]}
+              >
+                {t('temple')}
+              </Text>
+            </Pressable>
           </View>
         </View>
       </View>
@@ -1148,34 +1180,47 @@ const styles = StyleSheet.create({
   topTabsInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(243, 244, 246, 0.50)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(229, 231, 235, 0.50)',
+    borderColor: 'rgba(255, 255, 255, 0.35)',
     padding: 4,
+    height: 48,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  topTabThumb: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    width: '50%',
+    height: 38,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    zIndex: 0,
   },
   topTabButton: {
     flex: 1,
-    height: 34,
-    borderRadius: 12,
+    height: 38,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
+    backgroundColor: 'transparent',
   },
-  topTabButtonActive: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 2, height: 0 },
-    elevation: 5,
-  },
+  topTabButtonActive: {},
   topTabText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#8E8E93',
+    color: 'rgba(255, 255, 255, 0.75)',
   },
   topTabTextActive: {
-    color: '#FF6600',
+    color: '#EA4C0F',
   },
   // legacy (kept for other references)
   jaapTabExact: { flex: 1, height: '100%' },
