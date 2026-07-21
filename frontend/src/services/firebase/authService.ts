@@ -239,7 +239,8 @@ export async function verifyFirebaseOTP(otp: string): Promise<string> {
 
     if (auth && auth.currentUser) {
       console.log('[Firebase] User already signed in (auto-verification).');
-      return await getFirebaseIdToken(auth.currentUser);
+      const idToken = await getFirebaseIdToken(auth.currentUser);
+      return idToken;
     }
 
     if (!confirmationResult) {
