@@ -122,14 +122,22 @@ async def global_search(
     comm_ids = set()
     post_ids = set()
 
+    # Construct all casing variations search tasks to run in parallel
+    tasks = []
     for q_start, q_end in queries_to_run:
-        # Run queries concurrently for this casing variation
-        users_res, sl_id_res, comms_res, posts_res = await asyncio.gather(
-            search_users(q_start, q_end, limit),
-            search_users_sl_id(q_start, q_end, limit),
-            search_communities(q_start, q_end, limit),
-            search_posts(q_start, q_end, limit)
-        )
+        tasks.append(search_users(q_start, q_end, limit))
+        tasks.append(search_users_sl_id(q_start, q_end, limit))
+        tasks.append(search_communities(q_start, q_end, limit))
+        tasks.append(search_posts(q_start, q_end, limit))
+
+    raw_results = await asyncio.gather(*tasks)
+
+    # Reconstruct results grouping by 4 tasks per query casing variation
+    for idx in range(0, len(raw_results), 4):
+        users_res = raw_results[idx]
+        sl_id_res = raw_results[idx + 1]
+        comms_res = raw_results[idx + 2]
+        posts_res = raw_results[idx + 3]
 
         # Deduplicate and aggregate
         for u in users_res + sl_id_res:

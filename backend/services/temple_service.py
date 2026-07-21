@@ -126,17 +126,25 @@ class TempleService:
     @staticmethod
     async def get_temple(temple_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get temple details"""
-        db = await TempleService.get_db()
+        cache_key = f"temple:detail:{temple_id}"
+        cached = await cache_manager.get(cache_key)
         
-        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
-        if not temple:
-            temple = await db.get_document("temples", temple_id)
-        if not temple:
-            raise ValueError("Temple not found")
-        
-        temple_data = serialize_doc(temple)
-        temple_data["is_following"] = user_id in temple.get("followers", []) if user_id else False
-        temple_data["follower_count"] = temple.get("follower_count", 0)
+        if not cached:
+            db = await TempleService.get_db()
+            temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+            if not temple:
+                temple = await db.get_document("temples", temple_id)
+            if not temple:
+                raise ValueError("Temple not found")
+            
+            cached = serialize_doc(temple)
+            cached["followers"] = temple.get("followers", [])
+            cached["follower_count"] = temple.get("follower_count", 0)
+            await cache_manager.set(cache_key, cached, ttl=300) # Cache for 5 minutes
+
+        temple_data = cached.copy()
+        temple_data["is_following"] = user_id in cached.get("followers", []) if user_id else False
+        temple_data["follower_count"] = cached.get("follower_count", 0)
         
         return temple_data
     
@@ -175,6 +183,9 @@ class TempleService:
         # Invalidate caches
         await cache_manager.invalidate_temples()
         await cache_manager.invalidate_user(user_id)
+        await cache_manager.delete(f"temple:detail:{temple_id}")
+        if temple.get("temple_id"):
+            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return {"message": f"Now following {temple['name']}"}
     
@@ -211,6 +222,9 @@ class TempleService:
         # Invalidate caches
         await cache_manager.invalidate_temples()
         await cache_manager.invalidate_user(user_id)
+        await cache_manager.delete(f"temple:detail:{temple_id}")
+        if temple.get("temple_id"):
+            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return {"message": f"Unfollowed {temple['name']}"}
     
@@ -252,6 +266,9 @@ class TempleService:
         posts = temple.get("posts", [])
         posts = [new_post] + posts
         await db.update_document("temples", temple["id"], {"posts": posts})
+        await cache_manager.delete(f"temple:detail:{temple_id}")
+        if temple.get("temple_id"):
+            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return new_post
     
@@ -298,5 +315,8 @@ class TempleService:
                 
         if updated:
             await db.update_document("temples", temple["id"], {"posts": posts})
+            await cache_manager.delete(f"temple:detail:{temple_id}")
+            if temple.get("temple_id"):
+                await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return {"message": "Reaction added"}

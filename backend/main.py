@@ -623,24 +623,45 @@ async def _create_post_document(
         if 'thumbnail_url' in metadata: post_doc['thumbnail_url'] = metadata['thumbnail_url']
 
     # ─── Duplicate Upload Prevention Check ───
+    # 1. In-memory cache check
+    cache_key = f"last_upload:{user_id}"
     try:
-        recent_posts = await db.query_documents(
+        cached_last = await cache_manager.get(cache_key)
+        if cached_last:
+            cached_caption = (cached_last.get('caption') or '').strip()
+            cached_media = (cached_last.get('media_path') or '').strip()
+            if cached_caption == post_doc['caption'] and cached_media == post_doc['media_path']:
+                logger.info(f"Duplicate upload detected via cache. Returning cached post {cached_last.get('id')} to maintain database integrity.")
+                return cached_last
+    except Exception as cache_err:
+        logger.debug(f"Cache check failed in duplicate detection: {cache_err}")
+
+    # 2. DB Filter Layer (fallback)
+    try:
+        from datetime import timedelta, timezone
+        threshold_dt = datetime.utcnow() - timedelta(seconds=180)
+        # If mock database is active, use string comparison; otherwise use datetime
+        threshold = (threshold_dt.isoformat() + 'Z') if db.use_mock else threshold_dt
+        
+        recent_global_posts = await db.query_documents(
             'posts',
-            filters=[('user_id', '==', user_id)]
+            filters=[('created_at', '>=', threshold)]
         )
+        recent_posts = [p for p in recent_global_posts if p.get('user_id') == user_id]
         if recent_posts:
-            # Sort in memory by created_at DESC
             recent_posts.sort(key=lambda x: x.get('created_at') or datetime(1970, 1, 1), reverse=True)
-            
-            from datetime import timezone
             for recent in recent_posts[:5]:  # Check the last 5 uploads
                 r_created = recent.get('created_at')
                 if r_created:
-                    if hasattr(r_created, 'tzinfo') and r_created.tzinfo is not None:
-                        r_created = r_created.astimezone(timezone.utc).replace(tzinfo=None)
+                    if isinstance(r_created, str):
+                        try:
+                            r_created_dt = datetime.fromisoformat(r_created.replace('Z', '+00:00')).replace(tzinfo=None)
+                        except Exception:
+                            r_created_dt = datetime.min
+                    else:
+                        r_created_dt = r_created.replace(tzinfo=None) if hasattr(r_created, 'tzinfo') and r_created.tzinfo is not None else r_created
                     
-                    # If same content was uploaded in the last 180 seconds, reject new document insertion
-                    time_diff = datetime.utcnow() - r_created
+                    time_diff = datetime.utcnow() - r_created_dt
                     if time_diff.total_seconds() < 180:
                         recent_caption = (recent.get('caption') or '').strip()
                         recent_media = (recent.get('media_path') or '').strip()
@@ -653,6 +674,13 @@ async def _create_post_document(
 
     post_id = await db.create_document('posts', post_doc)
     post_doc['id'] = post_id
+    
+    # Store in cache for 180 seconds for duplicate prevention
+    try:
+        await cache_manager.set(cache_key, post_doc, ttl=180)
+    except Exception as cache_err:
+        logger.debug(f"Failed to cache last upload: {cache_err}")
+        
     return post_doc
 
 
@@ -944,9 +972,10 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     }
 
 
-async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str):
+async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: dict = None):
     """Upsert vendor review snapshot used by future admin panel."""
-    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        vendor = await db.get_document('vendors', vendor_id)
     if not vendor:
         return
 
@@ -3060,24 +3089,31 @@ async def _upload_post_impl(
                 content_type = 'video/mp4'
                 base_url = str(request.base_url)
                 try:
-                    media_url, object_path = await _upload_post_media_file_to_bunny(
-                        user_id,
-                        temp_output_file.name,
-                        content_type,
-                        base_url
-                    )
-                    logger.info("Uploaded video to Bunny.net successfully")
+                    async def upload_video():
+                        return await _upload_post_media_file_to_bunny(
+                            user_id,
+                            temp_output_file.name,
+                            content_type,
+                            base_url
+                        )
 
-                    if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
-                        try:
-                            thumbnail_url, _ = await _upload_post_media_file_to_bunny(
-                                user_id,
-                                temp_thumb_file.name,
-                                'image/jpeg',
-                                base_url
-                            )
-                        except Exception as bunny_exc:
-                            logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
+                    async def upload_thumbnail():
+                        if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                            try:
+                                return await _upload_post_media_file_to_bunny(
+                                    user_id,
+                                    temp_thumb_file.name,
+                                    'image/jpeg',
+                                    base_url
+                                )
+                            except Exception as bunny_exc:
+                                logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
+                        return None, None
+
+                    video_res, thumb_res = await asyncio.gather(upload_video(), upload_thumbnail())
+                    media_url, object_path = video_res
+                    thumbnail_url, _ = thumb_res
+                    logger.info("Uploaded video and thumbnail to Bunny.net successfully")
                 except Exception as exc:
                     logger.exception('Post video upload failed for user_id=%s', user_id)
                     raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
@@ -3392,39 +3428,51 @@ async def _upload_post_from_storage_impl(
             upload_source = temp_input_file.name
             compressed_size_bytes = original_size_bytes
 
-        try:
-            media_url, object_path = await _upload_post_media_file_to_bunny(
-                user_id,
-                upload_source,
-                'video/mp4',
-                base_url
-            )
-            logger.info("Uploaded processed video from storage to Bunny.net successfully")
-        except Exception as exc:
-            logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
-
         thumbnail_url = None
+        temp_thumb_file = None
         if has_ffmpeg:
             temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
             temp_thumb_file.close()
             try:
                 await asyncio.to_thread(_generate_video_thumbnail, upload_source, temp_thumb_file.name)
-                if os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
-                    thumbnail_url, _ = await _upload_post_media_file_to_bunny(
-                        user_id,
-                        temp_thumb_file.name,
-                        'image/jpeg',
-                        base_url
-                    )
             except Exception as thumb_err:
-                logger.warning(f"Failed to generate/upload thumbnail for storage post: {thumb_err}")
-            finally:
-                if os.path.exists(temp_thumb_file.name):
+                logger.warning(f"Failed to generate thumbnail for storage post: {thumb_err}")
+
+        try:
+            async def upload_video():
+                return await _upload_post_media_file_to_bunny(
+                    user_id,
+                    upload_source,
+                    'video/mp4',
+                    base_url
+                )
+
+            async def upload_thumbnail():
+                if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
                     try:
-                        os.unlink(temp_thumb_file.name)
-                    except Exception:
-                        pass
+                        res = await _upload_post_media_file_to_bunny(
+                            user_id,
+                            temp_thumb_file.name,
+                            'image/jpeg',
+                            base_url
+                        )
+                        return res[0]
+                    except Exception as thumb_err:
+                        logger.warning(f"Failed to upload thumbnail for storage post: {thumb_err}")
+                return None
+
+            video_res, thumbnail_url = await asyncio.gather(upload_video(), upload_thumbnail())
+            media_url, object_path = video_res
+            logger.info("Uploaded processed video from storage to Bunny.net successfully")
+        except Exception as exc:
+            logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
+            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+        finally:
+            if temp_thumb_file and os.path.exists(temp_thumb_file.name):
+                try:
+                    os.unlink(temp_thumb_file.name)
+                except Exception:
+                    pass
 
         post_doc = await _create_post_document(
             db=db,
@@ -3568,76 +3616,85 @@ async def get_posts_feed(
     # Parse already-seen post IDs to avoid repeats
     seen_set = set(s.strip() for s in seen_ids.split(',') if s.strip())
 
-    # Fetch user for location data
-    current_user = await db.get_document('users', current_user_id)
+    # Pre-calculate user agent stuff
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+    rand_start = _random.random()
+
+    # Define tasks to run concurrently
+    tasks = [
+        db.get_document('users', current_user_id),
+        _get_blocked_user_ids(db, current_user_id),
+        _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android),
+        db.query_documents(
+            'posts',
+            filters=[('random_score', '>=', rand_start)],
+            limit=40,
+            order_by='random_score',
+            order_direction='ASCENDING'
+        ),
+        db.query_documents(
+            'posts',
+            filters=[('random_score', '<', rand_start)],
+            limit=40,
+            order_by='random_score',
+            order_direction='DESCENDING'
+        ),
+        db.query_documents(
+            'posts',
+            limit=50,
+            order_by='created_at',
+            order_direction='DESCENDING'
+        )
+    ]
+    
+    if tab == 'for_you':
+        tasks.append(db.get_document('feed_preferences', current_user_id))
+    else:
+        async def _dummy_task(): return None
+        tasks.append(_dummy_task())
+
+    # Gather everything in parallel
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Parse results
+    current_user = results[0] if not isinstance(results[0], Exception) else None
+    blocked_user_ids = results[1] if not isinstance(results[1], Exception) else set()
+    reported_post_ids = results[2] if not isinstance(results[2], Exception) else set()
+    pool1 = results[3] if not isinstance(results[3], Exception) else []
+    pool2 = results[4] if not isinstance(results[4], Exception) else []
+    latest_pool = results[5] if not isinstance(results[5], Exception) else []
+    prefs_doc = results[6] if not isinstance(results[6], Exception) else None
+
+    # Populate location data
     user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
-    # Fetch a large pool of posts (latest and random mixes)
+    # Assemble the posts pool
     posts_dict = {}
-    try:
-        rand_start = _random.random()
-        # 1. Query random posts starting from a random float (single-field query)
+    for p in pool1:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in pool2:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in latest_pool:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+
+    # Fallback if empty
+    if not posts_dict:
         try:
-            pool1 = await db.query_documents(
-                'posts',
-                filters=[('random_score', '>=', rand_start)],
-                limit=40,
-                order_by='random_score',
-                order_direction='ASCENDING'
-            )
-            for p in pool1:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Error fetching pool1 in get_posts_feed: %s", e)
-            
-        try:
-            pool2 = await db.query_documents(
-                'posts',
-                filters=[('random_score', '<', rand_start)],
-                limit=40,
-                order_by='random_score',
-                order_direction='DESCENDING'
-            )
-            for p in pool2:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Error fetching pool2 in get_posts_feed: %s", e)
-            
-        # 2. Query latest posts
-        try:
-            latest_pool = await db.query_documents(
-                'posts',
-                limit=50,
-                order_by='created_at',
-                order_direction='DESCENDING'
-            )
-            for p in latest_pool:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Error fetching latest_pool in get_posts_feed: %s", e)
-            
-        # Fallback if empty
-        if not posts_dict:
             fallback = await db.query_documents('posts', limit=100)
             for p in fallback:
                 if p.get('id'):
                     posts_dict[p['id']] = p
-                    
-        posts = list(posts_dict.values())
-    except Exception as e:
-        logger.error("Firestore query error in get_posts_feed: %s", e)
-        posts = []
+        except Exception as e:
+            logger.error("Firestore query error in fallback get_posts_feed: %s", e)
+
+    posts = list(posts_dict.values())
 
     # Filter out already-seen posts and non-public posts
     public_posts = []
-    
-    blocked_user_ids = await _get_blocked_user_ids(db, current_user_id)
-    x_platform = request.headers.get("x-platform", "").lower()
-    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
-    reported_post_ids = await _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android)
     
     # Pre-calculate user location for performance
     u_city = str(user_loc.get('city') or '').strip().lower()
@@ -3671,22 +3728,13 @@ async def get_posts_feed(
 
     # Pre-fetch following IDs if tab is following
     following_ids = set()
-    if tab == 'following':
-        try:
-            current_user = await db.get_document('users', current_user_id)
-            following_ids = set(current_user.get('following', []) or [])
-        except Exception:
-            pass
+    if tab == 'following' and current_user:
+        following_ids = set(current_user.get('following', []) or [])
 
     # Fetch user interest preferences
     user_interests: dict = {}
-    if tab == 'for_you':
-        try:
-            prefs_doc = await db.get_document('feed_preferences', current_user_id)
-            if prefs_doc:
-                user_interests = prefs_doc.get('category_scores', {})
-        except Exception:
-            pass
+    if tab == 'for_you' and prefs_doc:
+        user_interests = prefs_doc.get('category_scores', {})
 
     now = datetime.utcnow()
     now_ts = now.timestamp()
@@ -3905,6 +3953,34 @@ async def get_posts_feed(
             except Exception: return datetime.min
         return datetime.min
 
+    # Batch retrieve comments for posts with low comments count (<= 10) to eliminate N+1 queries
+    post_ids_for_batch_comments = [
+        p.get('id') for p in paged_posts 
+        if p.get('id') and 0 < (p.get('comments_count', 0) or 0) <= 10
+    ]
+    
+    comments_by_post = {}
+    if post_ids_for_batch_comments:
+        try:
+            comment_queries = []
+            for idx in range(0, len(post_ids_for_batch_comments), 30):
+                chunk = post_ids_for_batch_comments[idx : idx + 30]
+                comment_queries.append(
+                    db.query_documents(
+                        'post_comments',
+                        filters=[('post_id', 'in', chunk)]
+                    )
+                )
+            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
+            for res in query_results:
+                if isinstance(res, list):
+                    for comment in res:
+                        pid = comment.get('post_id')
+                        if pid:
+                            comments_by_post.setdefault(pid, []).append(comment)
+        except Exception as comment_err:
+            logger.warning(f"Failed to batch load comments in Discovery Feed: {comment_err}")
+
     semaphore = asyncio.Semaphore(15)
     async def fetch_post_details(post):
         async with semaphore:
@@ -3921,14 +3997,21 @@ async def get_posts_feed(
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
             try:
-                top_comments = await db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=200,
-                )
-                top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-                top_comments.sort(key=_comment_sort_key, reverse=True)
-                post['top_comments'] = top_comments[:5]
+                comments_cnt = post.get('comments_count', 0) or 0
+                if comments_cnt > 0:
+                    if comments_cnt <= 10:
+                        top_comments = comments_by_post.get(post.get('id'), [])
+                    else:
+                        top_comments = await db.query_documents(
+                            'post_comments',
+                            filters=[('post_id', '==', post.get('id'))],
+                            limit=10,
+                        )
+                    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+                    top_comments.sort(key=_comment_sort_key, reverse=True)
+                    post['top_comments'] = top_comments[:5]
+                else:
+                    post['top_comments'] = []
             except Exception:
                 post['top_comments'] = []
             return post
@@ -4101,19 +4184,33 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
 
-    # Fetch comments for all posts concurrently to avoid N+1 sequential database queries
-    comments_tasks = [
-        db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=200,
-        )
-        for post in paged_posts
-    ]
-    all_posts_comments = await asyncio.gather(*comments_tasks)
+    # Fetch comments for posts concurrently if they have comments, avoiding redundant queries
+    comments_tasks = []
+    for post in paged_posts:
+        if post.get('comments_count', 0) > 0:
+            comments_tasks.append((
+                post.get('id'),
+                db.query_documents(
+                    'post_comments',
+                    filters=[('post_id', '==', post.get('id'))],
+                    limit=10,
+                )
+            ))
+
+    if comments_tasks:
+        post_ids, tasks = zip(*comments_tasks)
+        comments_results = await asyncio.gather(*tasks, return_exceptions=True)
+        comments_by_post_id = {
+            pid: (res if not isinstance(res, Exception) else [])
+            for pid, res in zip(post_ids, comments_results)
+        }
+    else:
+        comments_by_post_id = {}
 
     normalized = []
-    for post, top_comments in zip(paged_posts, all_posts_comments):
+    for post in paged_posts:
+        pid = post.get('id')
+        top_comments = comments_by_post_id.get(pid, []) if pid else []
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4168,26 +4265,30 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['comments_count'] = post.get('comments_count', 0)
     post['liked_by_me'] = user_id in liked_by
 
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post.get('id'))],
-        limit=200,
-    )
-    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+    comments_cnt = post.get('comments_count', 0) or 0
+    if comments_cnt > 0:
+        top_comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post.get('id'))],
+            limit=10,
+        )
+        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
 
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
+        def _comment_created_at_sort_key(item: dict):
+            value = item.get('created_at')
+            if isinstance(value, datetime):
+                return value
+            if isinstance(value, str):
+                try:
+                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except Exception:
+                    return datetime.min
+            return datetime.min
 
-    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    post['top_comments'] = top_comments[:5]
+        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+        post['top_comments'] = top_comments[:5]
+    else:
+        post['top_comments'] = []
     return post
 
 
@@ -7259,17 +7360,9 @@ async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_toke
     if user_id not in chat.get('members', []):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Delete all messages in messages subcollection
-    from google.cloud import firestore
+    # Delete all messages in messages subcollection (optimized using batched writes in thread executor)
     try:
-        message_docs = db.client.collection('chats').document(chat_id).collection('messages').stream()
-        deleted = 0
-        for msg in message_docs:
-            try:
-                msg.reference.delete()
-                deleted += 1
-            except Exception:
-                pass
+        deleted = await db.delete_subcollection('chats', chat_id, 'messages')
     except Exception as e:
         logger.error("Error clearing DM messages: %s", e)
         raise HTTPException(status_code=500, detail="Failed to clear messages")
@@ -10541,15 +10634,18 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     if existing:
         raise HTTPException(status_code=400, detail="You already have a registered business")
     
-    # Add new categories to global category list
-    for category in normalized_categories:
-        existing_cat = await db.find_one('vendor_categories', [('name', '==', category)])
+    # Add new categories to global category list in parallel
+    async def process_category(cat):
+        existing_cat = await db.find_one('vendor_categories', [('name', '==', cat)])
         if not existing_cat:
-            await db.create_document('vendor_categories', {'name': category, 'count': 1})
+            await db.create_document('vendor_categories', {'name': cat, 'count': 1})
         else:
             await db.update_document('vendor_categories', existing_cat['id'], {
                 'count': existing_cat.get('count', 0) + 1
             })
+
+    if normalized_categories:
+        await asyncio.gather(*(process_category(cat) for cat in normalized_categories))
     
     vendor_data = {
         "owner_id": user_id,
@@ -10593,10 +10689,11 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         'kyc_aadhaar_otp_verified': False,
     })
 
-    await _sync_vendor_to_admin_queue(db, vendor_id)
+    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor_data)
 
     # ponytail: invalidate cached user profile to force KYC verification prompt
     await cache_manager.invalidate_user(user_id)
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
@@ -10620,26 +10717,22 @@ async def get_vendors(
 
     vendors = await db.query_documents('vendors', filters=filters, limit=limit)
 
-    # Merge admin review snapshot fields for legacy approved vendors so public listings
-    # can show verified/approved badges consistently.
-    review_docs = await asyncio.gather(
-        *[db.get_document('vendor_admin_reviews', vendor['id']) for vendor in vendors]
+    vendor_ids = [v['id'] for v in vendors if v.get('id')]
+    owner_ids = list({v.get('owner_id') for v in vendors if v.get('owner_id')})
+    
+    # Run batch gets concurrently to eliminate N+1 query loop
+    review_results, user_results = await asyncio.gather(
+        db.get_documents_batch('vendor_admin_reviews', vendor_ids),
+        db.get_documents_batch('users', owner_ids)
     )
     
-    # Fetch owner user documents to check central KYC status
-    async def get_user_doc(uid):
-        if not uid:
-            return None
-        try:
-            return await db.get_document('users', uid)
-        except Exception:
-            return None
+    reviews_map = {r['id']: r for r in review_results if r}
+    users_map = {u['id']: u for u in user_results if u}
 
-    user_docs = await asyncio.gather(
-        *[get_user_doc(vendor.get('owner_id')) for vendor in vendors]
-    )
-
-    for vendor, review_doc, user_doc in zip(vendors, review_docs, user_docs):
+    for vendor in vendors:
+        review_doc = reviews_map.get(vendor.get('id'))
+        user_doc = users_map.get(vendor.get('owner_id'))
+        
         if review_doc:
             vendor['review_status'] = review_doc.get('review_status', vendor.get('review_status'))
             vendor['review_state'] = review_doc.get('review_state', vendor.get('review_state'))
@@ -10703,10 +10796,21 @@ async def get_vendors(
 @api_router.get("/vendors/my")
 async def get_my_vendor(token_data: dict = Depends(verify_token)):
     """Get current user's vendor profile"""
-    db = await get_db()
     user_id = token_data["user_id"]
+    cache_key = f"vendor:user:{user_id}"
     
+    cached_val = await cache_manager.get(cache_key)
+    if cached_val is not None:
+        return cached_val if cached_val != {} else None
+
+    db = await get_db()
     vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
+    
+    if vendor is not None:
+        await cache_manager.set(cache_key, vendor, ttl=300)
+    else:
+        await cache_manager.set(cache_key, {}, ttl=60)
+        
     return vendor
 
 
@@ -10778,8 +10882,10 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
                 await db.create_document('vendor_categories', {'name': category, 'count': 1})
     
     if update_data:
+        vendor.update(update_data)
         await db.update_document('vendors', vendor_id, update_data)
-        await _sync_vendor_to_admin_queue(db, vendor_id)
+        await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
+        await cache_manager.delete(f"vendor:user:{user_id}")
     
     logger.info(f"Vendor {vendor_id} updated by {user_id}")
     return {"message": "Vendor updated successfully"}
@@ -10803,6 +10909,7 @@ async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict 
         raise HTTPException(status_code=400, detail="storage_user_id is required")
 
     await db.update_document('vendors', vendor_id, {'storage_user_id': storage_user_id})
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
     return {"message": "Vendor storage owner mapping updated", "storage_user_id": storage_user_id}
 
@@ -10886,13 +10993,14 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields provided")
 
+    vendor.update(update_data)
     await db.update_document('vendors', vendor_id, update_data)
-    await _sync_vendor_to_admin_queue(db, vendor_id)
+    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
-    refreshed = await db.get_document('vendors', vendor_id)
     return {
         "message": "Business profile updated",
-        "vendor": refreshed,
+        "vendor": vendor,
     }
 
 
@@ -10954,11 +11062,14 @@ async def upload_vendor_business_image(
         images.append('')
     images[slot] = public_url
 
+    vendor['business_gallery_images'] = images
+    vendor['business_media_key'] = media_key
     await db.update_document('vendors', vendor_id, {
         'business_gallery_images': images,
         'business_media_key': media_key,
     })
-    await _sync_vendor_to_admin_queue(db, vendor_id)
+    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
     return {
         "message": "Business image uploaded",
@@ -11521,6 +11632,7 @@ async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: d
         raise HTTPException(status_code=403, detail="Only the owner can add photos")
     
     await db.array_union_update('vendors', vendor_id, 'photos', [photo])
+    await cache_manager.delete(f"vendor:user:{user_id}")
     return {"message": "Photo added successfully"}
 
 
@@ -11593,6 +11705,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     
     # ponytail: invalidate cached user profile to reflect vendor deletion
     await cache_manager.invalidate_user(user_id)
+    await cache_manager.delete(f"vendor:user:{user_id}")
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
@@ -13874,14 +13987,24 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
         "passport_certificates": {"created": [], "updated": [], "deleted": []}
     }
     
-    # 1. Pull users
+    # Helper to run a stream in separate thread executor
+    async def run_query_stream(query):
+        def _get():
+            return list(query.stream())
+        return await db._run_sync(_get)
+        
+    async def fetch_chat_messages(chat_id, query):
+        docs = await run_query_stream(query)
+        return chat_id, docs
+
+    # 1. Pull users (optimized: thread offloaded query)
     try:
         users_ref = db.client.collection('users')
         if last_pulled_at > 0:
             query = users_ref.where('updated_at', '>', last_pulled_dt)
         else:
             query = users_ref.limit(50)
-        docs = query.stream()
+        docs = await run_query_stream(query)
         for doc in docs:
             data = doc.to_dict()
             created_at = data.get('created_at')
@@ -13900,14 +14023,14 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     except Exception as e:
         logger.error("Error pulling users in sync: %s", e)
 
-    # 2. Pull feeds (posts)
+    # 2. Pull feeds (posts) (optimized: thread offloaded query)
     try:
         posts_ref = db.client.collection('posts')
         if last_pulled_at > 0:
             query = posts_ref.where('updated_at', '>', last_pulled_dt)
         else:
             query = posts_ref.limit(50)
-        docs = query.stream()
+        docs = await run_query_stream(query)
         for doc in docs:
             data = doc.to_dict()
             created_at = data.get('created_at')
@@ -13932,7 +14055,7 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                 "updated_at": updated_ts
             })
         
-        # Add posts from blocked users to deleted sync so they are cleaned up locally (optimized with parallel query gather)
+        # Add posts from blocked users to deleted sync so they are cleaned up locally
         if blocked_user_ids:
             blocked_tasks = [
                 db.query_documents('posts', filters=[('user_id', '==', b_uid)])
@@ -13981,28 +14104,51 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
             })
 
         chats = await db.get_user_chats(user_id)
+        chat_message_tasks = []
         for chat in chats:
             chat_id = chat['id']
+            chat_updated = chat.get('updated_at')
+            is_active = True
+            if last_pulled_at > 0 and chat_updated:
+                if isinstance(chat_updated, str):
+                    try:
+                        chat_updated_dt = datetime.fromisoformat(chat_updated.replace('Z', '+00:00')).replace(tzinfo=None)
+                    except Exception:
+                        chat_updated_dt = datetime.min
+                else:
+                    chat_updated_dt = chat_updated.replace(tzinfo=None) if hasattr(chat_updated, 'tzinfo') and chat_updated.tzinfo is not None else chat_updated
+                
+                if chat_updated_dt <= last_pulled_dt.replace(tzinfo=None):
+                    is_active = False
+            
+            if not is_active:
+                continue
+
             messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
             if last_pulled_at > 0:
                 query = messages_ref.where('created_at', '>', last_pulled_dt)
             else:
                 query = messages_ref.limit(30)
-            docs = query.stream()
-            for doc in docs:
-                data = doc.to_dict()
-                created_at = data.get('created_at')
-                created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
-                changes["chats"]["updated"].append({
-                    "id": doc.id,
-                    "chat_id": chat_id,
-                    "sender_id": data.get('sender_id', ''),
-                    "sender_name": data.get('sender_name', 'Member'),
-                    "content": data.get('content', ''),
-                    "message_type": data.get('message_type', 'text'),
-                    "created_at": created_ts,
-                    "updated_at": created_ts
-                })
+            chat_message_tasks.append(fetch_chat_messages(chat_id, query))
+            
+        chat_results = await asyncio.gather(*chat_message_tasks, return_exceptions=True)
+        for res in chat_results:
+            if isinstance(res, tuple):
+                chat_id, docs = res
+                for doc in docs:
+                    data = doc.to_dict()
+                    created_at = data.get('created_at')
+                    created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+                    changes["chats"]["updated"].append({
+                        "id": doc.id,
+                        "chat_id": chat_id,
+                        "sender_id": data.get('sender_id', ''),
+                        "sender_name": data.get('sender_name', 'Member'),
+                        "content": data.get('content', ''),
+                        "message_type": data.get('message_type', 'text'),
+                        "created_at": created_ts,
+                        "updated_at": created_ts
+                    })
     except Exception as e:
         logger.error("Error pulling chats in sync: %s", e)
 
@@ -14010,60 +14156,94 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     try:
         user_doc = await db.get_document('users', user_id)
         if user_doc and 'communities' in user_doc:
-            for cid in user_doc['communities']:
-                try:
-                    comm_doc = await db.get_document('communities', cid)
-                    if comm_doc:
-                        created_at = comm_doc.get('created_at')
-                        created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
-                        changes["communities"]["updated"].append({
-                            "id": cid,
-                            "name": comm_doc.get('name', 'Community'),
-                            "description": comm_doc.get('description', ''),
-                            "photo": comm_doc.get('photo'),
-                            "type": comm_doc.get('type', 'city'),
-                            "member_count": len(comm_doc.get('members', [])),
+            community_ids = user_doc.get('communities', []) or []
+            comm_docs = await db.get_documents_batch('communities', community_ids)
+            comm_map = {c['id']: c for c in comm_docs if c}
+            
+            for cid in community_ids:
+                comm_doc = comm_map.get(cid)
+                if comm_doc:
+                    created_at = comm_doc.get('created_at')
+                    created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+                    changes["communities"]["updated"].append({
+                        "id": cid,
+                        "name": comm_doc.get('name', 'Community'),
+                        "description": comm_doc.get('description', ''),
+                        "photo": comm_doc.get('photo'),
+                        "type": comm_doc.get('type', 'city'),
+                        "member_count": len(comm_doc.get('members', [])),
+                        "created_at": created_ts,
+                        "updated_at": created_ts
+                    })
+
+            # Check and fetch messages concurrently for active community subgroups
+            subgroup_chat_ids = []
+            for cid in community_ids:
+                for subgroup in ['city', 'state', 'national']:
+                    subgroup_chat_ids.append(f"community_{cid}_{subgroup}")
+            
+            subgroup_chats = await db.get_documents_batch('chats', subgroup_chat_ids)
+            subgroup_chat_map = {sc['id']: sc for sc in subgroup_chats if sc}
+            
+            community_message_tasks = []
+            for chat_id in subgroup_chat_ids:
+                sc_doc = subgroup_chat_map.get(chat_id)
+                sc_updated = sc_doc.get('updated_at') if sc_doc else None
+                is_active = True
+                if last_pulled_at > 0 and sc_updated:
+                    if isinstance(sc_updated, str):
+                        try:
+                            sc_updated_dt = datetime.fromisoformat(sc_updated.replace('Z', '+00:00')).replace(tzinfo=None)
+                        except Exception:
+                            sc_updated_dt = datetime.min
+                    else:
+                        sc_updated_dt = sc_updated.replace(tzinfo=None) if hasattr(sc_updated, 'tzinfo') and sc_updated.tzinfo is not None else sc_updated
+                    
+                    if sc_updated_dt <= last_pulled_at.replace(tzinfo=None):
+                        is_active = False
+                
+                # If no subgroup chat document exists, skip it on updates since no messages can exist
+                if sc_doc is None and last_pulled_at > 0:
+                    is_active = False
+                
+                if not is_active:
+                    continue
+
+                messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
+                if last_pulled_at > 0:
+                    query = messages_ref.where('created_at', '>', last_pulled_dt)
+                else:
+                    query = messages_ref.limit(30)
+                community_message_tasks.append(fetch_chat_messages(chat_id, query))
+                
+            comm_msg_results = await asyncio.gather(*community_message_tasks, return_exceptions=True)
+            for res in comm_msg_results:
+                if isinstance(res, tuple):
+                    chat_id, docs = res
+                    for doc in docs:
+                        data = doc.to_dict()
+                        created_at = data.get('created_at')
+                        if isinstance(created_at, str):
+                            try:
+                                dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                                created_ts = int(dt.timestamp() * 1000)
+                            except Exception:
+                                created_ts = int(datetime.utcnow().timestamp() * 1000)
+                        elif isinstance(created_at, datetime):
+                            created_ts = int(created_at.timestamp() * 1000)
+                        else:
+                            created_ts = int(datetime.utcnow().timestamp() * 1000)
+                        
+                        changes["community_messages"]["updated"].append({
+                            "id": doc.id,
+                            "community_id": chat_id,
+                            "sender_id": data.get('sender_id', ''),
+                            "sender_name": data.get('sender_name', 'Member'),
+                            "content": data.get('content', ''),
+                            "message_type": data.get('message_type', 'text'),
                             "created_at": created_ts,
                             "updated_at": created_ts
                         })
-                except Exception as ex:
-                    logger.error("Error pulling community doc in sync: %s", ex)
-
-                for subgroup in ['city', 'state', 'national']:
-                    try:
-                        chat_id = f"community_{cid}_{subgroup}"
-                        messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
-                        if last_pulled_at > 0:
-                            query = messages_ref.where('created_at', '>', last_pulled_dt)
-                        else:
-                            query = messages_ref.limit(30)
-                        docs = query.stream()
-                        for doc in docs:
-                            data = doc.to_dict()
-                            created_at = data.get('created_at')
-                            if isinstance(created_at, str):
-                                try:
-                                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                                    created_ts = int(dt.timestamp() * 1000)
-                                except Exception:
-                                    created_ts = int(datetime.utcnow().timestamp() * 1000)
-                            elif isinstance(created_at, datetime):
-                                created_ts = int(created_at.timestamp() * 1000)
-                            else:
-                                created_ts = int(datetime.utcnow().timestamp() * 1000)
-                            
-                            changes["community_messages"]["updated"].append({
-                                "id": doc.id,
-                                "community_id": chat_id,
-                                "sender_id": data.get('sender_id', ''),
-                                "sender_name": data.get('sender_name', 'Member'),
-                                "content": data.get('content', ''),
-                                "message_type": data.get('message_type', 'text'),
-                                "created_at": created_ts,
-                                "updated_at": created_ts
-                            })
-                    except Exception as ex:
-                        logger.error("Error pulling community messages for %s: %s", chat_id, ex)
     except Exception as e:
         logger.error("Error pulling communities & messages in sync: %s", e)
 
@@ -14119,12 +14299,12 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     except Exception as e:
         logger.error("Error pulling library/passport in sync: %s", e)
 
-    # 6. Pull deletions
+    # 6. Pull deletions (optimized: thread offloaded query)
     try:
         if last_pulled_at > 0:
             deleted_ref = db.client.collection('deleted_records')
             query = deleted_ref.where('deleted_at', '>', last_pulled_dt)
-            docs = query.stream()
+            docs = await run_query_stream(query)
             for doc in docs:
                 data = doc.to_dict()
                 table = data.get('table_name')
