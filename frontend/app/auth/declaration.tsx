@@ -107,10 +107,12 @@ export default function DeclarationScreen() {
             style={styles.button}
           />
 
-          <TouchableOpacity style={styles.adminButton} onPress={handleAdmin} activeOpacity={0.8}>
-            <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
-            <Text style={styles.adminButtonText}>Admin</Text>
-          </TouchableOpacity>
+          {Platform.OS === 'web' && (
+            <TouchableOpacity style={styles.adminButton} onPress={handleAdmin} activeOpacity={0.8}>
+              <Ionicons name="shield-checkmark" size={16} color={COLORS.primary} />
+              <Text style={styles.adminButtonText}>Admin</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

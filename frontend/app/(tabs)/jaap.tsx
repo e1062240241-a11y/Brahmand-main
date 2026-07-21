@@ -1153,6 +1153,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(229, 231, 235, 0.50)',
     padding: 4,
+    overflow: 'hidden',
   },
   topTabButton: {
     flex: 1,
@@ -1160,6 +1161,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   topTabButtonActive: {
     backgroundColor: '#FFFFFF',

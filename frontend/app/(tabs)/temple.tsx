@@ -542,7 +542,8 @@ const styles = StyleSheet.create({
     height: 34, 
     borderRadius: 12, 
     alignItems: 'center', 
-    justifyContent: 'center' 
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   topTabButtonActive: { 
     backgroundColor: '#FFFFFF',

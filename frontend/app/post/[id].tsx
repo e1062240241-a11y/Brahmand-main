@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Share, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, Alert, Keyboard } from 'react-native';
+import { View, Text, Share, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Keyboard } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +19,6 @@ import { blockUser, unblockUser } from '../../src/services/firebase/moderationSe
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 import { useTranslation } from '../../src/utils/i18n';
 
-const SCREEN_HEIGHT = Dimensions.get('window').height;
 const FEED_PAGE_SIZE = 7;
 
 const PostScreen = () => {
@@ -57,8 +57,6 @@ const PostScreen = () => {
   const seenPostIdsRef = useRef<Set<string>>(new Set());
 
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
-  const postOffsetsRef = useRef<Record<string, number>>({});
-  const postHeightsRef = useRef<Record<string, number>>({});
 
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentPost, setCommentPost] = useState<any>(null);
@@ -93,15 +91,21 @@ const PostScreen = () => {
     onConfirm: () => void;
   } | null>(null);
 
-  const listRef = useRef<FlatList>(null);
+  const listRef = useRef<FlashList<any>>(null);
   const hasScrolled = useRef(false);
 
+  const blockedUidsRef = useRef<string[]>([]);
+  useEffect(() => {
+    blockedUidsRef.current = [...blockedUserIds, ...blockedByMeUserIds];
+  }, [blockedUserIds, blockedByMeUserIds]);
+
   const visibleFeedPosts = useMemo(() => {
+    const blocked = blockedUidsRef.current;
+    if (blocked.length === 0) return feedPosts;
     return feedPosts.filter((post: any) => {
       const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
       if (!uid) return true;
-      const uidStr = String(uid);
-      return !blockedUserIds.includes(uidStr) && !blockedByMeUserIds.includes(uidStr);
+      return !blocked.includes(String(uid));
     });
   }, [feedPosts, blockedUserIds, blockedByMeUserIds]);
 
@@ -550,37 +554,45 @@ const PostScreen = () => {
     if (!loadingMore) loadFeed(feedOffset, true);
   }, [loadingMore, feedOffset, loadFeed]);
 
+  const handleUserPress = useCallback((u: any) => {
+    const userId = u?.user_id || u?.user?.id || u?.id;
+    if (userId) {
+      router.push({ pathname: '/profile/[id]', params: { id: String(userId) } } as any);
+    }
+  }, [router]);
+
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 60 }).current;
+  const activePostKeyRef = useRef<string | null>(null);
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
+    if (viewableItems.length > 0) {
+      const top = viewableItems[0];
+      const key = String(top.key || top.item?.id || '');
+      if (key && key !== activePostKeyRef.current) {
+        activePostKeyRef.current = key;
+        setActivePostKey(key);
+        if (top.item?.id) {
+          seenPostIdsRef.current.add(String(top.item.id));
+        }
+      }
+    }
+  }).current;
+
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
     const postKey = item && item.id ? String(item.id) : `post-idx-${index}`;
     return (
-      <View
-        onLayout={(event) => {
-          const y = event.nativeEvent.layout.y;
-          const h = event.nativeEvent.layout.height;
-          postOffsetsRef.current[postKey] = y;
-          postHeightsRef.current[postKey] = h;
-        }}
-      >
-        <PostFeedCard
-          post={item}
-          isActive={activePostKey === postKey}
-          onLike={() => { }}
-          onComment={handleOpenComment}
-          openCommentsOnCaptionPress
-          onShare={handleSharePost}
-          onRepost={handleRepost}
-          onEdit={() => { }}
-          onUserPress={(u: any) => {
-            const userId = u?.user_id || u?.user?.id || u?.id;
-            if (userId) {
-              router.push({ pathname: '/profile/[id]', params: { id: String(userId) } } as any);
-            }
-          }}
-          theme="light"
-        />
-      </View>
+      <PostFeedCard
+        post={item}
+        isActive={activePostKeyRef.current === postKey}
+        onComment={handleOpenComment}
+        openCommentsOnCaptionPress
+        onShare={handleSharePost}
+        onRepost={handleRepost}
+        onUserPress={handleUserPress}
+        theme="light"
+      />
     );
-  }, [activePostKey, handleOpenComment, handleSharePost, handleRepost, router]);
+  }, [handleOpenComment, handleSharePost, handleRepost, handleUserPress]);
 
   const keyExtractor = useCallback((item: any, index: number) => {
     if (!item || item.id === undefined || item.id === null) {
@@ -589,35 +601,6 @@ const PostScreen = () => {
     }
     return String(item.id);
   }, []);
-
-  const onScroll = useCallback((event: any) => {
-    const y = event.nativeEvent.contentOffset.y;
-    let closestKey: string | null = null;
-    let maxVisible = 0;
-    for (const key of feedPostKeys) {
-      const offset = postOffsetsRef.current[key];
-      const height = postHeightsRef.current[key];
-      if (typeof offset === 'number' && typeof height === 'number') {
-        const visibleTop = Math.max(0, offset - y);
-        const visibleBottom = Math.min(SCREEN_HEIGHT, offset + height - y);
-        const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        if (visibleAmount > maxVisible) {
-          maxVisible = visibleAmount;
-          closestKey = key;
-        }
-      }
-    }
-    if (closestKey) {
-      setActivePostKey(closestKey);
-      // Find the post for this key and mark it as seen
-      const postIdx = feedPostKeys.indexOf(closestKey);
-      if (postIdx >= 0 && visibleFeedPosts[postIdx]?.id) {
-        seenPostIdsRef.current.add(String(visibleFeedPosts[postIdx].id));
-      }
-    } else {
-      setActivePostKey(prev => prev);
-    }
-  }, [feedPostKeys, visibleFeedPosts]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -634,15 +617,16 @@ const PostScreen = () => {
           <Text style={styles.loadingText}>{t('loadingPosts')}</Text>
         </View>
       ) : (
-        <FlatList
+        <FlashList
           ref={listRef}
           data={visibleFeedPosts}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
+          estimatedItemSize={500}
           contentContainerStyle={styles.listContent}
           ListFooterComponent={
             loadingMore ? (

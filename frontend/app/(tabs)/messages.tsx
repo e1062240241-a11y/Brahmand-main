@@ -1952,6 +1952,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.3)',
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     height: 48,
+    overflow: 'hidden',
   },
   segmentPill: {
     flex: 1,
@@ -1959,6 +1960,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'transparent',
   },
   segmentPillActive: {
     backgroundColor: '#FFFFFF',

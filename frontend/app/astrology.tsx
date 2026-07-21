@@ -32,11 +32,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', img: require('../assets/images/festivals/cosmic/cos1.png') },
-  { key: 'character', label: 'Character', img: require('../assets/images/festivals/cosmic/cos2.png') },
-  { key: 'education', label: 'Education', img: require('../assets/images/festivals/cosmic/cos3.png') },
-  { key: 'family', label: 'Family', img: require('../assets/images/festivals/cosmic/cos4.png') },
-  { key: 'health', label: 'Health', img: require('../assets/images/festivals/cosmic/cos5.png') },
+  { key: 'physical', label: 'Physical', img: require('../assets/images/traditional_diya_footer.png') },
+  { key: 'character', label: 'Character', img: require('../assets/images/traditional_diya_footer.png') },
+  { key: 'education', label: 'Education', img: require('../assets/images/traditional_diya_footer.png') },
+  { key: 'family', label: 'Family', img: require('../assets/images/traditional_diya_footer.png') },
+  { key: 'health', label: 'Health', img: require('../assets/images/traditional_diya_footer.png') },
 ];
 
 const CITIES_DB = [
