@@ -20,6 +20,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
 import withObservables from '@nozbe/with-observables';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../../../src/database';
+import { SafeVideoView, isPlayerValid } from '../../../src/components/SafeVideoView';
 
 let chatImageManipulator: typeof ImageManipulatorType | null = null;
 const getChatImageManipulator = async () => {
@@ -61,7 +62,7 @@ const ChatNativeVideoPlayer = React.memo(({
   });
 
   useEffect(() => {
-    if (player && isPlaying) {
+    if (isPlayerValid(player) && isPlaying) {
       try {
         player.play();
       } catch (e) {
@@ -73,7 +74,7 @@ const ChatNativeVideoPlayer = React.memo(({
   // Clean up player on unmount to prevent audio leaks
   useEffect(() => {
     return () => {
-      if (player) {
+      if (isPlayerValid(player)) {
         try {
           player.pause();
         } catch (e) {}
@@ -81,18 +82,23 @@ const ChatNativeVideoPlayer = React.memo(({
     };
   }, [player]);
 
-  if (!ExpoVideoModule?.VideoView || !player) {
-    return <View style={[style, { backgroundColor: '#1C1C1E' }]} />;
+  const fallback = <View style={[style, { backgroundColor: '#1C1C1E' }]} />;
+
+  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
+    return fallback;
   }
 
   return (
-    <ExpoVideoModule.VideoView
+    <SafeVideoView
+      key={uri}
       player={player}
+      ExpoVideoModule={ExpoVideoModule}
       style={style}
       contentFit={resizeMode}
       allowsPictureInPicture={false}
       nativeControls={true}
       playsInline
+      fallback={fallback}
     />
   );
 });

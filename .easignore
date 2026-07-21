@@ -40,3 +40,22 @@ search_ocr.py
 *.txt
 tmp/
 /Library/
+
+# Ignore frontend build outputs and caches
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/app/.cxx/
+frontend/android/.gradle/
+frontend/android/.kotlin/
+frontend/android/.idea/
+frontend/android/local.properties
+frontend/.expo/
+frontend/.metro-cache/
+frontend/metro_bundle.js
+frontend/web-build/
+frontend/dist/
+
+# Ignore iOS native build outputs
+frontend/ios/build/
+frontend/ios/Pods/
+frontend/ios/DerivedData/

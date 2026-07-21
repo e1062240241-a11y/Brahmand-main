@@ -917,11 +917,7 @@ export default function HomeScreen() {
                     record.likesCount = item.likes_count || 0;
                     record.commentsCount = item.comments_count || 0;
                     record.likedByMe = !!item.liked_by_me;
-                    if (Platform.OS === 'android') {
-                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                    } else {
-                      record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                    }
+                    record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
                   });
                 } else {
                   await feedsCollection.create((record: any) => {
@@ -935,13 +931,8 @@ export default function HomeScreen() {
                     record.likesCount = item.likes_count || 0;
                     record.commentsCount = item.comments_count || 0;
                     record.likedByMe = !!item.liked_by_me;
-                    if (Platform.OS === 'android') {
-                      record._raw.created_at = item.created_at ? new Date(item.created_at).getTime() : Date.now();
-                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                    } else {
-                      record.createdAt = item.created_at ? new Date(item.created_at).getTime() : Date.now();
-                      record.updatedAt = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                    }
+                    record._raw.created_at = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+                    record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
                   });
                 }
               }
@@ -1072,9 +1063,19 @@ export default function HomeScreen() {
           return;
         }
 
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.Balanced,
-        });
+        let loc: Location.LocationObject | null = null;
+        try {
+          loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+        } catch (locErr) {
+          loc = await Location.getLastKnownPositionAsync().catch(() => null);
+        }
+
+        if (!loc) {
+          setLiveLocation('Bharat');
+          return;
+        }
 
         setLiveCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
 

@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,7 @@ export default function VendorProfileScreen() {
   const [fetchedVendor, setFetchedVendor] = React.useState<any>(null);
   const [vendorLoading, setVendorLoading] = React.useState(false);
   const [vendorError, setVendorError] = React.useState(false);
+  const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
 
   // First try from local store (fast), fall back to API fetch
   const storeVendor = vendors.find(v => v.id === id);
@@ -217,7 +219,26 @@ export default function VendorProfileScreen() {
         {/* Banner Cover Photo */}
         <View style={styles.bannerContainer}>
           {galleryImages.length > 0 ? (
-            <Image source={{ uri: galleryImages[0] }} style={styles.bannerImage} resizeMode="cover" />
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setSelectedImage(galleryImages[0])}
+              style={styles.bannerImageWrapper}
+            >
+              {/* Blurred background photo layer */}
+              <Image
+                source={{ uri: galleryImages[0] }}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode="cover"
+                blurRadius={20}
+              />
+              <View style={styles.bannerOverlay} />
+              {/* Foreground photo layer with contain resizeMode so full image is shown */}
+              <Image
+                source={{ uri: galleryImages[0] }}
+                style={styles.bannerImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
           ) : (
             <View style={styles.bannerPlaceholder}>
               <Ionicons name="storefront" size={60} color="#FF6600" />
@@ -310,7 +331,9 @@ export default function VendorProfileScreen() {
             <Text style={styles.sectionTitle}>Gallery</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryContainer}>
               {galleryImages.map((photo: string, index: number) => (
-                <Image key={index} source={{ uri: photo }} style={styles.galleryPhoto} resizeMode="cover" />
+                <TouchableOpacity key={index} activeOpacity={0.85} onPress={() => setSelectedImage(photo)}>
+                  <Image source={{ uri: photo }} style={styles.galleryPhoto} resizeMode="cover" />
+                </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
@@ -414,6 +437,27 @@ export default function VendorProfileScreen() {
           <Text style={styles.bottomButtonText}>Get Directions</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Fullscreen Image View Modal */}
+      <Modal
+        visible={!!selectedImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedImage(null)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedImage(null)}>
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          {selectedImage && (
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.fullImage}
+              resizeMode="contain"
+            />
+          )}
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -506,13 +550,45 @@ const styles = StyleSheet.create({
   },
   bannerContainer: {
     width: '100%',
-    height: 219,
+    height: 260,
     flexShrink: 0,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#1A1A1A',
+    overflow: 'hidden',
+  },
+  bannerImageWrapper: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
   bannerImage: {
     width: '100%',
     height: '100%',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.92)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 30,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+  },
+  fullImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_WIDTH * 1.25,
+    maxHeight: '80%',
   },
   bannerPlaceholder: {
     flex: 1,

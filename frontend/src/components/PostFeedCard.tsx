@@ -25,6 +25,7 @@ import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
+import { SafeVideoView, isPlayerValid } from './SafeVideoView';
 import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
@@ -85,7 +86,7 @@ const NativeVideoPlayer = memo(({
   });
 
   useEffect(() => {
-    if (player) {
+    if (isPlayerValid(player)) {
       try {
         player.muted = isMuted;
       } catch (e) {}
@@ -93,7 +94,7 @@ const NativeVideoPlayer = memo(({
   }, [isMuted, player]);
 
   useEffect(() => {
-    if (player) {
+    if (isPlayerValid(player)) {
       try {
         if (shouldPlay) {
           player.play();
@@ -106,29 +107,41 @@ const NativeVideoPlayer = memo(({
     }
   }, [shouldPlay, player]);
 
+  useEffect(() => {
+    return () => {
+      if (isPlayerValid(player)) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
 
+  const fallbackView = (
+    <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
+      {videoPosterUrl ? (
+        <Image
+          source={{ uri: videoPosterUrl }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          onError={handlePosterError}
+        />
+      ) : (
+        <Ionicons name="videocam-outline" size={32} color="#444" />
+      )}
+    </View>
+  );
 
-  if (!ExpoVideoModule?.VideoView || !player) {
-    return (
-      <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
-        {videoPosterUrl ? (
-          <Image
-            source={{ uri: videoPosterUrl }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            onError={handlePosterError}
-          />
-        ) : (
-          <Ionicons name="videocam-outline" size={32} color="#444" />
-        )}
-      </View>
-    );
+  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
+    return fallbackView;
   }
 
   return (
     <>
-      <ExpoVideoModule.VideoView
+      <SafeVideoView
+        key={mediaUrl}
         player={player}
+        ExpoVideoModule={ExpoVideoModule}
         style={cropStyle || styles.videoBackground}
         contentFit="cover"
         nativeControls={false}
@@ -137,6 +150,7 @@ const NativeVideoPlayer = memo(({
           setMediaLoading(false);
           setMediaError('Video player error');
         }}
+        fallback={fallbackView}
       />
       {filterName !== 'Normal' && (
         <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />

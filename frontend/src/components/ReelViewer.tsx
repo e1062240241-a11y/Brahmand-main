@@ -44,7 +44,9 @@ import { MentionInput } from './MentionInput';
 import { MentionText } from './MentionText';
 import * as Clipboard from 'expo-clipboard';
 import { Share, KeyboardAvoidingView, Keyboard } from 'react-native';
+import { SafeVideoView, isPlayerValid } from './SafeVideoView';
 import { useTranslation } from '../utils/i18n';
+
 let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
@@ -98,7 +100,7 @@ const NativeVideoPlayer = React.memo(({
   });
 
   useEffect(() => {
-    if (player) {
+    if (isPlayerValid(player)) {
       onPlayerReady(player);
     }
     return () => {
@@ -106,16 +108,18 @@ const NativeVideoPlayer = React.memo(({
     };
   }, [player]);
 
+  const fallback = <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
 
-
-  if (!ExpoVideoModule?.VideoView || !player) {
-    return <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
+  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
+    return fallback;
   }
 
   return (
     <>
-      <ExpoVideoModule.VideoView
+      <SafeVideoView
+        key={mediaUrl}
         player={player}
+        ExpoVideoModule={ExpoVideoModule}
         style={{ width: '100%', height: '100%' }}
         contentFit={contentFitMode}
         allowsPictureInPicture={false}
@@ -123,6 +127,7 @@ const NativeVideoPlayer = React.memo(({
         useExoShutter={false}
         playsInline={true}
         onFirstFrameRender={() => setIsVideoLoading(false)}
+        fallback={fallback}
       />
       {isVideoLoading && videoPosterUrl && (
         <Image

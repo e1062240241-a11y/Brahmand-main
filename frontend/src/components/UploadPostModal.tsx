@@ -27,6 +27,7 @@ import { getFilterStyle, getOverlayStyle } from "../utils/filters";
 import { useTranslation } from "../utils/i18n";
 import { useUploadStore } from "../store/uploadStore";
 import { KeyboardAwareScrollView } from './KeyboardAwareScrollView';
+import { SafeVideoView, isPlayerValid } from './SafeVideoView';
 
 let ExpoVideoModule: any = null;
 try {
@@ -61,7 +62,7 @@ const UploadVideoPreview = React.memo(({
   });
 
   useEffect(() => {
-    if (player) {
+    if (isPlayerValid(player)) {
       try {
         player.play();
       } catch (e) {
@@ -70,19 +71,32 @@ const UploadVideoPreview = React.memo(({
     }
   }, [player]);
 
+  useEffect(() => {
+    return () => {
+      if (isPlayerValid(player)) {
+        try {
+          player.pause();
+        } catch (e) {}
+      }
+    };
+  }, [player]);
 
+  const fallback = <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
 
-  if (!ExpoVideoModule?.VideoView || !player) {
-    return <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
+  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
+    return fallback;
   }
 
   return (
-    <ExpoVideoModule.VideoView
+    <SafeVideoView
+      key={uri}
       player={player}
+      ExpoVideoModule={ExpoVideoModule}
       style={style}
       contentFit="cover"
       nativeControls={false}
       playsInline
+      fallback={fallback}
     />
   );
 });

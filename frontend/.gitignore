@@ -44,9 +44,19 @@ yarn-error.*
 web-build/
 .next/
 
-# Local native build files
-android/
-ios/
+# Local native build outputs and caches
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
+android/.idea/
+android/.kotlin/
+android/local.properties
+
+ios/build/
+ios/Pods/
+ios/DerivedData/
+ios/*.xcworkspace
 nginx.conf
 
 # typescript

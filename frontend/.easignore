@@ -1,68 +1,37 @@
+# Dependencies (installed on EAS remote builder automatically)
 node_modules/
+
+# Caches
 .expo/
+.expo_home/
 .metro-cache/
-android/
-ios/
+.metro-health-check*
+metro_bundle.js
 dist/
 web-build/
+
+# Android Native Build Outputs & Caches
+android/build/
+android/app/build/
+android/app/.cxx/
+android/.gradle/
+android/.kotlin/
+android/.idea/
+android/local.properties
+
+# iOS Native Build Outputs & Caches
+ios/build/
+ios/Pods/
+ios/DerivedData/
+
+# Debug logs & dumps
+*.log
+*.xml
+*.py
+*.sh
+.DS_Store
 .agent/
 scratch*
-*.log
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
-node_modules/
-
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-.agent/
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-.metro-cache/
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env
-.env.*
-.env*.local
-
-# Firebase / Expo hosting artifacts
-.expo/
-.firebase/
-.firebaserc
-web-build/
-.next/
-
-# Local native build files
-android/
-nginx.conf
-
-# typescript
-*.tsbuildinfo
-
-app-example
-
-# local test builds
+# Local test builds
 .test-build/
-

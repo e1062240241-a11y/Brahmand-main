@@ -32,11 +32,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', icon: 'body-outline' },
-  { key: 'character', label: 'Character', icon: 'sparkles-outline' },
-  { key: 'education', label: 'Education', icon: 'book-outline' },
-  { key: 'family', label: 'Family', icon: 'people-outline' },
-  { key: 'health', label: 'Health', icon: 'heart-outline' },
+  { key: 'physical', label: 'Physical', img: require('../assets/images/festivals/cosmic/cos1.png') },
+  { key: 'character', label: 'Character', img: require('../assets/images/festivals/cosmic/cos2.png') },
+  { key: 'education', label: 'Education', img: require('../assets/images/festivals/cosmic/cos3.png') },
+  { key: 'family', label: 'Family', img: require('../assets/images/festivals/cosmic/cos4.png') },
+  { key: 'health', label: 'Health', img: require('../assets/images/festivals/cosmic/cos5.png') },
 ];
 
 const CITIES_DB = [
@@ -889,7 +889,7 @@ export default function AstrologyScreen() {
                       activeOpacity={0.8}
                     >
                       <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
-                        <Ionicons name={tab.icon as any} size={24} color={isActive ? '#FFF' : '#C67C4E'} />
+                        <Image source={tab.img} style={{ width: 36, height: 36, aspectRatio: 1, tintColor: isActive ? '#FFF' : undefined }} resizeMode="contain" />
                       </View>
                       <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
                     </TouchableOpacity>
@@ -921,7 +921,7 @@ export default function AstrologyScreen() {
                       return (
                         <>
                           <View style={styles.modalIconWrap}>
-                            <Ionicons name={activeTabObj.icon as any} size={28} color="#FFF" />
+                            <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
                           </View>
                           <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
                           <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>

@@ -87,7 +87,7 @@ brahmand.zip
 *.env.*
 
 # Expo / Android generated native files
-/frontend/android/
+# /frontend/android/
 /frontend/nginx.conf
 /ios/
 

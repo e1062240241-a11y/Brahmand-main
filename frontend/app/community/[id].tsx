@@ -382,6 +382,7 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
 
 import { useGlobalMute } from '../../src/contexts/MuteContext';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
+import { SafeVideoView, isPlayerValid } from '../../src/components/SafeVideoView';
 
 let ExpoVideoModule: any = null;
 try {
@@ -411,7 +412,7 @@ const CommunityNativeVideoPlayer = React.memo(({
   }) : null;
 
   useEffect(() => {
-    if (player) {
+    if (isPlayerValid(player)) {
       try {
         player.muted = isMuted;
       } catch (e) {}
@@ -419,7 +420,7 @@ const CommunityNativeVideoPlayer = React.memo(({
   }, [isMuted, player]);
 
   useEffect(() => {
-    if (player) {
+    if (isPlayerValid(player)) {
       try {
         if (shouldPlay) {
           player.play();
@@ -433,7 +434,7 @@ const CommunityNativeVideoPlayer = React.memo(({
   // Clean up player on unmount
   useEffect(() => {
     return () => {
-      if (player) {
+      if (isPlayerValid(player)) {
         try {
           player.pause();
         } catch (e) {}
@@ -441,8 +442,10 @@ const CommunityNativeVideoPlayer = React.memo(({
     };
   }, [player]);
 
-  if (!ExpoVideoModule?.VideoView || !player) {
-    return <View style={[style, { backgroundColor: '#000' }]} />;
+  const fallback = <View style={[style, { backgroundColor: '#000' }]} />;
+
+  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
+    return fallback;
   }
 
   const Wrapper = onPress ? TouchableOpacity : View;
@@ -450,11 +453,14 @@ const CommunityNativeVideoPlayer = React.memo(({
 
   return (
     <Wrapper {...wrapperProps} style={[StyleSheet.flatten(style), { position: 'relative', overflow: 'hidden', backgroundColor: '#000' }]}>
-      <ExpoVideoModule.VideoView
+      <SafeVideoView
+        key={mediaUrl}
         player={player}
+        ExpoVideoModule={ExpoVideoModule}
         style={{ width: '100%', height: '100%' }}
         contentFit="contain"
         nativeControls={false}
+        fallback={fallback}
       />
       <TouchableOpacity
         style={{
@@ -2809,25 +2815,35 @@ export default function CommunityDetailScreen() {
   const renderFestivalItem = ({ item, index }: { item: any; index: number }) => {
     const festImg = getFestivalImage(item.name);
     
-    let formattedDate = 'Upcoming';
-    if (item.date) {
+    let formattedDate = '';
+    const rawDate = item.date || item.start_date || item.festival_date;
+    if (rawDate) {
       try {
-        const d = parseUTCDate(item.date);
+        const d = parseUTCDate(rawDate);
         if (!isNaN(d.getTime())) {
           const day = String(d.getDate()).padStart(2, '0');
           const month = String(d.getMonth() + 1).padStart(2, '0');
           formattedDate = `${day}/${month}/${d.getFullYear()}`;
+        } else {
+          formattedDate = String(rawDate);
         }
       } catch (err) {
         console.warn('Failed to parse date in card', err);
+        formattedDate = String(rawDate);
       }
     }
+
+    const isSelected = (selectedFestival || '').toLowerCase().trim() === (item.name || '').toLowerCase().trim();
 
     return (
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={() => router.push(`/festival-detail?index=${index}`)}
-        style={[styles.festivalTypeCard, { backgroundColor: item.color || '#FFF5F0' }]}
+        style={[
+          styles.festivalTypeCard, 
+          { backgroundColor: item.color || '#FFF5F0' },
+          isSelected && { borderWidth: 2, borderColor: '#FF6B00' }
+        ]}
       >
         <View style={styles.festivalIconCircle}>
           {festImg ? (
@@ -2841,9 +2857,11 @@ export default function CommunityDetailScreen() {
           )}
         </View>
         <Text style={styles.festivalTypeName}>{item.name}</Text>
-        <View style={styles.festivalEventCount}>
-          <Text style={styles.festivalEventCountText}>{formattedDate}</Text>
-        </View>
+        {formattedDate ? (
+          <View style={styles.festivalEventCount}>
+            <Text style={styles.festivalEventCountText} numberOfLines={1}>{formattedDate}</Text>
+          </View>
+        ) : null}
       </TouchableOpacity>
     );
   };
@@ -3958,24 +3976,78 @@ export default function CommunityDetailScreen() {
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
-              <View style={[styles.sectionHeader, { marginBottom: 10 }]}>
+              <View style={[styles.sectionHeader, { marginBottom: 10, zIndex: 3000, elevation: 10 }]}>
                 <View style={styles.sectionTitleRow}>
                   <Ionicons name="calendar" size={24} color="#0EA5E9" style={{ marginRight: 10 }} />
                   <Text style={[styles.sectionTitle, { fontSize: 22 }]}>Festivals</Text>
                 </View>
-                <TouchableOpacity style={styles.filterDropdown} onPress={() => setShowFilterDropdown(!showFilterDropdown)}>
-                  <Text style={styles.filterText} numberOfLines={1}>{selectedFestival || 'All Festivals'}</Text>
-                  <Ionicons name="chevron-down" size={16} color="#444" />
-                </TouchableOpacity>
+                <View style={{ position: 'relative', zIndex: 3001 }}>
+                  <TouchableOpacity 
+                    style={styles.filterDropdown} 
+                    onPress={() => {
+                      setShowFilterDropdown(prev => !prev);
+                      setShowSortDropdown(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.filterText} numberOfLines={1}>{selectedFestival || 'All Festivals'}</Text>
+                    <Ionicons name={showFilterDropdown ? "chevron-up" : "chevron-down"} size={16} color="#444" />
+                  </TouchableOpacity>
+
+                  {showFilterDropdown && (
+                    <View style={styles.inlineDropdownMenu}>
+                      <ScrollView style={{ maxHeight: 220 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
+                        {[
+                          { label: 'All Festivals', value: null },
+                          ...allFestivals.map(f => ({ label: f.name, value: f.name })),
+                        ]
+                          .filter((opt, index, self) => opt.label && self.findIndex(t => t.value === opt.value) === index)
+                          .map((opt, idx) => {
+                            const isSelected = selectedFestival === opt.value;
+                            return (
+                              <TouchableOpacity
+                                key={idx}
+                                style={[
+                                  styles.inlineDropdownItem,
+                                  isSelected && styles.inlineDropdownItemActive
+                                ]}
+                                onPress={() => {
+                                  setSelectedFestival(opt.value);
+                                  setShowFilterDropdown(false);
+                                }}
+                              >
+                                <Text 
+                                  style={[
+                                    styles.inlineDropdownText,
+                                    isSelected && styles.inlineDropdownTextActive
+                                  ]}
+                                  numberOfLines={1}
+                                >
+                                  {opt.label}
+                                </Text>
+                                {isSelected && (
+                                  <Ionicons name="checkmark" size={16} color="#FF6B00" />
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                      </ScrollView>
+                    </View>
+                  )}
+                </View>
               </View>
             );
           }
           if (item.type === 'festivals_list') {
+            const festivalsToDisplay = selectedFestival
+              ? allFestivals.filter(f => (f.name || '').toLowerCase().trim() === selectedFestival.toLowerCase().trim())
+              : allFestivals;
+
             return (
               <FlatList
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                data={allFestivals}
+                data={festivalsToDisplay}
                 keyExtractor={(f, i) => f.id ? String(f.id) : `fest-${i}`}
                 renderItem={renderFestivalItem}
                 contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 25 }}
@@ -3984,12 +4056,57 @@ export default function CommunityDetailScreen() {
           }
           if (item.type === 'festival_events_header') {
             return (
-              <View style={styles.sectionHeader}>
+              <View style={[styles.sectionHeader, { zIndex: 2000, elevation: 8 }]}>
                 <Text style={[styles.sectionTitle, { fontSize: 18 }]}>Upcoming Festival Events</Text>
-                <TouchableOpacity style={styles.filterDropdown} onPress={() => setShowSortDropdown(!showSortDropdown)}>
-                  <Text style={styles.filterText}>{festivalSort === 'latest' ? 'Latest First' : 'Oldest First'}</Text>
-                  <Ionicons name="chevron-down" size={16} color="#444" />
-                </TouchableOpacity>
+                <View style={{ position: 'relative', zIndex: 2001 }}>
+                  <TouchableOpacity 
+                    style={styles.filterDropdown} 
+                    onPress={() => {
+                      setShowSortDropdown(prev => !prev);
+                      setShowFilterDropdown(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.filterText}>{festivalSort === 'latest' ? 'Latest First' : 'Oldest First'}</Text>
+                    <Ionicons name={showSortDropdown ? "chevron-up" : "chevron-down"} size={16} color="#444" />
+                  </TouchableOpacity>
+
+                  {showSortDropdown && (
+                    <View style={styles.inlineDropdownMenu}>
+                      {[
+                        { label: 'Latest First', value: 'latest' },
+                        { label: 'Oldest First', value: 'oldest' },
+                      ].map((opt, idx) => {
+                        const isSelected = festivalSort === opt.value;
+                        return (
+                          <TouchableOpacity
+                            key={idx}
+                            style={[
+                              styles.inlineDropdownItem,
+                              isSelected && styles.inlineDropdownItemActive
+                            ]}
+                            onPress={() => {
+                              setFestivalSort(opt.value as any);
+                              setShowSortDropdown(false);
+                            }}
+                          >
+                            <Text 
+                              style={[
+                                styles.inlineDropdownText,
+                                isSelected && styles.inlineDropdownTextActive
+                              ]}
+                            >
+                              {opt.label}
+                            </Text>
+                            {isSelected && (
+                              <Ionicons name="checkmark" size={16} color="#FF6B00" />
+                            )}
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
               </View>
             );
           }
@@ -4812,69 +4929,7 @@ export default function CommunityDetailScreen() {
         </TouchableOpacity>
       </Modal>
 
-      <Modal
-        visible={showFilterDropdown}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowFilterDropdown(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-          <TouchableWithoutFeedback onPress={() => setShowFilterDropdown(false)}>
-            <View style={StyleSheet.absoluteFill} />
-          </TouchableWithoutFeedback>
-          <View style={[styles.twitterDropdownMenu, { top: 220, right: 20 }]} pointerEvents="auto"> 
-            <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled={true} keyboardShouldPersistTaps="handled">
-              {[
-                { label: 'All Festivals', value: null },
-                ...allFestivals.map(f => ({ label: f.name, value: f.name })),
-              ].filter((item, index, self) => self.findIndex(t => t.value === item.value) === index).map((opt, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.twitterDropdownItem}
-                  onPress={() => {
-                    setSelectedFestival(opt.value);
-                    setShowFilterDropdown(false);
-                  }}
-                >
-                  <Text style={styles.twitterDropdownText}>{opt.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
-      <Modal
-        visible={showSortDropdown}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowSortDropdown(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
-          <TouchableWithoutFeedback onPress={() => setShowSortDropdown(false)}>
-            <View style={StyleSheet.absoluteFill} />
-          </TouchableWithoutFeedback>
-          <View style={[styles.twitterDropdownMenu, { top: 400, right: 20 }]} pointerEvents="auto"> 
-            <ScrollView keyboardShouldPersistTaps="handled">
-              {[
-                { label: 'Latest First', value: 'latest' },
-                { label: 'Oldest First', value: 'oldest' },
-              ].map((opt, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.twitterDropdownItem}
-                  onPress={() => {
-                    setFestivalSort(opt.value as any);
-                    setShowSortDropdown(false);
-                  }}
-                >
-                  <Text style={styles.twitterDropdownText}>{opt.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* Apple Guideline 1.2 - Report Community Post Modal */}
       <ReportModal
@@ -5414,10 +5469,11 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 13, color: '#444', fontWeight: '600' },
 
   festivalTypeCard: { 
-    width: 115, 
-    padding: 16, 
+    width: 124, 
+    paddingHorizontal: 8,
+    paddingVertical: 14, 
     borderRadius: 24, 
-    marginRight: 16, 
+    marginRight: 14, 
     alignItems: 'center',
     shadowColor: '#FF6B00',
     shadowOffset: { width: 0, height: 8 },
@@ -5451,13 +5507,15 @@ const styles = StyleSheet.create({
   },
   festivalEventCount: { 
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.7)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12
+    borderRadius: 12,
+    maxWidth: '100%'
   },
   festivalEventCountNum: { fontSize: 18, fontWeight: '900', color: '#111' },
-  festivalEventCountText: { fontSize: 11, fontWeight: '700', color: '#FF6B00' },
+  festivalEventCountText: { fontSize: 11, fontWeight: '700', color: '#FF6B00', textAlign: 'center' },
 
   requestOwnerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   requestOwnerMeta: { flex: 1, marginLeft: 12 },
@@ -5798,5 +5856,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#0F1419',
     fontWeight: '600',
+  },
+  inlineDropdownMenu: {
+    position: 'absolute',
+    top: 38,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    width: 170,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    zIndex: 9999,
+    overflow: 'hidden',
+  },
+  inlineDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+  },
+  inlineDropdownItemActive: {
+    backgroundColor: '#FFF5EE',
+  },
+  inlineDropdownText: {
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '500',
+    flex: 1,
+  },
+  inlineDropdownTextActive: {
+    color: '#FF6B00',
+    fontWeight: '700',
   },
 });
