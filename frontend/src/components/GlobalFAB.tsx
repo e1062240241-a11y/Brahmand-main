@@ -398,19 +398,15 @@ export function GlobalFAB() {
               },
             ]}
           >
-            {/* Outer decorative ring */}
+            {/* Single continuous circular background surface */}
             <View 
-              style={[fabStyles.outerRing, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#FFEBEE' }]}
+              style={[fabStyles.menuCircle, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F', borderColor: '#FFCDD2' }]}
             >
-              {/* Inner circle with items */}
+              {/* Decorative dotted ring */}
               <View 
-                style={[fabStyles.innerCircle, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F' }]}
-              >
-                {/* Decorative dotted ring */}
-                <View 
-                  style={[fabStyles.dottedRing, (activeSOS || nearbySOSAlerts.length > 0) && { borderColor: 'rgba(255, 255, 255, 0.2)' }]} 
-                  pointerEvents="none"
-                />
+                style={[fabStyles.dottedRing, (activeSOS || nearbySOSAlerts.length > 0) && { borderColor: 'rgba(255, 255, 255, 0.25)' }]} 
+                pointerEvents="none"
+              />
 
                 {/* Menu items arranged in a circle */}
                 {[
@@ -426,9 +422,11 @@ export function GlobalFAB() {
                   const angleStep = (2 * Math.PI) / totalItems;
                   const startAngle = -Math.PI / 2; // Start from top
                   const angle = startAngle + index * angleStep;
-                  const radius = 120;
-                  const centerX = 180 - 40; // center of 360 - half of 80
-                  const centerY = 180 - 40 - 15; // Shift up by 15px for visual centering with text
+                  const radius = 118;
+                  const itemBgSize = 72;
+                  const itemBgRadius = 36;
+                  const centerX = 180 - itemBgSize / 2;
+                  const centerY = 180 - itemBgSize / 2 - 15;
                   const x = centerX + radius * Math.cos(angle);
                   const y = centerY + radius * Math.sin(angle);
 
@@ -446,10 +444,7 @@ export function GlobalFAB() {
                       ]}
                     >
                       <TouchableOpacity
-                        style={[
-                          fabStyles.menuItemButton,
-                          { backgroundColor: 'transparent', shadowOpacity: 0 }
-                        ]}
+                        style={fabStyles.menuItemButton}
                         activeOpacity={0.8}
                         disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
                         onPress={() => {
@@ -459,33 +454,27 @@ export function GlobalFAB() {
                           }, 200);
                         }}
                       >
-                        {item.key === 'myKrishna' ? (
-                           <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 80, height: 80 }} contentFit="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'festival' ? (
-                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 44, height: 44 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'kundli' ? (
-                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/tab-bar/hand_eye_phosphor.png')} style={{ width: 52, height: 52 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'brahmandPassport' ? (
-                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 62, height: 62 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'panchang' ? (
-                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : item.key === 'brahmandLibrary' ? (
-                          <ImageBackground source={require('../../assets/images/tab-bar/back.png')} style={{ alignSelf: 'stretch', height: 80, aspectRatio: 1, justifyContent: 'center', alignItems: 'center' }}>
-                            <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
-                          </ImageBackground>
-                        ) : (
-                          <Ionicons name={item.icon as any} size={28} color="#FFF" />
-                        )}
+                        <ImageBackground 
+                          source={require('../../assets/images/tab-bar/back.png')} 
+                          style={{ width: itemBgSize, height: itemBgSize, justifyContent: 'center', alignItems: 'center', borderRadius: itemBgRadius, overflow: 'hidden' }} 
+                          imageStyle={{ borderRadius: itemBgRadius, resizeMode: 'cover' }}
+                        >
+                          {item.key === 'myKrishna' ? (
+                            <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 48, height: 48 }} contentFit="contain" />
+                          ) : item.key === 'festival' ? (
+                            <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                          ) : item.key === 'kundli' ? (
+                            <Image source={require('../../assets/images/tab-bar/hand_eye_phosphor.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                          ) : item.key === 'brahmandPassport' ? (
+                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />
+                          ) : item.key === 'panchang' ? (
+                            <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 34, height: 34 }} resizeMode="contain" />
+                          ) : item.key === 'brahmandLibrary' ? (
+                            <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 34, height: 34 }} resizeMode="contain" />
+                          ) : (
+                            <Ionicons name={item.icon as any} size={28} color="#FFF" />
+                          )}
+                        </ImageBackground>
                       </TouchableOpacity>
                       <Text style={[fabStyles.menuItemLabel, (activeSOS || nearbySOSAlerts.length > 0) && { color: '#FFF' }]}>
                         {t(item.key)}
@@ -671,7 +660,6 @@ export function GlobalFAB() {
                   </Animated.View>
                 )}
               </View>
-            </View>
           </Animated.View>
         </TouchableOpacity>
       )}
@@ -717,30 +705,35 @@ const fabStyles = StyleSheet.create({
     elevation: 99,
   },
   menuContainer: {
-    width: 380,
-    height: 380,
+    width: 360,
+    height: 360,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  outerRing: {
-    width: 380,
-    height: 380,
-    borderRadius: 190,
-    backgroundColor: '#FFD5B8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FF7B00',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  innerCircle: {
+  menuCircle: {
     width: 360,
     height: 360,
     borderRadius: 180,
     backgroundColor: '#FFEEE7',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 123, 0, 0.2)',
     position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF7B00',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+        overflow: 'hidden',
+      },
+      android: {
+        borderWidth: 2,
+        borderColor: '#FFD5B8',
+        elevation: 4,
+      },
+    }),
   },
   dottedRing: {
     position: 'absolute',
@@ -750,26 +743,20 @@ const fabStyles = StyleSheet.create({
     height: 280,
     borderRadius: 140,
     borderWidth: 1,
-    borderColor: 'rgba(255, 123, 0, 0.15)',
-    borderStyle: 'dashed',
+    borderColor: 'rgba(255, 123, 0, 0.2)',
+    borderStyle: Platform.OS === 'android' ? 'solid' : 'dashed',
   },
   menuItem: {
     position: 'absolute',
-    width: 80,
+    width: 72,
     alignItems: 'center',
   },
   menuItemButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FF7B00',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF5100',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
   },
   menuItemSos: {
     backgroundColor: '#FF0000',
@@ -820,9 +807,9 @@ const fabStyles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#FF7B00',
     justifyContent: 'center',
     alignItems: 'center',
@@ -832,12 +819,13 @@ const fabStyles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8, // Reduced to prevent harsh black box shadow on Android
     zIndex: 99999, // Super high zIndex
-    borderWidth: 3,
+    borderWidth: 3.5,
     borderColor: '#FFD5B8',
   },
   fabIcon: {
-    width: 50,
-    height: 50,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   sosActiveView: { alignItems: 'center', padding: 12, justifyContent: 'center' },
   sosHeader: { alignItems: 'center', marginTop: -10 },

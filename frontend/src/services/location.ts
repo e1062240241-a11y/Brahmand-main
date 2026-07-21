@@ -47,11 +47,19 @@ export async function getCurrentPosition(options?: any): Promise<{ coords: { lat
     throw new Error('Location services are disabled');
   }
 
-  const loc = await Location.getCurrentPositionAsync(options || { 
-    accuracy: Location.Accuracy.Balanced,
-    timeout: 10000
-  });
-  return { coords: { latitude: loc.coords.latitude, longitude: loc.coords.longitude } };
+  try {
+    const loc = await Location.getCurrentPositionAsync(options || { 
+      accuracy: Location.Accuracy.Balanced,
+      timeout: 10000
+    });
+    return { coords: { latitude: loc.coords.latitude, longitude: loc.coords.longitude } };
+  } catch (err) {
+    const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
+    if (lastKnown) {
+      return { coords: { latitude: lastKnown.coords.latitude, longitude: lastKnown.coords.longitude } };
+    }
+    throw err;
+  }
 }
 
 export default {

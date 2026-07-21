@@ -59,6 +59,7 @@ import { ReportModal } from '../../src/components/ReportModal';
 import { blockUser, unblockUser, isUserBlocked, getUsersWhoBlockedMe } from '../../src/services/firebase/moderationService';
 import { useBlockStore } from '../../src/store/blockStore';
 import { useLanguageStore } from '../../src/utils/i18n';
+import { SafeVideoView, isPlayerValid } from '../../src/components/SafeVideoView';
 
 const DM_STRINGS = {
   en: {
@@ -205,7 +206,7 @@ const DMNativeVideoPlayer = React.memo(({
   });
 
   useEffect(() => {
-    if (player && isPlaying) {
+    if (isPlayerValid(player) && isPlaying) {
       try {
         player.play();
       } catch (e) {
@@ -217,7 +218,7 @@ const DMNativeVideoPlayer = React.memo(({
   // Clean up player on unmount to prevent audio leaks
   useEffect(() => {
     return () => {
-      if (player) {
+      if (isPlayerValid(player)) {
         try {
           player.pause();
         } catch (e) {}
@@ -225,18 +226,23 @@ const DMNativeVideoPlayer = React.memo(({
     };
   }, [player]);
 
-  if (!ExpoVideoModule?.VideoView || !player) {
-    return <View style={[style, { backgroundColor: '#1C1C1E' }]} />;
+  const fallback = <View style={[style, { backgroundColor: '#1C1C1E' }]} />;
+
+  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
+    return fallback;
   }
 
   return (
-    <ExpoVideoModule.VideoView
+    <SafeVideoView
+      key={uri}
       player={player}
+      ExpoVideoModule={ExpoVideoModule}
       style={style}
       contentFit={resizeMode}
       allowsPictureInPicture={false}
       nativeControls={true}
       playsInline
+      fallback={fallback}
     />
   );
 });

@@ -32,18 +32,15 @@ const CARD_COLORS = [
   '#CFD8DC', // Blue Grey
 ];
 
-import { FESTIVAL_IMAGE_MAP } from '../src/constants/festivalImages';
+import { FESTIVAL_IMAGE_MAP, getFestivalImage } from '../src/constants/festivalImages';
 
-const getFestivalImage = (name: string) => {
-  const fallback = require('../assets/images/traditional_diya_footer.png');
-  if (!name) return fallback;
-  // Try exact match
-  if (FESTIVAL_IMAGE_MAP[name]) return FESTIVAL_IMAGE_MAP[name];
-  
-  // Try partial case-insensitive match
-  const searchName = name.toLowerCase();
-  const key = Object.keys(FESTIVAL_IMAGE_MAP).find(k => searchName.includes(k.toLowerCase()) || k.toLowerCase().includes(searchName));
-  return key ? FESTIVAL_IMAGE_MAP[key] : fallback;
+const hexToRgba = (hex: string, alpha: number) => {
+  if (!hex || typeof hex !== 'string') return `rgba(255, 255, 255, ${alpha})`;
+  let c = hex.replace('#', '');
+  if (c.length === 3) c = c.split('').map(x => x + x).join('');
+  const num = parseInt(c, 16);
+  if (isNaN(num)) return `rgba(255, 255, 255, ${alpha})`;
+  return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
 };
 
 const formatFestivalDate = (dateStr: string) => {
@@ -182,30 +179,33 @@ const FestivalPage = () => {
         </View>
 
         <ScrollView 
-          style={styles.scrollView} 
+          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* White Hero Card */}
+          {/* Main Hero Banner / Card */}
           <View style={styles.heroCard}>
             <Text style={styles.statisticsLabel}>Discover</Text>
             <Text style={styles.heroTitle}>
               Hello {userName} 👋{'\n'}upcoming{'\n'}
               <Text style={styles.heroTitleBold}>festivals</Text>
             </Text>
-
+            
             <View style={styles.pillsRow}>
               <View style={styles.pill}>
                 <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
                 <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
               </View>
-              <View style={styles.arrowIconContainer}>
+              <TouchableOpacity 
+                style={styles.arrowIconContainer}
+                onPress={handleToggleAll}
+              >
                 <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
-              </View>
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Festival Cards with Background Images and Glass Design */}
+          {/* Festival Cards with Right Artwork Frame */}
           {festivals.map((festival, index) => {
             const color = CARD_COLORS[index % CARD_COLORS.length];
             const festivalName = festival.name || festival.festival_name || '';
@@ -218,29 +218,34 @@ const FestivalPage = () => {
                 style={{ marginBottom: 12 }}
                 onPress={() => router.push(`/festival-detail?index=${index}`)}
               >
-                {/* Inner View needed so overflow:hidden clips absolute Image on iOS */}
                 <View style={[styles.festivalCardContainer, { backgroundColor: color }]}>
+                  {/* Subtle background image watermark */}
                   <Image
                     source={festivalImg}
-                    style={[StyleSheet.absoluteFillObject, { opacity: 0.85 }]}
+                    style={[StyleSheet.absoluteFillObject, { opacity: 0.15 }]}
                     resizeMode="cover"
                   />
-                  <View style={styles.glassOverlay}>
+
+                  {/* Card Content Overlay */}
+                  <View style={styles.cardInnerPadding}>
                     <View style={styles.cardContent}>
                       <View style={styles.cardTextContainer}>
                         <Text style={styles.cardLabel}>Festival</Text>
                         <Text style={styles.cardName}>{festivalName}</Text>
                         <Text style={styles.cardDate}>{formatFestivalDate(festival.date)}</Text>
                       </View>
-                      <View style={styles.cardRight}>
-                        <View style={styles.festivalIconWrapper}>
+                      
+                      <View style={styles.cardRightSection}>
+                        <View style={styles.artworkBox}>
                           <Image
                             source={festivalImg}
-                            style={styles.festivalIconImage}
+                            style={styles.artworkImage}
                             resizeMode="cover"
                           />
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color="#000000" style={styles.chevronIcon} />
+                        <View style={styles.chevronWrapper}>
+                          <Ionicons name="chevron-forward" size={16} color="#000000" />
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -257,7 +262,6 @@ const FestivalPage = () => {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -280,7 +284,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   heroCard: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFFFFF',
     borderRadius: 36,
     padding: 28,
     marginBottom: 16,
@@ -309,11 +313,10 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F5',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    maxWidth: '70%',
   },
   pillText: {
     fontSize: 12,
@@ -326,7 +329,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F5F5F5',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -334,16 +337,13 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     overflow: 'hidden',
     minHeight: 120,
+    position: 'relative',
   },
-  festivalCard: {
-    borderRadius: 32,
-    minHeight: 120,
-  },
-  glassOverlay: {
+  cardInnerPadding: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    padding: 24,
+    padding: 20,
     justifyContent: 'center',
+    zIndex: 2,
   },
   cardContent: {
     flexDirection: 'row',
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#000000',
   },
@@ -373,27 +373,36 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginTop: 4,
   },
-  cardRight: {
+  cardRightSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  festivalIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  artworkBox: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    overflow: 'hidden',
     backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    elevation: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  artworkImage: {
+    width: '100%',
+    height: '100%',
+  },
+  chevronWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.8)',
-  },
-  festivalIconImage: {
-    width: 48,
-    height: 48,
-  },
-  chevronIcon: {
-    marginLeft: 12,
+    marginLeft: 10,
   },
   loadingContainer: {
     flex: 1,
