@@ -102,6 +102,7 @@
     "@babel/plugin-proposal-decorators": "^7.29.0",
     "@types/node": "^26.1.1",
     "@types/react": "~19.2.10",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "crypto-browserify": "^3.12.1",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~55.0.1",

@@ -126,7 +126,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // 1. Reset auth store state immediately so the UI responds instantly
     set({ user: null, token: null, isAuthenticated: false, fcmToken: null });
 
-    // 2. Perform backend API logout and Firebase sign out in the background (non-blocking)
+    // 2. Clear secure storage immediately (crucial for web so redirect reload doesn't restore session)
+    try {
+      await secureStorage.removeItem('auth_token');
+      await secureStorage.removeItem('user');
+    } catch (err) {
+      console.warn('[Auth] Failed to clear secure storage:', err);
+    }
+
+    // 3. Perform backend API logout and Firebase sign out in the background (non-blocking)
     if (token) {
       const { logoutUser } = require('../services/api');
       logoutUser(fcmToken).catch((apiErr: any) => {
@@ -143,7 +151,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('[Auth] Firebase signOut require failed:', error);
     }
 
-    // 3. Centralized redirect to index.tsx immediately
+    // 4. Centralized redirect to index.tsx immediately
     try {
       const { Platform } = require('react-native');
       if (Platform.OS === 'web') {
@@ -160,17 +168,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('[Auth] Failed to redirect to index route:', routerErr);
     }
 
-    // 4. Defer database resetting and storage clearing to a background task/timeout
+    // 5. Defer database resetting and storage clearing to a background task/timeout
     // This allows active UI screens to unmount and unsubscribe from WatermelonDB first,
     // avoiding UIKit transition issues and unexpected database subscriber error crashes.
     setTimeout(async () => {
-      // Clear secure storage
-      try {
-        await secureStorage.removeItem('auth_token');
-        await secureStorage.removeItem('user');
-      } catch (err) {
-        console.warn('[Auth] Failed to clear secure storage:', err);
-      }
+
 
       // Clear all local WatermelonDB database tables cleanly and fast using SQLite reset
       try {
