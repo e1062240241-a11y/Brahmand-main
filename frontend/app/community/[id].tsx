@@ -1102,7 +1102,6 @@ export default function CommunityDetailScreen() {
         user: { name: 'Gau Seva Samiti (Mock)', isVerified: true },
         content: 'Mock Seva: Volunteers Needed for Sunday Goshala Cleaning & Feeding Drive',
         description: 'Join us this Sunday morning from 8 AM to 11 AM at the local Goshala. Breakfast and refreshments will be provided.',
-        contact: '+919876543210',
         created_at: now,
         status: 'pending',
         sevaDetails: 'Bring comfortable clothes. Tools will be provided.',
@@ -2425,7 +2424,7 @@ export default function CommunityDetailScreen() {
 
               const isTempleUpdate = (item as any).category === 'Temple Updates';
 
-              if (!isTempleUpdate && !posterPhone) return null;
+              if (!posterPhone) return null;
 
               return (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, marginBottom: 4, gap: 10 }}>
@@ -2614,21 +2613,25 @@ export default function CommunityDetailScreen() {
         </View>
 
         <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
-          {/* Call button */}
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
-            onPress={() => handleCallPress(phone)}
-          >
-            <Ionicons name="call" size={18} color="#16A34A" />
-          </TouchableOpacity>
+          {phone ? (
+            <>
+              {/* Call button */}
+              <TouchableOpacity
+                style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
+                onPress={() => handleCallPress(phone)}
+              >
+                <Ionicons name="call" size={18} color="#16A34A" />
+              </TouchableOpacity>
 
-          {/* WhatsApp button */}
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
-            onPress={() => handleWhatsAppPress(phone, item.title || item.content || item.description)}
-          >
-            <FontAwesome5 name="whatsapp" size={18} color="#059669" />
-          </TouchableOpacity>
+              {/* WhatsApp button */}
+              <TouchableOpacity
+                style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
+                onPress={() => handleWhatsAppPress(phone, item.title || item.content || item.description)}
+              >
+                <FontAwesome5 name="whatsapp" size={18} color="#059669" />
+              </TouchableOpacity>
+            </>
+          ) : null}
 
           {/* Fulfill / Help Button */}
           <View style={{ flex: 1, marginHorizontal: 8 }}>
@@ -2788,18 +2791,22 @@ export default function CommunityDetailScreen() {
         </View>
 
         <View style={[styles.eventActionRow, { marginTop: 12, paddingHorizontal: 0 }]}>
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
-            onPress={() => handleCallPress(phone)}
-          >
-            <Ionicons name="call" size={18} color="#16A34A" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
-            onPress={() => handleWhatsAppPress(phone, item.title)}
-          >
-            <FontAwesome5 name="whatsapp" size={18} color="#059669" />
-          </TouchableOpacity>
+          {phone ? (
+            <>
+              <TouchableOpacity
+                style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
+                onPress={() => handleCallPress(phone)}
+              >
+                <Ionicons name="call" size={18} color="#16A34A" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
+                onPress={() => handleWhatsAppPress(phone, item.title)}
+              >
+                <FontAwesome5 name="whatsapp" size={18} color="#059669" />
+              </TouchableOpacity>
+            </>
+          ) : null}
 
           <View style={{ flex: 1, marginHorizontal: 8 }}>
             {item.user_id === user?.id || item.sender_id === user?.id ? (
@@ -3064,18 +3071,22 @@ export default function CommunityDetailScreen() {
           <View style={{ height: 1, backgroundColor: '#F0F0F0', marginVertical: 12 }} />
 
           <View style={[styles.eventActionRow, { marginTop: 0, paddingHorizontal: 0 }]}>
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
-            onPress={() => handleCallPress(phone)}
-          >
-            <Ionicons name="call" size={18} color="#16A34A" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
-            onPress={() => handleWhatsAppPress(phone, item.title || item.content)}
-          >
-            <FontAwesome5 name="whatsapp" size={18} color="#059669" />
-          </TouchableOpacity>
+          {phone ? (
+            <>
+              <TouchableOpacity
+                style={[styles.actionIconBtn, { backgroundColor: '#F0FDF4' }]}
+                onPress={() => handleCallPress(phone)}
+              >
+                <Ionicons name="call" size={18} color="#16A34A" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionIconBtn, { backgroundColor: '#ECFDF5' }]}
+                onPress={() => handleWhatsAppPress(phone, item.title || item.content)}
+              >
+                <FontAwesome5 name="whatsapp" size={18} color="#059669" />
+              </TouchableOpacity>
+            </>
+          ) : null}
 
           <View style={{ flex: 1, marginHorizontal: 8 }}>
             {item.user_id === user?.id || item.sender_id === user?.id ? (
@@ -4355,7 +4366,7 @@ export default function CommunityDetailScreen() {
             style={{ flex: 1 }}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
-              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); setSelectedMediaType(null); }}>
+              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); setSelectedMediaType(null); setContactNumber(''); setSevaDetails(''); }}>
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
 
@@ -4607,6 +4618,76 @@ export default function CommunityDetailScreen() {
                           }}
                         />
                       )}
+                    </View>
+                  )}
+
+                  {/* Contact Number for Call & WhatsApp */}
+                  {!!postCategory && (
+                    <View style={{ marginTop: 14, backgroundColor: 'rgba(255,255,255,0.7)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
+                        <Ionicons name="call-outline" size={16} color="#16A34A" />
+                        <FontAwesome5 name="whatsapp" size={15} color="#059669" />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F1419', fontFamily: FONTS.bold }}>
+                          {t('language') === 'hi' ? 'संपर्क / व्हाट्सएप नंबर (वैकल्पिक)' : 'Contact Number (Call & WhatsApp)'}
+                        </Text>
+                      </View>
+                      <TextInput
+                        style={{
+                          backgroundColor: '#FFF',
+                          borderRadius: 10,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          fontSize: 14,
+                          color: '#0F1419',
+                          borderWidth: 1,
+                          borderColor: '#E2E8F0',
+                          fontFamily: FONTS.regular,
+                        }}
+                        placeholder={t('language') === 'hi' ? 'फ़ोन नंबर दर्ज करें (उदा. +91 9876543210)' : 'Enter phone number (e.g. +91 9876543210)'}
+                        placeholderTextColor="#94A3B8"
+                        value={contactNumber}
+                        onChangeText={setContactNumber}
+                        keyboardType="phone-pad"
+                        disableFullscreenUI={true}
+                      />
+                      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4, fontFamily: FONTS.regular }}>
+                        {t('language') === 'hi'
+                          ? 'यह नंबर आपकी पोस्ट पर कॉल और व्हाट्सएप बटन दिखाएगा।'
+                          : 'Adding this will display Call and WhatsApp buttons on your post.'}
+                      </Text>
+                    </View>
+                  )}
+
+                  {/* Seva Details Input */}
+                  {postCategory === 'Seva' && (
+                    <View style={{ marginTop: 12, backgroundColor: 'rgba(255,255,255,0.7)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
+                        <Ionicons name="heart-outline" size={16} color="#E91E63" />
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F1419', fontFamily: FONTS.bold }}>
+                          {t('language') === 'hi' ? 'सेवा विवरण (वैकल्पिक)' : 'Seva Details (Optional)'}
+                        </Text>
+                      </View>
+                      <TextInput
+                        style={{
+                          backgroundColor: '#FFF',
+                          borderRadius: 10,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          fontSize: 14,
+                          color: '#0F1419',
+                          borderWidth: 1,
+                          borderColor: '#E2E8F0',
+                          minHeight: 50,
+                          textAlignVertical: 'top',
+                          fontFamily: FONTS.regular,
+                        }}
+                        placeholder={t('language') === 'hi' ? 'आवश्यक सेवा या समय विवरण दर्ज करें...' : 'Enter details of volunteer work needed, timing, etc.'}
+                        placeholderTextColor="#94A3B8"
+                        value={sevaDetails}
+                        onChangeText={setSevaDetails}
+                        multiline
+                        disableFullscreenUI={true}
+                      />
                     </View>
                   )}
                 </View>

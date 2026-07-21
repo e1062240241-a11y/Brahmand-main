@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView, BackHandler} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView, BackHandler, Keyboard} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS } from '../../src/constants/theme';
@@ -34,6 +34,30 @@ export default function CommunityRequestEmergencyPage() {
   const [showContactModal, setShowContactModal] = useState(false);
   
   const [contactNumber, setContactNumber] = useState(user?.phone || '');
+
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardVisible(true);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     if (user?.home_location) {
@@ -165,20 +189,6 @@ export default function CommunityRequestEmergencyPage() {
             {/* Hospital / Location */}
             <View style={styles.fieldSection}>
               <Text style={styles.fieldLabel}>Hospital / Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-              <View style={styles.searchInputContainer}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search hospital or location"
-                  placeholderTextColor="#999"
-                  value={hospitalName}
-                  onChangeText={(text) => {
-                    setHospitalName(text);
-                    setSelectedHospital(null);
-                  }}
-                />
-                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-              </View>
-              <Text style={styles.helperText}>Start typing to find the hospital</Text>
 
               {hospitalName.length >= 2 && !selectedHospital && (
                 <View style={styles.suggestionsCard}>
@@ -215,6 +225,21 @@ export default function CommunityRequestEmergencyPage() {
                   )}
                 </View>
               )}
+
+              <View style={styles.searchInputContainer}>
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search hospital or location"
+                  placeholderTextColor="#999"
+                  value={hospitalName}
+                  onChangeText={(text) => {
+                    setHospitalName(text);
+                    setSelectedHospital(null);
+                  }}
+                />
+                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+              </View>
+              <Text style={styles.helperText}>Start typing to find the hospital</Text>
             </View>
 
             {/* Urgency Level */}
@@ -281,6 +306,7 @@ export default function CommunityRequestEmergencyPage() {
             <View style={{ height: 40 }} />
           </KeyboardAwareScrollView>
         </View>
+        {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
       </KeyboardAvoidingView>
 
       {/* Emergency Type Modal */}
@@ -525,7 +551,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#F2F4FF',
-    marginTop: 4,
+    marginBottom: 8,
     maxHeight: 200,
     overflow: 'hidden',
     shadowColor: '#000',

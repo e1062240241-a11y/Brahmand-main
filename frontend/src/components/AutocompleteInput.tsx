@@ -39,7 +39,8 @@ interface AutocompleteInputProps extends Omit<TextInputProps, 'value' | 'onChang
   disableLocalFilter?: boolean; // If true, data is rendered as-is (e.g. parent pre-filtered it)
   showSuggestionsOnFocusEmpty?: boolean; // Show suggestions when input is empty and focused
   minimumQueryLength?: number; // Minimum query length to trigger search/filter
-  
+  forceShowAbove?: boolean; // If true, force dropdown above input box
+
   // Custom styles
   containerStyle?: ViewStyle;
   inputContainerStyle?: ViewStyle;
@@ -48,7 +49,7 @@ interface AutocompleteInputProps extends Omit<TextInputProps, 'value' | 'onChang
   itemStyle?: ViewStyle;
   itemTextStyle?: TextStyle;
   noResultsStyle?: TextStyle;
-  
+
   // Icons
   iconName?: keyof typeof Ionicons.glyphMap;
   iconColor?: string;
@@ -66,6 +67,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   disableLocalFilter = false,
   showSuggestionsOnFocusEmpty = false,
   minimumQueryLength = 1,
+  forceShowAbove = true,
   containerStyle,
   inputContainerStyle,
   inputStyle,
@@ -317,7 +319,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         {showSuggestions && (
           <View style={[
             styles.dropdown,
-            showAbove ? styles.dropdownAbove : styles.dropdownBelow,
+            (forceShowAbove || showAbove) ? styles.dropdownAbove : styles.dropdownBelow,
             dropdownStyle
           ]}>
             <ScrollView
