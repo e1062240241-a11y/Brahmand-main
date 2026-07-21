@@ -18,6 +18,7 @@ import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 import { useTranslation } from '../../src/utils/i18n';
+import { socketService } from '../../src/services/socket';
 
 const FEED_PAGE_SIZE = 7;
 
@@ -258,35 +259,45 @@ const PostScreen = () => {
     loadComments(post.id);
   }, [loadComments]);
 
-  // Poll comments in real-time when the comment modal is visible
+  // Listen for new comments via socket — no polling
   useEffect(() => {
     if (!commentModalVisible || !commentPost?.id) return;
+    const postId = String(commentPost.id);
+    const room = `post_${postId}`;
 
-    const interval = setInterval(async () => {
-      try {
-        const response = await getPostComments(String(commentPost.id), 200);
-        if (Array.isArray(response.data)) {
-          const comments = response.data;
-          const merged = [...comments];
-          keptComments.forEach(kc => {
-            if (kc && kc.id && !merged.some(c => c.id === kc.id)) {
-              merged.push(kc);
-            }
-          });
-          merged.sort((a, b) => {
-            const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
-            const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
-            return dateB - dateA;
-          });
-          setPostComments(merged);
-        }
-      } catch (error) {
-        console.warn('[Post Detail Comments Polling] Failed:', error);
-      }
-    }, 4000);
+    socketService.joinRoom(room).catch(() => {});
 
-    return () => clearInterval(interval);
-  }, [commentModalVisible, commentPost?.id, keptComments]);
+    const handleNewComment = (data: any) => {
+      if (String(data.post_id) !== postId) return;
+      const comment = data.comment;
+      if (!comment) return;
+      setPostComments(prev => {
+        if (prev.some(c => c.id === comment.id)) return prev;
+        const merged = [...prev, comment];
+        merged.sort((a: any, b: any) => {
+          const dateA = new Date(a.created_at || a.createdAt || 0).getTime();
+          const dateB = new Date(b.created_at || b.createdAt || 0).getTime();
+          return dateB - dateA;
+        });
+        return merged;
+      });
+      setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: data.comments_count || p.comments_count } : p));
+    };
+    const handleCommentDeleted = (data: any) => {
+      if (String(data.post_id) !== postId) return;
+      setPostComments(prev => prev.filter(c => c.id !== data.comment_id));
+      setFeedPosts(prev => prev.map(p => p.id === postId ? { ...p, comments_count: data.comments_count || p.comments_count } : p));
+    };
+
+    socketService.onEvent('new_comment', handleNewComment);
+    socketService.onEvent('comment_deleted', handleCommentDeleted);
+
+    return () => {
+      socketService.offEvent('new_comment', handleNewComment);
+      socketService.offEvent('comment_deleted', handleCommentDeleted);
+      socketService.leaveRoom(room);
+    };
+  }, [commentModalVisible, commentPost?.id]);
 
   const handleSubmitComment = useCallback(async () => {
     if (!commentPost?.id || !commentText.trim()) return;

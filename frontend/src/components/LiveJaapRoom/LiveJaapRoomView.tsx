@@ -20,14 +20,35 @@ import { BlurView } from 'expo-blur';
 import Svg, { Defs, RadialGradient, Rect, Stop, Path } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, AppStateStatus, useColorScheme } from 'react-native';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedIndex } from '../../features/live-mantra/schedule';
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
 import { socketService } from '../../services/socket';
 import api from '../../services/api';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+const LiveCountdown = React.memo(({ targetDate }: { targetDate: Date | null }) => {
+  const [diff, setDiff] = useState(0);
+  useEffect(() => {
+    if (!targetDate) return;
+    const tick = () => setDiff(targetDate.getTime() - Date.now());
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [targetDate]);
+  if (diff <= 0) return <Text style={styles.countdownTimerText}>00:00:00</Text>;
+  const hrs = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  return (
+    <Text style={styles.countdownTimerText}>
+      {`${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`}
+    </Text>
+  );
+});
 
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
   gayatri: {
@@ -275,14 +296,13 @@ export default function LiveJaapRoomView() {
     }
   };
   
-  const [now, setNow] = useState(new Date());
   const [personalCount, setPersonalCount] = useState(0);
   const lastTimeRef = useRef(0);
   const accumulatedTimeRef = useRef(0);
 
   const currentSlotId = useMemo(() => {
-    return getSlotId(now, mantraType || 'gayatri');
-  }, [now, mantraType]);
+    return getSlotId(new Date(), mantraType || 'gayatri');
+  }, [mantraType]);
 
   const { countKey, accKey } = useMemo(() => {
     const prefix = mantraType === 'hanuman' ? '@hanuman_jaap' : `@jaap_${mantraType || 'gayatri'}`;
@@ -313,13 +333,19 @@ export default function LiveJaapRoomView() {
     });
   }, [countKey, accKey]);
 
+  const isFocused = useIsFocused();
+  const appStateRef = useRef(AppState.currentState);
+
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
+    const handleAppStateChange = (state: AppStateStatus) => {
+      appStateRef.current = state;
+    };
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+    return () => sub.remove();
   }, []);
 
-  const hanumanStatus = getCurrentHanumanStatus(now);
-  const otherStatus = getCurrentOtherJaapStatus(now, mantraType);
+  const hanumanStatus = getCurrentHanumanStatus(new Date());
+  const otherStatus = getCurrentOtherJaapStatus(new Date(), mantraType);
 
   const isHanuman = mantraType === 'hanuman';
   const isKedarnath = mantraType === 'kedarnath';
@@ -364,9 +390,8 @@ export default function LiveJaapRoomView() {
     return 1200 + Math.floor(Math.random() * 301);
   });
   const joinTimeRef = useRef(Date.now());
-  const glowOpacity = useRef(new Animated.Value(0.3)).current;
+  const lastSavedSecRef = useRef<number>(-1);
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
-  const upcomingFade = useRef(new Animated.Value(0)).current;
   
   // Scroller Animators
   const soloMoveAnim = useRef(new Animated.Value(100)).current;
@@ -563,12 +588,15 @@ export default function LiveJaapRoomView() {
         if (diff > 0 && diff < 2.0) {
           accumulatedTimeRef.current += diff;
 
-          if (Math.floor(accumulatedTimeRef.current) % 10 === 0) {
+          const sec = Math.floor(accumulatedTimeRef.current);
+          if (sec > 0 && sec % 10 === 0 && sec !== lastSavedSecRef.current) {
+            lastSavedSecRef.current = sec;
             AsyncStorage.setItem(accKeyRef.current, accumulatedTimeRef.current.toString());
           }
           const threshold = isHanuman ? 961.39 : totalDuration;
           if (accumulatedTimeRef.current >= threshold) {
             accumulatedTimeRef.current = Math.max(0, accumulatedTimeRef.current - threshold);
+            lastSavedSecRef.current = -1;
             AsyncStorage.setItem(accKeyRef.current, accumulatedTimeRef.current.toString());
             setPersonalCount(prev => {
               const next = prev + 1;
@@ -766,22 +794,7 @@ export default function LiveJaapRoomView() {
     return () => clearInterval(interval);
   }, [isSessionActive, mantraType]);
 
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 0.9, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 0.3, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    ).start();
 
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(upcomingFade, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(upcomingFade, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.delay(1600),
-      ])
-    ).start();
-  }, []);
 
   const navigation = useNavigation();
   const allowedToRemoveRef = useRef(false);
@@ -987,7 +1000,7 @@ export default function LiveJaapRoomView() {
                         ? hanumanStatus.nextSessionStart 
                         : ((!isHanuman && !otherStatus.isActive) ? otherStatus.nextSessionStart : null);
                       if (!nextStart) return '00:00:00';
-                      const diffMs = nextStart.getTime() - now.getTime();
+                      const diffMs = nextStart.getTime() - Date.now();
                       if (diffMs <= 0) return '00:00:00';
                       const hrs = Math.floor(diffMs / 3600000);
                       const mins = Math.floor((diffMs % 3600000) / 60000);
@@ -1152,7 +1165,7 @@ export default function LiveJaapRoomView() {
                     <Text style={styles.metricValueNew}>{(() => {
                         const nextEnd = (isHanuman && hanumanStatus.isActive) ? hanumanStatus.sessionEnd : (otherStatus.isActive ? otherStatus.sessionEnd : null);
                         if (!nextEnd) return '0h 0m';
-                        const diffMs = nextEnd.getTime() - now.getTime();
+                        const diffMs = nextEnd.getTime() - Date.now();
                         if (diffMs <= 0) return '0h 0m';
                         const hrs = Math.floor(diffMs / 3600000);
                         const mins = Math.floor((diffMs % 3600000) / 60000);

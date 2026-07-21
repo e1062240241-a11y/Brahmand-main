@@ -376,11 +376,7 @@ export default function LiveJaapRoomView() {
     return 1200 + Math.floor(Math.random() * 301);
   });
   const joinTimeRef = useRef(Date.now());
-  const glowOpacity = useRef(new Animated.Value(0.3)).current;
   const activeIndexAnim = useRef(new Animated.Value(0)).current;
-  const upcomingFade = useRef(new Animated.Value(0)).current;
-  const glowAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-  const fadeAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   
   // Scroller Animators
   const soloMoveAnim = useRef(new Animated.Value(100)).current;
@@ -557,6 +553,8 @@ export default function LiveJaapRoomView() {
     ]).start();
   }, [activeLineKey, mantraType]);
 
+  const lastSavedSecRef = useRef<number>(-1);
+
   // Accumulate native playback time
   useEffect(() => {
     if (audioStatus) {
@@ -580,13 +578,16 @@ export default function LiveJaapRoomView() {
       if (diff > 0 && diff < 3.0) {
         accumulatedTimeRef.current += diff;
 
-        if (Math.floor(accumulatedTimeRef.current) % 10 === 0) {
+        const sec = Math.floor(accumulatedTimeRef.current);
+        if (sec > 0 && sec % 10 === 0 && sec !== lastSavedSecRef.current) {
+          lastSavedSecRef.current = sec;
           AsyncStorage.setItem(accKeyRef.current, accumulatedTimeRef.current.toString());
         }
         
         const threshold = isHanuman ? 961.39 : totalDuration;
         if (accumulatedTimeRef.current >= threshold) {
           accumulatedTimeRef.current = Math.max(0, accumulatedTimeRef.current - threshold);
+          lastSavedSecRef.current = -1;
           AsyncStorage.setItem(accKeyRef.current, accumulatedTimeRef.current.toString());
           setPersonalCount(prev => {
             const next = prev + 1;
@@ -727,8 +728,8 @@ export default function LiveJaapRoomView() {
           interruptionMode: 'doNotMix',
           shouldRouteThroughEarpiece: false,
           shouldPlayInBackground: true,
-          allowsRecording: true,
-          allowsBackgroundRecording: true,
+          allowsRecording: isMicEnabled,
+          allowsBackgroundRecording: isMicEnabled,
         });
       } catch (error) {
         console.warn('Failed to set audio mode in LiveJaapRoom:', error);
@@ -736,45 +737,11 @@ export default function LiveJaapRoomView() {
     };
     initAudioMode();
 
-    glowAnimRef.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowOpacity, { toValue: 0.9, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(glowOpacity, { toValue: 0.3, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    );
-    fadeAnimRef.current = Animated.loop(
-      Animated.sequence([
-        Animated.timing(upcomingFade, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(upcomingFade, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.delay(1600),
-      ])
-    );
-
-    if (AppState.currentState === 'active') {
-      glowAnimRef.current.start();
-      fadeAnimRef.current.start();
+    if (initialMic === 'true') {
+      setupAgora();
     }
-
-    setupAgora();
     return () => {
-      glowAnimRef.current?.stop();
-      fadeAnimRef.current?.stop();
       cleanupAgora();
-    };
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        glowAnimRef.current?.start();
-        fadeAnimRef.current?.start();
-      } else {
-        glowAnimRef.current?.stop();
-        fadeAnimRef.current?.stop();
-      }
-    });
-    return () => {
-      subscription.remove();
     };
   }, []);
 
@@ -982,12 +949,13 @@ export default function LiveJaapRoomView() {
           console.warn('[Agora] error code:', err, msg);
         }
       });
-      await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+      const role = isMicEnabled ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience;
+      await engine.current.setClientRole(role);
       await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
-        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+        clientRoleType: role,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
-        publishMicrophoneTrack: false, // Dummy mic: do not publish audio
-        autoSubscribeAudio: false,     // Dummy mic: do not subscribe to others
+        publishMicrophoneTrack: isMicEnabled,
+        autoSubscribeAudio: false,
       });
     } catch (error) {
       console.warn('[Agora] setup error:', error);
@@ -1015,24 +983,56 @@ export default function LiveJaapRoomView() {
   };
 
   const toggleMic = async () => {
-    if (isMicEnabled) {
-      setIsMicEnabled(false);
-      setMicStatus(t('language') === 'hi' ? 'माइक बंद है' : 'Muted');
-    } else {
-      setIsMicEnabled(true);
-      setMicStatus(t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active');
+    const nextMicState = !isMicEnabled;
+    setIsMicEnabled(nextMicState);
+    setMicStatus(nextMicState ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+
+    try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: 'doNotMix',
+        shouldRouteThroughEarpiece: false,
+        shouldPlayInBackground: true,
+        allowsRecording: nextMicState,
+        allowsBackgroundRecording: nextMicState,
+      });
+    } catch (err) {
+      console.warn('Failed to update audio mode:', err);
+    }
+
+    if (agoraJoinedRef.current) {
+      try {
+        if (nextMicState) {
+          await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+          await engine.current.enableLocalAudio(true);
+          await engine.current.muteLocalAudioStream(false);
+        } else {
+          await engine.current.muteLocalAudioStream(true);
+          await engine.current.enableLocalAudio(false);
+          await engine.current.setClientRole(ClientRoleType.ClientRoleAudience);
+        }
+      } catch (e) {
+        console.warn('[Agora] toggleMic error:', e);
+      }
     }
   };
 
   const addReaction = (emoji: string, broadcast = true) => {
     const id = Date.now() + Math.random();
     const anim = new Animated.Value(0);
-    setReactions(prev => [...prev, { id, emoji, anim }]);
+    setReactions(prev => {
+      const updated = [...prev, { id, emoji, anim }];
+      return updated.slice(-15);
+    });
     
     if (broadcast && streamIdRef.current !== null) {
-      const message = JSON.stringify({ type: 'reaction', emoji });
-      const data = new TextEncoder().encode(message);
-      engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
+      try {
+        const message = JSON.stringify({ type: 'reaction', emoji });
+        const data = new TextEncoder().encode(message);
+        engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
+      } catch (e) {
+        console.warn('[Agora] sendStreamMessage failed:', e);
+      }
     }
 
     Animated.timing(anim, {
