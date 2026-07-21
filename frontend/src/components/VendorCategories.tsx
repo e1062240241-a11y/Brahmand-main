@@ -99,11 +99,12 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
 
   const renderItem = (category: string, index: number) => {
     const isActive = activeCategory?.toLowerCase() === category.toLowerCase();
-    const finalImageSize = Platform.OS === 'android' ? 28 : imageSize;
+    const finalImageSize = Platform.OS === 'android' ? 26 : imageSize;
     
     return (
       <TouchableOpacity
         key={`${category}-${index}`}
+        activeOpacity={0.8}
         style={[
           styles.categoryItem,
           isActive && styles.activeItem,
@@ -111,31 +112,34 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
         ]}
         onPress={() => handlePress(category)}
       >
-        {Platform.OS === 'android' ? (
-          <ExpoImage
-            source={getCategoryIconSource(category)}
-            style={[
-              { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FF8D57' : tintColor },
-              styles.image
-            ]}
-            contentFit="contain"
-          />
-        ) : (
-          <Image
-            source={getCategoryIconSource(category)}
-            style={[
-              { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FF8D57' : tintColor },
-              styles.image
-            ]}
-            resizeMode="contain"
-          />
-        )}
+        <View style={[styles.iconCircle, isActive && styles.activeIconCircle]}>
+          {Platform.OS === 'android' ? (
+            <ExpoImage
+              source={getCategoryIconSource(category)}
+              style={[
+                { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FFFFFF' : '#FF6B00' },
+                styles.image
+              ]}
+              contentFit="contain"
+            />
+          ) : (
+            <Image
+              source={getCategoryIconSource(category)}
+              style={[
+                { width: finalImageSize, height: finalImageSize, tintColor: isActive ? '#FFFFFF' : '#FF6B00' },
+                styles.image
+              ]}
+              resizeMode="contain"
+            />
+          )}
+        </View>
         <Text 
           style={[
             styles.categoryText,
             isActive && styles.activeText,
             textStyle
           ]}
+          numberOfLines={1}
         >
           {category}
         </Text>
@@ -160,11 +164,12 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
 
 const styles = StyleSheet.create({
   horizontalContainer: {
-    marginHorizontal: 24,
-    marginBottom: 24,
+    marginHorizontal: 16,
+    marginBottom: 20,
+    marginTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
   },
   gridContainer: {
     flexDirection: 'row',
@@ -176,22 +181,43 @@ const styles = StyleSheet.create({
   },
   categoryItem: {
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   activeItem: {
-    opacity: 0.9,
+    opacity: 0.95,
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFE2D5',
+    shadowColor: '#D35400',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  activeIconCircle: {
+    backgroundColor: '#FF6B00',
+    borderColor: '#FF6B00',
   },
   image: {
     // Standard constraints
   },
   categoryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#000000',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#2D1810',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
   activeText: {
-    color: '#FF8D57',
+    color: '#FF6B00',
   },
 });
 

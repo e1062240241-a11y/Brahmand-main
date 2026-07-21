@@ -17,6 +17,7 @@ import {
   AppState,
   Keyboard,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -30,6 +31,9 @@ import { useAuthStore } from '../store/authStore';
 import { socketService } from '../services/socket';
 
 export function GlobalFAB() {
+  const { width: windowWidth } = useWindowDimensions();
+  const scaleFactor = Platform.OS === 'android' ? Math.min(1, (windowWidth * 0.95) / 360) : 1;
+
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -39,6 +43,13 @@ export function GlobalFAB() {
   const fabItemAnims = useRef(
     Array.from({ length: 7 }, () => new Animated.Value(0))
   ).current;
+
+  const scaledScale = Platform.OS === 'android'
+    ? fabScale.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, scaleFactor],
+      })
+    : fabScale;
 
   const { t } = useTranslation();
   const { user } = useAuthStore();
@@ -393,7 +404,7 @@ export function GlobalFAB() {
             style={[
               fabStyles.menuContainer,
               {
-                transform: [{ scale: fabScale }],
+                transform: [{ scale: scaledScale }],
                 opacity: fabScale,
               },
             ]}
@@ -402,11 +413,6 @@ export function GlobalFAB() {
             <View 
               style={[fabStyles.menuCircle, (activeSOS || nearbySOSAlerts.length > 0) && { backgroundColor: '#D32F2F', borderColor: '#FFCDD2' }]}
             >
-              {/* Decorative dotted ring */}
-              <View 
-                style={[fabStyles.dottedRing, (activeSOS || nearbySOSAlerts.length > 0) && { borderColor: 'rgba(255, 255, 255, 0.25)' }]} 
-                pointerEvents="none"
-              />
 
                 {/* Menu items arranged in a circle */}
                 {[
@@ -422,11 +428,11 @@ export function GlobalFAB() {
                   const angleStep = (2 * Math.PI) / totalItems;
                   const startAngle = -Math.PI / 2; // Start from top
                   const angle = startAngle + index * angleStep;
-                  const radius = 118;
-                  const itemBgSize = 72;
-                  const itemBgRadius = 36;
-                  const centerX = 180 - itemBgSize / 2;
-                  const centerY = 180 - itemBgSize / 2 - 15;
+                  const radius = 112;
+                  const itemSize = 70;
+                  const itemRadius = 35;
+                  const centerX = 180 - itemSize / 2;
+                  const centerY = 180 - itemSize / 2 - 10;
                   const x = centerX + radius * Math.cos(angle);
                   const y = centerY + radius * Math.sin(angle);
 
@@ -436,7 +442,7 @@ export function GlobalFAB() {
                       style={[
                         fabStyles.menuItem,
                         {
-                          left: x,
+                          left: x - 5,
                           top: y,
                           transform: [{ scale: fabItemAnims[index] }],
                           opacity: (activeSOS || nearbySOSAlerts.length > 0) ? 0.35 : fabItemAnims[index],
@@ -456,8 +462,8 @@ export function GlobalFAB() {
                       >
                         <ImageBackground 
                           source={require('../../assets/images/tab-bar/back.png')} 
-                          style={{ width: itemBgSize, height: itemBgSize, justifyContent: 'center', alignItems: 'center', borderRadius: itemBgRadius, overflow: 'hidden' }} 
-                          imageStyle={{ borderRadius: itemBgRadius, resizeMode: 'cover' }}
+                          style={{ width: itemSize, height: itemSize, justifyContent: 'center', alignItems: 'center', borderRadius: itemRadius, overflow: 'hidden' }} 
+                          imageStyle={{ borderRadius: itemRadius, resizeMode: 'cover' }}
                         >
                           {item.key === 'myKrishna' ? (
                             <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 48, height: 48 }} contentFit="contain" />
@@ -641,7 +647,7 @@ export function GlobalFAB() {
                     ]}
                   >
                     <TouchableOpacity
-                      style={fabStyles.centerButtonInner}
+                      style={fabStyles.centerButtonOuterRing}
                       activeOpacity={0.85}
                       onPress={() => {
                         toggleFab();
@@ -650,11 +656,9 @@ export function GlobalFAB() {
                         }, 200);
                       }}
                     >
-                      <Image
-                        source={require('../../assets/images/sos_icon_3.png')}
-                        style={{ width: 102, height: 102, borderRadius: 51, alignSelf: 'center' }}
-                        resizeMode="contain"
-                      />
+                      <View style={fabStyles.sosRedButton}>
+                        <Text style={fabStyles.sosRedText}>SOS</Text>
+                      </View>
                     </TouchableOpacity>
                     <Text style={fabStyles.centerLabel}>SOS</Text>
                   </Animated.View>
@@ -714,9 +718,9 @@ const fabStyles = StyleSheet.create({
     width: 360,
     height: 360,
     borderRadius: 180,
-    backgroundColor: '#FFEEE7',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 123, 0, 0.2)',
+    backgroundColor: '#FFEFE8',
+    borderWidth: 7,
+    borderColor: '#FFD5B8',
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
@@ -729,32 +733,19 @@ const fabStyles = StyleSheet.create({
         overflow: 'hidden',
       },
       android: {
-        borderWidth: 2,
-        borderColor: '#FFD5B8',
         elevation: 4,
       },
     }),
   },
-  dottedRing: {
-    position: 'absolute',
-    top: 40,
-    left: 40,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 123, 0, 0.2)',
-    borderStyle: Platform.OS === 'android' ? 'solid' : 'dashed',
-  },
   menuItem: {
     position: 'absolute',
-    width: 72,
+    width: 80,
     alignItems: 'center',
   },
   menuItemButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -772,37 +763,57 @@ const fabStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#000000',
     textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 13,
+    marginTop: 3,
+    lineHeight: 12,
+    width: 80,
   },
   centerButton: {
     position: 'absolute',
-    left: 126,
-    top: 112,
+    left: 136,
+    top: 126,
     alignItems: 'center',
-    width: 108,
+    width: 88,
   },
-  centerButtonInner: {
-    width: 108,
-    height: 108,
-    borderRadius: 54,
-    backgroundColor: '#FFF',
+  centerButtonOuterRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#FFE3E3',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#FF7B00',
+    borderWidth: 2,
+    borderColor: '#FFCDD2',
+    shadowColor: '#FF1744',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 3,
-    borderColor: '#FFD5B8',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  sosRedButton: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#FF2A2A',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#D32F2F',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  sosRedText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   centerLabel: {
     fontSize: 10,
     fontWeight: '700',
     color: '#000000',
     textAlign: 'center',
-    marginTop: 4,
+    marginTop: 3,
   },
   fab: {
     position: 'absolute',

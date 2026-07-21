@@ -140,6 +140,8 @@ export const MentionInput = ({
         autoFocus={autoFocus}
         onFocus={onFocus}
         onBlur={onBlur}
+        disableFullscreenUI={true}
+        textAlignVertical={multiline ? 'top' : 'center'}
       />
     </View>
   );

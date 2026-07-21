@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, StyleSheet, Alert, KeyboardAvoidingView, Platform, Keyboard} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { searchByHashtag, getPostComments, addPostComment, deletePostComment } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
 import { PostFeedCard } from '../../src/components/PostFeedCard';
@@ -14,6 +14,7 @@ import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrol
 
 
 const HashtagPage = () => {
+  const insets = useSafeAreaInsets();
   const { tag } = useLocalSearchParams<{ tag: string | string[] }>();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -317,7 +318,7 @@ const HashtagPage = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={0}
         >
-          <View style={[styles.bottomSheet, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : SPACING.xl }]}>
+          <View style={[styles.bottomSheet, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : SPACING.xl }]}>
             <View style={styles.bottomSheetHandle} />
             <View style={styles.commentSheetHeader}>
               <Text style={styles.bottomSheetTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
@@ -507,7 +508,7 @@ const HashtagPage = () => {
                 )}
               </TouchableOpacity>
             </View>
-            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
           </View>
         </KeyboardAvoidingView>
       </Modal>

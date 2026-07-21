@@ -660,7 +660,7 @@ const PostScreen = () => {
               setReplyingToComment(null);
             }}
           />
-          <View style={[styles.commentModalSheet, { paddingBottom: keyboardVisible ? 8 : (Platform.OS === 'ios' ? SPACING.lg : SPACING.md) }]}>
+          <View style={[styles.commentModalSheet, { paddingBottom: keyboardVisible ? 8 : (Platform.OS === 'ios' ? SPACING.lg : Math.max(insets.bottom, 12)) }]}>
             <View style={styles.commentModalHeader}>
               <Text style={styles.commentModalTitle}>{t('comments')} ({commentPost?.comments_count ?? postComments.length ?? 0})</Text>
               <TouchableOpacity
@@ -847,7 +847,7 @@ const PostScreen = () => {
                 )}
               </TouchableOpacity>
             </View>
-            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
             {Platform.OS === 'android' && (
               <ReportModal
                 visible={reportCommentModalVisible}

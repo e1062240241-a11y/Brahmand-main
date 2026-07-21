@@ -1935,7 +1935,7 @@ export default function ProfileScreen() {
                     </View>
                   )}
 
-                  <View style={[styles.commentInputContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : Math.max(insets.bottom, 12) }]}>
+                  <View style={[styles.commentInputContainer, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : Math.max(insets.bottom, 12) }]}>
                     <Avatar name={user?.name || 'User'} photo={user?.photo} size={32} />
                     <MentionInput
                       value={commentText}
@@ -1956,7 +1956,7 @@ export default function ProfileScreen() {
                       </Text>
                     </TouchableOpacity>
                   </View>
-                  {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+                  {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
                 </View>
               </KeyboardAvoidingView>
             </Modal>

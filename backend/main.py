@@ -8802,7 +8802,15 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
         'kyc_submitted_at': None,
         'kyc_verified_at': None,
         'kyc_rejection_reason': None,
-        'is_verified': False
+        'is_verified': False,
+        'kyc_aadhaar_number': None,
+        'kyc_aadhaar_reference_id': None,
+        'kyc_aadhaar_otp_requested_at': None,
+        'kyc_aadhaar_otp_verified': False,
+        'kyc_aadhaar_otp_verified_at': None,
+        'kyc_request_no': None,
+        'kyc_match_distance': None,
+        'kyc_match_reason': None
     })
 
     # Remove verified badges
@@ -8811,6 +8819,15 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
     updated_badges = [b for b in current_badges if b not in badges_to_remove]
     if len(updated_badges) != len(current_badges):
         await db.update_document('users', user_id, {'badges': updated_badges})
+
+    # Delete any kyc_submissions records for this user
+    for field in ['user_id', 'owner_id']:
+        try:
+            kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', user_id)])
+            for doc in (kyc_docs or []):
+                await db.delete_document('kyc_submissions', doc.get('id'))
+        except Exception as e:
+            logger.warning(f"Error deleting kyc_submissions for user {user_id}: {e}")
 
     # If the user is a vendor, also reset the vendor profile kyc status
     if target_user.get('is_vendor') or target_user.get('vendor_id'):
@@ -8826,7 +8843,12 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
                     'kyc_status': None,
                     'kyc_reviewed_by': None,
                     'kyc_reviewed_at': None,
-                    'kyc_rejection_reason': None
+                    'kyc_rejection_reason': None,
+                    'kyc_request_no': None,
+                    'aadhar_url': None,
+                    'pan_url': None,
+                    'face_scan_url': None,
+                    'aadhaar_otp_verified_at': None
                 })
                 # Remove from vendor admin reviews
                 try:
@@ -8834,8 +8856,21 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
                 except Exception:
                     pass
 
+    # Notify the user about KYC deletion/reset
+    try:
+        await NotificationService.create_notification(
+            user_id=user_id,
+            title='KYC Request Cleared',
+            body='Your KYC verification request has been cleared by admin. You can submit a new request if needed.',
+            notification_type=NotificationService.TYPE_VERIFICATION,
+            data={'kyc_status': None, 'action': 'kyc_deleted'}
+        )
+    except Exception as notify_err:
+        logger.warning(f"KYC deleted notification failed for user {user_id}: {notify_err}")
+
     logger.info(f"KYC deleted/reset for user {user_id}")
     return {"message": "User KYC deleted and reset successfully"}
+
 
 
 @api_router.get("/admin/kyc/pending")

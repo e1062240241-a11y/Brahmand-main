@@ -1135,7 +1135,7 @@ const UserProfileScreen = () => {
           setReplyingToComment(null);
         }}
       />
-      <View style={[styles.commentModalSheet, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : 12) : (insets.bottom + 10) }]}>
+      <View style={[styles.commentModalSheet, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : (insets.bottom + 10) }]}>
         <View style={styles.bottomSheetHandle} />
         <View style={styles.commentModalHeader}>
           <Text style={styles.commentModalTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
@@ -1323,7 +1323,7 @@ const UserProfileScreen = () => {
             <Text style={styles.commentSubmitText}>{commentSubmitting ? '...' : 'Post'}</Text>
           </TouchableOpacity>
         </View>
-        {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
+        {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
         {Platform.OS === 'android' && (
           <ReportModal
             visible={reportCommentModalVisible}

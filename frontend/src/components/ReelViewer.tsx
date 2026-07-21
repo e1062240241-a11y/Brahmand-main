@@ -44,7 +44,7 @@ import { MentionInput } from './MentionInput';
 import { MentionText } from './MentionText';
 import * as Clipboard from 'expo-clipboard';
 import { Share, KeyboardAvoidingView, Keyboard } from 'react-native';
-import { SafeVideoView, isPlayerValid } from './SafeVideoView';
+import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from './SafeVideoView';
 import { useTranslation } from '../utils/i18n';
 
 let ExpoVideoModule: any = null;
@@ -55,11 +55,6 @@ try {
 }
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const useSafeVideoPlayer = (source: string | null, setup: (player: any) => void) => {
-  if (!ExpoVideoModule?.useVideoPlayer) return null;
-  return ExpoVideoModule.useVideoPlayer(source, setup);
-};
 
 const NativeVideoPlayer = React.memo(({
   mediaUrl,
