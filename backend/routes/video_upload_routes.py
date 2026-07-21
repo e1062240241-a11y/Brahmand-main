@@ -177,7 +177,6 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
     command = [
         FFMPEG_BIN,
         "-y",
-        "-threads", "0",
         "-i",
         input_path,
         "-vf",
