@@ -184,7 +184,7 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
         "-c:v",
         "libx264",
         "-preset",
-        "ultrafast",     # Ultrafast encoding for best responsiveness
+        "fast",     # Faster encoding for better responsiveness
         "-crf",
         "28",       # Slightly higher compression to reduce buffering lag
         "-profile:v",

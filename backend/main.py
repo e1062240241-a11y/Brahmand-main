@@ -944,10 +944,9 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     }
 
 
-async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: dict = None):
+async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str):
     """Upsert vendor review snapshot used by future admin panel."""
-    if not vendor:
-        vendor = await db.get_document('vendors', vendor_id)
+    vendor = await db.get_document('vendors', vendor_id)
     if not vendor:
         return
 
@@ -3061,31 +3060,24 @@ async def _upload_post_impl(
                 content_type = 'video/mp4'
                 base_url = str(request.base_url)
                 try:
-                    async def upload_video():
-                        return await _upload_post_media_file_to_bunny(
-                            user_id,
-                            temp_output_file.name,
-                            content_type,
-                            base_url
-                        )
+                    media_url, object_path = await _upload_post_media_file_to_bunny(
+                        user_id,
+                        temp_output_file.name,
+                        content_type,
+                        base_url
+                    )
+                    logger.info("Uploaded video to Bunny.net successfully")
 
-                    async def upload_thumbnail():
-                        if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
-                            try:
-                                return await _upload_post_media_file_to_bunny(
-                                    user_id,
-                                    temp_thumb_file.name,
-                                    'image/jpeg',
-                                    base_url
-                                )
-                            except Exception as bunny_exc:
-                                logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
-                        return None, None
-
-                    video_res, thumb_res = await asyncio.gather(upload_video(), upload_thumbnail())
-                    media_url, object_path = video_res
-                    thumbnail_url, _ = thumb_res
-                    logger.info("Uploaded video and thumbnail to Bunny.net successfully")
+                    if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                        try:
+                            thumbnail_url, _ = await _upload_post_media_file_to_bunny(
+                                user_id,
+                                temp_thumb_file.name,
+                                'image/jpeg',
+                                base_url
+                            )
+                        except Exception as bunny_exc:
+                            logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
                 except Exception as exc:
                     logger.exception('Post video upload failed for user_id=%s', user_id)
                     raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
@@ -3400,51 +3392,39 @@ async def _upload_post_from_storage_impl(
             upload_source = temp_input_file.name
             compressed_size_bytes = original_size_bytes
 
+        try:
+            media_url, object_path = await _upload_post_media_file_to_bunny(
+                user_id,
+                upload_source,
+                'video/mp4',
+                base_url
+            )
+            logger.info("Uploaded processed video from storage to Bunny.net successfully")
+        except Exception as exc:
+            logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
+            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+
         thumbnail_url = None
-        temp_thumb_file = None
         if has_ffmpeg:
             temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
             temp_thumb_file.close()
             try:
                 await asyncio.to_thread(_generate_video_thumbnail, upload_source, temp_thumb_file.name)
+                if os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                    thumbnail_url, _ = await _upload_post_media_file_to_bunny(
+                        user_id,
+                        temp_thumb_file.name,
+                        'image/jpeg',
+                        base_url
+                    )
             except Exception as thumb_err:
-                logger.warning(f"Failed to generate thumbnail for storage post: {thumb_err}")
-
-        try:
-            async def upload_video():
-                return await _upload_post_media_file_to_bunny(
-                    user_id,
-                    upload_source,
-                    'video/mp4',
-                    base_url
-                )
-
-            async def upload_thumbnail():
-                if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                logger.warning(f"Failed to generate/upload thumbnail for storage post: {thumb_err}")
+            finally:
+                if os.path.exists(temp_thumb_file.name):
                     try:
-                        res = await _upload_post_media_file_to_bunny(
-                            user_id,
-                            temp_thumb_file.name,
-                            'image/jpeg',
-                            base_url
-                        )
-                        return res[0]
-                    except Exception as thumb_err:
-                        logger.warning(f"Failed to upload thumbnail for storage post: {thumb_err}")
-                return None
-
-            video_res, thumbnail_url = await asyncio.gather(upload_video(), upload_thumbnail())
-            media_url, object_path = video_res
-            logger.info("Uploaded processed video from storage to Bunny.net successfully")
-        except Exception as exc:
-            logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
-        finally:
-            if temp_thumb_file and os.path.exists(temp_thumb_file.name):
-                try:
-                    os.unlink(temp_thumb_file.name)
-                except Exception:
-                    pass
+                        os.unlink(temp_thumb_file.name)
+                    except Exception:
+                        pass
 
         post_doc = await _create_post_document(
             db=db,
@@ -3588,85 +3568,76 @@ async def get_posts_feed(
     # Parse already-seen post IDs to avoid repeats
     seen_set = set(s.strip() for s in seen_ids.split(',') if s.strip())
 
-    # Pre-calculate user agent stuff
-    x_platform = request.headers.get("x-platform", "").lower()
-    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
-    rand_start = _random.random()
-
-    # Define tasks to run concurrently
-    tasks = [
-        db.get_document('users', current_user_id),
-        _get_blocked_user_ids(db, current_user_id),
-        _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android),
-        db.query_documents(
-            'posts',
-            filters=[('random_score', '>=', rand_start)],
-            limit=40,
-            order_by='random_score',
-            order_direction='ASCENDING'
-        ),
-        db.query_documents(
-            'posts',
-            filters=[('random_score', '<', rand_start)],
-            limit=40,
-            order_by='random_score',
-            order_direction='DESCENDING'
-        ),
-        db.query_documents(
-            'posts',
-            limit=50,
-            order_by='created_at',
-            order_direction='DESCENDING'
-        )
-    ]
-    
-    if tab == 'for_you':
-        tasks.append(db.get_document('feed_preferences', current_user_id))
-    else:
-        async def _dummy_task(): return None
-        tasks.append(_dummy_task())
-
-    # Gather everything in parallel
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Parse results
-    current_user = results[0] if not isinstance(results[0], Exception) else None
-    blocked_user_ids = results[1] if not isinstance(results[1], Exception) else set()
-    reported_post_ids = results[2] if not isinstance(results[2], Exception) else set()
-    pool1 = results[3] if not isinstance(results[3], Exception) else []
-    pool2 = results[4] if not isinstance(results[4], Exception) else []
-    latest_pool = results[5] if not isinstance(results[5], Exception) else []
-    prefs_doc = results[6] if not isinstance(results[6], Exception) else None
-
-    # Populate location data
+    # Fetch user for location data
+    current_user = await db.get_document('users', current_user_id)
     user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
-    # Assemble the posts pool
+    # Fetch a large pool of posts (latest and random mixes)
     posts_dict = {}
-    for p in pool1:
-        if p.get('id'):
-            posts_dict[p['id']] = p
-    for p in pool2:
-        if p.get('id'):
-            posts_dict[p['id']] = p
-    for p in latest_pool:
-        if p.get('id'):
-            posts_dict[p['id']] = p
-
-    # Fallback if empty
-    if not posts_dict:
+    try:
+        rand_start = _random.random()
+        # 1. Query random posts starting from a random float (single-field query)
         try:
+            pool1 = await db.query_documents(
+                'posts',
+                filters=[('random_score', '>=', rand_start)],
+                limit=40,
+                order_by='random_score',
+                order_direction='ASCENDING'
+            )
+            for p in pool1:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching pool1 in get_posts_feed: %s", e)
+            
+        try:
+            pool2 = await db.query_documents(
+                'posts',
+                filters=[('random_score', '<', rand_start)],
+                limit=40,
+                order_by='random_score',
+                order_direction='DESCENDING'
+            )
+            for p in pool2:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching pool2 in get_posts_feed: %s", e)
+            
+        # 2. Query latest posts
+        try:
+            latest_pool = await db.query_documents(
+                'posts',
+                limit=50,
+                order_by='created_at',
+                order_direction='DESCENDING'
+            )
+            for p in latest_pool:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Error fetching latest_pool in get_posts_feed: %s", e)
+            
+        # Fallback if empty
+        if not posts_dict:
             fallback = await db.query_documents('posts', limit=100)
             for p in fallback:
                 if p.get('id'):
                     posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Firestore query error in fallback get_posts_feed: %s", e)
-
-    posts = list(posts_dict.values())
+                    
+        posts = list(posts_dict.values())
+    except Exception as e:
+        logger.error("Firestore query error in get_posts_feed: %s", e)
+        posts = []
 
     # Filter out already-seen posts and non-public posts
     public_posts = []
+    
+    blocked_user_ids = await _get_blocked_user_ids(db, current_user_id)
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+    reported_post_ids = await _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android)
     
     # Pre-calculate user location for performance
     u_city = str(user_loc.get('city') or '').strip().lower()
@@ -3700,13 +3671,22 @@ async def get_posts_feed(
 
     # Pre-fetch following IDs if tab is following
     following_ids = set()
-    if tab == 'following' and current_user:
-        following_ids = set(current_user.get('following', []) or [])
+    if tab == 'following':
+        try:
+            current_user = await db.get_document('users', current_user_id)
+            following_ids = set(current_user.get('following', []) or [])
+        except Exception:
+            pass
 
     # Fetch user interest preferences
     user_interests: dict = {}
-    if tab == 'for_you' and prefs_doc:
-        user_interests = prefs_doc.get('category_scores', {})
+    if tab == 'for_you':
+        try:
+            prefs_doc = await db.get_document('feed_preferences', current_user_id)
+            if prefs_doc:
+                user_interests = prefs_doc.get('category_scores', {})
+        except Exception:
+            pass
 
     now = datetime.utcnow()
     now_ts = now.timestamp()
@@ -3941,18 +3921,14 @@ async def get_posts_feed(
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
             try:
-                comments_cnt = post.get('comments_count', 0) or 0
-                if comments_cnt > 0:
-                    top_comments = await db.query_documents(
-                        'post_comments',
-                        filters=[('post_id', '==', post.get('id'))],
-                        limit=10,
-                    )
-                    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-                    top_comments.sort(key=_comment_sort_key, reverse=True)
-                    post['top_comments'] = top_comments[:5]
-                else:
-                    post['top_comments'] = []
+                top_comments = await db.query_documents(
+                    'post_comments',
+                    filters=[('post_id', '==', post.get('id'))],
+                    limit=200,
+                )
+                top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+                top_comments.sort(key=_comment_sort_key, reverse=True)
+                post['top_comments'] = top_comments[:5]
             except Exception:
                 post['top_comments'] = []
             return post
@@ -4125,33 +4101,19 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
 
-    # Fetch comments for posts concurrently if they have comments, avoiding redundant queries
-    comments_tasks = []
-    for post in paged_posts:
-        if post.get('comments_count', 0) > 0:
-            comments_tasks.append((
-                post.get('id'),
-                db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=10,
-                )
-            ))
-
-    if comments_tasks:
-        post_ids, tasks = zip(*comments_tasks)
-        comments_results = await asyncio.gather(*tasks, return_exceptions=True)
-        comments_by_post_id = {
-            pid: (res if not isinstance(res, Exception) else [])
-            for pid, res in zip(post_ids, comments_results)
-        }
-    else:
-        comments_by_post_id = {}
+    # Fetch comments for all posts concurrently to avoid N+1 sequential database queries
+    comments_tasks = [
+        db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post.get('id'))],
+            limit=200,
+        )
+        for post in paged_posts
+    ]
+    all_posts_comments = await asyncio.gather(*comments_tasks)
 
     normalized = []
-    for post in paged_posts:
-        pid = post.get('id')
-        top_comments = comments_by_post_id.get(pid, []) if pid else []
+    for post, top_comments in zip(paged_posts, all_posts_comments):
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4206,30 +4168,26 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['comments_count'] = post.get('comments_count', 0)
     post['liked_by_me'] = user_id in liked_by
 
-    comments_cnt = post.get('comments_count', 0) or 0
-    if comments_cnt > 0:
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=10,
-        )
-        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+    top_comments = await db.query_documents(
+        'post_comments',
+        filters=[('post_id', '==', post.get('id'))],
+        limit=200,
+    )
+    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
 
-        def _comment_created_at_sort_key(item: dict):
-            value = item.get('created_at')
-            if isinstance(value, datetime):
-                return value
-            if isinstance(value, str):
-                try:
-                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
-                except Exception:
-                    return datetime.min
-            return datetime.min
+    def _comment_created_at_sort_key(item: dict):
+        value = item.get('created_at')
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            try:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            except Exception:
+                return datetime.min
+        return datetime.min
 
-        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-        post['top_comments'] = top_comments[:5]
-    else:
-        post['top_comments'] = []
+    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+    post['top_comments'] = top_comments[:5]
     return post
 
 
@@ -10583,18 +10541,15 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     if existing:
         raise HTTPException(status_code=400, detail="You already have a registered business")
     
-    # Add new categories to global category list in parallel
-    async def process_category(cat):
-        existing_cat = await db.find_one('vendor_categories', [('name', '==', cat)])
+    # Add new categories to global category list
+    for category in normalized_categories:
+        existing_cat = await db.find_one('vendor_categories', [('name', '==', category)])
         if not existing_cat:
-            await db.create_document('vendor_categories', {'name': cat, 'count': 1})
+            await db.create_document('vendor_categories', {'name': category, 'count': 1})
         else:
             await db.update_document('vendor_categories', existing_cat['id'], {
                 'count': existing_cat.get('count', 0) + 1
             })
-
-    if normalized_categories:
-        await asyncio.gather(*(process_category(cat) for cat in normalized_categories))
     
     vendor_data = {
         "owner_id": user_id,
@@ -10638,11 +10593,10 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         'kyc_aadhaar_otp_verified': False,
     })
 
-    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor_data)
+    await _sync_vendor_to_admin_queue(db, vendor_id)
 
     # ponytail: invalidate cached user profile to force KYC verification prompt
     await cache_manager.invalidate_user(user_id)
-    await cache_manager.delete(f"vendor:user:{user_id}")
 
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
@@ -10749,21 +10703,10 @@ async def get_vendors(
 @api_router.get("/vendors/my")
 async def get_my_vendor(token_data: dict = Depends(verify_token)):
     """Get current user's vendor profile"""
-    user_id = token_data["user_id"]
-    cache_key = f"vendor:user:{user_id}"
-    
-    cached_val = await cache_manager.get(cache_key)
-    if cached_val is not None:
-        return cached_val if cached_val != {} else None
-
     db = await get_db()
-    vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
+    user_id = token_data["user_id"]
     
-    if vendor is not None:
-        await cache_manager.set(cache_key, vendor, ttl=300)
-    else:
-        await cache_manager.set(cache_key, {}, ttl=60)
-        
+    vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
     return vendor
 
 
@@ -10835,10 +10778,8 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
                 await db.create_document('vendor_categories', {'name': category, 'count': 1})
     
     if update_data:
-        vendor.update(update_data)
         await db.update_document('vendors', vendor_id, update_data)
-        await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
-        await cache_manager.delete(f"vendor:user:{user_id}")
+        await _sync_vendor_to_admin_queue(db, vendor_id)
     
     logger.info(f"Vendor {vendor_id} updated by {user_id}")
     return {"message": "Vendor updated successfully"}
@@ -10862,7 +10803,6 @@ async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict 
         raise HTTPException(status_code=400, detail="storage_user_id is required")
 
     await db.update_document('vendors', vendor_id, {'storage_user_id': storage_user_id})
-    await cache_manager.delete(f"vendor:user:{user_id}")
 
     return {"message": "Vendor storage owner mapping updated", "storage_user_id": storage_user_id}
 
@@ -10946,14 +10886,13 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields provided")
 
-    vendor.update(update_data)
     await db.update_document('vendors', vendor_id, update_data)
-    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
-    await cache_manager.delete(f"vendor:user:{user_id}")
+    await _sync_vendor_to_admin_queue(db, vendor_id)
 
+    refreshed = await db.get_document('vendors', vendor_id)
     return {
         "message": "Business profile updated",
-        "vendor": vendor,
+        "vendor": refreshed,
     }
 
 
@@ -11015,14 +10954,11 @@ async def upload_vendor_business_image(
         images.append('')
     images[slot] = public_url
 
-    vendor['business_gallery_images'] = images
-    vendor['business_media_key'] = media_key
     await db.update_document('vendors', vendor_id, {
         'business_gallery_images': images,
         'business_media_key': media_key,
     })
-    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
-    await cache_manager.delete(f"vendor:user:{user_id}")
+    await _sync_vendor_to_admin_queue(db, vendor_id)
 
     return {
         "message": "Business image uploaded",
@@ -11585,7 +11521,6 @@ async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: d
         raise HTTPException(status_code=403, detail="Only the owner can add photos")
     
     await db.array_union_update('vendors', vendor_id, 'photos', [photo])
-    await cache_manager.delete(f"vendor:user:{user_id}")
     return {"message": "Photo added successfully"}
 
 
@@ -11658,7 +11593,6 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     
     # ponytail: invalidate cached user profile to reflect vendor deletion
     await cache_manager.invalidate_user(user_id)
-    await cache_manager.delete(f"vendor:user:{user_id}")
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
