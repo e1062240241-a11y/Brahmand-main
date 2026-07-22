@@ -153,16 +153,6 @@ export default function CommunityRequestBloodPage() {
 
         <View style={styles.fieldSection}>
           <Text style={styles.fieldLabel}>Hospital Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Search hospital name..."
-            placeholderTextColor={COLORS.textLight}
-            value={hospitalName}
-            onChangeText={(text) => {
-              setHospitalName(text);
-              setSelectedHospital(null);
-            }}
-          />
           {hospitalName.length >= 2 && !selectedHospital && (
             <View style={styles.suggestionsCard}>
               {isHospitalSearching ? (
@@ -192,6 +182,16 @@ export default function CommunityRequestBloodPage() {
               )}
             </View>
           )}
+          <TextInput
+            style={styles.input}
+            placeholder="Search hospital name..."
+            placeholderTextColor={COLORS.textLight}
+            value={hospitalName}
+            onChangeText={(text) => {
+              setHospitalName(text);
+              setSelectedHospital(null);
+            }}
+          />
         </View>
 
         <View style={styles.fieldSection}>
@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   suggestionsCard: {
-    marginTop: SPACING.sm,
+    marginBottom: SPACING.sm,
     backgroundColor: '#FFFFFF',
     borderRadius: BORDER_RADIUS.lg,
     borderWidth: 1,

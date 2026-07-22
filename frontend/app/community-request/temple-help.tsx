@@ -11,7 +11,8 @@ import {View,
   Modal,
   FlatList,
   Dimensions,
-  BackHandler} from 'react-native';
+  BackHandler,
+  Keyboard} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -60,6 +61,30 @@ export default function TempleHelpRequestScreen() {
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'help' | 'volunteers' | 'contact' | null>(null);
+
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardVisible(true);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Debounced Location Search
   useEffect(() => {
@@ -232,6 +257,16 @@ export default function TempleHelpRequestScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Temple / Location <Text style={styles.requiredAsterisk}>*</Text></Text>
+                {locationSuggestions.length > 0 && (
+                  <View style={styles.suggestionsContainer}>
+                    {locationSuggestions.map((item, i) => (
+                      <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
+                        <Ionicons name="navigate-circle-outline" size={20} color="#666" />
+                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
                 <View style={styles.searchInputContainer}>
                   <Ionicons name="location-sharp" size={18} color="#FB8C00" style={{ marginRight: 10 }} />
                   <TextInput
@@ -243,16 +278,6 @@ export default function TempleHelpRequestScreen() {
                   />
                   {isSearchingLocation ? <ActivityIndicator size="small" color="#FB8C00" /> : <Ionicons name="search" size={18} color="#BBB" />}
                 </View>
-                {locationSuggestions.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    {locationSuggestions.map((item, i) => (
-                      <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                        <Ionicons name="navigate-circle-outline" size={20} color="#666" />
-                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
               </View>
 
               <View style={styles.fieldSection}>
@@ -329,6 +354,7 @@ export default function TempleHelpRequestScreen() {
               <View style={{ height: 40 }} />
             </KeyboardAwareScrollView>
           </View>
+          {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
         </KeyboardAvoidingView>
 
         <Modal visible={modalVisible} transparent animationType="slide">
@@ -390,7 +416,7 @@ const styles = StyleSheet.create({
   
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
-  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
   suggestionText: { marginLeft: 10, fontSize: 14, color: '#444', flex: 1 },
   
