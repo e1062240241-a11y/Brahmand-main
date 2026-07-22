@@ -12,7 +12,8 @@ import {View,
   FlatList,
   Dimensions,
   BackHandler,
-  Keyboard} from 'react-native';
+  Keyboard,
+  ScrollView} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -233,7 +234,7 @@ export default function TempleHelpRequestScreen() {
 
         <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.cardContainer}>
-            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" extraScrollHeight={260}>
               
               <View style={styles.bannerContainer}>
                 <View style={styles.headerBar}>
@@ -255,28 +256,37 @@ export default function TempleHelpRequestScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.fieldSection}>
+              <View style={[styles.fieldSection, { zIndex: 10 }]}>
                 <Text style={styles.fieldLabel}>Temple / Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-                {locationSuggestions.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    {locationSuggestions.map((item, i) => (
-                      <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                        <Ionicons name="navigate-circle-outline" size={20} color="#666" />
-                        <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
-                      </TouchableOpacity>
-                    ))}
+                <View style={styles.autocompleteWrapper}>
+                  <View style={styles.searchInputContainer}>
+                    <Ionicons name="location-sharp" size={18} color="#FB8C00" style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search temple or location"
+                      placeholderTextColor="#BBB"
+                      value={templeLocation}
+                      onChangeText={(t) => { setTempleLocation(t); if (selectedLocation) setSelectedLocation(null); }}
+                    />
+                    {isSearchingLocation ? <ActivityIndicator size="small" color="#FB8C00" /> : <Ionicons name="search" size={18} color="#BBB" />}
                   </View>
-                )}
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="location-sharp" size={18} color="#FB8C00" style={{ marginRight: 10 }} />
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search temple or location"
-                    placeholderTextColor="#BBB"
-                    value={templeLocation}
-                    onChangeText={(t) => { setTempleLocation(t); if (selectedLocation) setSelectedLocation(null); }}
-                  />
-                  {isSearchingLocation ? <ActivityIndicator size="small" color="#FB8C00" /> : <Ionicons name="search" size={18} color="#BBB" />}
+
+                  {locationSuggestions.length > 0 && (
+                    <View style={styles.suggestionsContainer}>
+                      <ScrollView
+                        keyboardShouldPersistTaps="handled"
+                        nestedScrollEnabled={true}
+                        style={{ maxHeight: 200 }}
+                      >
+                        {locationSuggestions.map((item, index) => (
+                          <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
+                            <Ionicons name="navigate-circle-outline" size={20} color="#666" style={{ marginRight: 8 }} />
+                            <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -416,7 +426,8 @@ const styles = StyleSheet.create({
   
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
-  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  autocompleteWrapper: { position: 'relative', zIndex: 10 },
+  suggestionsContainer: { position: 'absolute', bottom: 58, left: 0, right: 0, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', maxHeight: 200, zIndex: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
   suggestionText: { marginLeft: 10, fontSize: 14, color: '#444', flex: 1 },
   

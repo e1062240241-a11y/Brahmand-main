@@ -260,38 +260,6 @@ const MOCK_FESTIVALS = [
   { id: '10', name: 'Raksha Bandhan', events: 5, color: '#F0FFF5', date: '2026-08-28' },
 ];
 
-const MOCK_FESTIVAL_EVENTS = [
-  {
-    id: 'fe1',
-    title: 'Diwali Celebration 2024',
-    description: 'Join us for a grand Diwali celebration with prayers, lights & community dinner.',
-    location: 'Ramakrishna Math, Andheri West',
-    time: '31 Oct 2024, 6:00 PM',
-    image: require('../../assets/images/upcoming_radha_rani.png'),
-    organizer: { name: 'Rahul Joshi', photo: null, isVerified: true },
-    timeAgo: '2h ago'
-  },
-  {
-    id: 'fe2',
-    title: 'Ganesh Chaturthi Aarti',
-    description: 'Community aarti and prasad distribution for all devotees.',
-    location: 'Lokhandwala, Andheri West',
-    time: '7 Sep 2024, 7:00 PM',
-    image: require('../../assets/images/upcoming_ganesh.jpg'),
-    organizer: { name: 'Neha Sharma', photo: null, isVerified: true },
-    timeAgo: '5h ago'
-  },
-  {
-    id: 'fe3',
-    title: 'Navratri Garba Night',
-    description: 'Nine nights of celebration, dance and divine energy.',
-    location: 'NSCI Dome, Worli',
-    time: '3 Oct 2024, 8:00 PM',
-    image: require('../../assets/images/upcoming_durga.png'),
-    organizer: { name: 'Amit Patel', photo: null, isVerified: true },
-    timeAgo: '1d ago'
-  }
-];
 
 interface DiscussionPost {
   id: string;
@@ -710,6 +678,7 @@ export default function CommunityDetailScreen() {
   const [postCategory, setPostCategory] = useState('');
   const [contactNumber, setContactNumber] = useState('');
   const [sevaDetails, setSevaDetails] = useState('');
+  const [eventLocation, setEventLocation] = useState('');
   const [eventDate, setEventDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -1242,7 +1211,37 @@ export default function CommunityDetailScreen() {
       return list;
     }
     if (activeTab === 'Events') {
-      const apiList = filteredEventsList;
+      const apiList = filteredEventsList.map((e: any) => {
+        let locStr = 'Online';
+        if (e.location) {
+          if (typeof e.location === 'object') {
+            locStr = e.location.display_name || e.location.address || e.location.name || e.location.city || e.location.area || 'Online';
+          } else {
+            locStr = String(e.location);
+          }
+        }
+        
+        let startTime = e.start_time;
+        if (!startTime && e.date) {
+          startTime = e.time ? `${e.date}T${e.time}` : e.date;
+        }
+        if (!startTime) {
+          startTime = e.created_at || new Date().toISOString();
+        }
+
+        return {
+          ...e,
+          isEventItem: true,
+          title: e.name || e.title || 'Community Event',
+          description: e.description || '',
+          start_time: startTime,
+          location: locStr,
+          user_name: e.organizer_name || e.user_name || e.user?.name || 'Organizer',
+          image: e.image || e.image_url || e.media_url,
+          image_url: e.image_url || e.image || e.media_url
+        };
+      });
+
       const localList = filteredCommunityPostsList
         .filter((p: any) => (p.category || '').toLowerCase().trim() === 'events')
         .map((p: any) => ({ 
@@ -1252,7 +1251,7 @@ export default function CommunityDetailScreen() {
           description: p.description || p.content || '',
           user_name: p.user_name || p.user?.name || 'Devotee',
           start_time: p.start_time || p.timestamp || new Date().toISOString(),
-          location: p.location || p.sevaDetails || 'Community Group',
+          location: p.location || 'Online',
           image: p.image || p.image_url || p.media_url,
           image_url: p.image_url || p.image || p.media_url
         }));
@@ -1799,6 +1798,7 @@ export default function CommunityDetailScreen() {
         contact: msg.contact,
         sevaDetails: msg.seva_details,
         location: msg.location,
+        start_time: msg.start_time,
       }));
 
       // Map State API messages
@@ -1828,6 +1828,7 @@ export default function CommunityDetailScreen() {
         contact: msg.contact,
         sevaDetails: msg.seva_details,
         location: msg.location,
+        start_time: msg.start_time,
       }));
 
       // Map National API messages
@@ -1857,6 +1858,7 @@ export default function CommunityDetailScreen() {
         contact: msg.contact,
         sevaDetails: msg.seva_details,
         location: msg.location,
+        start_time: msg.start_time,
       }));
 
       // Separate state & national announcements into recent (last 24 hours, to be pinned) and older (to go down the feed)
@@ -2740,18 +2742,9 @@ export default function CommunityDetailScreen() {
                 <Ionicons name="calendar-outline" size={14} color="#FF6B00" />
                 <Text style={styles.festMetaText} numberOfLines={1}>
                   {(() => {
-                    if (!item.start_time) return 'Date not set';
-                    const d = parseUTCDate(item.start_time);
-                    if (isNaN(d.getTime())) return 'Date not set';
-                    const day = String(d.getDate()).padStart(2, '0');
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const year = d.getFullYear();
-                    let hours = d.getHours();
-                    const minutes = String(d.getMinutes()).padStart(2, '0');
-                    const ampm = hours >= 12 ? 'PM' : 'AM';
-                    hours = hours % 12;
-                    hours = hours ? hours : 12;
-                    return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
+                    const formatted = formatDateTimeIST(item.start_time);
+                    if (!formatted) return 'Date not set';
+                    return formatted.replace(' ', ', ');
                   })()}
                 </Text>
               </View>
@@ -3660,6 +3653,8 @@ export default function CommunityDetailScreen() {
       } catch (err) {
         console.warn('[Community] Failed to get post location:', err);
       }
+    } else if (finalCategory === 'Events') {
+      postLocation = eventLocation || undefined;
     }
 
     // Split text into chunks of max 250 characters
@@ -3765,7 +3760,8 @@ export default function CommunityDetailScreen() {
               i === 0 ? uploadedUrl : undefined,
               i === 0 ? (contactNumber || undefined) : undefined,
               i === 0 ? (sevaDetails || undefined) : undefined,
-              i === 0 ? (postLocation || undefined) : undefined
+              i === 0 ? (postLocation || undefined) : undefined,
+              i === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined
             );
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
 
@@ -3813,6 +3809,8 @@ export default function CommunityDetailScreen() {
     setSelectedMediaType(null);
     setContactNumber('');
     setSevaDetails('');
+    setEventLocation('');
+    setEventDate(null);
     setShowCreateModal(false);
 
     // No longer switching tabs automatically to keep the user in their current context
@@ -4366,7 +4364,7 @@ export default function CommunityDetailScreen() {
             style={{ flex: 1 }}
           >
             <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
-              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); setSelectedMediaType(null); setContactNumber(''); setSevaDetails(''); }}>
+              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); setSelectedMediaType(null); setContactNumber(''); setSevaDetails(''); setEventLocation(''); setEventDate(null); }}>
                 <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
               </TouchableOpacity>
 
@@ -4618,6 +4616,24 @@ export default function CommunityDetailScreen() {
                           }}
                         />
                       )}
+
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F1419', marginTop: 15, marginBottom: 10 }}>Event Location</Text>
+                      <TextInput
+                        placeholder="e.g. Temple Hall, Sector 4 or Online"
+                        value={eventLocation}
+                        onChangeText={setEventLocation}
+                        placeholderTextColor="#999"
+                        style={{
+                          backgroundColor: '#FFF',
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          borderRadius: 10,
+                          borderWidth: 1,
+                          borderColor: '#EEE',
+                          fontSize: 13,
+                          color: '#000'
+                        }}
+                      />
                     </View>
                   )}
 

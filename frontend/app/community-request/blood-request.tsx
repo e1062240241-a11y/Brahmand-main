@@ -15,6 +15,7 @@ import {
   ScrollView,
   Pressable,
   Keyboard,
+  FlatList,
 } from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -248,7 +249,7 @@ export default function BloodRequestScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <View style={styles.cardContainer}>
-            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" extraScrollHeight={260}>
 
               <View style={styles.headerBar}>
                 <LinearGradient colors={['#FFEBEE', '#FFCDD2']} style={styles.iconCircle}>
@@ -268,60 +269,57 @@ export default function BloodRequestScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.fieldSection}>
+              <View style={[styles.fieldSection, { zIndex: 10 }]}>
                 <Text style={styles.fieldLabel}>Hospital Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-                {location.trim().length >= 2 && !selectedLocation && (
-                  <View style={styles.suggestionsContainer}>
+                <View style={styles.autocompleteWrapper}>
+                  <View style={styles.searchInputContainer}>
+                    <TouchableOpacity onPress={handleGpsDetect} style={{ padding: 4 }} disabled={isSearchingLocation}>
+                      <Ionicons name="location-sharp" size={18} color="#E53935" style={{ marginRight: 6 }} />
+                    </TouchableOpacity>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search hospital or area"
+                      placeholderTextColor="#BBB"
+                      value={location}
+                      onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
+                    />
                     {isSearchingLocation ? (
-                      <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
-                    ) : locationSuggestions.length > 0 ? (
-                      locationSuggestions.map((item, i) => (
-                        <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                          <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
-                          <View style={styles.suggestionTextContainer}>
-                            <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
-                            {(item.address || item.display_name) && (
-                              <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      ))
+                      <ActivityIndicator size="small" color="#E53935" />
+                    ) : location.length > 0 ? (
+                      <TouchableOpacity onPress={() => { setLocation(''); setSelectedLocation(null); setLocationSuggestions([]); }} style={{ padding: 4 }}>
+                        <Ionicons name="close-circle" size={18} color="#BBB" />
+                      </TouchableOpacity>
                     ) : (
-                      <View>
-                        <Text style={styles.suggestionStatus}>No hospitals found</Text>
-                        <TouchableOpacity
-                          style={styles.suggestionItem}
-                          onPress={() => handleLocationSelect({ name: location.trim(), address: location.trim(), area: '', city: '' })}
-                        >
-                          <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
-                          <View style={styles.suggestionTextContainer}>
-                            <Text style={styles.suggestionName}>Use hospital / location as typed</Text>
-                            <Text style={styles.suggestionAddress}>{location.trim()}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      </View>
+                      <Ionicons name="search" size={18} color="#BBB" />
                     )}
                   </View>
-                )}
-                <View style={styles.searchInputContainer}>
-                  <TouchableOpacity onPress={handleGpsDetect} style={{ padding: 4 }} disabled={isSearchingLocation}>
-                    <Ionicons name="location-sharp" size={18} color="#E53935" style={{ marginRight: 6 }} />
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search hospital or area"
-                    placeholderTextColor="#BBB"
-                    value={location}
-                    onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
-                  />
-                  {isSearchingLocation ? (
-                    <ActivityIndicator size="small" color="#E53935" />
-                  ) : location.length > 0 ? (
-                    <TouchableOpacity onPress={() => { setLocation(''); setSelectedLocation(null); setLocationSuggestions([]); }} style={{ padding: 4 }}>
-                      <Ionicons name="close-circle" size={18} color="#BBB" />
-                    </TouchableOpacity>
-                  ) : (
-                    <Ionicons name="search" size={18} color="#BBB" />
+
+                  {location.trim().length >= 2 && !selectedLocation && (
+                    <View style={styles.suggestionsContainer}>
+                      {isSearchingLocation ? (
+                        <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
+                      ) : locationSuggestions.length === 0 ? (
+                        <Text style={styles.suggestionStatus}>No hospitals found</Text>
+                      ) : (
+                        <ScrollView
+                          keyboardShouldPersistTaps="handled"
+                          nestedScrollEnabled={true}
+                          style={{ maxHeight: 200 }}
+                        >
+                          {locationSuggestions.map((item, index) => (
+                            <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
+                              <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 8 }} />
+                              <View style={styles.suggestionTextContainer}>
+                                <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
+                                {(item.address || item.display_name) && (
+                                  <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      )}
+                    </View>
                   )}
                 </View>
               </View>
@@ -452,7 +450,8 @@ const styles = StyleSheet.create({
 
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
-  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginBottom: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  autocompleteWrapper: { position: 'relative', zIndex: 10 },
+  suggestionsContainer: { position: 'absolute', bottom: 58, left: 0, right: 0, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', maxHeight: 200, zIndex: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
   suggestionTextContainer: { marginLeft: 12, flex: 1 },
   suggestionName: { fontSize: 14, fontFamily: FONTS.bold, color: '#333' },

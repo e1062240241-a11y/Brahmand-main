@@ -63,8 +63,9 @@ const NativeVideoPlayer = memo(({
   handlePosterError: () => void;
   mediaLoading: boolean;
 }) => {
-  const videoSource = shouldPlay ? mediaUrl : null;
-  const player = useSafeVideoPlayer(videoSource, (p) => {
+  // ponytail: only allocate native ExoPlayer when post is visible — fixes Android OOM from
+  // KeyboardAwareScrollView mounting all video posts simultaneously
+  const player = useSafeVideoPlayer(shouldPlay ? mediaUrl : null, (p) => {
     if (p) {
       p.loop = true;
       p.muted = isMuted;

@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView, BackHandler, Keyboard} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator, Modal, Platform, KeyboardAvoidingView, BackHandler, Keyboard, FlatList, ScrollView} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, BORDER_RADIUS } from '../../src/constants/theme';
@@ -159,7 +159,7 @@ export default function CommunityRequestEmergencyPage() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.cardContainer}>
-          <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" extraScrollHeight={260}>
             
             {/* Inner Header */}
             <View style={styles.headerBar}>
@@ -187,57 +187,64 @@ export default function CommunityRequestEmergencyPage() {
             </View>
 
             {/* Hospital / Location */}
-            <View style={styles.fieldSection}>
+            <View style={[styles.fieldSection, { zIndex: 10 }]}>
               <Text style={styles.fieldLabel}>Hospital / Location <Text style={styles.requiredAsterisk}>*</Text></Text>
+              <View style={styles.autocompleteWrapper}>
+                <View style={styles.searchInputContainer}>
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search hospital or location"
+                    placeholderTextColor="#999"
+                    value={hospitalName}
+                    onChangeText={(text) => {
+                      setHospitalName(text);
+                      setSelectedHospital(null);
+                    }}
+                  />
+                  <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+                </View>
 
-              {hospitalName.length >= 2 && !selectedHospital && (
-                <View style={styles.suggestionsCard}>
-                  {isHospitalSearching ? (
-                    <Text style={styles.suggestionStatus}>Searching locations...</Text>
-                  ) : hospitalSuggestions.length > 0 ? (
-                    hospitalSuggestions.map((item, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.suggestionItem}
-                        onPress={() => handleHospitalSelect(item)}
+                {hospitalName.length >= 2 && !selectedHospital && (
+                  <View style={styles.suggestionsCard}>
+                    {isHospitalSearching ? (
+                      <Text style={styles.suggestionStatus}>Searching locations...</Text>
+                    ) : hospitalSuggestions.length > 0 ? (
+                      <ScrollView
+                        keyboardShouldPersistTaps="handled"
+                        nestedScrollEnabled={true}
+                        style={{ maxHeight: 200 }}
                       >
-                        <Ionicons name="location-outline" size={20} color={COLORS.primary} />
+                        {hospitalSuggestions.map((item, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.suggestionItem}
+                            onPress={() => handleHospitalSelect(item)}
+                          >
+                            <Ionicons name="location-outline" size={20} color={COLORS.primary} />
+                            <View style={styles.suggestionTextContainer}>
+                              <Text style={styles.suggestionName}>{item.name}</Text>
+                              <Text style={styles.suggestionAddress}>{item.address}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.suggestionItem}
+                        onPress={() => {
+                          setSelectedHospital({ name: hospitalName, address: '', area: '', city: '' });
+                          setHospitalSuggestions([]);
+                        }}
+                      >
+                        <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
                         <View style={styles.suggestionTextContainer}>
-                          <Text style={styles.suggestionName}>{item.name}</Text>
-                          <Text style={styles.suggestionAddress}>{item.address}</Text>
+                          <Text style={styles.suggestionName}>Use "{hospitalName}"</Text>
+                          <Text style={styles.suggestionAddress}>Custom location</Text>
                         </View>
                       </TouchableOpacity>
-                    ))
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.suggestionItem}
-                      onPress={() => {
-                        setSelectedHospital({ name: hospitalName, address: '', area: '', city: '' });
-                        setHospitalSuggestions([]);
-                      }}
-                    >
-                      <Ionicons name="add-circle-outline" size={20} color={COLORS.primary} />
-                      <View style={styles.suggestionTextContainer}>
-                        <Text style={styles.suggestionName}>Use "{hospitalName}"</Text>
-                        <Text style={styles.suggestionAddress}>Custom location</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-
-              <View style={styles.searchInputContainer}>
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Search hospital or location"
-                  placeholderTextColor="#999"
-                  value={hospitalName}
-                  onChangeText={(text) => {
-                    setHospitalName(text);
-                    setSelectedHospital(null);
-                  }}
-                />
-                <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
+                    )}
+                  </View>
+                )}
               </View>
               <Text style={styles.helperText}>Start typing to find the hospital</Text>
             </View>
@@ -546,14 +553,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 16,
   },
+  autocompleteWrapper: { position: 'relative', zIndex: 10 },
   suggestionsCard: {
+    position: 'absolute',
+    bottom: 58,
+    left: 0,
+    right: 0,
     backgroundColor: '#FFF',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#F2F4FF',
-    marginBottom: 8,
     maxHeight: 200,
     overflow: 'hidden',
+    zIndex: 999,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,

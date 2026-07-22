@@ -55,7 +55,9 @@ class FirebaseMessagingService:
         media_url: Optional[str] = None,
         category: Optional[str] = None,
         contact: Optional[str] = None,
-        seva_details: Optional[str] = None
+        seva_details: Optional[str] = None,
+        location: Optional[str] = None,
+        start_time: Optional[str] = None
     ) -> Dict[str, Any]:
         """Send message to community subgroup"""
         db = await FirebaseMessagingService.get_db()
@@ -200,6 +202,10 @@ class FirebaseMessagingService:
             message_data['contact'] = contact
         if seva_details:
             message_data['seva_details'] = seva_details
+        if location:
+            message_data['location'] = location
+        if start_time:
+            message_data['start_time'] = start_time
         
         message_id = await db.add_message_to_chat(chat_id, message_data)
         message_data['id'] = message_id
