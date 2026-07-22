@@ -2744,9 +2744,7 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
                               ))}
                             </ScrollView>
                           </View>
-                        ) : null}
-                      </View>
-                    ) : (
+                        ) : (
                       <View
                         style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}
                       >
@@ -2901,7 +2899,6 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
                           ))}
                         </View>
                       </View>
-                    )}
 
                     <View
                       style={{ position: 'relative' }}
@@ -3703,11 +3700,6 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
                     windowSize={5}
                     removeClippedSubviews={Platform.OS !== 'web'}
                   />
-                  {hasMoreFeed && (
-                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                      <ActivityIndicator color="#FFD26C" />
-                    </View>
-                  )}
                 ) : (
                   <View style={styles.emptyFeed}>
                     <Text style={styles.emptyFeedText}>No posts yet</Text>
@@ -4198,7 +4190,6 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
               </View>
             </KeyboardAvoidingView>
           </Modal>
-        </LinearGradient>
       </SafeAreaView >
 
       {locationPickerVisible && (
