@@ -1757,8 +1757,8 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
                 photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
                 logger.info(f"Profile photo compressed successfully")
 
-                # If the resulting photo still exceeds Firestore field limit, upload to Firebase Storage
-                if len(photo_data) > 950000:
+                # Always upload profile photos to Firebase Storage instead of storing as inline base64
+                if len(photo_data) > 0:
                     from firebase_admin import storage as firebase_storage
                     bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
                     bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
@@ -1773,7 +1773,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
                         f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
                         f"{quote(object_path, safe='')}?alt=media&token={download_token}"
                     )
-                    logger.info(f"Uploaded large profile image to storage: {photo_data}")
+                    logger.info(f"Uploaded profile image to storage: {photo_data}")
             else:
                 logger.warning("Invalid image format, skipping photo")
                 photo_data = None
@@ -1850,7 +1850,8 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
                     raise HTTPException(status_code=400, detail='Invalid profile photo')
                 try:
                     photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
-                    if len(photo_data) > 950000:
+                    # Always upload profile photos to Firebase Storage instead of storing as inline base64
+                    if len(photo_data) > 0:
                         from firebase_admin import storage as firebase_storage
                         bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
                         bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
@@ -9483,104 +9484,8 @@ async def init_sample_temples(token_data: dict = Depends(verify_token)):
 
 
 # =================== EVENTS ===================
+# Note: Handled by routes.event_routes (mounted in api_router)
 
-@api_router.get("/events")
-async def get_events(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    return await db.query_documents('events', limit=20)
-
-
-@api_router.get("/events/nearby")
-async def get_nearby_events(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    return await db.query_documents('events', limit=10)
-
-
-@api_router.post("/events/{event_id}/attend")
-async def attend_event(event_id: str, token_data: dict = Depends(verify_token)):
-    """Mark user as attending an event and notify the creator."""
-    db = await get_db()
-    user_id = token_data["user_id"]
-
-    # Try events collection first, then community posts
-    event = await db.get_document('events', event_id)
-    collection = 'events'
-    if not event:
-        event = await db.get_document('community_posts', event_id)
-        collection = 'community_posts'
-    if not event:
-        # Soft-fail: event may be ephemeral/local — still return success
-        return {"message": "Attendance recorded", "attendee_count": 1}
-
-    attendees = list(event.get('attendees', []) or [])
-    if user_id not in attendees:
-        attendees.append(user_id)
-        await db.update_document(collection, event_id, {
-            'attendees': attendees,
-            'attendee_count': len(attendees)
-        })
-
-    # Notify creator
-    creator_id = event.get('user_id') or event.get('organizer_id') or event.get('creator_id')
-    if creator_id and creator_id != user_id:
-        try:
-            attender_user = await db.get_document('users', user_id)
-            attender_name = (attender_user or {}).get('name', 'Someone')
-            event_title = event.get('title', 'your event')
-
-            notif_title = "🎉 Someone is attending your event!"
-            notif_body = f"{attender_name} confirmed they will attend '{event_title}'."
-            notif_data = {
-                'type': 'event_rsvp',
-                'eventId': str(event_id),
-                'community_id': str(event.get('community_id', '')),
-            }
-
-            await task_queue.enqueue(
-                FirebaseNotificationService.send_push_notification,
-                creator_id,
-                notif_title,
-                notif_body,
-                notif_data
-            )
-            await task_queue.enqueue(
-                FirebaseNotificationService.create_notification,
-                creator_id,
-                notif_title,
-                notif_body,
-                'event_rsvp',
-                notif_data
-            )
-            logger.info(f"Queued event RSVP notification for event {event_id} creator {creator_id}")
-        except Exception as notify_err:
-            logger.warning(f"Failed to notify creator for event RSVP {event_id}: {notify_err}")
-
-    return {"message": "Attendance confirmed", "attendee_count": len(attendees)}
-
-
-@api_router.post("/events/{event_id}/cancel-attendance")
-async def cancel_event_attendance(event_id: str, token_data: dict = Depends(verify_token)):
-    """Cancel user's attendance for an event."""
-    db = await get_db()
-    user_id = token_data["user_id"]
-
-    event = await db.get_document('events', event_id)
-    collection = 'events'
-    if not event:
-        event = await db.get_document('community_posts', event_id)
-        collection = 'community_posts'
-    if not event:
-        return {"message": "Attendance cancelled", "attendee_count": 0}
-
-    attendees = list(event.get('attendees', []) or [])
-    if user_id in attendees:
-        attendees.remove(user_id)
-        await db.update_document(collection, event_id, {
-            'attendees': attendees,
-            'attendee_count': len(attendees)
-        })
-
-    return {"message": "Attendance cancelled", "attendee_count": len(attendees)}
 
 
 

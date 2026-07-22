@@ -1574,6 +1574,7 @@ export const sendCommunityMessage = (
   contact?: string,
   sevaDetails?: string,
   location?: string,
+  start_time?: string,
 ) =>
   api.post(`/messages/community/${communityId}/${subgroupType}`, {
     content,
@@ -1583,6 +1584,7 @@ export const sendCommunityMessage = (
     contact,
     seva_details: sevaDetails,
     location,
+    start_time,
   });
 
 export const getCommunityMessages = (

@@ -85,8 +85,8 @@ const FestivalPage = () => {
         const response = await getFestivalList();
         const items = response.data || [];
         setFestivals(items);
-        await syncFestivalReminders(items);
-        await checkGlobalReminderState();
+        checkGlobalReminderState();
+        syncFestivalReminders(items).catch(e => console.warn(e));
       } catch (err) {
         console.warn('Failed to load festivals', err);
         setError('Could not load festivals.');

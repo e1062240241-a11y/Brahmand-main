@@ -286,6 +286,8 @@ class MessageCreate(BaseModel):
     contact: Optional[str] = None
     seva_details: Optional[str] = None
     location: Optional[str] = None
+    start_time: Optional[str] = None
+
 
 
     @model_validator(mode='after')
