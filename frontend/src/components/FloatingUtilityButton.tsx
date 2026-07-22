@@ -574,25 +574,11 @@ export const FloatingUtilityButton = () => {
     socketService.onEvent('sos_resolved', handleSOSResolved);
 
     // Check for pending SOS from push notifications
-    const checkPendingSOS = setInterval(() => {
-      if (AppState.currentState !== 'active') return;
-      if (typeof window !== 'undefined' && (window as any).__PENDING_SOS) {
-        const data = (window as any).__PENDING_SOS;
-        delete (window as any).__PENDING_SOS;
-        setIncomingSOS(data);
-        setSosResponderModalVisible(true);
-      }
-    }, 2000);
 
-    sosRefreshTimerRef.current = setInterval(() => {
-      if (AppState.currentState !== 'active') return;
-      checkSOSStatus();
-      fetchMyCommunityRequests();
-    }, 180000); // 3 minutes fallback
+    // Removing setInterval polling for performance/battery optimization.
+    // Relies on socket events (sos_alert, sos_resolved) and manual refresh.
 
     return () => {
-      if (sosRefreshTimerRef.current) clearInterval(sosRefreshTimerRef.current);
-      clearInterval(checkPendingSOS);
       socketService.offEvent('sos_alert', handleSOSAlert);
       socketService.offEvent('sos_resolved', handleSOSResolved);
     };
