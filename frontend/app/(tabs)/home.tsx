@@ -4190,7 +4190,8 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
               </View>
             </KeyboardAvoidingView>
           </Modal>
-      </SafeAreaView >
+        </LinearGradient>
+      </SafeAreaView>
 
       {locationPickerVisible && (
         <LocationPickerModal
