@@ -63,19 +63,22 @@ const NativeVideoPlayer = memo(({
   handlePosterError: () => void;
   mediaLoading: boolean;
 }) => {
-  const player = useSafeVideoPlayer(mediaUrl, (p) => {
+  const videoSource = shouldPlay ? mediaUrl : null;
+  const player = useSafeVideoPlayer(videoSource, (p) => {
     if (p) {
       p.loop = true;
       p.muted = isMuted;
       if (shouldPlay) {
         p.play();
       }
+      p.staysActiveInBackground = false;
       if (Platform.OS !== 'web') {
         p.bufferOptions = {
           preferredForwardBufferDuration: 2, 
           waitsToMinimizeStalling: true,
-          minBufferForPlayback: 0.5, 
-          maxBufferBytes: 2 * 1024 * 1024,
+          minBufferForPlayback: 0.2, 
+          maxBufferBytes: 10 * 1024 * 1024,
+          prioritizeTimeOverSizeThreshold: true,
         };
       }
     }
@@ -93,15 +96,17 @@ const NativeVideoPlayer = memo(({
     if (isPlayerValid(player)) {
       try {
         if (shouldPlay) {
+          player.muted = isMuted;
           player.play();
         } else {
+          player.muted = true;
           player.pause();
         }
       } catch (e) {
         console.warn('[PostFeedCard] player play/pause error:', e);
       }
     }
-  }, [shouldPlay, player]);
+  }, [shouldPlay, player, isMuted]);
 
   useEffect(() => {
     return () => {
@@ -120,6 +125,8 @@ const NativeVideoPlayer = memo(({
           source={{ uri: videoPosterUrl }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={200}
           onError={handlePosterError}
         />
       ) : (
@@ -133,7 +140,14 @@ const NativeVideoPlayer = memo(({
   }
 
   return (
-    <>
+    <View style={{ flex: 1, overflow: 'hidden' }}>
+      <Image
+        source={(videoPosterUrl || videoPosterUrl === '') ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        onError={handlePosterError}
+      />
       <SafeVideoView
         player={player}
         ExpoVideoModule={ExpoVideoModule}
@@ -150,16 +164,7 @@ const NativeVideoPlayer = memo(({
       {filterName !== 'Normal' && (
         <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
       )}
-      {mediaLoading ? (
-        <Image
-          source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
-          style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
-          contentFit="cover"
-          pointerEvents="none"
-          onError={handlePosterError}
-        />
-      ) : null}
-    </>
+    </View>
   );
 });
 NativeVideoPlayer.displayName = 'NativeVideoPlayer';
@@ -230,7 +235,7 @@ export const PostFeedCard = memo(({
   isSavingEdit = false,
 }: PostFeedCardProps) => {
   const { t, language } = useTranslation();
-  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
   const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
@@ -334,8 +339,11 @@ export const PostFeedCard = memo(({
 
   const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
-  const displayRatio = dynamicRatio;
-  const feedHeight = SCREEN_WIDTH / displayRatio;
+  const displayRatio = (dynamicRatio && dynamicRatio > 0) ? dynamicRatio : 4 / 5;
+  const rawFeedHeight = SCREEN_WIDTH / displayRatio;
+  const maxAllowedHeight = Math.min(SCREEN_WIDTH * 1.35, SCREEN_HEIGHT * 0.75);
+  const minAllowedHeight = SCREEN_WIDTH * 0.6;
+  const feedHeight = Math.max(minAllowedHeight, Math.min(rawFeedHeight, maxAllowedHeight));
 
   const cropStyle = useMemo(() => {
     const cropX = post?.crop_offset_x ?? post?.metadata?.crop_offset_x;

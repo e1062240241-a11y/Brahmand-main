@@ -49,14 +49,14 @@ export function useSmartFeed({
 }: UseSmartFeedOptions) {
   const { upgradeQuality } = useFeedOptimizationStore();
   const currentScrollY = useRef(0);
+  const lastSmartScrollTimeRef = useRef(0);
 
-  /**
-   * Called on every scroll event.
-   * Scans all posts and upgrades ones entering the visible + buffer zone.
-   * Keeps max MAX_HIGH_QUALITY_POSTS posts at high quality simultaneously.
-   */
   const onSmartScroll = useCallback(
     (scrollY: number) => {
+      const now = Date.now();
+      if (now - lastSmartScrollTimeRef.current < 250) return;
+      lastSmartScrollTimeRef.current = now;
+
       currentScrollY.current = scrollY;
 
       const viewportTop = scrollY - UPGRADE_BUFFER_PX;

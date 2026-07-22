@@ -1,11 +1,11 @@
 // accessibility: placeholder
 // Trigger watch rebuild
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {View,
+import {
+  View,
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   TouchableOpacity,
   Pressable,
   Image,
@@ -22,13 +22,15 @@ import {View,
   Alert,
   ActionSheetIOS,
   RefreshControl,
-  Animated} from 'react-native';
+  Animated
+} from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { FlashList } from '@shopify/flash-list';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAudioPlayer } from 'expo-audio';
@@ -433,6 +435,8 @@ const formatFestivalDate = (dateStr: string) => {
   }
   return dateStr;
 };
+
+let activePostDebounceTimer: any = null;
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -1230,7 +1234,7 @@ export default function HomeScreen() {
             const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
             const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
             const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
-            
+
             if (!hasPosts || isRefreshing) {
               setTabFeed(tabToLoad, {
                 posts: res.data.feed.items,
@@ -1261,7 +1265,7 @@ export default function HomeScreen() {
           const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
           const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
           const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
-          
+
           if (!hasPosts || isRefreshing) {
             setTabFeed(tabToLoad, {
               posts: res.data.feed.items,
@@ -1514,7 +1518,7 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       const currentActiveTab = useFeedStore.getState().activeTab;
-      
+
       // Increment focus trigger to rotate/shuffle feed posts deterministically
       setFocusTrigger(prev => prev + 1);
 
@@ -1536,6 +1540,22 @@ export default function HomeScreen() {
   const postHeightsRef = useRef<Record<string, number>>({});
 
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
+  const activePostKeyRef = useRef<string | null>(null);
+
+  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 60 }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
+    if (viewableItems.length > 0) {
+      const top = viewableItems[0];
+      const key = String(top.key || top.item?.id || top.item?.media_url || '');
+      if (key && key !== activePostKeyRef.current) {
+        activePostKeyRef.current = key;
+        setActivePostKey(key);
+      }
+    }
+  }).current;
+
+  const isFetchingMoreRef = useRef(false);
   const handleUploadStart = async (
     media: any,
     caption: string,
@@ -1730,52 +1750,64 @@ export default function HomeScreen() {
 
 
     // Visibility tracking for video autoplay - find post with most area in viewport
-    let closestKey = null;
+    let closestKey: string | null = null;
     let maxVisible = 0;
     const viewportTop = y;
     const viewportBottom = y + screenHeight;
+    const estimatedCardHeight = screenWidth * 1.1 + 160;
 
-    for (const key of feedPostKeys) {
-      const offset = postOffsetsRef.current[key];
-      const height = postHeightsRef.current[key];
-      if (typeof offset === 'number' && typeof height === 'number') {
-        const postAbsoluteTop = offset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
-        const postBottom = postAbsoluteTop + height;
-        const visibleTop = Math.max(viewportTop, postAbsoluteTop);
-        const visibleBottom = Math.min(viewportBottom, postBottom);
-        const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        // Stricter condition: Post must be at least 60% visible OR take up at least 50% of the screen
-        const visibilityThreshold = Math.min(height * 0.6, screenHeight * 0.5);
-        if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
-          maxVisible = visibleAmount;
-          closestKey = key;
-        }
+    for (let index = 0; index < feedPosts.length; index++) {
+      const post = feedPosts[index];
+      const key = Platform.OS === 'android'
+        ? `feed-android-${index}-${String(post?.id || post?.media_url || index)}`
+        : `feed-${index}-${String(post?.id || post?.media_url || index)}`;
+
+      let offset = postOffsetsRef.current[key];
+      let height = postHeightsRef.current[key] || estimatedCardHeight;
+
+      if (typeof offset !== 'number') {
+        offset = index * estimatedCardHeight;
+      }
+
+      const postAbsoluteTop = offset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+      const postBottom = postAbsoluteTop + height;
+      const visibleTop = Math.max(viewportTop, postAbsoluteTop);
+      const visibleBottom = Math.min(viewportBottom, postBottom);
+      const visibleAmount = Math.max(0, visibleBottom - visibleTop);
+      const visibilityThreshold = Math.min(height * 0.45, screenHeight * 0.4);
+
+      if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
+        maxVisible = visibleAmount;
+        closestKey = key;
       }
     }
-    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
-    // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
-    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
+    if (closestKey !== activePostKeyRef.current) {
+      activePostKeyRef.current = closestKey;
+      setActivePostKey(closestKey);
+    }
+
+    // Infinite Scroll Logic: Fetch next set of posts when reaching target post
+    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && !isFetchingMoreRef.current && feedPosts.length > 0) {
       const scrollHeight = event.nativeEvent.contentSize.height;
       const layoutHeight = event.nativeEvent.layoutMeasurement.height;
 
-      // Determine which post is currently visible near the bottom of the viewport
-      // We trigger when the 6th-to-last post (index = length - 2) is reached
       const targetIndex = Math.max(0, feedPosts.length - 2);
       const targetPost = feedPosts[targetIndex];
       const targetKey = String(targetPost?.id || targetPost?.media_url || targetIndex);
       const targetOffset = postOffsetsRef.current[targetKey];
 
-      if (typeof targetOffset === 'number') {
-        // If the target post's top is visible in the bottom portion of the screen
-        if (y + layoutHeight > targetOffset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT) {
-          loadFeedPosts(feedOffset, true);
-        }
-      } else {
-        // Fallback to pixel-based trigger if layout not yet captured
-        if (y + layoutHeight > scrollHeight - 1000) {
-          loadFeedPosts(feedOffset, true);
-        }
+      const isNearBottom = typeof targetOffset === 'number'
+        ? (y + layoutHeight > targetOffset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT)
+        : (y + layoutHeight > scrollHeight - 1000);
+
+      if (isNearBottom) {
+        isFetchingMoreRef.current = true;
+        loadFeedPosts(feedOffset, true).finally(() => {
+          setTimeout(() => {
+            isFetchingMoreRef.current = false;
+          }, 1000);
+        });
       }
     }
   }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts, onSmartScroll, screenHeight]);
@@ -1803,7 +1835,7 @@ export default function HomeScreen() {
       const postId = String(post?.id || post?.media_url || index);
       ensureQuality(postId, index);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedPosts]);
 
   useEffect(() => {
@@ -2426,7 +2458,7 @@ export default function HomeScreen() {
           } else {
             await blockUser(currentUserId, targetUserId);
             addBlock(String(targetUserId));
-            
+
             // Dismiss comments modal first
             setCommentModalVisible(false);
 
@@ -2515,7 +2547,7 @@ export default function HomeScreen() {
   const handleUploadPostSuccess = (post: any) => {
     const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
     const currentOffset = useFeedStore.getState().tabFeeds[activeTab]?.offset || 0;
-    
+
     const normalizedPost = post ? {
       ...post,
       mediaUrl: post.mediaUrl || post.media_url,
@@ -2611,164 +2643,9 @@ export default function HomeScreen() {
                 colors={['#FF6B00']}
               />
             }
-            stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
-            onScroll={handleHomeScroll}
-            scrollEventThrottle={16}
+stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
           >
             <View>
-              {loadingFeed && feedPosts.length === 0 && (
-                <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
-                  {/* Avatar + Lines */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
-                    <View style={{ marginLeft: 12 }}>
-                      <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
-                      <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
-                    </View>
-                  </View>
-
-                  {/* 3 Horizontal Boxes */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-                    <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                    <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                    <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                  </View>
-
-                  {/* 1 Large Box */}
-                  <View style={{ width: '100%', height: 220, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 16, marginBottom: 20, padding: 15, justifyContent: 'space-between' }}>
-                    <View style={{ alignSelf: 'flex-end', width: 40, height: 20, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 10 }} />
-                    <View style={{ width: '40%', height: 35, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 20 }} />
-                  </View>
-
-                  {/* 4 Vertical Boxes */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-                    <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                    <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                    <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                    <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                  </View>
-
-                  {/* 2 Horizontal Boxes */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 }}>
-                    <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                    <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-                  </View>
-
-                  {/* 3 Thin Lines */}
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, paddingHorizontal: 20 }}>
-                    <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
-                    <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
-                    <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
-                  </View>
-
-                  {/* Bottom Avatar + Lines */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
-                    <View style={{ marginLeft: 12 }}>
-                      <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
-                      <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
-                    </View>
-                  </View>
-                </View>
-              )}
-              {!(loadingFeed && feedPosts.length === 0) && (
-                <View
-                  onLayout={(event) => {
-                    const h = event.nativeEvent.layout.height;
-                    feedTabsYRef.current = h;
-                    setFeedTabsY(h);
-                  }}
-                >
-                  <View style={styles.upperContentWrapper}>
-                    <View style={styles.header}>
-                      <View style={styles.headerLeft}>
-                        <TouchableOpacity
-                          activeOpacity={0.86}
-                          style={styles.profileButton}
-                          onPress={() => router.push('/(tabs)/profile')}
-                          onLongPress={() => setShowProfileActions(true)}
-                        >
-                          <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
-                        </TouchableOpacity>
-                      </View>
-
-                      <View style={{
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        zIndex: -1,
-                      }} pointerEvents="none">
-                        <Text style={{
-                          color: '#000',
-                          textAlign: 'center',
-                          fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-                          fontSize: Platform.OS === 'android' ? 26 : 28,
-                          fontStyle: 'normal',
-                          fontWeight: '500',
-                          lineHeight: Platform.OS === 'android' ? 32 : 36,
-                          letterSpacing: 0,
-                        }}>BRAHMAND</Text>
-                      </View>
-
-                      <View style={styles.headerRight}>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          style={styles.headerIconButton}
-                          onPress={() => setSearchActive(!searchActive)}
-                        >
-                          <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          activeOpacity={0.7}
-                          style={styles.headerIconButton}
-                          onPress={handleNotificationPress}
-                        >
-                          <View>
-                            <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
-                            {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
-                          </View>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-
-                    {nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1) && (
-                      <TouchableOpacity
-                        style={styles.festivalAlertCard}
-                        activeOpacity={0.9}
-                        onPress={() => router.push('/festivals')}
-                      >
-                        <View style={styles.festivalAlertIcon}>
-                          <Ionicons name="notifications-outline" size={18} color="#FFF" />
-                        </View>
-                        <View style={styles.festivalAlertTextWrapper}>
-                          <Text style={styles.festivalAlertTitle}>{t('festivalReminder')}</Text>
-                          <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
-                            {nextFestival.days_until === 0
-                              ? `${nextFestival.name} ${t('isTodayClick')}`
-                              : `${nextFestival.name} ${t('isTomorrowClick')} (${formatFestivalDate(nextFestival.date)})`}
-                          </Text>
-                        </View>
-                        <Ionicons name="chevron-forward" size={20} color="#FFF" />
-                      </TouchableOpacity>
-                    )}
-
-                    {searchActive ? (
-                      <View style={styles.searchPanel}>
-                        <View style={styles.searchBar}>
-                          <Ionicons name="search" size={18} color="#6F5C70" />
-                          <TextInput
-                            style={styles.searchInput}
-                            value={searchTerm}
-                            onChangeText={setSearchTerm}
-                            placeholder={t('recentSearchPlaceholder')}
-                            placeholderTextColor="#8E7D90"
-                            autoFocus
-                          />
-                        </View>
                         {searchTerm.trim().length > 0 ? (
                           <View style={styles.searchResultsSection}>
                             {searchTerm.trim().startsWith('#') ? (
@@ -2870,7 +2747,7 @@ export default function HomeScreen() {
                         ) : null}
                       </View>
                     ) : (
-                      <View 
+                      <View
                         style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}
                       >
                         <ScrollView
@@ -3026,7 +2903,7 @@ export default function HomeScreen() {
                       </View>
                     )}
 
-                    <View 
+                    <View
                       style={{ position: 'relative' }}
                     >
                       <ScrollView
@@ -3090,967 +2967,954 @@ export default function HomeScreen() {
                                         : '2300+ devotees already completed jaap')}
                                   </Text>
 
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                                  <Ionicons name="time-outline" size={13} color="#FFF" />
-                                  <Text style={[styles.featuredTime, {
-                                    marginTop: 0,
-                                    marginLeft: 4,
-                                    color: '#FFF',
-                                    fontWeight: '600',
-                                    fontSize: 12
-                                  }]}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                                    <Ionicons name="time-outline" size={13} color="#FFF" />
+                                    <Text style={[styles.featuredTime, {
+                                      marginTop: 0,
+                                      marginLeft: 4,
+                                      color: '#FFF',
+                                      fontWeight: '600',
+                                      fontSize: 12
+                                    }]}>
+                                      {hanumanStatus.isActive
+                                        ? `${t('liveUntil')} ${hanumanStatus.sessionEnd ? formatTime(hanumanStatus.sessionEnd) : '5:00 PM'}`
+                                        : (hanumanStatus.nextSessionStart
+                                          ? (t('language') === 'hi' ? `${formatTime(hanumanStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(hanumanStatus.nextSessionStart)}`)
+                                          : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                    </Text>
+                                  </View>
+                                </View>
+
+                                {/* Top Right LIVE Badge */}
+                                <View style={[styles.liveBadge, {
+                                  alignSelf: 'flex-start',
+                                  backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
+                                  paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
+                                }]}>
+                                  {hanumanStatus.isActive && <View style={styles.liveDot} />}
+                                  <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
                                     {hanumanStatus.isActive
-                                      ? `${t('liveUntil')} ${hanumanStatus.sessionEnd ? formatTime(hanumanStatus.sessionEnd) : '5:00 PM'}`
-                                      : (hanumanStatus.nextSessionStart
-                                        ? (t('language') === 'hi' ? `${formatTime(hanumanStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(hanumanStatus.nextSessionStart)}`)
-                                        : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                      ? 'LIVE'
+                                      : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
                                   </Text>
                                 </View>
                               </View>
 
-                              {/* Top Right LIVE Badge */}
-                              <View style={[styles.liveBadge, {
-                                alignSelf: 'flex-start',
-                                backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
-                                paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
-                              }]}>
-                                {hanumanStatus.isActive && <View style={styles.liveDot} />}
-                                <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
-                                  {hanumanStatus.isActive
-                                    ? 'LIVE'
-                                    : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
-                                </Text>
-                              </View>
-                            </View>
+                              {/* Bottom Button Row */}
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                                <Pressable
+                                  style={[
+                                    styles.joinJaapButton,
+                                    {
+                                      backgroundColor: '#FF5100',
+                                      display: 'flex',
+                                      width: 138,
+                                      height: 36,
+                                      paddingHorizontal: 12,
+                                      flexDirection: 'column',
+                                      justifyContent: 'center',
+                                      alignItems: 'center',
+                                      gap: 10,
+                                    }
+                                  ]}
+                                  android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                  onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
+                                >
+                                  <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                                </Pressable>
 
-                            {/* Bottom Button Row */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                              <Pressable
-                                style={[
-                                  styles.joinJaapButton,
-                                  {
-                                    backgroundColor: '#FF5100',
-                                    display: 'flex',
-                                    width: 138,
+                                <TouchableOpacity
+                                  style={{
+                                    backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                                    width: 36,
                                     height: 36,
-                                    paddingHorizontal: 12,
-                                    flexDirection: 'column',
+                                    borderRadius: 18,
                                     justifyContent: 'center',
                                     alignItems: 'center',
-                                    gap: 10,
-                                  }
-                                ]}
-                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                onPress={() => handleLiveJaapNavigation('hanuman', 'Hanuman Chalisa')}
-                              >
-                                <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
-                              </Pressable>
+                                    borderWidth: 1,
+                                    borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                  }}
+                                  activeOpacity={0.8}
+                                  onPress={() => handleSetReminder('hanuman', 'Hanuman Chalisa')}
+                                >
+                                  <Ionicons
+                                    name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
+                                    size={18}
+                                    color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            </LinearGradient>
+                          </ImageBackground>
+                        </View>
 
+                        <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
+                          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
+                            <LinearGradient
+                              colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+                              style={styles.featuredLiveOverlay}
+                            >
+                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+                                {/* Top Left Content */}
+                                <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                    <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                                    <Text style={[
+                                      styles.featuredLiveTitle,
+                                      {
+                                        color: '#FFF',
+                                        fontFamily: 'System',
+                                        fontSize: 15,
+                                        fontStyle: 'normal',
+                                        fontWeight: '700',
+                                        letterSpacing: 1,
+                                        textShadowColor: 'rgba(0,0,0,0.9)',
+                                        textShadowOffset: { width: 0, height: 1 },
+                                        textShadowRadius: 6,
+                                      }
+                                    ]}>Mahamrityunjaya Mantra</Text>
+                                  </View>
+
+                                  <Text style={[styles.featuredDevotees, {
+                                    color: '#FFF',
+                                    fontWeight: '600',
+                                    opacity: 0.9,
+                                    textShadowColor: 'rgba(0,0,0,0.8)',
+                                    textShadowOffset: { width: 0, height: 1 },
+                                    textShadowRadius: 4,
+                                    marginLeft: 14,
+                                    marginTop: 0,
+                                    marginBottom: 2,
+                                    fontSize: 13
+                                  }]}>
+                                    {shivaStatus.isActive
+                                      ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                                      : (t('language') === 'hi'
+                                        ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                                        : '2300+ devotees already completed jaap')}
+                                  </Text>
+
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                                    <Ionicons name="time-outline" size={13} color="#FFF" />
+                                    <Text style={[styles.featuredTime, {
+                                      marginTop: 0,
+                                      marginLeft: 4,
+                                      color: '#FFF',
+                                      fontWeight: '600',
+                                      fontSize: 12
+                                    }]}>
+                                      {shivaStatus.isActive
+                                        ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
+                                        : (shivaStatus.nextSessionStart
+                                          ? (t('language') === 'hi' ? `${formatTime(shivaStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(shivaStatus.nextSessionStart)}`)
+                                          : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                                    </Text>
+                                  </View>
+                                </View>
+
+                                {/* Top Right LIVE Badge */}
+                                <View style={[styles.liveBadge, {
+                                  alignSelf: 'flex-start',
+                                  backgroundColor: shivaStatus.isActive ? '#FF0000' : '#FF7A00',
+                                  paddingHorizontal: shivaStatus.isActive ? 8 : 10,
+                                }]}>
+                                  {shivaStatus.isActive && <View style={styles.liveDot} />}
+                                  <Text style={[styles.liveBadgeText, { marginLeft: shivaStatus.isActive ? 4 : 0 }]}>
+                                    {shivaStatus.isActive
+                                      ? 'LIVE'
+                                      : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              {/* Bottom Button Row */}
+                              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                                <Pressable
+                                  style={[
+                                    styles.joinJaapButton,
+                                    {
+                                      backgroundColor: '#FF5100',
+                                      display: 'flex',
+                                      width: 138,
+                                      height: 36,
+                                      paddingHorizontal: 12,
+                                      flexDirection: 'column',
+                                      justifyContent: 'center',
+                                      alignItems: 'center',
+                                      gap: 10,
+                                    }
+                                  ]}
+                                  android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                  onPress={() => handleLiveJaapNavigation('shiva', 'Mahamrityunjaya Mantra')}
+                                >
+                                  <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                                </Pressable>
+
+                                <TouchableOpacity
+                                  style={{
+                                    backgroundColor: reminders['shiva'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 18,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    borderWidth: 1,
+                                    borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                  }}
+                                  activeOpacity={0.8}
+                                  onPress={() => handleSetReminder('shiva', 'Mahamrityunjaya Mantra')}
+                                >
+                                  <Ionicons
+                                    name={reminders['shiva'] ? "notifications" : "notifications-outline"}
+                                    size={18}
+                                    color={reminders['shiva'] ? '#FF5100' : '#FFF'}
+                                  />
+                                </TouchableOpacity>
+                              </View>
+                            </LinearGradient>
+                          </ImageBackground>
+                        </View>
+                      </ScrollView>
+
+                      <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, zIndex: 10 }}>
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 0 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 1 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.postBannerSection}>
+                    <ScrollView
+                      ref={actionCardsScrollRef}
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      nestedScrollEnabled={true}
+                      snapToInterval={actionCardSnapInterval}
+                      decelerationRate="fast"
+                      contentContainerStyle={styles.actionCardsScroll}
+                      style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
+                    >
+                      {/* Urgent Blood/Community Request */}
+                      {safeCommunityRequests.length > 0 ? (() => {
+                        const req = safeCommunityRequests[activeRequestIndex % safeCommunityRequests.length];
+                        const requestTitle = req.type === 'blood'
+                          ? `${req.blood_group || 'Blood'} ${t('bloodRequired')}`
+                          : (req.title || 'Community Help');
+                        const requestDetails = req.type === 'blood'
+                          ? `${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`
+                          : (req.description || req.location || 'Nearby');
+                        return (
+                          <View key={req.id || 0} style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                              <HomeCardTextureBg texture="rose">
+                                <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                                  <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                    {req.type === 'blood' ? (
+                                      <BloodDropIcon />
+                                    ) : (
+                                      <Ionicons name="people-outline" size={20} color="#FF0022" />
+                                    )}
+                                  </View>
+                                  <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
+                                  <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
+                                </View>
+                                <TouchableOpacity
+                                  style={{
+                                    width: '85%',
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: '#FF0022',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    alignSelf: 'center',
+                                    shadowColor: '#FF0022',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 3,
+                                    elevation: 4,
+                                    marginBottom: 6,
+                                  }}
+                                  onPress={() => {
+                                    router.push({
+                                      pathname: '/community-request/list',
+                                      params: {
+                                        requestId: req.id,
+                                        community_id: req.community_id
+                                      }
+                                    });
+                                  }}
+                                >
+                                  <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                                </TouchableOpacity>
+                              </HomeCardTextureBg>
+                            </View>
+                            {/* Badge rendered as sibling outside to prevent any iOS clipping */}
+                            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                              <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                                <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })() : (
+                        <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                          <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                            <HomeCardTextureBg texture="rose">
+                              <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                                <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                  <BloodDropIcon />
+                                </View>
+                                <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
+                                <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
+                              </View>
                               <TouchableOpacity
                                 style={{
-                                  backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
-                                  width: 36,
-                                  height: 36,
-                                  borderRadius: 18,
+                                  width: '85%',
+                                  height: 28,
+                                  borderRadius: 14,
+                                  backgroundColor: '#FF0022',
                                   justifyContent: 'center',
                                   alignItems: 'center',
-                                  borderWidth: 1,
-                                  borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                  alignSelf: 'center',
+                                  shadowColor: '#FF0022',
+                                  shadowOffset: { width: 0, height: 2 },
+                                  shadowOpacity: 0.3,
+                                  shadowRadius: 3,
+                                  elevation: 4,
+                                  marginBottom: 6,
                                 }}
-                                activeOpacity={0.8}
-                                onPress={() => handleSetReminder('hanuman', 'Hanuman Chalisa')}
+                                onPress={() => {
+                                  router.push('/community-request/list');
+                                }}
                               >
-                                <Ionicons
-                                  name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
-                                  size={18}
-                                  color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
-                                />
+                                <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
                               </TouchableOpacity>
-                            </View>
-                          </LinearGradient>
-                        </ImageBackground>
-                    </View>
-
-                    <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
-                      <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
-                        <LinearGradient
-                          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
-                          style={styles.featuredLiveOverlay}
-                        >
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-
-                            {/* Top Left Content */}
-                            <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                                <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                                <Text style={[
-                                  styles.featuredLiveTitle,
-                                  {
-                                    color: '#FFF',
-                                    fontFamily: 'System',
-                                    fontSize: 15,
-                                    fontStyle: 'normal',
-                                    fontWeight: '700',
-                                    letterSpacing: 1,
-                                    textShadowColor: 'rgba(0,0,0,0.9)',
-                                    textShadowOffset: { width: 0, height: 1 },
-                                    textShadowRadius: 6,
-                                  }
-                                ]}>Mahamrityunjaya Mantra</Text>
-                              </View>
-
-                              <Text style={[styles.featuredDevotees, {
-                                color: '#FFF',
-                                fontWeight: '600',
-                                opacity: 0.9,
-                                textShadowColor: 'rgba(0,0,0,0.8)',
-                                textShadowOffset: { width: 0, height: 1 },
-                                textShadowRadius: 4,
-                                marginLeft: 14,
-                                marginTop: 0,
-                                marginBottom: 2,
-                                fontSize: 13
-                              }]}>
-                                {shivaStatus.isActive
-                                  ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
-                                  : (t('language') === 'hi'
-                                    ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
-                                    : '2300+ devotees already completed jaap')}
-                              </Text>
-
-                              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                                <Ionicons name="time-outline" size={13} color="#FFF" />
-                                <Text style={[styles.featuredTime, {
-                                  marginTop: 0,
-                                  marginLeft: 4,
-                                  color: '#FFF',
-                                  fontWeight: '600',
-                                  fontSize: 12
-                                }]}>
-                                  {shivaStatus.isActive
-                                    ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
-                                    : (shivaStatus.nextSessionStart
-                                      ? (t('language') === 'hi' ? `${formatTime(shivaStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(shivaStatus.nextSessionStart)}`)
-                                      : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
-                                </Text>
-                              </View>
-                            </View>
-
-                            {/* Top Right LIVE Badge */}
-                            <View style={[styles.liveBadge, {
-                              alignSelf: 'flex-start',
-                              backgroundColor: shivaStatus.isActive ? '#FF0000' : '#FF7A00',
-                              paddingHorizontal: shivaStatus.isActive ? 8 : 10,
-                            }]}>
-                              {shivaStatus.isActive && <View style={styles.liveDot} />}
-                              <Text style={[styles.liveBadgeText, { marginLeft: shivaStatus.isActive ? 4 : 0 }]}>
-                                {shivaStatus.isActive
-                                  ? 'LIVE'
-                                  : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
-                              </Text>
+                            </HomeCardTextureBg>
+                          </View>
+                          {/* Badge rendered as sibling outside to prevent any iOS clipping */}
+                          <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                            <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                              <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
                             </View>
                           </View>
+                        </View>
+                      )}
 
-                          {/* Bottom Button Row */}
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                            <Pressable
-                              style={[
-                                styles.joinJaapButton,
-                                {
-                                  backgroundColor: '#FF5100',
-                                  display: 'flex',
-                                  width: 138,
-                                  height: 36,
-                                  paddingHorizontal: 12,
-                                  flexDirection: 'column',
-                                  justifyContent: 'center',
-                                  alignItems: 'center',
-                                  gap: 10,
-                                }
-                              ]}
-                              android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                              onPress={() => handleLiveJaapNavigation('shiva', 'Mahamrityunjaya Mantra')}
-                            >
-                              <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
-                            </Pressable>
-
+                      {/* Register Business */}
+                      <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                        <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                          <HomeCardTextureBg texture="peach">
+                            <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                              <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                <ShopIcon />
+                              </View>
+                              <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
+                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
+                            </View>
                             <TouchableOpacity
                               style={{
-                                backgroundColor: reminders['shiva'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
+                                width: '85%',
+                                height: 28,
+                                borderRadius: 14,
+                                backgroundColor: '#FF9500',
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                borderWidth: 1,
-                                borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                                alignSelf: 'center',
+                                shadowColor: '#FF9500',
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 3,
+                                elevation: 4,
+                                marginBottom: 6,
                               }}
-                              activeOpacity={0.8}
-                              onPress={() => handleSetReminder('shiva', 'Mahamrityunjaya Mantra')}
+                              onPress={() => {
+                                if (myVendor) {
+                                  router.push('/vendor/dashboard');
+                                } else {
+                                  router.push('/(tabs)/vendor');
+                                }
+                              }}
                             >
-                              <Ionicons
-                                name={reminders['shiva'] ? "notifications" : "notifications-outline"}
-                                size={18}
-                                color={reminders['shiva'] ? '#FF5100' : '#FFF'}
-                              />
+                              <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
                             </TouchableOpacity>
+                          </HomeCardTextureBg>
+                        </View>
+                        {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
+                        <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                          <View style={{ width: 65, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                            <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
                           </View>
-                        </LinearGradient>
-                      </ImageBackground>
-                    </View>
-                  </ScrollView>
+                        </View>
+                      </View>
 
-                  <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, zIndex: 10 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 0 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 1 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
-                  </View>
-                </View>
-                  </View>
+                      {(() => {
+                        const verifiedVendors = vendors.filter(v => v.kyc_status === 'verified');
+                        const targetList = verifiedVendors.length > 0 ? verifiedVendors : (vendors.length > 0 ? vendors : []);
+                        const displayVendor = targetList.length > 0 ? targetList[activeVendorIndex % targetList.length] : null;
+                        const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
+                        const categoryAndLoc = displayVendor
+                          ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
+                          : 'Flower Decor\nAndheri West';
 
-            <View style={styles.postBannerSection}>
-              <ScrollView
-                ref={actionCardsScrollRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                nestedScrollEnabled={true}
-                snapToInterval={actionCardSnapInterval}
-                decelerationRate="fast"
-                contentContainerStyle={styles.actionCardsScroll}
-                style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
-              >
-                {/* Urgent Blood/Community Request */}
-                {safeCommunityRequests.length > 0 ? (() => {
-                  const req = safeCommunityRequests[activeRequestIndex % safeCommunityRequests.length];
-                  const requestTitle = req.type === 'blood' 
-                    ? `${req.blood_group || 'Blood'} ${t('bloodRequired')}`
-                    : (req.title || 'Community Help');
-                  const requestDetails = req.type === 'blood'
-                    ? `${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`
-                    : (req.description || req.location || 'Nearby');
-                  return (
-                    <View key={req.id || 0} style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                      <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                        <HomeCardTextureBg texture="rose">
-                          <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                            <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                              {req.type === 'blood' ? (
-                                <BloodDropIcon />
-                              ) : (
-                                <Ionicons name="people-outline" size={20} color="#FF0022" />
-                              )}
+                        return (
+                          <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                              <HomeCardTextureBg texture="mint">
+                                <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                                  <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                    <LotusIcon />
+                                  </View>
+                                  <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
+                                  <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                                </View>
+                                <TouchableOpacity
+                                  style={{
+                                    width: '85%',
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: '#00C781',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    alignSelf: 'center',
+                                    shadowColor: '#00C781',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 3,
+                                    elevation: 4,
+                                    marginBottom: 6,
+                                  }}
+                                  onPress={() => {
+                                    if (displayVendor) {
+                                      router.push(`/vendor/${displayVendor.id}`);
+                                    } else {
+                                      router.push('/(tabs)/vendor');
+                                    }
+                                  }}
+                                >
+                                  <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                                </TouchableOpacity>
+                              </HomeCardTextureBg>
                             </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
+                            {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
+                            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                              <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                                <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('verifiedVendor')}</Text>
+                              </View>
+                            </View>
                           </View>
-                          <TouchableOpacity
-                            style={{
-                              width: '85%',
-                              height: 28,
-                              borderRadius: 14,
-                              backgroundColor: '#FF0022',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              alignSelf: 'center',
-                              shadowColor: '#FF0022',
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 3,
-                              elevation: 4,
-                              marginBottom: 6,
-                            }}
-                            onPress={() => {
-                              router.push({
-                                  pathname: '/community-request/list',
-                                  params: {
-                                    requestId: req.id,
-                                    community_id: req.community_id
-                                  }
-                              });
-                            }}
-                          >
-                            <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
-                          </TouchableOpacity>
-                        </HomeCardTextureBg>
-                      </View>
-                      {/* Badge rendered as sibling outside to prevent any iOS clipping */}
-                      <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                        <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                          <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })() : (
-                  <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                    <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                      <HomeCardTextureBg texture="rose">
-                        <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                          <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                            <BloodDropIcon />
+                        );
+                      })()}
+
+                      {/* Live Aarti Card 1 */}
+                      {(() => {
+                        const aarti1 = ROTATING_AARTIS[activeAartiIndex];
+                        return (
+                          <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                              <HomeCardTextureBg texture="lavender">
+                                <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
+                                  <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                    <TempleIcon />
+                                  </View>
+                                  <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
+                                    <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                                      {t('notify')} {t('me')}
+                                    </Text>
+                                    <TouchableOpacity
+                                      onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
+                                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                      <Ionicons name="notifications-outline" size={15} color="#000" />
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                                <TouchableOpacity
+                                  style={{
+                                    width: '85%',
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: '#8C36DB',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    alignSelf: 'center',
+                                    shadowColor: '#8C36DB',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 3,
+                                    elevation: 4,
+                                    marginBottom: 6,
+                                  }}
+                                  onPress={() => {
+                                    setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti1.id] || '');
+                                    setSelectedAartiTitle(aarti1.name);
+                                    setIsAartiModalVisible(true);
+                                  }}
+                                >
+                                  <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                                </TouchableOpacity>
+                              </HomeCardTextureBg>
+                            </View>
+                            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                              <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                                <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                              </View>
+                            </View>
                           </View>
-                          <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
-                          <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
-                        </View>
-                        <TouchableOpacity
-                          style={{
-                            width: '85%',
-                            height: 28,
-                            borderRadius: 14,
-                            backgroundColor: '#FF0022',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            shadowColor: '#FF0022',
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.3,
-                            shadowRadius: 3,
-                            elevation: 4,
-                            marginBottom: 6,
-                          }}
+                        );
+                      })()}
+
+                      {/* Live Aarti Card 2 */}
+                      {(() => {
+                        const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
+                        return (
+                          <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+                            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                              <HomeCardTextureBg texture="lavender">
+                                <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
+                                  <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                                    <TempleIcon />
+                                  </View>
+                                  <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
+                                    <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                                      {t('notify')} {t('me')}
+                                    </Text>
+                                    <TouchableOpacity
+                                      onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
+                                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                    >
+                                      <Ionicons name="notifications-outline" size={15} color="#000" />
+                                    </TouchableOpacity>
+                                  </View>
+                                </View>
+                                <TouchableOpacity
+                                  style={{
+                                    width: '85%',
+                                    height: 28,
+                                    borderRadius: 14,
+                                    backgroundColor: '#8C36DB',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    alignSelf: 'center',
+                                    shadowColor: '#8C36DB',
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: 0.3,
+                                    shadowRadius: 3,
+                                    elevation: 4,
+                                    marginBottom: 6,
+                                  }}
+                                  onPress={() => {
+                                    setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti2.id] || '');
+                                    setSelectedAartiTitle(aarti2.name);
+                                    setIsAartiModalVisible(true);
+                                  }}
+                                >
+                                  <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                                </TouchableOpacity>
+                              </HomeCardTextureBg>
+                            </View>
+                            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                              <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                                <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                              </View>
+                            </View>
+                          </View>
+                        );
+                      })()}
+                    </ScrollView>
+                  </View>
+
+                  <View style={styles.twoButtonsRow}>
+                    {/* Mumbai Community Card */}
+                    {(() => {
+                      const resolvedCityComm = resolveHomeCommunityItem(findCityCommunity()) || {
+                        id: 'mumbai-fallback',
+                        name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
+                        type: 'city',
+                        member_count: 1250,
+                      };
+                      let cityName = resolvedCityComm.name || 'City Community';
+                      if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
+                        cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
+                      }
+                      const cityId = resolvedCityComm.id;
+                      const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
+                      return (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.communityCardMini,
+                            Platform.OS === 'android' && { overflow: 'hidden' },
+                            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                          ]}
+                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
                           onPress={() => {
-                            router.push('/community-request/list');
+                            router.push({
+                              pathname: '/community/[id]',
+                              params: { id: cityId, subgroup: 'city', name: cityName }
+                            });
                           }}
                         >
-                          <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
-                        </TouchableOpacity>
-                      </HomeCardTextureBg>
-                    </View>
-                    {/* Badge rendered as sibling outside to prevent any iOS clipping */}
-                    <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                      <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                        <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
+                          <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
+                          <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                            <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('cityCommunity').toUpperCase()}</Text>
+                            <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
+                              {cityName}
+                            </Text>
+                            <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityMembers} {t('members')}</Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
+                        </Pressable>
+                      );
+                    })()}
 
-                {/* Register Business */}
-                <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                  <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                    <HomeCardTextureBg texture="peach">
-                      <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                        <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                          <ShopIcon />
-                        </View>
-                        <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
-                        <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={{
-                          width: '85%',
-                          height: 28,
-                          borderRadius: 14,
-                          backgroundColor: '#FF9500',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          alignSelf: 'center',
-                          shadowColor: '#FF9500',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 3,
-                          elevation: 4,
-                          marginBottom: 6,
-                        }}
-                        onPress={() => {
-                          if (myVendor) {
-                            router.push('/vendor/dashboard');
-                          } else {
-                            router.push('/(tabs)/vendor');
-                          }
-                        }}
-                      >
-                        <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
-                      </TouchableOpacity>
-                    </HomeCardTextureBg>
-                  </View>
-                  {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
-                  <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                    <View style={{ width: 65, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
-                      <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
-                    </View>
+                    {/* Local Community Card */}
+                    {(() => {
+                      const resolvedLocalComm = resolveHomeCommunityItem(findLocalCommunity()) || {
+                        id: 'food_pune',
+                        name: t('language') === 'hi' ? 'पुणे भोजन साझाकरण समूह' : 'Pune Food Sharing Group',
+                        type: 'user_group',
+                        member_count: 235,
+                      };
+                      const localId = resolvedLocalComm.id;
+                      let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
+                      if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
+                        realGroupName = 'पुणे भोजन साझाकरण समूह';
+                      }
+                      const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
+                      const localSubgroup = resolvedLocalComm.type || 'city';
+                      return (
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.communityCardMini,
+                            Platform.OS === 'android' && { overflow: 'hidden' },
+                            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                          ]}
+                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                          onPress={() => {
+                            router.push({
+                              pathname: '/community/[id]',
+                              params: { id: localId, subgroup: localSubgroup, name: realGroupName }
+                            });
+                          }}
+                        >
+                          <View style={styles.communityCardIconBox}>
+                            <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
+                          </View>
+                          <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+                            <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>
+                            <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
+                              {realGroupName}
+                            </Text>
+                            <View style={styles.miniCardBottomRow}>
+                              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
+                              <View style={styles.sevaBadgeMini}>
+                                <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                              </View>
+                            </View>
+                          </View>
+                          <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
+                        </Pressable>
+                      );
+                    })()}
                   </View>
                 </View>
-
-                {(() => {
-                  const verifiedVendors = vendors.filter(v => v.kyc_status === 'verified');
-                  const targetList = verifiedVendors.length > 0 ? verifiedVendors : (vendors.length > 0 ? vendors : []);
-                  const displayVendor = targetList.length > 0 ? targetList[activeVendorIndex % targetList.length] : null;
-                  const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
-                  const categoryAndLoc = displayVendor
-                    ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
-                    : 'Flower Decor\nAndheri West';
-
-                  return (
-                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                      <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                        <HomeCardTextureBg texture="mint">
-                          <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
-                            <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                              <LotusIcon />
-                            </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
-                            <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
-                          </View>
-                          <TouchableOpacity
-                            style={{
-                              width: '85%',
-                              height: 28,
-                              borderRadius: 14,
-                              backgroundColor: '#00C781',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              alignSelf: 'center',
-                              shadowColor: '#00C781',
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 3,
-                              elevation: 4,
-                              marginBottom: 6,
-                            }}
-                            onPress={() => {
-                              if (displayVendor) {
-                                router.push(`/vendor/${displayVendor.id}`);
-                              } else {
-                                router.push('/(tabs)/vendor');
-                              }
-                            }}
-                          >
-                            <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
-                          </TouchableOpacity>
-                        </HomeCardTextureBg>
-                      </View>
-                      {/* Badge rendered as sibling outside LinearGradient to prevent any iOS clipping */}
-                      <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                        <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                          <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('verifiedVendor')}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })()}
-
-                {/* Live Aarti Card 1 */}
-                {(() => {
-                  const aarti1 = ROTATING_AARTIS[activeAartiIndex];
-                  return (
-                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                      <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                        <HomeCardTextureBg texture="lavender">
-                          <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
-                            <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                              <TempleIcon />
-                            </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
-                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
-                                {t('notify')} {t('me')}
-                              </Text>
-                              <TouchableOpacity
-                                onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                              >
-                                <Ionicons name="notifications-outline" size={15} color="#000" />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                          <TouchableOpacity
-                            style={{
-                              width: '85%',
-                              height: 28,
-                              borderRadius: 14,
-                              backgroundColor: '#8C36DB',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              alignSelf: 'center',
-                              shadowColor: '#8C36DB',
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 3,
-                              elevation: 4,
-                              marginBottom: 6,
-                            }}
-                            onPress={() => {
-                              setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti1.id] || '');
-                              setSelectedAartiTitle(aarti1.name);
-                              setIsAartiModalVisible(true);
-                            }}
-                          >
-                            <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
-                          </TouchableOpacity>
-                        </HomeCardTextureBg>
-                      </View>
-                      <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                        <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                          <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })()}
-
-                {/* Live Aarti Card 2 */}
-                {(() => {
-                  const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
-                  return (
-                    <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                      <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
-                        <HomeCardTextureBg texture="lavender">
-                          <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
-                            <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
-                              <TempleIcon />
-                            </View>
-                            <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
-                              <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
-                                {t('notify')} {t('me')}
-                              </Text>
-                              <TouchableOpacity
-                                onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                              >
-                                <Ionicons name="notifications-outline" size={15} color="#000" />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                          <TouchableOpacity
-                            style={{
-                              width: '85%',
-                              height: 28,
-                              borderRadius: 14,
-                              backgroundColor: '#8C36DB',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                              alignSelf: 'center',
-                              shadowColor: '#8C36DB',
-                              shadowOffset: { width: 0, height: 2 },
-                              shadowOpacity: 0.3,
-                              shadowRadius: 3,
-                              elevation: 4,
-                              marginBottom: 6,
-                            }}
-                            onPress={() => {
-                              setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti2.id] || '');
-                              setSelectedAartiTitle(aarti2.name);
-                              setIsAartiModalVisible(true);
-                            }}
-                          >
-                            <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
-                          </TouchableOpacity>
-                        </HomeCardTextureBg>
-                      </View>
-                      <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
-                        <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
-                          <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  );
-                })()}
-              </ScrollView>
+              )}
             </View>
 
-            <View style={styles.twoButtonsRow}>
-              {/* Mumbai Community Card */}
-              {(() => {
-                const resolvedCityComm = resolveHomeCommunityItem(findCityCommunity()) || {
-                  id: 'mumbai-fallback',
-                  name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
-                  type: 'city',
-                  member_count: 1250,
-                };
-                let cityName = resolvedCityComm.name || 'City Community';
-                if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
-                  cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
-                }
-                const cityId = resolvedCityComm.id;
-                const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
-                return (
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.communityCardMini,
-                      Platform.OS === 'android' && { overflow: 'hidden' },
-                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                    ]}
-                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                    onPress={() => {
-                      router.push({
-                        pathname: '/community/[id]',
-                        params: { id: cityId, subgroup: 'city', name: cityName }
+            {!(loadingFeed && feedPosts.length === 0) && (
+              <View style={styles.stickyFeedTabsShell}>
+                <View style={styles.stickyFeedTabs}>
+                  <HomeFeedTabs
+                    activeTab={activeTab}
+                    onTabChange={(tab) => {
+                      requestAnimationFrame(() => {
+                        setActiveTab(tab);
                       });
                     }}
-                  >
-                    <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
-                    <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
-                      <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('cityCommunity').toUpperCase()}</Text>
-                      <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                        {cityName}
-                      </Text>
-                      <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityMembers} {t('members')}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
-                  </Pressable>
-                );
-              })()}
-
-              {/* Local Community Card */}
-              {(() => {
-                const resolvedLocalComm = resolveHomeCommunityItem(findLocalCommunity()) || {
-                  id: 'food_pune',
-                  name: t('language') === 'hi' ? 'पुणे भोजन साझाकरण समूह' : 'Pune Food Sharing Group',
-                  type: 'user_group',
-                  member_count: 235,
-                };
-                const localId = resolvedLocalComm.id;
-                let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
-                if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
-                  realGroupName = 'पुणे भोजन साझाकरण समूह';
-                }
-                const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
-                const localSubgroup = resolvedLocalComm.type || 'city';
-                return (
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.communityCardMini,
-                      Platform.OS === 'android' && { overflow: 'hidden' },
-                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                    ]}
-                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                    onPress={() => {
-                      router.push({
-                        pathname: '/community/[id]',
-                        params: { id: localId, subgroup: localSubgroup, name: realGroupName }
-                      });
-                    }}
-                  >
-                    <View style={styles.communityCardIconBox}>
-                      <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
-                    </View>
-                    <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
-                      <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>
-                      <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
-                        {realGroupName}
-                      </Text>
-                      <View style={styles.miniCardBottomRow}>
-                        <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
-                        <View style={styles.sevaBadgeMini}>
-                          <Text style={styles.sevaBadgeTextMini}>Seva</Text>
-                        </View>
-                      </View>
-                    </View>
-                    <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
-                  </Pressable>
-                );
-              })()}
-            </View>
-          </View>
-        )}
-        </View>
-
-        {!(loadingFeed && feedPosts.length === 0) && (
-          <View style={styles.stickyFeedTabsShell}>
-            <View style={styles.stickyFeedTabs}>
-              <HomeFeedTabs
-                activeTab={activeTab}
-                onTabChange={(tab) => {
-                  requestAnimationFrame(() => {
-                    setActiveTab(tab);
-                  });
-                }}
-                onCreatePost={() => setShowUploadPostModal(true)}
-              />
-            </View>
-          </View>
-        )}
-
-        {!(loadingFeed && feedPosts.length === 0) && (
-          <View style={styles.feedPanel}>
-            {loadingFeed && feedPosts.length === 0 ? (
-              <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-                {[1, 2, 3].map((key) => (
-                  <AnimatedSkeleton key={key} style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#FF8A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 138, 0, 0.1)' }} />
-                      <View style={{ marginLeft: 12, flex: 1 }}>
-                        <View style={{ width: '50%', height: 12, backgroundColor: 'rgba(255, 138, 0, 0.1)', borderRadius: 6, marginBottom: 8 }} />
-                        <View style={{ width: '30%', height: 10, backgroundColor: 'rgba(255, 138, 0, 0.05)', borderRadius: 5 }} />
-                      </View>
-                    </View>
-                    <View style={{ width: '100%', height: 300, backgroundColor: 'rgba(255, 138, 0, 0.06)', borderRadius: 16, marginBottom: 12 }} />
-                    <View style={{ flexDirection: 'row', gap: 15 }}>
-                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                    </View>
-                  </AnimatedSkeleton>
-                ))}
-              </View>
-            ) : activeTab === 'jyotish' ? (
-              <HomeJyotishSection />
-            ) : feedPosts.length > 0 ? (
-              <>
-                {feedPosts.map((post, index) => {
-                  const postKey = Platform.OS === 'android'
-                    ? `feed-android-${index}-${String(post.id || post.media_url || index)}`
-                    : `feed-${index}-${String(post.id || post.media_url || index)}`;
-                  const postId = String(post?.id || post?.media_url || index);
-                  return (
-                    <View
-                      key={postKey}
-                    >
-                      {/* ── SmartPost: quality-aware wrapper around PostFeedCard ──────── */}
-                      {/* All existing props (onLike, onComment, etc.) pass through unchanged. */}
-                      <SmartPost
-                        post={post}
-                        postId={postId}
-                        onLike={handleLikePost}
-                        onComment={handleOpenComment}
-                        onShare={handleSharePost}
-                        onRepost={handleRepost}
-                        onUserPress={handleOpenPostUserProfile}
-                        onPostMenuPress={handlePostMenuPress}
-                        postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
-                        isActive={activePostKey === postKey}
-                        theme="dark"
-                        isBlackBackground={true}
-                        isFirstReel={index === 0}
-                        onLayout={(event: any) => {
-                          const y = event.nativeEvent.layout.y;
-                          const h = event.nativeEvent.layout.height;
-                          postOffsetsRef.current[postKey] = y;
-                          postHeightsRef.current[postKey] = h;
-                        }}
-                      />
-                    </View>
-                  );
-                })}
-                {hasMoreFeed && (
-                  <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                    <ActivityIndicator color="#FFD26C" />
-                  </View>
-                )}
-              </>
-            ) : (
-              <View style={styles.emptyFeed}>
-                <Text style={styles.emptyFeedText}>No posts yet</Text>
+                    onCreatePost={() => setShowUploadPostModal(true)}
+                  />
+                </View>
               </View>
             )}
-          </View>
-        )}
-      </KeyboardAwareScrollView>
+
+            {!(loadingFeed && feedPosts.length === 0) && (
+              <View style={styles.feedPanel}>
+                {loadingFeed && feedPosts.length === 0 ? (
+                  <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
+                    {[1, 2, 3].map((key) => (
+                      <AnimatedSkeleton key={key} style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#FF8A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 138, 0, 0.1)' }} />
+                          <View style={{ marginLeft: 12, flex: 1 }}>
+                            <View style={{ width: '50%', height: 12, backgroundColor: 'rgba(255, 138, 0, 0.1)', borderRadius: 6, marginBottom: 8 }} />
+                            <View style={{ width: '30%', height: 10, backgroundColor: 'rgba(255, 138, 0, 0.05)', borderRadius: 5 }} />
+                          </View>
+                        </View>
+                        <View style={{ width: '100%', height: 300, backgroundColor: 'rgba(255, 138, 0, 0.06)', borderRadius: 16, marginBottom: 12 }} />
+                        <View style={{ flexDirection: 'row', gap: 15 }}>
+                          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
+                          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
+                          <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
+                        </View>
+                      </AnimatedSkeleton>
+                    ))}
+                  </View>
+                ) : activeTab === 'jyotish' ? (
+                  <HomeJyotishSection />
+                ) : feedPosts.length > 0 ? (
+                  <FlashList
+                    data={feedPosts}
+                    renderItem={({ item, index }) => {
+                      const postKey = Platform.OS === 'android'
+                        ? `feed-android-${index}-${String(item.id || item.media_url || index)}`
+                        : `feed-${index}-${String(item.id || item.media_url || index)}`;
+                      const postId = String(item?.id || item?.media_url || index);
+                      return (
+                        <View key={postKey}>
+                          <SmartPost
+                            post={item}
+                            postId={postId}
+                            onLike={handleLikePost}
+                            onComment={handleOpenComment}
+                            onShare={handleSharePost}
+                            onRepost={handleRepost}
+                            onUserPress={handleOpenPostUserProfile}
+                            onPostMenuPress={handlePostMenuPress}
+                            postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
+                            isActive={activePostKey === postKey}
+                            theme="dark"
+                            isBlackBackground={true}
+                            isFirstReel={index === 0}
+                          />
+                        </View>
+                      );
+                    }}
+                    keyExtractor={(item, index) => {
+                      const postKey = Platform.OS === 'android'
+                        ? `feed-android-${index}-${String(item.id || item.media_url || index)}`
+                        : `feed-${index}-${String(item.id || item.media_url || index)}`;
+                      return postKey;
+                    }}
+                    onViewableItemsChanged={onViewableItemsChanged}
+                    viewabilityConfig={viewabilityConfig}
+                    estimatedItemSize={500}
+                    windowSize={5}
+                    removeClippedSubviews={Platform.OS !== 'web'}
+                  />
+                  {hasMoreFeed && (
+                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                      <ActivityIndicator color="#FFD26C" />
+                    </View>
+                  )}
+                ) : (
+                  <View style={styles.emptyFeed}>
+                    <Text style={styles.emptyFeedText}>No posts yet</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </KeyboardAwareScrollView>
 
 
 
 
-      <Modal visible={isEditingBio} transparent animationType="fade">
-        <View style={styles.bioModalOverlay}>
-          <View style={styles.bioModalCard}>
-            <Text style={styles.bioModalTitle}>Edit Bio</Text>
-            <TextInput
-              style={styles.bioModalInput}
-              value={bioText}
-              onChangeText={setBioText}
-              multiline
-              autoFocus
-              placeholder="Tell us about yourself..."
-              placeholderTextColor="#8A7B89"
-            />
-            <View style={styles.bioModalActions}>
-              <TouchableOpacity
-                onPress={() => {
-                  setBioText(user?.bio || 'Sanatan Lok Community');
-                  setIsEditingBio(false);
-                }}
-                style={styles.bioModalBtnCancel}
-              >
-                <Text style={styles.bioModalBtnCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleSaveBio} style={styles.bioModalBtn}>
-                <Text style={styles.bioModalBtnText}>Save</Text>
-              </TouchableOpacity>
+          <Modal visible={isEditingBio} transparent animationType="fade">
+            <View style={styles.bioModalOverlay}>
+              <View style={styles.bioModalCard}>
+                <Text style={styles.bioModalTitle}>Edit Bio</Text>
+                <TextInput
+                  style={styles.bioModalInput}
+                  value={bioText}
+                  onChangeText={setBioText}
+                  multiline
+                  autoFocus
+                  placeholder="Tell us about yourself..."
+                  placeholderTextColor="#8A7B89"
+                />
+                <View style={styles.bioModalActions}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setBioText(user?.bio || 'Sanatan Lok Community');
+                      setIsEditingBio(false);
+                    }}
+                    style={styles.bioModalBtnCancel}
+                  >
+                    <Text style={styles.bioModalBtnCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleSaveBio} style={styles.bioModalBtn}>
+                    <Text style={styles.bioModalBtnText}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      </Modal>
+          </Modal>
 
-      <Modal visible={showProfileActions} transparent animationType="slide" onRequestClose={() => setShowProfileActions(false)}>
-        <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={() => setShowProfileActions(false)}>
-          <View style={styles.actionSheet}>
-            <View style={styles.bottomSheetHandle} />
-            <Text style={styles.actionSheetTitle}>Create</Text>
+          <Modal visible={showProfileActions} transparent animationType="slide" onRequestClose={() => setShowProfileActions(false)}>
+            <TouchableOpacity style={styles.actionOverlay} activeOpacity={1} onPress={() => setShowProfileActions(false)}>
+              <View style={styles.actionSheet}>
+                <View style={styles.bottomSheetHandle} />
+                <Text style={styles.actionSheetTitle}>Create</Text>
 
-            <TouchableOpacity
-              style={styles.profileActionItem}
-              activeOpacity={0.85}
-              onPress={() => {
-                setShowProfileActions(false);
-                setShowUploadPostModal(true);
+                <TouchableOpacity
+                  style={styles.profileActionItem}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setShowProfileActions(false);
+                    setShowUploadPostModal(true);
+                  }}
+                >
+                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E8F5E9' }]}>
+                    <Ionicons name="add-circle" size={24} color="#4CAF50" />
+                  </View>
+                  <View style={styles.profileActionTextWrap}>
+                    <Text style={styles.profileActionTitle}>New Post</Text>
+                    <Text style={styles.profileActionDesc}>Share a photo or video</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.profileActionItem} activeOpacity={0.85} onPress={handleOpenChangeProfilePicture}>
+                  <View style={[styles.profileActionIconWrap, { backgroundColor: '#E3F2FD' }]}>
+                    <Ionicons name="camera" size={24} color="#2196F3" />
+                  </View>
+                  <View style={styles.profileActionTextWrap}>
+                    <Text style={styles.profileActionTitle}>Change Profile Photo</Text>
+                    <Text style={styles.profileActionDesc}>Update your profile picture</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionCancelButton} onPress={() => setShowProfileActions(false)}>
+                  <Text style={styles.actionCancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
+          <UploadPostModal
+            visible={showUploadPostModal}
+            onClose={() => setShowUploadPostModal(false)}
+            onUploadSuccess={handleUploadPostSuccess}
+            onUploadStart={handleUploadStart}
+          />
+
+          <RequestFormModal
+            visible={showRequestModal}
+            onClose={() => setShowRequestModal(false)}
+            requestType={requestType}
+            communities={communities}
+            user={user ?? undefined}
+            onSubmit={handleSubmitRequest}
+          />
+
+
+
+          {shareModalVisible && (
+            <SharePostModal
+              visible={shareModalVisible}
+              post={selectedSharePost}
+              onClose={() => setShareModalVisible(false)}
+              onShareExternal={() => {
+                setShareModalVisible(false);
+                if (selectedSharePost) handleShareExternal(selectedSharePost);
               }}
-            >
-              <View style={[styles.profileActionIconWrap, { backgroundColor: '#E8F5E9' }]}>
-                <Ionicons name="add-circle" size={24} color="#4CAF50" />
-              </View>
-              <View style={styles.profileActionTextWrap}>
-                <Text style={styles.profileActionTitle}>New Post</Text>
-                <Text style={styles.profileActionDesc}>Share a photo or video</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-            </TouchableOpacity>
+              onCopyLink={async () => {
+                if (selectedSharePost?.id) {
+                  const Clipboard = await import('expo-clipboard');
+                  await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
+                  alert('Link copied to clipboard');
+                  setShareModalVisible(false);
+                }
+              }}
+              onDownload={async () => {
+                if (Platform.OS !== 'web' && selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
+                  try {
+                    const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
+                    const localPath = `${FileSystemModule.documentDirectory}brahmand_post_${Date.now()}.${ext}`;
+                    await FileSystemModule.downloadAsync(selectedSharePost.media_url, localPath);
+                    alert('Saved to app documents');
+                  } catch {
+                    alert('Download failed');
+                  }
+                } else {
+                  alert('Download not supported on this platform');
+                }
+                setShareModalVisible(false);
+              }}
+            />
+          )}
 
-            <TouchableOpacity style={styles.profileActionItem} activeOpacity={0.85} onPress={handleOpenChangeProfilePicture}>
-              <View style={[styles.profileActionIconWrap, { backgroundColor: '#E3F2FD' }]}>
-                <Ionicons name="camera" size={24} color="#2196F3" />
-              </View>
-              <View style={styles.profileActionTextWrap}>
-                <Text style={styles.profileActionTitle}>Change Profile Photo</Text>
-                <Text style={styles.profileActionDesc}>Update your profile picture</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#8A7B89" />
-            </TouchableOpacity>
+          {/* Apple Guideline 1.2 - Report Post Modal */}
+          <ReportModal
+            visible={reportPostModalVisible}
+            onClose={() => {
+              setReportPostModalVisible(false);
+              setPendingReportPost(null);
+            }}
+            reporterUid={currentUserId || ''}
+            reportedUserUid={pendingReportPost?.user_id || ''}
+            contentId={pendingReportPost?.id || ''}
+            contentType="post"
+            apiFallback={async (reason) => {
+              if (pendingReportPost?.id) {
+                await reportPost(pendingReportPost.id, reason, `Reported from feed: ${reason}`);
+              }
+            }}
+            onSuccess={() => {
+              if (pendingReportPost?.id) {
+                const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
+                setTabFeed(activeTab, {
+                  ...useFeedStore.getState().tabFeeds[activeTab],
+                  posts: currentPosts.filter((item) => item.id !== pendingReportPost.id)
+                });
+                if (selectedCommentPostId === pendingReportPost.id) {
+                  setCommentModalVisible(false);
+                  setSelectedCommentPostId(null);
+                  setSelectedCommentPost(null);
+                  setPostComments([]);
+                }
+              }
+            }}
+          />
 
-            <TouchableOpacity style={styles.actionCancelButton} onPress={() => setShowProfileActions(false)}>
-              <Text style={styles.actionCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+          {/* Apple Guideline 1.2 - Report Comment Modal */}
+          {Platform.OS !== 'android' && (
+            <ReportModal
+              visible={reportCommentModalVisible}
+              onClose={() => {
+                setReportCommentModalVisible(false);
+                setPendingReportComment(null);
+                if (commentModalToRestore) {
+                  setTimeout(() => {
+                    setCommentModalVisible(true);
+                    setCommentModalToRestore(false);
+                  }, 300);
+                }
+              }}
+              reporterUid={currentUserId || ''}
+              reportedUserUid={pendingReportComment?.user_id || pendingReportComment?.userId || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+              contentId={pendingReportComment?.id || ''}
+              contentType="comment"
+              postId={pendingReportComment?.post_id || selectedCommentPostId || ''}
+              apiFallback={async (reason, description) => {
+                if (pendingReportComment?.id) {
+                  await reportComment(String(pendingReportComment.id), reason, description || '');
+                }
+              }}
+              onSuccess={() => {
+                // Keep reported comment visible
+              }}
+            />
+          )}
 
-      <UploadPostModal
-        visible={showUploadPostModal}
-        onClose={() => setShowUploadPostModal(false)}
-        onUploadSuccess={handleUploadPostSuccess}
-        onUploadStart={handleUploadStart}
-      />
+          <Modal
+            visible={commentModalVisible}
 
-      <RequestFormModal
-        visible={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
-        requestType={requestType}
-        communities={communities}
-        user={user ?? undefined}
-        onSubmit={handleSubmitRequest}
-      />
-
-
-
-      <SharePostModal
-        visible={shareModalVisible}
-        post={selectedSharePost}
-        onClose={() => setShareModalVisible(false)}
-        onShareExternal={() => {
-          setShareModalVisible(false);
-          if (selectedSharePost) handleShareExternal(selectedSharePost);
-        }}
-        onCopyLink={async () => {
-          if (selectedSharePost?.id) {
-            const Clipboard = await import('expo-clipboard');
-            await Clipboard.setStringAsync(`https://brahmand.app/post/${selectedSharePost.id}`);
-            alert('Link copied to clipboard');
-            setShareModalVisible(false);
-          }
-        }}
-        onDownload={async () => {
-          if (Platform.OS !== 'web' && selectedSharePost?.media_url && FileSystemModule?.downloadAsync) {
-            try {
-              const ext = selectedSharePost.media_type === 'video' ? 'mp4' : 'jpg';
-              const localPath = `${FileSystemModule.documentDirectory}brahmand_post_${Date.now()}.${ext}`;
-              await FileSystemModule.downloadAsync(selectedSharePost.media_url, localPath);
-              alert('Saved to app documents');
-            } catch {
-              alert('Download failed');
-            }
-          } else {
-            alert('Download not supported on this platform');
-          }
-          setShareModalVisible(false);
-        }}
-      />
-
-      {/* Apple Guideline 1.2 - Report Post Modal */}
-      <ReportModal
-        visible={reportPostModalVisible}
-        onClose={() => {
-          setReportPostModalVisible(false);
-          setPendingReportPost(null);
-        }}
-        reporterUid={currentUserId || ''}
-        reportedUserUid={pendingReportPost?.user_id || ''}
-        contentId={pendingReportPost?.id || ''}
-        contentType="post"
-        apiFallback={async (reason) => {
-          if (pendingReportPost?.id) {
-            await reportPost(pendingReportPost.id, reason, `Reported from feed: ${reason}`);
-          }
-        }}
-        onSuccess={() => {
-          if (pendingReportPost?.id) {
-            const currentPosts = useFeedStore.getState().tabFeeds[activeTab]?.posts || [];
-            setTabFeed(activeTab, {
-              ...useFeedStore.getState().tabFeeds[activeTab],
-              posts: currentPosts.filter((item) => item.id !== pendingReportPost.id)
-            });
-            if (selectedCommentPostId === pendingReportPost.id) {
-              setCommentModalVisible(false);
-              setSelectedCommentPostId(null);
-              setSelectedCommentPost(null);
-              setPostComments([]);
-            }
-          }
-        }}
-      />
-
-      {/* Apple Guideline 1.2 - Report Comment Modal */}
-      {Platform.OS !== 'android' && (
-        <ReportModal
-          visible={reportCommentModalVisible}
-          onClose={() => {
-            setReportCommentModalVisible(false);
-            setPendingReportComment(null);
-            if (commentModalToRestore) {
-              setTimeout(() => {
-                setCommentModalVisible(true);
-                setCommentModalToRestore(false);
-              }, 300);
-            }
-          }}
-          reporterUid={currentUserId || ''}
-          reportedUserUid={pendingReportComment?.user_id || pendingReportComment?.userId || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
-          contentId={pendingReportComment?.id || ''}
-          contentType="comment"
-          postId={pendingReportComment?.post_id || selectedCommentPostId || ''}
-          apiFallback={async (reason, description) => {
-            if (pendingReportComment?.id) {
-              await reportComment(String(pendingReportComment.id), reason, description || '');
-            }
-          }}
-          onSuccess={() => {
-            // Keep reported comment visible
-          }}
-        />
-      )}
-
-      <Modal
-        visible={commentModalVisible}
-
-        transparent
-        animationType="slide"
-        onRequestClose={() => {
-          setCommentModalVisible(false);
-          setSelectedCommentPostId(null);
-          setSelectedCommentPost(null);
-          setPostComments([]);
-          setActiveCommentMenuId(null);
-          setReplyingToComment(null);
-        }}
-      >
-        <KeyboardAvoidingView
-          style={styles.commentOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-        >
-          <TouchableOpacity
-            style={styles.modalBackgroundDismiss}
-            activeOpacity={1}
-            onPress={() => {
+            transparent
+            animationType="slide"
+            onRequestClose={() => {
               setCommentModalVisible(false);
               setSelectedCommentPostId(null);
               setSelectedCommentPost(null);
@@ -4058,332 +3922,353 @@ export default function HomeScreen() {
               setActiveCommentMenuId(null);
               setReplyingToComment(null);
             }}
-          />
-          <View style={styles.commentSheet}>
-            <View style={styles.bottomSheetHandle} />
-            <View style={styles.commentSheetHeader}>
-              <Text style={styles.commentTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
+          >
+            <KeyboardAvoidingView
+              style={styles.commentOverlay}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+            >
               <TouchableOpacity
+                style={styles.modalBackgroundDismiss}
+                activeOpacity={1}
                 onPress={() => {
                   setCommentModalVisible(false);
                   setSelectedCommentPostId(null);
                   setSelectedCommentPost(null);
                   setPostComments([]);
+                  setActiveCommentMenuId(null);
                   setReplyingToComment(null);
                 }}
-                style={styles.commentCloseBtn}
-              >
-                <Ionicons name="close" size={24} color="#22142E" />
-              </TouchableOpacity>
-            </View>
-
-
-
-            <View style={styles.commentListWrap}>
-              {commentsLoading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                  <ActivityIndicator size="small" color="#FF6B00" />
-                  <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
+              />
+              <View style={styles.commentSheet}>
+                <View style={styles.bottomSheetHandle} />
+                <View style={styles.commentSheetHeader}>
+                  <Text style={styles.commentTitle}>Comments ({selectedCommentPost?.comments_count ?? postComments.length ?? 0})</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setCommentModalVisible(false);
+                      setSelectedCommentPostId(null);
+                      setSelectedCommentPost(null);
+                      setPostComments([]);
+                      setReplyingToComment(null);
+                    }}
+                    style={styles.commentCloseBtn}
+                  >
+                    <Ionicons name="close" size={24} color="#22142E" />
+                  </TouchableOpacity>
                 </View>
-              ) : postComments.length > 0 ? (() => {
-                const filteredComments = postComments.filter((c: any) => {
-                  const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
-                  return !uid || !blockedUserIds.includes(String(uid));
-                });
-                const parentComments = filteredComments.filter(c => !c.parent_id);
-                const repliesMap = filteredComments.reduce((acc, c) => {
-                  if (c.parent_id) {
-                    if (!acc[c.parent_id]) acc[c.parent_id] = [];
-                    acc[c.parent_id].push(c);
-                  }
-                  return acc;
-                }, {} as Record<string, any[]>);
 
-                // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
-                return (
-                  // ⚡ Bolt: Added FlatList performance props — Prevents memory leaks and heavy JS thread load on Android for long lists. Expected impact: smoother scrolling and fewer crashes on Android.
-              <FlatList
-                data={parentComments}
-                    keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
-                    initialNumToRender={10}
-                    maxToRenderPerBatch={5}
-                    windowSize={5}
-                    removeClippedSubviews={Platform.OS === 'android'}
 
-                    renderItem={({ item }) => {
-                      const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                      const replies = repliesMap[item.id] || [];
-                      return (
-                        <View style={{ marginBottom: 12, position: 'relative' }}>
-                          {replies.length > 0 && (
-                            <View style={{
-                              position: 'absolute',
-                              left: 15,
-                              top: 32,
-                              bottom: 0,
-                              width: 1.5,
-                              backgroundColor: '#E6E1E8',
-                              zIndex: 1,
-                            }} />
-                          )}
-                          <View style={styles.commentItem}>
-                            <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
-                            <View style={styles.commentBubble}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
-                                {canDelete ? (
-                                  <TouchableOpacity
-                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => handleDeleteComment(item)}
-                                  >
-                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                                  </TouchableOpacity>
-                                ) : (
-                                  <TouchableOpacity
-                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => handleCommentMenuPress(item)}
-                                  >
-                                    <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                              <MentionText style={styles.commentItemText} text={item?.text || ''} />
-                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
-                                <TouchableOpacity
-                                  style={{ marginLeft: 16 }}
-                                  onPress={() => {
-                                    setReplyingToComment(item);
-                                  }}
-                                >
-                                  <Text style={{ fontSize: 12, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-                          </View>
 
-                          {/* Render nested replies */}
-                          {replies.map((reply: any, index: number) => {
-                            const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
-                            const isLastReply = index === replies.length - 1;
-                            return (
-                              <View key={reply.id || `${reply.user_id}-${reply.created_at}`} style={[styles.commentItem, { marginLeft: 42, marginTop: 8, position: 'relative' }]}>
-                                {/* Thread vertical line segment */}
+                <View style={styles.commentListWrap}>
+                  {commentsLoading ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color="#FF6B00" />
+                      <Text style={[styles.commentEmptyText, { marginTop: 10 }]}>Loading comments...</Text>
+                    </View>
+                  ) : postComments.length > 0 ? (() => {
+                    const filteredComments = postComments.filter((c: any) => {
+                      const uid = c.user_id || c.userId || c.sender_id || c.user?.id;
+                      return !uid || !blockedUserIds.includes(String(uid));
+                    });
+                    const parentComments = filteredComments.filter(c => !c.parent_id);
+                    const repliesMap = filteredComments.reduce((acc, c) => {
+                      if (c.parent_id) {
+                        if (!acc[c.parent_id]) acc[c.parent_id] = [];
+                        acc[c.parent_id].push(c);
+                      }
+                      return acc;
+                    }, {} as Record<string, any[]>);
+
+                    // ⚡ Bolt: Added FlatList performance props - Reduces memory usage and improves scroll performance on Android
+                    return (
+                      // ⚡ Bolt: Added FlatList performance props — Prevents memory leaks and heavy JS thread load on Android for long lists. Expected impact: smoother scrolling and fewer crashes on Android.
+                      <FlatList
+                        data={parentComments}
+                        keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={5}
+                        windowSize={5}
+                        removeClippedSubviews={Platform.OS === 'android'}
+
+                        renderItem={({ item }) => {
+                          const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                          const replies = repliesMap[item.id] || [];
+                          return (
+                            <View style={{ marginBottom: 12, position: 'relative' }}>
+                              {replies.length > 0 && (
                                 <View style={{
                                   position: 'absolute',
-                                  left: -26,
-                                  top: 0,
-                                  bottom: isLastReply ? undefined : 0,
-                                  height: isLastReply ? 12 : undefined,
+                                  left: 15,
+                                  top: 32,
+                                  bottom: 0,
                                   width: 1.5,
                                   backgroundColor: '#E6E1E8',
                                   zIndex: 1,
                                 }} />
-                                {/* Thread horizontal branch line */}
-                                <View style={{
-                                  position: 'absolute',
-                                  left: -26,
-                                  top: 12,
-                                  width: 26,
-                                  height: 1.5,
-                                  backgroundColor: '#E6E1E8',
-                                  zIndex: 1,
-                                }} />
-
-                                <Avatar name={reply?.username || 'User'} photo={reply?.user_photo} size={24} />
-                                <View style={[styles.commentBubble, { backgroundColor: '#F8F5F9' }]}>
+                              )}
+                              <View style={styles.commentItem}>
+                                <Avatar name={item?.username || 'User'} photo={item?.user_photo} size={32} />
+                                <View style={styles.commentBubble}>
                                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                    <Text style={styles.commentItemUser}>{reply?.username || 'User'}</Text>
-                                    {canDeleteReply ? (
+                                    <Text style={styles.commentItemUser}>{item?.username || 'User'}</Text>
+                                    {canDelete ? (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                        onPress={() => handleDeleteComment(reply)}
+                                        onPress={() => handleDeleteComment(item)}
                                       >
-                                        <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                        <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                                       </TouchableOpacity>
                                     ) : (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                        onPress={() => handleCommentMenuPress(reply)}
+                                        onPress={() => handleCommentMenuPress(item)}
                                       >
-                                        <Ionicons name="ellipsis-horizontal" size={14} color="#536471" />
+                                        <Ionicons name="ellipsis-horizontal" size={16} color="#536471" />
                                       </TouchableOpacity>
                                     )}
                                   </View>
-                                  <MentionText style={styles.commentItemText} text={reply?.text || ''} />
+                                  <MentionText style={styles.commentItemText} text={item?.text || ''} />
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                    <Text style={styles.commentTime}>{formatTimeAgo(reply?.created_at)}</Text>
+                                    <Text style={styles.commentTime}>{formatTimeAgo(item?.created_at)}</Text>
                                     <TouchableOpacity
                                       style={{ marginLeft: 16 }}
                                       onPress={() => {
-                                        setReplyingToComment(item); // Reply to top-level comment
-                                        setCommentText(`@${reply.username} `); // Mention specific user
+                                        setReplyingToComment(item);
                                       }}
                                     >
-                                      <Text style={{ fontSize: 11, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
+                                      <Text style={{ fontSize: 12, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
                                     </TouchableOpacity>
                                   </View>
                                 </View>
                               </View>
-                            );
-                          })}
-                        </View>
-                      );
-                    }}
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                  />
-                );
-              })() : (
-                <View style={styles.commentEmptyState}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={42} color="#D5C8D6" />
-                  <Text style={styles.commentEmptyText}>No comments yet.</Text>
-                  <Text style={styles.commentEmptySubtext}>Be the first to comment!</Text>
+
+                              {/* Render nested replies */}
+                              {replies.map((reply: any, index: number) => {
+                                const canDeleteReply = reply.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
+                                const isLastReply = index === replies.length - 1;
+                                return (
+                                  <View key={reply.id || `${reply.user_id}-${reply.created_at}`} style={[styles.commentItem, { marginLeft: 42, marginTop: 8, position: 'relative' }]}>
+                                    {/* Thread vertical line segment */}
+                                    <View style={{
+                                      position: 'absolute',
+                                      left: -26,
+                                      top: 0,
+                                      bottom: isLastReply ? undefined : 0,
+                                      height: isLastReply ? 12 : undefined,
+                                      width: 1.5,
+                                      backgroundColor: '#E6E1E8',
+                                      zIndex: 1,
+                                    }} />
+                                    {/* Thread horizontal branch line */}
+                                    <View style={{
+                                      position: 'absolute',
+                                      left: -26,
+                                      top: 12,
+                                      width: 26,
+                                      height: 1.5,
+                                      backgroundColor: '#E6E1E8',
+                                      zIndex: 1,
+                                    }} />
+
+                                    <Avatar name={reply?.username || 'User'} photo={reply?.user_photo} size={24} />
+                                    <View style={[styles.commentBubble, { backgroundColor: '#F8F5F9' }]}>
+                                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <Text style={styles.commentItemUser}>{reply?.username || 'User'}</Text>
+                                        {canDeleteReply ? (
+                                          <TouchableOpacity
+                                            style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                            onPress={() => handleDeleteComment(reply)}
+                                          >
+                                            <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                                          </TouchableOpacity>
+                                        ) : (
+                                          <TouchableOpacity
+                                            style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                                            onPress={() => handleCommentMenuPress(reply)}
+                                          >
+                                            <Ionicons name="ellipsis-horizontal" size={14} color="#536471" />
+                                          </TouchableOpacity>
+                                        )}
+                                      </View>
+                                      <MentionText style={styles.commentItemText} text={reply?.text || ''} />
+                                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                        <Text style={styles.commentTime}>{formatTimeAgo(reply?.created_at)}</Text>
+                                        <TouchableOpacity
+                                          style={{ marginLeft: 16 }}
+                                          onPress={() => {
+                                            setReplyingToComment(item); // Reply to top-level comment
+                                            setCommentText(`@${reply.username} `); // Mention specific user
+                                          }}
+                                        >
+                                          <Text style={{ fontSize: 11, color: '#8C36DB', fontWeight: '600' }}>Reply</Text>
+                                        </TouchableOpacity>
+                                      </View>
+                                    </View>
+                                  </View>
+                                );
+                              })}
+                            </View>
+                          );
+                        }}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ paddingBottom: 20 }}
+                      />
+                    );
+                  })() : (
+                    <View style={styles.commentEmptyState}>
+                      <Ionicons name="chatbubble-ellipses-outline" size={42} color="#D5C8D6" />
+                      <Text style={styles.commentEmptyText}>No comments yet.</Text>
+                      <Text style={styles.commentEmptySubtext}>Be the first to comment!</Text>
+                    </View>
+                  )}
                 </View>
-              )}
-            </View>
 
-            {replyingToComment && (
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: '#F5EFF6',
-                paddingVertical: 8,
-                paddingHorizontal: 16,
-                borderTopWidth: 1,
-                borderTopColor: '#EBE2EE'
-              }}>
-                <Text style={{ fontSize: 13, color: '#3B214E' }}>
-                  Replying to <Text style={{ fontWeight: 'bold', color: '#8C36DB' }}>@{replyingToComment.username}</Text>
-                </Text>
-                <TouchableOpacity onPress={() => setReplyingToComment(null)}>
-                  <Ionicons name="close-circle" size={18} color="#8A7B89" />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <View style={[styles.commentInputWrap, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : Math.max(insets.bottom, 12) }]}>
-              <MentionInput
-                value={commentText}
-                onChangeText={setCommentText}
-                placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
-                placeholderTextColor="#8A7B89"
-                multiline
-                inputStyle={styles.commentInput}
-              />
-              <TouchableOpacity
-                style={[styles.commentSubmitBtn, !commentText.trim() && styles.commentSubmitDisabled]}
-                onPress={handleSubmitComment}
-                disabled={!commentText.trim() || commentSubmitting}
-              >
-                {commentSubmitting ? (
-                  <ActivityIndicator size="small" color="#3B214E" />
-                ) : (
-                  <Ionicons name="send" size={18} color={commentText.trim() ? '#8C36DB' : '#A99AAA'} />
+                {replyingToComment && (
+                  <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#F5EFF6',
+                    paddingVertical: 8,
+                    paddingHorizontal: 16,
+                    borderTopWidth: 1,
+                    borderTopColor: '#EBE2EE'
+                  }}>
+                    <Text style={{ fontSize: 13, color: '#3B214E' }}>
+                      Replying to <Text style={{ fontWeight: 'bold', color: '#8C36DB' }}>@{replyingToComment.username}</Text>
+                    </Text>
+                    <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                      <Ionicons name="close-circle" size={18} color="#8A7B89" />
+                    </TouchableOpacity>
+                  </View>
                 )}
-              </TouchableOpacity>
-            </View>
-            {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
-            {Platform.OS === 'android' && (
-              <ReportModal
-                visible={reportCommentModalVisible}
-                onClose={() => {
-                  setReportCommentModalVisible(false);
-                  setPendingReportComment(null);
-                }}
-                reporterUid={currentUserId || ''}
-                reportedUserUid={pendingReportComment?.user_id || pendingReportComment?.userId || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
-                contentId={pendingReportComment?.id || ''}
-                contentType="comment"
-                postId={pendingReportComment?.post_id || selectedCommentPostId || ''}
-                apiFallback={async (reason, description) => {
-                  if (pendingReportComment?.id) {
-                    await reportComment(String(pendingReportComment.id), reason, description || '');
-                  }
-                }}
-                onSuccess={() => {
-                  // Keep reported comment visible
-                }}
-              />
-            )}
-            {Platform.OS === 'android' && (
-              <CommentOptionsModal
-                visible={commentOptionsModalVisible}
-                onClose={() => setCommentOptionsModalVisible(false)}
-                options={commentOptions}
-              />
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </LinearGradient>
+
+                <View style={[styles.commentInputWrap, { paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : Math.max(insets.bottom, 12) }]}>
+                  <MentionInput
+                    value={commentText}
+                    onChangeText={setCommentText}
+                    placeholder={replyingToComment ? `Reply to @${replyingToComment.username}...` : "Add a comment..."}
+                    placeholderTextColor="#8A7B89"
+                    multiline
+                    inputStyle={styles.commentInput}
+                  />
+                  <TouchableOpacity
+                    style={[styles.commentSubmitBtn, !commentText.trim() && styles.commentSubmitDisabled]}
+                    onPress={handleSubmitComment}
+                    disabled={!commentText.trim() || commentSubmitting}
+                  >
+                    {commentSubmitting ? (
+                      <ActivityIndicator size="small" color="#3B214E" />
+                    ) : (
+                      <Ionicons name="send" size={18} color={commentText.trim() ? '#8C36DB' : '#A99AAA'} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
+                {Platform.OS === 'android' && (
+                  <ReportModal
+                    visible={reportCommentModalVisible}
+                    onClose={() => {
+                      setReportCommentModalVisible(false);
+                      setPendingReportComment(null);
+                    }}
+                    reporterUid={currentUserId || ''}
+                    reportedUserUid={pendingReportComment?.user_id || pendingReportComment?.userId || pendingReportComment?.sender_id || pendingReportComment?.user?.id || ''}
+                    contentId={pendingReportComment?.id || ''}
+                    contentType="comment"
+                    postId={pendingReportComment?.post_id || selectedCommentPostId || ''}
+                    apiFallback={async (reason, description) => {
+                      if (pendingReportComment?.id) {
+                        await reportComment(String(pendingReportComment.id), reason, description || '');
+                      }
+                    }}
+                    onSuccess={() => {
+                      // Keep reported comment visible
+                    }}
+                  />
+                )}
+                {Platform.OS === 'android' && (
+                  <CommentOptionsModal
+                    visible={commentOptionsModalVisible}
+                    onClose={() => setCommentOptionsModalVisible(false)}
+                    options={commentOptions}
+                  />
+                )}
+              </View>
+            </KeyboardAvoidingView>
+          </Modal>
+        </LinearGradient>
       </SafeAreaView >
 
-    <LocationPickerModal
-      visible={locationPickerVisible}
-      onClose={() => setLocationPickerVisible(false)}
-      onConfirm={handleConfirmHomeLocation}
-      title="Choose Your Location"
-      initialCoords={liveCoords}
-    />
+      {locationPickerVisible && (
+        <LocationPickerModal
+          visible={locationPickerVisible}
+          onClose={() => setLocationPickerVisible(false)}
+          onConfirm={handleConfirmHomeLocation}
+          title="Choose Your Location"
+          initialCoords={liveCoords}
+        />
+      )}
 
-    <Modal
-      visible={isAartiModalVisible}
-      transparent={false}
-      animationType="slide"
-      statusBarTranslucent={true}
-      onRequestClose={() => setIsAartiModalVisible(false)}
-    >
-      <View style={{ flex: 1, backgroundColor: '#000' }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: insets.top + 10, paddingVertical: 15, backgroundColor: '#111' }}>
-          <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: '#FFF' }}>{selectedAartiTitle}</Text>
-          <TouchableOpacity onPress={() => setIsAartiModalVisible(false)} style={{ padding: 5 }}>
-            <Ionicons name="close" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-        <View style={{ flex: 1, backgroundColor: '#000' }}>
-          {Platform.OS === 'web' ? (
-            <iframe
-              title="Live Aarti"
-              src={selectedAartiUrl ? getAartiEmbedUrl(selectedAartiUrl) : ''}
-              style={{ width: '100%', height: '100%', border: 0 }}
-              frameBorder="0"
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            />
-          ) : (
-            <WebView
-              source={{
-                uri: selectedAartiUrl ? getAartiMobileUrl(selectedAartiUrl) : 'about:blank',
-                headers: {
-                  Referer: 'https://www.youtube.com',
-                },
-              }}
-              userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-              style={{ width: '100%', height: '100%' }}
-              javaScriptEnabled
-              domStorageEnabled
-              allowsFullscreenVideo
-              allowsInlineMediaPlayback
-              mediaPlaybackRequiresUserAction={false}
-            />
-          )}
-        </View>
-      </View>
-    </Modal>
+      {isAartiModalVisible && (
+        <Modal
+          visible={isAartiModalVisible}
+          transparent={false}
+          animationType="slide"
+          statusBarTranslucent={true}
+          onRequestClose={() => setIsAartiModalVisible(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: insets.top + 10, paddingVertical: 15, backgroundColor: '#111' }}>
+              <Text style={{ fontSize: 16, fontFamily: 'Inter_700Bold', color: '#FFF' }}>{selectedAartiTitle}</Text>
+              <TouchableOpacity onPress={() => setIsAartiModalVisible(false)} style={{ padding: 5 }}>
+                <Ionicons name="close" size={24} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1, backgroundColor: '#000' }}>
+              {Platform.OS === 'web' ? (
+                <iframe
+                  title="Live Aarti"
+                  src={selectedAartiUrl ? getAartiEmbedUrl(selectedAartiUrl) : ''}
+                  style={{ width: '100%', height: '100%', border: 0 }}
+                  frameBorder="0"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                />
+              ) : (
+                <WebView
+                  source={{
+                    uri: selectedAartiUrl ? getAartiMobileUrl(selectedAartiUrl) : 'about:blank',
+                    headers: {
+                      Referer: 'https://www.youtube.com',
+                    },
+                  }}
+                  userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+                  style={{ width: '100%', height: '100%' }}
+                  javaScriptEnabled
+                  domStorageEnabled
+                  allowsFullscreenVideo
+                  allowsInlineMediaPlayback
+                  mediaPlaybackRequiresUserAction={false}
+                />
+              )}
+            </View>
+          </View>
+        </Modal>
+      )}
 
 
 
-    {blockConfirmData && (
-      <BlockConfirmationModal
-        visible={blockConfirmVisible}
-        onClose={() => setBlockConfirmVisible(false)}
-        onConfirm={blockConfirmData.onConfirm}
-        username={blockConfirmData.username}
-        isBlocked={blockConfirmData.isBlocked}
-      />
-    )}
+      {blockConfirmData && (
+        <BlockConfirmationModal
+          visible={blockConfirmVisible}
+          onClose={() => setBlockConfirmVisible(false)}
+          onConfirm={blockConfirmData.onConfirm}
+          username={blockConfirmData.username}
+          isBlocked={blockConfirmData.isBlocked}
+        />
+      )}
     </View >
   );
 }
