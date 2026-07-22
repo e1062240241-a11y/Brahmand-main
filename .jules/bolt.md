@@ -1,0 +1,3 @@
+## 2024-05-18 - [Backend Feed DB Fetch Optimization]
+**Learning:** In Firestore wrappers, naive reduction of `limit` to mitigate N+1 read overhead can completely change the semantic results (e.g. `limit=15` fetching an arbitrary group rather than letting the app sort `limit=200`). To optimize safely without indexing changes, application-level caching (`cache_manager`) is the best strategy.
+**Action:** Always wrap cache reading/writing in their own isolated `try...except` blocks within the fallback flow. Never let cache service outages crash database fetches or discard legitimately fetched data.

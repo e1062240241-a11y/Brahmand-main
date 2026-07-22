@@ -3905,6 +3905,7 @@ async def get_posts_feed(
             except Exception: return datetime.min
         return datetime.min
 
+    # ⚡ Bolt: Backend N+1 Query Optimization — Cache top comments to avoid stressing Firestore limits under load
     semaphore = asyncio.Semaphore(15)
     async def fetch_post_details(post):
         async with semaphore:
@@ -3920,16 +3921,46 @@ async def get_posts_feed(
             # Remove internal scoring keys
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
+
+            post_id = post.get('id')
+            cache_key = f"top_comments:{post_id}"
+
+            # Try cache first to avoid N+1 DB hit safely
+            cached_comments = None
             try:
-                top_comments = await db.query_documents(
+                cached_comments = await cache_manager.get(cache_key)
+            except Exception as e:
+                logger.warning(f"Failed to read from cache for post {post_id}: {e}")
+
+            if cached_comments is not None:
+                top_comments = [c for c in cached_comments if c.get('user_id') not in blocked_user_ids]
+                post['top_comments'] = top_comments[:5]
+                return post
+
+            # Fallback to fetching directly if not in cache
+            try:
+                fetched_comments = await db.query_documents(
                     'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
+                    filters=[('post_id', '==', post_id)],
                     limit=200,
                 )
-                top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-                top_comments.sort(key=_comment_sort_key, reverse=True)
+
+                # Ensure it's a list to safely sort
+                if not isinstance(fetched_comments, list):
+                    fetched_comments = list(fetched_comments)
+
+                fetched_comments.sort(key=_comment_sort_key, reverse=True)
+
+                # Try to write to cache safely without affecting data flow
+                try:
+                    await cache_manager.set(cache_key, fetched_comments, ttl=120)
+                except Exception as e:
+                    logger.warning(f"Failed to write to cache for post {post_id}: {e}")
+
+                top_comments = [c for c in fetched_comments if c.get('user_id') not in blocked_user_ids]
                 post['top_comments'] = top_comments[:5]
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error fetching top comments for post {post_id}: {e}")
                 post['top_comments'] = []
             return post
 
