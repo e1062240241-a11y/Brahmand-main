@@ -89,6 +89,18 @@ class FirebaseAuthService:
         return sl_id
 
     @staticmethod
+    def is_test_phone(normalized_phone: str) -> bool:
+        digits = normalized_phone.replace("+", "")
+        return (
+            digits.startswith("919999") or
+            digits.startswith("9999") or
+            digits.startswith("911111") or
+            digits.startswith("1111") or
+            digits.endswith("1234567890") or
+            digits.endswith("9876543210")
+        )
+
+    @staticmethod
     async def send_otp(phone: str) -> Dict[str, Any]:
         """Send OTP to phone number."""
         normalized_phone = FirebaseAuthService.normalize_phone(phone)
@@ -101,22 +113,9 @@ class FirebaseAuthService:
         logger.info(f"send_otp called for phone: {phone} normalized={normalized_phone}")
 
         db = await FirebaseAuthService.get_db()
-        use_mock = os.getenv("USE_MOCK_OTP", "true").lower() in ("1", "true", "yes") or normalized_phone.startswith("+919999")
+        use_mock = os.getenv("USE_MOCK_OTP", "true").lower() in ("1", "true", "yes") or FirebaseAuthService.is_test_phone(normalized_phone)
 
         if use_mock:
-            # Clean up existing user if it starts with test prefix to ensure clean test runs
-            if normalized_phone.startswith("+919999"):
-                existing_user = await db.get_user_by_phone(normalized_phone)
-                if existing_user:
-                    try:
-                        from main import _delete_post_with_dependencies
-                        posts = await db.query_documents('posts', filters=[('user_id', '==', existing_user['id'])])
-                        for post in posts:
-                            await _delete_post_with_dependencies(db, post['id'])
-                    except Exception as e:
-                        logger.warning(f"Failed to delete posts for test user {existing_user['id']}: {e}")
-                    await db.delete_document('users', existing_user['id'])
-
             # Check anonymous account clash
             existing = await db.get_user_by_phone(normalized_phone)
             if existing and existing.get('anonymous_account'):
@@ -174,7 +173,7 @@ class FirebaseAuthService:
         normalized_phone = FirebaseAuthService.normalize_phone(phone)
         db = await FirebaseAuthService.get_db()
 
-        use_mock = os.getenv("USE_MOCK_OTP", "true").lower() in ("1", "true", "yes") or normalized_phone.startswith("+919999")
+        use_mock = os.getenv("USE_MOCK_OTP", "true").lower() in ("1", "true", "yes") or FirebaseAuthService.is_test_phone(normalized_phone)
         if FirebaseAuthService.is_anonymous_phone(normalized_phone):
             raise ValueError(
                 "Anonymous login numbers bypass OTP. Use /auth/login-anonymous instead."
