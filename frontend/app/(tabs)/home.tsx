@@ -2744,7 +2744,7 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
                               ))}
                             </ScrollView>
                           </View>
-                        ) : (
+                        ) : null}
                       <View
                         style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}
                       >
@@ -3179,7 +3179,6 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 1 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
                       </View>
                     </View>
-                  </View>
 
                   <View style={styles.postBannerSection}>
                     <ScrollView
@@ -3617,8 +3616,6 @@ stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
                     })()}
                   </View>
                 </View>
-              )}
-            </View>
 
             {!(loadingFeed && feedPosts.length === 0) && (
               <View style={styles.stickyFeedTabsShell}>
