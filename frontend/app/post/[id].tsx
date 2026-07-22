@@ -709,7 +709,7 @@ const PostScreen = () => {
                 }, {} as Record<string, any[]>);
 
                 return (
-                  <FlatList
+                  <FlashList
                     data={parentComments}
                     keyExtractor={(item, idx) => String(item.id || idx)}
                     renderItem={({ item }) => {

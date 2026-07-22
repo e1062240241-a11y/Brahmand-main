@@ -270,6 +270,10 @@ export function GlobalFAB() {
       checkSOSStatus();
     });
 
+    return () => {
+      sub.remove();
+    };
+
     // Check for pending SOS from background notification
     if ((window as any).__PENDING_SOS) {
       setTimeout(() => {
