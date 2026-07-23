@@ -12437,11 +12437,20 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         location_area = {}
     
     resolved_community_id = data.community_id
+    comms_map = None
     if not resolved_community_id:
         user_community_ids = user.get('communities', []) or []
+
+        # ⚡ Bolt: Fetch communities concurrently to avoid N+1 queries.
+        if user_community_ids:
+            results = await asyncio.gather(*(db.get_document('communities', cid) for cid in user_community_ids))
+            comms_map = dict(zip(user_community_ids, results))
+        else:
+            comms_map = {}
+
         city_comm_id = None
         for comm_id in user_community_ids:
-            comm = await db.get_document('communities', comm_id)
+            comm = comms_map.get(comm_id)
             if comm and comm.get('type') == 'city':
                 city_comm_id = comm_id
                 break
@@ -12460,7 +12469,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
             best_match_id = None
             fallback_match_id = None
             for comm_id in user_community_ids:
-                comm = await db.get_document('communities', comm_id)
+                comm = comms_map.get(comm_id)
                 if not comm:
                     continue
                 comm_type = comm.get('type')
@@ -12481,8 +12490,17 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
 
     if not resolved_community_id:
         user_community_ids = user.get('communities', []) or []
+
+        # ⚡ Bolt: Re-fetch if not initialized, although it should be by now.
+        if comms_map is None:
+            if user_community_ids:
+                results = await asyncio.gather(*(db.get_document('communities', cid) for cid in user_community_ids))
+                comms_map = dict(zip(user_community_ids, results))
+            else:
+                comms_map = {}
+
         for comm_id in user_community_ids:
-            comm = await db.get_document('communities', comm_id)
+            comm = comms_map.get(comm_id)
             if comm and comm.get('type') == 'city':
                 resolved_community_id = comm_id
                 break
