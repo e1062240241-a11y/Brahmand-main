@@ -111,7 +111,10 @@ export default function CommunityKycSubmitScreen() {
     loadStatus();
   }, [updateUser]);
 
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const pickImageAsBase64 = async (forSelfie: boolean) => {
+    setUploadError(null);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert('Permission Required', 'Please allow photo library access.');
@@ -130,15 +133,19 @@ export default function CommunityKycSubmitScreen() {
     const base64 = asset?.base64;
     const uri = asset?.uri;
     if (!base64) {
-      Alert.alert('Upload Error', 'Unable to read selected image.');
+      const err = 'Unable to read selected image. Please pick another photo.';
+      setUploadError(err);
+      Alert.alert('Upload Error', err);
       return;
     }
 
-    // Strict file type validation on the frontend
+    // Strict file type validation: ONLY JPG and PNG allowed (WEBP strictly disallowed)
     const fileExtension = uri ? uri.split('.').pop()?.toLowerCase() : '';
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    const allowedExtensions = ['jpg', 'jpeg', 'png'];
     if (fileExtension && !allowedExtensions.includes(fileExtension)) {
-      Alert.alert('Invalid Format', 'Only JPG, JPEG, PNG, or WEBP images are allowed.');
+      const err = '📄 Unsupported file format. Please upload a JPG or PNG image.';
+      setUploadError(err);
+      Alert.alert('Unsupported Format', err);
       return;
     }
 
@@ -146,7 +153,9 @@ export default function CommunityKycSubmitScreen() {
     const fileSize = asset.fileSize || Math.round((base64.length * 3) / 4);
     const maxSize = 5 * 1024 * 1024;
     if (fileSize > maxSize) {
-      Alert.alert('File Too Large', 'Maximum file size allowed is 5MB.');
+      const err = '📦 File is too large. Please upload an image smaller than 5 MB.';
+      setUploadError(err);
+      Alert.alert('File Too Large', err);
       return;
     }
 
@@ -165,18 +174,22 @@ export default function CommunityKycSubmitScreen() {
           id_type: 'aadhaar',
           full_name: fullName,
         });
-        if (response?.data && !response.data.valid) {
-          Alert.alert(
-            'Validation Failed',
-            response.data.reason || 'The uploaded document is invalid or blurry. Please upload a clear photo of your Aadhaar card.'
-          );
+        if (!response?.data || response?.data?.valid === false) {
+          const reason = response?.data?.reason || "❌ This doesn't look like a government ID. Please upload a clear photo of your Aadhaar, PAN, Voter ID, or Driving License.";
+          setUploadError(reason);
+          Alert.alert('Document Rejected', reason);
           setIdPhotoBase64(undefined);
           setIdPhotoUri(undefined);
         } else {
+          setUploadError(null);
           Alert.alert('Validation Successful', 'Your document matches the verification standards.');
         }
       } catch (err: any) {
-        console.warn('Instant validation check failed', err);
+        const errMsg = err?.response?.data?.detail || err?.message || "🌐 We couldn't verify your document right now. Please try again in a few moments.";
+        setUploadError(errMsg);
+        Alert.alert('Verification Issue', errMsg);
+        setIdPhotoBase64(undefined);
+        setIdPhotoUri(undefined);
       } finally {
         setValidatingImage(false);
       }
@@ -184,12 +197,15 @@ export default function CommunityKycSubmitScreen() {
   };
 
   const submit = async () => {
+    setUploadError(null);
     if (!fullName.trim()) {
       Alert.alert('Missing Details', 'Please enter your Full Name.');
       return;
     }
     if (!idPhotoBase64) {
-      Alert.alert('Missing Proof', 'Please upload a photo of your ID proof.');
+      const err = 'Please upload a clear photo of your Aadhaar, PAN, Voter ID, or Driving License.';
+      setUploadError(err);
+      Alert.alert('Missing ID Proof', err);
       return;
     }
 
@@ -210,26 +226,14 @@ export default function CommunityKycSubmitScreen() {
       setKycStatus(newStatus);
       updateUser({ kyc_status: newStatus } as any);
 
-      if (requestNo) {
-        router.replace({
-          pathname: '/community-request/kyc-success',
-          params: { requestNo }
-        } as any);
-      } else {
-        router.replace('/community-request/kyc-success' as any);
-      }
+      router.replace({
+        pathname: '/community-request/kyc-success',
+        params: requestNo ? { requestNo } : {}
+      } as any);
     } catch (error: any) {
-      const message = error?.response?.data?.detail || error?.message || 'Failed to submit KYC.';
-      
-      // If the backend validation fails with 400 Bad Request, strictly reject
-      if (error?.response?.status === 400) {
-        Alert.alert(
-          'Document Rejected',
-          `${message}\n\nPlease try again with a clearer, higher-resolution photo under good lighting.`
-        );
-      } else {
-        Alert.alert('Submission Failed', message);
-      }
+      const message = error?.response?.data?.detail || error?.message || "🌐 We couldn't verify your document right now. Please try again in a few moments.";
+      setUploadError(message);
+      Alert.alert('Document Verification Failed', message);
     } finally {
       setSubmitLoading(false);
     }
@@ -397,11 +401,21 @@ export default function CommunityKycSubmitScreen() {
                             </View>
                             <Text style={styles.uploadMainText}>Upload ID Proof</Text>
                             <Text style={styles.uploadSubText}>
-                              {"Aadhaar Card, PAN Card, Passport, or\nDriving License\n(JPEG, PNG or PDF up to 5MB)"}
+                              {"Aadhaar Card, PAN Card, Voter ID, or\nDriving License\n(JPG or PNG up to 5MB)"}
                             </Text>
                           </View>
                         )}
                       </TouchableOpacity>
+
+                      {uploadError ? (
+                        <View style={styles.errorCardContainer}>
+                          <Ionicons name="alert-circle" size={20} color="#DC2626" style={{ marginTop: 2 }} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.errorCardTitle}>Verification Issue</Text>
+                            <Text style={styles.errorCardText}>{uploadError}</Text>
+                          </View>
+                        </View>
+                      ) : null}
                     </View>
                   </View>
 
@@ -797,5 +811,29 @@ const styles = StyleSheet.create({
   countryItemText: {
     fontSize: 16,
     color: '#374151',
+  },
+  errorCardContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    width: '100%',
+  },
+  errorCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#991B1B',
+    marginBottom: 2,
+  },
+  errorCardText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#B91C1C',
+    lineHeight: 17,
   },
 });

@@ -1788,129 +1788,147 @@ function MessagesScreen({
       {/* Locked Group Banner */}
 
       {/* Detailed Modal Bottom Sheet */}
-      {selectedRequest && (
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            style={styles.modalDismiss}
-            activeOpacity={1}
-            onPress={() => setSelectedRequest(null)}
-          />
-          <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-            <View style={styles.sheetHandle} />
+      <Modal
+        visible={!!selectedRequest}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedRequest(null)}
+        statusBarTranslucent
+      >
+        {selectedRequest && (
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalDismiss}
+              activeOpacity={1}
+              onPress={() => setSelectedRequest(null)}
+            />
+            <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+              <View style={styles.sheetHandle} />
 
-            <View style={styles.sheetHeader}>
-              <View style={styles.sheetTypeRow}>
-                <View style={[styles.sheetIconBg, { backgroundColor: getRequestTheme(selectedRequest).iconColor + '15' }]}>
-                  <MaterialCommunityIcons
-                    name={getRequestTheme(selectedRequest).icon as any}
-                    size={28}
-                    color={getRequestTheme(selectedRequest).iconColor}
-                  />
-                </View>
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text style={[styles.sheetTypeLabel, { color: getRequestTheme(selectedRequest).iconColor }]}>
-                    {(() => {
-                      const engLabel = getRequestTheme(selectedRequest).label || selectedRequest.request_type || 'Help Request';
-                      if (t('language') === 'hi') {
-                        if (engLabel === 'Blood Request') return 'रक्त की आवश्यकता';
-                        if (engLabel === 'Food Request') return 'भोजन की आवश्यकता';
-                        if (engLabel === 'Cow Seva') return 'गौ सेवा';
-                        return 'मदद की आवश्यकता';
-                      }
-                      return engLabel.toUpperCase();
-                    })()}
-                  </Text>
-                  <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.sheetCloseBtn}
-                  onPress={() => setSelectedRequest(null)}
-                >
-                  <Ionicons name="close-circle" size={26} color="#94A3B8" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.sheetContent}>
-              <View style={styles.requestInfoCard}>
-                <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
-
-                <View style={styles.sheetMetaRow}>
-                  <View style={[styles.urgencyBadgeSheet, {
-                    backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg,
-                    borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border
-                  }]}>
-                    <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
+              <View style={styles.sheetHeader}>
+                <View style={styles.sheetTypeRow}>
+                  <View style={[styles.sheetIconBg, { backgroundColor: getRequestTheme(selectedRequest).iconColor + '15' }]}>
+                    <MaterialCommunityIcons
+                      name={getRequestTheme(selectedRequest).icon as any}
+                      size={28}
+                      color={getRequestTheme(selectedRequest).iconColor}
+                    />
+                  </View>
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={[styles.sheetTypeLabel, { color: getRequestTheme(selectedRequest).iconColor }]}>
                       {(() => {
-                        const lvl = (selectedRequest.urgency_level || '').toLowerCase();
+                        const engLabel = getRequestTheme(selectedRequest).label || selectedRequest.request_type || 'Help Request';
                         if (t('language') === 'hi') {
-                          if (lvl === 'critical' || lvl === 'urgent') return 'अति आवश्यक';
-                          if (lvl === 'high') return 'उच्च प्राथमिकता';
-                          if (lvl === 'medium') return 'मध्यम';
-                          return 'सामान्य';
+                          if (engLabel === 'Blood Request') return 'रक्त की आवश्यकता';
+                          if (engLabel === 'Food Request') return 'भोजन की आवश्यकता';
+                          if (engLabel === 'Cow Seva') return 'गौ सेवा';
+                          return 'मदद की आवश्यकता';
                         }
-                        return `${selectedRequest.urgency_level.toUpperCase()} URGENCY`;
+                        return engLabel.toUpperCase();
                       })()}
                     </Text>
+                    <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
                   </View>
-                  <View style={styles.sheetLocBadge}>
-                    <Ionicons name="location" size={14} color="#64748B" />
-                    <Text style={styles.sheetLocText}>{selectedRequest.location || 'Mumbai'}</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.sheetDescSectionTitle}>
-                  {t('language') === 'hi' ? 'विवरण' : 'Details / Description'}
-                </Text>
-                <Text style={styles.sheetDesc}>
-                  {selectedRequest.description || (t('language') === 'hi' ? 'कोई विवरण नहीं दिया गया है।' : 'No description provided.')}
-                </Text>
-
-                <View style={styles.requesterCard}>
-                  <Ionicons name="person-circle" size={36} color="#E2E8F0" />
-                  <View style={{ marginLeft: 10 }}>
-                    <Text style={styles.requesterName}>
-                      {selectedRequest.user_name || (t('language') === 'hi' ? 'पड़ोसी' : 'Neighbor')}
-                    </Text>
-                  </View>
+                  <TouchableOpacity
+                    style={styles.sheetCloseBtn}
+                    onPress={() => setSelectedRequest(null)}
+                  >
+                    <Ionicons name="close-circle" size={26} color="#94A3B8" />
+                  </TouchableOpacity>
                 </View>
               </View>
 
-              <View style={styles.sheetActions}>
-                <TouchableOpacity
-                  style={[styles.sheetBtn, styles.sheetCallBtn]}
-                  onPress={() => handleCall(selectedRequest.contact_number)}
-                >
-                  <Ionicons name="call" size={20} color="#FFF" />
-                  <Text style={styles.sheetCallBtnText}>
-                    {t('language') === 'hi' ? 'कॉल करें' : 'Call Now'}
+              <View style={styles.sheetContent}>
+                <View style={styles.requestInfoCard}>
+                  <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
+
+                  <View style={styles.sheetMetaRow}>
+                    <View style={[styles.urgencyBadgeSheet, {
+                      backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg,
+                      borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border
+                    }]}>
+                      <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
+                        {(() => {
+                          const lvl = (selectedRequest.urgency_level || '').toLowerCase();
+                          if (t('language') === 'hi') {
+                            if (lvl === 'critical' || lvl === 'urgent') return 'अति आवश्यक';
+                            if (lvl === 'high') return 'उच्च प्राथमिकता';
+                            if (lvl === 'medium') return 'मध्यम';
+                            return 'सामान्य';
+                          }
+                          return `${selectedRequest.urgency_level.toUpperCase()} URGENCY`;
+                        })()}
+                      </Text>
+                    </View>
+                    <View style={styles.sheetLocBadge}>
+                      <Ionicons name="location" size={14} color="#64748B" />
+                      <Text style={styles.sheetLocText}>{selectedRequest.location || 'Mumbai'}</Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.sheetDescSectionTitle}>
+                    {t('language') === 'hi' ? 'विवरण' : 'Details / Description'}
                   </Text>
-                </TouchableOpacity>
+                  <Text style={styles.sheetDesc}>
+                    {selectedRequest.description || (t('language') === 'hi' ? 'कोई विवरण नहीं दिया गया है।' : 'No description provided.')}
+                  </Text>
 
-                <TouchableOpacity
-                  style={[styles.sheetBtn, styles.sheetWhatsAppBtn]}
-                  onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
-                >
-                  <MaterialCommunityIcons name="whatsapp" size={20} color="#FFF" />
-                  <Text style={styles.sheetWhatsAppBtnText}>WhatsApp</Text>
-                </TouchableOpacity>
+                  <View style={styles.requesterCard}>
+                    <Ionicons name="person-circle" size={36} color="#E2E8F0" />
+                    <View style={{ marginLeft: 10 }}>
+                      <Text style={styles.requesterName}>
+                        {selectedRequest.user_name || (t('language') === 'hi' ? 'पड़ोसी' : 'Neighbor')}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
 
-                {selectedRequest.user_id === user?.id && (
+                <View style={styles.sheetActions}>
                   <TouchableOpacity
-                    style={[styles.sheetBtn, styles.sheetFulfillBtn]}
-                    onPress={() => handleResolveRequest(selectedRequest.id)}
+                    style={styles.sheetIconButton}
+                    onPress={() => handleCall(selectedRequest.contact_number)}
+                    activeOpacity={0.8}
                   >
-                    <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
-                    <Text style={styles.sheetFulfillBtnText}>
-                      {t('language') === 'hi' ? 'अनुरोध पूरा करें' : 'Fulfill Request'}
-                    </Text>
+                    <Ionicons name="call" size={22} color="#FFF" />
                   </TouchableOpacity>
-                )}
+
+                  <TouchableOpacity
+                    style={[styles.sheetIconButton, { backgroundColor: '#25D366' }]}
+                    onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons name="whatsapp" size={24} color="#FFF" />
+                  </TouchableOpacity>
+
+                  {selectedRequest.user_id === user?.id ? (
+                    <TouchableOpacity
+                      style={[styles.sheetBtn, styles.sheetFulfillBtn]}
+                      onPress={() => handleResolveRequest(selectedRequest.id)}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="checkmark-done-circle" size={22} color="#FFF" />
+                      <Text style={styles.sheetFulfillBtnText}>
+                        {t('language') === 'hi' ? 'अनुरोध पूरा करें' : 'Fulfill Request'}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.sheetBtn, { backgroundColor: '#FF8A00' }]}
+                      onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="hand-heart" size={22} color="#FFF" />
+                      <Text style={styles.sheetFulfillBtnText}>
+                        {t('language') === 'hi' ? 'मदद की पेशकश करें' : 'Offer Help'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </Modal>
 
     </LinearGradient>
   );
@@ -2507,7 +2525,16 @@ const styles = StyleSheet.create({
   },
   sheetActions: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    gap: 10,
+  },
+  sheetIconButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: '#6366F1',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sheetBtn: {
     flex: 1,

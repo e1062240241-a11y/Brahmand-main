@@ -167,23 +167,40 @@ async def validate_id_proof_with_llm(
 
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
-        logger.warning("OPENROUTER_API_KEY is not set. Skipping ID validation.")
-        return {"valid": True, "doc_type": "unknown", "reason": "API key not configured"}
+        logger.warning("OPENROUTER_API_KEY is not set. Failing validation strictly.")
+        return {"valid": False, "doc_type": "unknown", "reason": "KYC validation service configuration missing. Upload cannot be processed."}
         
     try:
-        # Extract MIME type and base64 data
+        # Extract base64 data regardless of prefix
         if ',' in base64_string:
-            parts = base64_string.split(',', 1)
-            base64_data = parts[1]
-            header = parts[0]
-            if ';base64' in header:
-                mime_type = header.split(';')[0].split(':')[1]
-            else:
-                mime_type = "image/jpeg"
+            base64_data = base64_string.split(',', 1)[1]
         else:
             base64_data = base64_string
-            mime_type = "image/jpeg"
-            
+
+        # Validate binary size strictly (5MB limit)
+        try:
+            decoded_bytes = base64.b64decode(base64_data)
+            if len(decoded_bytes) > 5 * 1024 * 1024:
+                return {"valid": False, "doc_type": "unknown", "reason": "📦 File is too large. Please upload an image smaller than 5 MB."}
+        except Exception:
+            return {"valid": False, "doc_type": "unknown", "reason": "📄 Corrupted or invalid image file. Please upload a clear JPG or PNG image."}
+
+        # Verify image integrity and determine exact MIME type via file bytes (magic numbers)
+        try:
+            with Image.open(io.BytesIO(decoded_bytes)) as img:
+                img.verify()
+                img_format = (img.format or '').upper()
+                format_mime_map = {
+                    'JPEG': 'image/jpeg',
+                    'PNG': 'image/png'
+                }
+                if img_format not in format_mime_map:
+                    return {"valid": False, "doc_type": "unknown", "reason": "📄 Unsupported file format. Please upload a JPG or PNG image."}
+                mime_type = format_mime_map[img_format]
+        except Exception as img_err:
+            logger.warning(f"Magic number image verification failed: {img_err}")
+            return {"valid": False, "doc_type": "unknown", "reason": "📄 Unsupported or corrupted file format. Please upload a valid JPG or PNG image."}
+
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {api_key}",
@@ -191,45 +208,49 @@ async def validate_id_proof_with_llm(
         }
         
         prompt = (
-            "You are a strict, professional KYC validation AI. Analyze the image and perform strict content validation.\n\n"
-            "Verification Guidelines:\n"
-            "1. Document Type: The uploaded document image MUST be a government-issued ID card/document.\n"
+            "You are a strict, friendly KYC document validation AI. Your sole job is to inspect the uploaded image and ensure it is a clear, valid government-issued identity card (Aadhaar Card, PAN Card, Voter ID, or Driving License).\n\n"
+            "CRITICAL REJECTION RULES (Strictly set valid: false if ANY rule is violated and select the exact matching reason string below):\n"
+            "1. REJECT if the image is NOT a government ID (e.g. selfies, portraits, random photos, nature, animals, objects, wallpapers, text screenshots, cartoons, logos, blank images, QR codes).\n"
+            "   Reason to use: \"❌ This doesn't look like a government ID. Please upload a clear photo of your Aadhaar, PAN, Voter ID, or Driving License.\"\n"
+            "2. REJECT if blurry, out of focus, poorly lit, or text is unreadable.\n"
+            "   Reason to use: \"📷 The image is too blurry. Please retake the photo in good lighting and make sure all text is readable.\"\n"
+            "3. REJECT if edges/corners of the ID card are cut off, cropped, or partially missing.\n"
+            "   Reason to use: \"✂️ The document is cropped. Capture the entire document, including all four corners.\"\n"
+            "4. REJECT if the document type is invalid or not among Aadhaar Card, PAN Card, Voter ID, or Driving License.\n"
+            "   Reason to use: \"🪪 Wrong document uploaded. Please upload a valid Aadhaar Card, PAN Card, Voter ID, or Driving License.\"\n"
         )
         
         if expected_id_type:
             prompt += (
                 f"   - Expected Document Type: {expected_id_type.upper()}\n"
-                f"   - You MUST strictly verify that the document is of this type. E.g., if expected type is AADHAAR, it must be an Aadhaar Card. If PAN, it must be a PAN Card. If they mismatch (e.g. user uploaded a PAN card but expected type was AADHAAR), mark it as invalid.\n"
+                f"   - If the document uploaded is a different document type than {expected_id_type.upper()}, set valid: false and use reason: \"🪪 Wrong document uploaded. You uploaded a different document type, but {expected_id_type.upper()} is required.\"\n"
             )
             
         if expected_id_number:
             prompt += (
-                f"2. ID Number Verification:\n"
+                f"5. ID Number Verification:\n"
                 f"   - Expected ID Number: '{expected_id_number}'\n"
-                f"   - You MUST verify that the visible ID number on the document matches this expected number. Ignore formatting differences like spaces or hyphens.\n"
-                f"   - Aadhaar privacy masking: If the Aadhaar number is partially masked (e.g., only showing last 4 digits like 'XXXX-XXXX-1234' or 'xxxx xxxx 1234'), check if the visible 4 digits match the last 4 digits of the expected ID number. If yes, count it as a match. If the numbers completely mismatch, mark it as invalid.\n"
+                f"   - If visible ID numbers mismatch, set valid: false and explain clearly.\n"
             )
             
         if expected_name:
             prompt += (
-                f"3. Name Verification:\n"
+                f"6. Name Verification:\n"
                 f"   - Expected Name: '{expected_name}'\n"
-                f"   - You MUST check if the name printed on the ID document matches or is a close variation of this expected name. Allow minor spelling variations or transliterations (e.g., matching English spelling with Hindi/Devanagari script transliteration).\n"
+                f"   - Check if name on ID matches expected name.\n"
             )
             
         prompt += (
-            "\n4. Image Quality:\n"
-            "   - If the image is extremely blurry, unreadable, or a generic photo (like animals, landscapes, objects, selfies, cartoons, etc.) rather than a readable ID document, mark it as invalid.\n\n"
-            "Return ONLY a JSON object in this exact schema, with no markdown formatting:\n"
+            "\nReturn ONLY a JSON object in this exact schema, with no markdown formatting:\n"
             "{\n"
             "  \"valid\": true/false,\n"
-            "  \"doc_type\": \"aadhaar\"/\"pan\"/\"passport\"/\"license\"/\"unknown\",\n"
-            "  \"reason\": \"Detailed explanation of why it is valid or invalid (e.g., 'Document is a PAN card, but Aadhaar was expected' or 'ID card number does not match expected number' or 'Document matches all expected details').\"\n"
+            "  \"doc_type\": \"aadhaar\"/\"pan\"/\"voter_id\"/\"driving_license\"/\"unknown\",\n"
+            "  \"reason\": \"One of the specific actionable friendly reason strings above.\"\n"
             "}"
         )
         
         payload = {
-            "model": "meta-llama/llama-3.2-11b-vision-instruct",
+            "model": "google/gemini-2.5-flash-lite",
             "messages": [
                 {
                     "role": "user",
@@ -258,7 +279,7 @@ async def validate_id_proof_with_llm(
         response = await asyncio.to_thread(_call_api)
         if response.status_code != 200:
             logger.error(f"OpenRouter API returned status code {response.status_code}: {response.text}")
-            return {"valid": True, "doc_type": "unknown", "reason": f"OpenRouter API error status: {response.status_code}"}
+            return {"valid": False, "doc_type": "unknown", "reason": "🌐 We couldn't verify your document right now. Please try again in a few moments."}
             
         res_json = response.json()
         content = res_json.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -269,4 +290,4 @@ async def validate_id_proof_with_llm(
         return data
     except Exception as e:
         logger.error(f"Failed to validate ID proof with OpenRouter: {e}", exc_info=True)
-        return {"valid": True, "doc_type": "unknown", "reason": f"Error running validation: {str(e)}"}
+        return {"valid": False, "doc_type": "unknown", "reason": "🌐 We couldn't verify your document right now. Please try again in a few moments."}

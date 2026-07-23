@@ -5237,93 +5237,214 @@ async def reverse_geocode(request: dict):
     }
 
 
+POPULAR_INDIAN_LOCATIONS = [
+    "Mumbai, Maharashtra", "Delhi, NCR", "Bengaluru, Karnataka", "Hyderabad, Telangana",
+    "Ahmedabad, Gujarat", "Chennai, Tamil Nadu", "Kolkata, West Bengal", "Surat, Gujarat",
+    "Pune, Maharashtra", "Jaipur, Rajasthan", "Lucknow, Uttar Pradesh", "Kanpur, Uttar Pradesh",
+    "Nagpur, Maharashtra", "Indore, Madhya Pradesh", "Thane, Maharashtra", "Bhopal, Madhya Pradesh",
+    "Visakhapatnam, Andhra Pradesh", "Pimpri-Chinchwad, Maharashtra", "Patna, Bihar", "Vadodara, Gujarat",
+    "Ghaziabad, Uttar Pradesh", "Ludhiana, Punjab", "Agra, Uttar Pradesh", "Nashik, Maharashtra",
+    "Faridabad, Haryana", "Meerut, Uttar Pradesh", "Rajkot, Gujarat", "Kalyan-Dombivli, Maharashtra",
+    "Vasai-Virar, Maharashtra", "Varanasi, Uttar Pradesh", "Srinagar, Jammu and Kashmir", "Aurangabad, Maharashtra",
+    "Dhanbad, Jharkhand", "Amritsar, Punjab", "Navi Mumbai, Maharashtra", "Allahabad (Prayagraj), Uttar Pradesh",
+    "Ranchi, Jharkhand", "Howrah, West Bengal", "Jabalpur, Madhya Pradesh", "Gwalior, Madhya Pradesh",
+    "Vijayawada, Andhra Pradesh", "Jodhpur, Rajasthan", "Madurai, Tamil Nadu", "Raipur, Chhattisgarh",
+    "Kota, Rajasthan", "Guwahati, Assam", "Chandigarh, Punjab", "Solapur, Maharashtra",
+    "Hubballi-Dharwad, Karnataka", "Bareilly, Uttar Pradesh", "Moradabad, Uttar Pradesh", "Mysuru, Karnataka",
+    "Gurugram, Haryana", "Aligarh, Uttar Pradesh", "Jalandhar, Punjab", "Tiruchirappalli, Tamil Nadu",
+    "Bhubaneswar, Odisha", "Salem, Tamil Nadu", "Mira-Bhayandar, Maharashtra", "Warangal, Telangana",
+    "Jalgaon, Maharashtra", "Guntur, Andhra Pradesh", "Bhiwandi, Maharashtra", "Saharanpur, Uttar Pradesh",
+    "Gorakhpur, Uttar Pradesh", "Bikaner, Rajasthan", "Amravati, Maharashtra", "Noida, Uttar Pradesh",
+    "Jamshedpur, Jharkhand", "Bhilai, Chhattisgarh", "Cuttack, Odisha", "Firozabad, Uttar Pradesh",
+    "Kochi, Kerala", "Bhavnagar, Gujarat", "Dehradun, Uttarakhand", "Durgapur, West Bengal",
+    "Asansol, West Bengal", "Nanded, Maharashtra", "Kolhapur, Maharashtra", "Ajmer, Rajasthan",
+    "Gulbarga (Kalaburagi), Karnataka", "Jamnagar, Gujarat", "Ujjain, Madhya Pradesh", "Loni, Uttar Pradesh",
+    "Siliguri, West Bengal", "Jhansi, Uttar Pradesh", "Ulhasnagar, Maharashtra", "Jammu, Jammu and Kashmir",
+    "Sangli, Maharashtra", "Mangaluru, Karnataka", "Erode, Tamil Nadu", "Belagavi, Karnataka",
+    "Ambattur, Tamil Nadu", "Tirunelveli, Tamil Nadu", "Malegaon, Maharashtra", "Gaya, Bihar",
+    "Udaipur, Rajasthan", "Kakinada, Andhra Pradesh", "Davanagere, Karnataka", "Kozhikode, Kerala",
+    "Akola, Maharashtra", "Kurnool, Andhra Pradesh", "Rajahmundry, Andhra Pradesh", "Bokaro Steel City, Jharkhand",
+    "Bellary, Karnataka", "Patiala, Punjab", "Agartala, Tripura", "Bhagalpur, Bihar",
+    "Muzaffarnagar, Uttar Pradesh", "Bhatinda, Punjab", "Latur, Maharashtra", "Dhule, Maharashtra",
+    "Rohtak, Haryana", "Korba, Chhattisgarh", "Bhilwara, Rajasthan", "Berhampur, Odisha",
+    "Muzaffarpur, Bihar", "Ahmednagar, Maharashtra", "Mathura, Uttar Pradesh", "Kollam, Kerala",
+    "Avadi, Tamil Nadu", "Kadapa, Andhra Pradesh", "Sambalpur, Odisha", "Bilaspur, Chhattisgarh",
+    "Shahjahanpur, Uttar Pradesh", "Satara, Maharashtra", "Bijapur (Vijayapura), Karnataka", "Rampur, Uttar Pradesh",
+    "Shivamogga, Karnataka", "Chandrapur, Maharashtra", "Junagadh, Gujarat", "Thrissur, Kerala",
+    "Alwar, Rajasthan", "Bardhaman, West Bengal", "Kulti, West Bengal", "Nizamabad, Telangana",
+    "Parbhani, Maharashtra", "Tumakuru, Karnataka", "Khammam, Telangana", "Ozhukarai, Puducherry",
+    "Bihar Sharif, Bihar", "Panipat, Haryana", "Darbhanga, Bihar", "Aizawl, Mizoram",
+    "Dewas, Madhya Pradesh", "Ichalkaranji, Maharashtra", "Karnal, Haryana", "Bathinda, Punjab",
+    "Jalna, Maharashtra", "Eluru, Andhra Pradesh", "Barasat, West Bengal", "Purnia, Bihar",
+    "Satna, Madhya Pradesh", "Mau, Uttar Pradesh", "Sonipat, Haryana", "Farrukhabad, Uttar Pradesh",
+    "Sagar, Madhya Pradesh", "Rourkela, Odisha", "Durg, Chhattisgarh", "Imphal, Manipur",
+    "Ratlam, Madhya Pradesh", "Hapur, Uttar Pradesh", "Arrah, Bihar", "Anantapur, Andhra Pradesh",
+    "Karimnagar, Telangana", "Etawah, Uttar Pradesh", "Ambarnath, Maharashtra", "Bharatpur, Rajasthan",
+    "Begusarai, Bihar", "New Delhi, Delhi", "Chinsurah, West Bengal", "Gandhinagar, Gujarat",
+    "Tiruppur, Tamil Nadu", "Puducherry, Puducherry", "Sikar, Rajasthan", "Thoothukudi, Tamil Nadu",
+    "Rewa, Madhya Pradesh", "Mirzapur, Uttar Pradesh", "Raichur, Karnataka", "Pali, Rajasthan",
+    "Ramagundam, Telangana", "Haridwar, Uttarakhand", "Vijayanagaram, Andhra Pradesh", "Katihar, Bihar",
+    "Nagercoil, Tamil Nadu", "Sri Ganganagar, Rajasthan", "Thanjavur, Tamil Nadu", "Bulandshahr, Uttar Pradesh",
+    "Uluberia, West Bengal", "Katni, Madhya Pradesh", "Sambhal, Uttar Pradesh", "Singrauli, Madhya Pradesh",
+    "Nadiad, Gujarat", "Secunderabad, Telangana", "Yamunanagar, Haryana", "Bidhannagar, West Bengal",
+    "Pallavaram, Tamil Nadu", "Bidar, Karnataka", "Munger, Bihar", "Panchkula, Haryana",
+    "Burhanpur, Madhya Pradesh", "Kharagpur, West Bengal", "Dindigul, Tamil Nadu", "Gandhidham, Gujarat",
+    "Hospet (Hosapete), Karnataka", "Malda, West Bengal", "Ongole, Andhra Pradesh", "Deoghar, Jharkhand",
+    "Chapra, Bihar", "Haldia, West Bengal", "Khandwa, Madhya Pradesh", "Nandyal, Andhra Pradesh",
+    "Chandausi, Uttar Pradesh", "Morena, Madhya Pradesh", "Amroha, Uttar Pradesh", "Anand, Gujarat",
+    "Bhind, Madhya Pradesh", "Bhiwani, Haryana", "Berhampore, West Bengal", "Ambala, Haryana",
+    "Morbi, Gujarat", "Fatehpur, Uttar Pradesh", "Raebareli, Uttar Pradesh", "Chittorgarh, Rajasthan",
+    "Hoshiarpur, Punjab", "Orai, Uttar Pradesh", "Bahraich, Uttar Pradesh", "Vellore, Tamil Nadu",
+    "Mehsana, Gujarat", "Raiganj, West Bengal", "Sirsa, Haryana", "Danapur, Bihar",
+    "Serampore, West Bengal", "Guna, Madhya Pradesh", "Jaunpur, Uttar Pradesh", "Panvel, Maharashtra",
+    "Shivpuri, Madhya Pradesh", "Surendranagar, Gujarat", "Unnao, Uttar Pradesh", "Alappuzha, Kerala",
+    "Kottayam, Kerala", "Palakkad, Kerala", "Kannur, Kerala", "Shimla, Himachal Pradesh",
+    "Dharamshala, Himachal Pradesh", "Rishikesh, Uttarakhand", "Ayodhya, Uttar Pradesh", "Vrindavan, Uttar Pradesh",
+    "Kedarnath, Uttarakhand", "Badrinath, Uttarakhand", "Gangotri, Uttarakhand", "Yamunotri, Uttarakhand",
+    "Somnath, Gujarat", "Dwarka, Gujarat", "Puri, Odisha", "Rameswaram, Tamil Nadu",
+    "Tirupati, Andhra Pradesh", "Shirdi, Maharashtra", "Kanchipuram, Tamil Nadu", "Bodh Gaya, Bihar"
+]
+
+
 @api_router.post("/geocode/forward")
 async def forward_geocode(request: dict):
-    """Forward geocode place text to coordinates using Google Maps API"""
+    """Forward geocode place text to coordinates using Google Maps & Places Autocomplete API"""
     query = str(request.get("query") or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="query is required")
 
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
-    if not api_key:
-         raise HTTPException(status_code=500, detail="Google Maps API key not configured")
+    results = []
+    seen = set()
 
-    try:
-        url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {
-            "address": query,
-            "key": api_key,
-            "language": "en",
-            "components": "country:in"
-        }
+    # 1. Local matching from popular Indian locations for instant 1-character response
+    q_lower = query.lower()
+    for loc in POPULAR_INDIAN_LOCATIONS:
+        if q_lower in loc.lower():
+            city_part = loc.split(",")[0].strip()
+            state_part = loc.split(",")[1].strip() if "," in loc else ""
+            key = loc.lower()
+            if key not in seen:
+                seen.add(key)
+                results.append(normalize_location({
+                    "latitude": 0.0,
+                    "longitude": 0.0,
+                    "display_name": loc,
+                    "country": "Bharat",
+                    "state": state_part or "Unknown",
+                    "city": city_part,
+                    "area": city_part,
+                }))
+            if len(results) >= 6:
+                break
 
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=10)) as session:
-            async with session.get(url, params=params) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data.get("status") == "OK" and data.get("results"):
-                        results = []
-                        for res in data["results"]:
-                            lat = res["geometry"]["location"]["lat"]
-                            lon = res["geometry"]["location"]["lng"]
-                            addr_components = res.get("address_components", [])
-                            
-                            city = ""
-                            state = ""
-                            country = ""
-                            area = ""
-                            
-                            for comp in addr_components:
-                                types = comp.get("types", [])
-                                if "country" in types:
-                                    country = comp.get("long_name", "").replace("India", "Bharat")
-                                if "administrative_area_level_1" in types:
-                                    state = comp.get("long_name", "")
-                                if "locality" in types or "administrative_area_level_2" in types:
-                                    city = comp.get("long_name", "")
-                                if "sublocality" in types or "neighborhood" in types:
-                                    area = comp.get("long_name", "")
-                            
-                            results.append(normalize_location({
-                                "latitude": float(lat),
-                                "longitude": float(lon),
-                                "display_name": res.get("formatted_address", ""),
-                                "country": country or "Bharat",
-                                "state": state or "Unknown",
-                                "city": city or "Unknown",
-                                "area": area or "Unknown",
-                            }))
-                        
-                        # Return first result for single-result compatibility or full list if needed
-                        # The frontend's forwardGeocode usually expects a list or a single object.
-                        # Looking at api.ts: export const forwardGeocode = (query: string) => api.post('/geocode/forward', { query });
-                        # And blood-request.tsx uses response.data which it maps over.
-                        return results
-                    else:
-                        raise HTTPException(status_code=404, detail=f"Location not found: {data.get('status')}")
-                else:
-                    raise HTTPException(status_code=resp.status, detail="Google Geocode API error")
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Google Forward Geocoding error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to geocode this location")
+    if api_key:
+        try:
+            # 2. Places Autocomplete API for real-time typing of cities, towns, villages, districts, states
+            auto_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+            auto_params = {
+                "input": query,
+                "key": api_key,
+                "language": "en",
+                "components": "country:in",
+            }
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+                async with session.get(auto_url, params=auto_params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get("status") == "OK" and data.get("predictions"):
+                            for pred in data["predictions"]:
+                                desc = pred.get("description", "")
+                                main_text = pred.get("structured_formatting", {}).get("main_text", "")
+                                sec_text = pred.get("structured_formatting", {}).get("secondary_text", "")
+                                k = desc.lower()
+                                if k not in seen:
+                                    seen.add(k)
+                                    parts = [p.strip() for p in sec_text.split(",") if p.strip()]
+                                    area = main_text or (parts[0] if len(parts) > 0 else desc)
+                                    city = parts[0] if len(parts) > 0 else main_text
+                                    state = parts[1] if len(parts) > 1 else "Unknown"
+                                    results.append(normalize_location({
+                                        "latitude": 0.0,
+                                        "longitude": 0.0,
+                                        "display_name": desc,
+                                        "country": "Bharat",
+                                        "state": state,
+                                        "city": city,
+                                        "area": area,
+                                    }))
+
+            # 3. Geocode API fallback if needed
+            if len(results) < 5:
+                geo_url = "https://maps.googleapis.com/maps/api/geocode/json"
+                geo_params = {
+                    "address": query,
+                    "key": api_key,
+                    "language": "en",
+                    "components": "country:in"
+                }
+                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+                    async with session.get(geo_url, params=geo_params) as resp:
+                        if resp.status == 200:
+                            data = await resp.json()
+                            if data.get("status") == "OK" and data.get("results"):
+                                for res in data["results"]:
+                                    desc = res.get("formatted_address", "")
+                                    if desc.lower() not in seen:
+                                        seen.add(desc.lower())
+                                        lat = res["geometry"]["location"]["lat"]
+                                        lon = res["geometry"]["location"]["lng"]
+                                        addr_components = res.get("address_components", [])
+                                        city = ""
+                                        state = ""
+                                        country = ""
+                                        area = ""
+                                        for comp in addr_components:
+                                            types = comp.get("types", [])
+                                            if "country" in types:
+                                                country = comp.get("long_name", "").replace("India", "Bharat")
+                                            if "administrative_area_level_1" in types:
+                                                state = comp.get("long_name", "")
+                                            if "locality" in types or "administrative_area_level_2" in types:
+                                                city = comp.get("long_name", "")
+                                            if "sublocality" in types or "neighborhood" in types:
+                                                area = comp.get("long_name", "")
+                                        results.append(normalize_location({
+                                            "latitude": float(lat),
+                                            "longitude": float(lon),
+                                            "display_name": desc,
+                                            "country": country or "Bharat",
+                                            "state": state or "Unknown",
+                                            "city": city or "Unknown",
+                                            "area": area or "Unknown",
+                                        }))
+        except Exception as e:
+            logger.error(f"Google Forward Geocoding/Autocomplete error: {e}")
+
+    if not results:
+        # Final fallback: create custom location item for typed query
+        results.append(normalize_location({
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "display_name": query,
+            "country": "Bharat",
+            "state": "Unknown",
+            "city": query,
+            "area": query,
+        }))
+
+    return results
 
 
 @api_router.post("/places/hospitals/search")
 async def search_hospitals(request: dict):
-    """Search hospitals via Google Places API from backend to avoid browser CORS issues."""
+    """Search hospitals first by hospital name, then by area/city location."""
     query = str(request.get("query") or "").strip()
-    limit = int(request.get("limit") or 10)
-    limit = max(1, min(limit, 20))
+    limit = int(request.get("limit") or 15)
+    limit = max(1, min(limit, 30))
 
-    if len(query) < 2:
-        return {
-            "results": [
-                {"name": name, "address": name, "area": "", "city": ""}
-                for name in HOSPITAL_SEARCH_FALLBACK[:limit]
-            ]
-        }
+    if not query:
+        return {"results": []}
 
     api_key = (
         os.environ.get("GOOGLE_PLACES_API_KEY")
@@ -5331,123 +5452,142 @@ async def search_hospitals(request: dict):
         or os.environ.get("GOOGLE_CLOUD_VISION_API_KEY")
     )
 
-    if not api_key:
-        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
-        return {
-            "results": [
-                {"name": name, "address": name, "area": "", "city": ""}
-                for name in filtered[:limit]
-            ]
-        }
+    hospital_results = []
+    area_results = []
+    seen = set()
+    q_low = query.lower()
 
-    try:
-        autocomplete_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-        autocomplete_params = {
-            "input": query,
-            "key": api_key,
-            "language": "en",
-            "components": "country:in",
-            "types": "hospital",
-        }
-
-        autocomplete_response = await asyncio.to_thread(
-            requests.get,
-            autocomplete_url,
-            params=autocomplete_params,
-            timeout=10,
-        )
-
-        normalized = []
-
-        if autocomplete_response.status_code == 200:
-            autocomplete_payload = autocomplete_response.json() if autocomplete_response.content else {}
-            predictions = autocomplete_payload.get("predictions", []) if isinstance(autocomplete_payload, dict) else []
-
-            seen_names = set()
-            for prediction in predictions:
-                name = str(prediction.get("structured_formatting", {}).get("main_text") or prediction.get("description") or "").strip()
-                if not name:
-                    continue
-
-                lowered = name.lower()
-                if lowered in seen_names:
-                    continue
-                seen_names.add(lowered)
-
-                address = str(prediction.get("description") or name).strip()
-                secondary = str(prediction.get("structured_formatting", {}).get("secondary_text") or "").strip()
-                
-                area = ""
-                city = ""
-                if secondary:
-                    parts = [p.strip() for p in secondary.split(",") if p.strip()]
-                    if len(parts) > 0:
-                        area = parts[0]
-                    if len(parts) > 1:
-                        city = parts[1]
-
-                normalized.append({
-                    "name": name,
-                    "address": address,
-                    "area": area,
-                    "city": city,
+    # 1. Local hospital fallback list matching query (FIRST)
+    for h_name in HOSPITAL_SEARCH_FALLBACK:
+        if q_low in h_name.lower():
+            lowered = h_name.lower()
+            if lowered not in seen:
+                seen.add(lowered)
+                hospital_results.append({
+                    "name": h_name,
+                    "address": h_name,
+                    "area": "",
+                    "city": "",
+                    "is_hospital": True,
                 })
 
-                if len(normalized) >= limit:
-                    break
-
-        if not normalized:
-            textsearch_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-            textsearch_params = {
-                "query": f"{query} hospital",
+    # 2. Google Places Autocomplete: Query hospitals first using type="hospital"
+    if api_key:
+        try:
+            hosp_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+            hosp_params = {
+                "input": query,
                 "key": api_key,
                 "language": "en",
-                "region": "in",
+                "components": "country:in",
+                "types": "hospital",
             }
-
-            textsearch_response = await asyncio.to_thread(
-                requests.get,
-                textsearch_url,
-                params=textsearch_params,
-                timeout=10,
-            )
-
-            if textsearch_response.status_code == 200:
-                textsearch_payload = textsearch_response.json() if textsearch_response.content else {}
-                rows = textsearch_payload.get("results", []) if isinstance(textsearch_payload, dict) else []
-                for row in rows:
-                    name = str(row.get("name") or "").strip()
+            resp_hosp = await asyncio.to_thread(requests.get, hosp_url, params=hosp_params, timeout=6)
+            if resp_hosp.status_code == 200:
+                payload = resp_hosp.json() if resp_hosp.content else {}
+                predictions = payload.get("predictions", []) if isinstance(payload, dict) else []
+                for pred in predictions:
+                    name = str(pred.get("structured_formatting", {}).get("main_text") or pred.get("description") or "").strip()
                     if not name:
                         continue
-                    address = str(row.get("formatted_address") or name).strip()
-                    normalized.append({
+                    lowered = name.lower()
+                    if lowered in seen:
+                        continue
+                    seen.add(lowered)
+
+                    address = str(pred.get("description") or name).strip()
+                    secondary = str(pred.get("structured_formatting", {}).get("secondary_text") or "").strip()
+                    area, city = "", ""
+                    if secondary:
+                        parts = [p.strip() for p in secondary.split(",") if p.strip()]
+                        if len(parts) > 0: area = parts[0]
+                        if len(parts) > 1: city = parts[1]
+
+                    hospital_results.append({
                         "name": name,
                         "address": address,
-                        "area": "",
-                        "city": "",
+                        "area": area,
+                        "city": city,
+                        "is_hospital": True,
                     })
-                    if len(normalized) >= limit:
-                        break
 
-        if not normalized:
-            filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
-            normalized = [
-                {"name": name, "address": name, "area": "", "city": ""}
-                for name in filtered[:limit]
-            ]
+            # 3. Google Places Autocomplete: Query general places for area/city results
+            gen_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+            gen_params = {
+                "input": query,
+                "key": api_key,
+                "language": "en",
+                "components": "country:in",
+            }
+            resp_gen = await asyncio.to_thread(requests.get, gen_url, params=gen_params, timeout=6)
+            if resp_gen.status_code == 200:
+                payload_gen = resp_gen.json() if resp_gen.content else {}
+                predictions_gen = payload_gen.get("predictions", []) if isinstance(payload_gen, dict) else []
+                for pred in predictions_gen:
+                    name = str(pred.get("structured_formatting", {}).get("main_text") or pred.get("description") or "").strip()
+                    if not name:
+                        continue
+                    lowered = name.lower()
+                    if lowered in seen:
+                        continue
+                    seen.add(lowered)
 
-        return {"results": normalized[:limit]}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Hospital search error: {e}")
-        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
-        return {
-            "results": [
-                {"name": name, "address": name, "area": "", "city": ""}
-                for name in filtered[:limit]
-            ]
-        }
+                    address = str(pred.get("description") or name).strip()
+                    secondary = str(pred.get("structured_formatting", {}).get("secondary_text") or "").strip()
+                    area, city = "", ""
+                    if secondary:
+                        parts = [p.strip() for p in secondary.split(",") if p.strip()]
+                        if len(parts) > 0: area = parts[0]
+                        if len(parts) > 1: city = parts[1]
+
+                    # Categorize hospital vs area
+                    if any(w in lowered for w in ["hospital", "medical", "clinic", "healthcare", "nursing", "dispensary"]):
+                        hospital_results.append({
+                            "name": name,
+                            "address": address,
+                            "area": area,
+                            "city": city,
+                            "is_hospital": True,
+                        })
+                    else:
+                        area_results.append({
+                            "name": name,
+                            "address": address,
+                            "area": area,
+                            "city": city,
+                            "is_hospital": False,
+                        })
+        except Exception as e:
+            logger.warning(f"Google Places hospital/area search error: {e}")
+
+    # 4. Add popular Indian locations into area_results (SECOND)
+    for loc in POPULAR_INDIAN_LOCATIONS:
+        if q_low in loc.lower():
+            city_part = loc.split(",")[0].strip()
+            lowered = loc.lower()
+            if lowered not in seen:
+                seen.add(lowered)
+                area_results.append({
+                    "name": loc,
+                    "address": loc,
+                    "area": city_part,
+                    "city": city_part,
+                    "is_hospital": False,
+                })
+
+    # HOSPITALS FIRST, THEN AREA/CITY
+    combined = hospital_results + area_results
+
+    if not combined:
+        combined.append({
+            "name": query,
+            "address": query,
+            "area": query,
+            "city": query,
+            "is_hospital": False,
+        })
+
+    return {"results": combined[:limit]}
 
 
 # =================== COMMUNITIES ===================
@@ -8447,7 +8587,7 @@ async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: s
 @api_router.post("/kyc/validate-image")
 async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
     """
-    Instantly validate the uploaded KYC image with Llama 3.2 Vision before final submission.
+    Instantly validate the uploaded KYC image with Google Gemini Vision before final submission.
     """
     from services.image_service import validate_id_proof_with_llm
     
@@ -8545,34 +8685,43 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         # if otp_aadhaar and otp_aadhaar != id_number:
         #     raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
-    # Compress and upload photos if provided
+    # Validate photo presence and integrity
     id_photo = data.get('id_photo')
-    if id_photo and is_valid_image(id_photo):
-        # Validate ID proof content
-        bypass_validation = data.get('bypass_validation', False)
-        if not bypass_validation:
-            expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
-            validation = await validate_id_proof_with_llm(
-                base64_string=id_photo,
-                expected_id_type=id_type,
-                expected_id_number=id_number if id_number != "123456789012" else None,
-                expected_name=expected_name
-            )
-            if not validation.get('valid', True):
-                raise HTTPException(
-                    status_code=400,
-                    detail=validation.get('reason', 'Uploaded image is not a valid government ID.')
-                )
+    if not id_photo:
+        raise HTTPException(status_code=400, detail="ID document photo is required")
         
-        id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
-        uploaded_url = await _upload_kyc_base64_to_storage(user_id, id_photo, "kyc/id_photos")
-        if uploaded_url:
-            id_photo = uploaded_url
-    
+    if not is_valid_image(id_photo):
+        logger.warning(f"KYC rejection for user {user_id}: Corrupted, malformed, or unreadable image data")
+        raise HTTPException(status_code=400, detail="Uploaded file is corrupted, malformed, or not a valid image.")
+
+    # Backend strictly re-validates image with AI service before cloud storage upload
+    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
+    validation = await validate_id_proof_with_llm(
+        base64_string=id_photo,
+        expected_id_type=id_type,
+        expected_id_number=id_number if id_number != "123456789012" else None,
+        expected_name=expected_name
+    )
+    if not validation.get('valid', False):
+        reason = validation.get('reason', 'Uploaded image is not a valid government ID.')
+        logger.warning(f"KYC rejection for user {user_id} - Reason: {reason}")
+        raise HTTPException(status_code=400, detail=reason)
+
+    # Cloud upload only after successful validation
+    compressed_id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
+    uploaded_url = await _upload_kyc_base64_to_storage(user_id, compressed_id_photo, "kyc/id_photos")
+    if uploaded_url:
+        id_photo = uploaded_url
+
     selfie_photo = data.get('selfie_photo')
-    if selfie_photo and is_valid_image(selfie_photo):
-        selfie_photo = compress_base64_image(selfie_photo, max_size=512, quality=80)
-        uploaded_url = await _upload_kyc_base64_to_storage(user_id, selfie_photo, "kyc/selfie_photos")
+    if selfie_photo:
+        if not is_valid_image(selfie_photo):
+            logger.warning(f"KYC selfie rejection for user {user_id}: Corrupted or invalid selfie image data")
+            raise HTTPException(status_code=400, detail="Uploaded selfie file is corrupted or not a valid image.")
+        compressed_selfie = compress_base64_image(selfie_photo, max_size=512, quality=80)
+        uploaded_url = await _upload_kyc_base64_to_storage(user_id, compressed_selfie, "kyc/selfie_photos")
+        if uploaded_url:
+            selfie_photo = uploaded_url
         if uploaded_url:
             selfie_photo = uploaded_url
     
@@ -8733,12 +8882,27 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
 
         # Notify user about verification
         try:
+            n_title = 'KYC Approved! 🎉'
+            n_body = 'Congratulations! Your KYC documents have been reviewed and approved.'
             await NotificationService.create_notification(
                 user_id=user_id,
-                title='KYC verified',
-                body='Your KYC has been verified successfully.',
+                title=n_title,
+                body=n_body,
                 notification_type=NotificationService.TYPE_VERIFICATION,
-                data={'kyc_role': kyc_role}
+                data={'kyc_role': kyc_role, 'status': 'verified'}
+            )
+            await FirebaseNotificationService.create_notification(
+                user_id=user_id,
+                title=n_title,
+                body=n_body,
+                notification_type='verification',
+                data={'kyc_role': kyc_role, 'status': 'verified'}
+            )
+            await FirebaseNotificationService.send_push_notification(
+                user_id=user_id,
+                title=n_title,
+                body=n_body,
+                data={'type': 'kyc_verification', 'status': 'verified', 'kyc_role': kyc_role}
             )
         except Exception as notify_err:
             logger.warning(f"KYC verified but notification failed for user {user_id}: {notify_err}")
@@ -8781,12 +8945,27 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
 
         # Notify the user about rejection
         try:
+            n_title = 'KYC Request Rejected ❌'
+            n_body = f"Your KYC request was rejected. Reason: {rejection_reason}"
             await NotificationService.create_notification(
                 user_id=user_id,
-                title='KYC rejected',
-                body=f"Your KYC was rejected: {rejection_reason}",
+                title=n_title,
+                body=n_body,
                 notification_type=NotificationService.TYPE_VERIFICATION,
-                data={'rejection_reason': rejection_reason}
+                data={'rejection_reason': rejection_reason, 'status': 'rejected'}
+            )
+            await FirebaseNotificationService.create_notification(
+                user_id=user_id,
+                title=n_title,
+                body=n_body,
+                notification_type='verification',
+                data={'rejection_reason': rejection_reason, 'status': 'rejected'}
+            )
+            await FirebaseNotificationService.send_push_notification(
+                user_id=user_id,
+                title=n_title,
+                body=n_body,
+                data={'type': 'kyc_verification', 'status': 'rejected', 'rejection_reason': rejection_reason}
             )
         except Exception as notify_err:
             logger.warning(f"KYC rejected but notification failed for user {user_id}: {notify_err}")
@@ -8887,8 +9066,8 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 
 
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
-    """Get all users with pending or verified KYC (admin only)"""
+async def get_pending_kyc(status: Optional[str] = "pending", role: Optional[str] = None, token_data: dict = Depends(verify_token)):
+    """Get all users with pending or verified KYC (admin only). Accepts optional role filter ('vendor', 'temple', 'organizer', 'user')."""
     db, _ = await _ensure_admin_user(token_data)
 
     target_statuses = ['pending', 'manual_review']
@@ -8909,12 +9088,20 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
             if u.get('kyc_status') in target_statuses
         ]
     
+    if role:
+        if role == 'vendor':
+            pending = [u for u in pending if u.get('kyc_role') == 'vendor' or u.get('is_vendor') or bool(u.get('vendor_id'))]
+        elif role == 'request' or role == 'user':
+            pending = [u for u in pending if u.get('kyc_role') != 'vendor' and not u.get('is_vendor') and not bool(u.get('vendor_id'))]
+        else:
+            pending = [u for u in pending if u.get('kyc_role') == role]
+
     # Return only necessary fields
     return [{
         'id': u['id'],
         'name': u.get('name'),
         'sl_id': u.get('sl_id'),
-        'kyc_role': u.get('kyc_role'),
+        'kyc_role': u.get('kyc_role') or ('vendor' if (u.get('is_vendor') or bool(u.get('vendor_id'))) else 'user'),
         'kyc_id_type': u.get('kyc_id_type'),
         'kyc_submitted_at': u.get('kyc_submitted_at'),
         'kyc_id_photo': u.get('kyc_id_photo'),
@@ -12057,6 +12244,32 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
         })
         await db.array_union_update('users', owner_id, 'badges', ['Verified Vendor'])
 
+        try:
+            n_title = 'Vendor KYC Approved! 🎉'
+            n_body = 'Congratulations! Your Vendor KYC request has been approved by Admin.'
+            await NotificationService.create_notification(
+                user_id=owner_id,
+                title=n_title,
+                body=n_body,
+                notification_type=NotificationService.TYPE_VERIFICATION,
+                data={'vendor_id': vendor_id, 'status': 'verified'}
+            )
+            await FirebaseNotificationService.create_notification(
+                user_id=owner_id,
+                title=n_title,
+                body=n_body,
+                notification_type='verification',
+                data={'vendor_id': vendor_id, 'status': 'verified'}
+            )
+            await FirebaseNotificationService.send_push_notification(
+                user_id=owner_id,
+                title=n_title,
+                body=n_body,
+                data={'type': 'kyc_verification', 'status': 'verified', 'vendor_id': vendor_id}
+            )
+        except Exception as notify_err:
+            logger.warning(f"Vendor KYC approved notification failed for user {owner_id}: {notify_err}")
+
     return {
         'message': 'Vendor approved successfully',
         'vendor_id': vendor_id,
@@ -12099,6 +12312,32 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
             'kyc_rejection_reason': reason,
             'is_verified': False
         })
+
+        try:
+            n_title = 'Vendor KYC Rejected ❌'
+            n_body = f"Your Vendor KYC request was rejected. Reason: {reason}"
+            await NotificationService.create_notification(
+                user_id=owner_id,
+                title=n_title,
+                body=n_body,
+                notification_type=NotificationService.TYPE_VERIFICATION,
+                data={'vendor_id': vendor_id, 'status': 'rejected', 'reason': reason}
+            )
+            await FirebaseNotificationService.create_notification(
+                user_id=owner_id,
+                title=n_title,
+                body=n_body,
+                notification_type='verification',
+                data={'vendor_id': vendor_id, 'status': 'rejected', 'reason': reason}
+            )
+            await FirebaseNotificationService.send_push_notification(
+                user_id=owner_id,
+                title=n_title,
+                body=n_body,
+                data={'type': 'kyc_verification', 'status': 'rejected', 'vendor_id': vendor_id, 'reason': reason}
+            )
+        except Exception as notify_err:
+            logger.warning(f"Vendor KYC rejected notification failed for user {owner_id}: {notify_err}")
 
     return {
         'message': 'Vendor rejected',

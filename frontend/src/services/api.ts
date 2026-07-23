@@ -739,9 +739,9 @@ export const adminDeleteVendor = (
     { headers: { Authorization: `Bearer ${adminToken}` } },
   );
 
-export const getAdminPendingKyc = (adminToken: string, status: string = "pending") =>
+export const getAdminPendingKyc = (adminToken: string, status: string = "pending", role?: string) =>
   adminApi.get<AdminUserKycRequest[]>("/admin/kyc/pending", {
-    params: { status },
+    params: { status, ...(role ? { role } : {}) },
     headers: { Authorization: `Bearer ${adminToken}` },
   });
 

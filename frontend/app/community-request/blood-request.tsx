@@ -26,14 +26,38 @@ import { ensureForegroundPermission, getCurrentPosition } from '../../src/servic
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
+import { useAuthStore } from '../../src/store/authStore';
+
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
 const URGENCY_LEVELS = ['Low', 'Medium', 'High', 'Urgent'];
 const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
+const COUNTRY_CODES = [
+  { code: '+91', country: 'India (🇮🇳)' },
+  { code: '+1', country: 'US / Canada (🇺🇸)' },
+  { code: '+44', country: 'UK (🇬🇧)' },
+  { code: '+971', country: 'UAE (🇦🇪)' },
+  { code: '+977', country: 'Nepal (🇳🇵)' },
+  { code: '+880', country: 'Bangladesh (🇧🇩)' },
+  { code: '+61', country: 'Australia (🇦🇺)' },
+];
+
+const formatPhoneNumber = (text: string) => {
+  let cleaned = text.replace(/[^0-9+]/g, '');
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned.replace(/[^0-9]/g, '').slice(0, 10);
+};
 
 export default function BloodRequestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string }>();
   const insets = useSafeAreaInsets();
+  const { user } = useAuthStore();
 
   // Form State
   const [bloodGroup, setBloodGroup] = useState('');
@@ -41,6 +65,8 @@ export default function BloodRequestScreen() {
   const [unitsNeeded, setUnitsNeeded] = useState('');
   const [description, setDescription] = useState('');
   const [urgency, setUrgency] = useState('Urgent');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone ? formatPhoneNumber(user.phone) : '');
   const [contactPref, setContactPref] = useState('');
 
   // UI State
@@ -50,7 +76,7 @@ export default function BloodRequestScreen() {
 
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'blood' | 'contact' | null>(null);
+  const [modalType, setModalType] = useState<'blood' | 'contact' | 'country' | null>(null);
 
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -80,7 +106,7 @@ export default function BloodRequestScreen() {
   useEffect(() => {
     const timer = setTimeout(async () => {
       const query = location.trim();
-      if (query.length >= 2 && !selectedLocation) {
+      if (query.length >= 1 && !selectedLocation) {
         setIsSearchingLocation(true);
         try {
           const response = await searchHospitals(query);
@@ -136,7 +162,7 @@ export default function BloodRequestScreen() {
     }
   };
 
-  const openModal = (type: 'blood' | 'contact') => {
+  const openModal = (type: 'blood' | 'contact' | 'country') => {
     setModalType(type);
     setModalVisible(true);
   };
@@ -144,6 +170,10 @@ export default function BloodRequestScreen() {
   const handleSelectOption = (option: string) => {
     if (modalType === 'blood') setBloodGroup(option);
     if (modalType === 'contact') setContactPref(option);
+    if (modalType === 'country') {
+      const codeOnly = option.split(' ')[0];
+      setCountryCode(codeOnly);
+    }
     setModalVisible(false);
   };
 
@@ -151,6 +181,7 @@ export default function BloodRequestScreen() {
     if (!bloodGroup) return Alert.alert('Error', 'Please select a blood group');
     if (!location) return Alert.alert('Error', 'Please provide a hospital location');
     if (!unitsNeeded) return Alert.alert('Error', 'Please specify units needed');
+    if (!phoneNumber || phoneNumber.length < 10) return Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
     if (!contactPref) return Alert.alert('Error', 'Please select a contact preference');
 
     router.push({
@@ -163,6 +194,7 @@ export default function BloodRequestScreen() {
         urgency: urgency,
         description: `Units Needed: ${unitsNeeded}. ${description}`,
         contactPreference: contactPref,
+        contactNumber: `${countryCode}${phoneNumber}`,
       }
     });
   };
@@ -172,6 +204,7 @@ export default function BloodRequestScreen() {
     let title = '';
     if (modalType === 'blood') { options = BLOOD_GROUPS; title = 'Select Blood Group'; }
     if (modalType === 'contact') { options = CONTACT_OPTIONS; title = 'Contact Preference'; }
+    if (modalType === 'country') { options = COUNTRY_CODES.map(c => `${c.code} ${c.country}`); title = 'Select Country Code'; }
 
     return (
       <View style={styles.modalOverlay}>
@@ -191,7 +224,7 @@ export default function BloodRequestScreen() {
           <ScrollView contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
             <View style={modalType === 'blood' ? styles.bloodGridContainer : styles.contactListContainer}>
               {options.map((item: string) => {
-                const isSelected = (modalType === 'blood' && bloodGroup === item) || (modalType === 'contact' && contactPref === item);
+                const isSelected = (modalType === 'blood' && bloodGroup === item) || (modalType === 'contact' && contactPref === item) || (modalType === 'country' && item.startsWith(countryCode));
                 return (
                   <TouchableOpacity
                     key={item}
@@ -294,7 +327,7 @@ export default function BloodRequestScreen() {
                     )}
                   </View>
 
-                  {location.trim().length >= 2 && !selectedLocation && (
+                  {location.trim().length >= 1 && !selectedLocation && (
                     <View style={styles.suggestionsContainer}>
                       {isSearchingLocation ? (
                         <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
@@ -360,6 +393,26 @@ export default function BloodRequestScreen() {
                       <Text style={[styles.segmentButtonText, urgency === item && (item === 'Urgent' ? styles.segmentButtonTextSelectedUrgent : styles.segmentButtonTextSelected)]}>{item}</Text>
                     </TouchableOpacity>
                   ))}
+                </View>
+              </View>
+
+              <View style={styles.fieldSection}>
+                <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
+                <View style={styles.phoneInputContainer}>
+                  <TouchableOpacity style={styles.countryCodeSelector} activeOpacity={0.7} onPress={() => openModal('country')}>
+                    <Text style={styles.countryCodeText}>{countryCode}</Text>
+                    <Ionicons name="chevron-down" size={14} color="#666" style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                  <View style={styles.phoneInputDivider} />
+                  <TextInput
+                    style={styles.phoneNumberInput}
+                    placeholder="10-digit mobile number"
+                    placeholderTextColor="#BBB"
+                    value={phoneNumber}
+                    onChangeText={(t) => setPhoneNumber(formatPhoneNumber(t))}
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                  />
                 </View>
               </View>
 
@@ -450,6 +503,11 @@ const styles = StyleSheet.create({
 
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
+  phoneInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 14, height: 54 },
+  countryCodeSelector: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 10 },
+  countryCodeText: { fontSize: 15, fontFamily: FONTS.bold, color: '#333' },
+  phoneInputDivider: { width: 1, height: 24, backgroundColor: '#E0E0E0', marginHorizontal: 10 },
+  phoneNumberInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 10 },
   autocompleteWrapper: { position: 'relative', zIndex: 10 },
   suggestionsContainer: { position: 'absolute', bottom: 58, left: 0, right: 0, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', maxHeight: 200, zIndex: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },

@@ -11,6 +11,27 @@ import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrol
 const EMERGENCY_TYPES = ['Medical', 'Accident', 'Fire', 'Police', 'Other'];
 const URGENCY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
 const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform Only'];
+const COUNTRY_CODES = [
+  { code: '+91', country: 'India (🇮🇳)' },
+  { code: '+1', country: 'US / Canada (🇺🇸)' },
+  { code: '+44', country: 'UK (🇬🇧)' },
+  { code: '+971', country: 'UAE (🇦🇪)' },
+  { code: '+977', country: 'Nepal (🇳🇵)' },
+  { code: '+880', country: 'Bangladesh (🇧🇩)' },
+  { code: '+61', country: 'Australia (🇦🇺)' },
+];
+
+const formatPhoneNumber = (text: string) => {
+  let cleaned = text.replace(/[^0-9+]/g, '');
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned.replace(/[^0-9]/g, '').slice(0, 10);
+};
 
 export default function CommunityRequestEmergencyPage() {
   const router = useRouter();
@@ -33,7 +54,9 @@ export default function CommunityRequestEmergencyPage() {
   const [contactPreference, setContactPreference] = useState('');
   const [showContactModal, setShowContactModal] = useState(false);
   
-  const [contactNumber, setContactNumber] = useState(user?.phone || '');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [showCountryModal, setShowCountryModal] = useState(false);
+  const [contactNumber, setContactNumber] = useState(user?.phone ? formatPhoneNumber(user.phone) : '');
 
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -72,7 +95,7 @@ export default function CommunityRequestEmergencyPage() {
   // Debounced Search using Effect
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (hospitalName.length >= 2 && !selectedHospital) {
+      if (hospitalName.length >= 1 && !selectedHospital) {
         setIsHospitalSearching(true);
         try {
           const response = await searchHospitals(hospitalName);
@@ -114,6 +137,10 @@ export default function CommunityRequestEmergencyPage() {
       Alert.alert('Description Required', 'Please describe the situation.');
       return;
     }
+    if (!contactNumber.trim() || contactNumber.length < 10) {
+      Alert.alert('Phone Required', 'Please enter a valid 10-digit phone number.');
+      return;
+    }
     if (!contactPreference) {
       Alert.alert('Contact Preference', 'Please select a contact method.');
       return;
@@ -128,7 +155,7 @@ export default function CommunityRequestEmergencyPage() {
         urgency,
         description,
         contactPreference,
-        contactNumber,
+        contactNumber: `${countryCode}${contactNumber}`,
       },
     });
   };
@@ -204,7 +231,7 @@ export default function CommunityRequestEmergencyPage() {
                   <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
                 </View>
 
-                {hospitalName.length >= 2 && !selectedHospital && (
+                {hospitalName.length >= 1 && !selectedHospital && (
                   <View style={styles.suggestionsCard}>
                     {isHospitalSearching ? (
                       <Text style={styles.suggestionStatus}>Searching locations...</Text>
@@ -289,6 +316,27 @@ export default function CommunityRequestEmergencyPage() {
               />
             </View>
 
+            {/* Contact Phone Number */}
+            <View style={styles.fieldSection}>
+              <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
+              <View style={styles.phoneInputContainer}>
+                <TouchableOpacity style={styles.countryCodeSelector} activeOpacity={0.7} onPress={() => setShowCountryModal(true)}>
+                  <Text style={styles.countryCodeText}>{countryCode}</Text>
+                  <Ionicons name="chevron-down" size={14} color="#666" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+                <View style={styles.phoneInputDivider} />
+                <TextInput
+                  style={styles.phoneNumberInput}
+                  placeholder="10-digit mobile number"
+                  placeholderTextColor="#999"
+                  value={contactNumber}
+                  onChangeText={(t) => setContactNumber(formatPhoneNumber(t))}
+                  keyboardType="phone-pad"
+                  maxLength={10}
+                />
+              </View>
+            </View>
+
             {/* Contact Preference */}
             <View style={styles.fieldSection}>
               <Text style={styles.fieldLabel}>Contact Preference <Text style={styles.requiredAsterisk}>*</Text></Text>
@@ -352,6 +400,29 @@ export default function CommunityRequestEmergencyPage() {
                 }}
               >
                 <Text style={styles.modalOptionText}>{opt}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Country Code Modal */}
+      <Modal visible={showCountryModal} transparent animationType="fade">
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowCountryModal(false)}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select Country Code</Text>
+            {COUNTRY_CODES.map((item) => (
+              <TouchableOpacity
+                key={item.code}
+                style={styles.modalOption}
+                onPress={() => {
+                  setCountryCode(item.code);
+                  setShowCountryModal(false);
+                }}
+              >
+                <Text style={[styles.modalOptionText, countryCode === item.code && { fontWeight: '700', color: '#F25C05' }]}>
+                  {item.code} ({item.country})
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -455,6 +526,39 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     color: '#999',
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 50,
+  },
+  countryCodeSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 10,
+  },
+  countryCodeText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#333',
+  },
+  phoneInputDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E8E8E8',
+    marginHorizontal: 10,
+  },
+  phoneNumberInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+    paddingVertical: 10,
   },
   searchInputContainer: {
     flexDirection: 'row',

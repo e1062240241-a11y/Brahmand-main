@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 // UX Auditor compliance: placeholder aria-label <label>
 import { 
   View, 
@@ -16,17 +16,38 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../../src/constants/theme';
+import { getCommunityStats, getCommunity } from '../../../src/services/api';
 
 export default function CommunityRequestEmergencySuccessPage() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string }>();
+  const [memberCount, setMemberCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (params.community_id) {
+      getCommunityStats(params.community_id)
+        .then((res: any) => {
+          if (res.data?.member_count) {
+            setMemberCount(res.data.member_count);
+          }
+        })
+        .catch(() => {
+          getCommunity(params.community_id!)
+            .then((res: any) => {
+              if (res.data?.member_count) {
+                setMemberCount(res.data.member_count);
+              }
+            })
+            .catch(() => {});
+        });
+    }
+  }, [params.community_id]);
 
   const handleBackToCommunity = () => {
-    if (params.community_id) {
-      router.replace(`/community/${params.community_id}`);
-    } else {
-      router.replace('/community-request/list');
-    }
+    router.replace({
+      pathname: '/community-request',
+      params: params.community_id ? { community_id: params.community_id } : {}
+    });
   };
 
   useEffect(() => {
@@ -77,21 +98,21 @@ export default function CommunityRequestEmergencySuccessPage() {
                 {/* Community Members */}
                 <View style={styles.statColumn}>
                   <Ionicons name="people" size={24} color="#FF6B00" />
-                  <Text style={styles.statNumber}>1,248</Text>
+                  <Text style={styles.statNumber}>{memberCount !== null ? memberCount : 'Active'}</Text>
                   <Text style={styles.statLabel}>Community{"\n"}Members</Text>
                 </View>
 
                 {/* Volunteers Nearby */}
                 <View style={styles.statColumn}>
                   <Ionicons name="shield-checkmark" size={24} color="#FF6B00" />
-                  <Text style={styles.statNumber}>12</Text>
+                  <Text style={styles.statNumber}>Active</Text>
                   <Text style={styles.statLabel}>Volunteers{"\n"}Nearby</Text>
                 </View>
 
                 {/* Potential Helpers Nearby */}
                 <View style={styles.statColumn}>
                   <Ionicons name="heart" size={24} color="#FF6B00" />
-                  <Text style={styles.statNumber}>3</Text>
+                  <Text style={styles.statNumber}>Alerted</Text>
                   <Text style={styles.statLabel}>Potential Helpers{"\n"}Nearby</Text>
                 </View>
               </View>
