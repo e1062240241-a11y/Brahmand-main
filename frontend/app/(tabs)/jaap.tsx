@@ -17,6 +17,7 @@ import {
   LayoutAnimation,
   UIManager,
   Animated,
+  AppState,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -216,6 +217,7 @@ export default function JaapLandingScreen() {
     
     let active = true;
     const fetchActiveCounts = async () => {
+      if (AppState.currentState !== 'active') return;
       try {
         const response = await api.get('/jaap/active-count', {
           params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }

@@ -816,6 +816,7 @@ export default function LiveJaapRoomView() {
     let active = true;
     
     const fetchRoomActiveCount = async () => {
+      if (AppState.currentState !== 'active') return;
       try {
         const response = await api.get('/jaap/active-count', {
           params: { rooms: rName }

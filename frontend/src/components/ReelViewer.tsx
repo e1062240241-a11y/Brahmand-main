@@ -1699,7 +1699,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     <ReelVideoItem
       post={item}
       isActive={index === activeIndexRef.current}
-      shouldLoad={Math.abs(index - activeIndexRef.current) <= 1}
+      shouldLoad={index === activeIndexRef.current}
       onClose={handleCloseWrapper}
       onLike={handleLikeLocal}
       onComment={handleCommentWrapper}
@@ -1773,9 +1773,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             viewabilityConfig={viewabilityConfigRef.current}
             getItemLayout={getItemLayout}
             initialNumToRender={1}
-            maxToRenderPerBatch={2}
-            windowSize={2}
-            removeClippedSubviews={Platform.OS !== 'web'}
+            maxToRenderPerBatch={1}
+            windowSize={3}
+            removeClippedSubviews={true}
             snapToInterval={screenSize.height}
             snapToAlignment="start"
             decelerationRate="fast"

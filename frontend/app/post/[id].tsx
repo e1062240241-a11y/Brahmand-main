@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Share, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Keyboard } from 'react-native';
+import { View, Text, Share, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Keyboard, FlatList } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+const SafeFlashList = FlashList as any;
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -92,7 +93,7 @@ const PostScreen = () => {
     onConfirm: () => void;
   } | null>(null);
 
-  const listRef = useRef<FlashList<any>>(null);
+  const listRef = useRef<any>(null);
   const hasScrolled = useRef(false);
 
   const blockedUidsRef = useRef<string[]>([]);
@@ -628,7 +629,7 @@ const PostScreen = () => {
           <Text style={styles.loadingText}>{t('loadingPosts')}</Text>
         </View>
       ) : (
-        <FlashList
+        <SafeFlashList
           ref={listRef}
           data={visibleFeedPosts}
           renderItem={renderItem}
@@ -711,8 +712,8 @@ const PostScreen = () => {
                 return (
                   <FlatList
                     data={parentComments}
-                    keyExtractor={(item, idx) => String(item.id || idx)}
-                    renderItem={({ item }) => {
+                    keyExtractor={(item: any, idx: number) => String(item.id || idx)}
+                    renderItem={({ item }: { item: any }) => {
                       const canDelete = item.user_id === user?.id || commentPost?.user_id === user?.id;
                       const replies = repliesMap[item.id] || [];
                       return (

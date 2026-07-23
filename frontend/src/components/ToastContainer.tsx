@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/authStore';
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 const ToastItem = ({ toast }: { toast: ToastMessage }) => {
+  const actions = toast.actions;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-40)).current;
   const { hideToast } = useToastStore();
@@ -28,7 +29,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
       }),
     ]).start();
 
-    const duration = toast.actions && toast.actions.length > 0 ? 10000 : toast.duration;
+    const duration = actions && actions.length > 0 ? 10000 : toast.duration;
 
     const timer = setTimeout(() => {
       dismiss();
@@ -57,8 +58,8 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
   const handleTap = () => {
     if (toast.onPress) {
       toast.onPress();
-    } else if (toast.actions && toast.actions.length > 0) {
-      toast.actions[0].onPress();
+    } else if (actions && actions.length > 0) {
+      actions[0].onPress();
     }
     dismiss();
   };
@@ -111,20 +112,20 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
           </View>
         </View>
 
-        {toast.actions && toast.actions.length > 0 && (
+        {actions && actions.length > 0 && (
           <View style={[
             styles.actionsContainer,
-            toast.actions.length > 2 && {
+            actions.length > 2 && {
               flexDirection: 'column',
               alignItems: 'stretch',
             }
           ]}>
-            {toast.actions.map((action, index) => (
+            {actions.map((action, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
                   styles.actionBtn,
-                  toast.actions.length > 2 && {
+                  actions.length > 2 && {
                     width: '100%',
                     paddingVertical: 10,
                   },

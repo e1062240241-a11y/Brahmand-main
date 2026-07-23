@@ -436,18 +436,7 @@ const DirectMessageScreen = () => {
     userPhoto?: string;
   }>();
 
-  const logLayout = (name: string, styleObj: any) => (event: any) => {
-    const { y, height } = event.nativeEvent.layout;
-    const flatStyle = StyleSheet.flatten(styleObj) || {};
-
-    let translateY = 0;
-    if (flatStyle.transform) {
-      const translateObj = flatStyle.transform.find((t: any) => t.translateY !== undefined);
-      if (translateObj) translateY = translateObj.translateY;
-    }
-
-    console.log(`[LAYOUT_TRACE] ${name} | y: ${y} | height: ${height} | paddingBottom: ${flatStyle.paddingBottom ?? 0} | marginBottom: ${flatStyle.marginBottom ?? 0} | bottom: ${flatStyle.bottom ?? 'none'} | translateY: ${translateY} | flex: ${flatStyle.flex ?? 'none'} | insets.bottom: ${insets.bottom}`);
-  };
+  const logLayout = (_name: string, _styleObj: any) => (_event: any) => {};
   const isFocused = useIsFocused();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -467,14 +456,6 @@ const DirectMessageScreen = () => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
       setKeyboardHeight(e.endCoordinates.height);
       setIsKeyboardVisible(true);
-      const windowDim = Dimensions.get('window');
-      const screenDim = Dimensions.get('screen');
-      console.log('[KEYBOARD_DIAGNOSTICS] keyboardDidShow | ' +
-        `Dimensions(window) height: ${windowDim.height} | ` +
-        `Dimensions(screen) height: ${screenDim.height} | ` +
-        `useWindowDimensions() height: ${windowDimensions.height} | ` +
-        `endCoordinates: ${JSON.stringify(e.endCoordinates)}`
-      );
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 150);
     });
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {

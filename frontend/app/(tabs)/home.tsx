@@ -22,7 +22,8 @@ import {View,
   Alert,
   ActionSheetIOS,
   RefreshControl,
-  Animated} from 'react-native';
+  Animated,
+  AppState} from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -457,6 +458,7 @@ export default function HomeScreen() {
 
   const bannerScrollRef = useRef<ScrollView>(null);
   const isNavigatingRef = useRef(false);
+  const isFetchingMoreRef = useRef(false);
 
   const handleLiveJaapNavigation = useCallback((mantraType: string, title: string) => {
     if (isNavigatingRef.current) return;
@@ -1329,6 +1331,7 @@ export default function HomeScreen() {
     initializeHome();
 
     const fetchUnreadCount = async () => {
+      if (AppState.currentState !== 'active') return;
       if (Platform.OS === 'android') {
         if (!token || !isAuthenticated) {
           return;
@@ -1725,37 +1728,42 @@ export default function HomeScreen() {
     onHomeScrollTabBar(event);
     const y = event.nativeEvent.contentOffset.y;
     currentScrollY.current = y;
-    // ── Smart Quality Upgrade: promote posts entering viewport ─────────────
-    onSmartScroll(y);
 
+    const now = Date.now();
+    if (now - lastScrollTimeRef.current > 100) {
+      lastScrollTimeRef.current = now;
 
-    // Visibility tracking for video autoplay - find post with most area in viewport
-    let closestKey = null;
-    let maxVisible = 0;
-    const viewportTop = y;
-    const viewportBottom = y + screenHeight;
+      // ── Smart Quality Upgrade: promote posts entering viewport ─────────────
+      onSmartScroll(y);
 
-    for (const key of feedPostKeys) {
-      const offset = postOffsetsRef.current[key];
-      const height = postHeightsRef.current[key];
-      if (typeof offset === 'number' && typeof height === 'number') {
-        const postAbsoluteTop = offset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
-        const postBottom = postAbsoluteTop + height;
-        const visibleTop = Math.max(viewportTop, postAbsoluteTop);
-        const visibleBottom = Math.min(viewportBottom, postBottom);
-        const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-        // Stricter condition: Post must be at least 60% visible OR take up at least 50% of the screen
-        const visibilityThreshold = Math.min(height * 0.6, screenHeight * 0.5);
-        if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
-          maxVisible = visibleAmount;
-          closestKey = key;
+      // Visibility tracking for video autoplay - find post with most area in viewport
+      let closestKey = null;
+      let maxVisible = 0;
+      const viewportTop = y;
+      const viewportBottom = y + screenHeight;
+
+      for (const key of feedPostKeys) {
+        const offset = postOffsetsRef.current[key];
+        const height = postHeightsRef.current[key];
+        if (typeof offset === 'number' && typeof height === 'number') {
+          const postAbsoluteTop = offset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
+          const postBottom = postAbsoluteTop + height;
+          const visibleTop = Math.max(viewportTop, postAbsoluteTop);
+          const visibleBottom = Math.min(viewportBottom, postBottom);
+          const visibleAmount = Math.max(0, visibleBottom - visibleTop);
+          // Stricter condition: Post must be at least 60% visible OR take up at least 50% of the screen
+          const visibilityThreshold = Math.min(height * 0.6, screenHeight * 0.5);
+          if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
+            maxVisible = visibleAmount;
+            closestKey = key;
+          }
         }
       }
+      setActivePostKey((prev) => (prev === closestKey ? prev : closestKey));
     }
-    setActivePostKey(closestKey); // No fallback to prev, if none visible enough, stop all.
 
     // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
-    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && feedPosts.length > 0) {
+    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && !isFetchingMoreRef.current && feedPosts.length > 0) {
       const scrollHeight = event.nativeEvent.contentSize.height;
       const layoutHeight = event.nativeEvent.layoutMeasurement.height;
 
@@ -1766,15 +1774,22 @@ export default function HomeScreen() {
       const targetKey = String(targetPost?.id || targetPost?.media_url || targetIndex);
       const targetOffset = postOffsetsRef.current[targetKey];
 
+      const triggerLoad = () => {
+        isFetchingMoreRef.current = true;
+        loadFeedPosts(feedOffset, true).finally(() => {
+          isFetchingMoreRef.current = false;
+        });
+      };
+
       if (typeof targetOffset === 'number') {
         // If the target post's top is visible in the bottom portion of the screen
         if (y + layoutHeight > targetOffset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT) {
-          loadFeedPosts(feedOffset, true);
+          triggerLoad();
         }
       } else {
         // Fallback to pixel-based trigger if layout not yet captured
         if (y + layoutHeight > scrollHeight - 1000) {
-          loadFeedPosts(feedOffset, true);
+          triggerLoad();
         }
       }
     }
@@ -2053,6 +2068,7 @@ export default function HomeScreen() {
     if (!commentModalVisible || !selectedCommentPostId) return;
 
     const interval = setInterval(async () => {
+      if (AppState.currentState !== 'active') return;
       try {
         const response = await getPostComments(selectedCommentPostId, 50);
         if (Array.isArray(response.data)) {
@@ -2611,11 +2627,7 @@ export default function HomeScreen() {
                 colors={['#FF6B00']}
               />
             }
-            stickyHeaderIndices={loadingFeed && feedPosts.length === 0 ? [] : [1]}
-            onScroll={handleHomeScroll}
-            scrollEventThrottle={16}
           >
-            <View>
               {loadingFeed && feedPosts.length === 0 && (
                 <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
                   {/* Avatar + Lines */}
@@ -3744,7 +3756,6 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
-        </View>
 
         {!(loadingFeed && feedPosts.length === 0) && (
           <View style={styles.stickyFeedTabsShell}>
