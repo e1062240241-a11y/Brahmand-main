@@ -10,6 +10,8 @@ interface ButtonProps {
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  accessibilityLabel?: string;
+  accessibilityHint?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -20,6 +22,8 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   style,
   textStyle,
+  accessibilityLabel,
+  accessibilityHint,
 }) => {
   const textStyleFinal = [
     styles.text,
@@ -42,6 +46,10 @@ export const Button: React.FC<ButtonProps> = ({
       ])}
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      accessibilityLabel={accessibilityLabel || title}
+      accessibilityHint={accessibilityHint}
       android_ripple={{
         color: variant === 'outline' ? 'rgba(255, 107, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)',
         borderless: false,
