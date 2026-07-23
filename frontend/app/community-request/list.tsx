@@ -14,8 +14,8 @@ import {
   Share,
   Dimensions,
   BackHandler,
-  RefreshControl,
   AppState,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -653,113 +653,131 @@ export default function ActiveRequestsList() {
       </SafeAreaView>
 
       {/* Detailed Modal Bottom Sheet */}
-      {selectedRequest && (
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={styles.modalDismiss}
-            activeOpacity={1}
-            onPress={() => setSelectedRequest(null)}
-          />
-          <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-            <View style={styles.sheetHandle} />
-            
-            <View style={styles.sheetHeader}>
-              <View style={styles.sheetTypeRow}>
-                <View style={[styles.sheetIconBg, { backgroundColor: getRequestTheme(selectedRequest).iconColor + '15' }]}>
-                  <MaterialCommunityIcons 
-                    name={getRequestTheme(selectedRequest).icon as any} 
-                    size={28} 
-                    color={getRequestTheme(selectedRequest).iconColor} 
-                  />
-                </View>
-                <View style={{ marginLeft: 12, flex: 1 }}>
-                  <Text style={[styles.sheetTypeLabel, { color: getRequestTheme(selectedRequest).iconColor }]}>
-                    {getRequestTheme(selectedRequest).label.toUpperCase()}
-                  </Text>
-                  <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
-                </View>
-                <TouchableOpacity 
-                  style={styles.sheetCloseBtn}
-                  onPress={() => setSelectedRequest(null)}
-                >
-                  <Ionicons name="close-circle" size={26} color="#94A3B8" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.sheetContent}>
-              <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
+      <Modal
+        visible={!!selectedRequest}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedRequest(null)}
+        statusBarTranslucent
+      >
+        {selectedRequest && (
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity 
+              style={styles.modalDismiss}
+              activeOpacity={1}
+              onPress={() => setSelectedRequest(null)}
+            />
+            <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+              <View style={styles.sheetHandle} />
               
-              <View style={styles.sheetMetaRow}>
-                <View style={[styles.urgencyBadgeSheet, { 
-                  backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg, 
-                  borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border 
-                }]}>
-                  <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
-                    {selectedRequest.urgency_level.toUpperCase()} URGENCY
-                  </Text>
-                </View>
-                <View style={styles.sheetLocBadge}>
-                  <Ionicons name="location" size={14} color="#64748B" />
-                  <Text style={styles.sheetLocText}>{selectedRequest.location}</Text>
-                </View>
-              </View>
-
-              <Text style={styles.sheetDescSectionTitle}>Details / Description</Text>
-              <Text style={styles.sheetDesc}>{selectedRequest.description}</Text>
-
-              <View style={styles.requesterCard}>
-                <Ionicons name="person-circle" size={40} color="#E2E8F0" />
-                <View style={{ marginLeft: 10 }}>
-                  <Text style={styles.sheetRequesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
-                  <Text style={styles.sheetRequesterLabel}>Community Member</Text>
-                </View>
-              </View>
-
-              <View style={styles.sheetActions}>
-                <TouchableOpacity 
-                  style={[styles.sheetBtn, styles.sheetShareBtn]}
-                  onPress={() => handleShare(selectedRequest)}
-                >
-                  <Ionicons name="share-social" size={20} color="#475569" />
-                  <Text style={styles.sheetShareBtnText}>Share</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.sheetBtn, styles.sheetCallBtn]}
-                  onPress={() => handleCall(selectedRequest.contact_number)}
-                >
-                  <Ionicons name="call" size={20} color="#FFF" />
-                  <Text style={styles.sheetCallBtnText}>Call Now</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.sheetBtn, styles.sheetWhatsAppBtn]}
-                  onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title, selectedRequest.id)}
-                >
-                  <FontAwesome5 name="whatsapp" size={20} color="#FFF" />
-                  <Text style={styles.sheetWhatsAppBtnText}>Offer Help</Text>
-                </TouchableOpacity>
-
-                {selectedRequest.status === 'resolved' ? (
-                  <View style={[styles.sheetBtn, { backgroundColor: '#10B981', flex: 1.2 }]}>
-                    <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Help Done</Text>
+              <View style={styles.sheetHeader}>
+                <View style={styles.sheetTypeRow}>
+                  <View style={[styles.sheetIconBg, { backgroundColor: getRequestTheme(selectedRequest).iconColor + '15' }]}>
+                    <MaterialCommunityIcons 
+                      name={getRequestTheme(selectedRequest).icon as any} 
+                      size={28} 
+                      color={getRequestTheme(selectedRequest).iconColor} 
+                    />
                   </View>
-                ) : selectedRequest.user_id === user?.id ? (
+                  <View style={{ marginLeft: 12, flex: 1 }}>
+                    <Text style={[styles.sheetTypeLabel, { color: getRequestTheme(selectedRequest).iconColor }]}>
+                      {getRequestTheme(selectedRequest).label.toUpperCase()}
+                    </Text>
+                    <Text style={styles.sheetTime}>{getTimeAgo(selectedRequest.created_at)}</Text>
+                  </View>
                   <TouchableOpacity 
-                    style={[styles.sheetBtn, { backgroundColor: '#F59E0B', flex: 1.2 }]}
-                    onPress={() => handleResolveRequest(selectedRequest.id)}
+                    style={styles.sheetCloseBtn}
+                    onPress={() => setSelectedRequest(null)}
                   >
-                    <Ionicons name="checkmark-done-circle" size={20} color="#FFF" />
-                    <Text style={{ color: '#FFF', fontSize: 12, fontFamily: FONTS.bold, fontWeight: '800' }}>Fulfill</Text>
+                    <Ionicons name="close-circle" size={26} color="#94A3B8" />
                   </TouchableOpacity>
-                ) : null}
+                </View>
+              </View>
+
+              <View style={styles.sheetContent}>
+                <Text style={styles.sheetTitle}>{selectedRequest.title}</Text>
+                
+                <View style={styles.sheetMetaRow}>
+                  <View style={[styles.urgencyBadgeSheet, { 
+                    backgroundColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).bg, 
+                    borderColor: getUrgencyBadgeStyle(selectedRequest.urgency_level).border 
+                  }]}>
+                    <Text style={[styles.urgencyTextSheet, { color: getUrgencyBadgeStyle(selectedRequest.urgency_level).text }]}>
+                      {selectedRequest.urgency_level.toUpperCase()} URGENCY
+                    </Text>
+                  </View>
+                  <View style={styles.sheetLocBadge}>
+                    <Ionicons name="location" size={14} color="#64748B" />
+                    <Text style={styles.sheetLocText}>{selectedRequest.location}</Text>
+                  </View>
+                </View>
+
+                <Text style={styles.sheetDescSectionTitle}>Details / Description</Text>
+                <Text style={styles.sheetDesc}>{selectedRequest.description}</Text>
+
+                <View style={styles.requesterCard}>
+                  <Ionicons name="person-circle" size={40} color="#E2E8F0" />
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={styles.sheetRequesterName}>{selectedRequest.user_name || 'Verified Neighbor'}</Text>
+                    <Text style={styles.sheetRequesterLabel}>Community Member</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sheetActions}>
+                  <TouchableOpacity 
+                    style={styles.sheetIconButton}
+                    onPress={() => handleCall(selectedRequest.contact_number)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="call" size={22} color="#FFF" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.sheetIconButton, { backgroundColor: '#25D366' }]}
+                    onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title, selectedRequest.id)}
+                    activeOpacity={0.8}
+                  >
+                    <FontAwesome5 name="whatsapp" size={22} color="#FFF" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={styles.sheetIconButtonSecondary}
+                    onPress={() => handleShare(selectedRequest)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="share-social" size={20} color="#475569" />
+                  </TouchableOpacity>
+
+                  {selectedRequest.status === 'resolved' ? (
+                    <View style={[styles.sheetBtn, { backgroundColor: '#10B981', flex: 1 }]}>
+                      <Ionicons name="checkmark-done-circle" size={22} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 14, fontFamily: FONTS.bold, fontWeight: '800' }}>Help Done</Text>
+                    </View>
+                  ) : selectedRequest.user_id === user?.id ? (
+                    <TouchableOpacity 
+                      style={[styles.sheetBtn, { backgroundColor: '#F59E0B', flex: 1 }]}
+                      onPress={() => handleResolveRequest(selectedRequest.id)}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="checkmark-done-circle" size={22} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 14, fontFamily: FONTS.bold, fontWeight: '800' }}>Fulfill Request</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      style={[styles.sheetBtn, { backgroundColor: '#FF8A00', flex: 1 }]}
+                      onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title, selectedRequest.id)}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="hand-heart" size={22} color="#FFF" />
+                      <Text style={{ color: '#FFF', fontSize: 14, fontFamily: FONTS.bold, fontWeight: '800' }}>Offer Help</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
           </View>
-        </View>
-      )}
+        )}
+      </Modal>
     </View>
   );
 }
@@ -1185,7 +1203,24 @@ const styles = StyleSheet.create({
   },
   sheetActions: {
     flexDirection: 'row',
-    gap: 12,
+    alignItems: 'center',
+    gap: 10,
+  },
+  sheetIconButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#6366F1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetIconButtonSecondary: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sheetBtn: {
     flex: 1,

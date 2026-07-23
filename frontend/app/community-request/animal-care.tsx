@@ -20,6 +20,7 @@ import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src
 import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
+import { useAuthStore } from '../../src/store/authStore';
 
 const { width } = Dimensions.get('window');
 const URGENCY_LEVELS = ['Low', 'Medium', 'High', 'Urgent'];
@@ -47,10 +48,32 @@ const ANIMAL_TYPES = [
   'Other Animal'
 ];
 const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
+const COUNTRY_CODES = [
+  { code: '+91', country: 'India (🇮🇳)' },
+  { code: '+1', country: 'US / Canada (🇺🇸)' },
+  { code: '+44', country: 'UK (🇬🇧)' },
+  { code: '+971', country: 'UAE (🇦🇪)' },
+  { code: '+977', country: 'Nepal (🇳🇵)' },
+  { code: '+880', country: 'Bangladesh (🇧🇩)' },
+  { code: '+61', country: 'Australia (🇦🇺)' },
+];
+
+const formatPhoneNumber = (text: string) => {
+  let cleaned = text.replace(/[^0-9+]/g, '');
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned.replace(/[^0-9]/g, '').slice(0, 10);
+};
 
 export default function AnimalCareRequestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string }>();
+  const { user } = useAuthStore();
   
   // Form State
   const [helpType, setHelpType] = useState('');
@@ -59,7 +82,8 @@ export default function AnimalCareRequestScreen() {
   const [description, setDescription] = useState('');
   const [urgency, setUrgency] = useState('Urgent');
   const [contactPref, setContactPref] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone ? formatPhoneNumber(user.phone) : '');
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,11 +91,9 @@ export default function AnimalCareRequestScreen() {
   
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'help' | 'animal' | 'contact' | null>(null);
+  const [modalType, setModalType] = useState<'help' | 'animal' | 'contact' | 'country' | null>(null);
 
-
-
-  const openModal = (type: 'help' | 'animal' | 'contact') => {
+  const openModal = (type: 'help' | 'animal' | 'contact' | 'country') => {
     setModalType(type);
     setModalVisible(true);
   };
@@ -80,6 +102,7 @@ export default function AnimalCareRequestScreen() {
     if (modalType === 'help') setHelpType(option);
     if (modalType === 'animal') setAnimalType(option);
     if (modalType === 'contact') setContactPref(option);
+    if (modalType === 'country') setCountryCode(option.split(' ')[0]);
     setModalVisible(false);
   };
 
@@ -88,7 +111,7 @@ export default function AnimalCareRequestScreen() {
     if (!animalType) return Alert.alert('Error', 'Please select animal type');
     if (!location) return Alert.alert('Error', 'Please provide a location');
     if (!description.trim()) return Alert.alert('Error', 'Please describe the situation');
-    if (!phoneNumber.trim()) return Alert.alert('Error', 'Please enter your contact number');
+    if (!phoneNumber.trim() || phoneNumber.length < 10) return Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
     if (!contactPref) return Alert.alert('Error', 'Please select a contact preference');
 
     setIsSubmitting(true);
@@ -98,7 +121,7 @@ export default function AnimalCareRequestScreen() {
         request_type: 'help',
         title: `Animal Care: ${animalType} - ${helpType}`,
         description: description,
-        contact_number: phoneNumber.trim(),
+        contact_number: `${countryCode}${phoneNumber.trim()}`,
         urgency_level: (urgency === 'Urgent' ? 'critical' : urgency.toLowerCase()) as any,
         location: location,
         support_needed: 'Animal Care',
@@ -107,11 +130,10 @@ export default function AnimalCareRequestScreen() {
       Alert.alert('Success', 'Request posted!', [{
         text: 'OK',
         onPress: () => {
-          if (params.community_id) {
-            router.replace(`/community/${params.community_id}`);
-          } else {
-            router.push('/(tabs)/profile');
-          }
+          router.replace({
+            pathname: '/community-request',
+            params: params.community_id ? { community_id: params.community_id } : {}
+          });
         }
       }]);
     } catch (error: any) {
@@ -127,6 +149,7 @@ export default function AnimalCareRequestScreen() {
     if (modalType === 'help') { options = HELP_TYPES; title = 'Select Type of Help'; }
     if (modalType === 'animal') { options = ANIMAL_TYPES; title = 'Select Animal Type'; }
     if (modalType === 'contact') { options = CONTACT_OPTIONS; title = 'Contact Preference'; }
+    if (modalType === 'country') { options = COUNTRY_CODES.map(c => `${c.code} ${c.country}`); title = 'Select Country Code'; }
 
     return (
       <View style={styles.modalOverlay}>
@@ -244,7 +267,7 @@ export default function AnimalCareRequestScreen() {
                     }
                     return results;
                   }}
-                  minimumQueryLength={2}
+                  minimumQueryLength={1}
                   inputContainerStyle={styles.searchInputContainer}
                   inputStyle={styles.searchInput}
                   dropdownStyle={styles.suggestionsContainer}
@@ -283,16 +306,20 @@ export default function AnimalCareRequestScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="call" size={18} color="#EF6C00" style={{ marginRight: 10 }} />
+                <View style={styles.phoneInputContainer}>
+                  <TouchableOpacity style={styles.countryCodeSelector} activeOpacity={0.7} onPress={() => openModal('country')}>
+                    <Text style={styles.countryCodeText}>{countryCode}</Text>
+                    <Ionicons name="chevron-down" size={14} color="#666" style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                  <View style={styles.phoneInputDivider} />
                   <TextInput
-                    style={styles.searchInput}
-                    placeholder="Enter mobile number (e.g. +919876543210)"
+                    style={styles.phoneNumberInput}
+                    placeholder="10-digit mobile number"
                     placeholderTextColor="#BBB"
                     value={phoneNumber}
-                    onChangeText={setPhoneNumber}
+                    onChangeText={(t) => setPhoneNumber(formatPhoneNumber(t))}
                     keyboardType="phone-pad"
-                    maxLength={15}
+                    maxLength={10}
                   />
                 </View>
               </View>
@@ -380,6 +407,11 @@ const styles = StyleSheet.create({
   
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
+  phoneInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 14, height: 54 },
+  countryCodeSelector: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 10 },
+  countryCodeText: { fontSize: 15, fontFamily: FONTS.bold, color: '#333' },
+  phoneInputDivider: { width: 1, height: 24, backgroundColor: '#E0E0E0', marginHorizontal: 10 },
+  phoneNumberInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 10 },
   suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
   suggestionText: { marginLeft: 10, fontSize: 14, color: '#444', flex: 1 },

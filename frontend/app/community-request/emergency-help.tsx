@@ -20,6 +20,8 @@ import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
+import { useAuthStore } from '../../src/store/authStore';
+
 const EMERGENCY_TYPES = [
   'Medical Emergency',
   'Accident Support',
@@ -36,17 +38,40 @@ const EMERGENCY_TYPES = [
 ];
 const URGENCY_LEVELS = ['Urgent'];
 const CONTACT_OPTIONS = ['Phone Call', 'WhatsApp', 'Platform DM'];
+const COUNTRY_CODES = [
+  { code: '+91', country: 'India (🇮🇳)' },
+  { code: '+1', country: 'US / Canada (🇺🇸)' },
+  { code: '+44', country: 'UK (🇬🇧)' },
+  { code: '+971', country: 'UAE (🇦🇪)' },
+  { code: '+977', country: 'Nepal (🇳🇵)' },
+  { code: '+880', country: 'Bangladesh (🇧🇩)' },
+  { code: '+61', country: 'Australia (🇦🇺)' },
+];
+
+const formatPhoneNumber = (text: string) => {
+  let cleaned = text.replace(/[^0-9+]/g, '');
+  if (cleaned.startsWith('+91')) {
+    cleaned = cleaned.slice(3);
+  } else if (cleaned.startsWith('91') && cleaned.length > 10) {
+    cleaned = cleaned.slice(2);
+  } else if (cleaned.startsWith('0') && cleaned.length > 10) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned.replace(/[^0-9]/g, '').slice(0, 10);
+};
 
 export default function EmergencyHelpScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string }>();
+  const { user } = useAuthStore();
   
   // Form State
   const [emergencyType, setEmergencyType] = useState('');
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [contactPref, setContactPref] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
+  const [phoneNumber, setPhoneNumber] = useState(user?.phone ? formatPhoneNumber(user.phone) : '');
   
   // UI State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,11 +79,9 @@ export default function EmergencyHelpScreen() {
   
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState<'type' | 'contact' | null>(null);
+  const [modalType, setModalType] = useState<'type' | 'contact' | 'country' | null>(null);
 
-
-
-  const openModal = (type: 'type' | 'contact') => {
+  const openModal = (type: 'type' | 'contact' | 'country') => {
     setModalType(type);
     setModalVisible(true);
   };
@@ -66,6 +89,7 @@ export default function EmergencyHelpScreen() {
   const handleSelectOption = (option: string) => {
     if (modalType === 'type') setEmergencyType(option);
     if (modalType === 'contact') setContactPref(option);
+    if (modalType === 'country') setCountryCode(option.split(' ')[0]);
     setModalVisible(false);
   };
 
@@ -83,7 +107,7 @@ export default function EmergencyHelpScreen() {
     if (!location) return showAlert('Error', 'Please provide location');
     if (!description.trim()) return showAlert('Error', 'Please describe the situation');
     if (description.trim().length < 10) return showAlert('Error', 'Please describe the situation in at least 10 characters');
-    if (!phoneNumber.trim()) return showAlert('Error', 'Please enter your contact number');
+    if (!phoneNumber.trim() || phoneNumber.length < 10) return showAlert('Error', 'Please enter a valid 10-digit mobile number');
     if (!contactPref) return showAlert('Error', 'Please select contact preference');
 
     setIsSubmitting(true);
@@ -93,7 +117,7 @@ export default function EmergencyHelpScreen() {
         request_type: 'help',
         title: `EMERGENCY: ${emergencyType}`,
         description: description,
-        contact_number: phoneNumber.trim(),
+        contact_number: `${countryCode}${phoneNumber.trim()}`,
         urgency_level: 'critical',
         location: location,
         support_needed: 'Emergency Help',
@@ -101,11 +125,10 @@ export default function EmergencyHelpScreen() {
       });
 
       showAlert('Success', 'Emergency request posted!', () => {
-        if (params.community_id) {
-          router.replace(`/community/${params.community_id}`);
-        } else {
-          router.push('/(tabs)/profile');
-        }
+        router.replace({
+          pathname: '/community-request',
+          params: params.community_id ? { community_id: params.community_id } : {}
+        });
       });
     } catch (error: any) {
       showAlert('Error', parseApiError(error));
@@ -119,6 +142,7 @@ export default function EmergencyHelpScreen() {
     let title = '';
     if (modalType === 'type') { options = EMERGENCY_TYPES; title = 'Emergency Type'; }
     if (modalType === 'contact') { options = CONTACT_OPTIONS; title = 'Contact Preference'; }
+    if (modalType === 'country') { options = COUNTRY_CODES.map(c => `${c.code} ${c.country}`); title = 'Select Country Code'; }
 
     return (
       <View style={styles.modalOverlay}>
@@ -173,11 +197,17 @@ export default function EmergencyHelpScreen() {
       
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.topHeader}>
-          <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={24} color="#FB8C00" />
+          <TouchableOpacity style={styles.topHeaderBack} onPress={handleBack} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={22} color="#E53935" />
           </TouchableOpacity>
-          <Text style={styles.topHeaderText}>Emergency Help</Text>
-          <View style={{ width: 40 }} />
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.topHeaderText}>Emergency Help</Text>
+            <Text style={styles.topHeaderSubtext}>Critical Assistance</Text>
+          </View>
+          <View style={styles.headerBadge}>
+            <Ionicons name="warning" size={14} color="#E53935" />
+            <Text style={styles.headerBadgeText}>Urgent</Text>
+          </View>
         </View>
 
         <KeyboardAvoidingView style={styles.cardContainerWrapper} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -228,7 +258,7 @@ export default function EmergencyHelpScreen() {
                     }
                     return results;
                   }}
-                  minimumQueryLength={2}
+                  minimumQueryLength={1}
                   inputContainerStyle={styles.searchInputContainer}
                   inputStyle={styles.searchInput}
                   dropdownStyle={styles.suggestionsContainer}
@@ -256,16 +286,20 @@ export default function EmergencyHelpScreen() {
 
               <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Contact Phone Number <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <View style={styles.searchInputContainer}>
-                  <Ionicons name="call" size={18} color="#FB8C00" style={{ marginRight: 10 }} />
+                <View style={styles.phoneInputContainer}>
+                  <TouchableOpacity style={styles.countryCodeSelector} activeOpacity={0.7} onPress={() => openModal('country')}>
+                    <Text style={styles.countryCodeText}>{countryCode}</Text>
+                    <Ionicons name="chevron-down" size={14} color="#666" style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                  <View style={styles.phoneInputDivider} />
                   <TextInput
-                    style={styles.searchInput}
-                    placeholder="Enter mobile number (e.g. +919876543210)"
+                    style={styles.phoneNumberInput}
+                    placeholder="10-digit mobile number"
                     placeholderTextColor="#BBB"
                     value={phoneNumber}
-                    onChangeText={setPhoneNumber}
+                    onChangeText={(t) => setPhoneNumber(formatPhoneNumber(t))}
                     keyboardType="phone-pad"
-                    maxLength={15}
+                    maxLength={10}
                   />
                 </View>
               </View>
@@ -311,71 +345,94 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center', 
     justifyContent: 'space-between',
-    paddingVertical: 14, 
+    paddingVertical: 12, 
     paddingHorizontal: 16,
-    borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(0,0,0,0.03)' 
   },
   topHeaderBack: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  topHeaderText: { color: '#FB8C00', fontSize: 17, fontFamily: FONTS.bold, letterSpacing: 0.5 },
-  cardContainerWrapper: { flex: 1, marginHorizontal: 16, marginTop: 10, marginBottom: 20 },
+  headerTitleContainer: { flex: 1, marginLeft: 12 },
+  topHeaderText: { color: '#1A1A1E', fontSize: 17, fontFamily: FONTS.bold },
+  topHeaderSubtext: { color: '#8E8E93', fontSize: 12, fontFamily: FONTS.regular, marginTop: 1 },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFEBEE',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+  },
+  headerBadgeText: { fontSize: 12, fontFamily: FONTS.bold, color: '#E53935', marginLeft: 4 },
+  cardContainerWrapper: { flex: 1, marginHorizontal: 16, marginTop: 6, marginBottom: 16 },
   cardContainer: { 
     flex: 1, 
     backgroundColor: '#FFFFFF', 
-    borderRadius: 30, 
+    borderRadius: 24, 
     shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 10 }, 
-    shadowOpacity: 0.1, 
-    shadowRadius: 20, 
-    elevation: 5,
-    overflow: 'hidden'
+    shadowOffset: { width: 0, height: 8 }, 
+    shadowOpacity: 0.06, 
+    shadowRadius: 16, 
+    elevation: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F0F0F5',
   },
-  content: { padding: 24 },
-  headerBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
-  backButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#F8F9FA', justifyContent: 'center', alignItems: 'center' },
-  iconCircle: { width: 54, height: 54, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginHorizontal: 14 },
+  content: { padding: 20 },
+  headerBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  iconCircle: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
   headerTextCol: { flex: 1 },
-  title: { fontSize: 20, fontFamily: FONTS.bold, color: '#111' },
-  subtitle: { fontSize: 13, fontFamily: FONTS.regular, color: '#999', marginTop: 2 },
+  title: { fontSize: 19, fontFamily: FONTS.bold, color: '#1A1A1E' },
+  subtitle: { fontSize: 13, fontFamily: FONTS.regular, color: '#8E8E93', marginTop: 2 },
   
-  fieldSection: { marginBottom: 22 },
-  fieldLabel: { fontSize: 14, fontFamily: FONTS.bold, color: '#333', marginBottom: 10, marginLeft: 4 },
-  requiredAsterisk: { color: '#FF5252' },
+  fieldSection: { marginBottom: 20 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  fieldLabel: { fontSize: 14, fontFamily: FONTS.bold, color: '#2C2C2E' },
+  requiredAsterisk: { color: '#FF3B30' },
   
-  dropdownButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 16 },
-  dropdownButtonText: { fontSize: 15, fontFamily: FONTS.regular, color: '#333' },
-  placeholderText: { color: '#BBB' },
+  dropdownButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8F9FD', borderWidth: 1, borderColor: '#E8ECF4', borderRadius: 16, paddingHorizontal: 16, height: 52 },
+  dropdownButtonText: { fontSize: 15, fontFamily: FONTS.regular, color: '#1C1C1E' },
+  placeholderText: { color: '#A0A0AB' },
   
-  searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
-  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
-  suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 15, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
-  suggestionText: { marginLeft: 10, fontSize: 14, color: '#444', flex: 1 },
+  searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FD', borderWidth: 1, borderColor: '#E8ECF4', borderRadius: 16, paddingHorizontal: 16, height: 52 },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#1C1C1E' },
+  phoneInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FD', borderWidth: 1, borderColor: '#E8ECF4', borderRadius: 16, paddingHorizontal: 12, height: 52 },
+  countryCodeSelector: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 8, backgroundColor: '#FFFFFF', borderRadius: 10, borderWidth: 1, borderColor: '#E8ECF4' },
+  countryCodeText: { fontSize: 14, fontFamily: FONTS.bold, color: '#1C1C1E' },
+  phoneInputDivider: { width: 1, height: 22, backgroundColor: '#E0E0E0', marginHorizontal: 10 },
+  phoneNumberInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#1C1C1E', paddingVertical: 10 },
+  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E8ECF4', marginTop: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 },
+  suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
+  suggestionText: { marginLeft: 10, fontSize: 14, color: '#3C3C43', flex: 1 },
   
-  textAreaWrapper: { backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18, paddingVertical: 14 },
-  textArea: { minHeight: 120, fontSize: 15, color: '#333', textAlignVertical: 'top' },
+  textAreaWrapper: { backgroundColor: '#F8F9FD', borderWidth: 1, borderColor: '#E8ECF4', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 12 },
+  textArea: { minHeight: 90, fontSize: 15, color: '#1C1C1E', textAlignVertical: 'top', fontFamily: FONTS.regular },
   
-  continueButton: { marginTop: 10, borderRadius: 45, overflow: 'hidden' },
-  continueGradient: { flexDirection: 'row', paddingVertical: 18, alignItems: 'center', justifyContent: 'center' },
-  continueButtonText: { color: '#FFFFFF', fontSize: 17, fontFamily: FONTS.bold },
-  bottomDisclaimer: { textAlign: 'center', color: '#BBB', fontSize: 12, marginTop: 18, fontFamily: FONTS.regular },
+  continueButton: { marginTop: 12, borderRadius: 28, overflow: 'hidden', shadowColor: '#E53935', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 5 },
+  continueGradient: { flexDirection: 'row', paddingVertical: 16, alignItems: 'center', justifyContent: 'center' },
+  continueButtonText: { color: '#FFFFFF', fontSize: 16, fontFamily: FONTS.bold },
+  disclaimerContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  bottomDisclaimer: { color: '#8E8E93', fontSize: 12, fontFamily: FONTS.regular },
   
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '70%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
-  modalBar: { width: 40, height: 5, backgroundColor: '#E0E0E0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
-  modalHeaderOrange: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, backgroundColor: '#F25C05', padding: 12, borderRadius: 8 },
-  modalTitle: { fontSize: 20, fontFamily: FONTS.bold, color: '#111' },
-  modalTitleWhite: { fontSize: 18, fontFamily: FONTS.bold, color: '#FFF' },
-  modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
-  modalCloseBtnWhite: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
-  optionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 12, borderRadius: 16, marginBottom: 8 },
-  optionItemSelected: { backgroundColor: '#FFF3E0' },
-  optionText: { fontSize: 16, color: '#444', fontFamily: FONTS.regular },
-  optionTextSelected: { color: '#FB8C00', fontFamily: FONTS.bold },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 20, maxHeight: '72%', shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.12, shadowRadius: 20 },
+  modalBar: { width: 36, height: 4, backgroundColor: '#D1D1D6', borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  modalHeaderOrange: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, backgroundColor: '#E53935', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16 },
+  modalTitleWhite: { fontSize: 16, fontFamily: FONTS.bold, color: '#FFF' },
+  modalCloseBtnWhite: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)', justifyContent: 'center', alignItems: 'center' },
+  optionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16, borderRadius: 14, marginBottom: 6, borderWidth: 1, borderColor: 'transparent' },
+  optionItemSelected: { backgroundColor: '#FFEBEE', borderColor: '#FFCDD2' },
+  optionText: { fontSize: 15, color: '#2C2C2E', fontFamily: FONTS.regular },
+  optionTextSelected: { color: '#E53935', fontFamily: FONTS.bold },
 });

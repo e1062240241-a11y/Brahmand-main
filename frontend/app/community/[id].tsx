@@ -1399,9 +1399,6 @@ export default function CommunityDetailScreen() {
       localList.forEach(r => tuMap.set(r.id, r));
 
       let list = Array.from(tuMap.values()).sort((a, b) => getUnixTimestamp(b) - getUnixTimestamp(a));
-      if (list.length === 0) {
-        list = [createDummyItem('Temple Updates')];
-      }
       return list;
     }
     if (activeTab === 'Seva') {

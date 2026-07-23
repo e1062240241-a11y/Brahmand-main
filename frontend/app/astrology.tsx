@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import {
   Animated,
   RefreshControl,
@@ -32,11 +32,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', img: require('../assets/images/traditional_diya_footer.png') },
-  { key: 'character', label: 'Character', img: require('../assets/images/traditional_diya_footer.png') },
-  { key: 'education', label: 'Education', img: require('../assets/images/traditional_diya_footer.png') },
-  { key: 'family', label: 'Family', img: require('../assets/images/traditional_diya_footer.png') },
-  { key: 'health', label: 'Health', img: require('../assets/images/traditional_diya_footer.png') },
+  { key: 'physical', label: 'Physical', img: require('../assets/images/festivals/cosmic/cos1.png') },
+  { key: 'character', label: 'Character', img: require('../assets/images/festivals/cosmic/cos2.png') },
+  { key: 'education', label: 'Education', img: require('../assets/images/festivals/cosmic/cos3.png') },
+  { key: 'family', label: 'Family', img: require('../assets/images/festivals/cosmic/cos4.png') },
+  { key: 'health', label: 'Health', img: require('../assets/images/festivals/cosmic/cos5.png') },
 ];
 
 const CITIES_DB = [
@@ -478,6 +478,23 @@ export default function AstrologyScreen() {
     health: data?.sadhesati_status?.response?.description || 'No health status details available.',
   };
 
+  const handleSelectCosmicTab = useCallback((key: string | null) => {
+    requestAnimationFrame(() => {
+      setActiveCosmicTab(key);
+    });
+  }, []);
+
+  const activeTabObj = useMemo(() => COSMIC_TABS.find(t => t.key === activeCosmicTab), [activeCosmicTab]);
+  const activeReportText = useMemo(() => {
+    if (!activeCosmicTab || !report) return '';
+    for (const [key, paragraphs] of Object.entries(report)) {
+      if (key.toLowerCase().includes(activeCosmicTab)) {
+        return normalizeTextBlock(paragraphs);
+      }
+    }
+    return '';
+  }, [activeCosmicTab, report]);
+
   const attributes = [
     { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.png'), color: '#F59E0B' },
     { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.png'), color: '#C67C4E' },
@@ -885,11 +902,11 @@ export default function AstrologyScreen() {
                     <TouchableOpacity
                       key={tab.key}
                       style={[styles.cosmicTab, isActive && styles.cosmicTabActive]}
-                      onPress={() => setActiveCosmicTab(tab.key)}
+                      onPress={() => handleSelectCosmicTab(tab.key)}
                       activeOpacity={0.8}
                     >
                       <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
-                        <Image source={tab.img} style={{ width: 36, height: 36, aspectRatio: 1, tintColor: isActive ? '#FFF' : undefined }} resizeMode="contain" />
+                        <Image source={tab.img} style={[{ width: 36, height: 36, aspectRatio: 1 }, isActive && { tintColor: '#FFF' }]} resizeMode="contain" />
                       </View>
                       <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
                     </TouchableOpacity>
@@ -902,37 +919,24 @@ export default function AstrologyScreen() {
                 visible={!!activeCosmicTab}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setActiveCosmicTab(null)}
+                onRequestClose={() => handleSelectCosmicTab(null)}
               >
                 <View style={styles.modalOverlay}>
                   <View style={styles.modalCard}>
-                    {(() => {
-                      const activeTabObj = COSMIC_TABS.find(t => t.key === activeCosmicTab);
-                      if (!activeTabObj) return null;
-                      
-                      let activeReportText = '';
-                      for (const [key, paragraphs] of Object.entries(report)) {
-                        if (key.toLowerCase().includes(activeCosmicTab as string)) {
-                          activeReportText = normalizeTextBlock(paragraphs);
-                          break;
-                        }
-                      }
-
-                      return (
-                        <>
-                          <View style={styles.modalIconWrap}>
-                            <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
-                          </View>
-                          <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
-                          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                            <Text style={styles.modalDesc}>{activeReportText || 'No summary available.'}</Text>
-                          </ScrollView>
-                          <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setActiveCosmicTab(null)} activeOpacity={0.8}>
-                            <Text style={styles.modalCloseText}>Close</Text>
-                          </TouchableOpacity>
-                        </>
-                      );
-                    })()}
+                    {activeTabObj ? (
+                      <>
+                        <View style={styles.modalIconWrap}>
+                          <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
+                        </View>
+                        <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
+                        <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                          <Text style={styles.modalDesc}>{activeReportText || 'No summary available.'}</Text>
+                        </ScrollView>
+                        <TouchableOpacity style={styles.modalCloseBtn} onPress={() => handleSelectCosmicTab(null)} activeOpacity={0.8}>
+                          <Text style={styles.modalCloseText}>Close</Text>
+                        </TouchableOpacity>
+                      </>
+                    ) : null}
                   </View>
                 </View>
               </Modal>
@@ -1172,6 +1176,8 @@ export default function AstrologyScreen() {
                 </Text>
                 {!calculating && <Ionicons name="chevron-forward" size={18} color="#FFF" />}
               </TouchableOpacity>
+
+              <View style={{ height: Platform.OS === 'android' ? 36 : 20 }} />
             </KeyboardAwareScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -1641,7 +1647,7 @@ const styles = StyleSheet.create({
   },
   attrTextCol: { flex: 1 },
   attrLabel: { fontSize: 10, color: '#584235', fontWeight: '700', lineHeight: 12, textTransform: 'uppercase', fontStyle: 'normal' },
-  attrValue: { fontSize: 16, color: '#311303', fontWeight: '700', lineHeight: 24, fontStyle: 'normal', marginTop: 2 },
+  attrValue: { fontSize: 13, color: '#311303', fontWeight: '700', lineHeight: 18, fontStyle: 'normal', marginTop: 2 },
 
   // Cosmic Tabs
   cosmicTabScroll: { marginBottom: 16 },
@@ -1755,8 +1761,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 32,
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    maxHeight: '90%',
+    paddingBottom: Platform.OS === 'android' ? 44 : 40,
+    maxHeight: Platform.OS === 'android' ? '82%' : '90%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.1,
