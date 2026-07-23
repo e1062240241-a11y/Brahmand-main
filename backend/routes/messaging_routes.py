@@ -36,7 +36,10 @@ async def send_community_message(
             media_url=message.media_url,
             category=message.category,
             contact=message.contact,
-            seva_details=message.seva_details
+            seva_details=message.seva_details,
+            location=message.location,
+            start_time=message.start_time
+
         )
     except ValueError as e:
         raise HTTPException(status_code=403, detail=str(e))

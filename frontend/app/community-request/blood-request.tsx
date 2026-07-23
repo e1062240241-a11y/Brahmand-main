@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {View,
+import {
+  View,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -10,7 +11,12 @@ import {View,
   ActivityIndicator,
   Modal,
   Dimensions,
-  BackHandler} from 'react-native';
+  BackHandler,
+  ScrollView,
+  Pressable,
+  Keyboard,
+  FlatList,
+} from 'react-native';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
@@ -18,9 +24,7 @@ import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme
 import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode } from '../../src/services/api';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { LinearGradient } from 'expo-linear-gradient';
-import { FlashList } from '@shopify/flash-list';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
-const SafeFlashList = FlashList as any;
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Don\'t Know'];
 const URGENCY_LEVELS = ['Low', 'Medium', 'High', 'Urgent'];
@@ -47,6 +51,30 @@ export default function BloodRequestScreen() {
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState<'blood' | 'contact' | null>(null);
+
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+        setKeyboardVisible(true);
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Debounced Location Search
   useEffect(() => {
@@ -147,6 +175,11 @@ export default function BloodRequestScreen() {
 
     return (
       <View style={styles.modalOverlay}>
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        />
         <View style={styles.modalContent}>
           <View style={styles.modalBar} />
           <View style={styles.modalHeader}>
@@ -155,25 +188,27 @@ export default function BloodRequestScreen() {
               <Ionicons name="close" size={20} color="#666" />
             </TouchableOpacity>
           </View>
-          <SafeFlashList
-            data={options}
-            keyExtractor={(item: string) => item}
-            contentContainerStyle={{ paddingBottom: 30 }}
-            numColumns={modalType === 'blood' ? 3 : 1}
-            estimatedItemSize={60}
-            renderItem={({ item }: { item: string }) => (
-              <TouchableOpacity
-                style={[
-                  styles.optionItem,
-                  (bloodGroup === item || contactPref === item) && styles.optionItemSelected,
-                  modalType === 'blood' && styles.bloodOptionItem
-                ]}
-                onPress={() => handleSelectOption(item)}
-              >
-                <Text style={[styles.optionText, (bloodGroup === item || contactPref === item) && styles.optionTextSelected]}>{item}</Text>
-              </TouchableOpacity>
-            )}
-          />
+          <ScrollView contentContainerStyle={{ paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
+            <View style={modalType === 'blood' ? styles.bloodGridContainer : styles.contactListContainer}>
+              {options.map((item: string) => {
+                const isSelected = (modalType === 'blood' && bloodGroup === item) || (modalType === 'contact' && contactPref === item);
+                return (
+                  <TouchableOpacity
+                    key={item}
+                    activeOpacity={0.7}
+                    style={[
+                      styles.optionItem,
+                      isSelected && styles.optionItemSelected,
+                      modalType === 'blood' && styles.bloodOptionItem
+                    ]}
+                    onPress={() => handleSelectOption(item)}
+                  >
+                    <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{item}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </ScrollView>
         </View>
       </View>
     );
@@ -214,7 +249,7 @@ export default function BloodRequestScreen() {
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
         >
           <View style={styles.cardContainer}>
-            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+            <KeyboardAwareScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" extraScrollHeight={260}>
 
               <View style={styles.headerBar}>
                 <LinearGradient colors={['#FFEBEE', '#FFCDD2']} style={styles.iconCircle}>
@@ -234,62 +269,59 @@ export default function BloodRequestScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.fieldSection}>
+              <View style={[styles.fieldSection, { zIndex: 10 }]}>
                 <Text style={styles.fieldLabel}>Hospital Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <View style={styles.searchInputContainer}>
-                  <TouchableOpacity onPress={handleGpsDetect} style={{ padding: 4 }} disabled={isSearchingLocation}>
-                    <Ionicons name="location-sharp" size={18} color="#E53935" style={{ marginRight: 6 }} />
-                  </TouchableOpacity>
-                  <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search hospital or area"
-                    placeholderTextColor="#BBB"
-                    value={location}
-                    onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
-                  />
-                  {isSearchingLocation ? (
-                    <ActivityIndicator size="small" color="#E53935" />
-                  ) : location.length > 0 ? (
-                    <TouchableOpacity onPress={() => { setLocation(''); setSelectedLocation(null); setLocationSuggestions([]); }} style={{ padding: 4 }}>
-                      <Ionicons name="close-circle" size={18} color="#BBB" />
+                <View style={styles.autocompleteWrapper}>
+                  <View style={styles.searchInputContainer}>
+                    <TouchableOpacity onPress={handleGpsDetect} style={{ padding: 4 }} disabled={isSearchingLocation}>
+                      <Ionicons name="location-sharp" size={18} color="#E53935" style={{ marginRight: 6 }} />
                     </TouchableOpacity>
-                  ) : (
-                    <Ionicons name="search" size={18} color="#BBB" />
-                  )}
-                </View>
-                {location.trim().length >= 2 && !selectedLocation && (
-                  <View style={styles.suggestionsContainer}>
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search hospital or area"
+                      placeholderTextColor="#BBB"
+                      value={location}
+                      onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
+                    />
                     {isSearchingLocation ? (
-                      <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
-                    ) : locationSuggestions.length > 0 ? (
-                      locationSuggestions.map((item, i) => (
-                        <TouchableOpacity key={i} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                          <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
-                          <View style={styles.suggestionTextContainer}>
-                            <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
-                            {(item.address || item.display_name) && (
-                              <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      ))
+                      <ActivityIndicator size="small" color="#E53935" />
+                    ) : location.length > 0 ? (
+                      <TouchableOpacity onPress={() => { setLocation(''); setSelectedLocation(null); setLocationSuggestions([]); }} style={{ padding: 4 }}>
+                        <Ionicons name="close-circle" size={18} color="#BBB" />
+                      </TouchableOpacity>
                     ) : (
-                      <View>
-                        <Text style={styles.suggestionStatus}>No hospitals found</Text>
-                        <TouchableOpacity
-                          style={styles.suggestionItem}
-                          onPress={() => handleLocationSelect({ name: location.trim(), address: location.trim(), area: '', city: '' })}
-                        >
-                          <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
-                          <View style={styles.suggestionTextContainer}>
-                            <Text style={styles.suggestionName}>Use hospital / location as typed</Text>
-                            <Text style={styles.suggestionAddress}>{location.trim()}</Text>
-                          </View>
-                        </TouchableOpacity>
-                      </View>
+                      <Ionicons name="search" size={18} color="#BBB" />
                     )}
                   </View>
-                )}
+
+                  {location.trim().length >= 2 && !selectedLocation && (
+                    <View style={styles.suggestionsContainer}>
+                      {isSearchingLocation ? (
+                        <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
+                      ) : locationSuggestions.length === 0 ? (
+                        <Text style={styles.suggestionStatus}>No hospitals found</Text>
+                      ) : (
+                        <ScrollView
+                          keyboardShouldPersistTaps="handled"
+                          nestedScrollEnabled={true}
+                          style={{ maxHeight: 200 }}
+                        >
+                          {locationSuggestions.map((item, index) => (
+                            <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
+                              <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 8 }} />
+                              <View style={styles.suggestionTextContainer}>
+                                <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
+                                {(item.address || item.display_name) && (
+                                  <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </ScrollView>
+                      )}
+                    </View>
+                  )}
+                </View>
               </View>
 
               <View style={styles.fieldSection}>
@@ -350,9 +382,17 @@ export default function BloodRequestScreen() {
               <View style={{ height: Math.max(insets.bottom, 20) }} />
             </KeyboardAwareScrollView>
           </View>
+          {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight : 0 }} />}
         </KeyboardAvoidingView>
 
-        <Modal visible={modalVisible} transparent animationType="slide">
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setModalVisible(false)}
+          statusBarTranslucent={Platform.OS === 'android'}
+          hardwareAccelerated={Platform.OS === 'android'}
+        >
           {renderModalContent()}
         </Modal>
       </SafeAreaView>
@@ -410,7 +450,8 @@ const styles = StyleSheet.create({
 
   searchInputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9FB', borderWidth: 1, borderColor: '#F0F0F3', borderRadius: 16, paddingHorizontal: 18 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#333', paddingVertical: 16 },
-  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2 },
+  autocompleteWrapper: { position: 'relative', zIndex: 10 },
+  suggestionsContainer: { position: 'absolute', bottom: 58, left: 0, right: 0, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F0F0F3', maxHeight: 200, zIndex: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 12, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
   suggestionTextContainer: { marginLeft: 12, flex: 1 },
   suggestionName: { fontSize: 14, fontFamily: FONTS.bold, color: '#333' },
@@ -435,15 +476,17 @@ const styles = StyleSheet.create({
   continueButtonText: { color: '#FFFFFF', fontSize: 17, fontFamily: FONTS.bold },
   bottomDisclaimer: { textAlign: 'center', color: '#BBB', fontSize: 12, marginTop: 18, fontFamily: FONTS.regular },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '70%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '75%', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 10 },
   modalBar: { width: 40, height: 5, backgroundColor: '#E0E0E0', borderRadius: 10, alignSelf: 'center', marginBottom: 20 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 25 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   modalTitle: { fontSize: 20, fontFamily: FONTS.bold, color: '#111' },
   modalCloseBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#F5F5F7', justifyContent: 'center', alignItems: 'center' },
-  optionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 12, borderRadius: 16, marginBottom: 8 },
-  bloodOptionItem: { width: '30%', margin: '1.5%', justifyContent: 'center' },
-  optionItemSelected: { backgroundColor: '#FFEBEE' },
-  optionText: { fontSize: 16, color: '#444', fontFamily: FONTS.regular, textAlign: 'center' },
+  bloodGridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  contactListContainer: { flexDirection: 'column' },
+  optionItem: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 12, borderRadius: 16, backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#EFEFEF', marginBottom: 10 },
+  bloodOptionItem: { width: '31%', marginVertical: 4, paddingVertical: 14, paddingHorizontal: 4 },
+  optionItemSelected: { backgroundColor: '#FFEBEE', borderColor: '#E53935' },
+  optionText: { fontSize: 15, color: '#444', fontFamily: FONTS.regular, textAlign: 'center' },
   optionTextSelected: { color: '#E53935', fontFamily: FONTS.bold },
 });

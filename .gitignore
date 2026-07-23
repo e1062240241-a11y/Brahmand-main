@@ -16,6 +16,9 @@ node_modules/
 !.yarn/releases
 !.yarn/versions
 .agent/
+.agents/
+.gemini/
+skills-lock.json
 
 # Testing
 /coverage
@@ -181,4 +184,8 @@ local.properties
 backend/scratch/
 .agents/
 skills-lock.json
+# prevent local database and media backups from tracking
+backend/scratch/firestore_backup_*.json
+backend/scratch/bunny_backup_*/
+
 

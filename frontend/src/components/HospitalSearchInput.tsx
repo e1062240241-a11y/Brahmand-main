@@ -104,14 +104,6 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.textInput}
-        placeholder={placeholder}
-        placeholderTextColor={COLORS.textLight}
-        value={hospitalQuery}
-        onChangeText={handleManualChange}
-      />
-
       {loading ? (
         <View style={styles.loaderRow}>
           <ActivityIndicator size="small" color={COLORS.primary} />
@@ -144,6 +136,14 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
           </ScrollView>
         )
       )}
+
+      <TextInput
+        style={styles.textInput}
+        placeholder={placeholder}
+        placeholderTextColor={COLORS.textLight}
+        value={hospitalQuery}
+        onChangeText={handleManualChange}
+      />
 
       {value && (
         <Pressable

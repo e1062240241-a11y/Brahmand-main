@@ -110,7 +110,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
   }, [fabExpanded, fabScale, fabRotation, fabItemAnims]);
 
   const menuItems = [
-    { icon: 'hand-heart', label: 'Blood', color: '#E53935', route: '/community-request/blood' },
+    { icon: 'hand-heart', label: 'Blood', color: '#E53935', route: '/community-request/blood-request' },
     { icon: 'hospital', label: 'ICU', color: '#8E24AA', route: '/community-request/icu' },
     { icon: 'food-apple', label: 'Food', color: '#F57C00', route: '/community-request/food' },
     { icon: 'home-heart', label: 'Shelter', color: '#43A047', route: '/community-request/shelter' },

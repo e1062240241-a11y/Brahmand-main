@@ -97,10 +97,15 @@ export default function PhoneScreen() {
         return;
       }
 
-      const isMockNumber = fullPhone.startsWith('+919999');
+      const digits = fullPhone.replace(/[^0-9]/g, '');
+      const isMockNumber =
+        digits.endsWith('1234567890') ||
+        digits.endsWith('9876543210') ||
+        digits.includes('9999') ||
+        digits.includes('1111');
 
-      if (Platform.OS === 'android' && isMockNumber) {
-        console.log('[Phone Auth] Detected mock testing number on Android, using backend OTP service');
+      if (isMockNumber) {
+        console.log('[Phone Auth] Detected mock testing number, using backend OTP service');
         const { sendOTP } = require('../../src/services/api');
         await sendOTP(fullPhone);
         router.push({ pathname: '/auth/otp', params: { phone: fullPhone, mock: 'true' } });
