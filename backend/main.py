@@ -400,8 +400,13 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
 
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+
+    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY")
+    if not bunny_access_key:
+        raise Exception("Bunny.net credentials are not configured on the server")
+
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
+        "AccessKey": bunny_access_key,
         "Content-Type": content_type
     }
 
@@ -430,8 +435,13 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
 
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+
+    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY")
+    if not bunny_access_key:
+        raise Exception("Bunny.net credentials are not configured on the server")
+
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
+        "AccessKey": bunny_access_key,
         "Content-Type": content_type
     }
 
@@ -459,8 +469,13 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     """Download a file from Bunny.net storage to a local file path."""
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+
+    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY")
+    if not bunny_access_key:
+        raise Exception("Bunny.net credentials are not configured on the server")
+
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+        "AccessKey": bunny_access_key
     }
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
@@ -482,8 +497,13 @@ async def _delete_file_from_bunny(object_path: str):
     """Delete a file from Bunny.net storage."""
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
+
+    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY")
+    if not bunny_access_key:
+        raise Exception("Bunny.net credentials are not configured on the server")
+
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+        "AccessKey": bunny_access_key
     }
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
@@ -1703,11 +1723,14 @@ async def disable_admin_anonymous_user(user_id: str, token_data: dict = Depends(
 @api_router.post("/admin/auth/login")
 async def admin_panel_login(data: dict = Body(...)):
     """Admin panel login with static credentials for internal review console."""
+    expected_username = os.getenv('ADMIN_PANEL_USERNAME')
+    expected_password = os.getenv('ADMIN_PANEL_PASSWORD')
+
+    if not expected_username or not expected_password:
+        raise HTTPException(status_code=500, detail="Admin panel credentials are not configured on the server")
+
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
-
-    expected_username = os.getenv('ADMIN_PANEL_USERNAME', 'Admin')
-    expected_password = os.getenv('ADMIN_PANEL_PASSWORD', 'admin123')
 
     if username != expected_username or password != expected_password:
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
@@ -2813,8 +2836,13 @@ async def get_bunny_media(filepath: str):
     """Proxy route to fetch and stream files from Bunny.net storage using credentials"""
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{filepath}"
+
+    bunny_access_key = os.getenv("BUNNY_READ_ACCESS_KEY") or os.getenv("BUNNY_ACCESS_KEY")
+    if not bunny_access_key:
+        raise HTTPException(status_code=500, detail="Bunny.net credentials are not configured on the server")
+
     headers = {
-        "AccessKey": os.getenv("BUNNY_READ_ACCESS_KEY") or os.getenv("BUNNY_ACCESS_KEY") or "bb3aebf9-f52b-4224-bc824e379f94-5e76-4b3d"
+        "AccessKey": bunny_access_key
     }
     
     ext = filepath.split('.')[-1].lower()
@@ -2876,7 +2904,10 @@ async def get_library_cdn(filepath: str):
 @api_router.get('/posts/bunny-upload-credentials')
 async def get_bunny_upload_credentials(token_data: dict = Depends(verify_token)):
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
-    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY")
+    if not bunny_access_key:
+        raise HTTPException(status_code=500, detail="Bunny.net credentials are not configured on the server")
+
     pull_zone_url = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     
     return {
