@@ -396,7 +396,7 @@ export function GlobalFAB() {
             style={[
               fabStyles.menuContainer,
               {
-                transform: [{ scale: scaledScale }, { rotate: spin }],
+                transform: [{ scale: scaledScale }],
                 opacity: fabScale,
               },
             ]}
@@ -447,9 +447,7 @@ export function GlobalFAB() {
                         disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
                         onPress={() => {
                           toggleFab();
-                          setTimeout(() => {
-                            router.push(item.route as any);
-                          }, 200);
+                          router.push(item.route as any);
                         }}
                       >
                         <ImageBackground 
@@ -643,9 +641,7 @@ export function GlobalFAB() {
                       activeOpacity={0.85}
                       onPress={() => {
                         toggleFab();
-                        setTimeout(() => {
-                          router.push('/sos');
-                        }, 200);
+                        router.push('/sos');
                       }}
                     >
                       <View style={fabStyles.sosRedButton}>

@@ -342,8 +342,9 @@ export default function SOSScreen() {
       locations={[0, 0.1058, 0.2212, 1.0]}
       style={styles.container}
     >
-      <SafeAreaView style={{ flex: 1 }} edges={Platform.OS === 'android' ? ['left', 'right'] : ['top', 'left', 'right']}>
-        <View style={[styles.header, Platform.OS === 'android' && { paddingTop: (insets.top || StatusBar.currentHeight || 24) + 12 }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="chevron-back" size={28} color="#1A1A1A" />
           </TouchableOpacity>

@@ -1916,7 +1916,7 @@ function MessagesScreen({
                       onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
                       activeOpacity={0.85}
                     >
-                      <Ionicons name="hand-heart" size={22} color="#FFF" />
+                      <MaterialCommunityIcons name="hand-heart" size={22} color="#FFF" />
                       <Text style={styles.sheetFulfillBtnText}>
                         {t('language') === 'hi' ? 'मदद की पेशकश करें' : 'Offer Help'}
                       </Text>
