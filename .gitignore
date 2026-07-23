@@ -180,6 +180,10 @@ test_result.md
 .gradle/
 local.properties
 
+# Scratch and untracked agent files
+backend/scratch/
+.agents/
+skills-lock.json
 # prevent local database and media backups from tracking
 backend/scratch/firestore_backup_*.json
 backend/scratch/bunny_backup_*/

@@ -86,7 +86,7 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
       translateX.value = withRepeat(
         withSequence(
           withTiming(slideDistance * 0.25, { duration: 450, easing: Easing.out(Easing.quad) }),
-          withSpring(0, { tension: 80, friction: 12 })
+          withSpring(0, { stiffness: 80, damping: 12 })
         ),
         3,
         false,
@@ -136,12 +136,12 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
             }
           });
         } else {
-          translateX.value = withSpring(0, { tension: 80, friction: 12 });
+          translateX.value = withSpring(0, { stiffness: 80, damping: 12 });
         }
       },
       onPanResponderTerminate: () => {
         if (!swipedRef.current) {
-          translateX.value = withSpring(0, { tension: 80, friction: 12 });
+          translateX.value = withSpring(0, { stiffness: 80, damping: 12 });
         }
       },
     })
