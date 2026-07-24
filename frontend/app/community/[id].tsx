@@ -517,13 +517,18 @@ const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media:
   );
 };
 
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
-
 export default function CommunityDetailScreen() {
   const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
   const router = useRouter();
+  
+  const handleGoBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/messages');
+    }
+  }, [router]);
+
   const { user, updateUser } = useAuthStore();
   const { myVendor, fetchMyVendor } = useVendorStore();
   const insets = useSafeAreaInsets();
@@ -2175,7 +2180,7 @@ export default function CommunityDetailScreen() {
       {/* Top Row: Back Button, Title, and Create Button */}
       <View style={styles.headerTopRow}>
         <TouchableOpacity
-          onPress={() => router.replace('/(tabs)/messages')}
+          onPress={handleGoBack}
           style={styles.headerBackButton}
         >
           <Ionicons name="chevron-back" size={26} color="#000" />
@@ -4012,7 +4017,7 @@ export default function CommunityDetailScreen() {
             style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
           >
             <View style={styles.headerTopRow}>
-              <TouchableOpacity onPress={() => router.replace('/(tabs)/messages')} style={styles.headerBackButton}>
+              <TouchableOpacity onPress={handleGoBack} style={styles.headerBackButton}>
                 <Ionicons name="chevron-back" size={26} color="#000" />
               </TouchableOpacity>
               <Text style={styles.headerTitleText} numberOfLines={1}>
