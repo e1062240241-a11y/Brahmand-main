@@ -15192,3 +15192,129 @@ app.mount("/socket.io", socket_app)
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:socket_app", host="0.0.0.0", port=8002, reload=True)
+
+
+@api_router.post("/kyc/validate-image")
+async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
+    """
+    Instantly validate the uploaded KYC image with Google Gemini Vision before final submission.
+    """
+    from services.image_service import validate_id_proof_with_llm
+    
+    id_photo = data.get('id_photo')
+    if not id_photo:
+        raise HTTPException(status_code=400, detail="Image data is required")
+        
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user_doc = await db.get_document('users', user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    id_type = data.get('id_type')
+    id_number = data.get('id_number')
+    
+    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
+    
+    validation = await validate_id_proof_with_llm(
+        base64_string=id_photo,
+        expected_id_type=id_type,
+        expected_id_number=id_number if id_number != "123456789012" else None,
+        expected_name=expected_name
+    )
+    return validation
+
+
+
+
+@api_router.delete("/admin/kyc/{user_id}")
+async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
+    """Admin: delete a user's KYC verification request and reset their status."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Reset owner's KYC
+    await db.update_document('users', user_id, {
+        'kyc_status': None,
+        'kyc_role': None,
+        'kyc_id_type': None,
+        'kyc_id_number': None,
+        'kyc_id_photo': None,
+        'kyc_selfie_photo': None,
+        'kyc_submitted_at': None,
+        'kyc_verified_at': None,
+        'kyc_rejection_reason': None,
+        'is_verified': False,
+        'kyc_aadhaar_number': None,
+        'kyc_aadhaar_reference_id': None,
+        'kyc_aadhaar_otp_requested_at': None,
+        'kyc_aadhaar_otp_verified': False,
+        'kyc_aadhaar_otp_verified_at': None,
+        'kyc_request_no': None,
+        'kyc_match_distance': None,
+        'kyc_match_reason': None
+    })
+
+    # Remove verified badges
+    badges_to_remove = ['Verified Temple', 'Verified Vendor', 'Verified Organizer']
+    current_badges = target_user.get('badges', [])
+    updated_badges = [b for b in current_badges if b not in badges_to_remove]
+    if len(updated_badges) != len(current_badges):
+        await db.update_document('users', user_id, {'badges': updated_badges})
+
+    # Delete any kyc_submissions records for this user
+    for field in ['user_id', 'owner_id']:
+        try:
+            kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', user_id)])
+            for doc in (kyc_docs or []):
+                await db.delete_document('kyc_submissions', doc.get('id'))
+        except Exception as e:
+            logger.warning(f"Error deleting kyc_submissions for user {user_id}: {e}")
+
+    # If the user is a vendor, also reset the vendor profile kyc status
+    if target_user.get('is_vendor') or target_user.get('vendor_id'):
+        vendor_id = target_user.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
+        if vendor_id:
+            vendor = await db.get_document('vendors', vendor_id)
+            if vendor:
+                await db.update_document('vendors', vendor_id, {
+                    'kyc_status': None,
+                    'kyc_reviewed_by': None,
+                    'kyc_reviewed_at': None,
+                    'kyc_rejection_reason': None,
+                    'kyc_request_no': None,
+                    'aadhar_url': None,
+                    'pan_url': None,
+                    'face_scan_url': None,
+                    'aadhaar_otp_verified_at': None
+                })
+                # Remove from vendor admin reviews
+                try:
+                    await db.delete_document('vendor_admin_reviews', vendor_id)
+                except Exception:
+                    pass
+
+    # Notify the user about KYC deletion/reset
+    try:
+        await NotificationService.create_notification(
+            user_id=user_id,
+            title='KYC Request Cleared',
+            body='Your KYC verification request has been cleared by admin. You can submit a new request if needed.',
+            notification_type=NotificationService.TYPE_VERIFICATION,
+            data={'kyc_status': None, 'action': 'kyc_deleted'}
+        )
+    except Exception as notify_err:
+        logger.warning(f"KYC deleted notification failed for user {user_id}: {notify_err}")
+
+    logger.info(f"KYC deleted/reset for user {user_id}")
+    return {"message": "User KYC deleted and reset successfully"}
+
+
+
