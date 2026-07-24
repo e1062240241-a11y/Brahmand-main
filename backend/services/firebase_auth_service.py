@@ -136,31 +136,33 @@ class FirebaseAuthService:
                 
             return {"status": "success", "message": "Mock OTP generated", "otp": otp}
         else:
-            sid = (os.getenv('TWILIO_ACCOUNT_SID') or '').strip().strip('"').strip("'")
-            token = (os.getenv('TWILIO_AUTH_TOKEN') or '').strip().strip('"').strip("'")
-            service_sid = (os.getenv('TWILIO_VERIFY_SERVICE_SID') or '').strip().strip('"').strip("'")
-
-            if not (sid and token and service_sid):
-                logger.error('Twilio Verify credentials missing. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID')
-                raise ValueError('SMS provider not configured. Please check your .env file.')
-
             try:
-                from twilio.rest import Client as TwilioClient
-                client = TwilioClient(sid, token)
-                verification = await asyncio.to_thread(
-                    client.verify.v2.services(service_sid).verifications.create,
-                    to=normalized_phone,
-                    channel='sms'
-                )
+                from services.nattyfish_service import NattyFishService
+                otp = f"{random.randint(100000, 999999)}"
+                expires_at = datetime.utcnow() + timedelta(minutes=FirebaseAuthService.OTP_EXPIRY_MINUTES)
+                
+                otp_data = {
+                    "phone": normalized_phone,
+                    "otp": otp,
+                    "expires_at": expires_at.isoformat() + 'Z',
+                    "attempts": 0,
+                    "created_at": datetime.utcnow().isoformat() + 'Z'
+                }
+                existing_otp = await db.find_one('otps', [('phone', '==', normalized_phone)])
+                if existing_otp:
+                    await db.update_document('otps', existing_otp['id'], otp_data)
+                else:
+                    await db.create_document('otps', otp_data)
+
+                await NattyFishService.send_otp_sms(normalized_phone, otp)
                 return {
                     "status": "success",
-                    "message": "OTP sent successfully",
-                    "verification_sid": verification.sid
+                    "message": "OTP sent successfully via SMS"
                 }
             except Exception as e:
                 error_msg = str(e)
-                logger.error(f"Failed to send OTP via Twilio Verify: {error_msg}")
-                raise ValueError(f"Twilio Verification Error: {error_msg}")
+                logger.error(f"Failed to send SMS OTP: {error_msg}")
+                raise ValueError(f"SMS Verification Error: {error_msg}")
 
     @staticmethod
     async def verify_otp(phone: str, otp: str) -> Dict[str, Any]:
@@ -174,61 +176,26 @@ class FirebaseAuthService:
                 "Anonymous login numbers bypass OTP. Use /auth/login-anonymous instead."
             )
 
-        if use_mock:
-            otp_record = await db.find_one('otps', [('phone', '==', normalized_phone)])
-            if not otp_record:
-                raise ValueError("OTP not found. Please request a new OTP.")
-            if otp_record.get("attempts", 0) >= 5:
-                raise ValueError("Too many attempts. Please request a new OTP.")
-            await db.update_document('otps', otp_record['id'], {
-                'attempts': otp_record.get('attempts', 0) + 1
-            })
-            if otp_record["otp"] != otp:
-                raise ValueError("Invalid OTP")
-            
-            # handle both string and datetime
-            expires_at = otp_record["expires_at"]
-            if isinstance(expires_at, str):
-                expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00')).replace(tzinfo=None)
-            elif isinstance(expires_at, datetime):
-                expires_at = expires_at.replace(tzinfo=None)
-            
-            if datetime.utcnow() > expires_at:
-                raise ValueError("OTP expired")
-            await db.delete_document('otps', otp_record['id'])
-        else:
-            sid = (os.getenv('TWILIO_ACCOUNT_SID') or '').strip().strip('"').strip("'")
-            token = (os.getenv('TWILIO_AUTH_TOKEN') or '').strip().strip('"').strip("'")
-            service_sid = (os.getenv('TWILIO_VERIFY_SERVICE_SID') or '').strip().strip('"').strip("'")
-
-            if not (sid and token and service_sid):
-                logger.error('Twilio Verify credentials missing. Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_VERIFY_SERVICE_SID')
-                raise ValueError('SMS provider not configured. Please check your .env file.')
-
-            try:
-                from twilio.rest import Client as TwilioClient
-                client = TwilioClient(sid, token)
-                verification_check = await asyncio.to_thread(
-                    client.verify.v2.services(service_sid).verification_checks.create,
-                    to=normalized_phone,
-                    code=otp
-                )
-                if verification_check.status != 'approved':
-                    raise ValueError('Invalid OTP')
-            except ValueError:
-                raise
-            except Exception as e:
-                error_msg = str(e)
-                logger.error(f"Failed to verify OTP via Twilio Verify: {error_msg}")
-                raise ValueError(f"Twilio Verification Error: {error_msg}")
-
-            # Update tracking record if present
-            otp_record = await db.find_one('otps', [('phone', '==', normalized_phone)])
-            if otp_record:
-                await db.update_document('otps', otp_record['id'], {
-                    'verified': True,
-                    'verified_at': datetime.utcnow().isoformat() + 'Z'
-                })
+        otp_record = await db.find_one('otps', [('phone', '==', normalized_phone)])
+        if not otp_record:
+            raise ValueError("OTP not found. Please request a new OTP.")
+        if otp_record.get("attempts", 0) >= 5:
+            raise ValueError("Too many attempts. Please request a new OTP.")
+        await db.update_document('otps', otp_record['id'], {
+            'attempts': otp_record.get('attempts', 0) + 1
+        })
+        if otp_record["otp"] != otp and not (use_mock and otp == FirebaseAuthService.MOCK_OTP):
+            raise ValueError("Invalid OTP")
+        
+        expires_at = otp_record["expires_at"]
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at.replace('Z', '+00:00')).replace(tzinfo=None)
+        elif isinstance(expires_at, datetime):
+            expires_at = expires_at.replace(tzinfo=None)
+        
+        if datetime.utcnow() > expires_at:
+            raise ValueError("OTP expired")
+        await db.delete_document('otps', otp_record['id'])
 
         # Check if user exists
         user = await db.get_user_by_phone(normalized_phone)
