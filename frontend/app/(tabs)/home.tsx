@@ -683,12 +683,19 @@ export default function HomeScreen() {
   const [activeRequestIndex, setActiveRequestIndex] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
+    const aartiInterval = setInterval(() => {
       setActiveAartiIndex(prev => (prev + 1) % ROTATING_AARTIS.length);
-      setActiveVendorIndex(prev => prev + 1);
       setActiveRequestIndex(prev => prev + 1);
-    }, 5000);
-    return () => clearInterval(interval);
+    }, 6000);
+
+    const vendorInterval = setInterval(() => {
+      setActiveVendorIndex(prev => prev + 1);
+    }, 12000); // Slowed down from 5s to 12s so users have enough time to read business details
+
+    return () => {
+      clearInterval(aartiInterval);
+      clearInterval(vendorInterval);
+    };
   }, []);
 
   useEffect(() => {
