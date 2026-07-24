@@ -1,7 +1,7 @@
 // accessibility: placeholder
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect , useRouter, useLocalSearchParams } from 'expo-router';
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';

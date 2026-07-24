@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, Share, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Keyboard, FlatList } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-const SafeFlashList = FlashList as any;
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +19,7 @@ import { blockUser, unblockUser } from '../../src/services/firebase/moderationSe
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 import { useTranslation } from '../../src/utils/i18n';
 import { socketService } from '../../src/services/socket';
+const SafeFlashList = FlashList as any;
 
 const FEED_PAGE_SIZE = 7;
 
