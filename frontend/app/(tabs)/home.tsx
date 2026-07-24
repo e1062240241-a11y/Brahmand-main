@@ -23,7 +23,8 @@ import {View,
   ActionSheetIOS,
   RefreshControl,
   Animated,
-  AppState} from 'react-native';
+  AppState,
+  InteractionManager} from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1523,21 +1524,17 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      const currentActiveTab = useFeedStore.getState().activeTab;
-      
-      // Increment focus trigger to rotate/shuffle feed posts deterministically
-      setFocusTrigger(prev => prev + 1);
+      // ⚡ Instant Tab Switch: Render screen immediately, defer network/store syncs until animation finishes
+      const task = InteractionManager.runAfterInteractions(() => {
+        const currentActiveTab = useFeedStore.getState().activeTab;
+        loadFeedPosts(0, false, currentActiveTab);
 
-      // Force reload feed posts on focus
-      loadFeedPosts(0, false, currentActiveTab);
-
-      // Load vendor data dynamically for home tab cards
-      const store = useVendorStore.getState();
-      store.fetchMyVendor().catch((e) => console.warn('Home focus myVendor load error:', e));
-      store.fetchVendors().catch((e) => console.warn('Home focus vendors load error:', e));
-
-      // Fetch jaap reminders
-      fetchReminders();
+        const store = useVendorStore.getState();
+        store.fetchMyVendor().catch(() => {});
+        store.fetchVendors().catch(() => {});
+        fetchReminders();
+      });
+      return () => task.cancel();
     }, [loadFeedPosts])
   );
   const feedTabsYRef = useRef(0);

@@ -1278,8 +1278,11 @@ function MessagesScreen({
 
   useFocusEffect(
     useCallback(() => {
-      getAllMutedConversations().then(setMutedConversations);
-      fetchData();
+      const task = InteractionManager.runAfterInteractions(() => {
+        getAllMutedConversations().then(setMutedConversations);
+        fetchData();
+      });
+      return () => task.cancel();
     }, [fetchData])
   );
 

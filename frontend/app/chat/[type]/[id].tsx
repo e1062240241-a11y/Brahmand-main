@@ -699,10 +699,17 @@ const ChatScreen = ({
   };
 
   const handleGoBack = () => {
-    const route = type === 'community' 
-      ? '/messages?tab=Community' 
-      : '/messages?tab=Private%20Chat';
-    router.replace(route);
+    try {
+      Keyboard.dismiss();
+    } catch (e) {}
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      const route = type === 'community' 
+        ? '/messages?tab=Community' 
+        : '/messages?tab=Private%20Chat';
+      router.replace(route);
+    }
   };
 
   const handleSaveGroupInfo = async () => {
