@@ -633,12 +633,16 @@ export interface AdminUserKycRequest {
   name?: string;
   sl_id?: string;
   kyc_role?: string;
+  kyc_status?: string;
   kyc_id_type?: string;
   kyc_submitted_at?: string;
   kyc_id_photo?: string;
   kyc_selfie_photo?: string;
   kyc_id_number?: string;
   kyc_request_no?: string;
+  phone?: string;
+  kyc_verified_phone?: string;
+  rejection_reason?: string;
 }
 
 export interface AdminPostReport {

@@ -32,6 +32,7 @@ import { setAudioModeAsync } from 'expo-audio';
 import * as ExpoLinking from 'expo-linking';
 
 import { useLanguageStore } from '../src/utils/i18n';
+import { safeNavigate } from '../src/utils/safeNavigation';
 
 // Safe global navigation back override to prevent "GO_BACK was not handled by any navigator" error
 try {
@@ -39,15 +40,19 @@ try {
     const originalBack = router.back;
     Object.defineProperty(router, 'back', {
       value: function() {
-        try {
-          if (router.canGoBack()) {
+        safeNavigate(() => {
+          let canGo = false;
+          try {
+            canGo = router.canGoBack();
+          } catch {
+            canGo = false;
+          }
+          if (canGo) {
             originalBack.call(router);
           } else {
             router.replace('/(tabs)/home');
           }
-        } catch (err) {
-          originalBack.call(router);
-        }
+        });
       },
       configurable: true,
       writable: true
@@ -61,6 +66,8 @@ LogBox.ignoreLogs([
   'UIKitCore] RCTScrollViewComponentView',
   'RCTScrollViewComponentView implements focusItemsInRect:',
   "Can't perform a React state update on a component that hasn't mounted yet",
+  "Can't perform a React state update",
+  "React state update on a component",
   "The action 'GO_BACK' was not handled by any navigator"
 ]);
 
@@ -139,49 +146,66 @@ function useAppBackHandler() {
         return true; // Consume event, do nothing
       }
 
+      // Safe check for canGoBack
+      const safeCanGoBack = () => {
+        try {
+          return router.canGoBack();
+        } catch {
+          return false;
+        }
+      };
+
       // Specific fix for my-krishna screen
       if (pathname === '/my-krishna') {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/(tabs)/home');
-        }
+        safeNavigate(() => {
+          if (safeCanGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/home');
+          }
+        });
         return true;
       }
 
       // Specific fix for dm screen
       if (pathname.startsWith('/dm/')) {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/(tabs)/messages');
-        }
+        safeNavigate(() => {
+          if (safeCanGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/messages');
+          }
+        });
         return true;
       }
 
       // Specific fix for chat screen
       if (pathname.startsWith('/chat/')) {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/(tabs)/messages');
-        }
+        safeNavigate(() => {
+          if (safeCanGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/messages');
+          }
+        });
         return true;
       }
 
       // 2. Specific fix for community pages
       if (pathname.startsWith('/community/')) {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.replace('/(tabs)/messages');
-        }
+        safeNavigate(() => {
+          if (safeCanGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/messages');
+          }
+        });
         return true;
       }
 
       // 3. Fallback: If we can go back, do it safely
-      if (router.canGoBack()) {
-        router.back();
+      if (safeCanGoBack()) {
+        safeNavigate(() => router.back());
         return true;
       }
 
@@ -316,7 +340,7 @@ function useDeepLinkHandler() {
           toast.show('Invalid or unsupported link', 'error');
           // If we launched the app via an invalid deep link, fallback to home
           if (token && isAuthenticated) {
-            router.replace('/home');
+            safeNavigate(() => router.replace('/home'));
           }
           return;
         }
@@ -324,7 +348,7 @@ function useDeepLinkHandler() {
         // If authenticated, navigate immediately
         if (token && isAuthenticated) {
           console.log('[DeepLink] Navigating to path:', path);
-          router.push(path as any);
+          safeNavigate(() => router.push(path as any));
         } else {
           // Otherwise, save the pending deep link
           console.log('[DeepLink] Saving pending deep link:', path);
@@ -342,7 +366,9 @@ function useDeepLinkHandler() {
     Linking.getInitialURL().then((url) => {
       if (url) {
         console.log('[DeepLink] Initial URL on launch:', url);
-        handleDeepLink({ url });
+        setTimeout(() => {
+          handleDeepLink({ url });
+        }, 200);
       }
     });
 
@@ -357,7 +383,7 @@ function useDeepLinkHandler() {
       console.log('[DeepLink] Redirecting to pending deep link after auth load:', path);
 
       setTimeout(() => {
-        router.push(path as any);
+        safeNavigate(() => router.push(path as any));
       }, 100);
     }
   }, [token, isAuthenticated, pendingDeepLink, router, setPendingDeepLink]);
@@ -403,7 +429,7 @@ function useNotificationResponseHandler() {
       const { token, isAuthenticated, user } = useAuthStore.getState();
       if (token && isAuthenticated && user?.name) {
         console.log('[Push] Navigating directly to:', path);
-        router.push(path as any);
+        safeNavigate(() => router.push(path as any));
       } else {
         console.log('[Push] Not authenticated or initialized yet. Queueing deep link path:', path);
         useAuthStore.getState().setPendingDeepLink(path);
@@ -893,7 +919,7 @@ export default function RootLayout() {
         const navigateOrQueue = (path: string) => {
           const { token, isAuthenticated, user } = useAuthStore.getState();
           if (token && isAuthenticated && user?.name) {
-            router.push(path as any);
+            safeNavigate(() => router.push(path as any));
           } else {
             useAuthStore.getState().setPendingDeepLink(path);
           }

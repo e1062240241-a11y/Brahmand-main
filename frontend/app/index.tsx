@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, Image, Platform, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '../src/store/authStore';
+import { safeNavigate } from '../src/utils/safeNavigation';
 import { FONTS } from '../src/constants/theme';
 import Svg, { Path } from 'react-native-svg';
 
@@ -35,9 +36,9 @@ export default function IndexRoute() {
   useEffect(() => {
     if (timePassed && !isLoading) {
       if (token && token !== '>' && token.length >= 10) {
-        router.replace('/home');
+        safeNavigate(() => router.replace('/home'));
       } else if (!token || token === '>' || token.length < 10) {
-        router.replace('/auth/entry-animation');
+        safeNavigate(() => router.replace('/auth/entry-animation'));
       }
     }
   }, [timePassed, isLoading, token, router]);

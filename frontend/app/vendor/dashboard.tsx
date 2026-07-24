@@ -213,7 +213,17 @@ export default function VendorDashboardScreen() {
           <Text style={styles.errorText}>No business registered</Text>
           <TouchableOpacity 
             style={styles.registerBtn}
-            onPress={() => router.replace('/vendor')}
+            onPress={() => {
+              const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
+              if (!isUserVerified) {
+                router.replace({
+                  pathname: '/kyc',
+                  params: { returnUrl: '/(tabs)/vendor' }
+                });
+              } else {
+                router.replace('/(tabs)/vendor');
+              }
+            }}
           >
             <Text style={styles.registerBtnText}>Register Your Business</Text>
           </TouchableOpacity>

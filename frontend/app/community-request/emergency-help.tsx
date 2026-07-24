@@ -21,6 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 import { useAuthStore } from '../../src/store/authStore';
+import { useVendorStore } from '../../src/store/vendorStore';
 
 const EMERGENCY_TYPES = [
   'Medical Emergency',
@@ -64,6 +65,21 @@ export default function EmergencyHelpScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string }>();
   const { user } = useAuthStore();
+  const { myVendor } = useVendorStore();
+
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
+
+  useEffect(() => {
+    if (!isKycVerified) {
+      router.replace({
+        pathname: '/kyc',
+        params: { returnUrl: '/community-request' }
+      });
+    }
+  }, [isKycVerified]);
   
   // Form State
   const [emergencyType, setEmergencyType] = useState('');

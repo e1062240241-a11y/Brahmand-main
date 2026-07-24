@@ -10,7 +10,8 @@ import {ActivityIndicator,
   Image,
   TextInput,
   Dimensions,
-  Modal} from 'react-native';
+  Modal,
+  ScrollView} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,7 +45,8 @@ const LockIcon = () => (
 
 export default function KycSubmitScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ verifiedPhone?: string }>();
+  const params = useLocalSearchParams<{ verifiedPhone?: string; returnUrl?: string }>();
+  const { verifiedPhone, returnUrl } = params;
   const { user, updateUser } = useAuthStore();
 
   const [statusLoading, setStatusLoading] = useState(true);
@@ -78,6 +80,22 @@ export default function KycSubmitScreen() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
 
+  const defaultDobDate = React.useMemo(() => {
+    if (dob && dob.length === 10) {
+      const parts = dob.split('/');
+      if (parts.length === 3) {
+        const d = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const y = parseInt(parts[2], 10);
+        if (y >= 1920 && y <= new Date().getFullYear()) {
+          const parsed = new Date(y, m, d);
+          if (!isNaN(parsed.getTime())) return parsed;
+        }
+      }
+    }
+    return dobDate || new Date(2000, 0, 1);
+  }, [dob, dobDate]);
+
   const handleDobChange = (text: string) => {
     // Remove all non-digits
     const cleaned = text.replace(/\D/g, '');
@@ -89,27 +107,35 @@ export default function KycSubmitScreen() {
       formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
     }
     setDob(formatted);
+
+    if (cleaned.length === 8) {
+      const d = parseInt(cleaned.slice(0, 2), 10);
+      const m = parseInt(cleaned.slice(2, 4), 10) - 1;
+      const y = parseInt(cleaned.slice(4, 8), 10);
+      if (y >= 1920 && y <= new Date().getFullYear()) {
+        const parsed = new Date(y, m, d);
+        if (!isNaN(parsed.getTime())) {
+          setDobDate(parsed);
+        }
+      }
+    }
   };
 
   useEffect(() => {
-    if (params.verifiedPhone) {
-      let phoneVal = params.verifiedPhone;
+    let rawPhone =
+      params.verifiedPhone ||
+      (user as any)?.kyc_verified_phone ||
+      user?.phone ||
+      (user as any)?.phone_number ||
+      '';
+    if (rawPhone) {
+      let phoneVal = String(rawPhone).trim();
       if (phoneVal.startsWith('+91')) {
         setCountryCode('+91');
-        phoneVal = phoneVal.slice(3);
+        phoneVal = phoneVal.slice(3).trim();
       } else if (phoneVal.startsWith('91') && phoneVal.length > 10) {
         setCountryCode('+91');
-        phoneVal = phoneVal.slice(2);
-      }
-      setPhoneNumber(phoneVal);
-    } else if (user) {
-      let phoneVal = user.phone || '';
-      if (phoneVal.startsWith('+91')) {
-        setCountryCode('+91');
-        phoneVal = phoneVal.slice(3);
-      } else if (phoneVal.startsWith('91') && phoneVal.length > 10) {
-        setCountryCode('+91');
-        phoneVal = phoneVal.slice(2);
+        phoneVal = phoneVal.slice(2).trim();
       }
       setPhoneNumber(phoneVal);
     }
@@ -124,9 +150,25 @@ export default function KycSubmitScreen() {
         setStatusLoading(true);
         const response = await getKYCStatus();
         const serverStatus = (response?.data?.kyc_status || null) as KycStatus;
+        const verifiedPhone = response?.data?.kyc_verified_phone;
         setKycStatus(serverStatus);
         if (serverStatus) {
-          updateUser({ kyc_status: serverStatus } as any);
+          updateUser({
+            kyc_status: serverStatus,
+            is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+            kyc_verified_phone: verifiedPhone || (user as any)?.kyc_verified_phone
+          } as any);
+        }
+        if (verifiedPhone) {
+          let phoneVal = String(verifiedPhone).trim();
+          if (phoneVal.startsWith('+91')) {
+            setCountryCode('+91');
+            phoneVal = phoneVal.slice(3).trim();
+          } else if (phoneVal.startsWith('91') && phoneVal.length > 10) {
+            setCountryCode('+91');
+            phoneVal = phoneVal.slice(2).trim();
+          }
+          setPhoneNumber(phoneVal);
         }
       } catch {
         setKycStatus(null);
@@ -210,6 +252,13 @@ export default function KycSubmitScreen() {
           setIdPhotoUri(undefined);
         } else {
           setUploadError(null);
+          if (response?.data?.extracted_id_number && (!idNumber || idNumber.trim() === '')) {
+            const cleanNum = response.data.extracted_id_number.replace(/[^0-9A-Za-z]/g, '');
+            if (cleanNum) setIdNumber(cleanNum);
+          }
+          if (response?.data?.extracted_name && (!fullName || fullName.trim() === '')) {
+            setFullName(response.data.extracted_name);
+          }
           Alert.alert('Validation Successful', 'Your document matches the verification standards.');
         }
       } catch (err: any) {
@@ -336,10 +385,13 @@ export default function KycSubmitScreen() {
       if (requestNo) {
         router.replace({
           pathname: '/kyc-success',
-          params: { requestNo }
+          params: { requestNo, returnUrl }
         } as any);
       } else {
-        router.replace('/kyc-success' as any);
+        router.replace({
+          pathname: '/kyc-success',
+          params: { returnUrl }
+        } as any);
       }
     } catch (error: any) {
       const message = error?.response?.data?.detail || error?.message || "🌐 We couldn't verify your document right now. Please try again in a few moments.";
@@ -359,7 +411,7 @@ export default function KycSubmitScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => returnUrl ? router.replace(returnUrl as any) : router.back()}>
             <Ionicons name="chevron-back" size={24} color="#000000" />
           </TouchableOpacity>
           <Text style={styles.title}>Complete Your KYC</Text>
@@ -409,7 +461,7 @@ export default function KycSubmitScreen() {
                   </View>
                   <TouchableOpacity 
                     style={styles.primaryBtn} 
-                    onPress={() => router.replace('/kyc')}
+                    onPress={() => returnUrl ? router.replace(returnUrl as any) : router.replace('/kyc')}
                   >
                     <Text style={styles.primaryBtnText}>Go Back</Text>
                   </TouchableOpacity>
@@ -448,65 +500,120 @@ export default function KycSubmitScreen() {
 
                       {/* DOB input */}
                       <View style={styles.inputContainer}>
-                        <TouchableOpacity 
-                          style={styles.inputWrapper} 
-                          onPress={() => setShowDatePicker(true)}
-                          activeOpacity={0.7}
-                        >
-                          <Svg width={18} height={20} viewBox="0 0 18 20" fill="none" style={{ marginLeft: 12, marginRight: 8, width: 17.78 }}>
-                            <Path d="M5.92664 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                            <Path d="M11.8534 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                            <Path d="M3.7042 4.07422H14.0759C14.8936 4.07422 15.5575 4.73813 15.5575 5.55589V15.9276C15.5575 16.7453 14.8936 17.4092 14.0759 17.4092H3.7042C2.88645 17.4092 2.22253 16.7453 2.22253 15.9276V5.55589C2.22253 4.73813 2.88645 4.07422 3.7042 4.07422V4.07422" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                            <Path d="M2.22253 8.51758H15.5575" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                          </Svg>
+                        <View style={styles.inputWrapper}>
+                          <TouchableOpacity 
+                            onPress={() => {
+                              setDobDate(defaultDobDate);
+                              setShowDatePicker(true);
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <Svg width={18} height={20} viewBox="0 0 18 20" fill="none" style={{ marginLeft: 12, marginRight: 8, width: 17.78 }}>
+                              <Path d="M5.92664 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                              <Path d="M11.8534 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                              <Path d="M3.7042 4.07422H14.0759C14.8936 4.07422 15.5575 4.73813 15.5575 5.55589V15.9276C15.5575 16.7453 14.8936 17.4092 14.0759 17.4092H3.7042C2.88645 17.4092 2.22253 16.7453 2.22253 15.9276V5.55589C2.22253 4.73813 2.88645 4.07422 3.7042 4.07422V4.07422" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                              <Path d="M2.22253 8.51758H15.5575" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                            </Svg>
+                          </TouchableOpacity>
                           <TextInput
                             style={styles.textInput}
-                            placeholder="DD/MM/YYYY"
+                            placeholder="DD/MM/YYYY (e.g. 15/08/1998)"
                             placeholderTextColor="#9CA3AF"
                             value={dob}
                             onChangeText={handleDobChange}
                             keyboardType="numeric"
                             maxLength={10}
-                            editable={false}
-                            pointerEvents="none"
+                            editable={true}
                           />
-                        </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ paddingHorizontal: 12 }}
+                            onPress={() => {
+                              setDobDate(defaultDobDate);
+                              setShowDatePicker(true);
+                            }}
+                          >
+                            <Ionicons name="calendar-outline" size={20} color="#F26522" />
+                          </TouchableOpacity>
+                        </View>
                       </View>
 
                       {showDatePicker && (
-                        Platform.OS === 'ios' ? (
+                        Platform.OS === 'ios' || Platform.OS === 'web' ? (
                           <Modal
                             transparent={true}
                             animationType="fade"
                             visible={showDatePicker}
                             onRequestClose={() => setShowDatePicker(false)}
                           >
-                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                              <View style={{ backgroundColor: '#FFF', borderRadius: 16, padding: 16, width: 320 }}>
-                                <DateTimePicker
-                                  value={dobDate || new Date()}
-                                  mode="date"
-                                  display="inline"
-                                  maximumDate={new Date()}
-                                  onChange={(event, selectedDate) => {
-                                    if (selectedDate) {
-                                      setDobDate(selectedDate);
-                                    }
-                                  }}
-                                />
-                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 10, gap: 10 }}>
-                                  <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                              <View style={{ backgroundColor: '#FFF', borderRadius: 16, padding: 16, width: 330, maxHeight: '80%' }}>
+                                <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 10, textAlign: 'center' }}>
+                                  Select Date of Birth
+                                </Text>
+
+                                {/* Quick Year Selector */}
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#6B7280', marginBottom: 6 }}>Select Year:</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12, maxHeight: 36 }}>
+                                  {Array.from({ length: 65 }, (_, i) => 2008 - i).map((yr) => {
+                                    const activeYear = (dobDate || defaultDobDate).getFullYear();
+                                    const isSelected = activeYear === yr;
+                                    return (
+                                      <TouchableOpacity
+                                        key={yr}
+                                        onPress={() => {
+                                          const currentDate = dobDate || defaultDobDate;
+                                          const updated = new Date(yr, currentDate.getMonth(), currentDate.getDate());
+                                          setDobDate(updated);
+                                        }}
+                                        style={{
+                                          paddingHorizontal: 12,
+                                          paddingVertical: 6,
+                                          borderRadius: 8,
+                                          backgroundColor: isSelected ? '#F26522' : '#F3F4F6',
+                                          marginRight: 6,
+                                        }}
+                                      >
+                                        <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? '#FFF' : '#374151' }}>
+                                          {yr}
+                                        </Text>
+                                      </TouchableOpacity>
+                                    );
+                                  })}
+                                </ScrollView>
+
+                                {Platform.OS === 'ios' && (
+                                  <DateTimePicker
+                                    value={dobDate || defaultDobDate}
+                                    mode="date"
+                                    display="inline"
+                                    maximumDate={new Date()}
+                                    onChange={(event, selectedDate) => {
+                                      if (selectedDate) {
+                                        setDobDate(selectedDate);
+                                      }
+                                    }}
+                                  />
+                                )}
+
+                                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 14, gap: 12 }}>
+                                  <TouchableOpacity 
+                                    style={{ paddingHorizontal: 14, paddingVertical: 8 }}
+                                    onPress={() => setShowDatePicker(false)}
+                                  >
                                     <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
                                   </TouchableOpacity>
-                                  <TouchableOpacity onPress={() => {
-                                    setShowDatePicker(false);
-                                    const dateToUse = dobDate || new Date();
-                                    const day = String(dateToUse.getDate()).padStart(2, '0');
-                                    const month = String(dateToUse.getMonth() + 1).padStart(2, '0');
-                                    const year = dateToUse.getFullYear();
-                                    setDob(`${day}/${month}/${year}`);
-                                  }}>
-                                    <Text style={{ color: '#F26522', fontWeight: '600', fontSize: 14 }}>OK</Text>
+                                  <TouchableOpacity 
+                                    style={{ backgroundColor: '#F26522', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 }}
+                                    onPress={() => {
+                                      setShowDatePicker(false);
+                                      const dateToUse = dobDate || defaultDobDate;
+                                      const day = String(dateToUse.getDate()).padStart(2, '0');
+                                      const month = String(dateToUse.getMonth() + 1).padStart(2, '0');
+                                      const year = dateToUse.getFullYear();
+                                      setDob(`${day}/${month}/${year}`);
+                                    }}
+                                  >
+                                    <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 14 }}>Confirm</Text>
                                   </TouchableOpacity>
                                 </View>
                               </View>
@@ -514,7 +621,7 @@ export default function KycSubmitScreen() {
                           </Modal>
                         ) : (
                           <DateTimePicker
-                            value={dobDate || new Date()}
+                            value={dobDate || defaultDobDate}
                             mode="date"
                             display="default"
                             maximumDate={new Date()}

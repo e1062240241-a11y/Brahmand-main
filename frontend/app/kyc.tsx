@@ -13,16 +13,16 @@ import {View,
   Linking} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { useVendorStore } from '../src/store/vendorStore';
 import { useAuthStore } from '../src/store/authStore';
-import { VendorKYCModal } from '../src/components/VendorKYCModal';
 import { getKYCStatus, sendNettyfishOTP, verifyNettyfishOTP } from '../src/services/api';
 import { useTranslation } from '../src/utils/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect, G, Circle } from 'react-native-svg';
 import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Custom SVGs from Figma specs
 const PadlockIcon = () => (
@@ -232,13 +232,18 @@ const formatPhoneNumber = (text: string) => {
 export default function KYCStatusScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const { returnUrl } = useLocalSearchParams<{ returnUrl?: string }>();
   const { myVendor, fetchMyVendor } = useVendorStore();
   const { user, updateUser } = useAuthStore();
-  const [kycVisible, setKycVisible] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
   // Phone state
-  const initialPhone = myVendor?.phone_number || user?.phone || '';
+  const initialPhone =
+    (user as any)?.kyc_verified_phone ||
+    user?.phone ||
+    (user as any)?.phone_number ||
+    myVendor?.phone_number ||
+    '';
   const [phoneNumber, setPhoneNumber] = useState(formatPhoneNumber(initialPhone));
   const [countryCode] = useState('+91');
   const [otpCode, setOtpCode] = useState('');
@@ -250,42 +255,103 @@ export default function KYCStatusScreen() {
   const [resendTimer, setResendTimer] = useState(25);
   const inputRefs = useRef<TextInput[]>([]);
 
+  const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+
+  useEffect(() => {
+    const rawPhone =
+      (user as any)?.kyc_verified_phone ||
+      user?.phone ||
+      (user as any)?.phone_number ||
+      myVendor?.phone_number ||
+      '';
+    if (rawPhone && !phoneNumber) {
+      setPhoneNumber(formatPhoneNumber(rawPhone));
+    }
+  }, [user, myVendor, phoneNumber]);
+
+  const checkPhoneVerificationValidity = useCallback(async (serverVerifiedAt?: string | null) => {
+    try {
+      const storageKey = `kyc_phone_verified_at_${user?.id || 'default'}`;
+      let verifiedTimeMs = 0;
+
+      if (serverVerifiedAt) {
+        verifiedTimeMs = new Date(serverVerifiedAt).getTime();
+      } else {
+        const storedTimeStr = await AsyncStorage.getItem(storageKey);
+        if (storedTimeStr) {
+          verifiedTimeMs = parseInt(storedTimeStr, 10);
+        }
+      }
+
+      if (verifiedTimeMs > 0) {
+        const now = Date.now();
+        const diffMs = now - verifiedTimeMs;
+        if (diffMs >= 0 && diffMs < TWELVE_HOURS_MS) {
+          setPhoneVerified(true);
+        } else {
+          setPhoneVerified(false);
+        }
+      }
+    } catch (e) {
+      console.warn('Error checking phone verification timestamp:', e);
+    }
+  }, [user?.id]);
+
   const refreshKycStatus = useCallback(async () => {
     try {
       await fetchMyVendor();
       const response = await getKYCStatus();
       const serverStatus = response?.data?.kyc_status || null;
+      const serverVerifiedAt = response?.data?.kyc_phone_verified_at || null;
+      const serverVerifiedPhone = response?.data?.kyc_verified_phone || null;
+      const isVerifiedStatus = Boolean(response?.data?.is_verified) || serverStatus === 'verified';
+
       updateUser({
         kyc_status: serverStatus,
-        is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+        is_verified: isVerifiedStatus,
         kyc_submitted_at: response?.data?.submitted_at || null,
         kyc_verified_at: response?.data?.verified_at || null,
+        kyc_verified_phone: serverVerifiedPhone || (user as any)?.kyc_verified_phone || user?.phone,
       } as any);
+
+      const rawPhone = serverVerifiedPhone || (user as any)?.kyc_verified_phone || user?.phone || (user as any)?.phone_number || myVendor?.phone_number || '';
+      if (rawPhone) {
+        setPhoneNumber(formatPhoneNumber(rawPhone));
+      }
+
+      if (isVerifiedStatus || serverStatus === 'pending') {
+        setPhoneVerified(true);
+      } else {
+        await checkPhoneVerificationValidity(serverVerifiedAt);
+      }
     } catch (error) {
       console.warn('Failed to refresh KYC status:', error);
+      await checkPhoneVerificationValidity();
     } finally {
       setLoadingStatus(false);
     }
-  }, [fetchMyVendor, updateUser]);
+  }, [fetchMyVendor, updateUser, checkPhoneVerificationValidity, user, myVendor]);
 
   useEffect(() => {
     refreshKycStatus();
   }, [refreshKycStatus]);
 
   const status = (user as any)?.kyc_status || (myVendor as any)?.kyc_status || null;
-  const isVerified = status === 'verified';
-  const isReview = status === 'verified' || status === 'pending' || status === 'manual_review';
+  const isVerified = status === 'verified' || Boolean((user as any)?.is_verified);
+  const isReview = isVerified || status === 'pending' || status === 'manual_review';
   const isRejected = !isReview && status === 'rejected';
 
   const handleBack = useCallback(() => {
     if (otpSent && !phoneVerified) {
       setOtpSent(false);
+    } else if (returnUrl) {
+      router.replace(returnUrl as any);
     } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace('/(tabs)/vendor' as any);
     }
-  }, [otpSent, phoneVerified, router]);
+  }, [otpSent, phoneVerified, returnUrl, router]);
 
   useEffect(() => {
     const backAction = () => {
@@ -379,8 +445,17 @@ export default function KYCStatusScreen() {
       const trimmedCode = code.trim();
       const fullPhone = `${countryCode}${phoneNumber}`;
       await verifyNettyfishOTP(fullPhone, trimmedCode);
+      const nowMs = Date.now();
       setPhoneVerified(true);
       setOtpSent(false);
+
+      try {
+        const storageKey = `kyc_phone_verified_at_${user?.id || 'default'}`;
+        await AsyncStorage.setItem(storageKey, nowMs.toString());
+      } catch (e) {
+        console.warn('Failed to save phone verification to storage:', e);
+      }
+
       Alert.alert('Success', 'Phone number verified successfully!');
     } catch (error: any) {
       console.warn('Failed to verify OTP:', error);
@@ -646,7 +721,7 @@ export default function KYCStatusScreen() {
 
                   <TouchableOpacity 
                     style={styles.backHomeBtn}
-                    onPress={() => router.replace('/(tabs)/vendor' as any)}
+                    onPress={() => returnUrl ? router.replace(returnUrl as any) : (router.canGoBack() ? router.back() : router.replace('/(tabs)/vendor' as any))}
                   >
                     <Text style={styles.backHomeBtnText}>Back to Home</Text>
                   </TouchableOpacity>
@@ -765,7 +840,7 @@ export default function KYCStatusScreen() {
                     ]} 
                     onPress={() => router.push({
                       pathname: '/kyc-submit',
-                      params: { verifiedPhone: phoneNumber }
+                      params: { verifiedPhone: phoneNumber, returnUrl }
                     })}
                     disabled={!phoneVerified || isVerified}
                   >
@@ -786,18 +861,6 @@ export default function KYCStatusScreen() {
             )}
           </KeyboardAwareScrollView>
         )}
-
-        <VendorKYCModal
-          visible={kycVisible}
-          onClose={() => setKycVisible(false)}
-          vendorId={myVendor?.id || ''}
-          allowUserKycFallback
-          onKycUpdated={() => {
-            setKycVisible(false);
-            setLoadingStatus(true);
-            refreshKycStatus();
-          }}
-        />
       </SafeAreaView>
     </LinearGradient>
   );

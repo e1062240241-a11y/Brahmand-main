@@ -74,22 +74,18 @@ export default function CommunityRequestEmergencyVerifyPage() {
     myVendor?.kyc_status === 'verified';
 
   const handleCompleteKyc = () => {
-    const status = (user as any)?.kyc_status;
-    if (status === 'pending' || status === 'manual_review') {
-      router.push('/community-request/kyc-success');
-    } else {
-      router.push('/community-request/kyc');
-    }
+    router.push({
+      pathname: '/kyc',
+      params: { returnUrl: '/community-request/emergency-help' }
+    });
   };
 
   const handleSendOtp = () => {
     if (!isKycVerified) {
-      const status = (user as any)?.kyc_status;
-      if (status === 'pending' || status === 'manual_review') {
-        router.push('/community-request/kyc-success');
-      } else {
-        router.push('/community-request/kyc');
-      }
+      router.push({
+        pathname: '/kyc',
+        params: { returnUrl: '/community-request/emergency-help' }
+      });
       return;
     }
     if (!phoneNumber || phoneNumber.length < 10) {
@@ -114,12 +110,10 @@ export default function CommunityRequestEmergencyVerifyPage() {
 
   const handleContinue = () => {
     if (!isKycVerified) {
-      const status = (user as any)?.kyc_status;
-      if (status === 'pending' || status === 'manual_review') {
-        router.push('/community-request/kyc-success');
-      } else {
-        router.push('/community-request/kyc');
-      }
+      router.push({
+        pathname: '/kyc',
+        params: { returnUrl: '/community-request/emergency-help' }
+      });
       return;
     }
     router.push({

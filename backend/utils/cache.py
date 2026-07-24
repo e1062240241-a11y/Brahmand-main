@@ -195,6 +195,12 @@ class CacheManager:
 
     async def invalidate_community_requests(self):
         """Invalidate all cached community requests"""
+        try:
+            keys_to_del = [k for k in list(self._local_cache.keys()) if k.startswith("user_requests:")]
+            for k in keys_to_del:
+                self._local_cache.pop(k, None)
+        except Exception as e:
+            logger.debug(f"Error clearing local cache for requests: {e}")
         await self.delete_pattern("user_requests:*")
 
 

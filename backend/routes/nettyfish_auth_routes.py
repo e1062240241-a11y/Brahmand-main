@@ -115,4 +115,28 @@ async def verify_nettyfish_otp(request: OTPVerify):
     # Success: delete the OTP record
     doc.reference.delete()
 
-    return {"status": "success", "type": "success", "message": "OTP verified successfully"}
+    # Record OTP verification timestamp for KYC 12-hour window
+    now_iso = datetime.utcnow().isoformat()
+    try:
+        users_ref = db.collection("users")
+        user_docs = users_ref.where("phone", "==", mobile).limit(1).get()
+        if not user_docs and len(mobile) >= 10:
+            clean_digits = mobile[-10:]
+            user_docs = users_ref.where("phone", "==", clean_digits).limit(1).get()
+        if user_docs:
+            for u_doc in user_docs:
+                u_doc.reference.update({
+                    "kyc_phone_verified_at": now_iso,
+                    "kyc_verified_phone": mobile
+                })
+    except Exception as e:
+        logger.warning(f"Failed to update user kyc_phone_verified_at: {e}")
+
+    return {
+        "status": "success", 
+        "type": "success", 
+        "message": "OTP verified successfully",
+        "kyc_phone_verified_at": now_iso,
+        "kyc_verified_phone": mobile
+    }
+
