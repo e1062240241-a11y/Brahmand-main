@@ -318,6 +318,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
   const [yearsInBusiness, setYearsInBusiness] = useState('');
   const [address, setAddress] = useState('');
+  const [selectedCoords, setSelectedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isExplicitCurrentLocation, setIsExplicitCurrentLocation] = useState<boolean>(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedPhotos, setSelectedPhotos] = useState<{ uri: string; name: string; type: string }[]>([]);
   const [showCategorySelector, setShowCategorySelector] = useState(false);
@@ -391,6 +393,10 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
           const payload = JSON.parse(event.data);
           if (payload.type === 'capture') {
             setAddress(payload.address);
+            if (payload.latitude && payload.longitude) {
+              setSelectedCoords({ latitude: payload.latitude, longitude: payload.longitude });
+              setIsExplicitCurrentLocation(true);
+            }
             setMapPickerVisible(false);
           } else if (payload.type === 'error') {
             Alert.alert('Error', payload.message);
@@ -414,6 +420,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       const lat = location.coords.latitude;
       const lng = location.coords.longitude;
       
+      setSelectedCoords({ latitude: lat, longitude: lng });
+      setIsExplicitCurrentLocation(true);
+
       const geocoded = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
       if (geocoded.length > 0) {
         const place = geocoded[0];
@@ -499,6 +508,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     }
     setLoading(true);
     try {
+      setSelectedCoords({ latitude: mapRegion.latitude, longitude: mapRegion.longitude });
+      setIsExplicitCurrentLocation(true);
       const geocoded = await Location.reverseGeocodeAsync({ 
         latitude: mapRegion.latitude, 
         longitude: mapRegion.longitude 
@@ -538,6 +549,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
     setShowCountryDropdown(false);
     setYearsInBusiness('');
     setAddress('');
+    setSelectedCoords(null);
+    setIsExplicitCurrentLocation(false);
     setCategories([]);
     setCategoryInput('');
     setSubCategories([]);
@@ -561,8 +574,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       years: yearsInBusiness,
       address: trimmedAddress,
     });
-
-
 
     const businessNameRegex = /^[a-zA-Z0-9\u0900-\u097F\s&.,'-\/]{2,100}$/;
     const ownerNameRegex = /^[a-zA-Z\u0900-\u097F\s.'-]{2,100}$/;
@@ -644,6 +655,21 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
 
     const mergedCategories = [...categories, ...subCategories].filter(Boolean).slice(0, 5);
 
+    let finalLat: number | undefined = selectedCoords?.latitude;
+    let finalLng: number | undefined = selectedCoords?.longitude;
+
+    if ((finalLat === undefined || finalLng === undefined) && trimmedAddress) {
+      try {
+        const geocoded = await Location.geocodeAsync(trimmedAddress);
+        if (geocoded && geocoded.length > 0 && Math.abs(geocoded[0].latitude) > 0.001) {
+          finalLat = geocoded[0].latitude;
+          finalLng = geocoded[0].longitude;
+        }
+      } catch (geoErr) {
+        console.warn('Forward geocoding typed address failed:', geoErr);
+      }
+    }
+
     const payload = {
       businessName: trimmedBusinessName,
       ownerName: trimmedOwnerName,
@@ -652,6 +678,9 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
       address: trimmedAddress,
       categories: mergedCategories,
       photos: selectedPhotos,
+      latitude: finalLat,
+      longitude: finalLng,
+      isCurrentLocation: isExplicitCurrentLocation,
     };
 
     if (!onSubmit) {
@@ -964,6 +993,8 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 onChangeText={(text) => {
                   const filtered = text.replace(/[^a-zA-Z0-9\s.,'#\-\/()]/g, '');
                   setAddress(filtered.slice(0, 150));
+                  setSelectedCoords(null);
+                  setIsExplicitCurrentLocation(false);
                 }}
               />
               <TouchableOpacity 

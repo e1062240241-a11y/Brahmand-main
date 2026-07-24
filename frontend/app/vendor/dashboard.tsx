@@ -564,6 +564,15 @@ export default function VendorDashboardScreen() {
   };
 
   const handleSaveAll = async () => {
+    // 0. KYC Verification Check: Must be approved by admin panel
+    if (!isVerified) {
+      Alert.alert(
+        'KYC Approval Required',
+        'Your business profile can only be saved after your KYC verification is approved by the admin.'
+      );
+      return;
+    }
+
     // 1. Profile Picture Validation
     if (!profileUri) {
       Alert.alert('Validation Error', 'Profile picture is required. Please upload a profile photo.');
@@ -698,20 +707,25 @@ export default function VendorDashboardScreen() {
         business_email: emailVal,
       };
 
-      await updateVendor(myVendor.id, vendorUpdates);
+      const savePromises: Promise<any>[] = [
+        updateVendor(myVendor.id, vendorUpdates)
+      ];
 
       if (isVerified) {
-        await updateBusinessProfile(myVendor.id, {
-          website_link: websiteVal,
-          social_media: {
-            instagram: instagramVal,
-            whatsapp: whatsappVal,
-          },
-          business_hours: businessHoursVal,
-          offers: offersVal,
-        });
+        savePromises.push(
+          updateBusinessProfile(myVendor.id, {
+            website_link: websiteVal,
+            social_media: {
+              instagram: instagramVal,
+              whatsapp: whatsappVal,
+            },
+            business_hours: businessHoursVal,
+            offers: offersVal,
+          })
+        );
       }
 
+      await Promise.all(savePromises);
       toast.success('Business profile updated successfully!');
       router.replace(`/vendor/${myVendor.id}`);
     } catch (err: any) {

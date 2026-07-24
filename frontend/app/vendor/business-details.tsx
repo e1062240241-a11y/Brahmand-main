@@ -198,6 +198,18 @@ export default function VendorBusinessDetailsScreen() {
   const saveAllDetails = async () => {
     if (!validateAccess() || !myVendor) return;
 
+    const isUserVerified = (user as any)?.kyc_status === 'verified';
+    const isVendorVerified = myVendor?.kyc_status === 'verified';
+    const isVerified = isUserVerified || isVendorVerified;
+
+    if (!isVerified) {
+      Alert.alert(
+        'KYC Approval Required',
+        'Your business details can only be saved after your KYC verification is approved by the admin.'
+      );
+      return;
+    }
+
     try {
       setSaving(true);
 

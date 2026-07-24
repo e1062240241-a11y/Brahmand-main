@@ -4,20 +4,25 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { useVendorStore } from '../../../src/store/vendorStore';
-import formatDistance from '../../../src/utils/formatDistance';
+import formatDistance, { calculateHaversineDistance } from '../../../src/utils/formatDistance';
 
 export default function CategoryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { category } = useLocalSearchParams<{ category: string }>();
   const [searchTerm, setSearchTerm] = useState('');
+  const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   
   const { vendors, fetchVendors } = useVendorStore();
   const [displayVendors, setDisplayVendors] = useState<any[]>([]);
 
   useEffect(() => {
     fetchVendors();
+    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+      .then(loc => setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude }))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -29,7 +34,6 @@ export default function CategoryScreen() {
       const isSearchMatch = searchTerm ? (v.business_name || '').toLowerCase().includes(searchTerm.toLowerCase()) : true;
       return (hasCat || hasName) && isSearchMatch;
     });
-    // For demo purposes and exact match with screenshot, we can just render the filtered list.
     setDisplayVendors(filtered);
   }, [vendors, category, searchTerm]);
 
@@ -43,7 +47,10 @@ export default function CategoryScreen() {
     const photo = (item.business_gallery_images || []).find((url: string) => !!url) || (item.photos && item.photos[0]);
     const displayName = item.business_name && item.business_name.length > 0 ? item.business_name : 'Unnamed Business';
     const displayTag = (item.categories && item.categories.length > 0) ? item.categories[0] : category;
-    const distanceStr = item.distance !== undefined && item.distance !== null ? formatDistance(item.distance) : '762m away';
+    
+    const dynDist = calculateHaversineDistance(userCoords?.latitude, userCoords?.longitude, item.latitude, item.longitude);
+    const effectiveDist = dynDist !== null ? dynDist : (typeof item.distance === 'number' ? item.distance : undefined);
+    const distanceStr = effectiveDist !== undefined ? formatDistance(effectiveDist) : 'Distance unknown';
 
     return (
       <TouchableOpacity 

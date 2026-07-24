@@ -5306,6 +5306,53 @@ POPULAR_INDIAN_LOCATIONS = [
 ]
 
 
+async def _geocode_address(full_address: str) -> tuple[float | None, float | None]:
+    """Geocode a physical business address to (latitude, longitude) coordinates."""
+    if not full_address or not str(full_address).strip():
+        return None, None
+    
+    clean_address = str(full_address).strip()
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
+    
+    if api_key:
+        try:
+            geo_url = "https://maps.googleapis.com/maps/api/geocode/json"
+            geo_params = {
+                "address": clean_address,
+                "key": api_key,
+                "language": "en",
+            }
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+                async with session.get(geo_url, params=geo_params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get("status") == "OK" and data.get("results"):
+                            loc = data["results"][0]["geometry"]["location"]
+                            lat, lng = float(loc["lat"]), float(loc["lng"])
+                            if abs(lat) > 0.001 and abs(lng) > 0.001:
+                                return lat, lng
+        except Exception as e:
+            logger.warning(f"Google Maps geocoding failed for address '{clean_address}': {e}")
+
+    # Fallback to OpenStreetMap Nominatim API
+    try:
+        nom_url = "https://nominatim.openstreetmap.org/search"
+        headers = {"User-Agent": "BrahmandApp/1.0 (contact@brahmand.app)"}
+        params = {"q": clean_address, "format": "json", "limit": 1}
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+            async with session.get(nom_url, params=params, headers=headers) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if isinstance(data, list) and len(data) > 0:
+                        lat, lng = float(data[0]["lat"]), float(data[0]["lon"])
+                        if abs(lat) > 0.001 and abs(lng) > 0.001:
+                            return lat, lng
+    except Exception as e:
+        logger.warning(f"Nominatim geocoding failed for address '{clean_address}': {e}")
+
+    return None, None
+
+
 @api_router.post("/geocode/forward")
 async def forward_geocode(request: dict):
     """Forward geocode place text to coordinates using Google Maps & Places Autocomplete API"""
@@ -10816,6 +10863,20 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
                 'count': existing_cat.get('count', 0) + 1
             })
     
+    req_lat = data.latitude
+    req_lng = data.longitude
+    
+    valid_coords = (
+        req_lat is not None and req_lng is not None and
+        isinstance(req_lat, (int, float)) and isinstance(req_lng, (int, float)) and
+        abs(req_lat) > 0.001 and abs(req_lng) > 0.001
+    )
+
+    if not valid_coords and full_address:
+        geo_lat, geo_lng = await _geocode_address(full_address)
+        if geo_lat is not None and geo_lng is not None:
+            req_lat, req_lng = geo_lat, geo_lng
+
     vendor_data = {
         "owner_id": user_id,
         "owner_name": owner_name,
@@ -10825,8 +10886,8 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "full_address": full_address,
         "location_link": data.location_link,
         "phone_number": phone_number,
-        "latitude": data.latitude,
-        "longitude": data.longitude,
+        "latitude": req_lat,
+        "longitude": req_lng,
         "photos": data.photos if data.photos else [],
         "business_description": data.business_description,
         "aadhar_url": data.aadhar_url,
@@ -10836,6 +10897,9 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "menu_items": data.menu_items if data.menu_items else [],
         "offers_home_delivery": bool(data.offers_home_delivery),
         "business_media_key": data.business_media_key,
+        "gstin": data.gstin,
+        "business_email": data.business_email,
+        "website_link": data.website_link,
         "kyc_status": None,
         "kyc_verified_at": None,
         "kyc_reviewed_by": None,
@@ -10948,11 +11012,32 @@ async def get_vendors(
     if lat and lng:
         import math
         for vendor in vendors:
-            if vendor.get('latitude') and vendor.get('longitude'):
+            v_lat = vendor.get('latitude')
+            v_lng = vendor.get('longitude')
+            
+            valid_c = (
+                v_lat is not None and v_lng is not None and
+                isinstance(v_lat, (int, float)) and isinstance(v_lng, (int, float)) and
+                abs(v_lat) > 0.001 and abs(v_lng) > 0.001
+            )
+            
+            if not valid_c and vendor.get('full_address'):
+                geo_lat, geo_lng = await _geocode_address(vendor.get('full_address'))
+                if geo_lat is not None and geo_lng is not None:
+                    vendor['latitude'] = geo_lat
+                    vendor['longitude'] = geo_lng
+                    v_lat, v_lng = geo_lat, geo_lng
+                    valid_c = True
+                    try:
+                        await db.update_document('vendors', vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng})
+                    except Exception:
+                        pass
+                        
+            if valid_c:
                 # Haversine formula
                 R = 6371  # Earth radius in km
                 lat1, lon1 = math.radians(lat), math.radians(lng)
-                lat2, lon2 = math.radians(vendor['latitude']), math.radians(vendor['longitude'])
+                lat2, lon2 = math.radians(v_lat), math.radians(v_lng)
                 dlat, dlon = lat2 - lat1, lon2 - lon1
                 a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
                 vendor['distance'] = R * 2 * math.asin(math.sqrt(a))
@@ -10973,6 +11058,14 @@ async def get_my_vendor(token_data: dict = Depends(verify_token)):
     
     vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
     return vendor
+
+
+@api_router.post("/vendors/admin/migrate-coordinates")
+async def trigger_vendor_coordinate_migration(tolerance_km: float = 0.5):
+    """Admin endpoint to audit and migrate vendor coordinates from full_address."""
+    from migrate_vendors import run_vendor_coordinate_migration
+    summary = await run_vendor_coordinate_migration(tolerance_km=tolerance_km)
+    return summary
 
 
 @api_router.get("/vendors/categories")
@@ -11074,6 +11167,24 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
             if not existing_cat:
                 await db.create_document('vendor_categories', {'name': category, 'count': 1})
     
+    # Auto-geocode address updates or missing coordinates
+    target_address = update_data.get('full_address') or vendor.get('full_address')
+    up_lat = update_data.get('latitude')
+    up_lng = update_data.get('longitude')
+    
+    valid_up_coords = (
+        up_lat is not None and up_lng is not None and
+        isinstance(up_lat, (int, float)) and isinstance(up_lng, (int, float)) and
+        abs(up_lat) > 0.001 and abs(up_lng) > 0.001
+    )
+    
+    if ('full_address' in update_data or not valid_up_coords) and target_address:
+        if not valid_up_coords:
+            geo_lat, geo_lng = await _geocode_address(target_address)
+            if geo_lat is not None and geo_lng is not None:
+                update_data['latitude'] = geo_lat
+                update_data['longitude'] = geo_lng
+
     if update_data:
         await db.update_document('vendors', vendor_id, update_data)
         await _sync_vendor_to_admin_queue(db, vendor_id)

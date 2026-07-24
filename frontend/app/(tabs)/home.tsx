@@ -3472,7 +3472,7 @@ export default function HomeScreen() {
                         }}
                         onPress={() => {
                           if (myVendor) {
-                            router.push('/vendor/dashboard');
+                            router.push(`/vendor/${myVendor.id}`);
                           } else {
                             router.push('/(tabs)/vendor');
                           }
