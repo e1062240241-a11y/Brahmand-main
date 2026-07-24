@@ -1,5 +1,37 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox , Alert as RNAlert } from 'react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as NavigationBar from 'expo-navigation-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuthStore } from '../src/store/authStore';
+import { startAuthStateListener } from '../src/services/firebase/authService';
+import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
+import { sendDirectMessage, getCommunities, getCircles, getConversations, discoverCommunities } from '../src/services/api';
+import { getAllMutedConversations } from '../src/services/mutedChats';
+import { COLORS } from '../src/constants/theme';
+import { useAdminStore } from '../src/store/adminStore';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
+import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
+import { MuteProvider } from '../src/contexts/MuteContext';
+import { useNotificationStore } from '../src/store/notificationStore';
+import { ToastContainer } from '../src/components/ToastContainer';
+import { UploadProgressBanner } from '../src/components/UploadProgressBanner';
+import { toast } from '../src/store/toastStore';
+import { BrandedLoading } from '../src/components/BrandedLoading';
+import { syncDatabase } from '../src/database/sync';
+import { GlobalFAB } from '../src/components/GlobalFAB';
+import { initSyncQueueListener } from '../src/services/syncQueueService';
+import { socketService } from '../src/services/socket';
+
+import { originalAlert } from '../src/utils/nativeAlert';
+import { setAudioModeAsync } from 'expo-audio';
+
+import * as ExpoLinking from 'expo-linking';
+
+import { useLanguageStore } from '../src/utils/i18n';
 
 // Safe global navigation back override to prevent "GO_BACK was not handled by any navigator" error
 try {
@@ -24,35 +56,6 @@ try {
 } catch (e) {
   console.warn('Failed to override router.back:', e);
 }
-import { StatusBar } from 'expo-status-bar';
-import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox } from 'react-native';
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as NavigationBar from 'expo-navigation-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuthStore } from '../src/store/authStore';
-import { startAuthStateListener } from '../src/services/firebase/authService';
-import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
-import { sendDirectMessage, getCommunities, getCircles, getConversations, discoverCommunities } from '../src/services/api';
-import { getAllMutedConversations } from '../src/services/mutedChats';
-import { COLORS } from '../src/constants/theme';
-import { useAdminStore } from '../src/store/adminStore';
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
-import { MuteProvider } from '../src/contexts/MuteContext';
-import { useNotificationStore } from '../src/store/notificationStore';
-import { ToastContainer } from '../src/components/ToastContainer';
-import { UploadProgressBanner } from '../src/components/UploadProgressBanner';
-import { toast } from '../src/store/toastStore';
-import { Alert as RNAlert } from 'react-native';
-import { BrandedLoading } from '../src/components/BrandedLoading';
-import { syncDatabase } from '../src/database/sync';
-import { GlobalFAB } from '../src/components/GlobalFAB';
-import { initSyncQueueListener } from '../src/services/syncQueueService';
-import { socketService } from '../src/services/socket';
-
-import { originalAlert } from '../src/utils/nativeAlert';
-import { setAudioModeAsync } from 'expo-audio';
 
 LogBox.ignoreLogs([
   'UIKitCore] RCTScrollViewComponentView',
@@ -191,8 +194,6 @@ function useAppBackHandler() {
     return () => sub.remove();
   }, [pathname, router]);
 }
-
-import * as ExpoLinking from 'expo-linking';
 
 function isValidAppPath(path: string): boolean {
   const cleanPath = path.split('?')[0];
@@ -630,8 +631,6 @@ function SafeSlot() {
     );
   }
 }
-
-import { useLanguageStore } from '../src/utils/i18n';
 
 export default function RootLayout() {
   const router = useRouter();

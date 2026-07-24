@@ -225,7 +225,7 @@ export default function VendorDashboardScreen() {
   const profileUri = (myVendor.business_gallery_images && myVendor.business_gallery_images[0]) || (myVendor.photos && myVendor.photos[0]);
 
   const getGalleryPhotos = () => {
-    const list: Array<{ url: string | null; slot: number; isLoading?: boolean }> = [];
+    const list: { url: string | null; slot: number; isLoading?: boolean }[] = [];
     const images = myVendor.business_gallery_images || [];
     for (let i = 1; i < 5; i++) {
       if (images[i]) {

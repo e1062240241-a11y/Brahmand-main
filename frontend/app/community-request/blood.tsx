@@ -40,7 +40,7 @@ export default function CommunityRequestBloodPage() {
   const [loading, setLoading] = useState(false);
   const [bloodGroup, setBloodGroup] = useState('');
   const [hospitalName, setHospitalName] = useState('');
-  const [hospitalSuggestions, setHospitalSuggestions] = useState<Array<{ name: string; address: string; area: string; city: string }>>([]);
+  const [hospitalSuggestions, setHospitalSuggestions] = useState<{ name: string; address: string; area: string; city: string }[]>([]);
   const [selectedHospital, setSelectedHospital] = useState<{ name: string; address: string; area: string; city: string } | null>(null);
   const [isHospitalSearching, setIsHospitalSearching] = useState(false);
   const [location, setLocation] = useState('Auto-detected');

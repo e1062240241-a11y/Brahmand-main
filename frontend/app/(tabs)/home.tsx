@@ -101,6 +101,13 @@ import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { LocationPickerModal, LocationData } from '../../src/components/LocationPickerModal';
 
+import { ReportModal } from '../../src/components/ReportModal';
+import { originalAlert } from '../../src/utils/nativeAlert';
+import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
+import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
+import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
+
 function KundliSirenIcon() {
   return (
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
@@ -309,13 +316,6 @@ function ShopIcon() {
     />
   );
 }
-
-import { ReportModal } from '../../src/components/ReportModal';
-import { originalAlert } from '../../src/utils/nativeAlert';
-import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
-import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
-import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
-import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;

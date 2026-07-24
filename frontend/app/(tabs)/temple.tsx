@@ -19,13 +19,13 @@ import { useRouter, Link } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
-const SafeFlashList = FlashList as any;
 import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { FONTS } from '../../src/constants/theme';
 import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
+const SafeFlashList = FlashList as any;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FLASH_LIST_CONTENT_STYLE = { paddingBottom: 40 } as const;

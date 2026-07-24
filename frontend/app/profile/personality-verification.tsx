@@ -10,10 +10,9 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter , useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
 import { getProfile } from '../../src/services/api';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';

@@ -20,8 +20,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons , Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMySOSAlert, resolveSOSAlert, getActiveSOSAlerts, respondToSOS, reportSOSMisuse } from '../services/api';

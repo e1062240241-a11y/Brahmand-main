@@ -841,7 +841,12 @@ export const UploadPostModal = ({
     >
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.appBar}>
-          <TouchableOpacity onPress={resetAndClose} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={resetAndClose}
+            style={styles.iconBtn}
+            accessibilityLabel="Close modal"
+            accessibilityRole="button"
+          >
             <MaterialIcons name="close" size={28} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.title}>
@@ -1018,6 +1023,8 @@ export const UploadPostModal = ({
               <View style={styles.aspectRatioContainer}>
                 <TouchableOpacity
                   onPress={() => setAspectRatioMode("1:1")}
+                  accessibilityLabel="Select 1:1 aspect ratio"
+                  accessibilityRole="button"
                   style={[
                     styles.aspectRatioBtn,
                     aspectRatioMode === "1:1" && styles.aspectRatioBtnActive,
@@ -1030,6 +1037,8 @@ export const UploadPostModal = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setAspectRatioMode("4:5")}
+                  accessibilityLabel="Select 4:5 aspect ratio"
+                  accessibilityRole="button"
                   style={[
                     styles.aspectRatioBtn,
                     aspectRatioMode === "4:5" && styles.aspectRatioBtnActive,
@@ -1042,6 +1051,8 @@ export const UploadPostModal = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setAspectRatioMode("1.91:1")}
+                  accessibilityLabel="Select 1.91:1 aspect ratio"
+                  accessibilityRole="button"
                   style={[
                     styles.aspectRatioBtn,
                     aspectRatioMode === "1.91:1" &&
@@ -1059,6 +1070,8 @@ export const UploadPostModal = ({
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setAspectRatioMode("9:16")}
+                  accessibilityLabel="Select 9:16 aspect ratio"
+                  accessibilityRole="button"
                   style={[
                     styles.aspectRatioBtn,
                     aspectRatioMode === "9:16" && styles.aspectRatioBtnActive,
@@ -1080,6 +1093,8 @@ export const UploadPostModal = ({
               <TouchableOpacity
                 style={styles.sourceCard}
                 onPress={captureFromCamera}
+                accessibilityLabel="Take photo with camera"
+                accessibilityRole="button"
               >
                 <MaterialIcons
                   name="camera-alt"
@@ -1091,6 +1106,8 @@ export const UploadPostModal = ({
               <TouchableOpacity
                 style={styles.sourceCard}
                 onPress={selectFromPhotoGallery}
+                accessibilityLabel="Choose from gallery"
+                accessibilityRole="button"
               >
                 <MaterialIcons
                   name="photo-library"
@@ -1102,6 +1119,8 @@ export const UploadPostModal = ({
               <TouchableOpacity
                 style={styles.sourceCard}
                 onPress={selectFromFiles}
+                accessibilityLabel="Choose from files"
+                accessibilityRole="button"
               >
                 <MaterialIcons
                   name="folder"

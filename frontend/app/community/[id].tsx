@@ -49,6 +49,14 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
+import Svg, { Circle } from 'react-native-svg';
+
+import { getFestivalImage } from '../../src/constants/festivalImages';
+
+import { useGlobalMute } from '../../src/contexts/MuteContext';
+import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
+import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../src/components/SafeVideoView';
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface User {
@@ -142,8 +150,6 @@ function getLocalCategory(content: string): string | undefined {
   return undefined;
 }
 
-import Svg, { Circle } from 'react-native-svg';
-
 const CharacterProgressCircle = ({ textLength }: { textLength: number }) => {
   const size = 30;
   const strokeWidth = 2.5;
@@ -235,8 +241,6 @@ function splitTextIntoTweets(text: string, limit = 250): string[] {
 
 const COMMUNITY_TABS = ['Feed', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
 const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festivals', 'Seva', 'Temple Updates'];
-
-import { getFestivalImage } from '../../src/constants/festivalImages';
 
 const getCommunityMemberCount = (community?: any) => {
   if (!community) return 0;
@@ -347,10 +351,6 @@ const MOCK_DISCUSSION: DiscussionPost[] = [
     liked: false,
   }
 ];
-
-import { useGlobalMute } from '../../src/contexts/MuteContext';
-import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
-import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../src/components/SafeVideoView';
 
 let ExpoVideoModule: any = null;
 try {
