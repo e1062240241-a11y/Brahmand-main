@@ -5049,7 +5049,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
                 FirebaseNotificationService.create_notification,
                 target_user_id,
                 "Personality Verified!",
-                f"Congratulations! Your {level} verification has been approved. You now have access to the {community_to_join if community_to_join else 'verified groups'}.",
+                f"Congratulations! Your {level} verification has been approved. You now have access to the {', '.join(communities_to_join) if communities_to_join else 'verified groups'}.",
                 "verification_approved"
             )
         except Exception as e:
@@ -10031,12 +10031,20 @@ async def delete_chat_history(token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# =================== WISDOM & PANCHANG ===================
+def _resolve_user_coordinates(user: Optional[dict] = None, lat: Optional[float] = None, lon: Optional[float] = None) -> tuple[float, float]:
+    """Helper to resolve latitude and longitude from input parameters, user profile, or default coordinates."""
+    resolved_lat = lat
+    if resolved_lat is None and user:
+        resolved_lat = user.get('place_of_birth_latitude') or (user.get('home_location') or {}).get('latitude')
 
-@api_router.get("/wisdom/today")
-async def get_wisdom():
-    day = datetime.utcnow().timetuple().tm_yday
-    return WISDOM_QUOTES[day % len(WISDOM_QUOTES)]
+    resolved_lng = lon
+    if resolved_lng is None and user:
+        resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
+
+    if resolved_lat is None or resolved_lng is None:
+        resolved_lat, resolved_lng = 19.2056, 25.2056
+
+    return float(resolved_lat), float(resolved_lng)
 
 
 @api_router.get("/panchang/today")
@@ -10105,16 +10113,7 @@ async def get_nakshatra_report(
     logger.info("get_nakshatra_report inputs - dob: %s, tob: %s, lat: %s, lon: %s, tz: %s", dob, tob, lat, lon, tz)
 
     # Resolve birth coordinates
-    resolved_lat = lat
-    if resolved_lat is None:
-        resolved_lat = user.get('place_of_birth_latitude') or (user.get('home_location') or {}).get('latitude')
-    
-    resolved_lng = lon
-    if resolved_lng is None:
-        resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
-
-    if resolved_lat is None or resolved_lng is None:
-        resolved_lat, resolved_lng = 19.2056, 25.2056
+    resolved_lat, resolved_lng = _resolve_user_coordinates(user, lat, lon)
 
     # Resolve birth details
     dob_str = dob or user.get('date_of_birth')  # YYYY-MM-DD
@@ -14208,7 +14207,7 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
                     else:
                         sc_updated_dt = sc_updated.replace(tzinfo=None) if hasattr(sc_updated, 'tzinfo') and sc_updated.tzinfo is not None else sc_updated
                     
-                    if sc_updated_dt <= last_pulled_at.replace(tzinfo=None):
+                    if sc_updated_dt <= last_pulled_dt.replace(tzinfo=None):
                         is_active = False
                 
                 # If no subgroup chat document exists, skip it on updates since no messages can exist

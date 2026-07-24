@@ -492,6 +492,8 @@ class FirestoreDB:
                     try:
                         return list(query.stream())
                     except Exception as exc:
+                        if 'requires an index' in str(exc).lower():
+                            raise exc
                         logger.warning(f"Firestore stream error, attempt {attempt + 1}/{attempts}: {exc}")
                         if attempt + 1 == attempts:
                             break
@@ -500,7 +502,8 @@ class FirestoreDB:
                 try:
                     return list(query.get())
                 except Exception as exc:
-                    logger.error(f"Firestore get() fallback failed: {exc}")
+                    if 'requires an index' not in str(exc).lower():
+                        logger.error(f"Firestore get() fallback failed: {exc}")
                     raise
             
             docs = _stream_with_retry()
@@ -568,12 +571,21 @@ class FirestoreDB:
         return await self.create_document('users', user_data)
     
     async def get_user_by_phone(self, phone: str) -> Optional[Dict[str, Any]]:
-        """Get user by phone number (supports multiple formats, prioritizes populated records & cleans duplicates)"""
+        """Get user by phone number with strict 1:1 phone-to-user binding"""
         if not phone:
             return None
+        
+        try:
+            from services.firebase_auth_service import FirebaseAuthService
+            norm_phone = FirebaseAuthService.normalize_phone(phone)
+        except Exception:
+            norm_phone = phone.strip()
+
         digits = ''.join(ch for ch in str(phone) if ch.isdigit())
         last10 = digits[-10:] if len(digits) >= 10 else digits
+
         candidates = list(dict.fromkeys([
+            norm_phone,
             phone,
             f"+91{last10}",
             last10,
@@ -584,7 +596,8 @@ class FirestoreDB:
         seen_ids = set()
         for cand in candidates:
             docs = await self.query_documents('users', [('phone', '==', cand)])
-            for d in docs:
+            docs_pn = await self.query_documents('users', [('phone_number', '==', cand)])
+            for d in docs + docs_pn:
                 if d['id'] not in seen_ids:
                     seen_ids.add(d['id'])
                     matched_users.append(d)
@@ -592,21 +605,32 @@ class FirestoreDB:
         if not matched_users:
             return None
 
-        if len(matched_users) == 1:
-            return matched_users[0]
+        # Filter matched users to ensure last 10 digits strictly match the requested phone
+        strictly_matched = []
+        for u in matched_users:
+            u_phone = str(u.get('phone') or u.get('phone_number') or '')
+            u_digits = ''.join(ch for ch in u_phone if ch.isdigit())
+            u_last10 = u_digits[-10:] if len(u_digits) >= 10 else u_digits
+            if u_last10 == last10:
+                strictly_matched.append(u)
 
-        # If duplicate records exist, prioritize the authentic record with name/posts/created_at
-        populated = [u for u in matched_users if u.get('name') or u.get('bio') or u.get('sl_id')]
-        target_user = None
-        if populated:
-            populated.sort(key=lambda u: str(u.get('created_at') or '9999'))
-            target_user = populated[0]
+        if not strictly_matched:
+            return None
+
+        if len(strictly_matched) == 1:
+            return strictly_matched[0]
+
+        # If duplicate records exist, prioritize exact normalized_phone match & populated profiles
+        exact_norm = [u for u in strictly_matched if (u.get('phone') == norm_phone or u.get('phone_number') == norm_phone)]
+        if exact_norm:
+            exact_norm.sort(key=lambda u: (0 if u.get('name') else 1, str(u.get('created_at') or '9999')))
+            target_user = exact_norm[0]
         else:
-            matched_users.sort(key=lambda u: str(u.get('created_at') or '9999'))
-            target_user = matched_users[0]
+            strictly_matched.sort(key=lambda u: (0 if u.get('name') else 1, str(u.get('created_at') or '9999')))
+            target_user = strictly_matched[0]
 
         # Auto-cleanup unpopulated shell duplicate documents to preserve 1:1 database integrity
-        for u in matched_users:
+        for u in strictly_matched:
             if u['id'] != target_user['id'] and not (u.get('name') or u.get('bio')):
                 try:
                     logger.info(f"Integrity Sweep: Auto-removing duplicate unpopulated shell user doc: {u['id']}")

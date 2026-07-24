@@ -1,6 +1,7 @@
 """Firebase Authentication Service"""
 import os
 import re
+import time
 import logging
 import random
 import asyncio
@@ -85,7 +86,9 @@ class FirebaseAuthService:
         """Ensure user document has an sl_id, creating one if missing."""
         if user.get('sl_id'):
             return user['sl_id']
-        sl_id = f"SL{int(time.time() * 1000)}"
+        sl_id = generate_sl_id()
+        while await db.get_user_by_sl_id(sl_id):
+            sl_id = generate_sl_id()
         user['sl_id'] = sl_id
         await db.update_user(user['id'], {'sl_id': sl_id})
         return sl_id
