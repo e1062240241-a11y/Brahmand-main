@@ -536,7 +536,7 @@ class VendorCreate(BaseModel):
     gstin: Optional[str] = None
     business_email: Optional[str] = None
     website_link: Optional[str] = None
-    kyc_request_no: Optional[str] = None
+    social_media: Optional[Dict[str, Any]] = None
 
 
 class VendorUpdate(BaseModel):
@@ -562,7 +562,7 @@ class VendorUpdate(BaseModel):
     gstin: Optional[str] = None
     business_email: Optional[str] = None
     website_link: Optional[str] = None
-    kyc_request_no: Optional[str] = None
+    social_media: Optional[Dict[str, Any]] = None
 
 
 class VendorResponse(BaseModel):
@@ -587,8 +587,10 @@ class VendorResponse(BaseModel):
     offers_home_delivery: bool = False
     business_media_key: Optional[str] = None
     kyc_status: Optional[KYCStatus] = None
+    business_email: Optional[str] = None
+    website_link: Optional[str] = None
+    social_media: Optional[Dict[str, Any]] = None
     distance: Optional[float] = None
-    kyc_request_no: Optional[str] = None
     created_at: datetime
 
 

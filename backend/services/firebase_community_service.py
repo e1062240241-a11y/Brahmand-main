@@ -429,6 +429,17 @@ class FirebaseCommunityService:
         } for c in communities]
     
     @staticmethod
+    async def get_my_creation_requests(user_id: str) -> List[Dict[str, Any]]:
+        """Get community creation requests created by the user"""
+        db = await FirebaseCommunityService.get_db()
+        try:
+            requests = await db.query_documents('community_creation_requests', [('owner_id', '==', user_id)])
+            return requests
+        except Exception as e:
+            logger.error(f"Error fetching community creation requests for user {user_id}: {e}")
+            return []
+
+    @staticmethod
     async def get_community_stats(community_id: str) -> Dict[str, Any]:
         """Get community stats"""
         cached = await cache_manager.get_community_stats(community_id)

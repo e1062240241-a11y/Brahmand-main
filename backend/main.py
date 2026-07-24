@@ -44,7 +44,7 @@ import jwt
 from google.api_core.exceptions import FailedPrecondition
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse, Response
+from fastapi.responses import JSONResponse, StreamingResponse, Response, HTMLResponse
 import socketio
 
 # Add backend directory to path
@@ -191,6 +191,14 @@ async def lifespan(app: FastAPI):
     """Application lifespan"""
     logger.info("Starting Sanatan Lok API v2.2.0 (Firestore)...")
     
+    # Set default event loop executor to ThreadPoolExecutor with 1000 workers
+    # to support highly concurrent blocking sync Firestore operations
+    import asyncio
+    from concurrent.futures import ThreadPoolExecutor
+    loop = asyncio.get_running_loop()
+    loop.set_default_executor(ThreadPoolExecutor(max_workers=1000))
+    logger.info("Default ThreadPoolExecutor max_workers set to 1000")
+
     # Initialize Firebase with Firestore
     await firebase_manager.initialize()
     
@@ -207,6 +215,10 @@ async def lifespan(app: FastAPI):
     # Start Jaap reminder worker
     asyncio.create_task(_jaap_reminder_worker())
     logger.info("Jaap reminder worker started")
+
+    # Sync legacy KYC data across users and vendors
+    asyncio.create_task(sync_legacy_kyc_data_in_db())
+    logger.info("Legacy KYC sync task scheduled")
 
     # Run Krishna RAG pipeline diagnostics at startup
     try:
@@ -257,6 +269,9 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down...")
+    global _shared_client_session
+    if _shared_client_session and not _shared_client_session.closed:
+        await _shared_client_session.close()
     if _panchang_prefetch_task:
         _panchang_prefetch_task.cancel()
         try:
@@ -288,6 +303,16 @@ socket_app = socketio.ASGIApp(sio, app)
 
 
 # =================== HELPER FUNCTIONS ===================
+
+_shared_client_session: Optional[aiohttp.ClientSession] = None
+
+def get_shared_client_session() -> aiohttp.ClientSession:
+    global _shared_client_session
+    if _shared_client_session is None or _shared_client_session.closed:
+        connector = aiohttp.TCPConnector(ssl=False, limit=100, keepalive_timeout=30)
+        _shared_client_session = aiohttp.ClientSession(connector=connector)
+    return _shared_client_session
+
 
 async def get_db() -> FirestoreDB:
     """Get Firestore database wrapper"""
@@ -407,11 +432,11 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
 
     logger.info(f"Uploading {len(file_bytes)} bytes to Bunny.net: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=180, connect=30)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
-            if resp.status not in (200, 201):
-                resp_text = await resp.text()
-                raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
+    session = get_shared_client_session()
+    async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
+        if resp.status not in (200, 201):
+            resp_text = await resp.text()
+            raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
 
     pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     if pull_zone:
@@ -439,12 +464,12 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     logger.info(f"Streaming {file_size} bytes from disk to Bunny.net: {bunny_url}")
 
     timeout = aiohttp.ClientTimeout(total=300, connect=30)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        with open(file_path, 'rb') as f:
-            async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
-                if resp.status not in (200, 201):
-                    resp_text = await resp.text()
-                    raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
+    session = get_shared_client_session()
+    with open(file_path, 'rb') as f:
+        async with session.put(bunny_url, data=f, headers=headers, timeout=timeout) as resp:
+            if resp.status not in (200, 201):
+                resp_text = await resp.text()
+                raise Exception(f"Bunny.net file upload failed with status {resp.status}: {resp_text}")
 
     pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     if pull_zone:
@@ -464,18 +489,18 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     }
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
-            if resp.status != 200:
-                resp_text = await resp.text()
-                raise Exception(f"Failed to download from Bunny.net: {resp.status} - {resp_text}")
-            
-            size = 0
-            with open(local_path, 'wb') as f:
-                async for chunk in resp.content.iter_chunked(65536):
-                    f.write(chunk)
-                    size += len(chunk)
-            return size
+    session = get_shared_client_session()
+    async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
+        if resp.status != 200:
+            resp_text = await resp.text()
+            raise Exception(f"Failed to download from Bunny.net: {resp.status} - {resp_text}")
+
+        size = 0
+        with open(local_path, 'wb') as f:
+            async for chunk in resp.content.iter_chunked(65536):
+                f.write(chunk)
+                size += len(chunk)
+        return size
 
 
 async def _delete_file_from_bunny(object_path: str):
@@ -487,13 +512,13 @@ async def _delete_file_from_bunny(object_path: str):
     }
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.delete(bunny_url, headers=headers, timeout=timeout) as resp:
-            if resp.status not in (200, 204):
-                resp_text = await resp.text()
-                logger.warning(f"Failed to delete {object_path} from Bunny.net: status {resp.status} - {resp_text}")
-            else:
-                logger.info(f"Successfully deleted {object_path} from Bunny.net")
+    session = get_shared_client_session()
+    async with session.delete(bunny_url, headers=headers, timeout=timeout) as resp:
+        if resp.status not in (200, 204):
+            resp_text = await resp.text()
+            logger.warning(f"Failed to delete {object_path} from Bunny.net: status {resp.status} - {resp_text}")
+        else:
+            logger.info(f"Successfully deleted {object_path} from Bunny.net")
 
 
 async def _upload_chat_media_to_storage(user_id: str, file_bytes: bytes, content_type: str) -> tuple[str, str]:
@@ -615,24 +640,45 @@ async def _create_post_document(
         if 'thumbnail_url' in metadata: post_doc['thumbnail_url'] = metadata['thumbnail_url']
 
     # ─── Duplicate Upload Prevention Check ───
+    # 1. In-memory cache check
+    cache_key = f"last_upload:{user_id}"
     try:
-        recent_posts = await db.query_documents(
+        cached_last = await cache_manager.get(cache_key)
+        if cached_last:
+            cached_caption = (cached_last.get('caption') or '').strip()
+            cached_media = (cached_last.get('media_path') or '').strip()
+            if cached_caption == post_doc['caption'] and cached_media == post_doc['media_path']:
+                logger.info(f"Duplicate upload detected via cache. Returning cached post {cached_last.get('id')} to maintain database integrity.")
+                return cached_last
+    except Exception as cache_err:
+        logger.debug(f"Cache check failed in duplicate detection: {cache_err}")
+
+    # 2. DB Filter Layer (fallback)
+    try:
+        from datetime import timedelta, timezone
+        threshold_dt = datetime.utcnow() - timedelta(seconds=180)
+        # If mock database is active, use string comparison; otherwise use datetime
+        threshold = (threshold_dt.isoformat() + 'Z') if db.use_mock else threshold_dt
+
+        recent_global_posts = await db.query_documents(
             'posts',
-            filters=[('user_id', '==', user_id)]
+            filters=[('created_at', '>=', threshold)]
         )
+        recent_posts = [p for p in recent_global_posts if p.get('user_id') == user_id]
         if recent_posts:
-            # Sort in memory by created_at DESC
             recent_posts.sort(key=lambda x: x.get('created_at') or datetime(1970, 1, 1), reverse=True)
-            
-            from datetime import timezone
             for recent in recent_posts[:5]:  # Check the last 5 uploads
                 r_created = recent.get('created_at')
                 if r_created:
-                    if hasattr(r_created, 'tzinfo') and r_created.tzinfo is not None:
-                        r_created = r_created.astimezone(timezone.utc).replace(tzinfo=None)
+                    if isinstance(r_created, str):
+                        try:
+                            r_created_dt = datetime.fromisoformat(r_created.replace('Z', '+00:00')).replace(tzinfo=None)
+                        except Exception:
+                            r_created_dt = datetime.min
+                    else:
+                        r_created_dt = r_created.replace(tzinfo=None) if hasattr(r_created, 'tzinfo') and r_created.tzinfo is not None else r_created
                     
-                    # If same content was uploaded in the last 180 seconds, reject new document insertion
-                    time_diff = datetime.utcnow() - r_created
+                    time_diff = datetime.utcnow() - r_created_dt
                     if time_diff.total_seconds() < 180:
                         recent_caption = (recent.get('caption') or '').strip()
                         recent_media = (recent.get('media_path') or '').strip()
@@ -645,39 +691,55 @@ async def _create_post_document(
 
     post_id = await db.create_document('posts', post_doc)
     post_doc['id'] = post_id
+
+    # Store in cache for 180 seconds for duplicate prevention
+    try:
+        await cache_manager.set(cache_key, post_doc, ttl=180)
+    except Exception as cache_err:
+        logger.debug(f"Failed to cache last upload: {cache_err}")
+
     return post_doc
 
 
-def _deduplicate_posts(posts: list[dict]) -> list[dict]:
+KNOWN_SYSTEM_STORAGE_FOLDERS = {'rAR1Nev9VOh836E0ATBz', 'meGpOhOsKmsDeNTnDjr3'}
+
+def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]] = None) -> list[dict]:
     """
     Deduplicates a list of post documents based on a unique signature
-    (caption + media_path) and strictly filters out corrupted posts where
-    the media URL owner path does not match the post's user_id.
+    (caption + media_path/media_url) or post ID, and strictly blocks cross-user
+    media leaks where one real user's media folder is attached to another user's post.
     """
     import urllib.parse
     import re
-    
+
     seen_signatures = set()
     deduped = []
     for post in posts:
-        # ─── Strict Media URL Ownership Verification ───
+        # ─── Smart Cross-User Security Barrier ───
         media_url = post.get('media_url') or ''
         post_user_id = post.get('user_id')
         
         if media_url and post_user_id:
             unquoted_url = urllib.parse.unquote(media_url)
-            # Find the user ID in the path (e.g. /posts/{user_id}/)
             match = re.search(r'/posts/([^/]+)/', unquoted_url)
             if match:
                 path_user_id = match.group(1)
-                # If the folder path ID does not match the post's user_id, it is corrupt
-                # (Unless it is a repost, where the media belongs to the original user)
-                if path_user_id != post_user_id and post.get('source') != 'repost' and not post.get('original_post_id'):
-                    logger.warning(f"Corrupt post filtered: Post {post.get('id')} has user_id {post_user_id} but media folder belongs to {path_user_id}")
+                # Strict Security Check: Block if media URL folder belongs to ANOTHER REAL USER in the app
+                # (and is not a system batch upload folder or repost)
+                if (
+                    path_user_id != post_user_id
+                    and path_user_id not in KNOWN_SYSTEM_STORAGE_FOLDERS
+                    and (registered_user_ids is None or path_user_id in registered_user_ids)
+                    and post.get('source') != 'repost'
+                    and not post.get('original_post_id')
+                ):
+                    logger.warning(
+                        f"Security Barrier Blocked: Post {post.get('id')} (user_id: {post_user_id}) media folder belongs to another real user {path_user_id}"
+                    )
                     continue
 
         caption_sig = (post.get('caption') or '').strip()
-        media_sig = (post.get('media_path') or '').strip()
+        media_sig = (post.get('media_path') or post.get('media_url') or '').strip()
         
         # If both are empty, fallback to post id
         if not caption_sig and not media_sig:
@@ -685,7 +747,7 @@ def _deduplicate_posts(posts: list[dict]) -> list[dict]:
         else:
             sig = f"{caption_sig}::{media_sig}"
 
-        if sig not in seen_signatures:
+        if sig and sig not in seen_signatures:
             seen_signatures.add(sig)
             deduped.append(post)
     return deduped
@@ -907,13 +969,6 @@ async def _ensure_admin_user(token_data: dict):
 
 def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     """Build admin-facing snapshot of vendor profile and KYC fields."""
-    # Normalize kyc_status to plain string to avoid Pydantic enum objects
-    # being stored in Firestore, which would break equality queries.
-    raw_kyc_status = vendor.get('kyc_status')
-    kyc_status_str = str(raw_kyc_status.value if hasattr(raw_kyc_status, 'value') else raw_kyc_status or 'pending')
-    is_pending = kyc_status_str in ('pending', 'manual_review', 'None', 'none', '')
-    if raw_kyc_status is None:
-        is_pending = True
     return {
         'vendor_id': vendor.get('id'),
         'owner_id': vendor.get('owner_id'),
@@ -934,19 +989,19 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'business_gallery_images': vendor.get('business_gallery_images', []),
         'menu_items': vendor.get('menu_items', []),
         'offers_home_delivery': vendor.get('offers_home_delivery', False),
-        'kyc_status': kyc_status_str,
-        'kyc_request_no': vendor.get('kyc_request_no'),
+        'kyc_status': vendor.get('kyc_status', 'pending'),
         'aadhaar_otp_verified_at': vendor.get('aadhaar_otp_verified_at'),
         'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
-        'review_status': 'pending' if is_pending else kyc_status_str,
-        'review_state': 'needs_admin_action' if is_pending else 'closed',
+        'review_status': 'pending' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else vendor.get('kyc_status'),
+        'review_state': 'needs_admin_action' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else 'closed',
         'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.utcnow().isoformat() + 'Z'),
     }
 
 
-async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str):
+async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: dict = None):
     """Upsert vendor review snapshot used by future admin panel."""
-    vendor = await db.get_document('vendors', vendor_id)
+    if not vendor:
+        vendor = await db.get_document('vendors', vendor_id)
     if not vendor:
         return
 
@@ -1302,7 +1357,7 @@ api_router.include_router(jaap_routes_router)
 api_router.include_router(upanishads_router)
 api_router.include_router(auth_router)
 api_router.include_router(user_router)
-# api_router.include_router(community_router)  # Commented out to prevent overriding main.py routes
+api_router.include_router(community_router)
 api_router.include_router(messaging_router)
 api_router.include_router(temple_router)
 api_router.include_router(event_router)
@@ -1577,12 +1632,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
         # Check if user exists
         user = await db.get_user_by_phone(phone)
         
-        if user:
-            sl_id = user.get('sl_id')
-            if not sl_id:
-                from services.firebase_auth_service import FirebaseAuthService
-                sl_id = await FirebaseAuthService._ensure_sl_id(db, user)
-
+        if user and user.get('sl_id'):
             if user.get('is_blocked'):
                 from datetime import datetime, timezone
                 blocked_until_str = user.get('blocked_until')
@@ -1602,7 +1652,7 @@ async def verify_firebase_token(request: dict, _: bool = Depends(auth_rate_limit
                     raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
 
             # Existing user - return token
-            token = create_jwt_token(user['id'], sl_id)
+            token = create_jwt_token(user['id'], user['sl_id'])
             return {
                 "message": "Login successful",
                 "token": token,
@@ -1757,8 +1807,8 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
                 photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
                 logger.info(f"Profile photo compressed successfully")
 
-                # Always upload profile photos to Firebase Storage instead of storing as inline base64
-                if len(photo_data) > 0:
+                # If the resulting photo still exceeds Firestore field limit, upload to Firebase Storage
+                if len(photo_data) > 950000:
                     from firebase_admin import storage as firebase_storage
                     bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
                     bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
@@ -1773,7 +1823,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
                         f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
                         f"{quote(object_path, safe='')}?alt=media&token={download_token}"
                     )
-                    logger.info(f"Uploaded profile image to storage: {photo_data}")
+                    logger.info(f"Uploaded large profile image to storage: {photo_data}")
             else:
                 logger.warning("Invalid image format, skipping photo")
                 photo_data = None
@@ -1850,8 +1900,7 @@ async def update_profile(update: UserUpdate, token_data: dict = Depends(verify_t
                     raise HTTPException(status_code=400, detail='Invalid profile photo')
                 try:
                     photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
-                    # Always upload profile photos to Firebase Storage instead of storing as inline base64
-                    if len(photo_data) > 0:
+                    if len(photo_data) > 950000:
                         from firebase_admin import storage as firebase_storage
                         bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET')
                         bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
@@ -2169,13 +2218,15 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     non_location_community_ids = []
     old_location_community_ids = []
     
-    for cid in current_communities:
-        comm = await db.get_document('communities', cid)
-        if comm:
-            if comm.get('type') in ['city', 'state', 'country', 'home_area', 'office_area']:
-                old_location_community_ids.append(cid)
-            else:
-                non_location_community_ids.append(cid)
+    if current_communities:
+        comm_docs = await db.get_documents_batch('communities', list(current_communities))
+        for comm in comm_docs:
+            if comm:
+                cid = comm['id']
+                if comm.get('type') in ['city', 'state', 'country', 'home_area', 'office_area']:
+                    old_location_community_ids.append(cid)
+                else:
+                    non_location_community_ids.append(cid)
                 
     # Remove user from the old location-based communities in the communities collection
     for cid in old_location_community_ids:
@@ -2620,26 +2671,30 @@ async def get_blocked_users_endpoint(token_data: dict = Depends(verify_token)):
         # Query blocks where blockerUid is the current user
         blocks = await db.query_documents('user_blocks', filters=[('blockerUid', '==', current_user_id)])
         blocked_users = []
-        for b in blocks:
-            blocked_uid = b.get('blockedUid')
-            if blocked_uid:
-                user_doc = await db.get_document('users', blocked_uid)
-                if user_doc:
-                    blocked_users.append({
-                        'id': user_doc.get('id'),
-                        'name': user_doc.get('name', 'Unknown User'),
-                        'username': user_doc.get('username', ''),
-                        'sl_id': user_doc.get('sl_id', ''),
-                        'photo_url': user_doc.get('photo_url', '') or user_doc.get('photo', '')
-                    })
-                else:
-                    blocked_users.append({
-                        'id': blocked_uid,
-                        'name': 'Unknown User',
-                        'username': 'unknown',
-                        'sl_id': '',
-                        'photo_url': ''
-                    })
+        blocked_uids = [b.get('blockedUid') for b in blocks if b.get('blockedUid')]
+        if blocked_uids:
+            user_docs = await db.get_documents_batch('users', blocked_uids)
+            user_map = {u['id']: u for u in user_docs if u}
+            for b in blocks:
+                blocked_uid = b.get('blockedUid')
+                if blocked_uid:
+                    user_doc = user_map.get(blocked_uid)
+                    if user_doc:
+                        blocked_users.append({
+                            'id': user_doc.get('id'),
+                            'name': user_doc.get('name', 'Unknown User'),
+                            'username': user_doc.get('username', ''),
+                            'sl_id': user_doc.get('sl_id', ''),
+                            'photo_url': user_doc.get('photo_url', '') or user_doc.get('photo', '')
+                        })
+                    else:
+                        blocked_users.append({
+                            'id': blocked_uid,
+                            'name': 'Unknown User',
+                            'username': 'unknown',
+                            'sl_id': '',
+                            'photo_url': ''
+                        })
         return blocked_users
     except Exception as e:
         logger.error(f"Error fetching blocked users: {e}")
@@ -2794,6 +2849,66 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
     return {'message': 'User unblocked successfully', 'unblocked_user_id': target_user_id}
 
 
+DEFAULT_BRAHMAND_LOGO = "https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png"
+
+@api_router.get("/share/post/{post_id}", response_class=HTMLResponse)
+async def share_post_preview(post_id: str):
+    """Generate dynamic HTML Open Graph preview card for shared post links."""
+    db = await get_db()
+    post = await db.get_document('posts', post_id)
+
+    title = "Brahmand"
+    description = "Connect with your local spiritual community, find temples, jaap rooms, and emergency services."
+    image_url = DEFAULT_BRAHMAND_LOGO
+
+    if post:
+        caption = (post.get('caption') or '').strip()
+        username = post.get('username') or post.get('user_name') or 'Someone'
+        if caption:
+            title = f"{username} on Brahmand: \"{caption[:60]}\""
+            description = caption
+        else:
+            title = f"Post by {username} on Brahmand"
+
+        media_url = post.get('media_url') or post.get('imageUrl') or post.get('image_url')
+        if media_url and isinstance(media_url, str) and media_url.startswith("http"):
+            image_url = media_url
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    <meta name="description" content="{description}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:site_name" content="Brahmand">
+    <meta property="og:description" content="{description}">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://brahmand.app/post/{post_id}">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:image:secure_url" content="{image_url}">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{image_url}">
+    <link rel="icon" href="{DEFAULT_BRAHMAND_LOGO}">
+    <link rel="apple-touch-icon" href="{DEFAULT_BRAHMAND_LOGO}">
+    <script>
+        window.location.href = "sanatanlok://post/{post_id}";
+    </script>
+</head>
+<body style="font-family: system-ui; text-align: center; padding: 40px; background: #FFF8F0; color: #5C250A;">
+    <img src="{DEFAULT_BRAHMAND_LOGO}" alt="Brahmand Logo" style="width: 100px; height: 100px; border-radius: 20px; margin-bottom: 20px;">
+    <h2>{title}</h2>
+    <p>{description}</p>
+    <a href="sanatanlok://post/{post_id}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px;">Open in Brahmand App</a>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
+
+
 @api_router.post('/posts/{post_id}/view')
 async def view_post(post_id: str, token_data: dict = Depends(verify_token)):
     db = await get_db()
@@ -2833,13 +2948,13 @@ async def get_bunny_media(filepath: str):
     async def file_sender():
         try:
             timeout = aiohttp.ClientTimeout(total=60, connect=10)
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-                async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
-                    if resp.status == 200:
-                        async for chunk in resp.content.iter_chunked(65536):
-                            yield chunk
-                    else:
-                        logger.error(f"Failed to fetch media from Bunny.net: {resp.status}")
+            session = get_shared_client_session()
+            async with session.get(bunny_url, headers=headers, timeout=timeout) as resp:
+                if resp.status == 200:
+                    async for chunk in resp.content.iter_chunked(65536):
+                        yield chunk
+                else:
+                    logger.error(f"Failed to fetch media from Bunny.net: {resp.status}")
         except Exception as e:
             logger.error(f"Error in file_sender streaming: {e}")
             
@@ -2858,12 +2973,12 @@ async def get_bunny_media(filepath: str):
 async def get_library_cdn(filepath: str):
     """Proxy library CDN requests to avoid CORS"""
     cdn_url = f"https://brahmandfeed23.b-cdn.net/library/{filepath}"
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
-        async with session.get(cdn_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-            if resp.status != 200:
-                from fastapi.responses import JSONResponse
-                return JSONResponse(status_code=resp.status, content={"error": "Not found"})
-            data = await resp.read()
+    session = get_shared_client_session()
+    async with session.get(cdn_url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+        if resp.status != 200:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=resp.status, content={"error": "Not found"})
+        data = await resp.read()
     from fastapi.responses import Response
     return Response(content=data, media_type="application/json", headers={
         "Cache-Control": "public, max-age=3600",
@@ -3060,24 +3175,31 @@ async def _upload_post_impl(
                 content_type = 'video/mp4'
                 base_url = str(request.base_url)
                 try:
-                    media_url, object_path = await _upload_post_media_file_to_bunny(
-                        user_id,
-                        temp_output_file.name,
-                        content_type,
-                        base_url
-                    )
-                    logger.info("Uploaded video to Bunny.net successfully")
+                    async def upload_video():
+                        return await _upload_post_media_file_to_bunny(
+                            user_id,
+                            temp_output_file.name,
+                            content_type,
+                            base_url
+                        )
 
-                    if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
-                        try:
-                            thumbnail_url, _ = await _upload_post_media_file_to_bunny(
-                                user_id,
-                                temp_thumb_file.name,
-                                'image/jpeg',
-                                base_url
-                            )
-                        except Exception as bunny_exc:
-                            logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
+                    async def upload_thumbnail():
+                        if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+                            try:
+                                return await _upload_post_media_file_to_bunny(
+                                    user_id,
+                                    temp_thumb_file.name,
+                                    'image/jpeg',
+                                    base_url
+                                )
+                            except Exception as bunny_exc:
+                                logger.warning(f"Bunny.net thumbnail upload failed ({bunny_exc})")
+                        return None, None
+
+                    video_res, thumb_res = await asyncio.gather(upload_video(), upload_thumbnail())
+                    media_url, object_path = video_res
+                    thumbnail_url, _ = thumb_res
+                    logger.info("Uploaded video and thumbnail to Bunny.net successfully")
                 except Exception as exc:
                     logger.exception('Post video upload failed for user_id=%s', user_id)
                     raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
@@ -3392,39 +3514,51 @@ async def _upload_post_from_storage_impl(
             upload_source = temp_input_file.name
             compressed_size_bytes = original_size_bytes
 
-        try:
-            media_url, object_path = await _upload_post_media_file_to_bunny(
-                user_id,
-                upload_source,
-                'video/mp4',
-                base_url
-            )
-            logger.info("Uploaded processed video from storage to Bunny.net successfully")
-        except Exception as exc:
-            logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
-            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
-
         thumbnail_url = None
+        temp_thumb_file = None
         if has_ffmpeg:
             temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
             temp_thumb_file.close()
             try:
                 await asyncio.to_thread(_generate_video_thumbnail, upload_source, temp_thumb_file.name)
-                if os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
-                    thumbnail_url, _ = await _upload_post_media_file_to_bunny(
-                        user_id,
-                        temp_thumb_file.name,
-                        'image/jpeg',
-                        base_url
-                    )
             except Exception as thumb_err:
-                logger.warning(f"Failed to generate/upload thumbnail for storage post: {thumb_err}")
-            finally:
-                if os.path.exists(temp_thumb_file.name):
+                logger.warning(f"Failed to generate thumbnail for storage post: {thumb_err}")
+
+        try:
+            async def upload_video():
+                return await _upload_post_media_file_to_bunny(
+                    user_id,
+                    upload_source,
+                    'video/mp4',
+                    base_url
+                )
+
+            async def upload_thumbnail():
+                if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
                     try:
-                        os.unlink(temp_thumb_file.name)
-                    except Exception:
-                        pass
+                        res = await _upload_post_media_file_to_bunny(
+                            user_id,
+                            temp_thumb_file.name,
+                            'image/jpeg',
+                            base_url
+                        )
+                        return res[0]
+                    except Exception as thumb_err:
+                        logger.warning(f"Failed to upload thumbnail for storage post: {thumb_err}")
+                return None
+
+            video_res, thumbnail_url = await asyncio.gather(upload_video(), upload_thumbnail())
+            media_url, object_path = video_res
+            logger.info("Uploaded processed video from storage to Bunny.net successfully")
+        except Exception as exc:
+            logger.exception('Post video upload to Bunny.net failed for user_id=%s', user_id)
+            raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+        finally:
+            if temp_thumb_file and os.path.exists(temp_thumb_file.name):
+                try:
+                    os.unlink(temp_thumb_file.name)
+                except Exception:
+                    pass
 
         post_doc = await _create_post_document(
             db=db,
@@ -3568,76 +3702,85 @@ async def get_posts_feed(
     # Parse already-seen post IDs to avoid repeats
     seen_set = set(s.strip() for s in seen_ids.split(',') if s.strip())
 
-    # Fetch user for location data
-    current_user = await db.get_document('users', current_user_id)
+    # Pre-calculate user agent stuff
+    x_platform = request.headers.get("x-platform", "").lower()
+    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
+    rand_start = _random.random()
+
+    # Define tasks to run concurrently
+    tasks = [
+        db.get_document('users', current_user_id),
+        _get_blocked_user_ids(db, current_user_id),
+        _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android),
+        db.query_documents(
+            'posts',
+            filters=[('random_score', '>=', rand_start)],
+            limit=40,
+            order_by='random_score',
+            order_direction='ASCENDING'
+        ),
+        db.query_documents(
+            'posts',
+            filters=[('random_score', '<', rand_start)],
+            limit=40,
+            order_by='random_score',
+            order_direction='DESCENDING'
+        ),
+        db.query_documents(
+            'posts',
+            limit=50,
+            order_by='created_at',
+            order_direction='DESCENDING'
+        )
+    ]
+
+    if tab == 'for_you':
+        tasks.append(db.get_document('feed_preferences', current_user_id))
+    else:
+        async def _dummy_task(): return None
+        tasks.append(_dummy_task())
+
+    # Gather everything in parallel
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Parse results
+    current_user = results[0] if not isinstance(results[0], Exception) else None
+    blocked_user_ids = results[1] if not isinstance(results[1], Exception) else set()
+    reported_post_ids = results[2] if not isinstance(results[2], Exception) else set()
+    pool1 = results[3] if not isinstance(results[3], Exception) else []
+    pool2 = results[4] if not isinstance(results[4], Exception) else []
+    latest_pool = results[5] if not isinstance(results[5], Exception) else []
+    prefs_doc = results[6] if not isinstance(results[6], Exception) else None
+
+    # Populate location data
     user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
-    # Fetch a large pool of posts (latest and random mixes)
+    # Assemble the posts pool
     posts_dict = {}
-    try:
-        rand_start = _random.random()
-        # 1. Query random posts starting from a random float (single-field query)
+    for p in pool1:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in pool2:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in latest_pool:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+
+    # Fallback if empty
+    if not posts_dict:
         try:
-            pool1 = await db.query_documents(
-                'posts',
-                filters=[('random_score', '>=', rand_start)],
-                limit=40,
-                order_by='random_score',
-                order_direction='ASCENDING'
-            )
-            for p in pool1:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Error fetching pool1 in get_posts_feed: %s", e)
-            
-        try:
-            pool2 = await db.query_documents(
-                'posts',
-                filters=[('random_score', '<', rand_start)],
-                limit=40,
-                order_by='random_score',
-                order_direction='DESCENDING'
-            )
-            for p in pool2:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Error fetching pool2 in get_posts_feed: %s", e)
-            
-        # 2. Query latest posts
-        try:
-            latest_pool = await db.query_documents(
-                'posts',
-                limit=50,
-                order_by='created_at',
-                order_direction='DESCENDING'
-            )
-            for p in latest_pool:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Error fetching latest_pool in get_posts_feed: %s", e)
-            
-        # Fallback if empty
-        if not posts_dict:
             fallback = await db.query_documents('posts', limit=100)
             for p in fallback:
                 if p.get('id'):
                     posts_dict[p['id']] = p
-                    
-        posts = list(posts_dict.values())
-    except Exception as e:
-        logger.error("Firestore query error in get_posts_feed: %s", e)
-        posts = []
+        except Exception as e:
+            logger.error("Firestore query error in fallback get_posts_feed: %s", e)
+
+    posts = list(posts_dict.values())
 
     # Filter out already-seen posts and non-public posts
     public_posts = []
-    
-    blocked_user_ids = await _get_blocked_user_ids(db, current_user_id)
-    x_platform = request.headers.get("x-platform", "").lower()
-    is_android = x_platform == "android" or "android" in request.headers.get("user-agent", "").lower()
-    reported_post_ids = await _get_reported_content_ids(db, current_user_id, 'post', is_android=is_android)
     
     # Pre-calculate user location for performance
     u_city = str(user_loc.get('city') or '').strip().lower()
@@ -3671,22 +3814,13 @@ async def get_posts_feed(
 
     # Pre-fetch following IDs if tab is following
     following_ids = set()
-    if tab == 'following':
-        try:
-            current_user = await db.get_document('users', current_user_id)
-            following_ids = set(current_user.get('following', []) or [])
-        except Exception:
-            pass
+    if tab == 'following' and current_user:
+        following_ids = set(current_user.get('following', []) or [])
 
     # Fetch user interest preferences
     user_interests: dict = {}
-    if tab == 'for_you':
-        try:
-            prefs_doc = await db.get_document('feed_preferences', current_user_id)
-            if prefs_doc:
-                user_interests = prefs_doc.get('category_scores', {})
-        except Exception:
-            pass
+    if tab == 'for_you' and prefs_doc:
+        user_interests = prefs_doc.get('category_scores', {})
 
     now = datetime.utcnow()
     now_ts = now.timestamp()
@@ -3905,6 +4039,34 @@ async def get_posts_feed(
             except Exception: return datetime.min
         return datetime.min
 
+    # Batch retrieve comments for posts with low comments count (<= 10) to eliminate N+1 queries
+    post_ids_for_batch_comments = [
+        p.get('id') for p in paged_posts
+        if p.get('id') and 0 < (p.get('comments_count', 0) or 0) <= 10
+    ]
+
+    comments_by_post = {}
+    if post_ids_for_batch_comments:
+        try:
+            comment_queries = []
+            for idx in range(0, len(post_ids_for_batch_comments), 30):
+                chunk = post_ids_for_batch_comments[idx : idx + 30]
+                comment_queries.append(
+                    db.query_documents(
+                        'post_comments',
+                        filters=[('post_id', 'in', chunk)]
+                    )
+                )
+            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
+            for res in query_results:
+                if isinstance(res, list):
+                    for comment in res:
+                        pid = comment.get('post_id')
+                        if pid:
+                            comments_by_post.setdefault(pid, []).append(comment)
+        except Exception as comment_err:
+            logger.warning(f"Failed to batch load comments in Discovery Feed: {comment_err}")
+
     semaphore = asyncio.Semaphore(15)
     async def fetch_post_details(post):
         async with semaphore:
@@ -3921,14 +4083,21 @@ async def get_posts_feed(
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
             try:
-                top_comments = await db.query_documents(
-                    'post_comments',
-                    filters=[('post_id', '==', post.get('id'))],
-                    limit=200,
-                )
-                top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-                top_comments.sort(key=_comment_sort_key, reverse=True)
-                post['top_comments'] = top_comments[:5]
+                comments_cnt = post.get('comments_count', 0) or 0
+                if comments_cnt > 0:
+                    if comments_cnt <= 10:
+                        top_comments = comments_by_post.get(post.get('id'), [])
+                    else:
+                        top_comments = await db.query_documents(
+                            'post_comments',
+                            filters=[('post_id', '==', post.get('id'))],
+                            limit=10,
+                        )
+                    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+                    top_comments.sort(key=_comment_sort_key, reverse=True)
+                    post['top_comments'] = top_comments[:5]
+                else:
+                    post['top_comments'] = []
             except Exception:
                 post['top_comments'] = []
             return post
@@ -4079,11 +4248,14 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     post_author_ids = list({post.get('user_id') for post in visible_posts if post.get('user_id')})
     authors_by_id = {}
-    for author_id in post_author_ids:
+    if post_author_ids:
         try:
-            authors_by_id[author_id] = await db.get_document('users', author_id)
-        except Exception:
-            authors_by_id[author_id] = None
+            author_docs = await db.get_documents_batch('users', post_author_ids)
+            for u in author_docs:
+                if u:
+                    authors_by_id[u['id']] = u
+        except Exception as e:
+            logger.error(f"Error batch fetching post authors: {e}")
 
     def _comment_created_at_sort_key(item: dict):
         value = item.get('created_at')
@@ -4098,8 +4270,33 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
 
+    # Fetch comments for posts concurrently if they have comments, avoiding redundant queries
+    comments_tasks = []
+    for post in paged_posts:
+        if post.get('comments_count', 0) > 0:
+            comments_tasks.append((
+                post.get('id'),
+                db.query_documents(
+                    'post_comments',
+                    filters=[('post_id', '==', post.get('id'))],
+                    limit=10,
+                )
+            ))
+
+    if comments_tasks:
+        post_ids, tasks = zip(*comments_tasks)
+        comments_results = await asyncio.gather(*tasks, return_exceptions=True)
+        comments_by_post_id = {
+            pid: (res if not isinstance(res, Exception) else [])
+            for pid, res in zip(post_ids, comments_results)
+        }
+    else:
+        comments_by_post_id = {}
+
     normalized = []
     for post in paged_posts:
+        pid = post.get('id')
+        top_comments = comments_by_post_id.get(pid, []) if pid else []
         latest_author = authors_by_id.get(post.get('user_id'))
         if latest_author:
             post['user_photo'] = latest_author.get('photo')
@@ -4111,11 +4308,6 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
         post['views_count'] = post.get('views_count', 0)
         post['liked_by_me'] = user_id in liked_by
 
-        top_comments = await db.query_documents(
-            'post_comments',
-            filters=[('post_id', '==', post.get('id'))],
-            limit=200,
-        )
         top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
         top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
         post['top_comments'] = top_comments[:5]
@@ -4159,26 +4351,30 @@ async def get_post_by_id(post_id: str, token_data: dict = Depends(verify_token))
     post['comments_count'] = post.get('comments_count', 0)
     post['liked_by_me'] = user_id in liked_by
 
-    top_comments = await db.query_documents(
-        'post_comments',
-        filters=[('post_id', '==', post.get('id'))],
-        limit=200,
-    )
-    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
+    comments_cnt = post.get('comments_count', 0) or 0
+    if comments_cnt > 0:
+        top_comments = await db.query_documents(
+            'post_comments',
+            filters=[('post_id', '==', post.get('id'))],
+            limit=10,
+        )
+        top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
 
-    def _comment_created_at_sort_key(item: dict):
-        value = item.get('created_at')
-        if isinstance(value, datetime):
-            return value
-        if isinstance(value, str):
-            try:
-                return datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except Exception:
-                return datetime.min
-        return datetime.min
+        def _comment_created_at_sort_key(item: dict):
+            value = item.get('created_at')
+            if isinstance(value, datetime):
+                return value
+            if isinstance(value, str):
+                try:
+                    return datetime.fromisoformat(value.replace('Z', '+00:00'))
+                except Exception:
+                    return datetime.min
+            return datetime.min
 
-    top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
-    post['top_comments'] = top_comments[:5]
+        top_comments.sort(key=_comment_created_at_sort_key, reverse=True)
+        post['top_comments'] = top_comments[:5]
+    else:
+        post['top_comments'] = []
     return post
 
 
@@ -4593,12 +4789,6 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
         )
     )
 
-    await sio.emit('new_comment', {
-        'comment': comment_doc,
-        'comments_count': comments_count,
-        'post_id': post_id,
-    }, room=f'post_{post_id}')
-
     return {
         'message': 'Comment added',
         'comment': comment_doc,
@@ -4715,12 +4905,6 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
     updated_post['top_comments'] = top_comments[:5]
-
-    await sio.emit('comment_deleted', {
-        'comment_id': comment_id,
-        'comments_count': comments_count,
-        'post_id': post_id,
-    }, room=f'post_{post_id}')
 
     return {
         'message': 'Comment deleted',
@@ -4938,7 +5122,7 @@ async def action_personality_verification(request_id: str, action: str = Body(..
                 FirebaseNotificationService.create_notification,
                 target_user_id,
                 "Personality Verified!",
-                f"Congratulations! Your {level} verification has been approved. You now have access to the {community_to_join if community_to_join else 'verified groups'}.",
+                f"Congratulations! Your {level} verification has been approved. You now have access to the {', '.join(communities_to_join) if communities_to_join else 'verified groups'}.",
                 "verification_approved"
             )
         except Exception as e:
@@ -5159,62 +5343,62 @@ async def reverse_geocode(request: dict):
             "language": "en"
         }
         
-        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=10)) as session:
-            async with session.get(url, params=params) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    if data.get("status") == "OK" and data.get("results"):
-                        result = data["results"][0]
-                        addr_components = result.get("address_components", [])
+        session = get_shared_client_session()
+        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                if data.get("status") == "OK" and data.get("results"):
+                    result = data["results"][0]
+                    addr_components = result.get("address_components", [])
+
+                    city = ""
+                    state = ""
+                    country = ""
+                    area = ""
+
+                    for comp in addr_components:
+                        types = comp.get("types", [])
+                        if "country" in types:
+                            country = comp.get("long_name", "").replace("India", "Bharat")
+                        if "administrative_area_level_1" in types:
+                            state = comp.get("long_name", "")
+                        # Try locality first, then administrative_area_level_2 or administrative_area_level_3 as city
+                        if "locality" in types:
+                            city = comp.get("long_name", "")
+                        elif "administrative_area_level_2" in types and not city:
+                            city = comp.get("long_name", "")
+                        elif "administrative_area_level_3" in types and not city:
+                            city = comp.get("long_name", "")
                         
-                        city = ""
-                        state = ""
-                        country = ""
-                        area = ""
-                        
+                        # Sublocality / neighborhood for area
+                        if "sublocality" in types or "sublocality_level_1" in types or "neighborhood" in types:
+                            area = comp.get("long_name", "")
+
+                    # Final fallback checks for city and area if still empty
+                    if not city:
                         for comp in addr_components:
                             types = comp.get("types", [])
-                            if "country" in types:
-                                country = comp.get("long_name", "").replace("India", "Bharat")
-                            if "administrative_area_level_1" in types:
-                                state = comp.get("long_name", "")
-                            # Try locality first, then administrative_area_level_2 or administrative_area_level_3 as city
-                            if "locality" in types:
+                            if "administrative_area_level_3" in types:
                                 city = comp.get("long_name", "")
-                            elif "administrative_area_level_2" in types and not city:
-                                city = comp.get("long_name", "")
-                            elif "administrative_area_level_3" in types and not city:
-                                city = comp.get("long_name", "")
-                            
-                            # Sublocality / neighborhood for area
-                            if "sublocality" in types or "sublocality_level_1" in types or "neighborhood" in types:
+                                break
+                    if not area:
+                        for comp in addr_components:
+                            types = comp.get("types", [])
+                            if "sublocality_level_2" in types:
                                 area = comp.get("long_name", "")
-                                
-                        # Final fallback checks for city and area if still empty
-                        if not city:
-                            for comp in addr_components:
-                                types = comp.get("types", [])
-                                if "administrative_area_level_3" in types:
-                                    city = comp.get("long_name", "")
-                                    break
-                        if not area:
-                            for comp in addr_components:
-                                types = comp.get("types", [])
-                                if "sublocality_level_2" in types:
-                                    area = comp.get("long_name", "")
-                                    break
+                                break
 
-                        return normalize_location({
-                            "country": country or "Bharat",
-                            "state": state or "Unknown State",
-                            "city": city or "Unknown City",
-                            "area": area or "Unknown Area",
-                            "display_name": result.get("formatted_address", "")
-                        })
-                    else:
-                        logger.warning(f"Google Geocode API returned status: {data.get('status')}")
+                    return normalize_location({
+                        "country": country or "Bharat",
+                        "state": state or "Unknown State",
+                        "city": city or "Unknown City",
+                        "area": area or "Unknown Area",
+                        "display_name": result.get("formatted_address", "")
+                    })
                 else:
-                    logger.warning(f"Google Geocode API HTTP status: {resp.status}")
+                    logger.warning(f"Google Geocode API returned status: {data.get('status')}")
+            else:
+                logger.warning(f"Google Geocode API HTTP status: {resp.status}")
     except Exception as e:
         logger.error(f"Google Reverse Geocoding error: {e}")
     
@@ -5284,7 +5468,7 @@ POPULAR_INDIAN_LOCATIONS = [
     "Tiruppur, Tamil Nadu", "Puducherry, Puducherry", "Sikar, Rajasthan", "Thoothukudi, Tamil Nadu",
     "Rewa, Madhya Pradesh", "Mirzapur, Uttar Pradesh", "Raichur, Karnataka", "Pali, Rajasthan",
     "Ramagundam, Telangana", "Haridwar, Uttarakhand", "Vijayanagaram, Andhra Pradesh", "Katihar, Bihar",
-    "Nagercoil, Tamil Nadu", "Sri Ganganagar, Rajasthan", "Thanjavur, Tamil Nadu", "Bulandshahr, Uttar Pradesh",
+    "Sri Ganganagar, Rajasthan", "Thanjavur, Tamil Nadu", "Bulandshahr, Uttar Pradesh",
     "Uluberia, West Bengal", "Katni, Madhya Pradesh", "Sambhal, Uttar Pradesh", "Singrauli, Madhya Pradesh",
     "Nadiad, Gujarat", "Secunderabad, Telangana", "Yamunanagar, Haryana", "Bidhannagar, West Bengal",
     "Pallavaram, Tamil Nadu", "Bidar, Karnataka", "Munger, Bihar", "Panchkula, Haryana",
@@ -5306,145 +5490,134 @@ POPULAR_INDIAN_LOCATIONS = [
 ]
 
 
+async def _geocode_address(full_address: str) -> tuple[float | None, float | None]:
+    """Geocode a physical business address to (latitude, longitude) coordinates."""
+    if not full_address or not str(full_address).strip():
+        return None, None
+
+    clean_address = str(full_address).strip()
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
+
+    if api_key:
+        try:
+            geo_url = "https://maps.googleapis.com/maps/api/geocode/json"
+            geo_params = {
+                "address": clean_address,
+                "key": api_key,
+                "language": "en",
+            }
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+                async with session.get(geo_url, params=geo_params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get("status") == "OK" and data.get("results"):
+                            loc = data["results"][0]["geometry"]["location"]
+                            lat, lng = float(loc["lat"]), float(loc["lng"])
+                            if abs(lat) > 0.001 and abs(lng) > 0.001:
+                                return lat, lng
+        except Exception as e:
+            logger.warning(f"Google Maps geocoding failed for address '{clean_address}': {e}")
+
+    # Fallback to OpenStreetMap Nominatim API
+    try:
+        nom_url = "https://nominatim.openstreetmap.org/search"
+        headers = {"User-Agent": "BrahmandApp/1.0 (contact@brahmand.app)"}
+        params = {"q": clean_address, "format": "json", "limit": 1}
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+            async with session.get(nom_url, params=params, headers=headers) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if isinstance(data, list) and len(data) > 0:
+                        lat, lng = float(data[0]["lat"]), float(data[0]["lon"])
+                        if abs(lat) > 0.001 and abs(lng) > 0.001:
+                            return lat, lng
+    except Exception as e:
+        logger.warning(f"Nominatim geocoding failed for address '{clean_address}': {e}")
+
+    return None, None
 @api_router.post("/geocode/forward")
 async def forward_geocode(request: dict):
-    """Forward geocode place text to coordinates using Google Maps & Places Autocomplete API"""
+    """Forward geocode place text to coordinates using Google Maps API"""
     query = str(request.get("query") or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="query is required")
 
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
-    results = []
-    seen = set()
+    if not api_key:
+         raise HTTPException(status_code=500, detail="Google Maps API key not configured")
 
-    # 1. Local matching from popular Indian locations for instant 1-character response
-    q_lower = query.lower()
-    for loc in POPULAR_INDIAN_LOCATIONS:
-        if q_lower in loc.lower():
-            city_part = loc.split(",")[0].strip()
-            state_part = loc.split(",")[1].strip() if "," in loc else ""
-            key = loc.lower()
-            if key not in seen:
-                seen.add(key)
-                results.append(normalize_location({
-                    "latitude": 0.0,
-                    "longitude": 0.0,
-                    "display_name": loc,
-                    "country": "Bharat",
-                    "state": state_part or "Unknown",
-                    "city": city_part,
-                    "area": city_part,
-                }))
-            if len(results) >= 6:
-                break
+    try:
+        url = "https://maps.googleapis.com/maps/api/geocode/json"
+        params = {
+            "address": query,
+            "key": api_key,
+            "language": "en",
+            "components": "country:in"
+        }
 
-    if api_key:
-        try:
-            # 2. Places Autocomplete API for real-time typing of cities, towns, villages, districts, states
-            auto_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-            auto_params = {
-                "input": query,
-                "key": api_key,
-                "language": "en",
-                "components": "country:in",
-            }
-            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
-                async with session.get(auto_url, params=auto_params) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        if data.get("status") == "OK" and data.get("predictions"):
-                            for pred in data["predictions"]:
-                                desc = pred.get("description", "")
-                                main_text = pred.get("structured_formatting", {}).get("main_text", "")
-                                sec_text = pred.get("structured_formatting", {}).get("secondary_text", "")
-                                k = desc.lower()
-                                if k not in seen:
-                                    seen.add(k)
-                                    parts = [p.strip() for p in sec_text.split(",") if p.strip()]
-                                    area = main_text or (parts[0] if len(parts) > 0 else desc)
-                                    city = parts[0] if len(parts) > 0 else main_text
-                                    state = parts[1] if len(parts) > 1 else "Unknown"
-                                    results.append(normalize_location({
-                                        "latitude": 0.0,
-                                        "longitude": 0.0,
-                                        "display_name": desc,
-                                        "country": "Bharat",
-                                        "state": state,
-                                        "city": city,
-                                        "area": area,
-                                    }))
+        session = get_shared_client_session()
+        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            if resp.status == 200:
+                data = await resp.json()
+                if data.get("status") == "OK" and data.get("results"):
+                    results = []
+                    for res in data["results"]:
+                        lat = res["geometry"]["location"]["lat"]
+                        lon = res["geometry"]["location"]["lng"]
+                        addr_components = res.get("address_components", [])
 
-            # 3. Geocode API fallback if needed
-            if len(results) < 5:
-                geo_url = "https://maps.googleapis.com/maps/api/geocode/json"
-                geo_params = {
-                    "address": query,
-                    "key": api_key,
-                    "language": "en",
-                    "components": "country:in"
-                }
-                async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
-                    async with session.get(geo_url, params=geo_params) as resp:
-                        if resp.status == 200:
-                            data = await resp.json()
-                            if data.get("status") == "OK" and data.get("results"):
-                                for res in data["results"]:
-                                    desc = res.get("formatted_address", "")
-                                    if desc.lower() not in seen:
-                                        seen.add(desc.lower())
-                                        lat = res["geometry"]["location"]["lat"]
-                                        lon = res["geometry"]["location"]["lng"]
-                                        addr_components = res.get("address_components", [])
-                                        city = ""
-                                        state = ""
-                                        country = ""
-                                        area = ""
-                                        for comp in addr_components:
-                                            types = comp.get("types", [])
-                                            if "country" in types:
-                                                country = comp.get("long_name", "").replace("India", "Bharat")
-                                            if "administrative_area_level_1" in types:
-                                                state = comp.get("long_name", "")
-                                            if "locality" in types or "administrative_area_level_2" in types:
-                                                city = comp.get("long_name", "")
-                                            if "sublocality" in types or "neighborhood" in types:
-                                                area = comp.get("long_name", "")
-                                        results.append(normalize_location({
-                                            "latitude": float(lat),
-                                            "longitude": float(lon),
-                                            "display_name": desc,
-                                            "country": country or "Bharat",
-                                            "state": state or "Unknown",
-                                            "city": city or "Unknown",
-                                            "area": area or "Unknown",
-                                        }))
-        except Exception as e:
-            logger.error(f"Google Forward Geocoding/Autocomplete error: {e}")
+                        city = ""
+                        state = ""
+                        country = ""
+                        area = ""
 
-    if not results:
-        # Final fallback: create custom location item for typed query
-        results.append(normalize_location({
-            "latitude": 0.0,
-            "longitude": 0.0,
-            "display_name": query,
-            "country": "Bharat",
-            "state": "Unknown",
-            "city": query,
-            "area": query,
-        }))
+                        for comp in addr_components:
+                            types = comp.get("types", [])
+                            if "country" in types:
+                                country = comp.get("long_name", "").replace("India", "Bharat")
+                            if "administrative_area_level_1" in types:
+                                state = comp.get("long_name", "")
+                            if "locality" in types or "administrative_area_level_2" in types:
+                                city = comp.get("long_name", "")
+                            if "sublocality" in types or "neighborhood" in types:
+                                area = comp.get("long_name", "")
 
-    return results
+                        results.append(normalize_location({
+                            "latitude": float(lat),
+                            "longitude": float(lon),
+                            "display_name": res.get("formatted_address", ""),
+                            "country": country or "Bharat",
+                            "state": state or "Unknown",
+                            "city": city or "Unknown",
+                            "area": area or "Unknown",
+                        }))
+
+                    return results
+                else:
+                    raise HTTPException(status_code=404, detail=f"Location not found: {data.get('status')}")
+            else:
+                raise HTTPException(status_code=resp.status, detail="Google Geocode API error")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Google Forward Geocoding error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to geocode this location")
 
 
 @api_router.post("/places/hospitals/search")
 async def search_hospitals(request: dict):
-    """Search hospitals first by hospital name, then by area/city location."""
+    """Search hospitals via Google Places API from backend to avoid browser CORS issues."""
     query = str(request.get("query") or "").strip()
-    limit = int(request.get("limit") or 15)
-    limit = max(1, min(limit, 30))
+    limit = int(request.get("limit") or 10)
+    limit = max(1, min(limit, 20))
 
-    if not query:
-        return {"results": []}
+    if len(query) < 2:
+        return {
+            "results": [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in HOSPITAL_SEARCH_FALLBACK[:limit]
+            ]
+        }
 
     api_key = (
         os.environ.get("GOOGLE_PLACES_API_KEY")
@@ -5452,142 +5625,123 @@ async def search_hospitals(request: dict):
         or os.environ.get("GOOGLE_CLOUD_VISION_API_KEY")
     )
 
-    hospital_results = []
-    area_results = []
-    seen = set()
-    q_low = query.lower()
+    if not api_key:
+        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+        return {
+            "results": [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in filtered[:limit]
+            ]
+        }
 
-    # 1. Local hospital fallback list matching query (FIRST)
-    for h_name in HOSPITAL_SEARCH_FALLBACK:
-        if q_low in h_name.lower():
-            lowered = h_name.lower()
-            if lowered not in seen:
-                seen.add(lowered)
-                hospital_results.append({
-                    "name": h_name,
-                    "address": h_name,
-                    "area": "",
-                    "city": "",
-                    "is_hospital": True,
+    try:
+        autocomplete_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        autocomplete_params = {
+            "input": query,
+            "key": api_key,
+            "language": "en",
+            "components": "country:in",
+            "types": "hospital",
+        }
+
+        autocomplete_response = await asyncio.to_thread(
+            requests.get,
+            autocomplete_url,
+            params=autocomplete_params,
+            timeout=10,
+        )
+
+        normalized = []
+
+        if autocomplete_response.status_code == 200:
+            autocomplete_payload = autocomplete_response.json() if autocomplete_response.content else {}
+            predictions = autocomplete_payload.get("predictions", []) if isinstance(autocomplete_payload, dict) else []
+
+            seen_names = set()
+            for prediction in predictions:
+                name = str(prediction.get("structured_formatting", {}).get("main_text") or prediction.get("description") or "").strip()
+                if not name:
+                    continue
+
+                lowered = name.lower()
+                if lowered in seen_names:
+                    continue
+                seen_names.add(lowered)
+
+                address = str(prediction.get("description") or name).strip()
+                secondary = str(prediction.get("structured_formatting", {}).get("secondary_text") or "").strip()
+
+                area = ""
+                city = ""
+                if secondary:
+                    parts = [p.strip() for p in secondary.split(",") if p.strip()]
+                    if len(parts) > 0:
+                        area = parts[0]
+                    if len(parts) > 1:
+                        city = parts[1]
+
+                normalized.append({
+                    "name": name,
+                    "address": address,
+                    "area": area,
+                    "city": city,
                 })
 
-    # 2. Google Places Autocomplete: Query hospitals first using type="hospital"
-    if api_key:
-        try:
-            hosp_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-            hosp_params = {
-                "input": query,
+                if len(normalized) >= limit:
+                    break
+
+        if not normalized:
+            textsearch_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+            textsearch_params = {
+                "query": f"{query} hospital",
                 "key": api_key,
                 "language": "en",
-                "components": "country:in",
-                "types": "hospital",
+                "region": "in",
             }
-            resp_hosp = await asyncio.to_thread(requests.get, hosp_url, params=hosp_params, timeout=6)
-            if resp_hosp.status_code == 200:
-                payload = resp_hosp.json() if resp_hosp.content else {}
-                predictions = payload.get("predictions", []) if isinstance(payload, dict) else []
-                for pred in predictions:
-                    name = str(pred.get("structured_formatting", {}).get("main_text") or pred.get("description") or "").strip()
+
+            textsearch_response = await asyncio.to_thread(
+                requests.get,
+                textsearch_url,
+                params=textsearch_params,
+                timeout=10,
+            )
+
+            if textsearch_response.status_code == 200:
+                textsearch_payload = textsearch_response.json() if textsearch_response.content else {}
+                rows = textsearch_payload.get("results", []) if isinstance(textsearch_payload, dict) else []
+                for row in rows:
+                    name = str(row.get("name") or "").strip()
                     if not name:
                         continue
-                    lowered = name.lower()
-                    if lowered in seen:
-                        continue
-                    seen.add(lowered)
-
-                    address = str(pred.get("description") or name).strip()
-                    secondary = str(pred.get("structured_formatting", {}).get("secondary_text") or "").strip()
-                    area, city = "", ""
-                    if secondary:
-                        parts = [p.strip() for p in secondary.split(",") if p.strip()]
-                        if len(parts) > 0: area = parts[0]
-                        if len(parts) > 1: city = parts[1]
-
-                    hospital_results.append({
+                    address = str(row.get("formatted_address") or name).strip()
+                    normalized.append({
                         "name": name,
                         "address": address,
-                        "area": area,
-                        "city": city,
-                        "is_hospital": True,
+                        "area": "",
+                        "city": "",
                     })
+                    if len(normalized) >= limit:
+                        break
 
-            # 3. Google Places Autocomplete: Query general places for area/city results
-            gen_url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-            gen_params = {
-                "input": query,
-                "key": api_key,
-                "language": "en",
-                "components": "country:in",
-            }
-            resp_gen = await asyncio.to_thread(requests.get, gen_url, params=gen_params, timeout=6)
-            if resp_gen.status_code == 200:
-                payload_gen = resp_gen.json() if resp_gen.content else {}
-                predictions_gen = payload_gen.get("predictions", []) if isinstance(payload_gen, dict) else []
-                for pred in predictions_gen:
-                    name = str(pred.get("structured_formatting", {}).get("main_text") or pred.get("description") or "").strip()
-                    if not name:
-                        continue
-                    lowered = name.lower()
-                    if lowered in seen:
-                        continue
-                    seen.add(lowered)
+        if not normalized:
+            filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+            normalized = [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in filtered[:limit]
+            ]
 
-                    address = str(pred.get("description") or name).strip()
-                    secondary = str(pred.get("structured_formatting", {}).get("secondary_text") or "").strip()
-                    area, city = "", ""
-                    if secondary:
-                        parts = [p.strip() for p in secondary.split(",") if p.strip()]
-                        if len(parts) > 0: area = parts[0]
-                        if len(parts) > 1: city = parts[1]
-
-                    # Categorize hospital vs area
-                    if any(w in lowered for w in ["hospital", "medical", "clinic", "healthcare", "nursing", "dispensary"]):
-                        hospital_results.append({
-                            "name": name,
-                            "address": address,
-                            "area": area,
-                            "city": city,
-                            "is_hospital": True,
-                        })
-                    else:
-                        area_results.append({
-                            "name": name,
-                            "address": address,
-                            "area": area,
-                            "city": city,
-                            "is_hospital": False,
-                        })
-        except Exception as e:
-            logger.warning(f"Google Places hospital/area search error: {e}")
-
-    # 4. Add popular Indian locations into area_results (SECOND)
-    for loc in POPULAR_INDIAN_LOCATIONS:
-        if q_low in loc.lower():
-            city_part = loc.split(",")[0].strip()
-            lowered = loc.lower()
-            if lowered not in seen:
-                seen.add(lowered)
-                area_results.append({
-                    "name": loc,
-                    "address": loc,
-                    "area": city_part,
-                    "city": city_part,
-                    "is_hospital": False,
-                })
-
-    # HOSPITALS FIRST, THEN AREA/CITY
-    combined = hospital_results + area_results
-
-    if not combined:
-        combined.append({
-            "name": query,
-            "address": query,
-            "area": query,
-            "city": query,
-            "is_hospital": False,
-        })
-
-    return {"results": combined[:limit]}
+        return {"results": normalized[:limit]}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Hospital search error: {e}")
+        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+        return {
+            "results": [
+                {"name": name, "address": name, "area": "", "city": ""}
+                for name in filtered[:limit]
+            ]
+        }
 
 
 # =================== COMMUNITIES ===================
@@ -6702,19 +6856,6 @@ async def toggle_community_message_like(
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
-    # Enforce verification check
-    community = await db.get_document('communities', community_id)
-    if community:
-        comm_type = community.get('type')
-        if comm_type in ['state', 'country']:
-            user = await db.get_document('users', user_id)
-            is_verified = user.get('is_verified', False) if user else False
-            verification_level = user.get('verification_level', 'state') if user else 'state'
-            if not is_verified:
-                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
-            if comm_type == 'country' and verification_level != 'national':
-                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
-        
     liked_by = msg.get('liked_by', []) or []
     liked = user_id in liked_by
     
@@ -6793,19 +6934,6 @@ async def add_community_message_comment(
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
         
-    # Enforce verification check
-    community = await db.get_document('communities', community_id)
-    if community:
-        comm_type = community.get('type')
-        if comm_type in ['state', 'country']:
-            user = await db.get_document('users', user_id)
-            is_verified = user.get('is_verified', False) if user else False
-            verification_level = user.get('verification_level', 'state') if user else 'state'
-            if not is_verified:
-                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
-            if comm_type == 'country' and verification_level != 'national':
-                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
-        
     text = str(data.get('text') or '').strip()
     if not text:
         raise HTTPException(status_code=400, detail='Comment text is required')
@@ -6839,21 +6967,6 @@ async def get_community_message_comments(
     token_data: dict = Depends(verify_token)
 ):
     db = await get_db()
-    
-    # Enforce verification check
-    community = await db.get_document('communities', community_id)
-    if community:
-        comm_type = community.get('type')
-        if comm_type in ['state', 'country']:
-            user_id = token_data['user_id']
-            user = await db.get_document('users', user_id)
-            is_verified = user.get('is_verified', False) if user else False
-            verification_level = user.get('verification_level', 'state') if user else 'state'
-            if not is_verified:
-                raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
-            if comm_type == 'country' and verification_level != 'national':
-                raise HTTPException(status_code=403, detail="Only national-level verified personalities can access country communities")
-                
     comments = await db.query_documents(
         'post_comments',
         filters=[('post_id', '==', message_id)]
@@ -7443,33 +7556,20 @@ async def clear_dm_messages(chat_id: str, token_data: dict = Depends(verify_toke
     if user_id not in chat.get('members', []):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Delete all messages in messages subcollection
-    from google.cloud import firestore
+    # Delete all messages in messages subcollection (optimized using batched writes in thread executor)
     try:
-        message_docs = db.client.collection('chats').document(chat_id).collection('messages').stream()
-        deleted = 0
-        for msg in message_docs:
-            try:
-                msg.reference.delete()
-                deleted += 1
-            except Exception:
-                pass
+        deleted = await db.delete_subcollection('chats', chat_id, 'messages')
     except Exception as e:
         logger.error("Error clearing DM messages: %s", e)
         raise HTTPException(status_code=500, detail="Failed to clear messages")
 
-    # Delete chat document entirely so it is removed from conversations list
-    try:
-        await db.delete_document('chats', chat_id)
-    except Exception as e:
-        logger.error("Error deleting chat document: %s", e)
-        # Fallback to resetting preview if deletion fails
-        await db.update_document('chats', chat_id, {
-            'last_message': '',
-            'updated_at': datetime.utcnow()
-        })
+    # Reset chat preview
+    await db.update_document('chats', chat_id, {
+        'last_message': '',
+        'updated_at': datetime.utcnow()
+    })
 
-    return {"message": f"Cleared {deleted} messages and deleted chat document"}
+    return {"message": f"Cleared {deleted} messages"}
 
 
 @api_router.post("/dm/{chat_id}/read")
@@ -7574,6 +7674,19 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     if user_circle_ids:
         try:
             fetched_circles = await db.get_documents_batch('circles', user_circle_ids)
+
+            # Pre-collect all member IDs across all fetched circles to fetch them in a single batch
+            all_member_ids = set()
+            for circle in fetched_circles:
+                if circle:
+                    for member_id in circle.get('members', []):
+                        if member_id != user_id:
+                            all_member_ids.add(member_id)
+
+            # Fetch all user details in a single batch query
+            users_data = await db.get_documents_batch('users', list(all_member_ids))
+            users_by_id = {u['id']: u for u in users_data if u and 'id' in u}
+
             for circle in fetched_circles:
                 if circle:
                     cid = circle['id']
@@ -7588,7 +7701,7 @@ async def get_circles(token_data: dict = Depends(verify_token)):
                     for member_id in circle.get('members', []):
                         if member_id == user_id:
                             continue
-                        member_doc = await db.get_document('users', member_id)
+                        member_doc = users_by_id.get(member_id)
                         if member_doc and member_doc.get('name'):
                             member_names.append(member_doc['name'])
 
@@ -7716,15 +7829,17 @@ async def get_circle(circle_id: str, token_data: dict = Depends(verify_token)):
     
     # Get member details
     members_info = []
-    for member_id in circle.get('members', []):
-        member = await db.get_document('users', member_id)
-        if member:
-            members_info.append({
-                "user_id": member_id,
-                "name": member['name'],
-                "sl_id": member.get('sl_id'),
-                "photo": member.get('photo')
-            })
+    member_ids = circle.get('members', [])
+    if member_ids:
+        members = await db.get_documents_batch('users', member_ids)
+        for member in members:
+            if member:
+                members_info.append({
+                    "user_id": member['id'],
+                    "name": member['name'],
+                    "sl_id": member.get('sl_id'),
+                    "photo": member.get('photo')
+                })
     
     return {
         "id": circle['id'],
@@ -8226,24 +8341,17 @@ async def get_circle_messages(circle_id: str, limit: int = 50, token_data: dict 
 
 @api_router.get("/temples")
 async def get_temples(token_data: dict = Depends(verify_token)):
-    db = await get_db()
-    return await db.query_documents('temples', limit=100)
+    from services.temple_service import TempleService
+    user_id = token_data.get("user_id")
+    return await TempleService.get_temples(user_id)
 
 
 @api_router.get("/temples/nearby")
 async def get_nearby_temples(lat: float = None, lng: float = None, token_data: dict = Depends(verify_token)):
     """Get temples, optionally filtered by location"""
-    db = await get_db()
-    temples = await db.query_documents('temples', limit=100)
-    
-    # Add is_following status for each temple
-    user_id = token_data["user_id"]
-    for temple in temples:
-        followers = temple.get('followers', [])
-        temple['is_following'] = user_id in followers
-        temple['follower_count'] = len(followers)
-    
-    return temples
+    from services.temple_service import TempleService
+    user_id = token_data.get("user_id")
+    return await TempleService.get_temples(user_id)
 
 
 @api_router.get("/temples/{temple_id}")
@@ -8384,14 +8492,38 @@ def try_face_match(id_base64: str, selfie_base64: str) -> dict:
 async def get_kyc_status(token_data: dict = Depends(verify_token)):
     """Get user's KYC status"""
     db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if not user:
+        return {"kyc_status": None, "is_verified": False}
+
     kyc_status = user.get('kyc_status')
     is_verified = bool(user.get('is_verified'))
 
-    # do not fallback to 'verified' based on community is_verified flag
-    # if not kyc_status and is_verified:
-    #     kyc_status = 'verified'
-    
+    # Check vendor record to ensure bi-directional KYC sync (prevents dual KYC)
+    vendor_id = user.get('vendor_id')
+    if not vendor_id:
+        v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+        if v_list:
+            vendor_id = v_list[0]['id']
+
+    if vendor_id:
+        vendor = await db.get_document('vendors', vendor_id)
+        if vendor:
+            v_status = vendor.get('kyc_status')
+            if v_status == 'verified' and kyc_status != 'verified':
+                kyc_status = 'verified'
+                is_verified = True
+                await db.update_document('users', user_id, {'kyc_status': 'verified', 'is_verified': True})
+            elif kyc_status == 'verified' and v_status != 'verified':
+                await db.update_document('vendors', vendor_id, {'kyc_status': 'verified'})
+
+    kyc_phone = user.get('kyc_verified_phone') or user.get('phone') or user.get('phone_number')
+    if not kyc_phone and vendor_id:
+        vendor = await db.get_document('vendors', vendor_id)
+        if vendor:
+            kyc_phone = vendor.get('phone_number') or vendor.get('contact_number')
+
     return {
         "kyc_status": kyc_status,  # pending/verified/rejected
         "kyc_role": user.get('kyc_role'),  # temple/vendor/organizer
@@ -8399,6 +8531,8 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
         "verified_at": user.get('kyc_verified_at'),
         "rejection_reason": user.get('kyc_rejection_reason'),
         "is_verified": is_verified,
+        "kyc_phone_verified_at": user.get('kyc_phone_verified_at'),
+        "kyc_verified_phone": kyc_phone,
     }
 
 
@@ -8584,37 +8718,6 @@ async def _upload_kyc_base64_to_storage(user_id: str, base64_str: str, folder: s
         return None
 
 
-@api_router.post("/kyc/validate-image")
-async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
-    """
-    Instantly validate the uploaded KYC image with Google Gemini Vision before final submission.
-    """
-    from services.image_service import validate_id_proof_with_llm
-    
-    id_photo = data.get('id_photo')
-    if not id_photo:
-        raise HTTPException(status_code=400, detail="Image data is required")
-        
-    db = await get_db()
-    user_id = token_data["user_id"]
-    user_doc = await db.get_document('users', user_id)
-    if not user_doc:
-        raise HTTPException(status_code=404, detail="User not found")
-        
-    id_type = data.get('id_type')
-    id_number = data.get('id_number')
-    
-    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
-    
-    validation = await validate_id_proof_with_llm(
-        base64_string=id_photo,
-        expected_id_type=id_type,
-        expected_id_number=id_number if id_number != "123456789012" else None,
-        expected_name=expected_name
-    )
-    return validation
-
-
 @api_router.post("/kyc/submit")
 async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     """
@@ -8628,13 +8731,10 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
     - selfie_photo: Base64 encoded selfie (for PAN verification)
     - id_photo: Base64 encoded ID document
     """
-    from services.image_service import compress_base64_image, is_valid_image, validate_id_proof_with_llm
+    from services.image_service import compress_base64_image, is_valid_image
     
     db = await get_db()
     user_id = token_data["user_id"]
-    user_doc = await db.get_document('users', user_id)
-    if not user_doc:
-        raise HTTPException(status_code=404, detail="User not found")
     
     kyc_role = data.get('kyc_role')
     if kyc_role not in ['temple', 'vendor', 'organizer']:
@@ -8653,28 +8753,9 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=400, detail="Aadhaar must be 12 digits")
     if id_type == 'pan' and len(id_number) != 10:
         raise HTTPException(status_code=400, detail="PAN must be 10 characters")
- 
-    # Generate request number
-    kyc_request_no = user_doc.get('kyc_request_no')
-    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
-    vendor_id = user_doc.get('vendor_id')
-    if not vendor_id and (kyc_role == 'vendor' or is_vendor_user):
-        v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
-        if v_list:
-            vendor_id = v_list[0]['id']
-            
-    if vendor_id:
-        vendor_doc = await db.get_document('vendors', vendor_id)
-        if vendor_doc and vendor_doc.get('kyc_request_no'):
-            kyc_request_no = vendor_doc.get('kyc_request_no')
-            
-    if not kyc_request_no:
-        import random
-        date_str = datetime.utcnow().strftime("%Y%m%d")
-        rand_num = random.randint(1000, 9999)
-        kyc_request_no = f"REQ-{date_str}-{rand_num}"
- 
+
     if id_type == 'aadhaar':
+        user_doc = await db.get_document('users', user_id)
         user_phone = user_doc.get('phone', '')
         otp_verified = bool(user_doc.get('kyc_aadhaar_otp_verified'))
         otp_aadhaar = (user_doc.get('kyc_aadhaar_number') or '').strip()
@@ -8685,43 +8766,18 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         # if otp_aadhaar and otp_aadhaar != id_number:
         #     raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
-    # Validate photo presence and integrity
+    # Compress and upload photos if provided
     id_photo = data.get('id_photo')
-    if not id_photo:
-        raise HTTPException(status_code=400, detail="ID document photo is required")
-        
-    if not is_valid_image(id_photo):
-        logger.warning(f"KYC rejection for user {user_id}: Corrupted, malformed, or unreadable image data")
-        raise HTTPException(status_code=400, detail="Uploaded file is corrupted, malformed, or not a valid image.")
-
-    # Backend strictly re-validates image with AI service before cloud storage upload
-    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
-    validation = await validate_id_proof_with_llm(
-        base64_string=id_photo,
-        expected_id_type=id_type,
-        expected_id_number=id_number if id_number != "123456789012" else None,
-        expected_name=expected_name
-    )
-    if not validation.get('valid', False):
-        reason = validation.get('reason', 'Uploaded image is not a valid government ID.')
-        logger.warning(f"KYC rejection for user {user_id} - Reason: {reason}")
-        raise HTTPException(status_code=400, detail=reason)
-
-    # Cloud upload only after successful validation
-    compressed_id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
-    uploaded_url = await _upload_kyc_base64_to_storage(user_id, compressed_id_photo, "kyc/id_photos")
-    if uploaded_url:
-        id_photo = uploaded_url
+    if id_photo and is_valid_image(id_photo):
+        id_photo = compress_base64_image(id_photo, max_size=800, quality=80)
+        uploaded_url = await _upload_kyc_base64_to_storage(user_id, id_photo, "kyc/id_photos")
+        if uploaded_url:
+            id_photo = uploaded_url
 
     selfie_photo = data.get('selfie_photo')
-    if selfie_photo:
-        if not is_valid_image(selfie_photo):
-            logger.warning(f"KYC selfie rejection for user {user_id}: Corrupted or invalid selfie image data")
-            raise HTTPException(status_code=400, detail="Uploaded selfie file is corrupted or not a valid image.")
-        compressed_selfie = compress_base64_image(selfie_photo, max_size=512, quality=80)
-        uploaded_url = await _upload_kyc_base64_to_storage(user_id, compressed_selfie, "kyc/selfie_photos")
-        if uploaded_url:
-            selfie_photo = uploaded_url
+    if selfie_photo and is_valid_image(selfie_photo):
+        selfie_photo = compress_base64_image(selfie_photo, max_size=512, quality=80)
+        uploaded_url = await _upload_kyc_base64_to_storage(user_id, selfie_photo, "kyc/selfie_photos")
         if uploaded_url:
             selfie_photo = uploaded_url
     
@@ -8732,17 +8788,12 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_id_type': id_type,
         'kyc_id_number': id_number,
         'kyc_id_photo': id_photo,
-        'kyc_selfie_photo': selfie_photo if (id_type == 'pan' or kyc_role == 'organizer') else None,
+        'kyc_selfie_photo': selfie_photo if id_type == 'pan' else None,
         'kyc_submitted_at': datetime.utcnow().isoformat() + 'Z',
         'kyc_rejection_reason': None,
         'kyc_verified_at': None,
         'is_verified': False,
-        'kyc_request_no': kyc_request_no,
     }
-    
-    full_name_val = data.get('full_name') or data.get('name')
-    if full_name_val:
-        kyc_data['fullName'] = full_name_val
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
@@ -8757,12 +8808,18 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
 
     await db.update_document('users', user_id, kyc_data)
 
+    user_doc = await db.get_document('users', user_id)
+    is_vendor_user = user_doc.get('is_vendor') or bool(user_doc.get('vendor_id'))
     if kyc_role == 'vendor' or is_vendor_user:
+        vendor_id = user_doc.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
         if vendor_id:
             vendor_updates = {
                 'kyc_status': kyc_data['kyc_status'],
-                'kyc_rejection_reason': None,
-                'kyc_request_no': kyc_request_no
+                'kyc_rejection_reason': None
             }
             if id_type == 'aadhaar':
                 vendor_updates['aadhar_url'] = id_photo
@@ -8803,8 +8860,7 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         "message": "KYC submitted successfully",
         "status": kyc_data['kyc_status'],
         "match_distance": kyc_data.get('kyc_match_distance'),
-        "match_reason": kyc_data.get('kyc_match_reason'),
-        "kyc_request_no": kyc_request_no
+        "match_reason": kyc_data.get('kyc_match_reason')
     }
 
 
@@ -8882,27 +8938,12 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
 
         # Notify user about verification
         try:
-            n_title = 'KYC Approved! 🎉'
-            n_body = 'Congratulations! Your KYC documents have been reviewed and approved.'
             await NotificationService.create_notification(
                 user_id=user_id,
-                title=n_title,
-                body=n_body,
+                title='KYC verified',
+                body='Your KYC has been verified successfully.',
                 notification_type=NotificationService.TYPE_VERIFICATION,
-                data={'kyc_role': kyc_role, 'status': 'verified'}
-            )
-            await FirebaseNotificationService.create_notification(
-                user_id=user_id,
-                title=n_title,
-                body=n_body,
-                notification_type='verification',
-                data={'kyc_role': kyc_role, 'status': 'verified'}
-            )
-            await FirebaseNotificationService.send_push_notification(
-                user_id=user_id,
-                title=n_title,
-                body=n_body,
-                data={'type': 'kyc_verification', 'status': 'verified', 'kyc_role': kyc_role}
+                data={'kyc_role': kyc_role}
             )
         except Exception as notify_err:
             logger.warning(f"KYC verified but notification failed for user {user_id}: {notify_err}")
@@ -8945,129 +8986,85 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
 
         # Notify the user about rejection
         try:
-            n_title = 'KYC Request Rejected ❌'
-            n_body = f"Your KYC request was rejected. Reason: {rejection_reason}"
             await NotificationService.create_notification(
                 user_id=user_id,
-                title=n_title,
-                body=n_body,
+                title='KYC rejected',
+                body=f"Your KYC was rejected: {rejection_reason}",
                 notification_type=NotificationService.TYPE_VERIFICATION,
-                data={'rejection_reason': rejection_reason, 'status': 'rejected'}
-            )
-            await FirebaseNotificationService.create_notification(
-                user_id=user_id,
-                title=n_title,
-                body=n_body,
-                notification_type='verification',
-                data={'rejection_reason': rejection_reason, 'status': 'rejected'}
-            )
-            await FirebaseNotificationService.send_push_notification(
-                user_id=user_id,
-                title=n_title,
-                body=n_body,
-                data={'type': 'kyc_verification', 'status': 'rejected', 'rejection_reason': rejection_reason}
+                data={'rejection_reason': rejection_reason}
             )
         except Exception as notify_err:
             logger.warning(f"KYC rejected but notification failed for user {user_id}: {notify_err}")
     
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
-
-
-@api_router.delete("/admin/kyc/{user_id}")
-async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
-    """Admin: delete a user's KYC verification request and reset their status."""
-    db, admin_user_id = await _ensure_admin_user(token_data)
-
-    target_user = await db.get_document('users', user_id)
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    # Reset owner's KYC
-    await db.update_document('users', user_id, {
-        'kyc_status': None,
-        'kyc_role': None,
-        'kyc_id_type': None,
-        'kyc_id_number': None,
-        'kyc_id_photo': None,
-        'kyc_selfie_photo': None,
-        'kyc_submitted_at': None,
-        'kyc_verified_at': None,
-        'kyc_rejection_reason': None,
-        'is_verified': False,
-        'kyc_aadhaar_number': None,
-        'kyc_aadhaar_reference_id': None,
-        'kyc_aadhaar_otp_requested_at': None,
-        'kyc_aadhaar_otp_verified': False,
-        'kyc_aadhaar_otp_verified_at': None,
-        'kyc_request_no': None,
-        'kyc_match_distance': None,
-        'kyc_match_reason': None
-    })
-
-    # Remove verified badges
-    badges_to_remove = ['Verified Temple', 'Verified Vendor', 'Verified Organizer']
-    current_badges = target_user.get('badges', [])
-    updated_badges = [b for b in current_badges if b not in badges_to_remove]
-    if len(updated_badges) != len(current_badges):
-        await db.update_document('users', user_id, {'badges': updated_badges})
-
-    # Delete any kyc_submissions records for this user
-    for field in ['user_id', 'owner_id']:
-        try:
-            kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', user_id)])
-            for doc in (kyc_docs or []):
-                await db.delete_document('kyc_submissions', doc.get('id'))
-        except Exception as e:
-            logger.warning(f"Error deleting kyc_submissions for user {user_id}: {e}")
-
-    # If the user is a vendor, also reset the vendor profile kyc status
-    if target_user.get('is_vendor') or target_user.get('vendor_id'):
-        vendor_id = target_user.get('vendor_id')
-        if not vendor_id:
-            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
-            if v_list:
-                vendor_id = v_list[0]['id']
-        if vendor_id:
-            vendor = await db.get_document('vendors', vendor_id)
-            if vendor:
-                await db.update_document('vendors', vendor_id, {
-                    'kyc_status': None,
-                    'kyc_reviewed_by': None,
-                    'kyc_reviewed_at': None,
-                    'kyc_rejection_reason': None,
-                    'kyc_request_no': None,
-                    'aadhar_url': None,
-                    'pan_url': None,
-                    'face_scan_url': None,
-                    'aadhaar_otp_verified_at': None
-                })
-                # Remove from vendor admin reviews
-                try:
-                    await db.delete_document('vendor_admin_reviews', vendor_id)
-                except Exception:
-                    pass
-
-    # Notify the user about KYC deletion/reset
+async def sync_legacy_kyc_data_in_db():
+    """Scan and synchronize all legacy user and vendor KYC records in the database."""
     try:
-        await NotificationService.create_notification(
-            user_id=user_id,
-            title='KYC Request Cleared',
-            body='Your KYC verification request has been cleared by admin. You can submit a new request if needed.',
-            notification_type=NotificationService.TYPE_VERIFICATION,
-            data={'kyc_status': None, 'action': 'kyc_deleted'}
-        )
-    except Exception as notify_err:
-        logger.warning(f"KYC deleted notification failed for user {user_id}: {notify_err}")
+        db = await get_db()
+        users = await db.query_documents('users')
+        vendors = await db.query_documents('vendors')
 
-    logger.info(f"KYC deleted/reset for user {user_id}")
-    return {"message": "User KYC deleted and reset successfully"}
+        vendor_by_owner = {}
+        for v in (vendors or []):
+            owner_id = v.get('owner_id')
+            if owner_id:
+                vendor_by_owner[owner_id] = v
 
+        synced_count = 0
+        for u in (users or []):
+            u_id = u.get('id')
+            if not u_id:
+                continue
+            v = vendor_by_owner.get(u_id)
+            updates = {}
+            v_updates = {}
+
+            # Status sync
+            u_status = u.get('kyc_status')
+            v_status = v.get('kyc_status') if v else None
+
+            if v_status == 'verified' and u_status != 'verified':
+                updates['kyc_status'] = 'verified'
+                updates['is_verified'] = True
+            elif u_status == 'verified' and v and v_status != 'verified':
+                v_updates['kyc_status'] = 'verified'
+
+            # Phone sync
+            u_phone = u.get('kyc_verified_phone') or u.get('phone') or u.get('phone_number')
+            v_phone = v.get('phone_number') if v else None
+            best_phone = u_phone or v_phone
+
+            if best_phone and not u.get('kyc_verified_phone'):
+                updates['kyc_verified_phone'] = best_phone
+            if best_phone and v and not v.get('phone_number'):
+                v_updates['phone_number'] = best_phone
+
+            # Document URLs sync from vendor if user photos missing
+            if v:
+                if not u.get('kyc_id_photo') and (v.get('aadhar_url') or v.get('pan_url')):
+                    updates['kyc_id_photo'] = v.get('aadhar_url') or v.get('pan_url')
+                if not u.get('kyc_selfie_photo') and v.get('face_scan_url'):
+                    updates['kyc_selfie_photo'] = v.get('face_scan_url')
+                if not u.get('kyc_role') and (u.get('is_vendor') or u.get('vendor_id')):
+                    updates['kyc_role'] = 'vendor'
+
+            if updates:
+                await db.update_document('users', u_id, updates)
+                synced_count += 1
+            if v_updates and v:
+                await db.update_document('vendors', v['id'], v_updates)
+
+        logger.info(f"[Legacy KYC Sync] Successfully synchronized {synced_count} records.")
+        return synced_count
+    except Exception as e:
+        logger.error(f"[Legacy KYC Sync Error] {e}")
+        return 0
 
 
 @api_router.get("/admin/kyc/pending")
-async def get_pending_kyc(status: Optional[str] = "pending", role: Optional[str] = None, token_data: dict = Depends(verify_token)):
-    """Get all users with pending or verified KYC (admin only). Accepts optional role filter ('vendor', 'temple', 'organizer', 'user')."""
+async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
+    """Get all users with pending or verified KYC (admin only)"""
     db, _ = await _ensure_admin_user(token_data)
 
     target_statuses = ['pending', 'manual_review']
@@ -9087,28 +9084,45 @@ async def get_pending_kyc(status: Optional[str] = "pending", role: Optional[str]
             u for u in (all_users or [])
             if u.get('kyc_status') in target_statuses
         ]
-    
-    if role:
-        if role == 'vendor':
-            pending = [u for u in pending if u.get('kyc_role') == 'vendor' or u.get('is_vendor') or bool(u.get('vendor_id'))]
-        elif role == 'request' or role == 'user':
-            pending = [u for u in pending if u.get('kyc_role') != 'vendor' and not u.get('is_vendor') and not bool(u.get('vendor_id'))]
-        else:
-            pending = [u for u in pending if u.get('kyc_role') == role]
 
-    # Return only necessary fields
-    return [{
-        'id': u['id'],
-        'name': u.get('name'),
-        'sl_id': u.get('sl_id'),
-        'kyc_role': u.get('kyc_role') or ('vendor' if (u.get('is_vendor') or bool(u.get('vendor_id'))) else 'user'),
-        'kyc_id_type': u.get('kyc_id_type'),
-        'kyc_submitted_at': u.get('kyc_submitted_at'),
-        'kyc_id_photo': u.get('kyc_id_photo'),
-        'kyc_selfie_photo': u.get('kyc_selfie_photo'),
-        'kyc_id_number': u.get('kyc_id_number'),
-        'kyc_request_no': u.get('kyc_request_no'),
-    } for u in pending]
+    # Fetch vendor map for missing field fill
+    vendors = await db.query_documents('vendors')
+    vendor_by_owner = {v.get('owner_id'): v for v in (vendors or []) if v.get('owner_id')}
+    
+    result = []
+    for u in (pending or []):
+        u_id = u.get('id')
+        v = vendor_by_owner.get(u_id) or {}
+
+        id_photo = u.get('kyc_id_photo') or v.get('aadhar_url') or v.get('pan_url')
+        selfie_photo = u.get('kyc_selfie_photo') or v.get('face_scan_url')
+        phone = u.get('kyc_verified_phone') or u.get('phone') or u.get('phone_number') or v.get('phone_number') or v.get('contact_number')
+
+        result.append({
+            'id': u_id,
+            'name': u.get('name') or v.get('owner_name') or v.get('business_name'),
+            'sl_id': u.get('sl_id'),
+            'kyc_role': u.get('kyc_role') or ('vendor' if v else None),
+            'kyc_status': u.get('kyc_status') or v.get('kyc_status'),
+            'kyc_id_type': u.get('kyc_id_type') or ('aadhaar' if v.get('aadhar_url') else ('pan' if v.get('pan_url') else None)),
+            'kyc_submitted_at': u.get('kyc_submitted_at') or v.get('created_at'),
+            'kyc_id_photo': id_photo,
+            'kyc_selfie_photo': selfie_photo,
+            'kyc_id_number': u.get('kyc_id_number') or u.get('kyc_aadhaar_number'),
+            'phone': phone,
+            'kyc_verified_phone': phone,
+            'rejection_reason': u.get('kyc_rejection_reason') or v.get('kyc_rejection_reason'),
+        })
+
+    return result
+
+
+@api_router.post("/admin/kyc/sync-legacy")
+async def trigger_legacy_kyc_sync(token_data: dict = Depends(verify_token)):
+    """Admin endpoint to manually trigger a sync of all legacy KYC data in the DB."""
+    db, _ = await _ensure_admin_user(token_data)
+    count = await sync_legacy_kyc_data_in_db()
+    return {"message": "Legacy KYC data synchronized successfully", "synced_count": count}
 
 
 # =================== REPORT SYSTEM ===================
@@ -9286,34 +9300,53 @@ async def get_reports(
         reports.sort(key=lambda item: _clean_datetime(item.get('created_at')), reverse=True)
         reports = reports[:max(1, min(limit, 300))]
 
+    # Pre-collect missing post and comment IDs across reports to fetch in batch
+    missing_post_ids = set()
+    missing_comment_ids = set()
+    for r in reports:
+        if not r.get('snapshot') and r.get('content_id'):
+            if r.get('content_type') == 'post':
+                missing_post_ids.add(r.get('content_id'))
+            elif r.get('content_type') == 'comment':
+                missing_comment_ids.add(r.get('content_id'))
+
+    posts_by_id = {}
+    comments_by_id = {}
+    if missing_post_ids:
+        try:
+            fetched_posts = await db.get_documents_batch('posts', list(missing_post_ids))
+            posts_by_id = {p['id']: p for p in fetched_posts if p and 'id' in p}
+        except Exception as e:
+            logger.warning("Failed to batch fetch posts for reports: %s", e)
+    if missing_comment_ids:
+        try:
+            fetched_comments = await db.get_documents_batch('post_comments', list(missing_comment_ids))
+            comments_by_id = {c['id']: c for c in fetched_comments if c and 'id' in c}
+        except Exception as e:
+            logger.warning("Failed to batch fetch comments for reports: %s", e)
+
     for r in reports:
         if not r.get('snapshot') and r.get('content_type') == 'post' and r.get('content_id'):
-            try:
-                post = await db.get_document('posts', r.get('content_id'))
-                if post:
-                    r['snapshot'] = {
-                        'post_id': r.get('content_id'),
-                        'caption': post.get('caption') or '',
-                        'media_url': post.get('media_url'),
-                        'media_type': post.get('media_type'),
-                        'post_user_id': post.get('user_id'),
-                        'post_username': post.get('username'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic snapshot for reports: %s", e)
+            post = posts_by_id.get(r.get('content_id'))
+            if post:
+                r['snapshot'] = {
+                    'post_id': r.get('content_id'),
+                    'caption': post.get('caption') or '',
+                    'media_url': post.get('media_url'),
+                    'media_type': post.get('media_type'),
+                    'post_user_id': post.get('user_id'),
+                    'post_username': post.get('username'),
+                }
         elif not r.get('snapshot') and r.get('content_type') == 'comment' and r.get('content_id'):
-            try:
-                comment = await db.get_document('post_comments', r.get('content_id'))
-                if comment:
-                    r['snapshot'] = {
-                        'comment_id': r.get('content_id'),
-                        'text': comment.get('text') or '',
-                        'comment_user_id': comment.get('user_id'),
-                        'comment_username': comment.get('username'),
-                        'post_id': comment.get('post_id'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic comment snapshot for reports: %s", e)
+            comment = comments_by_id.get(r.get('content_id'))
+            if comment:
+                r['snapshot'] = {
+                    'comment_id': r.get('content_id'),
+                    'text': comment.get('text') or '',
+                    'comment_user_id': comment.get('user_id'),
+                    'comment_username': comment.get('username'),
+                    'post_id': comment.get('post_id'),
+                }
 
     try:
         mod_reports = await db.query_documents(
@@ -9332,6 +9365,34 @@ async def get_reports(
         mod_reports.sort(key=lambda item: _clean_datetime(item.get('createdAt')), reverse=True)
         mod_reports = mod_reports[:max(1, min(limit, 300))]
 
+    # Pre-collect missing post and comment IDs across moderation reports to fetch in batch
+    mod_post_ids = set()
+    mod_comment_ids = set()
+    for r in mod_reports:
+        content_type = r.get('contentType')
+        content_id = r.get('contentId')
+        snapshot = r.get('snapshot') or {}
+        if not snapshot and content_id:
+            if content_type == 'post':
+                mod_post_ids.add(content_id)
+            elif content_type == 'comment':
+                mod_comment_ids.add(content_id)
+
+    mod_posts_by_id = {}
+    mod_comments_by_id = {}
+    if mod_post_ids:
+        try:
+            fetched_mod_posts = await db.get_documents_batch('posts', list(mod_post_ids))
+            mod_posts_by_id = {p['id']: p for p in fetched_mod_posts if p and 'id' in p}
+        except Exception as e:
+            logger.warning("Failed to batch fetch posts for moderation reports: %s", e)
+    if mod_comment_ids:
+        try:
+            fetched_mod_comments = await db.get_documents_batch('post_comments', list(mod_comment_ids))
+            mod_comments_by_id = {c['id']: c for c in fetched_mod_comments if c and 'id' in c}
+        except Exception as e:
+            logger.warning("Failed to batch fetch comments for moderation reports: %s", e)
+
     standardized_mod = []
     for r in mod_reports:
         created_at_val = r.get('createdAt')
@@ -9348,32 +9409,26 @@ async def get_reports(
         content_id = r.get('contentId')
         snapshot = r.get('snapshot') or {}
         if not snapshot and content_type == 'post' and content_id:
-            try:
-                post = await db.get_document('posts', content_id)
-                if post:
-                    snapshot = {
-                        'post_id': content_id,
-                        'caption': post.get('caption') or '',
-                        'media_url': post.get('media_url'),
-                        'media_type': post.get('media_type'),
-                        'post_user_id': post.get('user_id'),
-                        'post_username': post.get('username'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic snapshot for moderation_reports: %s", e)
+            post = mod_posts_by_id.get(content_id)
+            if post:
+                snapshot = {
+                    'post_id': content_id,
+                    'caption': post.get('caption') or '',
+                    'media_url': post.get('media_url'),
+                    'media_type': post.get('media_type'),
+                    'post_user_id': post.get('user_id'),
+                    'post_username': post.get('username'),
+                }
         elif not snapshot and content_type == 'comment' and content_id:
-            try:
-                comment = await db.get_document('post_comments', content_id)
-                if comment:
-                    snapshot = {
-                        'comment_id': content_id,
-                        'text': comment.get('text') or '',
-                        'comment_user_id': comment.get('user_id'),
-                        'comment_username': comment.get('username'),
-                        'post_id': comment.get('post_id'),
-                    }
-            except Exception as e:
-                logger.warning("Failed to populate dynamic comment snapshot: %s", e)
+            comment = mod_comments_by_id.get(content_id)
+            if comment:
+                snapshot = {
+                    'comment_id': content_id,
+                    'text': comment.get('text') or '',
+                    'comment_user_id': comment.get('user_id'),
+                    'comment_username': comment.get('username'),
+                    'post_id': comment.get('post_id'),
+                }
 
         standardized_mod.append({
             'id': r.get('id'),
@@ -9671,8 +9726,104 @@ async def init_sample_temples(token_data: dict = Depends(verify_token)):
 
 
 # =================== EVENTS ===================
-# Note: Handled by routes.event_routes (mounted in api_router)
 
+@api_router.get("/events")
+async def get_events(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    return await db.query_documents('events', limit=20)
+
+
+@api_router.get("/events/nearby")
+async def get_nearby_events(token_data: dict = Depends(verify_token)):
+    db = await get_db()
+    return await db.query_documents('events', limit=10)
+
+
+@api_router.post("/events/{event_id}/attend")
+async def attend_event(event_id: str, token_data: dict = Depends(verify_token)):
+    """Mark user as attending an event and notify the creator."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    # Try events collection first, then community posts
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        # Soft-fail: event may be ephemeral/local — still return success
+        return {"message": "Attendance recorded", "attendee_count": 1}
+
+    attendees = list(event.get('attendees', []) or [])
+    if user_id not in attendees:
+        attendees.append(user_id)
+        await db.update_document(collection, event_id, {
+            'attendees': attendees,
+            'attendee_count': len(attendees)
+        })
+
+    # Notify creator
+    creator_id = event.get('user_id') or event.get('organizer_id') or event.get('creator_id')
+    if creator_id and creator_id != user_id:
+        try:
+            attender_user = await db.get_document('users', user_id)
+            attender_name = (attender_user or {}).get('name', 'Someone')
+            event_title = event.get('title', 'your event')
+
+            notif_title = "🎉 Someone is attending your event!"
+            notif_body = f"{attender_name} confirmed they will attend '{event_title}'."
+            notif_data = {
+                'type': 'event_rsvp',
+                'eventId': str(event_id),
+                'community_id': str(event.get('community_id', '')),
+            }
+
+            await task_queue.enqueue(
+                FirebaseNotificationService.send_push_notification,
+                creator_id,
+                notif_title,
+                notif_body,
+                notif_data
+            )
+            await task_queue.enqueue(
+                FirebaseNotificationService.create_notification,
+                creator_id,
+                notif_title,
+                notif_body,
+                'event_rsvp',
+                notif_data
+            )
+            logger.info(f"Queued event RSVP notification for event {event_id} creator {creator_id}")
+        except Exception as notify_err:
+            logger.warning(f"Failed to notify creator for event RSVP {event_id}: {notify_err}")
+
+    return {"message": "Attendance confirmed", "attendee_count": len(attendees)}
+
+
+@api_router.post("/events/{event_id}/cancel-attendance")
+async def cancel_event_attendance(event_id: str, token_data: dict = Depends(verify_token)):
+    """Cancel user's attendance for an event."""
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    event = await db.get_document('events', event_id)
+    collection = 'events'
+    if not event:
+        event = await db.get_document('community_posts', event_id)
+        collection = 'community_posts'
+    if not event:
+        return {"message": "Attendance cancelled", "attendee_count": 0}
+
+    attendees = list(event.get('attendees', []) or [])
+    if user_id in attendees:
+        attendees.remove(user_id)
+        await db.update_document(collection, event_id, {
+            'attendees': attendees,
+            'attendee_count': len(attendees)
+        })
+
+    return {"message": "Attendance cancelled", "attendee_count": len(attendees)}
 
 
 
@@ -9709,9 +9860,9 @@ async def mark_all_notifications_read(token_data: dict = Depends(verify_token)):
     user_id = token_data["user_id"]
     # Get all unread notifications
     notifications = await db.query_documents('notifications', filters=[('user_id', '==', user_id), ('is_read', '==', False)])
-    # Mark each as read
-    for notif in notifications:
-        await db.update_document('notifications', notif['id'], {'is_read': True})
+    if notifications:
+        updates = [(notif['id'], {'is_read': True}) for notif in notifications]
+        await db.batch_update_documents('notifications', updates)
     return {"message": "All notifications marked as read"}
 
 
@@ -10183,12 +10334,20 @@ async def delete_chat_history(token_data: dict = Depends(verify_token)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# =================== WISDOM & PANCHANG ===================
+def _resolve_user_coordinates(user: Optional[dict] = None, lat: Optional[float] = None, lon: Optional[float] = None) -> tuple[float, float]:
+    """Helper to resolve latitude and longitude from input parameters, user profile, or default coordinates."""
+    resolved_lat = lat
+    if resolved_lat is None and user:
+        resolved_lat = user.get('place_of_birth_latitude') or (user.get('home_location') or {}).get('latitude')
 
-@api_router.get("/wisdom/today")
-async def get_wisdom():
-    day = datetime.utcnow().timetuple().tm_yday
-    return WISDOM_QUOTES[day % len(WISDOM_QUOTES)]
+    resolved_lng = lon
+    if resolved_lng is None and user:
+        resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
+
+    if resolved_lat is None or resolved_lng is None:
+        resolved_lat, resolved_lng = 19.2056, 25.2056
+
+    return float(resolved_lat), float(resolved_lng)
 
 
 @api_router.get("/panchang/today")
@@ -10257,16 +10416,7 @@ async def get_nakshatra_report(
     logger.info("get_nakshatra_report inputs - dob: %s, tob: %s, lat: %s, lon: %s, tz: %s", dob, tob, lat, lon, tz)
 
     # Resolve birth coordinates
-    resolved_lat = lat
-    if resolved_lat is None:
-        resolved_lat = user.get('place_of_birth_latitude') or (user.get('home_location') or {}).get('latitude')
-    
-    resolved_lng = lon
-    if resolved_lng is None:
-        resolved_lng = user.get('place_of_birth_longitude') or (user.get('home_location') or {}).get('longitude')
-
-    if resolved_lat is None or resolved_lng is None:
-        resolved_lat, resolved_lng = 19.2056, 25.2056
+    resolved_lat, resolved_lng = _resolve_user_coordinates(user, lat, lon)
 
     # Resolve birth details
     dob_str = dob or user.get('date_of_birth')  # YYYY-MM-DD
@@ -10642,17 +10792,6 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     
     request_id = await db.create_document('help_requests', request_data)
     request_data['id'] = request_id
-
-    # Emit new_sos_alert socket event
-    try:
-        await sio.emit('new_sos_alert', {
-            'type': 'blood_request' if data.type.value == 'blood' else 'help_request',
-            'user_id': user_id,
-            'location': location,
-            'message': data.title
-        })
-    except Exception as e:
-        logger.warning(f"Failed to emit new_sos_alert for help request: {e}")
     
     # Invalidate/consume verification state so it cannot be reused
     if data.type.value == "blood":
@@ -10806,16 +10945,33 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     if existing:
         raise HTTPException(status_code=400, detail="You already have a registered business")
     
-    # Add new categories to global category list
-    for category in normalized_categories:
-        existing_cat = await db.find_one('vendor_categories', [('name', '==', category)])
+    # Add new categories to global category list in parallel
+    async def process_category(cat):
+        existing_cat = await db.find_one('vendor_categories', [('name', '==', cat)])
         if not existing_cat:
-            await db.create_document('vendor_categories', {'name': category, 'count': 1})
+            await db.create_document('vendor_categories', {'name': cat, 'count': 1})
         else:
             await db.update_document('vendor_categories', existing_cat['id'], {
                 'count': existing_cat.get('count', 0) + 1
             })
+
+    if normalized_categories:
+        await asyncio.gather(*(process_category(cat) for cat in normalized_categories))
     
+    req_lat = data.latitude
+    req_lng = data.longitude
+
+    valid_coords = (
+        req_lat is not None and req_lng is not None and
+        isinstance(req_lat, (int, float)) and isinstance(req_lng, (int, float)) and
+        abs(req_lat) > 0.001 and abs(req_lng) > 0.001
+    )
+
+    if not valid_coords and full_address:
+        geo_lat, geo_lng = await _geocode_address(full_address)
+        if geo_lat is not None and geo_lng is not None:
+            req_lat, req_lng = geo_lat, geo_lng
+
     vendor_data = {
         "owner_id": user_id,
         "owner_name": owner_name,
@@ -10825,8 +10981,8 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "full_address": full_address,
         "location_link": data.location_link,
         "phone_number": phone_number,
-        "latitude": data.latitude,
-        "longitude": data.longitude,
+        "latitude": req_lat,
+        "longitude": req_lng,
         "photos": data.photos if data.photos else [],
         "business_description": data.business_description,
         "aadhar_url": data.aadhar_url,
@@ -10836,8 +10992,11 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "menu_items": data.menu_items if data.menu_items else [],
         "offers_home_delivery": bool(data.offers_home_delivery),
         "business_media_key": data.business_media_key,
-        "kyc_status": None,
-        "kyc_verified_at": None,
+        "gstin": data.gstin,
+        "business_email": data.business_email,
+        "website_link": data.website_link,
+        "kyc_status": 'verified' if (bool((user or {}).get('is_verified')) or (user or {}).get('kyc_status') == 'verified') else (user or {}).get('kyc_status'),
+        "kyc_verified_at": (user or {}).get('kyc_verified_at') if (bool((user or {}).get('is_verified')) or (user or {}).get('kyc_status') == 'verified') else None,
         "kyc_reviewed_by": None,
         "kyc_review_note": None,
     }
@@ -10845,23 +11004,29 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     vendor_id = await db.create_document('vendors', vendor_data)
     vendor_data['id'] = vendor_id
 
-    # Update user to mark as vendor and reset KYC/verified status to make KYC steps mandatory
-    await db.update_document('users', user_id, {
+    # Update user to mark as vendor while preserving existing KYC status
+    user_is_verified = bool((user or {}).get('is_verified')) or (user or {}).get('kyc_status') == 'verified'
+    user_kyc_status = (user or {}).get('kyc_status')
+
+    user_update_payload = {
         'is_vendor': True,
         'vendor_id': vendor_id,
-        'kyc_status': None,
-        'is_verified': False,
         'kyc_role': 'vendor',
-        'kyc_submitted_at': None,
-        'kyc_verified_at': None,
-        'kyc_rejection_reason': None,
-        'kyc_aadhaar_otp_verified': False,
-    })
+    }
 
-    await _sync_vendor_to_admin_queue(db, vendor_id)
+    if user_is_verified:
+        user_update_payload['is_verified'] = True
+        user_update_payload['kyc_status'] = 'verified'
+    elif user_kyc_status:
+        user_update_payload['kyc_status'] = user_kyc_status
+
+    await db.update_document('users', user_id, user_update_payload)
+
+    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor_data)
 
     # ponytail: invalidate cached user profile to force KYC verification prompt
     await cache_manager.invalidate_user(user_id)
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
     logger.info(f"Vendor created by {user_id}: {data.business_name}")
     return vendor_data
@@ -10885,26 +11050,22 @@ async def get_vendors(
 
     vendors = await db.query_documents('vendors', filters=filters, limit=limit)
 
-    # Merge admin review snapshot fields for legacy approved vendors so public listings
-    # can show verified/approved badges consistently.
-    review_docs = await asyncio.gather(
-        *[db.get_document('vendor_admin_reviews', vendor['id']) for vendor in vendors]
-    )
+    vendor_ids = [v['id'] for v in vendors if v.get('id')]
+    owner_ids = list({v.get('owner_id') for v in vendors if v.get('owner_id')})
     
-    # Fetch owner user documents to check central KYC status
-    async def get_user_doc(uid):
-        if not uid:
-            return None
-        try:
-            return await db.get_document('users', uid)
-        except Exception:
-            return None
-
-    user_docs = await asyncio.gather(
-        *[get_user_doc(vendor.get('owner_id')) for vendor in vendors]
+    # Run batch gets concurrently to eliminate N+1 query loop
+    review_results, user_results = await asyncio.gather(
+        db.get_documents_batch('vendor_admin_reviews', vendor_ids),
+        db.get_documents_batch('users', owner_ids)
     )
 
-    for vendor, review_doc, user_doc in zip(vendors, review_docs, user_docs):
+    reviews_map = {r['id']: r for r in review_results if r}
+    users_map = {u['id']: u for u in user_results if u}
+
+    for vendor in vendors:
+        review_doc = reviews_map.get(vendor.get('id'))
+        user_doc = users_map.get(vendor.get('owner_id'))
+
         if review_doc:
             vendor['review_status'] = review_doc.get('review_status', vendor.get('review_status'))
             vendor['review_state'] = review_doc.get('review_state', vendor.get('review_state'))
@@ -10948,11 +11109,32 @@ async def get_vendors(
     if lat and lng:
         import math
         for vendor in vendors:
-            if vendor.get('latitude') and vendor.get('longitude'):
+            v_lat = vendor.get('latitude')
+            v_lng = vendor.get('longitude')
+
+            valid_c = (
+                v_lat is not None and v_lng is not None and
+                isinstance(v_lat, (int, float)) and isinstance(v_lng, (int, float)) and
+                abs(v_lat) > 0.001 and abs(v_lng) > 0.001
+            )
+
+            if not valid_c and vendor.get('full_address'):
+                geo_lat, geo_lng = await _geocode_address(vendor.get('full_address'))
+                if geo_lat is not None and geo_lng is not None:
+                    vendor['latitude'] = geo_lat
+                    vendor['longitude'] = geo_lng
+                    v_lat, v_lng = geo_lat, geo_lng
+                    valid_c = True
+                    try:
+                        await db.update_document('vendors', vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng})
+                    except Exception:
+                        pass
+
+            if valid_c:
                 # Haversine formula
                 R = 6371  # Earth radius in km
                 lat1, lon1 = math.radians(lat), math.radians(lng)
-                lat2, lon2 = math.radians(vendor['latitude']), math.radians(vendor['longitude'])
+                lat2, lon2 = math.radians(v_lat), math.radians(v_lng)
                 dlat, dlon = lat2 - lat1, lon2 - lon1
                 a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
                 vendor['distance'] = R * 2 * math.asin(math.sqrt(a))
@@ -10968,11 +11150,30 @@ async def get_vendors(
 @api_router.get("/vendors/my")
 async def get_my_vendor(token_data: dict = Depends(verify_token)):
     """Get current user's vendor profile"""
-    db = await get_db()
     user_id = token_data["user_id"]
+    cache_key = f"vendor:user:{user_id}"
     
+    cached_val = await cache_manager.get(cache_key)
+    if cached_val is not None:
+        return cached_val if cached_val != {} else None
+
+    db = await get_db()
     vendor = await db.find_one('vendors', [('owner_id', '==', user_id)])
+
+    if vendor is not None:
+        await cache_manager.set(cache_key, vendor, ttl=300)
+    else:
+        await cache_manager.set(cache_key, {}, ttl=60)
+
     return vendor
+
+
+@api_router.post("/vendors/admin/migrate-coordinates")
+async def trigger_vendor_coordinate_migration(tolerance_km: float = 0.5):
+    """Admin endpoint to audit and migrate vendor coordinates from full_address."""
+    from migrate_vendors import run_vendor_coordinate_migration
+    summary = await run_vendor_coordinate_migration(tolerance_km=tolerance_km)
+    return summary
 
 
 @api_router.get("/vendors/categories")
@@ -11030,42 +11231,10 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
     
     update_data = data.dict(exclude_unset=True, exclude_none=True)
 
-    # Normalize enum values to plain strings so Firestore stores and queries correctly.
-    if 'kyc_status' in update_data:
-        kyc_val = update_data['kyc_status']
-        update_data['kyc_status'] = str(kyc_val.value if hasattr(kyc_val, 'value') else kyc_val)
-
     # Do not allow setting kyc_status to verified or approved directly by vendor owner
     if 'kyc_status' in update_data:
         if update_data['kyc_status'] in ['verified', 'approved']:
             raise HTTPException(status_code=403, detail="Cannot directly set KYC status to verified or approved")
-            
-        # If setting to pending (submission), generate/sync request number
-        if update_data['kyc_status'] == 'pending':
-            kyc_request_no = vendor.get('kyc_request_no')
-            if not kyc_request_no:
-                # Also check user doc for kyc_request_no
-                user_doc = await db.get_document('users', user_id)
-                if user_doc and user_doc.get('kyc_request_no'):
-                    kyc_request_no = user_doc.get('kyc_request_no')
-                    
-            if not kyc_request_no:
-                import random
-                date_str = datetime.utcnow().strftime("%Y%m%d")
-                rand_num = random.randint(1000, 9999)
-                kyc_request_no = f"REQ-{date_str}-{rand_num}"
-                
-            update_data['kyc_request_no'] = kyc_request_no
-            
-            # Also sync to user document
-            await db.update_document('users', user_id, {
-                'kyc_status': 'pending',
-                'kyc_request_no': kyc_request_no,
-                'kyc_role': 'vendor'
-            })
-
-    # Always stamp updated_at so ordering queries and the admin snapshot stay fresh.
-    update_data['updated_at'] = datetime.utcnow().isoformat() + 'Z'
     
     # Handle new categories
     if 'categories' in update_data:
@@ -11074,9 +11243,29 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
             if not existing_cat:
                 await db.create_document('vendor_categories', {'name': category, 'count': 1})
     
+    # Auto-geocode address updates or missing coordinates
+    target_address = update_data.get('full_address') or vendor.get('full_address')
+    up_lat = update_data.get('latitude')
+    up_lng = update_data.get('longitude')
+
+    valid_up_coords = (
+        up_lat is not None and up_lng is not None and
+        isinstance(up_lat, (int, float)) and isinstance(up_lng, (int, float)) and
+        abs(up_lat) > 0.001 and abs(up_lng) > 0.001
+    )
+
+    if ('full_address' in update_data or not valid_up_coords) and target_address:
+        if not valid_up_coords:
+            geo_lat, geo_lng = await _geocode_address(target_address)
+            if geo_lat is not None and geo_lng is not None:
+                update_data['latitude'] = geo_lat
+                update_data['longitude'] = geo_lng
+
     if update_data:
+        vendor.update(update_data)
         await db.update_document('vendors', vendor_id, update_data)
-        await _sync_vendor_to_admin_queue(db, vendor_id)
+        await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
+        await cache_manager.delete(f"vendor:user:{user_id}")
     
     logger.info(f"Vendor {vendor_id} updated by {user_id}")
     return {"message": "Vendor updated successfully"}
@@ -11100,6 +11289,7 @@ async def set_vendor_storage_owner(vendor_id: str, data: dict, token_data: dict 
         raise HTTPException(status_code=400, detail="storage_user_id is required")
 
     await db.update_document('vendors', vendor_id, {'storage_user_id': storage_user_id})
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
     return {"message": "Vendor storage owner mapping updated", "storage_user_id": storage_user_id}
 
@@ -11183,13 +11373,14 @@ async def update_vendor_business_profile(vendor_id: str, data: dict = Body(...),
     if not update_data:
         raise HTTPException(status_code=400, detail="No valid fields provided")
 
+    vendor.update(update_data)
     await db.update_document('vendors', vendor_id, update_data)
-    await _sync_vendor_to_admin_queue(db, vendor_id)
+    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
-    refreshed = await db.get_document('vendors', vendor_id)
     return {
         "message": "Business profile updated",
-        "vendor": refreshed,
+        "vendor": vendor,
     }
 
 
@@ -11251,11 +11442,14 @@ async def upload_vendor_business_image(
         images.append('')
     images[slot] = public_url
 
+    vendor['business_gallery_images'] = images
+    vendor['business_media_key'] = media_key
     await db.update_document('vendors', vendor_id, {
         'business_gallery_images': images,
         'business_media_key': media_key,
     })
-    await _sync_vendor_to_admin_queue(db, vendor_id)
+    await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor)
+    await cache_manager.delete(f"vendor:user:{user_id}")
 
     return {
         "message": "Business image uploaded",
@@ -11619,8 +11813,9 @@ async def _get_sandbox_headers() -> dict:
                 "x-api-version": str(sandbox_api_version),
             }
             try:
-                import asyncio
-                auth_resp = await asyncio.to_thread(requests.post, auth_url, headers=auth_headers, timeout=20)
+                def _auth():
+                    return requests.post(auth_url, headers=auth_headers, timeout=20)
+                auth_resp = await asyncio.to_thread(_auth)
                 auth_data = auth_resp.json() if auth_resp.content else {}
             except Exception as exc:
                 raise HTTPException(status_code=502, detail=f"Sandbox authenticate failed: {str(exc)}")
@@ -11817,6 +12012,7 @@ async def add_vendor_photo(vendor_id: str, photo: str = Body(...), token_data: d
         raise HTTPException(status_code=403, detail="Only the owner can add photos")
     
     await db.array_union_update('vendors', vendor_id, 'photos', [photo])
+    await cache_manager.delete(f"vendor:user:{user_id}")
     return {"message": "Photo added successfully"}
 
 
@@ -11889,6 +12085,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     
     # ponytail: invalidate cached user profile to reflect vendor deletion
     await cache_manager.invalidate_user(user_id)
+    await cache_manager.delete(f"vendor:user:{user_id}")
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
@@ -12161,50 +12358,6 @@ async def get_vendor_review_queue(
             with open(log_path, 'a') as f:
                 f.write(f"Fallback query or sort failed: {fallback_exc}\n")
 
-    # Self-healing: if status=pending and 0 results, re-sync all vendors whose
-    # kyc_status is pending/manual_review but whose snapshots are stale (enum stored
-    # as non-string, or snapshot missing). This fixes data from before the enum fix.
-    if status == 'pending' and not records:
-        with open(log_path, 'a') as f:
-            f.write("Zero pending snapshots found — running self-heal resync from vendors collection...\n")
-        try:
-            pending_vendors = await db.query_documents(
-                'vendors',
-                filters=[('kyc_status', 'in', ['pending', 'manual_review'])],
-            )
-            if not pending_vendors:
-                # Also scan without filter for stale enum values stored differently
-                all_vendors = await db.query_documents('vendors')
-                pending_vendors = [
-                    v for v in (all_vendors or [])
-                    if str(v.get('kyc_status', '')).lower() in ('pending', 'manual_review')
-                ]
-
-            resynced = 0
-            for v in (pending_vendors or []):
-                vid = v.get('id')
-                if vid:
-                    await _sync_vendor_to_admin_queue(db, vid)
-                    resynced += 1
-
-            with open(log_path, 'a') as f:
-                f.write(f"Self-heal resynced {resynced} vendor snapshots.\n")
-
-            if resynced > 0:
-                # Retry the query after resyncing
-                try:
-                    records = await db.query_documents(
-                        'vendor_admin_reviews',
-                        filters=[('review_status', '==', 'pending')],
-                    )
-                    with open(log_path, 'a') as f:
-                        f.write(f"Post-resync query: {len(records)} pending records found.\n")
-                except Exception:
-                    pass
-        except Exception as heal_exc:
-            with open(log_path, 'a') as f:
-                f.write(f"Self-heal failed: {heal_exc}\n")
-
     return records
 
 
@@ -12243,32 +12396,6 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
             'kyc_role': 'vendor'
         })
         await db.array_union_update('users', owner_id, 'badges', ['Verified Vendor'])
-
-        try:
-            n_title = 'Vendor KYC Approved! 🎉'
-            n_body = 'Congratulations! Your Vendor KYC request has been approved by Admin.'
-            await NotificationService.create_notification(
-                user_id=owner_id,
-                title=n_title,
-                body=n_body,
-                notification_type=NotificationService.TYPE_VERIFICATION,
-                data={'vendor_id': vendor_id, 'status': 'verified'}
-            )
-            await FirebaseNotificationService.create_notification(
-                user_id=owner_id,
-                title=n_title,
-                body=n_body,
-                notification_type='verification',
-                data={'vendor_id': vendor_id, 'status': 'verified'}
-            )
-            await FirebaseNotificationService.send_push_notification(
-                user_id=owner_id,
-                title=n_title,
-                body=n_body,
-                data={'type': 'kyc_verification', 'status': 'verified', 'vendor_id': vendor_id}
-            )
-        except Exception as notify_err:
-            logger.warning(f"Vendor KYC approved notification failed for user {owner_id}: {notify_err}")
 
     return {
         'message': 'Vendor approved successfully',
@@ -12312,32 +12439,6 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
             'kyc_rejection_reason': reason,
             'is_verified': False
         })
-
-        try:
-            n_title = 'Vendor KYC Rejected ❌'
-            n_body = f"Your Vendor KYC request was rejected. Reason: {reason}"
-            await NotificationService.create_notification(
-                user_id=owner_id,
-                title=n_title,
-                body=n_body,
-                notification_type=NotificationService.TYPE_VERIFICATION,
-                data={'vendor_id': vendor_id, 'status': 'rejected', 'reason': reason}
-            )
-            await FirebaseNotificationService.create_notification(
-                user_id=owner_id,
-                title=n_title,
-                body=n_body,
-                notification_type='verification',
-                data={'vendor_id': vendor_id, 'status': 'rejected', 'reason': reason}
-            )
-            await FirebaseNotificationService.send_push_notification(
-                user_id=owner_id,
-                title=n_title,
-                body=n_body,
-                data={'type': 'kyc_verification', 'status': 'rejected', 'vendor_id': vendor_id, 'reason': reason}
-            )
-        except Exception as notify_err:
-            logger.warning(f"Vendor KYC rejected notification failed for user {owner_id}: {notify_err}")
 
     return {
         'message': 'Vendor rejected',
@@ -12439,9 +12540,14 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     resolved_community_id = data.community_id
     if not resolved_community_id:
         user_community_ids = user.get('communities', []) or []
+
+        # Batch-fetch all user communities in a single call to avoid N+1 sequential DB queries
+        fetched_comms = await db.get_documents_batch('communities', user_community_ids) if user_community_ids else []
+        comms_by_id = {c['id']: c for c in fetched_comms if c and 'id' in c}
+
         city_comm_id = None
         for comm_id in user_community_ids:
-            comm = await db.get_document('communities', comm_id)
+            comm = comms_by_id.get(comm_id)
             if comm and comm.get('type') == 'city':
                 city_comm_id = comm_id
                 break
@@ -12460,7 +12566,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
             best_match_id = None
             fallback_match_id = None
             for comm_id in user_community_ids:
-                comm = await db.get_document('communities', comm_id)
+                comm = comms_by_id.get(comm_id)
                 if not comm:
                     continue
                 comm_type = comm.get('type')
@@ -12482,7 +12588,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     if not resolved_community_id:
         user_community_ids = user.get('communities', []) or []
         for comm_id in user_community_ids:
-            comm = await db.get_document('communities', comm_id)
+            comm = comms_by_id.get(comm_id)
             if comm and comm.get('type') == 'city':
                 resolved_community_id = comm_id
                 break
@@ -12518,7 +12624,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         "user_phone": user.get('phone'),
         "community_id": resolved_community_id,
         "request_type": data.request_type.value,
-        "visibility_level": data.visibility_level.value,
+        "visibility_level": "national" if data.request_type.value in ["blood", "emergency", "medical"] else data.visibility_level.value,
         "title": data.title,
         "description": data.description,
         "contact_number": data.contact_number,
@@ -12611,12 +12717,13 @@ async def get_community_requests(
     """Get community requests with filters"""
     user_id = token_data["user_id"]
     
-    # 1. Try fetching from cache first
+    # 1. Try fetching from cache first (skip cache if fetching blood/emergency requests for real-time accuracy)
     cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{limit}"
-    cached_requests = await cache_manager.get(cache_key)
-    if cached_requests is not None:
-        logger.info(f"Cache HIT for community requests: {cache_key}")
-        return cached_requests
+    if type not in ['blood', 'emergency', 'medical']:
+        cached_requests = await cache_manager.get(cache_key)
+        if cached_requests is not None:
+            logger.info(f"Cache HIT for community requests: {cache_key}")
+            return cached_requests
         
     db = await get_db()
     user = await db.get_document('users', user_id)
@@ -12655,6 +12762,12 @@ async def get_community_requests(
             visible_requests.append(req)
             continue
 
+        # Emergency & Blood requests are ALWAYS VISIBLE to all users so people can provide urgent help!
+        req_type = str(req.get('request_type') or "").strip().lower()
+        if req_type in ['blood', 'emergency', 'medical']:
+            visible_requests.append(req)
+            continue
+
         # If user is a member of the community the request belongs to, always visible
         req_comm_id = req.get('community_id')
         if req_comm_id and req_comm_id in user_comms:
@@ -12682,9 +12795,9 @@ async def get_community_requests(
             visible_requests.append(req)
         elif visibility == 'state' and is_match('state', 'state'):
             visible_requests.append(req)
-        elif visibility == 'city' and is_match('city', 'city'):
+        elif visibility == 'city' and (is_match('city', 'city') or not location_area.get('city')):
             visible_requests.append(req)
-        elif visibility == 'area' and is_match('area', 'area'):
+        elif visibility == 'area' and (is_match('area', 'area') or is_match('city', 'city') or not location_area.get('area')):
             visible_requests.append(req)
             
     # Filter out obvious garbage / test data
@@ -12898,7 +13011,7 @@ async def delete_community_request(request_id: str, token_data: dict = Depends(v
 # =================== SOS EMERGENCY SYSTEM ===================
 
 
-async def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def _haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     R = 6371  # Earth radius in km
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -12914,7 +13027,18 @@ async def _get_nearest_users(
     max_users: int = 200,
     max_distance_km: float = 1.0
 ):
-    users = await db.query_documents('users')
+    # Calculate bounding box for latitude to filter database query (1 degree lat ~= 111 km)
+    # This prevents loading all users into memory (OOM risk) and significantly speeds up lookup.
+    lat_delta = max_distance_km / 111.0
+    lat_min = latitude - lat_delta
+    lat_max = latitude + lat_delta
+
+    filters = [
+        ('current_location.latitude', '>=', lat_min),
+        ('current_location.latitude', '<=', lat_max)
+    ]
+
+    users = await db.query_documents('users', filters=filters)
     candidates = []
     
     # Calculate 10 minutes ago
@@ -12948,7 +13072,7 @@ async def _get_nearest_users(
         except (ValueError, TypeError):
             continue
             
-        distance = await _haversine_distance(latitude, longitude, user_lat, user_lng)
+        distance = _haversine_distance(latitude, longitude, user_lat, user_lng)
         if distance <= max_distance_km:
             candidates.append((distance, user.get('id')))
 
@@ -13059,7 +13183,8 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
 async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, notification_type: str, data: dict):
     if not user_ids:
         return
-    for uid in user_ids:
+
+    async def _save_single_notification(uid):
         try:
             notification_data = {
                 'user_id': uid,
@@ -13081,6 +13206,9 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
                 logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
         except Exception as e:
             logger.error(f"Failed to save bulk notification for user {uid}: {e}")
+
+    # Process all notifications in parallel to avoid sequential database write and socket emission delays
+    await asyncio.gather(*[_save_single_notification(uid) for uid in user_ids])
 
 
 @api_router.post("/sos")
@@ -13171,7 +13299,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
                     continue
             except:
                 continue
-            dist = await _haversine_distance(data.latitude, data.longitude, u_lat, u_lng)
+            dist = _haversine_distance(data.latitude, data.longitude, u_lat, u_lng)
             if dist <= 10.0:
                 expanded_users.append((dist, uid))
         expanded_users.sort(key=lambda x: x[0])
@@ -13237,12 +13365,6 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     
     # Emit SOS alert via socket to nearby users
     await sio.emit('sos_alert', sos_data)
-    await sio.emit('new_sos_alert', {
-        'type': 'sos',
-        'user_id': user_id,
-        'location': f"{area}, {city}",
-        'message': f"Emergency: {sos_data.get('emergency_type', 'SOS')}"
-    })
     
     # Start escalation process in background
     await task_queue.enqueue(_escalate_sos_notifications, sos_id, all_target_user_ids)
@@ -13942,9 +14064,8 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     except Exception as e:
         logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
-    async def _call():
+    def _call():
         import requests
-        import asyncio
         nvidia_key = os.environ.get("NVIDIA_API_KEY")
         invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
 
@@ -13981,13 +14102,13 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             "chat_template_kwargs": {"enable_thinking": False}
         }
 
-        response = await asyncio.to_thread(requests.post, invoke_url, headers=headers, json=payload, timeout=45)
+        response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
         response.raise_for_status()
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
         
     try:
-        text = await _call()
+        text = await asyncio.to_thread(_call)
         text = text.replace("```json", "").replace("```", "").strip()
         data = json.loads(text)
         if "lucky_color_hex" not in data:
@@ -14253,14 +14374,24 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
         "passport_certificates": {"created": [], "updated": [], "deleted": []}
     }
     
-    # 1. Pull users
+    # Helper to run a stream in separate thread executor
+    async def run_query_stream(query):
+        def _get():
+            return list(query.stream())
+        return await db._run_sync(_get)
+
+    async def fetch_chat_messages(chat_id, query):
+        docs = await run_query_stream(query)
+        return chat_id, docs
+
+    # 1. Pull users (optimized: thread offloaded query)
     try:
         users_ref = db.client.collection('users')
         if last_pulled_at > 0:
             query = users_ref.where('updated_at', '>', last_pulled_dt)
         else:
             query = users_ref.limit(50)
-        docs = query.stream()
+        docs = await run_query_stream(query)
         for doc in docs:
             data = doc.to_dict()
             created_at = data.get('created_at')
@@ -14279,14 +14410,14 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     except Exception as e:
         logger.error("Error pulling users in sync: %s", e)
 
-    # 2. Pull feeds (posts)
+    # 2. Pull feeds (posts) (optimized: thread offloaded query)
     try:
         posts_ref = db.client.collection('posts')
         if last_pulled_at > 0:
             query = posts_ref.where('updated_at', '>', last_pulled_dt)
         else:
             query = posts_ref.limit(50)
-        docs = query.stream()
+        docs = await run_query_stream(query)
         for doc in docs:
             data = doc.to_dict()
             created_at = data.get('created_at')
@@ -14312,12 +14443,17 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
             })
         
         # Add posts from blocked users to deleted sync so they are cleaned up locally
-        for b_uid in blocked_user_ids:
-            blocked_posts = await db.query_documents('posts', filters=[('user_id', '==', b_uid)])
-            for bp in blocked_posts:
-                bp_id = bp.get('id')
-                if bp_id:
-                    changes["feeds"]["deleted"].append(bp_id)
+        if blocked_user_ids:
+            blocked_tasks = [
+                db.query_documents('posts', filters=[('user_id', '==', b_uid)])
+                for b_uid in blocked_user_ids
+            ]
+            all_blocked_posts = await asyncio.gather(*blocked_tasks)
+            for blocked_posts in all_blocked_posts:
+                for bp in blocked_posts:
+                    bp_id = bp.get('id')
+                    if bp_id:
+                        changes["feeds"]["deleted"].append(bp_id)
     except Exception as e:
         logger.error("Error pulling feeds in sync: %s", e)
 
@@ -14355,28 +14491,51 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
             })
 
         chats = await db.get_user_chats(user_id)
+        chat_message_tasks = []
         for chat in chats:
             chat_id = chat['id']
+            chat_updated = chat.get('updated_at')
+            is_active = True
+            if last_pulled_at > 0 and chat_updated:
+                if isinstance(chat_updated, str):
+                    try:
+                        chat_updated_dt = datetime.fromisoformat(chat_updated.replace('Z', '+00:00')).replace(tzinfo=None)
+                    except Exception:
+                        chat_updated_dt = datetime.min
+                else:
+                    chat_updated_dt = chat_updated.replace(tzinfo=None) if hasattr(chat_updated, 'tzinfo') and chat_updated.tzinfo is not None else chat_updated
+
+                if chat_updated_dt <= last_pulled_dt.replace(tzinfo=None):
+                    is_active = False
+
+            if not is_active:
+                continue
+
             messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
             if last_pulled_at > 0:
                 query = messages_ref.where('created_at', '>', last_pulled_dt)
             else:
                 query = messages_ref.limit(30)
-            docs = query.stream()
-            for doc in docs:
-                data = doc.to_dict()
-                created_at = data.get('created_at')
-                created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
-                changes["chats"]["updated"].append({
-                    "id": doc.id,
-                    "chat_id": chat_id,
-                    "sender_id": data.get('sender_id', ''),
-                    "sender_name": data.get('sender_name', 'Member'),
-                    "content": data.get('content', ''),
-                    "message_type": data.get('message_type', 'text'),
-                    "created_at": created_ts,
-                    "updated_at": created_ts
-                })
+            chat_message_tasks.append(fetch_chat_messages(chat_id, query))
+
+        chat_results = await asyncio.gather(*chat_message_tasks, return_exceptions=True)
+        for res in chat_results:
+            if isinstance(res, tuple):
+                chat_id, docs = res
+                for doc in docs:
+                    data = doc.to_dict()
+                    created_at = data.get('created_at')
+                    created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+                    changes["chats"]["updated"].append({
+                        "id": doc.id,
+                        "chat_id": chat_id,
+                        "sender_id": data.get('sender_id', ''),
+                        "sender_name": data.get('sender_name', 'Member'),
+                        "content": data.get('content', ''),
+                        "message_type": data.get('message_type', 'text'),
+                        "created_at": created_ts,
+                        "updated_at": created_ts
+                    })
     except Exception as e:
         logger.error("Error pulling chats in sync: %s", e)
 
@@ -14384,60 +14543,94 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     try:
         user_doc = await db.get_document('users', user_id)
         if user_doc and 'communities' in user_doc:
-            for cid in user_doc['communities']:
-                try:
-                    comm_doc = await db.get_document('communities', cid)
-                    if comm_doc:
-                        created_at = comm_doc.get('created_at')
-                        created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
-                        changes["communities"]["updated"].append({
-                            "id": cid,
-                            "name": comm_doc.get('name', 'Community'),
-                            "description": comm_doc.get('description', ''),
-                            "photo": comm_doc.get('photo'),
-                            "type": comm_doc.get('type', 'city'),
-                            "member_count": len(comm_doc.get('members', [])),
+            community_ids = user_doc.get('communities', []) or []
+            comm_docs = await db.get_documents_batch('communities', community_ids)
+            comm_map = {c['id']: c for c in comm_docs if c}
+
+            for cid in community_ids:
+                comm_doc = comm_map.get(cid)
+                if comm_doc:
+                    created_at = comm_doc.get('created_at')
+                    created_ts = int(created_at.timestamp() * 1000) if isinstance(created_at, datetime) else int(datetime.utcnow().timestamp() * 1000)
+                    changes["communities"]["updated"].append({
+                        "id": cid,
+                        "name": comm_doc.get('name', 'Community'),
+                        "description": comm_doc.get('description', ''),
+                        "photo": comm_doc.get('photo'),
+                        "type": comm_doc.get('type', 'city'),
+                        "member_count": len(comm_doc.get('members', [])),
+                        "created_at": created_ts,
+                        "updated_at": created_ts
+                    })
+
+            # Check and fetch messages concurrently for active community subgroups
+            subgroup_chat_ids = []
+            for cid in community_ids:
+                for subgroup in ['city', 'state', 'national']:
+                    subgroup_chat_ids.append(f"community_{cid}_{subgroup}")
+
+            subgroup_chats = await db.get_documents_batch('chats', subgroup_chat_ids)
+            subgroup_chat_map = {sc['id']: sc for sc in subgroup_chats if sc}
+
+            community_message_tasks = []
+            for chat_id in subgroup_chat_ids:
+                sc_doc = subgroup_chat_map.get(chat_id)
+                sc_updated = sc_doc.get('updated_at') if sc_doc else None
+                is_active = True
+                if last_pulled_at > 0 and sc_updated:
+                    if isinstance(sc_updated, str):
+                        try:
+                            sc_updated_dt = datetime.fromisoformat(sc_updated.replace('Z', '+00:00')).replace(tzinfo=None)
+                        except Exception:
+                            sc_updated_dt = datetime.min
+                    else:
+                        sc_updated_dt = sc_updated.replace(tzinfo=None) if hasattr(sc_updated, 'tzinfo') and sc_updated.tzinfo is not None else sc_updated
+
+                    if sc_updated_dt <= last_pulled_dt.replace(tzinfo=None):
+                        is_active = False
+
+                # If no subgroup chat document exists, skip it on updates since no messages can exist
+                if sc_doc is None and last_pulled_at > 0:
+                    is_active = False
+
+                if not is_active:
+                    continue
+
+                messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
+                if last_pulled_at > 0:
+                    query = messages_ref.where('created_at', '>', last_pulled_dt)
+                else:
+                    query = messages_ref.limit(30)
+                community_message_tasks.append(fetch_chat_messages(chat_id, query))
+
+            comm_msg_results = await asyncio.gather(*community_message_tasks, return_exceptions=True)
+            for res in comm_msg_results:
+                if isinstance(res, tuple):
+                    chat_id, docs = res
+                    for doc in docs:
+                        data = doc.to_dict()
+                        created_at = data.get('created_at')
+                        if isinstance(created_at, str):
+                            try:
+                                dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                                created_ts = int(dt.timestamp() * 1000)
+                            except Exception:
+                                created_ts = int(datetime.utcnow().timestamp() * 1000)
+                        elif isinstance(created_at, datetime):
+                            created_ts = int(created_at.timestamp() * 1000)
+                        else:
+                            created_ts = int(datetime.utcnow().timestamp() * 1000)
+
+                        changes["community_messages"]["updated"].append({
+                            "id": doc.id,
+                            "community_id": chat_id,
+                            "sender_id": data.get('sender_id', ''),
+                            "sender_name": data.get('sender_name', 'Member'),
+                            "content": data.get('content', ''),
+                            "message_type": data.get('message_type', 'text'),
                             "created_at": created_ts,
                             "updated_at": created_ts
                         })
-                except Exception as ex:
-                    logger.error("Error pulling community doc in sync: %s", ex)
-
-                for subgroup in ['city', 'state', 'national']:
-                    try:
-                        chat_id = f"community_{cid}_{subgroup}"
-                        messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
-                        if last_pulled_at > 0:
-                            query = messages_ref.where('created_at', '>', last_pulled_dt)
-                        else:
-                            query = messages_ref.limit(30)
-                        docs = query.stream()
-                        for doc in docs:
-                            data = doc.to_dict()
-                            created_at = data.get('created_at')
-                            if isinstance(created_at, str):
-                                try:
-                                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
-                                    created_ts = int(dt.timestamp() * 1000)
-                                except Exception:
-                                    created_ts = int(datetime.utcnow().timestamp() * 1000)
-                            elif isinstance(created_at, datetime):
-                                created_ts = int(created_at.timestamp() * 1000)
-                            else:
-                                created_ts = int(datetime.utcnow().timestamp() * 1000)
-                            
-                            changes["community_messages"]["updated"].append({
-                                "id": doc.id,
-                                "community_id": chat_id,
-                                "sender_id": data.get('sender_id', ''),
-                                "sender_name": data.get('sender_name', 'Member'),
-                                "content": data.get('content', ''),
-                                "message_type": data.get('message_type', 'text'),
-                                "created_at": created_ts,
-                                "updated_at": created_ts
-                            })
-                    except Exception as ex:
-                        logger.error("Error pulling community messages for %s: %s", chat_id, ex)
     except Exception as e:
         logger.error("Error pulling communities & messages in sync: %s", e)
 
@@ -14493,12 +14686,12 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     except Exception as e:
         logger.error("Error pulling library/passport in sync: %s", e)
 
-    # 6. Pull deletions
+    # 6. Pull deletions (optimized: thread offloaded query)
     try:
         if last_pulled_at > 0:
             deleted_ref = db.client.collection('deleted_records')
             query = deleted_ref.where('deleted_at', '>', last_pulled_dt)
-            docs = query.stream()
+            docs = await run_query_stream(query)
             for doc in docs:
                 data = doc.to_dict()
                 table = data.get('table_name')
@@ -14777,23 +14970,6 @@ ROOM_PARTICIPANTS: dict[str, dict[str, str]] = {}
 SID_TO_PEER: dict[str, tuple[str, str]] = {}
 
 
-async def _broadcast_room_active_count(room: str, excluding_sid: str = None):
-    try:
-        room_clients = sio.manager.rooms.get('/', {}).get(room, {})
-        count = 0
-        if isinstance(room_clients, dict):
-            count = len(room_clients)
-        elif hasattr(room_clients, '__len__'):
-            count = len(room_clients)
-        
-        if excluding_sid and excluding_sid in room_clients:
-            count = max(0, count - 1)
-            
-        await sio.emit('room_active_count', {'room': room, 'count': count}, room=room)
-    except Exception as e:
-        logger.warning(f"Error broadcasting active count for room {room}: {e}")
-
-
 async def _remove_socket_from_voice_room(sid: str):
     peer_context = SID_TO_PEER.pop(sid, None)
     if not peer_context:
@@ -14837,11 +15013,7 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
-    rooms = sio.rooms(sid) or []
     await _remove_socket_from_voice_room(sid)
-    for room in rooms:
-        if room != sid and not room.startswith("user_"):
-            await _broadcast_room_active_count(room, excluding_sid=sid)
 
 
 @sio.event
@@ -14872,7 +15044,6 @@ async def join_room(sid, data):
 
     # Always enter the room for general events
     await sio.enter_room(sid, room)
-    await _broadcast_room_active_count(room)
     
     return {
         'status': 'joined',
@@ -14889,7 +15060,6 @@ async def leave_room(sid, data):
     if room and peer_id:
         await sio.leave_room(sid, room)
         await _remove_socket_from_voice_room(sid)
-        await _broadcast_room_active_count(room)
         return {"status": "left", "room": room}
 
 
@@ -15390,6 +15560,126 @@ async def _jaap_reminder_worker():
             logger.error(f"Error in jaap reminder worker: {e}")
             await asyncio.sleep(30) # Cool down on error
 
+
+@api_router.post("/kyc/validate-image")
+async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
+    """
+    Instantly validate the uploaded KYC image with Google Gemini Vision before final submission.
+    """
+    from services.image_service import validate_id_proof_with_llm
+
+    id_photo = data.get('id_photo')
+    if not id_photo:
+        raise HTTPException(status_code=400, detail="Image data is required")
+
+    db = await get_db()
+    user_id = token_data["user_id"]
+    user_doc = await db.get_document('users', user_id)
+    if not user_doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    id_type = data.get('id_type')
+    id_number = data.get('id_number')
+
+    expected_name = data.get('full_name') or data.get('name') or user_doc.get('fullName') or user_doc.get('name') or ""
+
+    validation = await validate_id_proof_with_llm(
+        base64_string=id_photo,
+        expected_id_type=id_type,
+        expected_id_number=id_number if id_number != "123456789012" else None,
+        expected_name=expected_name
+    )
+    return validation
+
+
+@api_router.delete("/admin/kyc/{user_id}")
+async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)):
+    """Admin: delete a user's KYC verification request and reset their status."""
+    db, admin_user_id = await _ensure_admin_user(token_data)
+
+    target_user = await db.get_document('users', user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Reset owner's KYC
+    await db.update_document('users', user_id, {
+        'kyc_status': None,
+        'kyc_role': None,
+        'kyc_id_type': None,
+        'kyc_id_number': None,
+        'kyc_id_photo': None,
+        'kyc_selfie_photo': None,
+        'kyc_submitted_at': None,
+        'kyc_verified_at': None,
+        'kyc_rejection_reason': None,
+        'is_verified': False,
+        'kyc_aadhaar_number': None,
+        'kyc_aadhaar_reference_id': None,
+        'kyc_aadhaar_otp_requested_at': None,
+        'kyc_aadhaar_otp_verified': False,
+        'kyc_aadhaar_otp_verified_at': None,
+        'kyc_request_no': None,
+        'kyc_match_distance': None,
+        'kyc_match_reason': None
+    })
+
+    # Remove verified badges
+    badges_to_remove = ['Verified Temple', 'Verified Vendor', 'Verified Organizer']
+    current_badges = target_user.get('badges', [])
+    updated_badges = [b for b in current_badges if b not in badges_to_remove]
+    if len(updated_badges) != len(current_badges):
+        await db.update_document('users', user_id, {'badges': updated_badges})
+
+    # Delete any kyc_submissions records for this user
+    for field in ['user_id', 'owner_id']:
+        try:
+            kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', user_id)])
+            for doc in (kyc_docs or []):
+                await db.delete_document('kyc_submissions', doc.get('id'))
+        except Exception as e:
+            logger.warning(f"Error deleting kyc_submissions for user {user_id}: {e}")
+
+    # If the user is a vendor, also reset the vendor profile kyc status
+    if target_user.get('is_vendor') or target_user.get('vendor_id'):
+        vendor_id = target_user.get('vendor_id')
+        if not vendor_id:
+            v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+            if v_list:
+                vendor_id = v_list[0]['id']
+        if vendor_id:
+            vendor = await db.get_document('vendors', vendor_id)
+            if vendor:
+                await db.update_document('vendors', vendor_id, {
+                    'kyc_status': None,
+                    'kyc_reviewed_by': None,
+                    'kyc_reviewed_at': None,
+                    'kyc_rejection_reason': None,
+                    'kyc_request_no': None,
+                    'aadhar_url': None,
+                    'pan_url': None,
+                    'face_scan_url': None,
+                    'aadhaar_otp_verified_at': None
+                })
+                # Remove from vendor admin reviews
+                try:
+                    await db.delete_document('vendor_admin_reviews', vendor_id)
+                except Exception:
+                    pass
+
+    # Notify the user about KYC deletion/reset
+    try:
+        await NotificationService.create_notification(
+            user_id=user_id,
+            title='KYC Request Cleared',
+            body='Your KYC verification request has been cleared by admin. You can submit a new request if needed.',
+            notification_type=NotificationService.TYPE_VERIFICATION,
+            data={'kyc_status': None, 'action': 'kyc_deleted'}
+        )
+    except Exception as notify_err:
+        logger.warning(f"KYC deleted notification failed for user {user_id}: {notify_err}")
+
+    logger.info(f"KYC deleted/reset for user {user_id}")
+    return {"message": "User KYC deleted and reset successfully"}
 
 
 app.include_router(api_router)

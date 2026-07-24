@@ -633,12 +633,16 @@ export interface AdminUserKycRequest {
   name?: string;
   sl_id?: string;
   kyc_role?: string;
+  kyc_status?: string;
   kyc_id_type?: string;
   kyc_submitted_at?: string;
   kyc_id_photo?: string;
   kyc_selfie_photo?: string;
   kyc_id_number?: string;
   kyc_request_no?: string;
+  phone?: string;
+  kyc_verified_phone?: string;
+  rejection_reason?: string;
 }
 
 export interface AdminPostReport {
@@ -1345,14 +1349,14 @@ export const markPostAsSeen = (postId: string) => {
 };
 
 /** Return the current seen IDs as a comma-separated string (last N entries). */
-const _getSeenIdsParam = (limit = 250): string => {
+const _getSeenIdsParam = (limit = 40): string => {
   const arr = Array.from(_seenIdsCache);
   return arr.slice(-limit).join(",");
 };
 
 export const getHomeInit = async () => {
-  // OPT-8: read seen IDs from memory, not disk
-  const localSeenIds = _getSeenIdsParam(250);
+  // OPT-8: read seen IDs from memory, not disk (max 40)
+  const localSeenIds = _getSeenIdsParam(40);
   return api.get("/home/init", { params: { seen_ids: localSeenIds } });
 };
 
@@ -1362,9 +1366,11 @@ export const getPostsFeed = async (
   tab: string = "for_you",
   seen_ids?: string,
 ) => {
-  // OPT-8: read seen IDs from memory, not disk
-  const localSeenIds = _getSeenIdsParam(250);
-  const combinedSeen = [seen_ids, localSeenIds].filter(Boolean).join(",");
+  // OPT-8: read seen IDs from memory, not disk (max 40)
+  const localSeenIds = _getSeenIdsParam(40);
+  const combinedSeen = Array.from(
+    new Set([seen_ids, localSeenIds].filter(Boolean).join(",").split(",").filter(Boolean))
+  ).slice(-40).join(",");
   return api.get("/posts/feed", {
     params: { limit, offset, tab, seen_ids: combinedSeen },
   });

@@ -473,11 +473,17 @@ class FirebaseMessagingService:
                 limit=50
             )
         except Exception as e:
-            logger.warning(f"Failed to query with index, falling back to Python sorting. Error: {e}")
-            chats = await db.query_documents(
-                'chats',
-                filters=[('type', '==', 'dm'), ('participants', 'array_contains', user_id)]
-            )
+            logger.info(f"Using unindexed fallback for DM conversations query: {e}")
+            try:
+                chats = await db.query_documents(
+                    'chats',
+                    filters=[('participants', 'array_contains', user_id)]
+                )
+            except Exception:
+                chats = await db.query_documents('chats')
+
+            chats = [c for c in chats if c.get('type') == 'dm']
+
             # Sort in Python
             def _sort_key(c):
                 val = c.get('last_message_at')

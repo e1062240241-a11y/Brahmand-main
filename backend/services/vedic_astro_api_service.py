@@ -60,8 +60,11 @@ class VedicAstroApiService:
         url = f"{self.BASE_URL}/{endpoint}"
         params["api_key"] = self._api_key
         
+        def _request():
+            return requests.get(url, params=params, timeout=15)
+
         try:
-            response = await asyncio.to_thread(requests.get, url, params=params, timeout=15)
+            response = await asyncio.to_thread(_request)
             if response.status_code >= 400:
                 logger.error("VedicAstroAPI error: %s - %s", response.status_code, response.text)
                 return {"error": f"Status {response.status_code}: {response.text}"}
@@ -74,8 +77,11 @@ class VedicAstroApiService:
         url = f"{self.BASE_URL}/{endpoint}"
         params["api_key"] = self._api_key
         
+        def _request():
+            return requests.get(url, params=params, timeout=15)
+
         try:
-            response = await asyncio.to_thread(requests.get, url, params=params, timeout=15)
+            response = await asyncio.to_thread(_request)
             if response.status_code >= 400:
                 logger.error("VedicAstroAPI SVG error: %s", response.status_code)
                 return ""

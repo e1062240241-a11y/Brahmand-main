@@ -23,7 +23,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import formatDistance from '../../src/utils/formatDistance';
+import formatDistance, { calculateHaversineDistance } from '../../src/utils/formatDistance';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
@@ -246,8 +246,17 @@ export default function VendorScreen() {
     createVendor,
     uploadBusinessImage
   } = useVendorStore();
-  const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
-  const hasPendingKyc = isKycPending || myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
+  const hasVerifiedKyc =
+    isKycVerified ||
+    Boolean((user as any)?.is_verified) ||
+    (user as any)?.kyc_status === 'verified' ||
+    myVendor?.kyc_status === 'verified';
+  const hasPendingKyc =
+    isKycPending ||
+    (user as any)?.kyc_status === 'pending' ||
+    (user as any)?.kyc_status === 'manual_review' ||
+    myVendor?.kyc_status === 'pending' ||
+    myVendor?.kyc_status === 'manual_review';
   const canAccessDashboard = hasVerifiedKyc || hasPendingKyc;
   
   const [activeTab, setActiveTab] = useState('Nearby');
@@ -296,6 +305,7 @@ export default function VendorScreen() {
     const latestStatus = await loadKycStatus();
     const isVerified =
       latestStatus === 'verified' ||
+      Boolean((user as any)?.is_verified) ||
       (user as any)?.kyc_status === 'verified' ||
       myVendor?.kyc_status === 'verified';
 
@@ -577,11 +587,19 @@ export default function VendorScreen() {
       });
     }
 
-    // Show only vendors within a strict 8km radius as requested by the user
-    filtered = filtered.filter((v) => typeof v.distance === 'number' && v.distance <= 8);
+    // Map each vendor with its live dynamic distance
+    const withDist = filtered.map((v) => {
+      const dynDist = calculateHaversineDistance(userLocation?.lat, userLocation?.lng, v.latitude, v.longitude);
+      const effectiveDist = dynDist !== null ? dynDist : (typeof v.distance === 'number' ? v.distance : undefined);
+      return { ...v, effectiveDist };
+    });
 
-    return filtered.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
-  }, [vendors, activeTab, searchTerm, searchCategory]);
+    // Show vendors within 8km radius if location is available, or all vendors if none found within 8km
+    const nearbyVendors = userLocation ? withDist.filter((v) => typeof v.effectiveDist === 'number' && v.effectiveDist <= 8) : withDist;
+    const resultList = nearbyVendors.length > 0 ? nearbyVendors : withDist;
+
+    return resultList.sort((a, b) => (a.effectiveDist ?? 9999) - (b.effectiveDist ?? 9999));
+  }, [vendors, activeTab, searchTerm, searchCategory, userLocation]);
 
   const displayJobProfiles = React.useMemo(() => {
     let filtered = [...(jobProfiles || [])];
@@ -701,8 +719,8 @@ export default function VendorScreen() {
         address: data.address,
         locationLink: data.locationLink || undefined,
         phoneNumber: data.phoneNumber,
-        latitude: data.latitude || userLocation?.lat || undefined,
-        longitude: data.longitude || userLocation?.lng || undefined,
+        latitude: data.latitude ?? (data.isCurrentLocation ? userLocation?.lat : undefined),
+        longitude: data.longitude ?? (data.isCurrentLocation ? userLocation?.lng : undefined),
       });
       
       console.log('Vendor registration response:', JSON.stringify(newVendor, null, 2));
@@ -723,13 +741,28 @@ export default function VendorScreen() {
       setShowRegistrationModal(false);
       
       // Refresh vendor data in background
-      Promise.all([
+      await Promise.all([
         fetchMyVendor(),
         userLocation ? fetchVendors(userLocation) : fetchVendors()
       ]).catch(err => console.warn('Background fetch error:', err));
       
-      // Navigate to Number & KYC verification
-      router.push('/kyc');
+      const isAlreadyVerified =
+        Boolean((user as any)?.is_verified) ||
+        (user as any)?.kyc_status === 'verified' ||
+        myVendor?.kyc_status === 'verified';
+
+      if (isAlreadyVerified) {
+        if (Platform.OS === 'web') {
+          window.alert(localT('approvedMsg') || 'Your business is registered and your KYC is verified across the app.');
+        } else {
+          Alert.alert(
+            localT('approvedTitle') || 'Business Registered!',
+            localT('approvedMsg') || 'Your business is registered and your KYC is verified across the app.'
+          );
+        }
+      } else {
+        router.push('/kyc');
+      }
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);
       throw error;
@@ -799,7 +832,7 @@ export default function VendorScreen() {
     return 'storefront';
   };
 
-  const renderVendor = ({ item }: { item: Vendor }) => {
+  const renderVendor = ({ item }: { item: any }) => {
     const vendorCategories = item?.categories || [];
     const isApprovedVendor =
       (item.kyc_status === 'verified' ||
@@ -821,9 +854,9 @@ export default function VendorScreen() {
       >
         {/* Business Image Placeholder */}
         <View style={styles.vendorImageContainer}>
-          {(item.business_gallery_images && item.business_gallery_images.find((url) => !!url)) || (item.photos && item.photos.length > 0) ? (
+          {(item.business_gallery_images && item.business_gallery_images.find((url: string) => !!url)) || (item.photos && item.photos.length > 0) ? (
             <Image
-              source={{ uri: (item.business_gallery_images || []).find((url) => !!url) || item.photos[0] }}
+              source={{ uri: (item.business_gallery_images || []).find((url: string) => !!url) || item.photos[0] }}
               style={styles.vendorImage}
             />
           ) : (
@@ -844,7 +877,7 @@ export default function VendorScreen() {
           {/* Categories */}
           {vendorCategories.length > 0 && (
             <View style={styles.categoriesRow}>
-              {vendorCategories.slice(0, 2).map((cat, idx) => (
+              {vendorCategories.slice(0, 2).map((cat: string, idx: number) => (
                 <View key={idx} style={styles.categoryBadge}>
                   <Text style={styles.categoryBadgeText} numberOfLines={1}>{localT(cat.toLowerCase() as any) || cat}</Text>
                 </View>
@@ -858,7 +891,7 @@ export default function VendorScreen() {
           {/* Distance */}
           <View style={styles.distanceRow}>
             <Ionicons name="location" size={12} color={COLORS.textLight} />
-            <Text style={styles.distanceText}>{formatDistance(item.distance)}</Text>
+            <Text style={styles.distanceText}>{formatDistance(item.effectiveDist ?? item.distance)}</Text>
           </View>
         </View>
 
@@ -1023,7 +1056,7 @@ export default function VendorScreen() {
             onPress={() => {
               if (myVendor) {
                 if (canAccessDashboard) {
-                  router.push('/vendor/dashboard');
+                  router.push(`/vendor/${myVendor.id}`);
                 } else {
                   Alert.alert(
                     localT('kycRequiredTitle'),
@@ -1035,6 +1068,13 @@ export default function VendorScreen() {
                   );
                 }
               } else {
+                if (!hasVerifiedKyc) {
+                  router.push({
+                    pathname: '/kyc',
+                    params: { returnUrl: '/(tabs)/vendor' }
+                  });
+                  return;
+                }
                 setShowRegistrationModal(true);
               }
             }}

@@ -1,16 +1,6 @@
 {
   "indexes": [
     {
-      "collectionGroup": "messages",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "timestamp",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "vendor_admin_reviews",
       "queryScope": "COLLECTION",
       "fields": [
@@ -71,20 +61,20 @@
       ]
     },
     {
-      "collectionGroup": "events",
+      "collectionGroup": "chats",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "location.city",
+          "fieldPath": "participants",
+          "arrayConfig": "CONTAINS"
+        },
+        {
+          "fieldPath": "type",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "date",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "name",
-          "order": "ASCENDING"
+          "fieldPath": "last_message_at",
+          "order": "DESCENDING"
         }
       ]
     }

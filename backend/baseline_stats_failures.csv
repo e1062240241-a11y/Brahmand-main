@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,/api/auth/login-anonymous,CatchResponseError('Login failed with status 400'),11,2026-07-15T12:51:41Z,2026-07-15T12:51:49Z

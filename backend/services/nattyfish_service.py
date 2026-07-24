@@ -53,11 +53,11 @@ class NattyFishService:
 
     @staticmethod
     def _pe_id() -> str:
-        return (os.getenv("NATTYFISH_PE_ID") or os.getenv("MSG91_PE_ID") or "1701167048221300150").strip()
+        return (os.getenv("NATTYFISH_PE_ID") or "1701167048221300150").strip()
 
     @staticmethod
     def _template_id() -> str:
-        return (os.getenv("NATTYFISH_TEMPLATE_ID") or os.getenv("MSG91_TEMPLATE_ID") or "1707178151289895753").strip()
+        return (os.getenv("NATTYFISH_TEMPLATE_ID") or "1707178151289895753").strip()
 
     @staticmethod
     def _check_config():

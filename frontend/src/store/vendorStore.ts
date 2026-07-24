@@ -265,7 +265,12 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
     try {
       const response = await getMyVendor();
       const vendor = response?.data || null;
-      set({ myVendor: vendor });
+      set((state) => ({
+        myVendor: vendor,
+        vendors: vendor
+          ? state.vendors.map((v) => (v.id === vendor.id ? { ...v, ...vendor } : v))
+          : state.vendors,
+      }));
       if (vendor && vendor.kyc_status) {
         try {
           const { useAuthStore } = require('./authStore');
@@ -367,24 +372,33 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
   
   updateVendor: async (vendorId, data) => {
     set((state) => {
-      if (!state.myVendor || state.myVendor.id !== vendorId) {
-        return state;
-      }
+      const updatedMyVendor = (state.myVendor && state.myVendor.id === vendorId)
+        ? { ...state.myVendor, ...data }
+        : state.myVendor;
+      const updatedVendors = state.vendors.map((v) =>
+        v.id === vendorId ? { ...v, ...data } : v
+      );
       return {
-        myVendor: {
-          ...state.myVendor,
-          ...data,
-        },
+        myVendor: updatedMyVendor,
+        vendors: updatedVendors,
       };
     });
     await updateVendor(vendorId, data);
-    // Refresh my vendor
-    await get().fetchMyVendor();
   },
 
   updateBusinessProfile: async (vendorId, data) => {
+    set((state) => {
+      if (!state.myVendor || state.myVendor.id !== vendorId) return state;
+      const updatedMyVendor = {
+        ...state.myVendor,
+        ...data,
+      };
+      return {
+        myVendor: updatedMyVendor,
+        vendors: state.vendors.map((v) => (v.id === vendorId ? { ...v, ...data } : v)),
+      };
+    });
     await updateVendorBusinessProfile(vendorId, data);
-    await get().fetchMyVendor();
   },
 
   uploadBusinessImage: async (vendorId, slot, file) => {

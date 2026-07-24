@@ -593,6 +593,7 @@ export default function AdminPanelScreen() {
 
         <View style={styles.cardBody}>
           <InfoRow icon="finger-print-outline" label="SL ID" value={item.sl_id || 'N/A'} />
+          <InfoRow icon="call-outline" label="Phone" value={item.kyc_verified_phone || item.phone || 'N/A'} />
           <InfoRow icon="briefcase-outline" label="Role" value={item.kyc_role || 'N/A'} />
           <InfoRow icon="document-text-outline" label="Request No" value={item.kyc_request_no || 'N/A'} />
 

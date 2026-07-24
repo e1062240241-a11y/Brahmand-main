@@ -20,6 +20,7 @@ import {
   Animated,
   Linking,
   AppState,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useIsFocused } from '@react-navigation/native';
@@ -565,17 +566,11 @@ const DirectMessageScreen = () => {
 
   const handleBackNavigation = useCallback(() => {
     try {
-      if (textInputRef.current) {
-        textInputRef.current.blur();
-      }
       Keyboard.dismiss();
-      if (router.canGoBack()) {
-        router.back();
-      } else {
-        router.replace('/messages?tab=Private%20Chat');
-      }
-    } catch (e) {
-      console.warn('[DM] Back navigation failed:', e);
+    } catch (e) {}
+    if (router.canGoBack()) {
+      router.back();
+    } else {
       router.replace('/messages?tab=Private%20Chat');
     }
   }, [router]);
@@ -2074,60 +2069,322 @@ const DirectMessageScreen = () => {
           </View>
 
           {showAttachmentOptions && (
-            <Animated.View style={[styles.attachmentOverlay, { opacity: attachmentAnim, transform: [{ scale: attachmentAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }]}>
-              <TouchableOpacity style={styles.attachmentOption} onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked}>
-                <Ionicons name="image-outline" size={20} color={COLORS.primary} />
-                <Text style={styles.attachmentOptionText}>Photo</Text>
+            <Modal visible={showAttachmentOptions} transparent animationType="none" onRequestClose={closeAttachmentOptions}>
+              <TouchableOpacity
+                style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.45)', justifyContent: 'flex-end' }}
+                activeOpacity={1}
+                onPress={closeAttachmentOptions}
+              >
+                <TouchableWithoutFeedback>
+                  <Animated.View
+                    style={{
+                      backgroundColor: '#FFFFFF',
+                      borderTopLeftRadius: 28,
+                      borderTopRightRadius: 28,
+                      paddingHorizontal: 24,
+                      paddingTop: 16,
+                      paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: -4 },
+                      shadowOpacity: 0.15,
+                      shadowRadius: 16,
+                      elevation: 12,
+                      transform: [
+                        {
+                          translateY: attachmentAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [300, 0],
+                          }),
+                        },
+                      ],
+                      opacity: attachmentAnim,
+                    }}
+                  >
+                    {/* Drag Handle */}
+                    <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 20 }} />
+
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 22 }}>
+                      Share Content
+                    </Text>
+
+                    {/* Instagram Style Grid Items */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+                      {/* Photo / Gallery */}
+                      <TouchableOpacity
+                        style={{ alignItems: 'center' }}
+                        onPress={() => { closeAttachmentOptions(); handlePickMedia('image'); }}
+                        disabled={uploadingMedia || sending || isInputLocked}
+                      >
+                        <LinearGradient
+                          colors={['#833AB4', '#FD1D1D', '#FCB045']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}
+                        >
+                          <Ionicons name="image" size={26} color="#FFF" />
+                        </LinearGradient>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4A4A4A' }}>
+                          Photo
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Camera */}
+                      <TouchableOpacity
+                        style={{ alignItems: 'center' }}
+                        onPress={() => { closeAttachmentOptions(); handleOpenCamera(); }}
+                        disabled={uploadingMedia || sending || isInputLocked}
+                      >
+                        <LinearGradient
+                          colors={['#FF6B00', '#FF8E53']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}
+                        >
+                          <Ionicons name="camera" size={26} color="#FFF" />
+                        </LinearGradient>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4A4A4A' }}>
+                          Camera
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Video */}
+                      <TouchableOpacity
+                        style={{ alignItems: 'center' }}
+                        onPress={() => { closeAttachmentOptions(); handlePickMedia('video'); }}
+                        disabled={uploadingMedia || sending || isInputLocked}
+                      >
+                        <LinearGradient
+                          colors={['#00C853', '#B9F6CA']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}
+                        >
+                          <Ionicons name="videocam" size={26} color="#FFF" />
+                        </LinearGradient>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4A4A4A' }}>
+                          Video
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Contact */}
+                      <TouchableOpacity
+                        style={{ alignItems: 'center' }}
+                        onPress={() => { closeAttachmentOptions(); handleOpenContactShare(); }}
+                        disabled={uploadingMedia || sending || isInputLocked}
+                      >
+                        <LinearGradient
+                          colors={['#2979FF', '#82B1FF']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={{ width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}
+                        >
+                          <Ionicons name="person" size={26} color="#FFF" />
+                        </LinearGradient>
+                        <Text style={{ fontSize: 12, fontWeight: '600', color: '#4A4A4A' }}>
+                          Contact
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </Animated.View>
+                </TouchableWithoutFeedback>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={() => handlePickMedia('video')} disabled={uploadingMedia || sending || isInputLocked}>
-                <Ionicons name="videocam-outline" size={20} color={COLORS.primary} />
-                <Text style={styles.attachmentOptionText}>Video</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={handleOpenContactShare} disabled={uploadingMedia || sending || isInputLocked}>
-                <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
-                <Text style={styles.attachmentOptionText}>Contact</Text>
-              </TouchableOpacity>
-            </Animated.View>
+            </Modal>
           )}
         </View>
 
-        <Modal visible={showContactModal} transparent animationType="fade" onRequestClose={() => setShowContactModal(false)}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactModal(false)} />
-          <View style={styles.contactModalCard}>
-            <View style={styles.contactModalHeader}>
-              <Text style={styles.contactModalTitle}>Share Contact</Text>
-              <TouchableOpacity onPress={() => setShowContactModal(false)}><Ionicons name="close" size={22} color={COLORS.text} /></TouchableOpacity>
-            </View>
-            <View style={styles.contactModalBody}>
-              <Text style={styles.contactModalLabel}>Name</Text>
-              <TextInput style={styles.contactModalInput} value={contactShareName} onChangeText={setContactShareName} placeholder="Contact name" placeholderTextColor={COLORS.textSecondary} />
-              <Text style={styles.contactModalLabel}>Phone</Text>
-              <TextInput style={styles.contactModalInput} value={contactSharePhone} onChangeText={setContactSharePhone} placeholder="Phone number" keyboardType="phone-pad" placeholderTextColor={COLORS.textSecondary} />
-              <TouchableOpacity style={[styles.contactModalButton, styles.contactPickerButton]} onPress={async () => { const hasContacts = await loadPhoneContacts(); if (hasContacts) setShowContactPicker(true); }} disabled={loadingContacts}>
-                {loadingContacts ? <ActivityIndicator size="small" color={COLORS.textPrimary} /> : <Text style={styles.contactPickerButtonText}>Pick from phone contacts</Text>}
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.contactModalButton, sharingContact ? styles.sendButtonDisabled : null]} onPress={handleSendContact} disabled={sharingContact}>
-                {sharingContact ? <ActivityIndicator size="small" color={COLORS.textWhite} /> : <Text style={styles.contactModalButtonText}>Share</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
+        <Modal visible={showContactModal} transparent animationType="slide" onRequestClose={() => setShowContactModal(false)}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+            activeOpacity={1}
+            onPress={() => setShowContactModal(false)}
+          >
+            <TouchableWithoutFeedback>
+              <View
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderTopLeftRadius: 28,
+                  borderTopRightRadius: 28,
+                  paddingHorizontal: 24,
+                  paddingTop: 16,
+                  paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: -4 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 16,
+                  elevation: 12,
+                }}
+              >
+                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 16 }} />
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <LinearGradient
+                      colors={['#2979FF', '#82B1FF']}
+                      style={{ width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 }}
+                    >
+                      <Ionicons name="person" size={22} color="#FFF" />
+                    </LinearGradient>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>
+                      Share Contact
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowContactModal(false)} style={{ padding: 4 }}>
+                    <Ionicons name="close" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Input Fields */}
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#666', marginBottom: 6, marginLeft: 2 }}>Contact Name</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F7FA', borderRadius: 14, paddingHorizontal: 14, height: 48, borderWidth: 1, borderColor: '#E8ECEF' }}>
+                    <Ionicons name="person-outline" size={20} color="#888" style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, fontSize: 15, color: '#1A1A1A' }}
+                      value={contactShareName}
+                      onChangeText={setContactShareName}
+                      placeholder="Full Name"
+                      placeholderTextColor="#AAA"
+                    />
+                  </View>
+                </View>
+
+                <View style={{ marginBottom: 20 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#666', marginBottom: 6, marginLeft: 2 }}>Phone Number</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F7FA', borderRadius: 14, paddingHorizontal: 14, height: 48, borderWidth: 1, borderColor: '#E8ECEF' }}>
+                    <Ionicons name="call-outline" size={20} color="#888" style={{ marginRight: 10 }} />
+                    <TextInput
+                      style={{ flex: 1, fontSize: 15, color: '#1A1A1A' }}
+                      value={contactSharePhone}
+                      onChangeText={setContactSharePhone}
+                      placeholder="Phone Number"
+                      keyboardType="phone-pad"
+                      placeholderTextColor="#AAA"
+                    />
+                  </View>
+                </View>
+
+                {/* Pick from Phone Contacts Button */}
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: '#EEF4FF',
+                    borderRadius: 14,
+                    height: 48,
+                    marginBottom: 12,
+                  }}
+                  onPress={async () => {
+                    const hasContacts = await loadPhoneContacts();
+                    if (hasContacts) setShowContactPicker(true);
+                  }}
+                  disabled={loadingContacts}
+                >
+                  {loadingContacts ? (
+                    <ActivityIndicator size="small" color="#2979FF" />
+                  ) : (
+                    <>
+                      <Ionicons name="book-outline" size={20} color="#2979FF" style={{ marginRight: 8 }} />
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#2979FF' }}>Pick from Phone Contacts</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Share Button */}
+                <TouchableOpacity
+                  style={{
+                    borderRadius: 14,
+                    height: 50,
+                    overflow: 'hidden',
+                    opacity: sharingContact ? 0.7 : 1,
+                  }}
+                  onPress={handleSendContact}
+                  disabled={sharingContact}
+                >
+                  <LinearGradient
+                    colors={['#FF6B00', '#FF8E53']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
+                  >
+                    {sharingContact ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#FFF' }}>Share Contact</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </TouchableOpacity>
         </Modal>
 
-        <Modal visible={showContactPicker} transparent animationType="fade" onRequestClose={() => setShowContactPicker(false)}>
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowContactPicker(false)} />
-          <View style={[styles.contactModalCard, { maxHeight: '70%' }]}>
-            <View style={styles.contactModalHeader}>
-              <Text style={styles.contactModalTitle}>Choose Contact</Text>
-              <TouchableOpacity onPress={() => setShowContactPicker(false)}><Ionicons name="close" size={22} color={COLORS.text} /></TouchableOpacity>
-            </View>
-            {loadingContacts ? <ActivityIndicator size="large" color={COLORS.primary} /> : (
-              <FlatList data={phoneContacts} keyExtractor={(item, index) => String((item as any).id || item.name || item.phoneNumbers?.[0]?.id || index)} renderItem={({ item }) => {
-                const phone = item.phoneNumbers?.[0]?.number || 'No number';
-                const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
-                return <TouchableOpacity style={styles.phoneContactItem} onPress={() => handleSelectPhoneContact(item)}><View><Text style={styles.phoneContactName}>{name}</Text><Text style={styles.phoneContactNumber}>{phone}</Text></View></TouchableOpacity>;
-              }} />
-            )}
-          </View>
+        <Modal visible={showContactPicker} transparent animationType="slide" onRequestClose={() => setShowContactPicker(false)}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+            activeOpacity={1}
+            onPress={() => setShowContactPicker(false)}
+          >
+            <TouchableWithoutFeedback>
+              <View
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderTopLeftRadius: 28,
+                  borderTopRightRadius: 28,
+                  paddingHorizontal: 20,
+                  paddingTop: 16,
+                  paddingBottom: Platform.OS === 'ios' ? 36 : 20,
+                  maxHeight: '80%',
+                }}
+              >
+                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0', alignSelf: 'center', marginBottom: 16 }} />
+
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#1A1A1A' }}>Select Contact</Text>
+                  <TouchableOpacity onPress={() => setShowContactPicker(false)} style={{ padding: 4 }}>
+                    <Ionicons name="close" size={24} color="#666" />
+                  </TouchableOpacity>
+                </View>
+
+                {loadingContacts ? (
+                  <ActivityIndicator size="large" color="#FF6B00" style={{ paddingVertical: 40 }} />
+                ) : (
+                  <FlatList
+                    data={phoneContacts}
+                    keyExtractor={(item, index) => String((item as any).id || item.name || item.phoneNumbers?.[0]?.id || index)}
+                    renderItem={({ item }) => {
+                      const phone = item.phoneNumbers?.[0]?.number || 'No number';
+                      const name = item.name || [item.firstName, item.lastName].filter(Boolean).join(' ') || 'Unknown';
+                      return (
+                        <TouchableOpacity
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingVertical: 12,
+                            paddingHorizontal: 8,
+                            borderBottomWidth: 1,
+                            borderBottomColor: '#F0F2F5',
+                          }}
+                          onPress={() => handleSelectPhoneContact(item)}
+                        >
+                          <View style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: '#FFF3E0', justifyContent: 'center', alignItems: 'center', marginRight: 12 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '700', color: '#FF6B00' }}>
+                              {name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '600', color: '#1A1A1A' }}>{name}</Text>
+                            <Text style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{phone}</Text>
+                          </View>
+                          <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+                )}
+              </View>
+            </TouchableWithoutFeedback>
+          </TouchableOpacity>
         </Modal>
         {Platform.OS === 'android' && <View style={{ height: isKeyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
       </View>

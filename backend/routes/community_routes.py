@@ -38,6 +38,12 @@ async def discover_communities(token_data: dict = Depends(verify_token)):
     return await CommunityService.discover_communities(token_data["user_id"])
 
 
+@router.get("/my-creation-requests")
+async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
+    """Get community creation requests created by current user"""
+    return await CommunityService.get_my_creation_requests(token_data["user_id"])
+
+
 @router.get("/{community_id}")
 async def get_community(
     community_id: str,

@@ -16,7 +16,7 @@ class CacheManager:
     """Centralized cache management"""
     
     # Cache key prefixes
-    USER_PREFIX = "user"
+    USER_PREFIX = "users"
     COMMUNITY_PREFIX = "community"
     TEMPLE_PREFIX = "temple"
     PANCHANG_PREFIX = "panchang"
@@ -42,22 +42,41 @@ class CacheManager:
             redis = await self._get_redis()
             value = await redis.get(key)
             if value:
-                return json.loads(value)
+                val = json.loads(value)
+                self._local_cache[key] = val
+                return val
         except Exception as e:
             logger.debug(f"Cache get error for {key}: {e}")
         return None
 
     async def get_many(self, keys: List[str]) -> List[Optional[Any]]:
         """Get multiple values from cache"""
+        results = [self._local_cache.get(k) for k in keys]
+        missing_indices = [i for i, v in enumerate(results) if v is None]
+
+        if not missing_indices:
+            return results
+
         try:
             redis = await self._get_redis()
+            missing_keys = [keys[i] for i in missing_indices]
+
             if hasattr(redis, 'get_many'):
-                values = await redis.get_many(keys)
-                return [json.loads(v) if v else None for v in values]
-            return [await self.get(key) for key in keys]
+                values = await redis.get_many(missing_keys)
+                for idx, v_str in zip(missing_indices, values):
+                    if v_str:
+                        val = json.loads(v_str)
+                        self._local_cache[keys[idx]] = val
+                        results[idx] = val
+            else:
+                for idx in missing_indices:
+                    val = await self.get(keys[idx])
+                    if val is not None:
+                        results[idx] = val
         except Exception as e:
             logger.debug(f"Cache get_many error: {e}")
-        return [None] * len(keys)
+
+        return results
     
     async def set(
         self, 
@@ -83,6 +102,9 @@ class CacheManager:
         if ttl is None:
             ttl = settings.CACHE_TTL
             
+        for k, v in mapping.items():
+            self._local_cache[k] = v
+
         try:
             redis = await self._get_redis()
             serialized_mapping = {k: json.dumps(v, default=str) for k, v in mapping.items()}
@@ -173,6 +195,12 @@ class CacheManager:
 
     async def invalidate_community_requests(self):
         """Invalidate all cached community requests"""
+        try:
+            keys_to_del = [k for k in list(self._local_cache.keys()) if k.startswith("user_requests:")]
+            for k in keys_to_del:
+                self._local_cache.pop(k, None)
+        except Exception as e:
+            logger.debug(f"Error clearing local cache for requests: {e}")
         await self.delete_pattern("user_requests:*")
 
 

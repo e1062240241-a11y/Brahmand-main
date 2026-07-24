@@ -79,26 +79,26 @@ class TempleService:
     @staticmethod
     async def get_temples(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get all temples with caching"""
-        # Try cache first (if no user-specific data needed)
-        if not user_id:
-            cached = await cache_manager.get_temples()
-            if cached:
-                return cached
-        
-        db = await TempleService.get_db()
-        temples = await db.query_documents("temples", limit=50)
-        temples.sort(key=lambda t: t.get("follower_count", 0), reverse=True)
+        cached = await cache_manager.get_temples()
+        if not cached:
+            db = await TempleService.get_db()
+            temples = await db.query_documents("temples", limit=100)
+            temples.sort(key=lambda t: t.get("follower_count", 0), reverse=True)
+
+            cached = []
+            for t in temples:
+                temple_data = serialize_doc(t)
+                temple_data["followers"] = t.get("followers", [])
+                temple_data["follower_count"] = t.get("follower_count", 0)
+                cached.append(temple_data)
+
+            await cache_manager.set_temples(cached)
         
         result = []
-        for t in temples:
-            temple_data = serialize_doc(t)
+        for t in cached:
+            temple_data = t.copy()
             temple_data["is_following"] = user_id in t.get("followers", []) if user_id else False
-            temple_data["follower_count"] = t.get("follower_count", 0)
             result.append(temple_data)
-        
-        # Cache if no user-specific data
-        if not user_id:
-            await cache_manager.set_temples(result)
         
         return result
     
@@ -109,15 +109,15 @@ class TempleService:
         user_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get temples near user's location"""
-        db = await TempleService.get_db()
-        # For demo, return all temples - in production use geo queries
-        temples = await db.query_documents("temples", limit=20)
+        cached = await cache_manager.get_temples()
+        if not cached:
+            await TempleService.get_temples()
+            cached = await cache_manager.get_temples() or []
         
         result = []
-        for t in temples:
-            temple_data = serialize_doc(t)
+        for t in cached[:20]:
+            temple_data = t.copy()
             temple_data["is_following"] = user_id in t.get("followers", []) if user_id else False
-            temple_data["follower_count"] = t.get("follower_count", 0)
             temple_data["distance"] = "2.5 km"  # Placeholder
             result.append(temple_data)
         
@@ -126,17 +126,25 @@ class TempleService:
     @staticmethod
     async def get_temple(temple_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
         """Get temple details"""
-        db = await TempleService.get_db()
-        
-        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
-        if not temple:
-            temple = await db.get_document("temples", temple_id)
-        if not temple:
-            raise ValueError("Temple not found")
-        
-        temple_data = serialize_doc(temple)
-        temple_data["is_following"] = user_id in temple.get("followers", []) if user_id else False
-        temple_data["follower_count"] = temple.get("follower_count", 0)
+        cache_key = f"temple:detail:{temple_id}"
+        cached = await cache_manager.get(cache_key)
+
+        if not cached:
+            db = await TempleService.get_db()
+            temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
+            if not temple:
+                temple = await db.get_document("temples", temple_id)
+            if not temple:
+                raise ValueError("Temple not found")
+
+            cached = serialize_doc(temple)
+            cached["followers"] = temple.get("followers", [])
+            cached["follower_count"] = temple.get("follower_count", 0)
+            await cache_manager.set(cache_key, cached, ttl=300) # Cache for 5 minutes
+
+        temple_data = cached.copy()
+        temple_data["is_following"] = user_id in cached.get("followers", []) if user_id else False
+        temple_data["follower_count"] = cached.get("follower_count", 0)
         
         return temple_data
     
@@ -175,6 +183,9 @@ class TempleService:
         # Invalidate caches
         await cache_manager.invalidate_temples()
         await cache_manager.invalidate_user(user_id)
+        await cache_manager.delete(f"temple:detail:{temple_id}")
+        if temple.get("temple_id"):
+            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return {"message": f"Now following {temple['name']}"}
     
@@ -211,6 +222,9 @@ class TempleService:
         # Invalidate caches
         await cache_manager.invalidate_temples()
         await cache_manager.invalidate_user(user_id)
+        await cache_manager.delete(f"temple:detail:{temple_id}")
+        if temple.get("temple_id"):
+            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return {"message": f"Unfollowed {temple['name']}"}
     
@@ -252,6 +266,9 @@ class TempleService:
         posts = temple.get("posts", [])
         posts = [new_post] + posts
         await db.update_document("temples", temple["id"], {"posts": posts})
+        await cache_manager.delete(f"temple:detail:{temple_id}")
+        if temple.get("temple_id"):
+            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return new_post
     
@@ -298,5 +315,8 @@ class TempleService:
                 
         if updated:
             await db.update_document("temples", temple["id"], {"posts": posts})
+            await cache_manager.delete(f"temple:detail:{temple_id}")
+            if temple.get("temple_id"):
+                await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
         
         return {"message": "Reaction added"}

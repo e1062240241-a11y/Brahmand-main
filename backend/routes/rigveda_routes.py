@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -13,6 +14,8 @@ RIGVEDA_DATA_DIR = (
 )
 
 _rigveda_mandala_cache: Dict[int, List[Dict[str, Any]]] = {}
+_rigveda_all_summary_cache = None
+_rigveda_all_full_cache = None
 
 
 def _load_rigveda_mandala(mandala_number: int) -> List[Dict[str, Any]]:
@@ -60,7 +63,10 @@ def _load_rigveda_mandala(mandala_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{mandala_number}")
 async def get_rigveda_mandala(mandala_number: int):
-    verses = _load_rigveda_mandala(mandala_number)
+    if mandala_number in _rigveda_mandala_cache:
+        verses = _rigveda_mandala_cache[mandala_number]
+    else:
+        verses = await asyncio.to_thread(_load_rigveda_mandala, mandala_number)
     return {
         "book": "rigveda",
         "chapter": mandala_number,
@@ -70,8 +76,45 @@ async def get_rigveda_mandala(mandala_number: int):
 
 
 @router.get("/all")
-async def get_rigveda_all():
-    chapters = {}
+async def get_rigveda_all(summary: bool = True):
+    global _rigveda_all_summary_cache, _rigveda_all_full_cache
+    if summary and _rigveda_all_summary_cache is not None:
+        return _rigveda_all_summary_cache
+    if not summary and _rigveda_all_full_cache is not None:
+        return _rigveda_all_full_cache
+
+    results = []
+    tasks = []
     for i in range(1, 11):
-        chapters[i] = _load_rigveda_mandala(i)
-    return {"book": "rigveda", "chapters": chapters}
+        if i in _rigveda_mandala_cache:
+            results.append((i, _rigveda_mandala_cache[i]))
+        else:
+            tasks.append((i, asyncio.to_thread(_load_rigveda_mandala, i)))
+
+    if tasks:
+        indices, awaitables = zip(*tasks)
+        loaded = await asyncio.gather(*awaitables)
+        for idx, res in zip(indices, loaded):
+            results.append((idx, res))
+
+    results.sort(key=lambda x: x[0])
+    ordered_results = [res for idx, res in results]
+
+    if summary:
+        chapters = {
+            i: {
+                "chapter": i,
+                "total_verses": len(res),
+                "verses_summary": f"Mandala {i} contains {len(res)} verses."
+            }
+            for i, res in enumerate(ordered_results, start=1)
+        }
+    else:
+        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
+
+    response_data = {"book": "rigveda", "chapters": chapters}
+    if summary:
+        _rigveda_all_summary_cache = response_data
+    else:
+        _rigveda_all_full_cache = response_data
+    return response_data

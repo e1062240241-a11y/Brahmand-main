@@ -18,11 +18,15 @@ venv/
 .env.*
 .gcloud.env.yaml
 
-# Build/test artifacts
+# Build/test artifacts and heavy scratch backups
 dist/
 build/
 logs/
 *.log
+scratch/
+tmp/
+*.zip
+*.wav
 
 # Keep firebase.json in deploy context (required by backend at runtime)
 !.gcloudignore

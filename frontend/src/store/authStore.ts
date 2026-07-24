@@ -164,8 +164,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
       } else {
         const { router } = require('expo-router');
+        const { safeNavigate } = require('../utils/safeNavigation');
         if (router && typeof router.replace === 'function') {
-          router.replace('/');
+          safeNavigate(() => router.replace('/'));
         }
       }
     } catch (routerErr) {
