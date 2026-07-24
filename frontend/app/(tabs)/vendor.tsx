@@ -16,6 +16,7 @@ import {
   Platform,
   Animated,
   Dimensions,
+  AppState,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -432,18 +433,6 @@ export default function VendorScreen() {
     }
     loadData();
   }, [loadData, userId, authLoading, isAuthenticated, router]);
-
-  useEffect(() => {
-    if (!userId) return;
-
-    // Background sync: poll to refresh vendor data and update WatermelonDB every 30 seconds
-    const interval = setInterval(() => {
-      console.log('[Background Sync] Refreshing vendors list and syncing with WatermelonDB...');
-      loadData().catch((err) => console.warn('[Background Sync] Failed to refresh vendors:', err));
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [userId, loadData]);
 
   useEffect(() => {
     if (!userId) return;

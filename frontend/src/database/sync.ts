@@ -62,7 +62,7 @@ export async function syncDatabase() {
   }
 
   if (activeSyncPromise) {
-    console.log('[Sync] Synchronization already in progress, returning existing promise');
+    if (__DEV__) console.log('[Sync] Synchronization already in progress, returning existing promise');
     return activeSyncPromise;
   }
 
@@ -70,7 +70,7 @@ export async function syncDatabase() {
     try {
       const token = await secureStorage.getItem('auth_token');
       if (!token) {
-        console.log('[Sync] User not authenticated, skipping sync');
+        if (__DEV__) console.log('[Sync] User not authenticated, skipping sync');
         return;
       }
 
@@ -78,14 +78,14 @@ export async function syncDatabase() {
       const lastSync = await AsyncStorage.getItem('watermelon_last_sync_timestamp');
       const now = Date.now();
       if (lastSync && now - parseInt(lastSync, 10) < SYNC_COOLDOWN) {
-        console.log('[Sync] Cooldown active, skipping sync');
+        if (__DEV__) console.log('[Sync] Cooldown active, skipping sync');
         return;
       }
 
       // Pre-sync network reachability check — skip immediately if offline
       const isReachable = await checkBackendReachable();
       if (!isReachable) {
-        console.log('[Sync] Backend unreachable, skipping sync');
+        if (__DEV__) console.log('[Sync] Backend unreachable, skipping sync');
         return;
       }
 
@@ -116,7 +116,7 @@ export async function syncDatabase() {
             if (isNetworkError(error)) {
               // Return empty changeset so WatermelonDB sync completes cleanly
               // and the local DB is left completely untouched.
-              console.warn('[Sync] Pull skipped — network unavailable');
+              if (__DEV__) console.warn('[Sync] Pull skipped — network unavailable');
               return buildEmptyChangeset(lastPulledAt ?? null);
             }
 
@@ -147,7 +147,7 @@ export async function syncDatabase() {
           } catch (error: any) {
             if (isNetworkError(error)) {
               // Don't throw; pending local changes will be retried on the next sync cycle
-              console.warn('[Sync] Push skipped — network unavailable');
+              if (__DEV__) console.warn('[Sync] Push skipped — network unavailable');
               return;
             }
 
@@ -158,7 +158,7 @@ export async function syncDatabase() {
         sendCreatedAsUpdated: true,
       });
 
-      console.log('[Sync] WatermelonDB synchronization complete');
+      if (__DEV__) console.log('[Sync] WatermelonDB synchronization complete');
     } catch (err: any) {
       // Top-level safety net: log but never propagate sync errors to callers.
       // A failed sync should never crash a screen or block the user.

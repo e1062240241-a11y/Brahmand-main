@@ -14,8 +14,9 @@ import {
   Share,
   Dimensions,
   BackHandler,
-  RefreshControl,
+  AppState,
   Modal,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -125,6 +126,7 @@ export default function ActiveRequestsList() {
 
     // Polling fallback (every 30 seconds) to ensure list stays fresh even if socket drops
     pollingInterval = setInterval(() => {
+      if (AppState.currentState !== 'active') return;
       fetchRequests(false); // background fetch
     }, 30000);
 
@@ -767,7 +769,7 @@ export default function ActiveRequestsList() {
                       onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title, selectedRequest.id)}
                       activeOpacity={0.85}
                     >
-                      <Ionicons name="hand-heart" size={22} color="#FFF" />
+                      <MaterialCommunityIcons name="hand-heart" size={22} color="#FFF" />
                       <Text style={{ color: '#FFF', fontSize: 14, fontFamily: FONTS.bold, fontWeight: '800' }}>Offer Help</Text>
                     </TouchableOpacity>
                   )}

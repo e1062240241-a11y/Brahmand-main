@@ -16,7 +16,7 @@ import {
   Alert,
   AppState,
   ActionSheetIOS,
-} from 'react-native';
+ Share, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { ReportModal } from './ReportModal';
@@ -25,14 +25,13 @@ import {
   blockUser,
   unblockUser,
 } from '../services/firebase/moderationService';
-import { reportComment } from '../services/api';
+import api, { reportComment , API_URL, getPostComments, addPostComment, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useBlockStore } from '../store/blockStore';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import { COLORS } from '../constants/theme';
 import { Avatar } from './Avatar';
-import api, { API_URL, getPostComments, addPostComment, getPostsFeed, recordWatchEvent, deletePostComment, markPostAsSeen } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { formatTimeAgo, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
@@ -44,7 +43,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MentionInput } from './MentionInput';
 import { MentionText } from './MentionText';
 import * as Clipboard from 'expo-clipboard';
-import { Share, KeyboardAvoidingView, Keyboard } from 'react-native';
 import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from './SafeVideoView';
 import { useTranslation } from '../utils/i18n';
 
@@ -1699,7 +1697,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     <ReelVideoItem
       post={item}
       isActive={index === activeIndexRef.current}
-      shouldLoad={Math.abs(index - activeIndexRef.current) <= 1}
+      shouldLoad={index === activeIndexRef.current}
       onClose={handleCloseWrapper}
       onLike={handleLikeLocal}
       onComment={handleCommentWrapper}
@@ -1773,9 +1771,9 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             viewabilityConfig={viewabilityConfigRef.current}
             getItemLayout={getItemLayout}
             initialNumToRender={1}
-            maxToRenderPerBatch={2}
-            windowSize={2}
-            removeClippedSubviews={Platform.OS !== 'web'}
+            maxToRenderPerBatch={1}
+            windowSize={3}
+            removeClippedSubviews={true}
             snapToInterval={screenSize.height}
             snapToAlignment="start"
             decelerationRate="fast"

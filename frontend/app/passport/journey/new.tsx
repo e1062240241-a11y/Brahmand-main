@@ -70,7 +70,7 @@ export default function NewPassportJourneyScreen() {
     }
   };
 
-  const handleScrollOnType = (ref: React.RefObject<TextInput>) => {
+  const handleScrollOnType = (ref: React.RefObject<TextInput | null>) => {
     const node = findNodeHandle(ref.current);
     if (node) {
       setTimeout(() => {

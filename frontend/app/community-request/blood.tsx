@@ -1,6 +1,6 @@
 import { SafeAreaView } from 'react-native-safe-area-context';
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, BackHandler, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator, BackHandler, ViewStyle, Modal } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -40,7 +40,7 @@ export default function CommunityRequestBloodPage() {
   const [loading, setLoading] = useState(false);
   const [bloodGroup, setBloodGroup] = useState('');
   const [hospitalName, setHospitalName] = useState('');
-  const [hospitalSuggestions, setHospitalSuggestions] = useState<Array<{ name: string; address: string; area: string; city: string }>>([]);
+  const [hospitalSuggestions, setHospitalSuggestions] = useState<{ name: string; address: string; area: string; city: string }[]>([]);
   const [selectedHospital, setSelectedHospital] = useState<{ name: string; address: string; area: string; city: string } | null>(null);
   const [isHospitalSearching, setIsHospitalSearching] = useState(false);
   const [location, setLocation] = useState('Auto-detected');

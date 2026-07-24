@@ -13,12 +13,11 @@ import {
   Modal,
   TouchableWithoutFeedback,
   TextInput,
-} from 'react-native';
+ Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 
 import { getDailyHoroscope } from '../src/services/api';

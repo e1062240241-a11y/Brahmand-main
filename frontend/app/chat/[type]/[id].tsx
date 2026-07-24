@@ -1,6 +1,6 @@
-import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../../src/utils/dateUtils';
+import { formatDateIST, formatTimeIST } from '../../../src/utils/dateUtils';
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated, Keyboard } from 'react-native';
+import { View, Text, Image, StyleSheet, FlatList, TextInput, TouchableOpacity, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator, Modal, Alert, Share, Animated, Keyboard, AppState } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -532,6 +532,7 @@ const ChatScreen = ({
         console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
         if (!pollingInterval) {
           pollingInterval = setInterval(async () => {
+            if (AppState.currentState !== 'active') return;
             const shouldContinue = await fetchMessages(true);
             if (shouldContinue === false && pollingInterval) {
               clearInterval(pollingInterval);
@@ -546,6 +547,7 @@ const ChatScreen = ({
     if (Platform.OS === 'web') {
       // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
       pollingInterval = setInterval(async () => {
+        if (AppState.currentState !== 'active') return;
         const shouldContinue = await fetchMessages(true);
         if (shouldContinue === false && pollingInterval) {
           clearInterval(pollingInterval);
@@ -1642,7 +1644,13 @@ const ChatScreen = ({
                       {
                         scale: attachmentAnim.interpolate({
                           inputRange: [0, 1],
-                          outputRange: [0.95, 1],
+                          outputRange: [0.85, 1],
+                        }),
+                      },
+                      {
+                        translateY: attachmentAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [10, 0],
                         }),
                       },
                     ],
@@ -1654,7 +1662,9 @@ const ChatScreen = ({
                   onPress={() => handlePickMedia('image')}
                   disabled={uploadingMedia || sending}
                 >
-                  <Ionicons name="image-outline" size={20} color={COLORS.primary} />
+                  <View style={styles.attachmentIconCircle}>
+                    <Ionicons name="image" size={22} color="#fff" />
+                  </View>
                   <Text style={styles.attachmentOptionText}>Photo</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1662,7 +1672,9 @@ const ChatScreen = ({
                   onPress={() => handlePickMedia('video')}
                   disabled={uploadingMedia || sending}
                 >
-                  <Ionicons name="videocam-outline" size={20} color={COLORS.primary} />
+                  <View style={styles.attachmentIconCircle}>
+                    <Ionicons name="videocam" size={22} color="#fff" />
+                  </View>
                   <Text style={styles.attachmentOptionText}>Video</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1670,7 +1682,9 @@ const ChatScreen = ({
                   onPress={handleOpenContactShare}
                   disabled={uploadingMedia || sending}
                 >
-                  <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
+                  <View style={styles.attachmentIconCircle}>
+                    <Ionicons name="person-add" size={22} color="#fff" />
+                  </View>
                   <Text style={styles.attachmentOptionText}>Contact</Text>
                 </TouchableOpacity>
               </Animated.View>
@@ -2452,30 +2466,38 @@ const styles = StyleSheet.create({
   },
   attachmentOverlay: {
     position: 'absolute',
-    bottom: 54,
-    left: 16,
-    width: 160,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
+    bottom: 60,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 12,
+    backgroundColor: 'rgba(28,28,30,0.92)',
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 8,
-    paddingVertical: SPACING.xs,
+    shadowOpacity: 0.35,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  attachmentIconCircle: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
   },
   attachmentOption: {
-    flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm,
   },
   attachmentOptionText: {
-    marginLeft: SPACING.sm,
-    color: COLORS.text,
-    fontSize: 14,
+    color: '#fff',
+    fontSize: 11,
+    fontFamily: 'Inter_500Medium',
+    marginTop: 2,
   },
   contactCard: {
     flexDirection: 'row',

@@ -1,4 +1,5 @@
 import json
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -13,6 +14,8 @@ ATHARVA_VEDA_DATA_DIR = (
 )
 
 _atharvaved_kaanda_cache: Dict[int, List[Dict[str, Any]]] = {}
+_atharvaved_all_summary_cache = None
+_atharvaved_all_full_cache = None
 
 
 def _load_atharvaved_kaanda(kaanda_number: int) -> List[Dict[str, Any]]:
@@ -60,7 +63,10 @@ def _load_atharvaved_kaanda(kaanda_number: int) -> List[Dict[str, Any]]:
 
 @router.get("/chapter/{kaanda_number}")
 async def get_atharvaved_kaanda(kaanda_number: int):
-    verses = _load_atharvaved_kaanda(kaanda_number)
+    if kaanda_number in _atharvaved_kaanda_cache:
+        verses = _atharvaved_kaanda_cache[kaanda_number]
+    else:
+        verses = await asyncio.to_thread(_load_atharvaved_kaanda, kaanda_number)
     return {
         "book": "atharvaved",
         "chapter": kaanda_number,
@@ -70,8 +76,45 @@ async def get_atharvaved_kaanda(kaanda_number: int):
 
 
 @router.get("/all")
-async def get_atharvaved_all():
-    chapters = {}
+async def get_atharvaved_all(summary: bool = True):
+    global _atharvaved_all_summary_cache, _atharvaved_all_full_cache
+    if summary and _atharvaved_all_summary_cache is not None:
+        return _atharvaved_all_summary_cache
+    if not summary and _atharvaved_all_full_cache is not None:
+        return _atharvaved_all_full_cache
+
+    results = []
+    tasks = []
     for i in range(1, 21):
-        chapters[i] = _load_atharvaved_kaanda(i)
-    return {"book": "atharvaved", "chapters": chapters}
+        if i in _atharvaved_kaanda_cache:
+            results.append((i, _atharvaved_kaanda_cache[i]))
+        else:
+            tasks.append((i, asyncio.to_thread(_load_atharvaved_kaanda, i)))
+            
+    if tasks:
+        indices, awaitables = zip(*tasks)
+        loaded = await asyncio.gather(*awaitables)
+        for idx, res in zip(indices, loaded):
+            results.append((idx, res))
+            
+    results.sort(key=lambda x: x[0])
+    ordered_results = [res for idx, res in results]
+
+    if summary:
+        chapters = {
+            i: {
+                "chapter": i,
+                "total_verses": len(res),
+                "verses_summary": f"Kaanda {i} contains {len(res)} verses."
+            }
+            for i, res in enumerate(ordered_results, start=1)
+        }
+    else:
+        chapters = {i: res for i, res in enumerate(ordered_results, start=1)}
+        
+    response_data = {"book": "atharvaved", "chapters": chapters}
+    if summary:
+        _atharvaved_all_summary_cache = response_data
+    else:
+        _atharvaved_all_full_cache = response_data
+    return response_data

@@ -22,6 +22,8 @@ import { BrandedLoading } from '../src/components/BrandedLoading';
 import { syncFestivalReminders, toggleAllFestivals, getAllFestivalReminders } from '../src/utils/festivalReminders';
 import { useNotificationStore } from '../src/store/notificationStore';
 
+import { FESTIVAL_IMAGE_MAP, getFestivalImage } from '../src/constants/festivalImages';
+
 const CARD_COLORS = [
   '#FFE082', // Yellow
   '#B2EBF2', // Light Blue
@@ -31,8 +33,6 @@ const CARD_COLORS = [
   '#FFCC80', // Orange
   '#CFD8DC', // Blue Grey
 ];
-
-import { FESTIVAL_IMAGE_MAP, getFestivalImage } from '../src/constants/festivalImages';
 
 const hexToRgba = (hex: string, alpha: number) => {
   if (!hex || typeof hex !== 'string') return `rgba(255, 255, 255, ${alpha})`;

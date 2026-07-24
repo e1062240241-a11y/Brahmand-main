@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { requestRecordingPermissionsAsync, useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets , SafeAreaView } from 'react-native-safe-area-context';
 import {
   Animated,
   Easing,
@@ -13,7 +13,6 @@ import {
   View,
   StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { isWithinGayatriMantraWindow } from './schedule';
@@ -415,7 +414,7 @@ export const LiveMantraRoom = () => {
       startVoiceLoop();
     }
     // Mic state transitions are guarded by refs inside the voice loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [isMicEnabled, roomMuted, isConnected]);
 
   useEffect(() => {

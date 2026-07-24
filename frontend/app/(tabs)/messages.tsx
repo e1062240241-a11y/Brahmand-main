@@ -1,7 +1,7 @@
 // accessibility: placeholder
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect , useRouter, useLocalSearchParams } from 'expo-router';
 import {
   View,
   Text,
@@ -25,7 +25,6 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -958,13 +957,15 @@ function MessagesScreen({
         // Trigger background sync for WatermelonDB
         syncDatabase().catch(e => console.warn('[Messages] Background sync failed:', e));
 
-        console.log('[DEBUG] fetchData: starting community fetch...');
         const [communityRes, requestRes, myPendingRes] = await Promise.all([
           getCommunities().catch((err) => { console.warn('getCommunities err', err); return { data: [] }; }),
           getCommunityRequests({ status: 'active', limit: 10 }).catch((err) => { console.warn('getCommunityRequests err', err); return { data: [] }; }),
           getMyCreationRequests().catch((err) => { console.warn('getMyCreationRequests err', err); return { data: [] }; }),
         ]);
-        console.log('[DEBUG] communityRes:', communityRes?.data?.length, 'requestRes:', requestRes?.data?.length);
+
+        if (__DEV__) {
+          console.log('[DEBUG] communityRes:', communityRes?.data?.length, 'requestRes:', requestRes?.data?.length);
+        }
 
         const allComms = communityRes.data || [];
 
@@ -1010,7 +1011,7 @@ function MessagesScreen({
                 }
               });
             } catch (dbErr) {
-              console.warn('[DEBUG] WatermelonDB write failed (non-fatal):', dbErr);
+              if (__DEV__) console.warn('[DEBUG] WatermelonDB write failed (non-fatal):', dbErr);
             }
           });
         }
@@ -1023,30 +1024,29 @@ function MessagesScreen({
             is_pending: true,
             member_count: req.member_ids?.length || 1,
           }));
-          console.log('[DEBUG] pendingGroups:', pendingGroups.length);
 
           // Fetch fresh from discover endpoint EVERY TIME for now to avoid stale cache issues
           const discoverRes = await discoverCommunities();
           const allDiscovered = discoverRes.data || [];
-          console.log('[DEBUG] discoverRes total:', allDiscovered.length, 'items:', allDiscovered.map((c: any) => `${c.name}(${c.type})`));
           const allUserGroups = allDiscovered.filter(
             (item: Community) => item.type === 'user_group' || item.type === 'local'
           );
-          console.log('[DEBUG] allUserGroups after filter:', allUserGroups.length);
           // Also include any user_group the current user is a member of (from getCommunities)
           const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group' || item.type === 'local');
-          console.log('[DEBUG] allComms total:', allComms.length, 'myUserGroups:', myUserGroups.length);
 
           // Merge and deduplicate by id, prioritize pending ones for the current user
           const merged = [...pendingGroups, ...allUserGroups, ...myUserGroups];
           const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-          console.log('[DEBUG] final unique userGroups:', unique.length, unique.map((c: any) => c.name));
+
+          if (__DEV__) {
+            console.log('[DEBUG] final unique userGroups:', unique.length, unique.map((c: any) => c.name));
+          }
 
           setUserGroups(unique);
           // Persist to cache
           await AsyncStorage.setItem(USER_GROUPS_CACHE_KEY, JSON.stringify({ data: unique, timestamp: Date.now() }));
         } catch (e) {
-          console.log('[DEBUG] error in userGroups logic:', e);
+          if (__DEV__) console.log('[DEBUG] error in userGroups logic:', e);
           // Fallback if discover fails
           const myUserGroups = allComms.filter((item: Community) => item.type === 'user_group' || item.type === 'local');
           const pendingGroups = (myPendingRes.data || []).map((req: any) => ({
@@ -1057,11 +1057,9 @@ function MessagesScreen({
           }));
           const merged = [...pendingGroups, ...myUserGroups];
           const unique = merged.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
-          console.log('[DEBUG] setting fallback unique:', unique);
           setUserGroups(unique);
         }
 
-        console.log('[DEBUG] requestRes.data:', requestRes.data?.length, requestRes.data?.map((r: any) => r.title));
         setRequests(requestRes.data || []);
       } else {
         setLoading((prev) => {
@@ -1176,7 +1174,7 @@ function MessagesScreen({
                 }
               });
             } catch (dbErr) {
-              console.warn('[DEBUG] WatermelonDB write failed (non-fatal):', dbErr);
+              // Non-fatal DB write failure
             }
           });
         }
@@ -1917,7 +1915,7 @@ function MessagesScreen({
                       onPress={() => handleWhatsApp(selectedRequest.contact_number, selectedRequest.title)}
                       activeOpacity={0.85}
                     >
-                      <Ionicons name="hand-heart" size={22} color="#FFF" />
+                      <MaterialCommunityIcons name="hand-heart" size={22} color="#FFF" />
                       <Text style={styles.sheetFulfillBtnText}>
                         {t('language') === 'hi' ? 'मदद की पेशकश करें' : 'Offer Help'}
                       </Text>

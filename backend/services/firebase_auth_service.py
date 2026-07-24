@@ -13,6 +13,7 @@ from config.firebase_config import get_firestore, get_firebase_auth, firebase_ma
 from config.firestore_db import FirestoreDB
 from middleware.security import create_jwt_token
 from utils.helpers import generate_sl_id, SUPPORTED_LANGUAGES
+from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class FirebaseAuthService:
     MOCK_OTP = "123456"  # Default development OTP
     
     _anonymous_phone_set: Optional[set[str]] = None
+    _login_locks: dict = {}
 
     @staticmethod
     def normalize_phone(phone: str) -> str:
@@ -336,92 +338,141 @@ class FirebaseAuthService:
         if not FirebaseAuthService.is_anonymous_phone(normalized_phone):
             raise ValueError("Phone number is not configured for anonymous login")
 
-        db = await FirebaseAuthService.get_db()
-        existing = await db.get_user_by_phone(normalized_phone)
-        if existing:
-            if not existing.get('anonymous_account'):
-                raise ValueError("Phone already registered with a normal account")
-            if existing.get('anonymous_disabled'):
-                raise ValueError("Anonymous login has been permanently disabled for this number")
+        # 1. Fast path: check cache first without acquiring lock to avoid lock contention under heavy concurrency
+        existing = await cache_manager.get(f"user_phone:{normalized_phone}")
+        if existing and existing.get('anonymous_account') and not existing.get('anonymous_disabled'):
+            needs_reset = (
+                existing.get('is_verified') is not False or
+                existing.get('kyc_status') is not None or
+                existing.get('kyc_role') is not None or
+                existing.get('kyc_verified_at') is not None or
+                existing.get('badges') != ["Anonymous Member"]
+            )
+            if not needs_reset:
+                await cache_manager.set_user(existing['id'], existing)
+                token = create_jwt_token(existing['id'], existing['sl_id'])
+                return {
+                    "message": "Anonymous login successful",
+                    "token": token,
+                    "user": existing,
+                    "is_new_user": False
+                }
 
-            # Reset verification status for testing IDs/anonymous users to allow testing the KYC flow
-            await db.update_document('users', existing['id'], {
-                'is_verified': False,
-                'kyc_status': None,
-                'kyc_role': None,
-                'kyc_verified_at': None,
-                'badges': ["Anonymous Member"]
-            })
-            existing['is_verified'] = False
-            existing['kyc_status'] = None
-            existing['kyc_role'] = None
-            existing['kyc_verified_at'] = None
-            existing['badges'] = ["Anonymous Member"]
+        # Concurrency Lock to avoid race conditions/lock contention on user creation or updates
+        lock = FirebaseAuthService._login_locks.setdefault(normalized_phone, asyncio.Lock())
+        async with lock:
+            # Recheck cache after acquiring lock
+            existing = await cache_manager.get(f"user_phone:{normalized_phone}")
+            
+            db = await FirebaseAuthService.get_db()
+            if not existing:
+                existing = await db.get_user_by_phone(normalized_phone)
+                if existing:
+                    await cache_manager.set(f"user_phone:{normalized_phone}", existing, ttl=300)
 
-            token = create_jwt_token(existing['id'], existing['sl_id'])
+            if existing:
+                if not existing.get('anonymous_account'):
+                    raise ValueError("Phone already registered with a normal account")
+                if existing.get('anonymous_disabled'):
+                    raise ValueError("Anonymous login has been permanently disabled for this number")
+
+                # Reset verification status for testing IDs/anonymous users to allow testing the KYC flow
+                needs_reset = (
+                    existing.get('is_verified') is not False or
+                    existing.get('kyc_status') is not None or
+                    existing.get('kyc_role') is not None or
+                    existing.get('kyc_verified_at') is not None or
+                    existing.get('badges') != ["Anonymous Member"]
+                )
+                if needs_reset:
+                    await db.update_document('users', existing['id'], {
+                        'is_verified': False,
+                        'kyc_status': None,
+                        'kyc_role': None,
+                        'kyc_verified_at': None,
+                        'badges': ["Anonymous Member"]
+                    })
+                    existing['is_verified'] = False
+                    existing['kyc_status'] = None
+                    existing['kyc_role'] = None
+                    existing['kyc_verified_at'] = None
+                    existing['badges'] = ["Anonymous Member"]
+                    
+                    # Update cache mapping and cache manager
+                    await cache_manager.set(f"user_phone:{normalized_phone}", existing, ttl=300)
+                    await cache_manager.set_user(existing['id'], existing)
+                else:
+                    # Also populate cache if not already there to ensure subsequent request cache hits
+                    await cache_manager.set_user(existing['id'], existing)
+
+                token = create_jwt_token(existing['id'], existing['sl_id'])
+                return {
+                    "message": "Anonymous login successful",
+                    "token": token,
+                    "user": existing,
+                    "is_new_user": False
+                }
+
+            if language not in SUPPORTED_LANGUAGES:
+                raise ValueError(f"Unsupported language. Choose from: {SUPPORTED_LANGUAGES}")
+
+            sl_id = generate_sl_id()
+            while await db.get_user_by_sl_id(sl_id):
+                sl_id = generate_sl_id()
+
+            user_data = {
+                "phone": normalized_phone,
+                "sl_id": sl_id,
+                "name": name,
+                "photo": photo,
+                "language": language,
+                "location": None,
+                "home_location": None,
+                "office_location": None,
+                "is_verified": False,
+                "badges": ["Anonymous Member"],
+                "reputation": 0,
+                "temple_passbook": {
+                    "temples_followed": [],
+                    "seva_participation": [],
+                    "donation_participation": [],
+                    "festival_participation": []
+                },
+                "communities": [],
+                "circles": [],
+                "fcm_tokens": [],
+                "agreed_rules": [],
+                "sanatan_declaration_agreed": True,
+                "kyc_status": None,
+                "kyc_role": None,
+                "kyc_documents": None,
+                "kyc_verified_at": None,
+                "anonymous_account": True,
+                "anonymous_disabled": False,
+                "anonymous_login_source": "predefined_number",
+                "anonymous_created_at": datetime.utcnow().isoformat() + 'Z',
+                "privacy_settings": {
+                    "read_receipts": True,
+                    "online_status": True,
+                    "profile_photo": "everyone"
+                }
+            }
+
+            user_id = await db.create_user(user_data)
+            user_data['id'] = user_id
+
+            # Cache under both mapping keys
+            await cache_manager.set(f"user_phone:{normalized_phone}", user_data, ttl=300)
+            await cache_manager.set_user(user_id, user_data)
+
+            token = create_jwt_token(user_id, sl_id)
+            logger.info(f"Anonymous user logged in: {sl_id} ({normalized_phone})")
             return {
                 "message": "Anonymous login successful",
                 "token": token,
-                "user": existing,
-                "is_new_user": False
+                "user": user_data,
+                "is_new_user": True
             }
-
-        if language not in SUPPORTED_LANGUAGES:
-            raise ValueError(f"Unsupported language. Choose from: {SUPPORTED_LANGUAGES}")
-
-        sl_id = generate_sl_id()
-        while await db.get_user_by_sl_id(sl_id):
-            sl_id = generate_sl_id()
-
-        user_data = {
-            "phone": normalized_phone,
-            "sl_id": sl_id,
-            "name": name,
-            "photo": photo,
-            "language": language,
-            "location": None,
-            "home_location": None,
-            "office_location": None,
-            "is_verified": False,
-            "badges": ["Anonymous Member"],
-            "reputation": 0,
-            "temple_passbook": {
-                "temples_followed": [],
-                "seva_participation": [],
-                "donation_participation": [],
-                "festival_participation": []
-            },
-            "communities": [],
-            "circles": [],
-            "fcm_tokens": [],
-            "agreed_rules": [],
-            "sanatan_declaration_agreed": True,
-            "kyc_status": None,
-            "kyc_role": None,
-            "kyc_documents": None,
-            "kyc_verified_at": None,
-            "anonymous_account": True,
-            "anonymous_disabled": False,
-            "anonymous_login_source": "predefined_number",
-            "anonymous_created_at": datetime.utcnow().isoformat() + 'Z',
-            "privacy_settings": {
-                "read_receipts": True,
-                "online_status": True,
-                "profile_photo": "everyone"
-            }
-        }
-
-        user_id = await db.create_user(user_data)
-        user_data['id'] = user_id
-
-        token = create_jwt_token(user_id, sl_id)
-        logger.info(f"Anonymous user logged in: {sl_id} ({normalized_phone})")
-        return {
-            "message": "Anonymous login successful",
-            "token": token,
-            "user": user_data,
-            "is_new_user": True
-        }
 
     @staticmethod
     async def disable_anonymous_user(user_id: str) -> Dict[str, Any]:

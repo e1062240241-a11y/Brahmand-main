@@ -1,12 +1,15 @@
 """Security middleware and authentication"""
 import jwt
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 from fastapi import HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from config.settings import settings
+from utils.cache import cache_manager
+from config.database import get_database
+from config.firestore_db import FirestoreDB
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +74,8 @@ async def verify_token(
         return payload
 
     try:
-        from utils.cache import cache_manager
         user_data = await cache_manager.get_user(user_id)
         if not user_data:
-            from config.database import get_database
-            from config.firestore_db import FirestoreDB
             db_client = await get_database()
             db = FirestoreDB(db_client)
             user_data = await db.get_document('users', user_id)
@@ -84,7 +84,6 @@ async def verify_token(
             await cache_manager.set_user(user_id, user_data)
 
         if user_data.get('is_blocked'):
-            from datetime import datetime, timezone
             blocked_until_str = user_data.get('blocked_until')
             if blocked_until_str:
                 try:
@@ -132,35 +131,18 @@ async def get_current_user(
     token_data: Dict[str, Any] = Depends(verify_token)
 ) -> Dict[str, Any]:
     """Get current user from token with caching"""
-    from config.database import get_database, get_redis
-    import json
-    
     user_id = token_data["user_id"]
-    cache_key = f"user:{user_id}"
-    
-    # Try cache first
-    redis = await get_redis()
-    cached = await redis.get(cache_key)
-    if cached:
-        try:
-            return json.loads(cached)
-        except:
-            pass
-    
-    # Fetch from database
-    db_client = await get_database()
-    db = FirestoreDB(db_client)
-    user = await db.get_document('users', user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Serialize and cache
-    user_data = serialize_user(user)
-    try:
-        await redis.set(cache_key, json.dumps(user_data, default=str), ex=300)
-    except:
-        pass
-    
+    user_data = await cache_manager.get_user(user_id)
+    if not user_data:
+        db_client = await get_database()
+        db = FirestoreDB(db_client)
+        user = await db.get_document('users', user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user_data = serialize_user(user)
+        await cache_manager.set_user(user_id, user_data)
+        
     return user_data
 
 
@@ -177,9 +159,7 @@ def serialize_user(user: dict) -> dict:
 
 async def invalidate_user_cache(user_id: str):
     """Invalidate user cache after updates"""
-    from config.database import get_redis
-    redis = await get_redis()
-    await redis.delete(f"user:{user_id}")
+    await cache_manager.invalidate_user(user_id)
 
 
 # Data encryption helpers

@@ -20,8 +20,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons , Ionicons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getMySOSAlert, resolveSOSAlert, getActiveSOSAlerts, respondToSOS, reportSOSMisuse } from '../services/api';
@@ -50,6 +49,11 @@ export function GlobalFAB() {
         outputRange: [0, scaleFactor],
       })
     : fabScale;
+
+  const spin = fabRotation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
 
   const { t } = useTranslation();
   const { user } = useAuthStore();
@@ -81,6 +85,11 @@ export function GlobalFAB() {
     }
   }, []);
 
+  const fabExpandedRef = useRef(fabExpanded);
+  useEffect(() => {
+    fabExpandedRef.current = fabExpanded;
+  }, [fabExpanded]);
+
   const isCheckingSOSRef = useRef(false);
 
   const checkSOSStatus = useCallback(async (options?: { forceLocation?: boolean }) => {
@@ -97,7 +106,7 @@ export function GlobalFAB() {
         options?.forceLocation || 
         !lat || 
         !lng || 
-        (fabExpanded && now - lastLocationFetchRef.current > 30000) || 
+        (fabExpandedRef.current && now - lastLocationFetchRef.current > 30000) || 
         now - lastLocationFetchRef.current > 120000
       );
       if (shouldRefreshLocation && !keyboardVisibleRef.current) {
@@ -136,7 +145,7 @@ export function GlobalFAB() {
     } finally {
       isCheckingSOSRef.current = false;
     }
-  }, [fabExpanded, setActiveSOSIfChanged, setNearbySOSAlertsIfChanged]);
+  }, [setActiveSOSIfChanged, setNearbySOSAlertsIfChanged]);
 
   const handleRespondToSOS = async (sosId: string) => {
     if (isResponding) return;
@@ -216,7 +225,7 @@ export function GlobalFAB() {
     };
   }, []);
 
-  // Poll & Listen for Realtime SOS events
+  // Listen for Realtime SOS events (Sockets + Foreground transitions)
   useEffect(() => {
     if (!user?.id) return;
 
@@ -236,12 +245,6 @@ export function GlobalFAB() {
     socketService.onEvent('sos_response', handleSOSResponse);
     socketService.onEvent('sos_resolved', handleSOSResolved);
 
-    const interval = setInterval(() => {
-      if (AppState.currentState === 'active' && !keyboardVisibleRef.current) {
-        checkSOSStatus();
-      }
-    }, 180000); // 3 minutes
-
     const appStateSub = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active' && !keyboardVisibleRef.current) {
         checkSOSStatus({ forceLocation: true });
@@ -249,7 +252,6 @@ export function GlobalFAB() {
     });
 
     return () => {
-      clearInterval(interval);
       appStateSub.remove();
       socketService.offEvent('sos_alert', handleSOSAlert);
       socketService.offEvent('sos_response', handleSOSResponse);
@@ -259,14 +261,7 @@ export function GlobalFAB() {
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('open_sos_modal', () => {
-      setFabExpanded(true);
-      Animated.parallel([
-        Animated.spring(fabScale, { toValue: 1, friction: 6, tension: 60, useNativeDriver: true }),
-        Animated.timing(fabRotation, { toValue: 1, duration: 300, useNativeDriver: true }),
-        ...fabItemAnims.map((anim, i) =>
-          Animated.spring(anim, { toValue: 1, friction: 5, tension: 50, delay: i * 40, useNativeDriver: true })
-        ),
-      ]).start();
+      expandFab(true);
       checkSOSStatus();
     });
 
@@ -279,7 +274,7 @@ export function GlobalFAB() {
     }
 
     return () => sub.remove();
-  }, [fabScale, fabRotation, fabItemAnims, checkSOSStatus]);
+  }, []);
 
   const handleResolveActiveSOS = async (status: 'resolved' | 'cancelled') => {
     if (!activeSOS?.id) return;
@@ -316,16 +311,12 @@ export function GlobalFAB() {
         return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
       },
       onPanResponderGrant: () => {
-        pan.setOffset({
-          x: (pan.x as any)._value,
-          y: (pan.y as any)._value,
-        });
-        pan.setValue({ x: 0, y: 0 });
+        pan.extractOffset();
       },
-      onPanResponderMove: Animated.event(
-        [null, { dx: pan.x, dy: pan.y }],
-        { useNativeDriver: false }
-      ),
+      onPanResponderMove: (_, gestureState) => {
+        pan.x.setValue(gestureState.dx);
+        pan.y.setValue(gestureState.dy);
+      },
       onPanResponderRelease: () => {
         pan.flattenOffset();
       },
@@ -455,9 +446,7 @@ export function GlobalFAB() {
                         disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
                         onPress={() => {
                           toggleFab();
-                          setTimeout(() => {
-                            router.push(item.route as any);
-                          }, 200);
+                          router.push(item.route as any);
                         }}
                       >
                         <ImageBackground 
@@ -651,9 +640,7 @@ export function GlobalFAB() {
                       activeOpacity={0.85}
                       onPress={() => {
                         toggleFab();
-                        setTimeout(() => {
-                          router.push('/sos');
-                        }, 200);
+                        router.push('/sos');
                       }}
                     >
                       <View style={fabStyles.sosRedButton}>

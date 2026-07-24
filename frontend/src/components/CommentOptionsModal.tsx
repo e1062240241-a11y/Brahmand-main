@@ -7,12 +7,12 @@ import { COLORS } from '../constants/theme';
 interface CommentOptionsModalProps {
   visible: boolean;
   onClose: () => void;
-  options: Array<{
+  options: {
     label: string;
     onPress: () => void;
     isDestructive?: boolean;
     icon?: string;
-  }>;
+  }[];
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');

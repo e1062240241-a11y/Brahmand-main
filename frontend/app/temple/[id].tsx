@@ -46,7 +46,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  aliases: string[];
  locationLabel: string;
  coords: { latitude: number; longitude: number };
- aartiSessions: Array<{ title: string; time: string }>;
+ aartiSessions: { title: string; time: string }[];
  description: string;
  guidance: string;
  youtubeUrl?: string;

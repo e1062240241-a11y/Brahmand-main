@@ -17,6 +17,7 @@ import {
   LayoutAnimation,
   UIManager,
   Animated,
+  AppState,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,9 +26,8 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageByName, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
-import { getTemples } from '../../src/services/api';
+import api, { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import api from '../../src/services/api';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { Svg, Path, G, Defs, ClipPath, Rect } from 'react-native-svg';
@@ -216,6 +216,7 @@ export default function JaapLandingScreen() {
     
     let active = true;
     const fetchActiveCounts = async () => {
+      if (AppState.currentState !== 'active') return;
       try {
         const response = await api.get('/jaap/active-count', {
           params: { rooms: 'jaap_hanuman,jaap_krishna,jaap_shiva,jaap_gayatri,jaap_ganesh,jaap_laxmi' }

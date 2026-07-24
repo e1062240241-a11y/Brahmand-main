@@ -40,8 +40,11 @@ class AstrologyApiService:
             "x-astrologyapi-key": self._token,
         }
 
+        def _request():
+            return requests.post(url, headers=headers, json=data, timeout=15)
+
         try:
-            response = await asyncio.to_thread(requests.post, url, headers=headers, json=data, timeout=15)
+            response = await asyncio.to_thread(_request)
             if response.status_code >= 400:
                 logger.error("Astrology API error: %s - %s", response.status_code, response.text)
                 return {"error": f"Status {response.status_code}: {response.text}"}
@@ -303,8 +306,11 @@ class AstrologyApiService:
         }
         payload = {"timezone": timezone}
 
+        def _request():
+            return requests.post(url, headers=headers, json=payload, timeout=15)
+
         try:
-            response = await asyncio.to_thread(requests.post, url, headers=headers, json=payload, timeout=15)
+            response = await asyncio.to_thread(_request)
             if response.status_code >= 400:
                 logger.error("Astrology API Horoscope error: %s - %s", response.status_code, response.text)
                 return {"error": f"Status {response.status_code}: {response.text}"}

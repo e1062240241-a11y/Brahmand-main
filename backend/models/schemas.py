@@ -536,7 +536,6 @@ class VendorCreate(BaseModel):
     gstin: Optional[str] = None
     business_email: Optional[str] = None
     website_link: Optional[str] = None
-    kyc_request_no: Optional[str] = None
 
 
 class VendorUpdate(BaseModel):
@@ -562,7 +561,6 @@ class VendorUpdate(BaseModel):
     gstin: Optional[str] = None
     business_email: Optional[str] = None
     website_link: Optional[str] = None
-    kyc_request_no: Optional[str] = None
 
 
 class VendorResponse(BaseModel):
@@ -588,7 +586,6 @@ class VendorResponse(BaseModel):
     business_media_key: Optional[str] = None
     kyc_status: Optional[KYCStatus] = None
     distance: Optional[float] = None
-    kyc_request_no: Optional[str] = None
     created_at: datetime
 
 

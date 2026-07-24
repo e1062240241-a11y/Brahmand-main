@@ -148,10 +148,10 @@ export default function EmergencyHelpScreen() {
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalBar} />
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{title}</Text>
-            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtn}>
-              <Ionicons name="close" size={20} color="#111" />
+          <View style={styles.modalHeaderOrange}>
+            <Text style={styles.modalTitleWhite}>{title}</Text>
+            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalCloseBtnWhite}>
+              <Ionicons name="close" size={20} color="#FFF" />
             </TouchableOpacity>
           </View>
           <FlatList
