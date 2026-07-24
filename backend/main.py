@@ -44,7 +44,7 @@ import jwt
 from google.api_core.exceptions import FailedPrecondition
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse, Response
+from fastapi.responses import JSONResponse, StreamingResponse, Response, HTMLResponse
 import socketio
 
 # Add backend directory to path
@@ -697,36 +697,45 @@ async def _create_post_document(
     return post_doc
 
 
-def _deduplicate_posts(posts: list[dict]) -> list[dict]:
+KNOWN_SYSTEM_STORAGE_FOLDERS = {'rAR1Nev9VOh836E0ATBz', 'meGpOhOsKmsDeNTnDjr3'}
+
+def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]] = None) -> list[dict]:
     """
     Deduplicates a list of post documents based on a unique signature
-    (caption + media_path) and strictly filters out corrupted posts where
-    the media URL owner path does not match the post's user_id.
+    (caption + media_path/media_url) or post ID, and strictly blocks cross-user
+    media leaks where one real user's media folder is attached to another user's post.
     """
     import urllib.parse
     import re
-    
+
     seen_signatures = set()
     deduped = []
     for post in posts:
-        # ─── Strict Media URL Ownership Verification ───
+        # ─── Smart Cross-User Security Barrier ───
         media_url = post.get('media_url') or ''
         post_user_id = post.get('user_id')
         
         if media_url and post_user_id:
             unquoted_url = urllib.parse.unquote(media_url)
-            # Find the user ID in the path (e.g. /posts/{user_id}/)
             match = re.search(r'/posts/([^/]+)/', unquoted_url)
             if match:
                 path_user_id = match.group(1)
-                # If the folder path ID does not match the post's user_id, it is corrupt
-                # (Unless it is a repost, where the media belongs to the original user)
-                if path_user_id != post_user_id and post.get('source') != 'repost' and not post.get('original_post_id'):
-                    logger.warning(f"Corrupt post filtered: Post {post.get('id')} has user_id {post_user_id} but media folder belongs to {path_user_id}")
+                # Strict Security Check: Block if media URL folder belongs to ANOTHER REAL USER in the app
+                # (and is not a system batch upload folder or repost)
+                if (
+                    path_user_id != post_user_id
+                    and path_user_id not in KNOWN_SYSTEM_STORAGE_FOLDERS
+                    and (registered_user_ids is None or path_user_id in registered_user_ids)
+                    and post.get('source') != 'repost'
+                    and not post.get('original_post_id')
+                ):
+                    logger.warning(
+                        f"Security Barrier Blocked: Post {post.get('id')} (user_id: {post_user_id}) media folder belongs to another real user {path_user_id}"
+                    )
                     continue
 
         caption_sig = (post.get('caption') or '').strip()
-        media_sig = (post.get('media_path') or '').strip()
+        media_sig = (post.get('media_path') or post.get('media_url') or '').strip()
         
         # If both are empty, fallback to post id
         if not caption_sig and not media_sig:
@@ -734,7 +743,7 @@ def _deduplicate_posts(posts: list[dict]) -> list[dict]:
         else:
             sig = f"{caption_sig}::{media_sig}"
 
-        if sig not in seen_signatures:
+        if sig and sig not in seen_signatures:
             seen_signatures.add(sig)
             deduped.append(post)
     return deduped
@@ -2834,6 +2843,66 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
     await cache_manager.delete(f"blocked_users:{target_user_id}")
 
     return {'message': 'User unblocked successfully', 'unblocked_user_id': target_user_id}
+
+
+DEFAULT_BRAHMAND_LOGO = "https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png"
+
+@api_router.get("/share/post/{post_id}", response_class=HTMLResponse)
+async def share_post_preview(post_id: str):
+    """Generate dynamic HTML Open Graph preview card for shared post links."""
+    db = await get_db()
+    post = await db.get_document('posts', post_id)
+    
+    title = "Brahmand"
+    description = "Connect with your local spiritual community, find temples, jaap rooms, and emergency services."
+    image_url = DEFAULT_BRAHMAND_LOGO
+
+    if post:
+        caption = (post.get('caption') or '').strip()
+        username = post.get('username') or post.get('user_name') or 'Someone'
+        if caption:
+            title = f"{username} on Brahmand: \"{caption[:60]}\""
+            description = caption
+        else:
+            title = f"Post by {username} on Brahmand"
+
+        media_url = post.get('media_url') or post.get('imageUrl') or post.get('image_url')
+        if media_url and isinstance(media_url, str) and media_url.startswith("http"):
+            image_url = media_url
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    <meta name="description" content="{description}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:site_name" content="Brahmand">
+    <meta property="og:description" content="{description}">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://brahmand.app/post/{post_id}">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:image:secure_url" content="{image_url}">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{image_url}">
+    <link rel="icon" href="{DEFAULT_BRAHMAND_LOGO}">
+    <link rel="apple-touch-icon" href="{DEFAULT_BRAHMAND_LOGO}">
+    <script>
+        window.location.href = "sanatanlok://post/{post_id}";
+    </script>
+</head>
+<body style="font-family: system-ui; text-align: center; padding: 40px; background: #FFF8F0; color: #5C250A;">
+    <img src="{DEFAULT_BRAHMAND_LOGO}" alt="Brahmand Logo" style="width: 100px; height: 100px; border-radius: 20px; margin-bottom: 20px;">
+    <h2>{title}</h2>
+    <p>{description}</p>
+    <a href="sanatanlok://post/{post_id}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px;">Open in Brahmand App</a>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 
 
 @api_router.post('/posts/{post_id}/view')

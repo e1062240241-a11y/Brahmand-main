@@ -22,7 +22,10 @@ import {View,
   LayoutAnimation,
   UIManager,
   ScrollView,
-  TouchableWithoutFeedback} from 'react-native';
+  TouchableWithoutFeedback,
+  Animated,
+  PanResponder
+} from 'react-native';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -517,6 +520,156 @@ const CommunityMediaItem = ({ media, style, onPress, isActive = true }: { media:
   );
 };
 
+/* X & Threads Style Animated Fullscreen Media Viewer */
+const AnimatedFullScreenMediaViewer = ({
+  mediaUrl,
+  onClose
+}: {
+  mediaUrl: string | null;
+  onClose: () => void;
+}) => {
+  const [visible, setVisible] = useState(false);
+  const [currentMedia, setCurrentMedia] = useState<string | null>(null);
+
+  const scale = useRef(new Animated.Value(0.75)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+  const bgOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (mediaUrl) {
+      setCurrentMedia(mediaUrl);
+      setVisible(true);
+      translateY.setValue(0);
+      scale.setValue(0.75);
+      bgOpacity.setValue(0);
+
+      Animated.parallel([
+        Animated.spring(scale, {
+          toValue: 1,
+          tension: 70,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(bgOpacity, {
+          toValue: 1,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (visible) {
+      triggerDismiss();
+    }
+  }, [mediaUrl]);
+
+  const triggerDismiss = () => {
+    Animated.parallel([
+      Animated.timing(scale, {
+        toValue: 0.75,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(bgOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setVisible(false);
+      setCurrentMedia(null);
+      onClose();
+    });
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 8 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        translateY.setValue(gestureState.dy);
+        const dragDistance = Math.abs(gestureState.dy);
+        const newOpacity = Math.max(0.2, 1 - dragDistance / 400);
+        bgOpacity.setValue(newOpacity);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dy) > 100 || Math.abs(gestureState.vy) > 0.5) {
+          const exitDirection = gestureState.dy > 0 ? 600 : -600;
+          Animated.parallel([
+            Animated.timing(translateY, {
+              toValue: exitDirection,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(bgOpacity, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }),
+          ]).start(() => {
+            setVisible(false);
+            setCurrentMedia(null);
+            onClose();
+          });
+        } else {
+          Animated.parallel([
+            Animated.spring(translateY, {
+              toValue: 0,
+              tension: 80,
+              friction: 8,
+              useNativeDriver: true,
+            }),
+            Animated.timing(bgOpacity, {
+              toValue: 1,
+              duration: 150,
+              useNativeDriver: true,
+            }),
+          ]).start();
+        }
+      },
+    })
+  ).current;
+
+  if (!visible || !currentMedia) return null;
+
+  return (
+    <Modal visible={visible} transparent={true} animationType="none" onRequestClose={triggerDismiss}>
+      <Animated.View
+        style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.96)',
+          opacity: bgOpacity,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <TouchableOpacity
+          style={{ position: 'absolute', top: 50, right: 20, zIndex: 30, padding: 12 }}
+          onPress={triggerDismiss}
+        >
+          <Ionicons name="close" size={32} color="#FFF" />
+        </TouchableOpacity>
+
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={{
+            width: Dimensions.get('window').width,
+            height: Dimensions.get('window').height * 0.85,
+            justifyContent: 'center',
+            alignItems: 'center',
+            transform: [{ translateY }, { scale }],
+          }}
+        >
+          <CommunityMediaItem
+            media={{ uri: currentMedia }}
+            style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.85 }}
+            isActive={true}
+          />
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+};
+
 export default function CommunityDetailScreen() {
   const { id, postId } = useLocalSearchParams<{ id: string, postId?: string }>();
   const router = useRouter();
@@ -656,14 +809,8 @@ export default function CommunityDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
   const [rsvpStates, setRsvpStates] = useState<Record<string, 'yes' | 'no'>>({});
-  useEffect(() => {
-    // ⚡ Android: Increase polling interval to 60s to reduce unnecessary re-renders on Android
-    const pollInterval = Platform.OS === 'android' ? 60000 : 15000;
-    const timer = setInterval(() => {
-      setTick(t => t + 1);
-    }, pollInterval);
-    return () => clearInterval(timer);
-  }, []);
+  // ⚡ Performance & Thermal optimization: Auto-polling disabled to prevent CPU spinning & re-renders.
+  // Updates occur via WebSockets or on pull-to-refresh.
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -1732,9 +1879,9 @@ export default function CommunityDetailScreen() {
       const promises: Promise<any>[] = [
         getCommunityRequests({ community_id: id as string }).catch(() => ({ data: [] })),
         getEvents().catch(() => ({ data: [] })),
-        getCommunityMessages(id as string, currentSubgroup).catch(() => ({ data: [] })),
-        stateCommunityId ? getCommunityMessages(stateCommunityId, 'state').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
-        countryCommunityId ? getCommunityMessages(countryCommunityId, 'national').catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        getCommunityMessages(id as string, currentSubgroup, 15).catch(() => ({ data: [] })),
+        stateCommunityId ? getCommunityMessages(stateCommunityId, 'state', 15).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        countryCommunityId ? getCommunityMessages(countryCommunityId, 'national', 15).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
         getFestivalList().catch(() => ({ data: [] }))
       ];
 
@@ -4073,11 +4220,11 @@ export default function CommunityDetailScreen() {
         }}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
-        initialNumToRender={Platform.OS === 'android' ? 5 : 10}
-        maxToRenderPerBatch={Platform.OS === 'android' ? 3 : 5}
-        windowSize={Platform.OS === 'android' ? 3 : 5}
-        removeClippedSubviews={Platform.OS === 'android'}
-        updateCellsBatchingPeriod={Platform.OS === 'android' ? 100 : 50}
+        initialNumToRender={3}
+        maxToRenderPerBatch={3}
+        windowSize={3}
+        removeClippedSubviews={Platform.OS !== 'web'}
+        updateCellsBatchingPeriod={100}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (
@@ -4871,20 +5018,11 @@ export default function CommunityDetailScreen() {
 
 
 
-      {/* Full Screen Media Modal */}
-      <Modal visible={!!fullScreenMedia} transparent={true} animationType="fade" onRequestClose={() => setFullScreenMedia(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}>
-          <TouchableOpacity style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 10 }} onPress={() => setFullScreenMedia(null)}>
-            <Ionicons name="close" size={32} color="#FFF" />
-          </TouchableOpacity>
-          {fullScreenMedia && (
-            <CommunityMediaItem 
-              media={{ uri: fullScreenMedia }} 
-              style={{ width: Dimensions.get('window').width, height: Dimensions.get('window').height * 0.8 }} 
-            />
-          )}
-        </View>
-      </Modal>
+      {/* Full Screen X & Threads Style Animated Media Viewer */}
+      <AnimatedFullScreenMediaViewer
+        mediaUrl={fullScreenMedia}
+        onClose={() => setFullScreenMedia(null)}
+      />
 
       {/* Comment Modal */}
       <Modal
