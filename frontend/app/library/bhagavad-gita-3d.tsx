@@ -31,7 +31,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useScriptureStore } from '../../src/store/scriptureStore';
 import { useLibraryStore } from '../../src/store/libraryStore';
-import { loadBhagavadGitaChapter } from '../../src/services/bhagavad-geeta-service';
+import { loadBhagavadGitaChapter, prefetchBhagavadGitaChapters, cleanupBhagavadGitaChapters } from '../../src/services/bhagavad-geeta-service';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -171,7 +171,7 @@ export default function BhagavadGita3DPage() {
     scrollViewRef.current?.scrollTo({ y: 0, animated: false });
   };
 
-  // Fetch chapter data from Backend
+  // Fetch chapter data from Backend with prefetching and memory cleanup
   const fetchChapterData = async (chNum: number) => {
     setLoading(true);
     try {
@@ -179,6 +179,12 @@ export default function BhagavadGita3DPage() {
       if (loadedVerses) {
         setVerses(loadedVerses);
         setTotalVerses(loadedVerses.length);
+
+        // Memory & performance optimization: cleanup distant chapters & prefetch next
+        cleanupBhagavadGitaChapters(chNum);
+        if (chNum < TOTAL_CHAPTERS) {
+          prefetchBhagavadGitaChapters(chNum + 1);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch chapter:', error);
@@ -454,13 +460,15 @@ export default function BhagavadGita3DPage() {
                   </Text>
                 </View>
               ) : (
-                verses.map((verse: any, index: number) => (
-                  <View key={`verse-${index}`} style={styles.verseContainer}>
-                    {/* Sanskrit Text */}
-                    <View style={styles.sanskritWrapper}>
-                      <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{verse.text}</Text>
-                      <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
-                    </View>
+                verses.map((verse: any, index: number) => {
+                  const cleanSanskrit = (verse.text || '').replace(/[\u1CD0-\u1CFF\u0951-\u0952]/g, '');
+                  return (
+                    <View key={`verse-${index}`} style={styles.verseContainer}>
+                      {/* Sanskrit Text */}
+                      <View style={styles.sanskritWrapper}>
+                        <Text style={[styles.sanskritText, nightMode && styles.textNight]}>{cleanSanskrit}</Text>
+                        <Text style={[styles.sanskritVerseNumber, nightMode && styles.textNight]}>{convertToHindiNumerals(verse.verse)}</Text>
+                      </View>
 
                     {(() => {
                       const trans = getTranslations(verse.translations);
@@ -482,8 +490,9 @@ export default function BhagavadGita3DPage() {
                       </View>
                     )}
                   </View>
-                ))
-              )}
+                );
+              })
+            )}
               
               {/* Bottom Chapter Navigation */}
               <View style={styles.bottomNavContainer}>
