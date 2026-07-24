@@ -5348,6 +5348,120 @@ async def reverse_geocode(request: dict):
     }
 
 
+POPULAR_INDIAN_LOCATIONS = [
+    "Mumbai, Maharashtra", "Delhi, NCR", "Bengaluru, Karnataka", "Hyderabad, Telangana",
+    "Ahmedabad, Gujarat", "Chennai, Tamil Nadu", "Kolkata, West Bengal", "Surat, Gujarat",
+    "Pune, Maharashtra", "Jaipur, Rajasthan", "Lucknow, Uttar Pradesh", "Kanpur, Uttar Pradesh",
+    "Nagpur, Maharashtra", "Indore, Madhya Pradesh", "Thane, Maharashtra", "Bhopal, Madhya Pradesh",
+    "Visakhapatnam, Andhra Pradesh", "Pimpri-Chinchwad, Maharashtra", "Patna, Bihar", "Vadodara, Gujarat",
+    "Ghaziabad, Uttar Pradesh", "Ludhiana, Punjab", "Agra, Uttar Pradesh", "Nashik, Maharashtra",
+    "Faridabad, Haryana", "Meerut, Uttar Pradesh", "Rajkot, Gujarat", "Kalyan-Dombivli, Maharashtra",
+    "Vasai-Virar, Maharashtra", "Varanasi, Uttar Pradesh", "Srinagar, Jammu and Kashmir", "Aurangabad, Maharashtra",
+    "Dhanbad, Jharkhand", "Amritsar, Punjab", "Navi Mumbai, Maharashtra", "Allahabad (Prayagraj), Uttar Pradesh",
+    "Ranchi, Jharkhand", "Howrah, West Bengal", "Jabalpur, Madhya Pradesh", "Gwalior, Madhya Pradesh",
+    "Vijayawada, Andhra Pradesh", "Jodhpur, Rajasthan", "Madurai, Tamil Nadu", "Raipur, Chhattisgarh",
+    "Kota, Rajasthan", "Guwahati, Assam", "Chandigarh, Punjab", "Solapur, Maharashtra",
+    "Hubballi-Dharwad, Karnataka", "Bareilly, Uttar Pradesh", "Moradabad, Uttar Pradesh", "Mysuru, Karnataka",
+    "Gurugram, Haryana", "Aligarh, Uttar Pradesh", "Jalandhar, Punjab", "Tiruchirappalli, Tamil Nadu",
+    "Bhubaneswar, Odisha", "Salem, Tamil Nadu", "Mira-Bhayandar, Maharashtra", "Warangal, Telangana",
+    "Jalgaon, Maharashtra", "Guntur, Andhra Pradesh", "Bhiwandi, Maharashtra", "Saharanpur, Uttar Pradesh",
+    "Gorakhpur, Uttar Pradesh", "Bikaner, Rajasthan", "Amravati, Maharashtra", "Noida, Uttar Pradesh",
+    "Jamshedpur, Jharkhand", "Bhilai, Chhattisgarh", "Cuttack, Odisha", "Firozabad, Uttar Pradesh",
+    "Kochi, Kerala", "Bhavnagar, Gujarat", "Dehradun, Uttarakhand", "Durgapur, West Bengal",
+    "Asansol, West Bengal", "Nanded, Maharashtra", "Kolhapur, Maharashtra", "Ajmer, Rajasthan",
+    "Gulbarga (Kalaburagi), Karnataka", "Jamnagar, Gujarat", "Ujjain, Madhya Pradesh", "Loni, Uttar Pradesh",
+    "Siliguri, West Bengal", "Jhansi, Uttar Pradesh", "Ulhasnagar, Maharashtra", "Jammu, Jammu and Kashmir",
+    "Sangli, Maharashtra", "Mangaluru, Karnataka", "Erode, Tamil Nadu", "Belagavi, Karnataka",
+    "Ambattur, Tamil Nadu", "Tirunelveli, Tamil Nadu", "Malegaon, Maharashtra", "Gaya, Bihar",
+    "Udaipur, Rajasthan", "Kakinada, Andhra Pradesh", "Davanagere, Karnataka", "Kozhikode, Kerala",
+    "Akola, Maharashtra", "Kurnool, Andhra Pradesh", "Rajahmundry, Andhra Pradesh", "Bokaro Steel City, Jharkhand",
+    "Bellary, Karnataka", "Patiala, Punjab", "Agartala, Tripura", "Bhagalpur, Bihar",
+    "Muzaffarnagar, Uttar Pradesh", "Bhatinda, Punjab", "Latur, Maharashtra", "Dhule, Maharashtra",
+    "Rohtak, Haryana", "Korba, Chhattisgarh", "Bhilwara, Rajasthan", "Berhampur, Odisha",
+    "Muzaffarpur, Bihar", "Ahmednagar, Maharashtra", "Mathura, Uttar Pradesh", "Kollam, Kerala",
+    "Avadi, Tamil Nadu", "Kadapa, Andhra Pradesh", "Sambalpur, Odisha", "Bilaspur, Chhattisgarh",
+    "Shahjahanpur, Uttar Pradesh", "Satara, Maharashtra", "Bijapur (Vijayapura), Karnataka", "Rampur, Uttar Pradesh",
+    "Shivamogga, Karnataka", "Chandrapur, Maharashtra", "Junagadh, Gujarat", "Thrissur, Kerala",
+    "Alwar, Rajasthan", "Bardhaman, West Bengal", "Kulti, West Bengal", "Nizamabad, Telangana",
+    "Parbhani, Maharashtra", "Tumakuru, Karnataka", "Khammam, Telangana", "Ozhukarai, Puducherry",
+    "Bihar Sharif, Bihar", "Panipat, Haryana", "Darbhanga, Bihar", "Aizawl, Mizoram",
+    "Dewas, Madhya Pradesh", "Ichalkaranji, Maharashtra", "Karnal, Haryana", "Bathinda, Punjab",
+    "Jalna, Maharashtra", "Eluru, Andhra Pradesh", "Barasat, West Bengal", "Purnia, Bihar",
+    "Satna, Madhya Pradesh", "Mau, Uttar Pradesh", "Sonipat, Haryana", "Farrukhabad, Uttar Pradesh",
+    "Sagar, Madhya Pradesh", "Rourkela, Odisha", "Durg, Chhattisgarh", "Imphal, Manipur",
+    "Ratlam, Madhya Pradesh", "Hapur, Uttar Pradesh", "Arrah, Bihar", "Anantapur, Andhra Pradesh",
+    "Karimnagar, Telangana", "Etawah, Uttar Pradesh", "Ambarnath, Maharashtra", "Bharatpur, Rajasthan",
+    "Begusarai, Bihar", "New Delhi, Delhi", "Chinsurah, West Bengal", "Gandhinagar, Gujarat",
+    "Tiruppur, Tamil Nadu", "Puducherry, Puducherry", "Sikar, Rajasthan", "Thoothukudi, Tamil Nadu",
+    "Rewa, Madhya Pradesh", "Mirzapur, Uttar Pradesh", "Raichur, Karnataka", "Pali, Rajasthan",
+    "Ramagundam, Telangana", "Haridwar, Uttarakhand", "Vijayanagaram, Andhra Pradesh", "Katihar, Bihar",
+    "Sri Ganganagar, Rajasthan", "Thanjavur, Tamil Nadu", "Bulandshahr, Uttar Pradesh",
+    "Uluberia, West Bengal", "Katni, Madhya Pradesh", "Sambhal, Uttar Pradesh", "Singrauli, Madhya Pradesh",
+    "Nadiad, Gujarat", "Secunderabad, Telangana", "Yamunanagar, Haryana", "Bidhannagar, West Bengal",
+    "Pallavaram, Tamil Nadu", "Bidar, Karnataka", "Munger, Bihar", "Panchkula, Haryana",
+    "Burhanpur, Madhya Pradesh", "Kharagpur, West Bengal", "Dindigul, Tamil Nadu", "Gandhidham, Gujarat",
+    "Hospet (Hosapete), Karnataka", "Malda, West Bengal", "Ongole, Andhra Pradesh", "Deoghar, Jharkhand",
+    "Chapra, Bihar", "Haldia, West Bengal", "Khandwa, Madhya Pradesh", "Nandyal, Andhra Pradesh",
+    "Chandausi, Uttar Pradesh", "Morena, Madhya Pradesh", "Amroha, Uttar Pradesh", "Anand, Gujarat",
+    "Bhind, Madhya Pradesh", "Bhiwani, Haryana", "Berhampore, West Bengal", "Ambala, Haryana",
+    "Morbi, Gujarat", "Fatehpur, Uttar Pradesh", "Raebareli, Uttar Pradesh", "Chittorgarh, Rajasthan",
+    "Hoshiarpur, Punjab", "Orai, Uttar Pradesh", "Bahraich, Uttar Pradesh", "Vellore, Tamil Nadu",
+    "Mehsana, Gujarat", "Raiganj, West Bengal", "Sirsa, Haryana", "Danapur, Bihar",
+    "Serampore, West Bengal", "Guna, Madhya Pradesh", "Jaunpur, Uttar Pradesh", "Panvel, Maharashtra",
+    "Shivpuri, Madhya Pradesh", "Surendranagar, Gujarat", "Unnao, Uttar Pradesh", "Alappuzha, Kerala",
+    "Kottayam, Kerala", "Palakkad, Kerala", "Kannur, Kerala", "Shimla, Himachal Pradesh",
+    "Dharamshala, Himachal Pradesh", "Rishikesh, Uttarakhand", "Ayodhya, Uttar Pradesh", "Vrindavan, Uttar Pradesh",
+    "Kedarnath, Uttarakhand", "Badrinath, Uttarakhand", "Gangotri, Uttarakhand", "Yamunotri, Uttarakhand",
+    "Somnath, Gujarat", "Dwarka, Gujarat", "Puri, Odisha", "Rameswaram, Tamil Nadu",
+    "Tirupati, Andhra Pradesh", "Shirdi, Maharashtra", "Kanchipuram, Tamil Nadu", "Bodh Gaya, Bihar"
+]
+
+
+async def _geocode_address(full_address: str) -> tuple[float | None, float | None]:
+    """Geocode a physical business address to (latitude, longitude) coordinates."""
+    if not full_address or not str(full_address).strip():
+        return None, None
+    
+    clean_address = str(full_address).strip()
+    api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
+    
+    if api_key:
+        try:
+            geo_url = "https://maps.googleapis.com/maps/api/geocode/json"
+            geo_params = {
+                "address": clean_address,
+                "key": api_key,
+                "language": "en",
+            }
+            async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+                async with session.get(geo_url, params=geo_params) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        if data.get("status") == "OK" and data.get("results"):
+                            loc = data["results"][0]["geometry"]["location"]
+                            lat, lng = float(loc["lat"]), float(loc["lng"])
+                            if abs(lat) > 0.001 and abs(lng) > 0.001:
+                                return lat, lng
+        except Exception as e:
+            logger.warning(f"Google Maps geocoding failed for address '{clean_address}': {e}")
+
+    # Fallback to OpenStreetMap Nominatim API
+    try:
+        nom_url = "https://nominatim.openstreetmap.org/search"
+        headers = {"User-Agent": "BrahmandApp/1.0 (contact@brahmand.app)"}
+        params = {"q": clean_address, "format": "json", "limit": 1}
+        async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False), timeout=aiohttp.ClientTimeout(total=8)) as session:
+            async with session.get(nom_url, params=params, headers=headers) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if isinstance(data, list) and len(data) > 0:
+                        lat, lng = float(data[0]["lat"]), float(data[0]["lon"])
+                        if abs(lat) > 0.001 and abs(lng) > 0.001:
+                            return lat, lng
+    except Exception as e:
+        logger.warning(f"Nominatim geocoding failed for address '{clean_address}': {e}")
+
+    return None, None
 @api_router.post("/geocode/forward")
 async def forward_geocode(request: dict):
     """Forward geocode place text to coordinates using Google Maps API"""
@@ -10655,6 +10769,20 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     if normalized_categories:
         await asyncio.gather(*(process_category(cat) for cat in normalized_categories))
     
+    req_lat = data.latitude
+    req_lng = data.longitude
+    
+    valid_coords = (
+        req_lat is not None and req_lng is not None and
+        isinstance(req_lat, (int, float)) and isinstance(req_lng, (int, float)) and
+        abs(req_lat) > 0.001 and abs(req_lng) > 0.001
+    )
+
+    if not valid_coords and full_address:
+        geo_lat, geo_lng = await _geocode_address(full_address)
+        if geo_lat is not None and geo_lng is not None:
+            req_lat, req_lng = geo_lat, geo_lng
+
     vendor_data = {
         "owner_id": user_id,
         "owner_name": owner_name,
@@ -10664,8 +10792,8 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "full_address": full_address,
         "location_link": data.location_link,
         "phone_number": phone_number,
-        "latitude": data.latitude,
-        "longitude": data.longitude,
+        "latitude": req_lat,
+        "longitude": req_lng,
         "photos": data.photos if data.photos else [],
         "business_description": data.business_description,
         "aadhar_url": data.aadhar_url,
@@ -10675,6 +10803,9 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "menu_items": data.menu_items if data.menu_items else [],
         "offers_home_delivery": bool(data.offers_home_delivery),
         "business_media_key": data.business_media_key,
+        "gstin": data.gstin,
+        "business_email": data.business_email,
+        "website_link": data.website_link,
         "kyc_status": None,
         "kyc_verified_at": None,
         "kyc_reviewed_by": None,
@@ -10784,11 +10915,32 @@ async def get_vendors(
     if lat and lng:
         import math
         for vendor in vendors:
-            if vendor.get('latitude') and vendor.get('longitude'):
+            v_lat = vendor.get('latitude')
+            v_lng = vendor.get('longitude')
+            
+            valid_c = (
+                v_lat is not None and v_lng is not None and
+                isinstance(v_lat, (int, float)) and isinstance(v_lng, (int, float)) and
+                abs(v_lat) > 0.001 and abs(v_lng) > 0.001
+            )
+            
+            if not valid_c and vendor.get('full_address'):
+                geo_lat, geo_lng = await _geocode_address(vendor.get('full_address'))
+                if geo_lat is not None and geo_lng is not None:
+                    vendor['latitude'] = geo_lat
+                    vendor['longitude'] = geo_lng
+                    v_lat, v_lng = geo_lat, geo_lng
+                    valid_c = True
+                    try:
+                        await db.update_document('vendors', vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng})
+                    except Exception:
+                        pass
+                        
+            if valid_c:
                 # Haversine formula
                 R = 6371  # Earth radius in km
                 lat1, lon1 = math.radians(lat), math.radians(lng)
-                lat2, lon2 = math.radians(vendor['latitude']), math.radians(vendor['longitude'])
+                lat2, lon2 = math.radians(v_lat), math.radians(v_lng)
                 dlat, dlon = lat2 - lat1, lon2 - lon1
                 a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
                 vendor['distance'] = R * 2 * math.asin(math.sqrt(a))
@@ -10820,6 +10972,14 @@ async def get_my_vendor(token_data: dict = Depends(verify_token)):
         await cache_manager.set(cache_key, {}, ttl=60)
         
     return vendor
+
+
+@api_router.post("/vendors/admin/migrate-coordinates")
+async def trigger_vendor_coordinate_migration(tolerance_km: float = 0.5):
+    """Admin endpoint to audit and migrate vendor coordinates from full_address."""
+    from migrate_vendors import run_vendor_coordinate_migration
+    summary = await run_vendor_coordinate_migration(tolerance_km=tolerance_km)
+    return summary
 
 
 @api_router.get("/vendors/categories")
@@ -10889,6 +11049,24 @@ async def update_vendor(vendor_id: str, data: VendorUpdate, token_data: dict = D
             if not existing_cat:
                 await db.create_document('vendor_categories', {'name': category, 'count': 1})
     
+    # Auto-geocode address updates or missing coordinates
+    target_address = update_data.get('full_address') or vendor.get('full_address')
+    up_lat = update_data.get('latitude')
+    up_lng = update_data.get('longitude')
+    
+    valid_up_coords = (
+        up_lat is not None and up_lng is not None and
+        isinstance(up_lat, (int, float)) and isinstance(up_lng, (int, float)) and
+        abs(up_lat) > 0.001 and abs(up_lng) > 0.001
+    )
+    
+    if ('full_address' in update_data or not valid_up_coords) and target_address:
+        if not valid_up_coords:
+            geo_lat, geo_lng = await _geocode_address(target_address)
+            if geo_lat is not None and geo_lng is not None:
+                update_data['latitude'] = geo_lat
+                update_data['longitude'] = geo_lng
+
     if update_data:
         vendor.update(update_data)
         await db.update_document('vendors', vendor_id, update_data)

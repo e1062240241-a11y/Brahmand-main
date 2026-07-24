@@ -20,11 +20,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, G } from 'react-native-svg';
+import * as Location from 'expo-location';
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { getUserProfile, sendDirectMessage, getVendor } from '../../src/services/api';
-import { formatDistance } from '../../src/utils/formatDistance';
+import { formatDistance, calculateHaversineDistance } from '../../src/utils/formatDistance';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -32,8 +33,9 @@ export default function VendorProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const [userCoords, setUserCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   
-  const { vendors } = useVendorStore();
+  const { vendors, myVendor } = useVendorStore();
   const { user } = useAuthStore();
   const [isSendingRequest, setIsSendingRequest] = React.useState(false);
   const [fetchedVendor, setFetchedVendor] = React.useState<any>(null);
@@ -41,9 +43,10 @@ export default function VendorProfileScreen() {
   const [vendorError, setVendorError] = React.useState(false);
   const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
 
-  // First try from local store (fast), fall back to API fetch
-  const storeVendor = vendors.find(v => v.id === id);
+  // First try from myVendor (fastest & most up-to-date for owner) or local vendors store, fall back to API fetch
+  const storeVendor = (myVendor?.id === id ? myVendor : null) || vendors.find(v => v.id === id);
   const vendor = storeVendor || fetchedVendor;
+  const isOwner = Boolean(user && vendor && (vendor.owner_id === user.id || myVendor?.id === vendor.id));
 
   const formatExternalUrl = (url: string) => {
     const trimmed = url.trim();
@@ -85,27 +88,92 @@ export default function VendorProfileScreen() {
 
   React.useEffect(() => {
     if (!id) return;
-    // Always try to fetch from API in case vendor is not in local nearby list
-    if (!storeVendor) {
+    
+    // If we have no local cache at all, show loading spinner
+    if (!vendor) {
       setVendorLoading(true);
-      setVendorError(false);
-      getVendor(id)
-        .then((res) => {
-          const data = res?.data;
-          if (data && data.id) {
-            setFetchedVendor(data);
-          } else {
-            setVendorError(true);
-          }
-        })
-        .catch(() => {
-          setVendorError(true);
-        })
-        .finally(() => {
-          setVendorLoading(false);
-        });
     }
-  }, [id, storeVendor]);
+    setVendorError(false);
+
+    getVendor(id)
+      .then((res) => {
+        const data = res?.data;
+        if (data && data.id) {
+          setFetchedVendor(data);
+        } else if (!vendor) {
+          setVendorError(true);
+        }
+      })
+      .catch(() => {
+        if (!vendor) {
+          setVendorError(true);
+        }
+      })
+      .finally(() => {
+        setVendorLoading(false);
+      });
+  }, [id]);
+
+  const [vendorCoords, setVendorCoords] = React.useState<{ lat: number; lng: number } | null>(null);
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          if (loc?.coords) {
+            setUserCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+          }
+        }
+      } catch (err) {
+        if (user?.home_location?.latitude && user?.home_location?.longitude) {
+          setUserCoords({ lat: Number(user.home_location.latitude), lng: Number(user.home_location.longitude) });
+        }
+      }
+    })();
+  }, [user?.home_location]);
+
+  React.useEffect(() => {
+    if (!vendor) return;
+    const vLat = Number(vendor.latitude);
+    const vLng = Number(vendor.longitude);
+    if (Number.isFinite(vLat) && Number.isFinite(vLng) && Math.abs(vLat) > 0.001 && Math.abs(vLng) > 0.001) {
+      setVendorCoords({ lat: vLat, lng: vLng });
+    } else if (vendor.full_address || vendor.address) {
+      const addr = (vendor.full_address || vendor.address || '').trim();
+      if (addr) {
+        Location.geocodeAsync(addr)
+          .then((results) => {
+            if (results && results.length > 0) {
+              setVendorCoords({ lat: results[0].latitude, lng: results[0].longitude });
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [vendor?.id, vendor?.latitude, vendor?.longitude, vendor?.full_address, vendor?.address]);
+
+  const calculatedDistance = React.useMemo(() => {
+    if (!vendor) return null;
+
+    const uLat = userCoords?.lat ?? (user?.home_location?.latitude ? Number(user.home_location.latitude) : null);
+    const uLng = userCoords?.lng ?? (user?.home_location?.longitude ? Number(user.home_location.longitude) : null);
+    const vLat = vendorCoords?.lat ?? (vendor.latitude ? Number(vendor.latitude) : null);
+    const vLng = vendorCoords?.lng ?? (vendor.longitude ? Number(vendor.longitude) : null);
+
+    const dynamicDist = calculateHaversineDistance(uLat, uLng, vLat, vLng);
+    if (dynamicDist !== null) {
+      return dynamicDist;
+    }
+
+    // Secondary Fallback: If distance was pre-calculated and dynamic coordinates are unavailable
+    if (vendor.distance !== undefined && vendor.distance !== null && Number.isFinite(Number(vendor.distance))) {
+      return Number(vendor.distance);
+    }
+
+    return null;
+  }, [vendor, vendorCoords, userCoords, user?.home_location]);
 
   if (vendorLoading) {
     return (
@@ -185,13 +253,46 @@ export default function VendorProfileScreen() {
   };
 
   const handleDirections = () => {
-    if (vendor.location_link) {
-      Linking.openURL(vendor.location_link);
-    } else if (vendor.latitude && vendor.longitude) {
-      Linking.openURL(`https://maps.google.com/?q=${vendor.latitude},${vendor.longitude}`);
-    } else {
-      Alert.alert('No Location', 'Location not available for this vendor.');
+    const address = (vendor.full_address || vendor.address || '').trim();
+    const hasCoords =
+      Number.isFinite(Number(vendor.latitude)) &&
+      Number.isFinite(Number(vendor.longitude)) &&
+      Math.abs(Number(vendor.latitude)) > 0.001 &&
+      Math.abs(Number(vendor.longitude)) > 0.001;
+
+    // Prioritize full_address provided by vendor so Google Maps searches the exact typed address from current user location
+    let destinationParam = '';
+    if (address) {
+      destinationParam = encodeURIComponent(address);
+    } else if (hasCoords) {
+      destinationParam = `${vendor.latitude},${vendor.longitude}`;
+    } else if (vendor.location_link && /^https?:\/\//i.test(vendor.location_link.trim())) {
+      Linking.openURL(vendor.location_link.trim()).catch(() => {
+        Alert.alert('Unable to open link', 'Invalid location link.');
+      });
+      return;
     }
+
+    if (!destinationParam) {
+      Alert.alert('No Location', 'Location details are not available for this vendor.');
+      return;
+    }
+
+    // Launch Google Maps / Apple Maps Directions with explicit User GPS Location as starting point (origin)
+    const originParam = userCoords ? `${userCoords.lat},${userCoords.lng}` : '';
+    const googleMapsUrl = originParam
+      ? `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${destinationParam}&travelmode=driving`
+      : `https://www.google.com/maps/dir/?api=1&destination=${destinationParam}&travelmode=driving`;
+
+    const appleMapsUrl = originParam
+      ? `http://maps.apple.com/?saddr=${originParam}&daddr=${destinationParam}&dirflg=d`
+      : `http://maps.apple.com/?daddr=${destinationParam}&dirflg=d`;
+
+    const mapsUrl = Platform.OS === 'ios' ? appleMapsUrl : googleMapsUrl;
+
+    Linking.openURL(mapsUrl).catch(() => {
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${destinationParam}`);
+    });
   };
 
   return (
@@ -213,6 +314,22 @@ export default function VendorProfileScreen() {
             )}
           </View>
         </View>
+        {isOwner && (
+          <TouchableOpacity 
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#FF6600',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 16,
+            }}
+            onPress={() => router.push('/vendor/dashboard')}
+          >
+            <Ionicons name="pencil" size={14} color="#FFF" style={{ marginRight: 4 }} />
+            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Edit Profile</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -306,7 +423,7 @@ export default function VendorProfileScreen() {
                   />
                 </G>
               </Svg>
-              <Text style={styles.metaText}>{formatDistance(vendor.distance)}</Text>
+              <Text style={styles.metaText}>{formatDistance(calculatedDistance)}</Text>
             </View>
           </View>
         </View>
@@ -381,10 +498,17 @@ export default function VendorProfileScreen() {
         )}
 
         {/* Connect Section */}
-        {!!(vendor.website_link || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
+        {!!(vendor.business_email || vendor.website_link || vendor.social_media?.instagram || vendor.social_media?.whatsapp) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Connect</Text>
             
+            {!!vendor.business_email && (
+              <TouchableOpacity style={styles.connectRow} onPress={() => vendor.business_email && Linking.openURL(`mailto:${vendor.business_email}`)}>
+                <Ionicons name="mail-outline" size={18} color="#FF6600" />
+                <Text style={styles.connectLinkText}>{vendor.business_email}</Text>
+              </TouchableOpacity>
+            )}
+
             {!!vendor.website_link && (
               <TouchableOpacity style={styles.connectRow} onPress={() => vendor.website_link && openExternalUrl(vendor.website_link)}>
                 <Ionicons name="globe-outline" size={18} color="#FF6600" />
@@ -394,11 +518,25 @@ export default function VendorProfileScreen() {
             
             {!!vendor.social_media?.instagram && (
               <TouchableOpacity style={styles.connectRow} onPress={() => {
-                const handle = vendor.social_media?.instagram?.replace('@', '');
-                Linking.openURL(`https://instagram.com/${handle}`);
+                let instaVal = (vendor.social_media?.instagram || '').trim();
+                if (/^https?:\/\//i.test(instaVal)) {
+                  openExternalUrl(instaVal);
+                } else {
+                  const cleanHandle = instaVal.replace(/^@/, '');
+                  openExternalUrl(`https://instagram.com/${cleanHandle}`);
+                }
               }}>
                 <Ionicons name="logo-instagram" size={18} color="#FF6600" />
-                <Text style={styles.connectLinkText}>{vendor.social_media.instagram}</Text>
+                <Text style={styles.connectLinkText}>
+                  {(() => {
+                    const raw = (vendor.social_media.instagram || '').trim();
+                    if (/^https?:\/\//i.test(raw)) {
+                      const match = raw.match(/instagram\.com\/([^\/\?]+)/i);
+                      return match ? `@${match[1]}` : raw;
+                    }
+                    return raw.startsWith('@') ? raw : `@${raw}`;
+                  })()}
+                </Text>
               </TouchableOpacity>
             )}
             
@@ -738,6 +876,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#4B5563',
     lineHeight: 26,
+    flexWrap: 'wrap',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
   scheduleStack: {
