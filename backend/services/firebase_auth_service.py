@@ -93,14 +93,7 @@ class FirebaseAuthService:
     @staticmethod
     def is_test_phone(normalized_phone: str) -> bool:
         digits = normalized_phone.replace("+", "")
-        return (
-            digits.startswith("919999") or
-            digits.startswith("9999") or
-            digits.startswith("911111") or
-            digits.startswith("1111") or
-            digits.endswith("1234567890") or
-            digits.endswith("9876543210")
-        )
+        return digits.endswith("1234567890")
 
     @staticmethod
     async def send_otp(phone: str) -> Dict[str, Any]:
