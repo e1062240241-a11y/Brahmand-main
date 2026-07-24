@@ -288,10 +288,8 @@ export default function ProfileScreen() {
     if (showLoading) setLoading(true);
     const requestedUserId = userId;
     try {
-      console.log('[Profile] calling getUserProfile API');
       const res = await getUserProfile();
       if (requestedUserId !== activeUserIdRef.current) return;
-      console.log('[Profile] getUserProfile success:', JSON.stringify(res.data).substring(0, 200));
       const nextProfile = res.data || {};
       setProfile(nextProfile);
       updateUser(nextProfile);

@@ -8,11 +8,22 @@ export default function Root({ children }: PropsWithChildren) {
     <html lang="en" style={{ height: "100%" }}>
       <head>
         <meta charSet="utf-8" />
-        <title>Sanatan Lok</title>
-        <meta name="description" content="Sanatan Lok - Connect with your local spiritual community, find temples, jaap rooms, and emergency services." />
-        <meta property="og:title" content="Sanatan Lok" />
+        <title>Brahmand</title>
+        <meta name="description" content="Brahmand - Connect with your local spiritual community, find temples, jaap rooms, and emergency services." />
+        <meta property="og:title" content="Brahmand" />
+        <meta property="og:site_name" content="Brahmand" />
         <meta property="og:description" content="Connect with your local spiritual community, find temples, jaap rooms, and emergency services." />
         <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png" />
+        <meta property="og:image:secure_url" content="https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png" />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Brahmand" />
+        <meta name="twitter:description" content="Connect with your local spiritual community, find temples, jaap rooms, and emergency services." />
+        <meta name="twitter:image" content="https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png" />
+        <link rel="icon" href="https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png" />
+        <link rel="apple-touch-icon" href="https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta
           name="viewport"

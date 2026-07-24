@@ -22,6 +22,7 @@ import {
   Dimensions,
   Linking,
   InteractionManager,
+  Keyboard,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -205,6 +206,7 @@ function MessagesScreen({
   const onMessagesScrollTabBar = useScrollToHideTabBar();
 
   const [activeTopTab, setActiveTopTab] = useState<'Community' | 'Private Chat'>('Community');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const segmentAnim = useRef(new Animated.Value(0)).current;
 
   const handleTabSwitch = (tab: 'Community' | 'Private Chat') => {
@@ -1623,18 +1625,34 @@ function MessagesScreen({
         ) : (
           <View style={styles.privateChatContent}>
             {/* Search Bar */}
-            <View style={styles.searchBarContainer}>
-              <Ionicons name="search" size={20} color="#8E8E93" style={styles.searchIcon} />
+            <View style={[
+              styles.searchBarContainer,
+              isSearchFocused && {
+                borderColor: '#0088CC',
+                borderWidth: 1.5,
+                shadowColor: '#0088CC',
+                shadowOpacity: 0.25,
+                shadowRadius: 8,
+                elevation: 5,
+                backgroundColor: '#FAFCFF',
+              }
+            ]}>
+              <Ionicons name="search" size={20} color={isSearchFocused ? '#0088CC' : '#8E8E93'} style={styles.searchIcon} />
               <TextInput
                 style={styles.searchInput}
                 placeholder={t('findPeopleGroups')}
                 placeholderTextColor="#8E8E93"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
                 autoCapitalize="none"
               />
               <TouchableOpacity
-                onPress={() => router.push('/dm/new')}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  router.push('/dm/new');
+                }}
                 style={styles.composeButton}
               >
                 <Ionicons name="create-outline" size={20} color="#000000" />
@@ -2581,10 +2599,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 8,
     marginBottom: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     height: 48,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
+    borderColor: 'rgba(0, 0, 0, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   searchIcon: {
     marginRight: 8,

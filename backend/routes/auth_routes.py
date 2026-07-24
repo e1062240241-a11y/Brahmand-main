@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from models.schemas import OTPRequest, OTPVerify, UserCreate, FirebaseTokenRequest
 from services.firebase_auth_service import FirebaseAuthService as AuthService
 from middleware.rate_limiter import auth_rate_limit
+from middleware.security import verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
 
 
 @router.get("/clean-locust-data")
-async def clean_locust_data():
+async def clean_locust_data(token_data: dict = Depends(verify_token)):
     """Temporary utility to clean up all Locust test data from Firestore or Mock DB."""
     ANONYMOUS_PHONES = [
         "+911234567891",
