@@ -216,6 +216,10 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(_jaap_reminder_worker())
     logger.info("Jaap reminder worker started")
 
+    # Sync legacy KYC data across users and vendors
+    asyncio.create_task(sync_legacy_kyc_data_in_db())
+    logger.info("Legacy KYC sync task scheduled")
+
     # Run Krishna RAG pipeline diagnostics at startup
     try:
         from services.krishna_rag_service import run_startup_diagnostics
@@ -8488,14 +8492,38 @@ def try_face_match(id_base64: str, selfie_base64: str) -> dict:
 async def get_kyc_status(token_data: dict = Depends(verify_token)):
     """Get user's KYC status"""
     db = await get_db()
-    user = await db.get_document('users', token_data["user_id"])
+    user_id = token_data["user_id"]
+    user = await db.get_document('users', user_id)
+    if not user:
+        return {"kyc_status": None, "is_verified": False}
+        
     kyc_status = user.get('kyc_status')
     is_verified = bool(user.get('is_verified'))
 
-    # do not fallback to 'verified' based on community is_verified flag
-    # if not kyc_status and is_verified:
-    #     kyc_status = 'verified'
-    
+    # Check vendor record to ensure bi-directional KYC sync (prevents dual KYC)
+    vendor_id = user.get('vendor_id')
+    if not vendor_id:
+        v_list = await db.query_documents('vendors', filters=[('owner_id', '==', user_id)])
+        if v_list:
+            vendor_id = v_list[0]['id']
+            
+    if vendor_id:
+        vendor = await db.get_document('vendors', vendor_id)
+        if vendor:
+            v_status = vendor.get('kyc_status')
+            if v_status == 'verified' and kyc_status != 'verified':
+                kyc_status = 'verified'
+                is_verified = True
+                await db.update_document('users', user_id, {'kyc_status': 'verified', 'is_verified': True})
+            elif kyc_status == 'verified' and v_status != 'verified':
+                await db.update_document('vendors', vendor_id, {'kyc_status': 'verified'})
+
+    kyc_phone = user.get('kyc_verified_phone') or user.get('phone') or user.get('phone_number')
+    if not kyc_phone and vendor_id:
+        vendor = await db.get_document('vendors', vendor_id)
+        if vendor:
+            kyc_phone = vendor.get('phone_number') or vendor.get('contact_number')
+
     return {
         "kyc_status": kyc_status,  # pending/verified/rejected
         "kyc_role": user.get('kyc_role'),  # temple/vendor/organizer
@@ -8503,6 +8531,8 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
         "verified_at": user.get('kyc_verified_at'),
         "rejection_reason": user.get('kyc_rejection_reason'),
         "is_verified": is_verified,
+        "kyc_phone_verified_at": user.get('kyc_phone_verified_at'),
+        "kyc_verified_phone": kyc_phone,
     }
 
 
@@ -8968,6 +8998,70 @@ async def verify_kyc(user_id: str, data: dict, token_data: dict = Depends(verify
     
         logger.info(f"KYC rejected for user {user_id}")
         return {"message": "KYC rejected"}
+async def sync_legacy_kyc_data_in_db():
+    """Scan and synchronize all legacy user and vendor KYC records in the database."""
+    try:
+        db = await get_db()
+        users = await db.query_documents('users')
+        vendors = await db.query_documents('vendors')
+        
+        vendor_by_owner = {}
+        for v in (vendors or []):
+            owner_id = v.get('owner_id')
+            if owner_id:
+                vendor_by_owner[owner_id] = v
+                
+        synced_count = 0
+        for u in (users or []):
+            u_id = u.get('id')
+            if not u_id:
+                continue
+            v = vendor_by_owner.get(u_id)
+            updates = {}
+            v_updates = {}
+            
+            # Status sync
+            u_status = u.get('kyc_status')
+            v_status = v.get('kyc_status') if v else None
+            
+            if v_status == 'verified' and u_status != 'verified':
+                updates['kyc_status'] = 'verified'
+                updates['is_verified'] = True
+            elif u_status == 'verified' and v and v_status != 'verified':
+                v_updates['kyc_status'] = 'verified'
+                
+            # Phone sync
+            u_phone = u.get('kyc_verified_phone') or u.get('phone') or u.get('phone_number')
+            v_phone = v.get('phone_number') if v else None
+            best_phone = u_phone or v_phone
+            
+            if best_phone and not u.get('kyc_verified_phone'):
+                updates['kyc_verified_phone'] = best_phone
+            if best_phone and v and not v.get('phone_number'):
+                v_updates['phone_number'] = best_phone
+                
+            # Document URLs sync from vendor if user photos missing
+            if v:
+                if not u.get('kyc_id_photo') and (v.get('aadhar_url') or v.get('pan_url')):
+                    updates['kyc_id_photo'] = v.get('aadhar_url') or v.get('pan_url')
+                if not u.get('kyc_selfie_photo') and v.get('face_scan_url'):
+                    updates['kyc_selfie_photo'] = v.get('face_scan_url')
+                if not u.get('kyc_role') and (u.get('is_vendor') or u.get('vendor_id')):
+                    updates['kyc_role'] = 'vendor'
+
+            if updates:
+                await db.update_document('users', u_id, updates)
+                synced_count += 1
+            if v_updates and v:
+                await db.update_document('vendors', v['id'], v_updates)
+
+        logger.info(f"[Legacy KYC Sync] Successfully synchronized {synced_count} records.")
+        return synced_count
+    except Exception as e:
+        logger.error(f"[Legacy KYC Sync Error] {e}")
+        return 0
+
+
 @api_router.get("/admin/kyc/pending")
 async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = Depends(verify_token)):
     """Get all users with pending or verified KYC (admin only)"""
@@ -8990,19 +9084,45 @@ async def get_pending_kyc(status: Optional[str] = "pending", token_data: dict = 
             u for u in (all_users or [])
             if u.get('kyc_status') in target_statuses
         ]
+
+    # Fetch vendor map for missing field fill
+    vendors = await db.query_documents('vendors')
+    vendor_by_owner = {v.get('owner_id'): v for v in (vendors or []) if v.get('owner_id')}
     
-    # Return only necessary fields
-    return [{
-        'id': u['id'],
-        'name': u.get('name'),
-        'sl_id': u.get('sl_id'),
-        'kyc_role': u.get('kyc_role'),
-        'kyc_id_type': u.get('kyc_id_type'),
-        'kyc_submitted_at': u.get('kyc_submitted_at'),
-        'kyc_id_photo': u.get('kyc_id_photo'),
-        'kyc_selfie_photo': u.get('kyc_selfie_photo'),
-        'kyc_id_number': u.get('kyc_id_number'),
-    } for u in pending]
+    result = []
+    for u in (pending or []):
+        u_id = u.get('id')
+        v = vendor_by_owner.get(u_id) or {}
+        
+        id_photo = u.get('kyc_id_photo') or v.get('aadhar_url') or v.get('pan_url')
+        selfie_photo = u.get('kyc_selfie_photo') or v.get('face_scan_url')
+        phone = u.get('kyc_verified_phone') or u.get('phone') or u.get('phone_number') or v.get('phone_number') or v.get('contact_number')
+        
+        result.append({
+            'id': u_id,
+            'name': u.get('name') or v.get('owner_name') or v.get('business_name'),
+            'sl_id': u.get('sl_id'),
+            'kyc_role': u.get('kyc_role') or ('vendor' if v else None),
+            'kyc_status': u.get('kyc_status') or v.get('kyc_status'),
+            'kyc_id_type': u.get('kyc_id_type') or ('aadhaar' if v.get('aadhar_url') else ('pan' if v.get('pan_url') else None)),
+            'kyc_submitted_at': u.get('kyc_submitted_at') or v.get('created_at'),
+            'kyc_id_photo': id_photo,
+            'kyc_selfie_photo': selfie_photo,
+            'kyc_id_number': u.get('kyc_id_number') or u.get('kyc_aadhaar_number'),
+            'phone': phone,
+            'kyc_verified_phone': phone,
+            'rejection_reason': u.get('kyc_rejection_reason') or v.get('kyc_rejection_reason'),
+        })
+
+    return result
+
+
+@api_router.post("/admin/kyc/sync-legacy")
+async def trigger_legacy_kyc_sync(token_data: dict = Depends(verify_token)):
+    """Admin endpoint to manually trigger a sync of all legacy KYC data in the DB."""
+    db, _ = await _ensure_admin_user(token_data)
+    count = await sync_legacy_kyc_data_in_db()
+    return {"message": "Legacy KYC data synchronized successfully", "synced_count": count}
 
 
 # =================== REPORT SYSTEM ===================
@@ -10875,8 +10995,8 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
         "gstin": data.gstin,
         "business_email": data.business_email,
         "website_link": data.website_link,
-        "kyc_status": None,
-        "kyc_verified_at": None,
+        "kyc_status": 'verified' if (bool((user or {}).get('is_verified')) or (user or {}).get('kyc_status') == 'verified') else (user or {}).get('kyc_status'),
+        "kyc_verified_at": (user or {}).get('kyc_verified_at') if (bool((user or {}).get('is_verified')) or (user or {}).get('kyc_status') == 'verified') else None,
         "kyc_reviewed_by": None,
         "kyc_review_note": None,
     }
@@ -10884,18 +11004,23 @@ async def create_vendor(data: VendorCreate, token_data: dict = Depends(verify_to
     vendor_id = await db.create_document('vendors', vendor_data)
     vendor_data['id'] = vendor_id
 
-    # Update user to mark as vendor and reset KYC/verified status to make KYC steps mandatory
-    await db.update_document('users', user_id, {
+    # Update user to mark as vendor while preserving existing KYC status
+    user_is_verified = bool((user or {}).get('is_verified')) or (user or {}).get('kyc_status') == 'verified'
+    user_kyc_status = (user or {}).get('kyc_status')
+
+    user_update_payload = {
         'is_vendor': True,
         'vendor_id': vendor_id,
-        'kyc_status': None,
-        'is_verified': False,
         'kyc_role': 'vendor',
-        'kyc_submitted_at': None,
-        'kyc_verified_at': None,
-        'kyc_rejection_reason': None,
-        'kyc_aadhaar_otp_verified': False,
-    })
+    }
+
+    if user_is_verified:
+        user_update_payload['is_verified'] = True
+        user_update_payload['kyc_status'] = 'verified'
+    elif user_kyc_status:
+        user_update_payload['kyc_status'] = user_kyc_status
+
+    await db.update_document('users', user_id, user_update_payload)
 
     await _sync_vendor_to_admin_queue(db, vendor_id, vendor=vendor_data)
 
@@ -12499,7 +12624,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         "user_phone": user.get('phone'),
         "community_id": resolved_community_id,
         "request_type": data.request_type.value,
-        "visibility_level": data.visibility_level.value,
+        "visibility_level": "national" if data.request_type.value in ["blood", "emergency", "medical"] else data.visibility_level.value,
         "title": data.title,
         "description": data.description,
         "contact_number": data.contact_number,
@@ -12592,12 +12717,13 @@ async def get_community_requests(
     """Get community requests with filters"""
     user_id = token_data["user_id"]
     
-    # 1. Try fetching from cache first
+    # 1. Try fetching from cache first (skip cache if fetching blood/emergency requests for real-time accuracy)
     cache_key = f"user_requests:{user_id}:{status}:{type}:{community_id}:{visibility_level}:{limit}"
-    cached_requests = await cache_manager.get(cache_key)
-    if cached_requests is not None:
-        logger.info(f"Cache HIT for community requests: {cache_key}")
-        return cached_requests
+    if type not in ['blood', 'emergency', 'medical']:
+        cached_requests = await cache_manager.get(cache_key)
+        if cached_requests is not None:
+            logger.info(f"Cache HIT for community requests: {cache_key}")
+            return cached_requests
         
     db = await get_db()
     user = await db.get_document('users', user_id)
@@ -12636,6 +12762,12 @@ async def get_community_requests(
             visible_requests.append(req)
             continue
 
+        # Emergency & Blood requests are ALWAYS VISIBLE to all users so people can provide urgent help!
+        req_type = str(req.get('request_type') or "").strip().lower()
+        if req_type in ['blood', 'emergency', 'medical']:
+            visible_requests.append(req)
+            continue
+
         # If user is a member of the community the request belongs to, always visible
         req_comm_id = req.get('community_id')
         if req_comm_id and req_comm_id in user_comms:
@@ -12663,9 +12795,9 @@ async def get_community_requests(
             visible_requests.append(req)
         elif visibility == 'state' and is_match('state', 'state'):
             visible_requests.append(req)
-        elif visibility == 'city' and is_match('city', 'city'):
+        elif visibility == 'city' and (is_match('city', 'city') or not location_area.get('city')):
             visible_requests.append(req)
-        elif visibility == 'area' and is_match('area', 'area'):
+        elif visibility == 'area' and (is_match('area', 'area') or is_match('city', 'city') or not location_area.get('area')):
             visible_requests.append(req)
             
     # Filter out obvious garbage / test data
@@ -15429,17 +15561,6 @@ async def _jaap_reminder_worker():
             await asyncio.sleep(30) # Cool down on error
 
 
-
-app.include_router(api_router)
-app.include_router(video_upload_router)
-app.mount("/socket.io", socket_app)
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:socket_app", host="0.0.0.0", port=8002, reload=True)
-
-
 @api_router.post("/kyc/validate-image")
 async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token)):
     """
@@ -15469,8 +15590,6 @@ async def validate_kyc_image(data: dict, token_data: dict = Depends(verify_token
         expected_name=expected_name
     )
     return validation
-
-
 
 
 @api_router.delete("/admin/kyc/{user_id}")
@@ -15561,6 +15680,18 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 
     logger.info(f"KYC deleted/reset for user {user_id}")
     return {"message": "User KYC deleted and reset successfully"}
+
+
+app.include_router(api_router)
+app.include_router(video_upload_router)
+app.mount("/socket.io", socket_app)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:socket_app", host="0.0.0.0", port=8002, reload=True)
+
+
 
 
 

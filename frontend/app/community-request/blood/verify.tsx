@@ -74,22 +74,18 @@ export default function CommunityRequestBloodVerifyPage() {
     myVendor?.kyc_status === 'verified';
 
   const handleCompleteKyc = () => {
-    const status = (user as any)?.kyc_status;
-    if (status === 'pending' || status === 'manual_review') {
-      router.push('/community-request/kyc-success');
-    } else {
-      router.push('/community-request/kyc');
-    }
+    router.push({
+      pathname: '/kyc',
+      params: { returnUrl: '/community-request/blood-request' }
+    });
   };
 
   const handleSendOtp = () => {
     if (!isKycVerified) {
-      const status = (user as any)?.kyc_status;
-      if (status === 'pending' || status === 'manual_review') {
-        router.push('/community-request/kyc-success');
-      } else {
-        router.push('/community-request/kyc');
-      }
+      router.push({
+        pathname: '/kyc',
+        params: { returnUrl: '/community-request/blood-request' }
+      });
       return;
     }
     if (!phoneNumber || phoneNumber.length < 10) {

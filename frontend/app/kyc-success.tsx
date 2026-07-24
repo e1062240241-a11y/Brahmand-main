@@ -22,14 +22,22 @@ const { width } = Dimensions.get('window');
 export default function KYCSuccessScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { requestNo } = useLocalSearchParams<{ requestNo?: string }>();
+  const { requestNo, returnUrl } = useLocalSearchParams<{ requestNo?: string; returnUrl?: string }>();
 
   const handleClose = () => {
-    router.replace('/(tabs)/vendor' as any);
+    if (returnUrl) {
+      router.replace(returnUrl as any);
+    } else {
+      router.replace('/(tabs)/vendor' as any);
+    }
   };
 
   const handleViewRequest = () => {
-    router.replace('/kyc' as any);
+    if (returnUrl) {
+      router.replace(returnUrl as any);
+    } else {
+      router.replace('/kyc' as any);
+    }
   };
 
   const handleShare = async () => {

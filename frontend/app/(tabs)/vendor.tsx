@@ -246,8 +246,17 @@ export default function VendorScreen() {
     createVendor,
     uploadBusinessImage
   } = useVendorStore();
-  const hasVerifiedKyc = isKycVerified || myVendor?.kyc_status === 'verified';
-  const hasPendingKyc = isKycPending || myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
+  const hasVerifiedKyc =
+    isKycVerified ||
+    Boolean((user as any)?.is_verified) ||
+    (user as any)?.kyc_status === 'verified' ||
+    myVendor?.kyc_status === 'verified';
+  const hasPendingKyc =
+    isKycPending ||
+    (user as any)?.kyc_status === 'pending' ||
+    (user as any)?.kyc_status === 'manual_review' ||
+    myVendor?.kyc_status === 'pending' ||
+    myVendor?.kyc_status === 'manual_review';
   const canAccessDashboard = hasVerifiedKyc || hasPendingKyc;
   
   const [activeTab, setActiveTab] = useState('Nearby');
@@ -296,6 +305,7 @@ export default function VendorScreen() {
     const latestStatus = await loadKycStatus();
     const isVerified =
       latestStatus === 'verified' ||
+      Boolean((user as any)?.is_verified) ||
       (user as any)?.kyc_status === 'verified' ||
       myVendor?.kyc_status === 'verified';
 
@@ -731,13 +741,28 @@ export default function VendorScreen() {
       setShowRegistrationModal(false);
       
       // Refresh vendor data in background
-      Promise.all([
+      await Promise.all([
         fetchMyVendor(),
         userLocation ? fetchVendors(userLocation) : fetchVendors()
       ]).catch(err => console.warn('Background fetch error:', err));
       
-      // Navigate to Number & KYC verification
-      router.push('/kyc');
+      const isAlreadyVerified =
+        Boolean((user as any)?.is_verified) ||
+        (user as any)?.kyc_status === 'verified' ||
+        myVendor?.kyc_status === 'verified';
+
+      if (isAlreadyVerified) {
+        if (Platform.OS === 'web') {
+          window.alert(localT('approvedMsg') || 'Your business is registered and your KYC is verified across the app.');
+        } else {
+          Alert.alert(
+            localT('approvedTitle') || 'Business Registered!',
+            localT('approvedMsg') || 'Your business is registered and your KYC is verified across the app.'
+          );
+        }
+      } else {
+        router.push('/kyc');
+      }
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);
       throw error;
@@ -1043,6 +1068,13 @@ export default function VendorScreen() {
                   );
                 }
               } else {
+                if (!hasVerifiedKyc) {
+                  router.push({
+                    pathname: '/kyc',
+                    params: { returnUrl: '/(tabs)/vendor' }
+                  });
+                  return;
+                }
                 setShowRegistrationModal(true);
               }
             }}

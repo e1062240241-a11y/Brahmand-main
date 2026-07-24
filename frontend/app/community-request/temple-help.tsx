@@ -22,6 +22,7 @@ import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { useAuthStore } from '../../src/store/authStore';
+import { useVendorStore } from '../../src/store/vendorStore';
 
 const { width } = Dimensions.get('window');
 const HELP_TYPES = [
@@ -66,6 +67,21 @@ export default function TempleHelpRequestScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ community_id?: string }>();
   const { user } = useAuthStore();
+  const { myVendor } = useVendorStore();
+
+  const isKycVerified =
+    (user as any)?.kyc_status === 'verified' ||
+    Boolean((user as any)?.is_verified) ||
+    myVendor?.kyc_status === 'verified';
+
+  useEffect(() => {
+    if (!isKycVerified) {
+      router.replace({
+        pathname: '/kyc',
+        params: { returnUrl: '/community-request' }
+      });
+    }
+  }, [isKycVerified]);
   
   // Form State
   const [helpType, setHelpType] = useState('');
