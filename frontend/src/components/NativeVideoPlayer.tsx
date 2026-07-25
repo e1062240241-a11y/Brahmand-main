@@ -70,9 +70,6 @@ const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
       if (isPlayerValid(player)) {
         try {
           player.pause();
-          if (player.release) {
-            player.release();
-          }
         } catch (e) {}
       }
     };

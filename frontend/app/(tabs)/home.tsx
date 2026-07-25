@@ -317,11 +317,6 @@ function ShopIcon() {
     />
   );
 }
-import { ReportModal } from '../../src/components/ReportModal';
-import { originalAlert } from '../../src/utils/nativeAlert';
-import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
-import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
-import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
@@ -2513,18 +2508,17 @@ export default function HomeScreen() {
   };
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
-    const postKey = Platform.OS === 'android'
-      ? `feed-android-${index}-${String(item.id || item.media_url || index)}`
-      : `feed-${index}-${String(item.id || item.media_url || index)}`;
+    if (item.type === 'empty') {
+      return (
+        <View style={styles.emptyFeed}>
+          <Text style={styles.emptyFeedText}>No posts yet</Text>
+        </View>
+      );
+    }
+    const isActive = String(item.id) === activePostId;
+    const currentUserId = (user as any)?.id || user?.id;
     return (
-      <View
-        onLayout={(event) => {
-          const y = event.nativeEvent.layout.y;
-          const h = event.nativeEvent.layout.height;
-          postOffsetsRef.current[postKey] = y;
-          postHeightsRef.current[postKey] = h;
-        }}
-      >
+      <View style={{ marginBottom: 0 }}>
         <PostFeedCard
           post={item}
           onLike={handleLikePost}
@@ -2534,17 +2528,17 @@ export default function HomeScreen() {
           onUserPress={handleOpenPostUserProfile}
           onPostMenuPress={handlePostMenuPress}
           postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
-          isActive={activePostKey === postKey}
+          isActive={isActive}
           theme="dark"
           isBlackBackground={true}
           isFirstReel={index === 0}
         />
       </View>
     );
-  }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
+  }, [activePostId, user, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   const memoizedHeader = useMemo(() => (
-    <View style={{ paddingTop: insets.top + 4 }}>
+    <View style={{ paddingTop: 4 }}>
 
               {loadingFeed && feedPosts.length === 0 && (
                 <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
@@ -3675,7 +3669,18 @@ export default function HomeScreen() {
           </View>
         )}
 
-            </View>
+          <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
+            <HomeFeedTabs
+              activeTab={activeTab}
+              onTabChange={(tab: string) => {
+                requestAnimationFrame(() => {
+                  setActiveTab(tab);
+                });
+              }}
+              onCreatePost={() => setShowUploadPostModal(true)}
+            />
+          </View>
+        </View>
   ), [
     insets.top,
     loadingFeed,
@@ -3693,6 +3698,7 @@ export default function HomeScreen() {
     shivaStatus.isActive,
     reminders,
     unreadCount,
+    activeTab,
     t, searchActive, searchTerm, hashtagResults, searchResults
 ]);
 
@@ -3700,50 +3706,12 @@ export default function HomeScreen() {
     <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
-                    <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
-            <HomeFeedTabs
-              activeTab={activeTab}
-              onTabChange={(tab: string) => {
-                requestAnimationFrame(() => {
-                  setActiveTab(tab);
-                });
-              }}
-              onCreatePost={() => setShowUploadPostModal(true)}
-            />
-          </View>
           <View style={{ flex: 1 }}>
             {/* @ts-ignore */}
             <FlashList<any>
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
               keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
-              renderItem={({ item, index }) => {
-                if (item.type === 'empty') {
-                  return (
-                    <View style={styles.emptyFeed}>
-                      <Text style={styles.emptyFeedText}>No posts yet</Text>
-                    </View>
-                  );
-                }
-                const isActive = String(item.id) === activePostId;
-                return (
-                  <View style={{ marginBottom: 0 }}>
-                    <PostFeedCard
-                      post={item}
-                                            onLike={handleLikePost}
-                      onComment={handleOpenComment}
-                      onShare={handleSharePost}
-                      onRepost={handleRepost}
-                      onUserPress={handleOpenPostUserProfile}
-                      onPostMenuPress={handlePostMenuPress}
-                      postMenuType={item?.user_id === (user as any)?.id ? 'delete' : 'report'}
-                      isActive={isActive}
-                      theme="dark"
-                      isBlackBackground={true}
-                      isFirstReel={index === 0}
-                    />
-                  </View>
-                );
-              }}
+              renderItem={renderFeedPost}
               {...{estimatedItemSize: 600} as any}
               extraData={activePostId}
               viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
