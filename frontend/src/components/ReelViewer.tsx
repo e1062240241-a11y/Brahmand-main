@@ -1697,7 +1697,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     <ReelVideoItem
       post={item}
       isActive={index === activeIndexRef.current}
-      shouldLoad={index === activeIndexRef.current}
+      shouldLoad={Math.abs(index - activeIndexRef.current) <= 1}
       onClose={handleCloseWrapper}
       onLike={handleLikeLocal}
       onComment={handleCommentWrapper}

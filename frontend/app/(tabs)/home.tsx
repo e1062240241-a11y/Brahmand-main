@@ -1539,7 +1539,14 @@ export default function HomeScreen() {
         store.fetchVendors().catch(() => {});
         fetchReminders();
       });
-      return () => task.cancel();
+      return () => {
+        task.cancel();
+        // Step 1: Memory cleanup when unfocused (navigating away to profile/messages/etc)
+        setActivePostId(null);
+        setActivePostKey(null);
+        postOffsetsRef.current = {};
+        postHeightsRef.current = {};
+      };
     }, [loadFeedPosts])
   );
 
@@ -1690,40 +1697,18 @@ export default function HomeScreen() {
     }
   }, [activePostKey]);
 
-  // Auto-initialize activePostKey to the first post to prevent loading failure of the first reel/video on startup.
-  useEffect(() => {
-    if (feedPosts && feedPosts.length > 0) {
-      const firstPost = feedPosts[0];
-      const firstKey = Platform.OS === 'android'
-        ? `feed-android-0-${firstPost.id || firstPost.media_url || 0}`
-        : `feed-0-${firstPost.id || firstPost.media_url || 0}`;
-
-      const keyExists = feedPosts.some((post, index) => {
-        const key = Platform.OS === 'android'
-          ? `feed-android-${index}-${post.id || post.media_url || index}`
-          : `feed-${index}-${post.id || post.media_url || index}`;
-        return key === activePostKey;
-      });
-
-      if (!activePostKey || !keyExists) {
-        setActivePostKey(firstKey);
-      }
-    } else {
-      setActivePostKey(null);
-    }
-  }, [feedPosts, activeTab, activePostKey]);
-
-
   const [activePostId, setActivePostId] = useState<string | null>(null);
 
   const onViewableItemsChangedRef = useRef(({ viewableItems }: any) => {
-    if (viewableItems?.length > 0) {
-      const sorted = viewableItems
-        .filter((v: any) => v.item?.id && v.item.type !== 'empty')
-        .sort((a: any, b: any) => (b.isViewable ? 1 : 0));
-      if (sorted.length > 0) {
-        setActivePostId(String(sorted[0].item.id));
+    if (viewableItems && viewableItems.length > 0) {
+      const valid = viewableItems.filter((v: any) => v.isViewable && v.item?.id && v.item.type !== 'empty');
+      if (valid.length > 0) {
+        setActivePostId(String(valid[0].item.id));
+      } else {
+        setActivePostId(null);
       }
+    } else {
+      setActivePostId(null);
     }
   });
 
@@ -3673,6 +3658,10 @@ export default function HomeScreen() {
             <HomeFeedTabs
               activeTab={activeTab}
               onTabChange={(tab: string) => {
+                setActivePostId(null);
+                setActivePostKey(null);
+                postOffsetsRef.current = {};
+                postHeightsRef.current = {};
                 requestAnimationFrame(() => {
                   setActiveTab(tab);
                 });
@@ -3718,7 +3707,7 @@ export default function HomeScreen() {
               onViewableItemsChanged={onViewableItemsChangedRef.current}
               initialNumToRender={3}
               maxToRenderPerBatch={3}
-              windowSize={5}
+              windowSize={Platform.OS === 'android' ? 3 : 5}
               removeClippedSubviews={true}
               onEndReached={() => {
                 if (!hasMoreFeed || loadingMoreFeed) return;
