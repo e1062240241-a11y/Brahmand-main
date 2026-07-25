@@ -157,6 +157,12 @@ class CacheManager:
     async def invalidate_user_communities(self, user_id: str):
         await self.delete(f"{self.COMMUNITY_PREFIX}:user:{user_id}")
     
+    async def invalidate_community(self, community_id: str):
+        """Invalidate single community cache and stats"""
+        await self.delete(f"{self.COMMUNITY_PREFIX}:{community_id}")
+        await self.delete(f"{self.STATS_PREFIX}:community:{community_id}")
+        await self.delete_pattern(f"{self.COMMUNITY_PREFIX}:{community_id}*")
+    
     # Temple caching
     async def get_temples(self) -> Optional[List[dict]]:
         return await self.get(f"{self.TEMPLE_PREFIX}:all")
