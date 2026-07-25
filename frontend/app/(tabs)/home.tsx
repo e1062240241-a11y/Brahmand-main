@@ -1,6 +1,7 @@
 // accessibility: placeholder
 // Trigger watch rebuild
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FlashList } from '@shopify/flash-list';
 import {View,
   Text,
   StyleSheet,
@@ -45,7 +46,6 @@ import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { socketService } from '../../src/services/socket';
 // ── Smart Feed Optimization (ADD-ONLY, no existing features changed) ─────────
-import { SmartPost } from '../../src/components/SmartPost';
 import { useFeedOptimizationStore } from '../../src/store/feedOptimizationStore';
 import { useSmartFeed } from '../../src/hooks/useSmartFeed';
 import HomeJyotishSection from '../../src/components/HomeJyotishSection';
@@ -317,6 +317,11 @@ function ShopIcon() {
     />
   );
 }
+import { ReportModal } from '../../src/components/ReportModal';
+import { originalAlert } from '../../src/utils/nativeAlert';
+import { CommentOptionsModal } from '../../src/components/CommentOptionsModal';
+import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
+import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
@@ -377,7 +382,7 @@ const kundliChartImage = require('../../assets/images/kundli_chart.jpg');
 const astrologerMockImg = require('../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg');
 const salonMockImg = require('../../assets/images/tab-bar/rashi/vendor/salon.png');
 const electricianMockImg = require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg');
-const FEED_PAGE_SIZE = 7;
+const FEED_PAGE_SIZE = 10;
 
 let FileSystemModule: any = null;
 try {
@@ -772,8 +777,13 @@ export default function HomeScreen() {
     }
     setLocationPickerVisible(false);
   };
-  const scrollViewRef = useRef<KeyboardAwareScrollView>(null);
+  const postOffsetsRef = useRef<Record<string, number>>({});
+  const postHeightsRef = useRef<Record<string, number>>({});
+  const scrollViewRef = useRef<any>(null);
   const currentScrollY = useRef(0);
+  const feedTabsYRef = useRef(0);
+  const [feedTabsY, setFeedTabsY] = useState(0);
+  const lastScrollTimeRef = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
   const likeDebounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -1537,10 +1547,6 @@ export default function HomeScreen() {
       return () => task.cancel();
     }, [loadFeedPosts])
   );
-  const feedTabsYRef = useRef(0);
-  const [feedTabsY, setFeedTabsY] = useState(0);
-  const postOffsetsRef = useRef<Record<string, number>>({});
-  const postHeightsRef = useRef<Record<string, number>>({});
 
   const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const handleUploadStart = async (
@@ -1712,93 +1718,21 @@ export default function HomeScreen() {
     }
   }, [feedPosts, activeTab, activePostKey]);
 
-  const lastScrollTimeRef = useRef(0);
 
-  // ── Smart Feed Hook (declared before handleHomeScroll so onSmartScroll is available) ──
-  const feedPostIds = useMemo(
-    () => feedPosts.map((post, index) => String(post?.id || post?.media_url || index)),
-    [feedPosts],
-  );
+  const [activePostId, setActivePostId] = useState<string | null>(null);
 
-  const { onSmartScroll } = useSmartFeed({
-    postIds: feedPostIds,
-    postOffsetsRef,
-    postHeightsRef,
-    feedTabsYRef,
-    tabBarHeight: HOME_FEED_TABS_HEIGHT,
+  const onViewableItemsChangedRef = useRef(({ viewableItems }: any) => {
+    if (viewableItems?.length > 0) {
+      const sorted = viewableItems
+        .filter((v: any) => v.item?.id && v.item.type !== 'empty')
+        .sort((a: any, b: any) => (b.isViewable ? 1 : 0));
+      if (sorted.length > 0) {
+        setActivePostId(String(sorted[0].item.id));
+      }
+    }
   });
 
-  const handleHomeScroll = useCallback((event: any) => {
-    onHomeScrollTabBar(event);
-    const y = event.nativeEvent.contentOffset.y;
-    currentScrollY.current = y;
-
-    const now = Date.now();
-    if (now - lastScrollTimeRef.current > 100) {
-      lastScrollTimeRef.current = now;
-
-      // ── Smart Quality Upgrade: promote posts entering viewport ─────────────
-      onSmartScroll(y);
-
-      // Visibility tracking for video autoplay - find post with most area in viewport
-      let closestKey = null;
-      let maxVisible = 0;
-      const viewportTop = y;
-      const viewportBottom = y + screenHeight;
-
-      for (const key of feedPostKeys) {
-        const offset = postOffsetsRef.current[key];
-        const height = postHeightsRef.current[key];
-        if (typeof offset === 'number' && typeof height === 'number') {
-          const postAbsoluteTop = offset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT;
-          const postBottom = postAbsoluteTop + height;
-          const visibleTop = Math.max(viewportTop, postAbsoluteTop);
-          const visibleBottom = Math.min(viewportBottom, postBottom);
-          const visibleAmount = Math.max(0, visibleBottom - visibleTop);
-          // Stricter condition: Post must be at least 60% visible OR take up at least 50% of the screen
-          const visibilityThreshold = Math.min(height * 0.6, screenHeight * 0.5);
-          if (visibleAmount > maxVisible && visibleAmount > visibilityThreshold) {
-            maxVisible = visibleAmount;
-            closestKey = key;
-          }
-        }
-      }
-      setActivePostKey((prev) => (prev === closestKey ? prev : closestKey));
-    }
-
-    // Infinite Scroll Logic: Fetch next 7 posts when reaching the 6th post of current set
-    if (hasMoreFeed && !loadingMoreFeed && !loadingFeed && !isFetchingMoreRef.current && feedPosts.length > 0) {
-      const scrollHeight = event.nativeEvent.contentSize.height;
-      const layoutHeight = event.nativeEvent.layoutMeasurement.height;
-
-      // Determine which post is currently visible near the bottom of the viewport
-      // We trigger when the 6th-to-last post (index = length - 2) is reached
-      const targetIndex = Math.max(0, feedPosts.length - 2);
-      const targetPost = feedPosts[targetIndex];
-      const targetKey = String(targetPost?.id || targetPost?.media_url || targetIndex);
-      const targetOffset = postOffsetsRef.current[targetKey];
-
-      const triggerLoad = () => {
-        isFetchingMoreRef.current = true;
-        loadFeedPosts(feedOffset, true).finally(() => {
-          isFetchingMoreRef.current = false;
-        });
-      };
-
-      if (typeof targetOffset === 'number') {
-        // If the target post's top is visible in the bottom portion of the screen
-        if (y + layoutHeight > targetOffset + feedTabsYRef.current + HOME_FEED_TABS_HEIGHT) {
-          triggerLoad();
-        }
-      } else {
-        // Fallback to pixel-based trigger if layout not yet captured
-        if (y + layoutHeight > scrollHeight - 1000) {
-          triggerLoad();
-        }
-      }
-    }
-  }, [feedPostKeys, hasMoreFeed, loadingMoreFeed, loadingFeed, feedPosts, feedOffset, loadFeedPosts, onSmartScroll, screenHeight]);
-
+  const handleHomeScroll = () => {};
   const loadHomeRequests = useCallback(async () => {
     // Legacy function, replaced by initializeHome
   }, []);
@@ -2609,29 +2543,9 @@ export default function HomeScreen() {
     );
   }, [activePostKey, currentUserId, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
-  return (
-    <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
-          <KeyboardAwareScrollView
-            ref={scrollViewRef}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.content,
-              {
-                paddingTop: 0,
-                paddingBottom: 90
-              }
-            ]}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={onRefresh}
-                tintColor="#FF6B00"
-                colors={['#FF6B00']}
-              />
-            }
-          >
+  const memoizedHeader = useMemo(() => (
+    <View style={{ paddingTop: insets.top + 4 }}>
+
               {loadingFeed && feedPosts.length === 0 && (
                 <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
                   {/* Avatar + Lines */}
@@ -3761,97 +3675,92 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {!(loadingFeed && feedPosts.length === 0) && (
-          <View style={styles.stickyFeedTabsShell}>
-            <View style={styles.stickyFeedTabs}>
-              <HomeFeedTabs
-                activeTab={activeTab}
-                onTabChange={(tab) => {
-                  requestAnimationFrame(() => {
-                    setActiveTab(tab);
-                  });
-                }}
-                onCreatePost={() => setShowUploadPostModal(true)}
-              />
             </View>
-          </View>
-        )}
+  ), [
+    insets.top,
+    loadingFeed,
+    feedPosts.length,
+    user,
+    firstName,
+    avatarUri,
+    activeFeatureIndex,
+    activeBannerIndex,
+    activeRequestIndex,
+    activeAartiIndex,
+    hanumanChantCount,
+    shivaChantCount,
+    hanumanStatus.isActive,
+    shivaStatus.isActive,
+    reminders,
+    unreadCount,
+    t, searchActive, searchTerm, hashtagResults, searchResults
+]);
 
-        {!(loadingFeed && feedPosts.length === 0) && (
-          <View style={styles.feedPanel}>
-            {loadingFeed && feedPosts.length === 0 ? (
-              <View style={{ paddingHorizontal: 16, paddingTop: 10 }}>
-                {[1, 2, 3].map((key) => (
-                  <AnimatedSkeleton key={key} style={{ backgroundColor: '#FFF', borderRadius: 24, padding: 16, marginBottom: 16, shadowColor: '#FF8A00', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-                      <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255, 138, 0, 0.1)' }} />
-                      <View style={{ marginLeft: 12, flex: 1 }}>
-                        <View style={{ width: '50%', height: 12, backgroundColor: 'rgba(255, 138, 0, 0.1)', borderRadius: 6, marginBottom: 8 }} />
-                        <View style={{ width: '30%', height: 10, backgroundColor: 'rgba(255, 138, 0, 0.05)', borderRadius: 5 }} />
-                      </View>
-                    </View>
-                    <View style={{ width: '100%', height: 300, backgroundColor: 'rgba(255, 138, 0, 0.06)', borderRadius: 16, marginBottom: 12 }} />
-                    <View style={{ flexDirection: 'row', gap: 15 }}>
-                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                      <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255, 138, 0, 0.05)' }} />
-                    </View>
-                  </AnimatedSkeleton>
-                ))}
-              </View>
-            ) : activeTab === 'jyotish' ? (
-              <HomeJyotishSection />
-            ) : feedPosts.length > 0 ? (
-              <>
-                {feedPosts.map((post, index) => {
-                  const postKey = Platform.OS === 'android'
-                    ? `feed-android-${index}-${String(post.id || post.media_url || index)}`
-                    : `feed-${index}-${String(post.id || post.media_url || index)}`;
-                  const postId = String(post?.id || post?.media_url || index);
+  return (
+    <View style={{ flex: 1, backgroundColor: '#FF8D57' }}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
+        <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
+                    <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
+            <HomeFeedTabs
+              activeTab={activeTab}
+              onTabChange={(tab: string) => {
+                requestAnimationFrame(() => {
+                  setActiveTab(tab);
+                });
+              }}
+              onCreatePost={() => setShowUploadPostModal(true)}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            {/* @ts-ignore */}
+            <FlashList<any>
+              data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
+              keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
+              renderItem={({ item, index }) => {
+                if (item.type === 'empty') {
                   return (
-                    <View
-                      key={postKey}
-                    >
-                      {/* ── SmartPost: quality-aware wrapper around PostFeedCard ──────── */}
-                      {/* All existing props (onLike, onComment, etc.) pass through unchanged. */}
-                      <SmartPost
-                        post={post}
-                        postId={postId}
-                        onLike={handleLikePost}
-                        onComment={handleOpenComment}
-                        onShare={handleSharePost}
-                        onRepost={handleRepost}
-                        onUserPress={handleOpenPostUserProfile}
-                        onPostMenuPress={handlePostMenuPress}
-                        postMenuType={post?.user_id === currentUserId ? 'delete' : 'report'}
-                        isActive={activePostKey === postKey}
-                        theme="dark"
-                        isBlackBackground={true}
-                        isFirstReel={index === 0}
-                        onLayout={(event: any) => {
-                          const y = event.nativeEvent.layout.y;
-                          const h = event.nativeEvent.layout.height;
-                          postOffsetsRef.current[postKey] = y;
-                          postHeightsRef.current[postKey] = h;
-                        }}
-                      />
+                    <View style={styles.emptyFeed}>
+                      <Text style={styles.emptyFeedText}>No posts yet</Text>
                     </View>
                   );
-                })}
-                {hasMoreFeed && (
-                  <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                    <ActivityIndicator color="#FFD26C" />
+                }
+                const isActive = String(item.id) === activePostId;
+                return (
+                  <View style={{ marginBottom: 0 }}>
+                    <PostFeedCard
+                      post={item}
+                                            onLike={handleLikePost}
+                      onComment={handleOpenComment}
+                      onShare={handleSharePost}
+                      onRepost={handleRepost}
+                      onUserPress={handleOpenPostUserProfile}
+                      onPostMenuPress={handlePostMenuPress}
+                      postMenuType={item?.user_id === (user as any)?.id ? 'delete' : 'report'}
+                      isActive={isActive}
+                      theme="dark"
+                      isBlackBackground={true}
+                      isFirstReel={index === 0}
+                    />
                   </View>
-                )}
-              </>
-            ) : (
-              <View style={styles.emptyFeed}>
-                <Text style={styles.emptyFeedText}>No posts yet</Text>
-              </View>
-            )}
+                );
+              }}
+              {...{estimatedItemSize: 600} as any}
+              extraData={activePostId}
+              viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
+              onViewableItemsChanged={onViewableItemsChangedRef.current}
+              initialNumToRender={3}
+              maxToRenderPerBatch={3}
+              windowSize={5}
+              removeClippedSubviews={true}
+              onEndReached={() => {
+                if (!hasMoreFeed || loadingMoreFeed) return;
+                loadFeedPosts(feedOffset, true, activeTab);
+              }}
+              onEndReachedThreshold={0.5}
+              refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#FFF" />}
+              ListHeaderComponent={memoizedHeader}
+            />
           </View>
-        )}
-      </KeyboardAwareScrollView>
 
 
 

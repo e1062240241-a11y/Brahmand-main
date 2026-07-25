@@ -25,7 +25,7 @@ import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
 import { Avatar } from './Avatar';
 import { ReelViewer } from './ReelViewer';
-import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from './SafeVideoView';
+import NativeVideoPlayer from './NativeVideoPlayer';
 import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateUtils';
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
@@ -33,138 +33,7 @@ import { useTranslation } from '../utils/i18n';
 
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 
-let ExpoVideoModule: any = null;
-try {
-  ExpoVideoModule = require('expo-video');
-} catch (error) {
-  console.warn('expo-video unavailable:', error);
-}
 
-const NativeVideoPlayer = memo(({
-  mediaUrl,
-  isMuted,
-  shouldPlay,
-  cropStyle,
-  filterName,
-  setMediaLoading,
-  setMediaError,
-  videoPosterUrl,
-  handlePosterError,
-  mediaLoading,
-}: {
-  mediaUrl: string;
-  isMuted: boolean;
-  shouldPlay: boolean;
-  cropStyle: any;
-  filterName: string;
-  setMediaLoading: (loading: boolean) => void;
-  setMediaError: (error: string | null) => void;
-  videoPosterUrl: string;
-  handlePosterError: () => void;
-  mediaLoading: boolean;
-}) => {
-  // ponytail: only allocate native ExoPlayer when post is visible — fixes Android OOM from
-  // KeyboardAwareScrollView mounting all video posts simultaneously
-  const player = useSafeVideoPlayer(shouldPlay ? mediaUrl : null, (p) => {
-    if (p) {
-      p.loop = true;
-      p.muted = isMuted;
-      if (shouldPlay) {
-        p.play();
-      }
-      if (Platform.OS !== 'web') {
-        p.bufferOptions = {
-          preferredForwardBufferDuration: 2, 
-          waitsToMinimizeStalling: true,
-          minBufferForPlayback: 0.5, 
-          maxBufferBytes: 2 * 1024 * 1024,
-        };
-      }
-    }
-  });
-
-  useEffect(() => {
-    if (isPlayerValid(player)) {
-      try {
-        player.muted = isMuted;
-      } catch (e) {}
-    }
-  }, [isMuted, player]);
-
-  useEffect(() => {
-    if (isPlayerValid(player)) {
-      try {
-        if (shouldPlay) {
-          player.play();
-        } else {
-          player.pause();
-        }
-      } catch (e) {
-        console.warn('[PostFeedCard] player play/pause error:', e);
-      }
-    }
-  }, [shouldPlay, player]);
-
-  useEffect(() => {
-    return () => {
-      if (isPlayerValid(player)) {
-        try {
-          player.pause();
-        } catch (e) {}
-      }
-    };
-  }, [player]);
-
-  const fallbackView = (
-    <View style={[styles.videoBackground, { backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }]}>
-      {videoPosterUrl ? (
-        <Image
-          source={{ uri: videoPosterUrl }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          onError={handlePosterError}
-        />
-      ) : (
-        <Ionicons name="videocam-outline" size={32} color="#444" />
-      )}
-    </View>
-  );
-
-  if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
-    return fallbackView;
-  }
-
-  return (
-    <>
-      <SafeVideoView
-        player={player}
-        ExpoVideoModule={ExpoVideoModule}
-        style={cropStyle || styles.videoBackground}
-        contentFit="cover"
-        nativeControls={false}
-        onFirstFrameRender={() => setMediaLoading(false)}
-        onError={(e: any) => {
-          setMediaLoading(false);
-          setMediaError('Video player error');
-        }}
-        fallback={fallbackView}
-      />
-      {filterName !== 'Normal' && (
-        <View style={[StyleSheet.absoluteFill, getOverlayStyle(filterName)]} pointerEvents="none" />
-      )}
-      {mediaLoading ? (
-        <Image
-          source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
-          style={[StyleSheet.absoluteFill, { zIndex: 2 }]}
-          contentFit="cover"
-          pointerEvents="none"
-          onError={handlePosterError}
-        />
-      ) : null}
-    </>
-  );
-});
-NativeVideoPlayer.displayName = 'NativeVideoPlayer';
 
 type PostFeedCardProps = {
   post: any;
@@ -670,24 +539,23 @@ export const PostFeedCard = memo(({
                 </>
               ) : (
                 <>
-                  <NativeVideoPlayer
-                    mediaUrl={mediaUrl}
-                    isMuted={isMuted}
-                    shouldPlay={shouldPlay}
-                    cropStyle={cropStyle}
-                    filterName={filterName}
-                    setMediaLoading={setMediaLoading}
-                    setMediaError={setMediaError}
-                    videoPosterUrl={videoPosterUrl}
-                    handlePosterError={handlePosterError}
-                    mediaLoading={mediaLoading}
-                  />
-                  {!isActive && (
+                  {isActive ? (
+                    <NativeVideoPlayer
+                      mediaUrl={mediaUrl}
+                      shouldPlay={shouldPlay}
+                      isMuted={isMuted}
+                      onFirstFrameRender={() => setMediaLoading(false)}
+                      style={cropStyle ? { ...cropStyle, ...getFilterStyle(filterName) } : { width: '100%', height: '100%', ...getFilterStyle(filterName) }}
+                      contentFit="cover"
+                    />
+                  ) : (
                     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
                       <Image
                         source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
                         style={StyleSheet.absoluteFill}
                         contentFit="cover"
+                        cachePolicy="memory-disk"
+                        priority="low"
                         onError={handlePosterError}
                       />
                     </View>
