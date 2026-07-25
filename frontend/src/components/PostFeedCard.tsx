@@ -480,15 +480,15 @@ export const PostFeedCard = memo(({
       {/* Media */}
       <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight, backgroundColor: theme === 'light' ? '#F5F5F5' : '#111' }]}>
         {/* Blurred Poster Background for smooth transition */}
-        {mediaLoading && (
+        {mediaLoading && (videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url) ? (
           <Image
-            source={(videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url) ? { uri: videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url } : require('../../assets/images/app-image.png')}
+            source={{ uri: videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url }}
             style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
             contentFit="cover"
             blurRadius={20}
             onError={handlePosterError}
           />
-        )}
+        ) : null}
 
         {mediaUrl ? (
           isVideo ? (
@@ -550,14 +550,16 @@ export const PostFeedCard = memo(({
                     />
                   ) : (
                     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
-                      <Image
-                        source={videoPosterUrl ? { uri: videoPosterUrl } : require('../../assets/images/app-image.png')}
-                        style={StyleSheet.absoluteFill}
-                        contentFit="cover"
-                        cachePolicy="memory-disk"
-                        priority="low"
-                        onError={handlePosterError}
-                      />
+                      {videoPosterUrl ? (
+                        <Image
+                          source={{ uri: videoPosterUrl }}
+                          style={StyleSheet.absoluteFill}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          priority="low"
+                          onError={handlePosterError}
+                        />
+                      ) : null}
                     </View>
                   )}
                 </>
