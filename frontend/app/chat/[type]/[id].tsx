@@ -1058,7 +1058,7 @@ const ChatScreen = ({
     const webBaseUrl =
       process.env.EXPO_PUBLIC_APP_SHARE_URL ||
       process.env.EXPO_PUBLIC_SHARE_BASE_URL ||
-      'https://brahmand-frontend-hi4rz6fdrq-uc.a.run.app';
+      'https://brahmand-frontend-472579523745.us-central1.run.app';
     const webPath = `/community/${groupUnique}`;
     const shareLink = `${webBaseUrl.replace(/\/$/, '')}${webPath}${query ? `?${query}` : ''}`;
 

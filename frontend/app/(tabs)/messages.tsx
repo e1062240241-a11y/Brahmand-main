@@ -198,7 +198,11 @@ function MessagesScreen({
   const params = useLocalSearchParams<{ tab?: string }>();
   const { user, logout } = useAuthStore();
   const homeLoc = user?.home_location;
-  const hasValidLocation = !!(homeLoc && typeof homeLoc === 'object' && homeLoc.city && homeLoc.area && homeLoc.state);
+  const hasValidLocation = !!(
+    homeLoc &&
+    typeof homeLoc === 'object' &&
+    (homeLoc.city || homeLoc.state || homeLoc.area || homeLoc.country || (homeLoc as any).display_name)
+  ) || !!(user?.location) || !!((user as any)?.default_communities && (user as any).default_communities.length > 0);
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();

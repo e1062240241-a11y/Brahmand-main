@@ -103,10 +103,8 @@ export default function ChangeLocationScreen() {
   const hasValidLocation = !!(
     homeLoc &&
     typeof homeLoc === "object" &&
-    homeLoc.city &&
-    homeLoc.area &&
-    homeLoc.state
-  );
+    (homeLoc.city || homeLoc.state || homeLoc.area || homeLoc.country || (homeLoc as any).display_name)
+  ) || !!(user?.location) || !!((user as any)?.default_communities && (user as any).default_communities.length > 0);
 
   const handleBack = useCallback(() => {
     if (!hasValidLocation) return;
