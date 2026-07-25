@@ -6294,6 +6294,17 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
             'community_creation_requests',
             filters=[('owner_id', '==', owner_id)]
         )
+        # Gather all unique user IDs to prevent N+1 query loops
+        all_user_ids = set()
+        for req in (requests or []):
+            all_user_ids.update(req.get('admin_ids', []))
+            all_user_ids.update(req.get('member_ids', []))
+
+        users_map = {}
+        if all_user_ids:
+            user_docs = await db.get_documents_batch('users', list(all_user_ids))
+            users_map = {u.get('id'): u for u in user_docs if u and u.get('id')}
+
         result = []
         for req in (requests or []):
             # Enrich with user names for admin_ids and member_ids
@@ -6303,7 +6314,7 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
 
             admin_list = []
             for uid in admin_ids:
-                user_doc = await db.get_document('users', uid)
+                user_doc = users_map.get(uid) or {}
                 admin_list.append({
                     'id': uid,
                     'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
@@ -6313,7 +6324,7 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
 
             member_list = []
             for uid in member_ids:
-                user_doc = await db.get_document('users', uid)
+                user_doc = users_map.get(uid) or {}
                 member_list.append({
                     'id': uid,
                     'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
