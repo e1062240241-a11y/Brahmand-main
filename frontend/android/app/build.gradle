@@ -4,49 +4,21 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
-def getNodeBinary = {
-    if (System.getenv("NODE_BINARY") != null) {
-        return System.getenv("NODE_BINARY")
-    }
-    def candidates = ["/usr/local/bin/node", "/opt/homebrew/bin/node"]
-    for (candidate in candidates) {
-        if (new File(candidate).exists()) return candidate
-    }
-    def userHome = System.getProperty("user.home")
-    def nvmDir = new File(userHome, ".nvm/versions/node")
-    if (nvmDir.exists() && nvmDir.isDirectory()) {
-        def versions = nvmDir.listFiles()
-        if (versions != null && versions.length > 0) {
-            versions.sort { a, b -> b.name <=> a.name }
-            def nvmNode = new File(versions[0], "bin/node")
-            if (nvmNode.exists()) return nvmNode.absolutePath
-        }
-    }
-    try {
-        def p = ["/bin/sh", "-c", "export PATH=\"\$PATH:/usr/local/bin:/opt/homebrew/bin:\$HOME/.nvm/versions/node/\$(ls \$HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin\"; command -v node"].execute()
-        def res = p.text.trim()
-        if (p.exitValue() == 0 && !res.isEmpty()) return res
-    } catch (Exception ignored) {}
-    return "node"
-}
-def nodeBin = getNodeBinary()
-
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
-    entryFile = file([nodeBin, "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
-    reactNativeDir = new File([nodeBin, "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
-    hermesCommand = new File([nodeBin, "--print", "require.resolve('hermes-compiler/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"
-    codegenDir = new File([nodeBin, "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+    reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    hermesCommand = new File(["node", "--print", "require.resolve('hermes-compiler/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"
+    codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
     // Use Expo CLI to bundle the app, this ensures the Metro config
     // works correctly with Expo projects.
-    cliFile = new File([nodeBin, "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+    cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
     bundleCommand = "export:embed"
-    nodeExecutableAndArgs = [nodeBin]
 
     /* Folders */
      //   The root of your project, i.e. where "package.json" lives. Default is '../..'
@@ -123,7 +95,7 @@ android {
         versionCode 1
         versionName "1.2.0"
 
-        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'false'}\""
+        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
     signingConfigs {
         debug {
@@ -151,8 +123,8 @@ android {
     }
     packagingOptions {
         jniLibs {
-            useLegacyPackaging false
-            pickFirst '**/lib*.so'
+            def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
+            useLegacyPackaging enableLegacyPackaging.toBoolean()
         }
     }
     androidResources {

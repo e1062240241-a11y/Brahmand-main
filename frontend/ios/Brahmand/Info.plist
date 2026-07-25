@@ -98,8 +98,6 @@
     </array>
     <key>NSUserTrackingUsageDescription</key>
     <string>Allow this app to collect app-related data that can be used for tracking you or your device.</string>
-    <key>RCTNewArchEnabled</key>
-    <true/>
     <key>UIBackgroundModes</key>
     <array>
       <string>fetch</string>
