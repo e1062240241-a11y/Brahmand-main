@@ -148,13 +148,10 @@ android {
             def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
             crunchPngs enablePngCrunchInRelease.toBoolean()
         }
-        externalNativeBuild {
-            ndkBuild {
-                arguments "APP_LDFLAGS+=-Wl,-z,max-page-size=16384"
-            }
-            cmake {
-                arguments "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
-            }
+    }
+    externalNativeBuild {
+        cmake {
+            arguments "-DCMAKE_SHARED_LINKER_FLAGS=-Wl,-z,max-page-size=16384"
         }
     }
     packagingOptions {
