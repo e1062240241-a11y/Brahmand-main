@@ -1758,7 +1758,7 @@ async def admin_panel_login(data: dict = Body(...)):
     password = str(data.get('password', '')).strip()
 
     expected_username = os.getenv('ADMIN_PANEL_USERNAME', 'Admin')
-    expected_password = os.getenv('ADMIN_PANEL_PASSWORD', 'admin123')
+    expected_password = os.getenv('ADMIN_PANEL_PASSWORD', 'pummi9-mydwyj-cisfIw')
 
     if username != expected_username or password != expected_password:
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
