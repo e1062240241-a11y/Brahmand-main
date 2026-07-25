@@ -21,5 +21,13 @@ allprojects {
   }
 }
 
+subprojects {
+  configurations.all {
+    resolutionStrategy {
+      force 'org.jetbrains:annotations:23.0.0'
+    }
+  }
+}
+
 apply plugin: "expo-root-project"
 apply plugin: "com.facebook.react.rootproject"
