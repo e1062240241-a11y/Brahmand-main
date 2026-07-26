@@ -6034,8 +6034,9 @@ async def create_community(
         owner_name = owner_user.get('name') if owner_user else "A user"
 
         # 6. Send in-app notifications + push notifications to all invited admins and members
+        notification_docs = []
         for admin_id in admin_ids:
-            await db.create_document('notifications', {
+            notification_docs.append({
                 "user_id": admin_id,
                 "title": "Community Group Invitation",
                 "body": f"{owner_name} has invited you as an ADMIN to help create the community group '{data.name}'.",
@@ -6062,7 +6063,7 @@ async def create_community(
                 logger.warning(f"Failed to send push to admin {admin_id}: {push_err}")
 
         for member_id in member_ids:
-            await db.create_document('notifications', {
+            notification_docs.append({
                 "user_id": member_id,
                 "title": "Community Group Invitation",
                 "body": f"{owner_name} has invited you as a MEMBER to help create the community group '{data.name}'.",
@@ -6087,6 +6088,9 @@ async def create_community(
                 )
             except Exception as push_err:
                 logger.warning(f"Failed to send push to member {member_id}: {push_err}")
+
+        if notification_docs:
+            await db.batch_create_documents('notifications', notification_docs)
 
         return {
             "message": "Community group creation request submitted. Waiting for consensus approval from invited users.",
