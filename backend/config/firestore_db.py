@@ -452,6 +452,47 @@ class FirestoreDB:
         for doc_id, _ in updates:
             await self._cache.delete(f"{collection}:{doc_id}")
     
+
+    async def batch_delete_documents(self, collection: str, doc_ids: List[str], batch_size: int = 500) -> int:
+        """Delete multiple documents in a collection using batched writes."""
+        if not doc_ids:
+            return 0
+
+        if self.use_mock:
+            coll = self._mock_collections.setdefault(collection, {})
+            deleted_count = 0
+            for doc_id in doc_ids:
+                if doc_id in coll:
+                    del coll[doc_id]
+                    deleted_count += 1
+                self._cache.delete(f"{collection}:{doc_id}")
+            return deleted_count
+
+        def _batch():
+            deleted_count = 0
+            coll_ref = self.client.collection(collection)
+
+            # Process in chunks of batch_size (Firestore limit is 500)
+            for i in range(0, len(doc_ids), batch_size):
+                chunk = doc_ids[i:i + batch_size]
+                batch = self.client.batch()
+
+                for doc_id in chunk:
+                    batch.delete(coll_ref.document(doc_id))
+                    deleted_count += 1
+
+                batch.commit()
+
+            return deleted_count
+
+        result = await self._run_sync(_batch)
+
+        # Invalidate cache for all deleted documents
+        for doc_id in doc_ids:
+            await self._cache.delete(f"{collection}:{doc_id}")
+
+        return result
+
     async def delete_document(self, collection: str, doc_id: str) -> bool:
         """Delete a document and invalidate cache"""
         if self.use_mock:
