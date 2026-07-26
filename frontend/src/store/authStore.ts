@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { Platform } from 'react-native';
+import { generateKeyPair, getKeys } from '../utils/cryptoUtil';
+
 import { User } from '../types';
 import { initializePushNotifications } from '../services/pushNotifications';
 import { getFirebaseAuth } from '../services/firebase/config';
@@ -107,11 +109,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (isLoading) => set({ isLoading }),
   setPendingDeepLink: (pendingDeepLink) => set({ pendingDeepLink }),
 
+
   login: async (user, token) => {
     const cleanedUser = Platform.OS === 'android' ? sanitizeUserProfile(user) : user;
     await secureStorage.setItem('auth_token', token);
     await secureStorage.setItem('user', JSON.stringify(cleanedUser));
+
+    // E2EE Keys
+    const keys = await getKeys();
+    if (!keys) {
+      const newKeys = await generateKeyPair();
+      try {
+        const { updateProfile } = require('../services/api');
+        // Will need token in header since it's just been set locally but api client might not have it yet
+        // However api client interceptor should pick it up from secureStorage on next request.
+        // Waiting slightly or just updating is fine
+        setTimeout(() => {
+            updateProfile({ public_key: newKeys.publicKey }).catch(console.error);
+        }, 1000);
+      } catch (e) { console.error(e) }
+    }
+
     set({ user: cleanedUser, token, isAuthenticated: true, isLoading: false });
+
     initializePushNotifications()
       .then((fcmToken) => {
         if (fcmToken) {
@@ -295,12 +315,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Restore cached user first so the app is unblocked immediately
         set({ user, token, isAuthenticated: true, isLoading: false });
 
+
         // Then refresh profile from backend to pick up any birth details
         // saved in a previous session that may not be in the local cache.
         try {
-          const { getProfile } = require('../services/api');
+          const { getProfile, updateProfile } = require('../services/api');
           const res = await getProfile();
+
+          // E2EE Key check
+          let keys = await getKeys();
+          if (!keys) {
+            keys = await generateKeyPair();
+            await updateProfile({ public_key: keys.publicKey });
+          } else if (res?.data && !res.data.public_key) {
+             await updateProfile({ public_key: keys.publicKey });
+          }
+
           if (res?.data) {
+
             const updatedUser = Platform.OS === 'android'
               ? mergeUserProfiles(user, res.data)
               : { ...user, ...res.data };

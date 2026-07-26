@@ -26,6 +26,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useIsFocused } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { decryptMessage } from '../../src/utils/cryptoUtil';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
@@ -1032,20 +1033,42 @@ const DirectMessageScreen = () => {
         is_verified: msg.is_verified || false,
       }));
 
+
       const existingIds = new Set(messages.map(m => m.id));
       const hasNewMessages = apiMessages.some(m => !existingIds.has(m.id));
 
       if (hasNewMessages || apiMessages.length !== messages.length) {
+        // Decrypt messages in parallel
+        const decryptedMessages = await Promise.all(apiMessages.map(async (msg: any) => {
+           // We only decrypt if it's text. Images/videos also could be encrypted, depending on requirement.
+           // You specified content (text/media URL) is encrypted.
+           // However sender public key needs to be fetched, but conversation.user contains recipient public key.
+           // Wait, sender public key is in conversation.user if it was sent by them.
+           // If sent by us, we use conversation.user.public_key as recipient to open? No, we open with sender public key.
+           // If we sent it, we can't read it unless we stored it encrypted with OUR public key too.
+           // Actually, TweetNaCl box is symmetric in decryption: we just need the OTHER party's public key
+           // regardless of who sent it.
+           try {
+             const otherPubKey = (conversation?.user as any)?.public_key || (conversation?.user as any)?.publicKey;
+             if (otherPubKey && msg.content && msg.content.length > 30) {
+                 const decrypted = await decryptMessage(msg.content, otherPubKey);
+                 return { ...msg, text: decrypted, content: decrypted };
+             }
+           } catch(e) {}
+           return msg;
+        }));
+
         setMessages(prev => {
           const sending = prev.filter(m => m.status === 'sending');
-          const apiIds = new Set(apiMessages.map(m => m.id));
+          const apiIds = new Set(decryptedMessages.map(m => m.id));
           const stillSending = sending.filter(m => !apiIds.has(m.id));
-          return deduplicateMessages([...apiMessages, ...stillSending]);
+          return deduplicateMessages([...decryptedMessages, ...stillSending]);
         });
-        setCachedMessages(conversationId, apiMessages);
+        setCachedMessages(conversationId, decryptedMessages);
         setHasMarkedRead(false);
         setTimeout(() => markMessagesAsRead(), 100);
       }
+
 
       setLoading(false);
       return true;
@@ -1111,9 +1134,21 @@ const DirectMessageScreen = () => {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
         socketService.onEvent('dm_request_updated', handleRequestUpdated);
-        socketService.onMessage(socketListenerId, async (message: any) => {
+
+        socketService.onMessage(socketListenerId, async (rawMessage: any) => {
           if (isBlockedRef.current) return;
-          if (message && (message.chat_id === conversationId || message.conversation_id === conversationId)) {
+          if (rawMessage && (rawMessage.chat_id === conversationId || rawMessage.conversation_id === conversationId)) {
+            // Decrypt on the fly
+            let message = { ...rawMessage };
+            try {
+              const otherPubKey = (conversation?.user as any)?.public_key || (conversation?.user as any)?.publicKey;
+              if (otherPubKey && message.content && message.content.length > 30) {
+                  const decrypted = await decryptMessage(message.content, otherPubKey);
+                  message.text = decrypted;
+                  message.content = decrypted;
+              }
+            } catch(e) {}
+
             setMessages((prev) => {
               const exists = prev.some((m) => m.id === message.id);
               if (exists) return prev;
@@ -1228,7 +1263,10 @@ const DirectMessageScreen = () => {
         if (!mediaUrl) {
           throw new Error('Upload failed');
         }
-        await sendDirectMessage(conversation.user.sl_id, mediaUrl, selected.mediaType);
+        // The backend schema expects a string, so we will pass public key
+        // We get it from the conversation user object
+        const pubKey = (conversation.user as any)?.public_key || (conversation.user as any)?.publicKey;
+        await sendDirectMessage(conversation.user.sl_id, mediaUrl, selected.mediaType, pubKey);
         setSelectedMedia(null);
         setNewMessage('');
       } catch (error: any) {
@@ -1255,7 +1293,8 @@ const DirectMessageScreen = () => {
     setMessages(prev => deduplicateMessages([...prev, optimisticMessage]));
 
     try {
-      const response = await sendDirectMessage(conversation.user.sl_id, messageText);
+      const pubKey = (conversation.user as any)?.public_key || (conversation.user as any)?.publicKey;
+      const response = await sendDirectMessage(conversation.user.sl_id, messageText, 'text', pubKey);
       const serverMsg = response?.data?.message || response?.data;
       const realId = serverMsg?.id || response?.data?.id || tempId;
       setMessages(prev => deduplicateMessages(prev.map(m =>
@@ -1385,7 +1424,8 @@ const DirectMessageScreen = () => {
       if (!conversation?.user?.sl_id) {
         throw new Error('Unable to resolve recipient.');
       }
-      await sendDirectMessage(conversation.user.sl_id, payload, 'contact');
+      const pubKey = (conversation.user as any)?.public_key || (conversation.user as any)?.publicKey;
+      await sendDirectMessage(conversation.user.sl_id, payload, 'contact', pubKey);
       setShowContactModal(false);
       setContactShareName('');
       setContactSharePhone('');

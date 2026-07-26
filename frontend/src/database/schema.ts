@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb'
 
 export default appSchema({
-  version: 8,
+  version: 9,
   tables: [
     tableSchema({
       name: 'temples',
@@ -30,6 +30,7 @@ export default appSchema({
         { name: 'sl_id', type: 'string' },
         { name: 'photo', type: 'string', isOptional: true },
         { name: 'bio', type: 'string', isOptional: true },
+        { name: 'public_key', type: 'string', isOptional: true },
         { name: 'created_at', type: 'number' },
         { name: 'updated_at', type: 'number' },
       ]
