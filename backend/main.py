@@ -1565,34 +1565,39 @@ async def reset_database(confirm: str = ""):
     try:
         # Delete all users
         users = await db.query_documents('users', [])
-        for user in users:
-            await db.delete_document('users', user['id'])
-            deleted["users"] += 1
+        if users:
+            user_ids = [u['id'] for u in users if 'id' in u]
+            deleted["users"] = await db.batch_delete_documents('users', user_ids)
         
         # Delete all chats and their messages
         chats = await db.query_documents('chats', [])
-        for chat in chats:
-            # Delete messages subcollection
-            try:
-                deleted_messages = await db.delete_subcollection('chats', chat['id'], 'messages')
-                deleted["messages"] += deleted_messages
-            except Exception as e:
-                logger.error(f"Failed to delete messages for chat {chat['id']}: {e}")
+        if chats:
+            chat_ids = []
+            for chat in chats:
+                if 'id' not in chat:
+                    continue
+                chat_id = chat['id']
+                chat_ids.append(chat_id)
+                # Delete messages subcollection
+                try:
+                    deleted_messages = await db.delete_subcollection('chats', chat_id, 'messages')
+                    deleted["messages"] += deleted_messages
+                except Exception as e:
+                    logger.error(f"Failed to delete messages for chat {chat_id}: {e}")
 
-            await db.delete_document('chats', chat['id'])
-            deleted["chats"] += 1
+            deleted["chats"] = await db.batch_delete_documents('chats', chat_ids)
         
         # Delete all communities
         communities = await db.query_documents('communities', [])
-        for community in communities:
-            await db.delete_document('communities', community['id'])
-            deleted["communities"] += 1
+        if communities:
+            comm_ids = [c['id'] for c in communities if 'id' in c]
+            deleted["communities"] = await db.batch_delete_documents('communities', comm_ids)
         
         # Delete all OTPs
         otps = await db.query_documents('otps', [])
-        for otp in otps:
-            await db.delete_document('otps', otp['id'])
-            deleted["otps"] += 1
+        if otps:
+            otp_ids = [o['id'] for o in otps if 'id' in o]
+            deleted["otps"] = await db.batch_delete_documents('otps', otp_ids)
         
         logger.info(f"Database reset completed: {deleted}")
         return {

@@ -1,0 +1,1 @@
+- Optimization: Replaced O(N) iterative deletion in `reset_database` with `batch_delete_documents` inside `FirestoreDB`. Groups deletes in chunks of 500. This dramatically speeds up testing resets by cutting down redundant network transactions.
