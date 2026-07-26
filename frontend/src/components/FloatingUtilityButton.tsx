@@ -949,6 +949,8 @@ export const FloatingUtilityButton = () => {
             style={styles.fabDismissBtn}
             onPress={handleDismissNearbySOS}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Dismiss nearby SOS alert"
           >
             <Ionicons name="close" size={14} color="#666" />
           </TouchableOpacity>
@@ -968,7 +970,7 @@ export const FloatingUtilityButton = () => {
           }
         ]}
       >
-        <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} />
+        <TouchableOpacity style={styles.overlayBackground} activeOpacity={1} onPress={closeUtilityModal} accessibilityRole="button" accessibilityLabel="Close utility menu" />
         <Animated.View
           style={[
             styles.modalContentWrapper,
@@ -1021,6 +1023,8 @@ export const FloatingUtilityButton = () => {
                     <TouchableOpacity
                       style={styles.receivedHelpBtn}
                       onPress={() => handleResolveActiveSOS('resolved')}
+                      accessibilityRole="button"
+                      accessibilityLabel="Mark SOS as resolved, received help"
                     >
                       <View style={styles.receivedHelpCheck}>
                         <Ionicons name="checkmark" size={18} color="#D32F2F" />
@@ -1029,7 +1033,7 @@ export const FloatingUtilityButton = () => {
                     </TouchableOpacity>
                   </View>
  
-                  <TouchableOpacity style={styles.cancelSOSLink} onPress={() => handleResolveActiveSOS('cancelled')}>
+                  <TouchableOpacity style={styles.cancelSOSLink} onPress={() => handleResolveActiveSOS('cancelled')} accessibilityRole="button" accessibilityLabel="Cancel active SOS">
                     <Text style={styles.cancelSOSText}>{t('cancelSOS')}</Text>
                   </TouchableOpacity>
  
@@ -1104,6 +1108,8 @@ export const FloatingUtilityButton = () => {
                       <TouchableOpacity
                         style={[styles.responderBtn, { backgroundColor: '#388E3C' }]}
                         disabled={true}
+                        accessibilityRole="button"
+                        accessibilityLabel="Already responding to SOS"
                       >
                         <Ionicons name="checkmark-circle" size={22} color="#FFF" />
                         <Text style={styles.responderBtnText}>{t('onTheWay').toUpperCase()}</Text>
@@ -1113,6 +1119,8 @@ export const FloatingUtilityButton = () => {
                         style={[styles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
                         onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
                         disabled={isResponding}
+                        accessibilityRole="button"
+                        accessibilityLabel="Respond to SOS on my way"
                       >
                         {isResponding ? (
                           <ActivityIndicator color="#FFF" size="small" />
@@ -1149,6 +1157,8 @@ export const FloatingUtilityButton = () => {
                       <TouchableOpacity
                         style={[styles.responderBtn, { backgroundColor: '#D32F2F' }]}
                         onPress={() => handleReportMisuse(nearbySOSAlerts[0].id)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Report SOS misuse"
                       >
                         <MaterialCommunityIcons name="alert-octagon" size={22} color="#FFF" />
                         <Text style={styles.responderBtnText}>{t('language') === 'hi' ? 'दुरुपयोग की रिपोर्ट' : 'REPORT MISUSE'}</Text>
@@ -1164,7 +1174,7 @@ export const FloatingUtilityButton = () => {
                     )}
                   </View>
  
-                  <TouchableOpacity style={styles.closeAlertX} onPress={closeUtilityModal}>
+                  <TouchableOpacity style={styles.closeAlertX} onPress={closeUtilityModal} accessibilityRole="button" accessibilityLabel="Close alert">
                     <View style={styles.closeXCircle}>
                       <Ionicons name="close" size={20} color="#333" />
                     </View>
@@ -1184,19 +1194,19 @@ export const FloatingUtilityButton = () => {
                   <View style={styles.arrowBottom}><Ionicons name="chevron-down" size={24} color="#FFF" /></View>
  
                   <View style={styles.wheelWrapper}>
-                    <TouchableOpacity style={[styles.menuItem, styles.posTopLeft]} onPress={() => { setModalVisible(false); router.push('/library'); }}>
+                    <TouchableOpacity style={[styles.menuItem, styles.posTopLeft]} onPress={() => { setModalVisible(false); router.push('/library'); }} accessibilityRole="button" accessibilityLabel="Open Brahmand Library">
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_library_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('brahmandLibrary')}</Text>
                       <Text style={styles.itemSub}>{t('knowledgeWisdom')}</Text>
                     </TouchableOpacity>
  
-                    <TouchableOpacity style={[styles.menuItem, styles.posTopRight]} onPress={() => { setModalVisible(false); router.push('/passport'); }}>
+                    <TouchableOpacity style={[styles.menuItem, styles.posTopRight]} onPress={() => { setModalVisible(false); router.push('/passport'); }} accessibilityRole="button" accessibilityLabel="Open Brahmand Passport">
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_passport_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('brahmandPassport')}</Text>
                       <Text style={styles.itemSub}>{t('spiritualJourney')}</Text>
                     </TouchableOpacity>
  
-                    <TouchableOpacity style={[styles.menuItem, styles.posRight]} onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }}>
+                    <TouchableOpacity style={[styles.menuItem, styles.posRight]} onPress={() => { setModalVisible(false); router.push('/astrology?mode=kundli'); }} accessibilityRole="button" accessibilityLabel="Open Kundli">
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_kundli_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('kundli')}</Text>
                       <Text style={styles.itemSub}>{t('planetView')}</Text>
@@ -1206,6 +1216,8 @@ export const FloatingUtilityButton = () => {
                       style={[styles.menuItem, styles.posBottomRight]}
                       onPress={startSOSFlow}
                       onLongPress={startSOSFlow}
+                      accessibilityRole="button"
+                      accessibilityLabel="Start Emergency SOS"
                     >
                       <View style={[styles.sosButtonLarge, activeSOS && styles.sosButtonActive]}>
                         <Text style={styles.sosButtonText}>SOS</Text>
@@ -1214,13 +1226,13 @@ export const FloatingUtilityButton = () => {
                       <Text style={styles.itemSub}>{t('tapForHelp')}</Text>
                     </TouchableOpacity>
  
-                    <TouchableOpacity style={[styles.menuItem, styles.posBottomLeft]} onPress={() => { setModalVisible(false); router.push('/horoscope'); }}>
+                    <TouchableOpacity style={[styles.menuItem, styles.posBottomLeft]} onPress={() => { setModalVisible(false); router.push('/horoscope'); }} accessibilityRole="button" accessibilityLabel="Open Horoscope">
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('horoscope')}</Text>
                       <Text style={styles.itemSub}>{t('dailyPredictions')}</Text>
                     </TouchableOpacity>
  
-                    <TouchableOpacity style={[styles.menuItem, styles.posLeft]} onPress={openPanchangWithLocation}>
+                    <TouchableOpacity style={[styles.menuItem, styles.posLeft]} onPress={openPanchangWithLocation} accessibilityRole="button" accessibilityLabel="Open Panchang">
                       <View style={[styles.iconBox, { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }]}><Image source={require('../../assets/images/custom_panchang_icon.png')} style={{ display: 'flex', width: 80, height: 80, paddingTop: 8, paddingRight: 8, paddingBottom: 6, paddingLeft: 8, justifyContent: 'center', alignItems: 'center', gap: 20, aspectRatio: 1 }} resizeMode="contain" /></View>
                       <Text style={styles.itemTitle}>{t('panchang')}</Text>
                       <Text style={styles.itemSub}>{t('dailyHinduCalendar')}</Text>
