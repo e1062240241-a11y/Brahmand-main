@@ -19,7 +19,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, FONTS } from '../../src/constants/theme';
-import { discoverCommunities, getMyCreationRequests, joinCommunityDirect, parseApiError, resendCommunityInvite } from '../../src/services/api';
+import { discoverCommunities, getMyCreationRequests, joinCommunityDirect, parseApiError, resendCommunityInvite , addCommunityKey, getCommunityKey } from '../../src/services/api';
+import { generateSymmetricKey, encryptSymmetricKeyForUser } from '../../src/utils/cryptoUtil';
 import { Avatar } from '../../src/components/Avatar';
 import { useAuthStore } from '../../src/store/authStore';
 
@@ -147,11 +148,29 @@ export default function DiscoverCommunitiesScreen() {
     }
   }, [searchQuery, createdGroups]);
 
+
   const handleJoin = async (communityId: string, communityName: string) => {
     setJoiningId(communityId);
     try {
       await joinCommunityDirect(communityId);
+
+      // Try to setup encryption key if missing
+      try {
+        const keyRes = await getCommunityKey(communityId).catch(() => ({ data: { encrypted_key: null } }));
+        if (!keyRes?.data?.encrypted_key) {
+           const newSymKeyBase64 = generateSymmetricKey();
+           const user = useAuthStore.getState().user;
+           if (user && (user.public_key || user.publicKey)) {
+             const encryptedSymKey = await encryptSymmetricKeyForUser(newSymKeyBase64, user.public_key || user.publicKey);
+             await addCommunityKey(communityId, user.id, encryptedSymKey);
+           }
+        }
+      } catch (e) {
+        console.warn("Key generation on join failed", e);
+      }
+
       setJoinedIds(prev => new Set(prev).add(communityId));
+
 
       // Update cache so it persists when returning to this screen
       try {

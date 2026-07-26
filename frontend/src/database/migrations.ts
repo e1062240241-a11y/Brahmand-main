@@ -1,7 +1,20 @@
-import { schemaMigrations, createTable } from '@nozbe/watermelondb/Schema/migrations'
+import { schemaMigrations, createTable , addColumns } from '@nozbe/watermelondb/Schema/migrations'
+
 
 export default schemaMigrations({
   migrations: [
+    {
+      toVersion: 9,
+      steps: [
+        addColumns({
+          table: 'users',
+          columns: [
+            { name: 'public_key', type: 'string', isOptional: true }
+          ]
+        })
+      ]
+    },
+
     {
       toVersion: 8,
       steps: [

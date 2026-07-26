@@ -1,4 +1,6 @@
 import axios from "axios";
+import { encryptMessage, decryptMessage, encryptGroupMessage } from '../utils/cryptoUtil';
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform } from "react-native";
 import * as Device from "expo-device";
@@ -930,6 +932,7 @@ export const updateProfile = (data: {
   photo?: string;
   language?: string;
   bio?: string;
+  public_key?: string;
 }) => api.put("/user/profile", data);
 
 export const setupLocation = (location: {
@@ -1484,6 +1487,13 @@ export const getCommunities = () => api.get("/communities");
 
 export const getCommunity = (id: string) => api.get(`/communities/${id}`);
 
+export const addCommunityKey = (communityId: string, userId: string, encryptedKey: string) =>
+  api.post(`/communities/${communityId}/keys`, { user_id: userId, encrypted_key: encryptedKey });
+
+export const getCommunityKey = (communityId: string) =>
+  api.get(`/communities/${communityId}/keys`);
+
+
 export const joinCommunityByCode = (code: string) =>
   api.post("/communities/join", { code });
 
@@ -1581,9 +1591,18 @@ export const sendCommunityMessage = (
   sevaDetails?: string,
   location?: string,
   start_time?: string,
-) =>
-  api.post(`/messages/community/${communityId}/${subgroupType}`, {
-    content,
+  symmetricKey?: string
+) => {
+  let finalContent = content;
+  if (symmetricKey) {
+    try {
+      finalContent = encryptGroupMessage(content, symmetricKey);
+    } catch (e) {
+      console.error("Group encryption failed", e);
+    }
+  }
+  return api.post(`/messages/community/${communityId}/${subgroupType}`, {
+    content: finalContent,
     message_type: messageType,
     category,
     media_url: mediaUrl,
@@ -1592,6 +1611,7 @@ export const sendCommunityMessage = (
     location,
     start_time,
   });
+};
 
 export const getCommunityMessages = (
   communityId: string,
@@ -1616,26 +1636,46 @@ export const sendCircleMessage = (
   circleId: string,
   content: string,
   messageType: string = "text",
-) =>
-  api.post(`/messages/circle/${circleId}`, {
-    content,
+  symmetricKey?: string
+) => {
+  let finalContent = content;
+  if (symmetricKey) {
+    try {
+      finalContent = encryptGroupMessage(content, symmetricKey);
+    } catch (e) {
+      console.error("Group encryption failed", e);
+    }
+  }
+  return api.post(`/messages/circle/${circleId}`, {
+    content: finalContent,
     message_type: messageType,
   });
+};
 
 export const getCircleMessages = (circleId: string, limit: number = 50) =>
   api.get(`/messages/circle/${circleId}?limit=${limit}`);
 
 // Direct Message APIs
-export const sendDirectMessage = (
+export const sendDirectMessage = async (
   recipientSlId: string,
   content: string,
   messageType: string = "text",
-) =>
-  api.post("/dm", {
+  recipientPublicKey?: string
+) => {
+  let finalContent = content;
+  if (recipientPublicKey) {
+    try {
+      finalContent = await encryptMessage(content, recipientPublicKey);
+    } catch (e) {
+      console.error("Encryption failed, falling back to plaintext", e);
+    }
+  }
+  return api.post("/dm", {
     recipient_sl_id: recipientSlId,
-    content,
+    content: finalContent,
     message_type: messageType,
   });
+};
 
 export const getConversations = () =>
   api.get("/dm/conversations", { timeout: 120000 });

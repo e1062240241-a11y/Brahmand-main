@@ -38,6 +38,7 @@ import requests
 import aiohttp
 import jwt
 from google.api_core.exceptions import FailedPrecondition
+from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, Response, HTMLResponse
@@ -6473,6 +6474,9 @@ async def join_community_direct(
 async def discover_communities(token_data: dict = Depends(verify_token)):
     """Discover popular communities"""
     return await FirebaseCommunityService.discover_communities(token_data["user_id"])
+
+
+
 
 
 @api_router.get("/communities/{community_id}")
@@ -15006,7 +15010,8 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
 
 # Include router
-# app.include_router(api_router) moved to bottom to ensure all routes are included
+# app.include_router(api_router)
+# app.include_router(e2ee_router, prefix="/api") moved to bottom to ensure all routes are included
 
 
 # =================== SOCKET.IO ===================
@@ -15729,6 +15734,7 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 
 
 app.include_router(api_router)
+app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
 app.mount("/socket.io", socket_app)
 

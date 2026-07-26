@@ -115,6 +115,7 @@ class UserUpdate(BaseModel):
     photo: Optional[str] = None
     cover_photo: Optional[str] = None
     language: Optional[str] = None
+    public_key: Optional[str] = None
 
 
 class ProfileUpdate(BaseModel):
