@@ -13151,17 +13151,21 @@ async def _get_community_users(
         return []
     
     community_members = set()
-    for comm_id in user_communities[:3]:
-        comm = await db.get_document('communities', comm_id)
-        if comm:
-            members = comm.get('members', [])
-            for member_id in members:
-                if member_id != user_id:
-                    community_members.add(member_id)
-                    if len(community_members) >= max_users:
-                        break
-        if len(community_members) >= max_users:
-            break
+
+    # ⚡ Bolt Optimization: Batch fetch up to 3 communities to prevent N+1 queries
+    comm_ids_to_fetch = user_communities[:3]
+    if comm_ids_to_fetch:
+        fetched_comms = await db.get_documents_batch('communities', comm_ids_to_fetch)
+        for comm in fetched_comms:
+            if comm:
+                members = comm.get('members', [])
+                for member_id in members:
+                    if member_id != user_id:
+                        community_members.add(member_id)
+                        if len(community_members) >= max_users:
+                            break
+            if len(community_members) >= max_users:
+                break
     
     logger.info(f"_get_community_users: found {len(community_members)} community members")
     return list(community_members)[:max_users]
@@ -15419,32 +15423,35 @@ async def register_jaap_reminder(
     # We want to check if ANY of these sessions are currently subscribed.
     # If yes, we toggle all of them OFF (delete).
     # If no, we toggle all of them ON (create).
-    any_active = False
-    for session in sessions:
-        reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
-        existing = await db.get_document("jaap_reminders", reminder_id)
-        if existing and existing.get("active", False):
-            any_active = True
-            break
+
+    # ⚡ Bolt Optimization: Batch fetch instead of N+1 get_document calls
+    reminder_ids = [f"{user_id}:{mantra_type}:{session.lower()}" for session in sessions]
+    existing_docs = await db.get_documents_batch("jaap_reminders", reminder_ids)
+
+    any_active = any(doc and doc.get("active", False) for doc in existing_docs)
 
     if any_active:
         # Toggle off: delete all
-        for session in sessions:
-            reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
-            await db.delete_document("jaap_reminders", reminder_id)
+        # ⚡ Bolt Optimization: Batch delete instead of N+1 delete_document calls
+        await db.batch_delete_documents("jaap_reminders", reminder_ids)
         return {"message": f"Reminders removed for {mantra_type} jaap", "active": False}
     else:
         # Toggle on: create all
+        # ⚡ Bolt Optimization: Concurrent creates instead of sequential await
+        create_tasks = []
+        now_ts = datetime.utcnow().isoformat() + 'Z'
         for session in sessions:
             reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
             reminder_data = {
                 "user_id": user_id,
                 "mantra_type": mantra_type,
                 "session_name": session,
-                "created_at": datetime.utcnow().isoformat() + 'Z',
+                "created_at": now_ts,
                 "active": True
             }
-            await db.create_document("jaap_reminders", reminder_data, doc_id=reminder_id)
+            create_tasks.append(db.create_document("jaap_reminders", reminder_data, doc_id=reminder_id))
+
+        await asyncio.gather(*create_tasks)
         return {"message": f"Reminders set for all sessions of {mantra_type} jaap!", "active": True}
 
 
