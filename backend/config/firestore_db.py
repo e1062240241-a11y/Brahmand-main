@@ -327,6 +327,49 @@ class FirestoreDB:
         
         return await self._run_sync(_create)
     
+
+    async def batch_create_documents(self, collection: str, docs: List[Dict[str, Any]]) -> List[str]:
+        """Create multiple documents in a collection using a batch."""
+        if not docs:
+            return []
+
+        now_iso = datetime.utcnow().isoformat() + 'Z'
+        generated_ids = []
+
+        if self.use_mock:
+            import uuid
+            coll = self._mock_collections.setdefault(collection, {})
+            for data in docs:
+                doc_id = str(uuid.uuid4())
+                generated_ids.append(doc_id)
+                data_copy = fast_copy(data)
+                if 'created_at' not in data_copy:
+                    data_copy['created_at'] = now_iso
+                if 'updated_at' not in data_copy:
+                    data_copy['updated_at'] = now_iso
+                data_copy['id'] = doc_id
+                coll[doc_id] = data_copy
+            return generated_ids
+
+        def _batch():
+            batch = self.client.batch()
+            coll_ref = self.client.collection(collection)
+            for data in docs:
+                doc_ref = coll_ref.document()  # Auto-generate ID
+                generated_ids.append(doc_ref.id)
+
+                data_copy = dict(data)
+                if 'created_at' not in data_copy:
+                    data_copy['created_at'] = now_iso
+                if 'updated_at' not in data_copy:
+                    data_copy['updated_at'] = now_iso
+
+                batch.set(doc_ref, data_copy)
+            batch.commit()
+            return generated_ids
+
+        return await self._run_sync(_batch)
+
     async def get_document(self, collection: str, doc_id: str) -> Optional[Dict[str, Any]]:
         """Get a document by ID with caching"""
         cache_key = f"{collection}:{doc_id}"
