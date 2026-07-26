@@ -37,7 +37,6 @@ import math
 import requests
 import aiohttp
 import jwt
-from google.api_core.exceptions import FailedPrecondition
 from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,7 +49,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config.settings import settings
 from config.firebase_config import (
     firebase_manager, FIREBASE_WEB_CONFIG, get_firestore, 
-    is_firebase_enabled, get_firebase_auth, get_firebase_messaging
+    is_firebase_enabled
 )
 from config.firestore_db import FirestoreDB
 from workers.background_tasks import task_queue
@@ -70,11 +69,7 @@ except ImportError:
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
-    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, CirclePrivacy,
-    HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
-    VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate,
-    SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel,
-    CommunityCreate
+    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, JobProfileCreate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -100,7 +95,6 @@ from routes.search_routes import router as search_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
-    _ensure_ffmpeg_tools_available,
     _pick_target_profile,
     _probe_video_metadata,
     _save_upload_to_temp_file,
@@ -111,7 +105,6 @@ from routes.video_upload_routes import (
     FFPROBE_BIN,
 )
 from utils.helpers import (
-    WISDOM_QUOTES,
     moderate_content,
     generate_sl_id
 )
@@ -1807,7 +1800,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
             if is_valid_image(photo_data):
                 # Compress to 512px max and optimize
                 photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
-                logger.info(f"Profile photo compressed successfully")
+                logger.info("Profile photo compressed successfully")
 
                 # If the resulting photo still exceeds Firestore field limit, upload to Firebase Storage
                 if len(photo_data) > 950000:
@@ -2945,7 +2938,6 @@ async def get_bunny_media(filepath: str):
     elif ext == 'mov':
         content_type = "video/quicktime"
         
-    from fastapi.responses import StreamingResponse
     
     async def file_sender():
         try:
@@ -7812,9 +7804,15 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
     # Add optional selected members to the circle (excluding creator duplicate)
     added_member_ids = []
     if data.member_ids:
-        for member_id in data.member_ids:
-            if member_id and member_id != user_id and member_id not in circle_data['members']:
-                member_doc = await db.get_document('users', member_id)
+        # Filter and deduplicate valid member IDs to fetch
+        valid_member_ids = list(set([m_id for m_id in data.member_ids if m_id and m_id != user_id and m_id not in circle_data['members']]))
+
+        if valid_member_ids:
+            member_docs_list = await db.get_documents_batch('users', valid_member_ids)
+            member_docs_by_id = {doc.get('id', ''): doc for doc in member_docs_list if doc}
+
+            for member_id in valid_member_ids:
+                member_doc = member_docs_by_id.get(member_id)
                 if member_doc:
                     circle_data['members'].append(member_id)
                     circle_data['member_details'].append({
@@ -9574,7 +9572,7 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
 
     if report.get('status') in ['approved', 'denied', 'resolved']:
         return {
-            'message': f"Report already reviewed",
+            'message': "Report already reviewed",
             'report_id': report_id,
             'status': report.get('status'),
         }
@@ -9971,7 +9969,6 @@ async def ai_chat(
     3. Those shlokas are injected as grounded context
     4. Groq LLM responds as Krishna, grounded in actual Gita wisdom
     """
-    import os
     import asyncio
 
     messages = data.get("messages", [])
@@ -13855,7 +13852,6 @@ HOROSCOPE_TEMPLATES = {
 
 def calculate_panchang(date: datetime, lat: float = 28.6139, lng: float = 77.2090):
     """Calculate Panchang for given date and location"""
-    import math
     
     # Calculate day of year
     day_of_year = date.timetuple().tm_yday
@@ -14179,10 +14175,10 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             }
         if "detailed_predictions" not in data or not isinstance(data["detailed_predictions"], dict):
             data["detailed_predictions"] = {
-                "finance": f"Opportunities for wealth and new growth are on the horizon. Be mindful of your investments today.",
-                "love": f"Spiritual connections will deepen. Communicate with honesty and open your heart to your loved ones.",
-                "health": f"Maintain your vitality with mindful practices like yoga or meditation. Keep your energy high.",
-                "overall": f"A beautiful day focused on self-reflection and spiritual growth. The stars favor your determination."
+                "finance": "Opportunities for wealth and new growth are on the horizon. Be mindful of your investments today.",
+                "love": "Spiritual connections will deepen. Communicate with honesty and open your heart to your loved ones.",
+                "health": "Maintain your vitality with mindful practices like yoga or meditation. Keep your energy high.",
+                "overall": "A beautiful day focused on self-reflection and spiritual growth. The stars favor your determination."
             }
         
         # Cache the generated result for 12 hours

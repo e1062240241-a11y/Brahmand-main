@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from database import get_db
+from config.database import get_db_manager
 from models.users import verify_token
 
 router = APIRouter(tags=["e2ee"])
