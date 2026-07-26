@@ -6239,8 +6239,9 @@ async def respond_to_community_request(
             })
 
             # Notify all invited users
+            notification_docs = []
             for invited_uid in invited_users:
-                await db.create_document('notifications', {
+                notification_docs.append({
                     "user_id": invited_uid,
                     "title": "Community Group Live!",
                     "body": f"All members have accepted! The community group '{comm_name}' is now live. Tap to join the chat.",
@@ -6253,6 +6254,8 @@ async def respond_to_community_request(
                     "is_read": False,
                     "created_at": datetime.utcnow().isoformat() + 'Z'
                 })
+            if notification_docs:
+                await db.batch_create_documents('notifications', notification_docs)
 
             return {
                 "message": "Invitation accepted. Consensus achieved! Community group has been created and is now live.",
