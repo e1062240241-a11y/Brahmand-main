@@ -6859,16 +6859,17 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
     # Decorate messages with live verification data so old posts also show the badge
     sender_ids = list({m.get('sender_id') for m in messages if m.get('sender_id')})
     sender_map: dict = {}
-    for sid in sender_ids:
+    if sender_ids:
         try:
-            u = await db.get_document('users', sid)
-            if u:
-                sender_map[sid] = {
-                    'is_verified': u.get('is_verified', False),
-                    'verification_level': u.get('verification_level', 'state'),
-                }
-        except Exception:
-            pass
+            users_data = await db.get_documents_batch('users', sender_ids)
+            for u in users_data:
+                if u and u.get('id'):
+                    sender_map[u['id']] = {
+                        'is_verified': u.get('is_verified', False),
+                        'verification_level': u.get('verification_level', 'state'),
+                    }
+        except Exception as e:
+            logger.warning(f"Error fetching sender data in batch: {e}")
 
     for msg in messages:
         sid = msg.get('sender_id')
@@ -7809,19 +7810,24 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
     # Add optional selected members to the circle (excluding creator duplicate)
     added_member_ids = []
     if data.member_ids:
-        for member_id in data.member_ids:
-            if member_id and member_id != user_id and member_id not in circle_data['members']:
-                member_doc = await db.get_document('users', member_id)
-                if member_doc:
-                    circle_data['members'].append(member_id)
-                    circle_data['member_details'].append({
-                        "user_id": member_id,
-                        "name": member_doc.get('name', ''),
-                        "sl_id": member_doc.get('sl_id'),
-                        "photo": member_doc.get('photo'),
-                        "joined_at": datetime.now(timezone.utc).isoformat()
-                    })
-                    added_member_ids.append(member_id)
+        valid_member_ids = [mid for mid in data.member_ids if mid and mid != user_id and mid not in circle_data['members']]
+        if valid_member_ids:
+            try:
+                users_data = await db.get_documents_batch('users', valid_member_ids)
+                for member_doc in users_data:
+                    if member_doc and member_doc.get('id'):
+                        member_id = member_doc['id']
+                        circle_data['members'].append(member_id)
+                        circle_data['member_details'].append({
+                            "user_id": member_id,
+                            "name": member_doc.get('name', ''),
+                            "sl_id": member_doc.get('sl_id'),
+                            "photo": member_doc.get('photo'),
+                            "joined_at": datetime.now(timezone.utc).isoformat()
+                        })
+                        added_member_ids.append(member_id)
+            except Exception as e:
+                logger.error(f"Error fetching circle members in batch: {e}")
 
     circle_id = await db.create_document('circles', circle_data)
     await db.array_union_update('users', user_id, 'circles', [circle_id])
