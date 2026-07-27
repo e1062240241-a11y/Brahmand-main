@@ -377,8 +377,17 @@ export function GlobalFAB() {
 
 
 
-  // Do not show FAB on authentication screens
-  if (!pathname || pathname === '/' || pathname === '/index' || pathname.startsWith('/auth')) {
+  // Do not show FAB on authentication screens or legal/terms/privacy screens
+  if (
+    !pathname ||
+    pathname === '/' ||
+    pathname === '/index' ||
+    pathname.startsWith('/auth') ||
+    pathname === '/privacy-policy' ||
+    pathname.includes('privacy') ||
+    pathname.includes('terms') ||
+    pathname.includes('guidelines')
+  ) {
     return null;
   }
 

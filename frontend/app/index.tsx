@@ -75,7 +75,7 @@ export default function IndexRoute() {
             <View style={styles.line} />
           </View>
           
-          <Text style={styles.tagline}>Dharama • Safety • Trusted help</Text>
+          <Text style={styles.tagline}>Dharma • Safety • Trusted help</Text>
         </View>
       </View>
     </View>
@@ -152,19 +152,23 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    fontFamily: 'Poppins',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
     color: '#F5EEDC',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textAlign: 'center',
     lineHeight: 18,
+    includeFontPadding: false,
+    paddingHorizontal: 8,
   },
   tagline: {
     fontSize: 14,
-    fontFamily: 'Poppins',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
     color: '#FFB065',
     letterSpacing: -0.15,
     textAlign: 'center',
     lineHeight: 20,
     marginTop: 12,
+    includeFontPadding: false,
+    paddingHorizontal: 8,
   },
 });

@@ -1,12 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
-from config.database import get_db_manager
 from middleware.security import verify_token
-from config.firestore_db import FirestoreDB
-
-async def get_db() -> FirestoreDB:
-    from main import get_db as main_get_db
-    return await main_get_db()
-
+from config.database import get_database
 
 router = APIRouter(tags=["e2ee"])
 
@@ -17,17 +11,16 @@ async def add_community_key(
     token_data: dict = Depends(verify_token)
 ):
     """Admin uploads encrypted symmetric key for a new member."""
-    db = await get_db()
+    db = await get_database()
 
-    # In a real app we'd verify if the current user is an admin of the community.
-    # For now, we just save it.
     target_user_id = data.get("user_id")
     encrypted_key = data.get("encrypted_key")
 
     if not target_user_id or not encrypted_key:
         raise HTTPException(status_code=400, detail="Missing user_id or encrypted_key")
 
-    await db.update_document("community_keys", f"{community_id}_{target_user_id}", {
+    doc_ref = db.collection("community_keys").document(f"{community_id}_{target_user_id}")
+    doc_ref.set({
         "community_id": community_id,
         "user_id": target_user_id,
         "encrypted_key": encrypted_key,
@@ -43,14 +36,16 @@ async def get_community_key(
     token_data: dict = Depends(verify_token)
 ):
     """Get encrypted symmetric key for current member."""
-    db = await get_db()
+    db = await get_database()
     user_id = token_data["user_id"]
 
-    key_doc = await db.get_document("community_keys", f"{community_id}_{user_id}")
-    if not key_doc:
+    doc_ref = db.collection("community_keys").document(f"{community_id}_{user_id}")
+    doc = doc_ref.get()
+    if not doc.exists:
          return {"encrypted_key": None}
 
+    key_data = doc.to_dict()
     return {
-        "encrypted_key": key_doc.get("encrypted_key"),
-        "added_by": key_doc.get("added_by")
+        "encrypted_key": key_data.get("encrypted_key"),
+        "added_by": key_data.get("added_by")
     }

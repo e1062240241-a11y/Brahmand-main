@@ -170,12 +170,31 @@ export default function OTPScreen() {
         return;
       }
 
-      if (Platform.OS === 'android' && mock === 'true') {
+      if (mock === 'true') {
         const { sendOTP } = require('../../src/services/api');
         await sendOTP(phone);
       } else {
-        // Resend via Firebase
-        await sendFirebaseOTP(phone as string);
+        try {
+          // Resend via Firebase
+          await sendFirebaseOTP(phone as string);
+        } catch (firebaseErr: any) {
+          console.warn('[OTP] Firebase resend failed:', firebaseErr);
+          const errCode = firebaseErr?.code || '';
+          const errMsg = firebaseErr?.message || '';
+          const isAppNotAuthorized =
+            errCode === 'auth/app-not-authorized' ||
+            errCode === 'auth/invalid-app-credential' ||
+            errMsg.includes('app-not-authorized') ||
+            errMsg.includes('play_integrity_token') ||
+            errMsg.includes('not authorized');
+
+          if (isAppNotAuthorized) {
+            const { sendOTP } = require('../../src/services/api');
+            await sendOTP(phone);
+          } else {
+            throw firebaseErr;
+          }
+        }
       }
 
       setResendTimer(30);

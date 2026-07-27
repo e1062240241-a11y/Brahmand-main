@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,8 +8,29 @@ import { FONTS } from '../src/constants/theme';
 
 export default function PrivacyPolicyScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   const [isAtBottom, setIsAtBottom] = useState(false);
+
+  const handleBack = () => {
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/home');
+      }
+    } catch {
+      router.replace('/(tabs)/home');
+    }
+  };
+
+  const handleAcceptAndContinue = () => {
+    try {
+      router.replace({ pathname: '/auth/entry-animation', params: { accepted: 'true' } });
+    } catch {
+      router.replace('/auth/entry-animation');
+    }
+  };
 
   const handleScroll = (event: any) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
@@ -29,14 +50,26 @@ export default function PrivacyPolicyScreen() {
         <LinearGradient
           colors={['#FC8F5B', '#FDC7AD', '#FFFFFF']}
           locations={[0, 0.5052, 1]}
-          style={styles.headerGradient}
+          style={[styles.headerGradient, { paddingTop: Math.max(insets.top, 16) + 6 }]}
         >
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#000000" />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.agreementLabel}>AGREEMENT</Text>
-            <Text style={styles.headerTitle}>Terms of Service</Text>
+          <View style={styles.headerRow}>
+            <TouchableOpacity 
+              style={styles.backButton} 
+              onPress={handleBack}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.backIconCircle}>
+                <Ionicons name="arrow-back" size={24} color="#000000" />
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.agreementLabel}>AGREEMENT</Text>
+              <Text style={styles.headerTitle}>Terms of Service</Text>
+            </View>
+
+            <View style={styles.headerRightSpacer} />
           </View>
         </LinearGradient>
         <View style={styles.headerDivider} />
@@ -46,7 +79,10 @@ export default function PrivacyPolicyScreen() {
       <ScrollView
         ref={scrollViewRef}
         style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingTop: Math.max(insets.top, 16) + 72 }
+        ]}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
@@ -606,7 +642,7 @@ export default function PrivacyPolicyScreen() {
           END OF PRIVACY POLICY
         </Text>
 
-        <TouchableOpacity style={styles.acceptButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.acceptButton} onPress={handleAcceptAndContinue}>
           <Text style={styles.acceptButtonText}>Accept & Continue</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -638,48 +674,58 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 140,
     zIndex: 10,
   },
   headerGradient: {
-    flex: 1,
-    paddingTop: Platform.OS === 'ios' ? 44 : 20,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
     justifyContent: 'center',
+  },
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    justifyContent: 'space-between',
+    width: '100%',
   },
   backButton: {
-    position: 'absolute',
-    left: 20,
-    top: Platform.OS === 'ios' ? 40 : 15,
-    zIndex: 15,
-    padding: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTextContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+  },
+  headerRightSpacer: {
+    width: 40,
   },
   agreementLabel: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    fontSize: 12,
-    fontWeight: '400',
-    color: '#000000',
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#333333',
     letterSpacing: 2,
     textAlign: 'center',
     marginBottom: 2,
   },
   headerTitle: {
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    lineHeight: 36,
+    lineHeight: 30,
     color: '#000000',
     textAlign: 'center',
-    marginBottom: 2,
   },
-
   headerDivider: {
     height: 1,
     backgroundColor: '#D9D9D9',

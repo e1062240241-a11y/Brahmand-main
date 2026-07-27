@@ -113,12 +113,38 @@ export default function PhoneScreen() {
       }
 
       // Use Firebase Phone Auth instead of backend API
-      const { sendFirebaseOTP } = require('../../src/services/firebase/authService');
-      await sendFirebaseOTP(fullPhone);
+      try {
+        const { sendFirebaseOTP } = require('../../src/services/firebase/authService');
+        await sendFirebaseOTP(fullPhone);
 
-      console.log('[Phone Auth] OTP sent via Firebase');
-      router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
-      return;
+        console.log('[Phone Auth] OTP sent via Firebase');
+        router.push({ pathname: '/auth/otp', params: { phone: fullPhone } });
+        return;
+      } catch (firebaseErr: any) {
+        console.warn('[Phone Auth] Firebase OTP failed:', firebaseErr);
+        const errCode = firebaseErr?.code || '';
+        const errMsg = firebaseErr?.message || '';
+
+        const isAppNotAuthorized =
+          errCode === 'auth/app-not-authorized' ||
+          errCode === 'auth/invalid-app-credential' ||
+          errMsg.includes('app-not-authorized') ||
+          errMsg.includes('play_integrity_token') ||
+          errMsg.includes('not authorized');
+
+        if (isAppNotAuthorized) {
+          console.log('[Phone Auth] Falling back to backend OTP service due to Firebase app authorization error...');
+          try {
+            const { sendOTP } = require('../../src/services/api');
+            await sendOTP(fullPhone);
+            router.push({ pathname: '/auth/otp', params: { phone: fullPhone, mock: 'true' } });
+            return;
+          } catch (backendErr: any) {
+            throw new Error('Firebase Auth is not authorized for this app build (missing SHA-1 / Play Integrity in Firebase Console). Please verify SHA-1 in Firebase settings.');
+          }
+        }
+        throw firebaseErr;
+      }
     } catch (err: any) {
       console.log('[Phone Auth] OTP send error:', err);
       let message = err?.message || 'Failed to send OTP. Please try again.';
