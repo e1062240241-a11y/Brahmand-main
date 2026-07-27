@@ -9,6 +9,7 @@ import {View,
   ActivityIndicator,
   BackHandler,
   KeyboardAvoidingView,
+  ScrollView,
   Platform} from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,7 +56,7 @@ export default function VendorDashboardScreen() {
   const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor, uploadBusinessImage } = useVendorStore();
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
   const [loading, setLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(() => !Boolean(myVendor));
   const [deletingBusiness, setDeletingBusiness] = useState(false);
   const [deleteOtpModalVisible, setDeleteOtpModalVisible] = useState(false);
   const [deleteOtpSent, setDeleteOtpSent] = useState(false);
@@ -85,23 +86,23 @@ export default function VendorDashboardScreen() {
   const [editCategories, setEditCategories] = useState<string[]>([]);
   const [categorySearch, setCategorySearch] = useState('');
 
-  // Editable Form states matching the mockup
-  const [ownerName, setOwnerName] = useState('');
-  const [businessName, setBusinessName] = useState('');
-  const [phoneVal, setPhoneVal] = useState('');
-  const [emailVal, setEmailVal] = useState('');
-  const [websiteVal, setWebsiteVal] = useState('');
-  const [instagramVal, setInstagramVal] = useState('');
-  const [whatsappVal, setWhatsappVal] = useState('');
-  const [descriptionVal, setDescriptionVal] = useState('');
-  const [addressVal, setAddressVal] = useState('');
-  const [categoriesVal, setCategoriesVal] = useState<string[]>([]);
-  const [businessHoursVal, setBusinessHoursVal] = useState('');
-  const [offersVal, setOffersVal] = useState('');
+  // Editable Form states matching the mockup (initialized directly from myVendor if present)
+  const [ownerName, setOwnerName] = useState(() => myVendor?.owner_name || '');
+  const [businessName, setBusinessName] = useState(() => myVendor?.business_name || '');
+  const [phoneVal, setPhoneVal] = useState(() => myVendor?.phone_number || '');
+  const [emailVal, setEmailVal] = useState(() => myVendor?.business_email || '');
+  const [websiteVal, setWebsiteVal] = useState(() => myVendor?.website_link || '');
+  const [instagramVal, setInstagramVal] = useState(() => myVendor?.social_media?.instagram || '');
+  const [whatsappVal, setWhatsappVal] = useState(() => myVendor?.social_media?.whatsapp || '');
+  const [descriptionVal, setDescriptionVal] = useState(() => myVendor?.business_description || '');
+  const [addressVal, setAddressVal] = useState(() => myVendor?.full_address || '');
+  const [categoriesVal, setCategoriesVal] = useState<string[]>(() => myVendor?.categories || []);
+  const [businessHoursVal, setBusinessHoursVal] = useState(() => myVendor?.business_hours || '');
+  const [offersVal, setOffersVal] = useState(() => myVendor?.offers || '');
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
-  const hasInitializedRef = useRef(false);
+  const hasInitializedRef = useRef(Boolean(myVendor));
 
-  // Sync data from store when myVendor is loaded
+  // Sync data from store when myVendor is loaded asynchronously (only if not already populated)
   useEffect(() => {
     if (myVendor && !hasInitializedRef.current) {
       setOwnerName(myVendor.owner_name || '');
@@ -117,6 +118,7 @@ export default function VendorDashboardScreen() {
       setBusinessHoursVal(myVendor.business_hours || '');
       setOffersVal(myVendor.offers || '');
       hasInitializedRef.current = true;
+      setIsInitializing(false);
     }
   }, [myVendor]);
 
@@ -143,24 +145,32 @@ export default function VendorDashboardScreen() {
   }, [authLoading, isAuthenticated, isInitializing, myVendor, user, router]);
 
   useEffect(() => {
-    // Refresh myVendor and KYC status on mount and when this component re-renders.
+    // Refresh myVendor and KYC status ONCE on mount in background
+    let isMounted = true;
     const initialize = async () => {
       try {
         await fetchMyVendor();
         const response = await getKYCStatus();
         const serverStatus = response?.data?.kyc_status || null;
-        updateUser({
-          kyc_status: serverStatus,
-          is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
-        } as any);
+        if (isMounted) {
+          updateUser({
+            kyc_status: serverStatus,
+            is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
+          } as any);
+        }
       } catch (e) {
         console.warn('Initialization failed', e);
       } finally {
-        setIsInitializing(false);
+        if (isMounted) {
+          setIsInitializing(false);
+        }
       }
     };
     initialize();
-  }, [fetchMyVendor, updateUser]);
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -772,7 +782,7 @@ export default function VendorDashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         {!isVerified && (isUserPending || isVendorPending) && (
           <View style={{
@@ -951,7 +961,7 @@ export default function VendorDashboardScreen() {
           <Text style={[styles.inputLabel, { marginTop: 14 }]}>Description <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={[styles.inputContainer, styles.descriptionContainer]}>
             <TextInput
-              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
+              style={[styles.textInput, styles.textAreaInput, { flex: 1, width: '100%' }]}
               value={descriptionVal}
               onChangeText={setDescriptionVal}
               placeholder="Description"
@@ -964,7 +974,7 @@ export default function VendorDashboardScreen() {
           <Text style={styles.inputLabel}>Address <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={[styles.inputContainer, styles.addressContainer]}>
             <TextInput
-              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
+              style={[styles.textInput, styles.textAreaInput, { flex: 1, width: '100%' }]}
               value={addressVal}
               onChangeText={setAddressVal}
               placeholder="Address"
@@ -1014,7 +1024,7 @@ export default function VendorDashboardScreen() {
             )}
           </View>
 
-          <KeyboardAwareScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
             {galleryPhotos.map((item, idx) => (
               <View key={idx} style={styles.galleryImageContainer}>
                 {item.url ? (
@@ -1034,7 +1044,7 @@ export default function VendorDashboardScreen() {
             {galleryPhotos.length === 0 && (
               <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
             )}
-          </KeyboardAwareScrollView>
+          </ScrollView>
         </View>
 
         {/* Section: Offers & Deals */}
@@ -1047,7 +1057,7 @@ export default function VendorDashboardScreen() {
           <Text style={styles.inputLabel}>Current Offers</Text>
           <View style={[styles.inputContainer, styles.descriptionContainer]}>
             <TextInput
-              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
+              style={[styles.textInput, styles.textAreaInput, { flex: 1, width: '100%' }]}
               value={offersVal}
               onChangeText={setOffersVal}
               placeholder="e.g. 10% off on first order, Buy 1 Get 1 free, etc."

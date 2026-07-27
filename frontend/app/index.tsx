@@ -20,7 +20,7 @@ export default function IndexRoute() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setTimePassed(true);
-    }, 1500); // 1.5 seconds minimum show time for splash screen
+    }, 600); // 600ms optimal splash display duration
 
     return () => clearTimeout(timer);
   }, []);
@@ -34,10 +34,10 @@ export default function IndexRoute() {
   }, [token, isLoading]);
 
   useEffect(() => {
-    if (timePassed && !isLoading) {
+    if (!isLoading) {
       if (token && token !== '>' && token.length >= 10) {
         safeNavigate(() => router.replace('/home'));
-      } else if (!token || token === '>' || token.length < 10) {
+      } else if (timePassed && (!token || token === '>' || token.length < 10)) {
         safeNavigate(() => router.replace('/auth/entry-animation'));
       }
     }
