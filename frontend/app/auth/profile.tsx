@@ -380,13 +380,13 @@ export default function ProfileScreen() {
           updateUser(locRes.data.user);
         }
       } catch (locErr) {
-        console.warn('Community join failed (non-blocking):', locErr);
+        console.warn('Community join failed during registration:', locErr);
       }
 
       router.replace('/auth/location');
     } catch (err: any) {
-      console.warn('Registration failed/warning, proceeding anyway:', err);
-      router.replace('/auth/location');
+      console.error('Registration failed:', err);
+      setError(err?.response?.data?.detail || err?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

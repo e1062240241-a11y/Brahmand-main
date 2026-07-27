@@ -1,6 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException
 from config.database import get_db_manager
-from models.users import verify_token
+from middleware.security import verify_token
+from config.firestore_db import FirestoreDB
+
+async def get_db() -> FirestoreDB:
+    from main import get_db as main_get_db
+    return await main_get_db()
+
 
 router = APIRouter(tags=["e2ee"])
 

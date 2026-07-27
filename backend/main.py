@@ -14964,13 +14964,13 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
 # =================== HOME BFF ===================
 
 @api_router.get('/home/init')
-async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)):
+async def home_init(request: Request, seen_ids: str = '', token_data: dict = Depends(verify_token)):
     db = await get_db()
     user_id = token_data['user_id']
 
     async def _get_feed():
         try:
-            feed_res = await get_posts_feed(limit=10, offset=0, tab='for_you', seen_ids=seen_ids, token_data=token_data)
+            feed_res = await get_posts_feed(request=request, limit=10, offset=0, tab='for_you', seen_ids=seen_ids, token_data=token_data)
             return {"items": feed_res.get("items", []), "has_more": feed_res.get("has_more", False)}
         except Exception as e:
             import logging
