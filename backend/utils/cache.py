@@ -82,7 +82,7 @@ class CacheManager:
         self, 
         key: str, 
         value: Any, 
-        ttl: int = None
+        ttl: int | None = None
     ):
         """Set value in cache with optional TTL"""
         if ttl is None:
@@ -97,7 +97,7 @@ class CacheManager:
         except Exception as e:
             logger.debug(f"Cache set error for {key}: {e}")
 
-    async def set_many(self, mapping: Dict[str, Any], ttl: int = None):
+    async def set_many(self, mapping: Dict[str, Any], ttl: int | None = None):
         """Set multiple values in cache"""
         if ttl is None:
             ttl = settings.CACHE_TTL
@@ -214,7 +214,7 @@ class CacheManager:
 cache_manager = CacheManager()
 
 
-def cached(key_func, ttl: int = None):
+def cached(key_func, ttl: int | None = None):
     """Decorator for caching async function results"""
     def decorator(func):
         @wraps(func)
