@@ -8,6 +8,7 @@ import {
   Dimensions,
   Platform,
   Linking,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, FONTS } from '../constants/theme';
@@ -20,6 +21,7 @@ interface SOSResponderModalProps {
   sosData: any;
   onClose: () => void;
   onRespond: (sosId: string) => Promise<void>;
+  onReportMisuse?: (sosId: string, reason: string) => Promise<void>;
 }
 
 export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
@@ -27,8 +29,10 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
   sosData,
   onClose,
   onRespond,
+  onReportMisuse,
 }) => {
   const [loading, setLoading] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   if (!sosData) return null;
 
@@ -44,15 +48,33 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
     }
   };
 
-  const openInMaps = () => {
-    const lat = sosData.latitude;
-    const lon = sosData.longitude;
-    const url = Platform.select({
-      ios: `maps:0,0?q=${lat},${lon}`,
-      android: `geo:0,0?q=${lat},${lon}`,
-      web: `https://www.google.com/maps/search/?api=1&query=${lat},${lon}`
-    });
-    if (url) Linking.openURL(url);
+  const handleReportMisuse = () => {
+    const sosId = sosData.sos_id || sosData.id;
+    Alert.alert(
+      'Report SOS Misuse',
+      'Are you sure this SOS alert is fake or spam?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Report Misuse',
+          style: 'destructive',
+          onPress: async () => {
+            if (!sosId) return;
+            setReporting(true);
+            try {
+              if (onReportMisuse) {
+                await onReportMisuse(sosId, 'Fake or spam emergency alert');
+              }
+              onClose();
+            } catch (err) {
+              console.error('Report misuse error:', err);
+            } finally {
+              setReporting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -97,12 +119,13 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
             </View>
 
             <Pressable
-              style={({ pressed }) => [styles.directionsBtn, pressed && { opacity: 0.8 }]}
-              onPress={openInMaps}
-              android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
+              style={({ pressed }) => [styles.reportMisuseBtn, (pressed || reporting) && { opacity: 0.8 }]}
+              onPress={handleReportMisuse}
+              disabled={reporting}
+              android_ripple={{ color: 'rgba(255,59,48,0.2)', borderless: false }}
             >
-              <Ionicons name="navigate" size={18} color="#FFF" />
-              <Text style={styles.directionsBtnText}>GET DIRECTIONS</Text>
+              <Ionicons name="flag-outline" size={18} color="#FF3B30" />
+              <Text style={styles.reportMisuseBtnText}>{reporting ? 'REPORTING...' : 'REPORT MISUSE'}</Text>
             </Pressable>
           </View>
 
@@ -228,16 +251,18 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  directionsBtn: {
+  reportMisuseBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#FFF0F0',
+    borderWidth: 1,
+    borderColor: '#FFD6D6',
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 15,
   },
-  directionsBtnText: {
-    color: '#FFF',
+  reportMisuseBtnText: {
+    color: '#FF3B30',
     fontSize: 12,
     fontWeight: '900',
     marginLeft: 8,

@@ -992,13 +992,14 @@ export default function HomeScreen() {
 
       console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
 
-      // Save fetched items to local WatermelonDB (native only)
+      // Save fetched items to local WatermelonDB asynchronously (native only) without blocking JS thread
       if (Platform.OS !== 'web' && incomingItems.length > 0) {
-        try {
-          const { database } = require('../../src/database');
-          if (database) {
-            await database.write(async () => {
+        InteractionManager.runAfterInteractions(async () => {
+          try {
+            const { database } = require('../../src/database');
+            if (database) {
               const feedsCollection = database.get('feeds');
+              const batchOperations: any[] = [];
               for (const item of incomingItems) {
                 const recordId = String(item.id || item.media_url);
                 if (!recordId) continue;
@@ -1011,40 +1012,49 @@ export default function HomeScreen() {
                 }
 
                 if (existingRecord) {
-                  await existingRecord.update((record: any) => {
-                    record.username = item.username || '';
-                    record.userPhoto = item.user_photo || null;
-                    record.mediaUrl = item.media_url || null;
-                    record.mediaType = item.media_type || 'image';
-                    record.caption = item.caption || null;
-                    record.likesCount = item.likes_count || 0;
-                    record.commentsCount = item.comments_count || 0;
-                    record.likedByMe = !!item.liked_by_me;
-                    record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                  });
+                  batchOperations.push(
+                    existingRecord.prepareUpdate((record: any) => {
+                      record.username = item.username || '';
+                      record.userPhoto = item.user_photo || null;
+                      record.mediaUrl = item.media_url || null;
+                      record.mediaType = item.media_type || 'image';
+                      record.caption = item.caption || null;
+                      record.likesCount = item.likes_count || 0;
+                      record.commentsCount = item.comments_count || 0;
+                      record.likedByMe = !!item.liked_by_me;
+                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    })
+                  );
                 } else {
-                  await feedsCollection.create((record: any) => {
-                    record._raw.id = recordId;
-                    record.userId = item.user_id || '';
-                    record.username = item.username || '';
-                    record.userPhoto = item.user_photo || null;
-                    record.mediaUrl = item.media_url || null;
-                    record.mediaType = item.media_type || 'image';
-                    record.caption = item.caption || null;
-                    record.likesCount = item.likes_count || 0;
-                    record.commentsCount = item.comments_count || 0;
-                    record.likedByMe = !!item.liked_by_me;
-                    record._raw.created_at = item.created_at ? new Date(item.created_at).getTime() : Date.now();
-                    record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                  });
+                  batchOperations.push(
+                    feedsCollection.prepareCreate((record: any) => {
+                      record._raw.id = recordId;
+                      record.userId = item.user_id || '';
+                      record.username = item.username || '';
+                      record.userPhoto = item.user_photo || null;
+                      record.mediaUrl = item.media_url || null;
+                      record.mediaType = item.media_type || 'image';
+                      record.caption = item.caption || null;
+                      record.likesCount = item.likes_count || 0;
+                      record.commentsCount = item.comments_count || 0;
+                      record.likedByMe = !!item.liked_by_me;
+                      record._raw.created_at = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                    })
+                  );
                 }
               }
-            });
-            console.log(`[HomeFeed] Cached ${incomingItems.length} posts in local SQLite database`);
+              if (batchOperations.length > 0) {
+                await database.write(async () => {
+                  await database.batch(...batchOperations);
+                });
+                console.log(`[HomeFeed] Batched ${batchOperations.length} posts to local database`);
+              }
+            }
+          } catch (localWriteErr) {
+            console.warn('[HomeFeed] Failed to cache posts to database:', localWriteErr);
           }
-        } catch (localWriteErr) {
-          console.warn('[HomeFeed] Failed to cache posts to database:', localWriteErr);
-        }
+        });
       }
 
       const nextHasMore = typeof payload?.has_more === 'boolean'
@@ -1231,7 +1241,14 @@ export default function HomeScreen() {
     }
   }, []);
 
-  const initializeHome = useCallback(async () => {
+  const lastInitTimeRef = useRef<number>(0);
+
+  const initializeHome = useCallback(async (force = false) => {
+    const nowTime = Date.now();
+    if (!force && lastInitTimeRef.current && (nowTime - lastInitTimeRef.current < 600000)) {
+      return;
+    }
+
     if (Platform.OS === 'android') {
       if (!token || !isAuthenticated) {
         console.log('[Home] Skipping Android initialization: User is not authenticated');
@@ -1241,6 +1258,7 @@ export default function HomeScreen() {
     }
 
     try {
+      lastInitTimeRef.current = nowTime;
       fetchLocalCommunities();
       const res = await getHomeInit();
 
@@ -1386,12 +1404,12 @@ export default function HomeScreen() {
       }
     };
 
-    const interval = setInterval(fetchUnreadCount, 30000); // Check every 30s
+    const interval = setInterval(fetchUnreadCount, 120000); // Check every 2m
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [isFocused, initializeHome, setUnreadCount, token, isAuthenticated]);
+  }, [isFocused, token, isAuthenticated]);
 
   const handleNotificationPress = () => {
     try {
@@ -1420,8 +1438,14 @@ export default function HomeScreen() {
   const [now, setNow] = useState(new Date());
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
 
-  const fetchReminders = async () => {
+  const lastRemindersTimeRef = useRef<number>(0);
+  const fetchReminders = async (force = false) => {
+    const nowTime = Date.now();
+    if (!force && lastRemindersTimeRef.current && (nowTime - lastRemindersTimeRef.current < 600000)) {
+      return;
+    }
     try {
+      lastRemindersTimeRef.current = nowTime;
       const response = await api.get('/jaap/reminders');
       if (response.data && response.data.reminders) {
         const loadedReminders: Record<string, boolean> = {};
@@ -1554,8 +1578,12 @@ export default function HomeScreen() {
         loadFeedPosts(0, false, currentActiveTab);
 
         const store = useVendorStore.getState();
-        store.fetchMyVendor().catch(() => { });
-        store.fetchVendors().catch(() => { });
+        if (!store.hasCheckedMyVendor) {
+          store.fetchMyVendor().catch(() => { });
+        }
+        if (!store.vendors || store.vendors.length === 0) {
+          store.fetchVendors().catch(() => { });
+        }
         fetchReminders();
       });
       return () => {
@@ -1669,11 +1697,11 @@ export default function HomeScreen() {
   useEffect(() => {
     const cached = tabFeeds[activeTab];
     const nowTime = Date.now();
-    const isStale = !cached || (nowTime - cached.lastFetched > 900000); // 15 minutes stale
-    if (!cached || cached.posts.length === 0 || isStale) {
+    const isStale = !cached || cached.lastFetched === 0 || (nowTime - cached.lastFetched > 900000); // 15 minutes stale
+    if (isStale) {
       loadFeedPosts(0, false, activeTab);
     }
-  }, [loadFeedPosts, activeTab]);
+  }, [activeTab]);
 
   useEffect(() => {
     if (!isFocused) return;
@@ -1753,7 +1781,8 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await initializeHome();
+      await initializeHome(true);
+      await fetchReminders(true);
     } catch (err) {
       console.warn('Refresh failed:', err);
     } finally {

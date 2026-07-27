@@ -118,7 +118,7 @@ export default function JobProfileDetailScreen() {
 
   useEffect(() => {
     loadKycStatus();
-  }, [loadKycStatus]);
+  }, []);
 
   useEffect(() => {
     const fetchProfile = async () => {

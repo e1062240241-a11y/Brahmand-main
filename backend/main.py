@@ -13482,12 +13482,6 @@ async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), to
     if not alert:
         raise HTTPException(status_code=404, detail="SOS alert not found")
         
-    # Verify the user has accepted/responded to this SOS
-    responders = alert.get('responders', []) or []
-    has_responded = any(r.get('user_id') == user_id for r in responders)
-    if not has_responded:
-        raise HTTPException(status_code=403, detail="Only responders who accepted the SOS can report it as misuse")
-        
     # Save the misuse report to database
     report_data = {
         "sos_id": sos_id,
@@ -13600,7 +13594,7 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                     'user_id': responder_id,
                     'title': 'SOS Resolved',
                     'body': f"{alert.get('user_name')} is safe now. Thank you for helping.",
-                    'notification_type': 'sos',
+                    'notification_type': 'sos_resolved',
                     'data': notification_data,
                     'is_read': False,
                     'created_at': datetime.now(timezone.utc).isoformat()

@@ -449,12 +449,15 @@ export default function VendorScreen() {
 
   useEffect(() => {
     if (!userId) return;
-    // Always load KYC status so the Manage My Service button can enforce KYC
     loadKycStatus();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
     if (activeSection === 'Jobs') {
       loadJobsData();
     }
-  }, [activeSection, userId, loadJobsData, loadKycStatus]);
+  }, [activeSection, userId, loadJobsData]);
 
   useEffect(() => {
     if (searchTerm) {

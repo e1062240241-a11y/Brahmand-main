@@ -66,6 +66,7 @@ export const DEFAULT_CATEGORIES = [
 interface VendorStore {
   vendors: Vendor[];
   myVendor: Vendor | null;
+  hasCheckedMyVendor: boolean;
   categories: string[];
   loading: boolean;
   
@@ -84,6 +85,14 @@ interface VendorStore {
     phoneNumber: string;
     latitude?: number;
     longitude?: number;
+    businessDescription?: string;
+    offersHomeDelivery?: boolean;
+    offersCashOnDelivery?: boolean;
+    businessHours?: string;
+    socialMedia?: {
+      instagram?: string;
+      whatsapp?: string;
+    };
   }) => Promise<Vendor>;
   
   updateVendor: (vendorId: string, data: Partial<Vendor>) => Promise<void>;
@@ -109,6 +118,7 @@ interface VendorStore {
 export const useVendorStore = create<VendorStore>((set, get) => ({
   vendors: [],
   myVendor: null,
+  hasCheckedMyVendor: false,
   categories: DEFAULT_CATEGORIES,
   loading: false,
   
@@ -267,6 +277,7 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
       const vendor = response?.data || null;
       set((state) => ({
         myVendor: vendor,
+        hasCheckedMyVendor: true,
         vendors: vendor
           ? state.vendors.map((v) => (v.id === vendor.id ? { ...v, ...vendor } : v))
           : state.vendors,
@@ -289,7 +300,7 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
       if (error?.response?.status !== 404 && error?.response?.status !== 503) {
         console.warn('Error fetching my vendor:', error?.message || error);
       }
-      set({ myVendor: null });
+      set({ myVendor: null, hasCheckedMyVendor: true });
     }
   },
   

@@ -238,35 +238,40 @@ export function rankPosts(posts: any[], opts: RankOptions): any[] {
     return { post, score: finalScore(post, rec), vc: rec?.viewCount ?? 0 };
   });
 
-  // Filter seen 5+ times
-  const visible = scored.filter(s => s.score > Number.NEGATIVE_INFINITY);
-  if (visible.length === 0) return posts; // Safety: show everything if all filtered
-
-  // Rule 8: Fallback if < 10 unseen
-  const blended = blendFallback(visible);
+  // Filter seen 5+ times (if all filtered, fallback to showing all)
+  let visible = scored.filter(s => s.score > Number.NEGATIVE_INFINITY);
+  if (visible.length === 0) {
+    visible = scored;
+  }
 
   // Sort by score descending
-  blended.sort((a, b) => b.score - a.score);
+  visible.sort((a, b) => b.score - a.score);
 
-  // Rule 5: Move posts seen in last 15 out of top 15 slots
-  if (recentSet.size > 0) {
-    const top = blended.slice(0, 15);
-    const rest = blended.slice(15);
+  // Rule 5: Move posts seen in last 15 out of top slots
+  if (recentSet.size > 0 && visible.length > 1) {
+    const top = visible.slice(0, 15);
+    const rest = visible.slice(15);
     const blocked = top.filter(s => recentSet.has(String(s.post.id ?? '')));
     const allowed = top.filter(s => !recentSet.has(String(s.post.id ?? '')));
-    blended.splice(0, blended.length, ...allowed, ...blocked, ...rest);
+    visible = [...allowed, ...blocked, ...rest];
   }
 
   // Rule 5: Don't repeat same #1 as last session's top
-  if (lastTopPostId && blended.length > 1 && String(blended[0].post.id) === lastTopPostId) {
-    [blended[0], blended[1]] = [blended[1], blended[0]];
+  if (lastTopPostId && visible.length > 1 && String(visible[0].post.id) === lastTopPostId) {
+    [visible[0], visible[1]] = [visible[1], visible[0]];
   }
 
-  let result = blended.map(s => s.post);
+  let result = visible.map(s => s.post);
+
+  if (result.length === 0) return posts;
 
   // Rule 6: Creator diversity, then media mixing
-  result = diversify(result);
-  result = mixMedia(result);
+  try {
+    result = diversify(result);
+    result = mixMedia(result);
+  } catch (e) {
+    console.warn('[FeedRanker] Diversity/mix failed, returning sorted posts:', e);
+  }
 
-  return result;
+  return result.length > 0 ? result : posts;
 }

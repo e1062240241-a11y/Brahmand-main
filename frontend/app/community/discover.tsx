@@ -159,7 +159,7 @@ export default function DiscoverCommunitiesScreen() {
         const keyRes = await getCommunityKey(communityId).catch(() => ({ data: { encrypted_key: null } }));
         if (!keyRes?.data?.encrypted_key) {
            const newSymKeyBase64 = generateSymmetricKey();
-           const user = useAuthStore.getState().user;
+           const user = useAuthStore.getState().user as any;
            if (user && (user.public_key || user.publicKey)) {
              const encryptedSymKey = await encryptSymmetricKeyForUser(newSymKeyBase64, user.public_key || user.publicKey);
              await addCommunityKey(communityId, user.id, encryptedSymKey);
