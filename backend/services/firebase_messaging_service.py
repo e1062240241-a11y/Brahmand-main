@@ -498,10 +498,28 @@ class FirebaseMessagingService:
             chats.sort(key=_sort_key, reverse=True)
             chats = chats[:50]
         
+        # ⚡ Bolt Optimization: Batch fetch other users to prevent N+1 queries
         result = []
+        other_ids = list(set([
+            [p for p in chat['participants'] if p != user_id][0]
+            for chat in chats if len(chat.get('participants', [])) > 0 and any(p != user_id for p in chat['participants'])
+        ]))
+
+        other_users_map = {}
+        if other_ids:
+            other_users_list = await db.get_documents_batch('users', other_ids)
+            # `get_documents_batch` returns docs with `id` populated from `doc.id`
+            other_users_map = {u['id']: u for u in other_users_list if u and 'id' in u}
+
         for chat in chats:
-            other_id = [p for p in chat['participants'] if p != user_id][0]
-            other_user = await db.get_document('users', other_id)
+            participants = chat.get('participants', [])
+            other_participants = [p for p in participants if p != user_id]
+
+            if not other_participants:
+                continue
+
+            other_id = other_participants[0]
+            other_user = other_users_map.get(other_id)
             
             if other_user:
                 result.append({
@@ -510,7 +528,7 @@ class FirebaseMessagingService:
                     "user": {
                         "id": other_id,
                         "sl_id": other_user.get('sl_id'),
-                        "name": other_user['name'],
+                        "name": other_user.get('name', 'User'),
                         "photo": other_user.get('photo'),
                         "is_verified": other_user.get('is_verified', False),
                         "verification_level": other_user.get('verification_level', 'state')
