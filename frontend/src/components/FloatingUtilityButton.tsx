@@ -1153,25 +1153,15 @@ export const FloatingUtilityButton = () => {
                       <Ionicons name="call" size={22} color="#FFF" />
                       <Text style={styles.responderBtnText}>{t('call')}</Text>
                     </TouchableOpacity>
-                    {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
-                      <TouchableOpacity
-                        style={[styles.responderBtn, { backgroundColor: '#D32F2F' }]}
-                        onPress={() => handleReportMisuse(nearbySOSAlerts[0].id)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Report SOS misuse"
-                      >
-                        <MaterialCommunityIcons name="alert-octagon" size={22} color="#FFF" />
-                        <Text style={styles.responderBtnText}>{t('language') === 'hi' ? 'दुरुपयोग की रिपोर्ट' : 'REPORT MISUSE'}</Text>
-                      </TouchableOpacity>
-                    ) : (
-                      <TouchableOpacity
-                        style={[styles.responderBtn, { backgroundColor: '#2196F3' }]}
-                        onPress={() => openNearbySOSLocation(nearbySOSAlerts[0])}
-                      >
-                        <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
-                        <Text style={styles.responderBtnText}>{t('openMap')}</Text>
-                      </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                      style={[styles.responderBtn, { backgroundColor: '#D32F2F' }]}
+                      onPress={() => handleReportMisuse(nearbySOSAlerts[0].id)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Report SOS misuse"
+                    >
+                      <MaterialCommunityIcons name="alert-octagon" size={22} color="#FFF" />
+                      <Text style={styles.responderBtnText}>{t('language') === 'hi' ? 'दुरुपयोग की रिपोर्ट' : 'REPORT MISUSE'}</Text>
+                    </TouchableOpacity>
                   </View>
  
                   <TouchableOpacity style={styles.closeAlertX} onPress={closeUtilityModal} accessibilityRole="button" accessibilityLabel="Close alert">

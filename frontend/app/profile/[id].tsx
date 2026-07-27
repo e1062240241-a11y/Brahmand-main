@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Image } from 'expo-image';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Modal,
   Dimensions,
@@ -623,6 +623,13 @@ const UserProfileScreen = () => {
 
     loadProfile(true);
     loadPosts(true);
+
+    return () => {
+      // Unmount memory cleanup: clear state when user leaves profile screen
+      setPosts([]);
+      setProfile(null);
+      setSelectedPost(null);
+    };
   }, [profileUserId]);
 
   const onRefresh = useCallback(() => {
