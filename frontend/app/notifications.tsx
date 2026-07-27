@@ -343,7 +343,7 @@ export default function NotificationsScreen() {
       return '/live-jaap-welcome';
     }
     if (typeKey.includes('kyc') || actionKey.includes('kyc')) {
-      return '/kyc';
+      return '/kyc-submit';
     }
     if (typeKey.includes('astrology') || typeKey.includes('horoscope') || typeKey.includes('kundli') || actionKey.includes('astrology') || actionKey.includes('horoscope') || actionKey.includes('kundli')) {
       return '/astrology';

@@ -1859,6 +1859,10 @@ export const submitKYC = (data: {
   selfie_photo?: string;
   bypass_validation?: boolean;
   full_name?: string;
+  phone_number?: string;
+  phone?: string;
+  date_of_birth?: string;
+  dob?: string;
 }) => api.post("/kyc/submit", data);
 
 export const validateKYCImage = (data: {

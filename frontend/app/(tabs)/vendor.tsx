@@ -313,7 +313,10 @@ export default function VendorScreen() {
       return true;
     }
 
-    router.push('/kyc');
+    router.push({
+      pathname: '/kyc-submit',
+      params: { returnUrl: '/(tabs)/vendor' }
+    });
     return false;
   }, [loadKycStatus, user, myVendor?.kyc_status, router]);
   const filterAnim = useRef(new Animated.Value(0)).current;
@@ -761,7 +764,10 @@ export default function VendorScreen() {
           );
         }
       } else {
-        router.push('/kyc');
+        router.push({
+          pathname: '/kyc-submit',
+          params: { returnUrl: '/(tabs)/vendor' }
+        });
       }
     } catch (error: any) {
       console.error('Vendor API Registration Error:', error.response?.data);
@@ -1063,14 +1069,14 @@ export default function VendorScreen() {
                     localT('kycRequiredMsg'),
                     [
                       { text: localT('cancel'), style: 'cancel' },
-                      { text: localT('completeKyc'), onPress: () => router.push('/kyc') }
+                      { text: localT('completeKyc'), onPress: () => router.push({ pathname: '/kyc-submit', params: { returnUrl: '/(tabs)/vendor' } }) }
                     ]
                   );
                 }
               } else {
                 if (!hasVerifiedKyc) {
                   router.push({
-                    pathname: '/kyc',
+                    pathname: '/kyc-submit',
                     params: { returnUrl: '/(tabs)/vendor' }
                   });
                   return;

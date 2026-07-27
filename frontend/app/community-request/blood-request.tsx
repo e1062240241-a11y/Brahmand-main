@@ -69,7 +69,7 @@ export default function BloodRequestScreen() {
   useEffect(() => {
     if (!isKycVerified) {
       router.replace({
-        pathname: '/kyc',
+        pathname: '/kyc-submit',
         params: { returnUrl: '/community-request' }
       });
     }

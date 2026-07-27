@@ -85,7 +85,7 @@ export default function AnimalCareRequestScreen() {
   useEffect(() => {
     if (!isKycVerified) {
       router.replace({
-        pathname: '/kyc',
+        pathname: '/kyc-submit',
         params: { returnUrl: '/community-request' }
       });
     }

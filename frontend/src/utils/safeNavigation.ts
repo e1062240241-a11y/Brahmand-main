@@ -1,10 +1,36 @@
 import { router } from 'expo-router';
 
 /**
+ * Checks if Expo Router's navigation container is mounted and ready for navigation actions.
+ */
+export function isNavigationReady(): boolean {
+  try {
+    const { store } = require('expo-router/build/global-state/router-store');
+    if (store?.navigationRef?.isReady) {
+      return Boolean(store.navigationRef.isReady());
+    }
+  } catch {
+    // Fallback if internal module path differs
+  }
+  return true;
+}
+
+/**
  * Safely performs navigation operations, retrying if the Root Layout navigator
  * has not finished mounting / initializing on application startup.
  */
-export function safeNavigate(navFn: () => void, maxRetries = 20, delayMs = 50) {
+export function safeNavigate(navFn: () => void, maxRetries = 30, delayMs = 100) {
+  if (!isNavigationReady()) {
+    if (maxRetries > 0) {
+      setTimeout(() => {
+        safeNavigate(navFn, maxRetries - 1, delayMs);
+      }, delayMs);
+    } else {
+      console.warn('[SafeNavigate] Navigation container never became ready after retries.');
+    }
+    return;
+  }
+
   try {
     navFn();
   } catch (err: any) {

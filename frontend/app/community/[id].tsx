@@ -3761,7 +3761,7 @@ export default function CommunityDetailScreen() {
     // If user selected Requests, check KYC
     if (selectedCategory === 'Requests' && !isKycVerified) {
       setShowCategorySelector(false);
-      router.push('/kyc');
+      router.push('/kyc-submit');
       return;
     }
 

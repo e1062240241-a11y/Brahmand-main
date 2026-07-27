@@ -36,7 +36,7 @@ export default function KYCSuccessScreen() {
     if (returnUrl) {
       router.replace(returnUrl as any);
     } else {
-      router.replace('/kyc' as any);
+      router.replace('/kyc-submit' as any);
     }
   };
 

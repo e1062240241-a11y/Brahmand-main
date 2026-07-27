@@ -86,7 +86,7 @@ export default function CommunityRequestHub() {
   const handleSelectCategory = async (categoryId: string) => {
     if (!isKycVerified) {
       router.push({
-        pathname: '/kyc',
+        pathname: '/kyc-submit',
         params: { returnUrl: '/community-request' }
       });
       return;

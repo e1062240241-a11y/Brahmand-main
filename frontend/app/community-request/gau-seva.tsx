@@ -75,7 +75,7 @@ export default function GauSevaRequestScreen() {
   useEffect(() => {
     if (!isKycVerified) {
       router.replace({
-        pathname: '/kyc',
+        pathname: '/kyc-submit',
         params: { returnUrl: '/community-request' }
       });
     }

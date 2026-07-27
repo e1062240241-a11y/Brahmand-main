@@ -117,7 +117,7 @@ export default function ProfileScreen() {
           title: t('account'),
           items: [
             { id: 'edit', icon: 'person-circle-outline', label: t('manageProfile'), route: '/profile/edit' },
-            { id: 'kyc', icon: 'globe-outline', label: t('kycVerification'), route: '/kyc' },
+            { id: 'kyc', icon: 'globe-outline', label: t('kycVerification'), route: '/kyc-submit' },
             { id: 'notifications', icon: 'notifications-outline', label: t('notifications'), route: '/settings/notifications' },
             { id: 'privacy', icon: 'lock-closed-outline', label: t('privacy'), route: '/settings/privacy', disabled: false },
           ],
@@ -148,7 +148,7 @@ export default function ProfileScreen() {
         title: t('account'),
         items: [
           { id: 'edit', icon: 'person-circle', label: t('manageProfile'), route: '/profile/edit', color: '#F97316' },
-          { id: 'kyc', icon: 'shield-checkmark', label: t('kycVerification'), route: '/kyc', color: '#FB923C' },
+          { id: 'kyc', icon: 'shield-checkmark', label: t('kycVerification'), route: '/kyc-submit', color: '#FB923C' },
           { id: 'personality_verification', icon: 'ribbon', label: t('personalityVerification'), route: '/profile/personality-verification', color: '#D4AF37' },
           { id: 'notifications', icon: 'notifications', label: t('notifications'), route: '/settings/notifications', color: '#F59E0B' },
           { id: 'privacy', icon: 'lock-closed', label: t('privacy'), route: '/settings/privacy', disabled: false, color: '#D97706' },
