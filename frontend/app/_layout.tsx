@@ -2,6 +2,12 @@ import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { Slot, usePathname, useRouter, Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, Text, ActivityIndicator, StyleSheet, Linking, BackHandler, Platform, LogBox , Alert as RNAlert } from 'react-native';
+
+LogBox.ignoreLogs([
+  '`setBackgroundColorAsync` is not supported with edge-to-edge enabled',
+  '`setPositionAsync` is not supported with edge-to-edge enabled',
+  'setLayoutAnimationEnabledExperimental is currently a no-op in the New Architecture',
+]);
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -745,8 +751,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (Platform.OS === 'android') {
-      NavigationBar.setPositionAsync('relative').catch((e) => {
-        console.warn('[NavigationBar] Failed to set relative position:', e);
+      NavigationBar.setPositionAsync('relative').catch(() => {
+        // Ignored on Android when edge-to-edge display mode is enabled
       });
     }
   }, []);
@@ -761,8 +767,8 @@ export default function RootLayout() {
       if (lastNavColorRef.current === colorKey) return;
       lastNavColorRef.current = colorKey;
 
-      NavigationBar.setBackgroundColorAsync(navBgColor).catch((e) => {
-        console.warn('[NavigationBar] Failed to set background color:', e);
+      NavigationBar.setBackgroundColorAsync(navBgColor).catch(() => {
+        // Ignored on Android when edge-to-edge display mode is enabled
       });
       NavigationBar.setButtonStyleAsync(buttonStyle).catch((e) => {
         console.warn('[NavigationBar] Failed to set button style:', e);
