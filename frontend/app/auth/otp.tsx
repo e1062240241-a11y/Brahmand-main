@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Dimensions,
   ActivityIndicator,
@@ -113,8 +114,8 @@ export default function OTPScreen() {
 
     try {
       let data;
-      if (Platform.OS === 'android' && mock === 'true') {
-        console.log('[OTP] Verifying mock OTP via backend on Android...');
+      if (mock === 'true') {
+        console.log('[OTP] Verifying mock OTP via backend...');
         const { verifyOTP } = require('../../src/services/api');
         const response = await verifyOTP(phone, code);
         data = response.data;
@@ -128,6 +129,8 @@ export default function OTPScreen() {
         const response = await verifyFirebaseToken(idToken);
         data = response.data;
       }
+
+      Keyboard.dismiss();
 
       if (data.is_new_user) {
         // New user — go to profile setup

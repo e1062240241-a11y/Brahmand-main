@@ -2,6 +2,19 @@ import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 import { secureStorage } from './secureStorage';
 
+// Polyfill PRNG for tweetnacl in React Native / Expo environment
+if (typeof nacl.setPRNG === 'function') {
+  nacl.setPRNG((x, n) => {
+    if (typeof global !== 'undefined' && global.crypto && typeof global.crypto.getRandomValues === 'function') {
+      const bytes = new Uint8Array(n);
+      global.crypto.getRandomValues(bytes);
+      for (let i = 0; i < n; i++) x[i] = bytes[i];
+    } else {
+      for (let i = 0; i < n; i++) x[i] = Math.floor(Math.random() * 256);
+    }
+  });
+}
+
 export const generateKeyPair = async (): Promise<{ publicKey: string, secretKey: string }> => {
   const keyPair = nacl.box.keyPair();
   const publicKey = util.encodeBase64(keyPair.publicKey);
