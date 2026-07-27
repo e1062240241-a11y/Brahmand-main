@@ -24,8 +24,8 @@ from typing import List, Optional
 logger = logging.getLogger(__name__)
 
 # ── ChromaDB config ──────────────────────────────────────────────────────────
-CHROMA_API_KEY    = os.environ.get("CHROMA_API_KEY",  "ck-4VkTsJANy78AW6spNfLMywoYDNh7R4mkebwYysmZizRh")
-CHROMA_TENANT     = os.environ.get("CHROMA_TENANT",   "9a04c579-4ed1-4f4a-914a-d65b427af626")
+CHROMA_API_KEY    = os.environ["CHROMA_API_KEY"]
+CHROMA_TENANT     = os.environ["CHROMA_TENANT"]
 CHROMA_DATABASE   = os.environ.get("CHROMA_DATABASE", "default_database")
 CHROMA_COLLECTION = "krishna_gita_knowledge"
 
