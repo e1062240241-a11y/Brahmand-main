@@ -17,7 +17,7 @@ import json
 import hmac
 import hashlib
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from tempfile import NamedTemporaryFile
@@ -29,11 +29,7 @@ def ZoneInfo(key: str):
     try:
         return OriginalZoneInfo(key)
     except Exception:
-        if key == "Asia/Kolkata":
-            from datetime import timezone, timedelta
-            return timezone(timedelta(hours=5, minutes=30))
         # Fallback to India Standard Time offset if tzdata is missing on Windows
-        from datetime import timezone, timedelta
         return timezone(timedelta(hours=5, minutes=30))
 
 import base64
@@ -41,7 +37,7 @@ import math
 import requests
 import aiohttp
 import jwt
-from google.api_core.exceptions import FailedPrecondition
+from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, Response, HTMLResponse
@@ -53,7 +49,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config.settings import settings
 from config.firebase_config import (
     firebase_manager, FIREBASE_WEB_CONFIG, get_firestore, 
-    is_firebase_enabled, get_firebase_auth, get_firebase_messaging
+    is_firebase_enabled
 )
 from config.firestore_db import FirestoreDB
 from workers.background_tasks import task_queue
@@ -73,11 +69,7 @@ except ImportError:
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
-    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, CirclePrivacy,
-    HelpRequestCreate, HelpStatus, HelpUrgency, CommunityLevel,
-    VendorCreate, VendorUpdate, JobProfileCreate, JobProfileUpdate,
-    SOSCreate, AstrologyProfile, CommunityRequestCreate, RequestType, RequestUrgency, VisibilityLevel,
-    CommunityCreate
+    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, JobProfileCreate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -103,7 +95,6 @@ from routes.search_routes import router as search_router
 from routes.video_upload_routes import (
     router as video_upload_router,
     _compress_video,
-    _ensure_ffmpeg_tools_available,
     _pick_target_profile,
     _probe_video_metadata,
     _save_upload_to_temp_file,
@@ -114,7 +105,6 @@ from routes.video_upload_routes import (
     FFPROBE_BIN,
 )
 from utils.helpers import (
-    WISDOM_QUOTES,
     moderate_content,
     generate_sl_id
 )
@@ -426,7 +416,7 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
+        "AccessKey": os.environ["BUNNY_ACCESS_KEY"],
         "Content-Type": content_type
     }
 
@@ -456,7 +446,7 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314",
+        "AccessKey": os.environ["BUNNY_ACCESS_KEY"],
         "Content-Type": content_type
     }
 
@@ -485,7 +475,7 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+        "AccessKey": os.environ["BUNNY_ACCESS_KEY"]
     }
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
@@ -508,7 +498,7 @@ async def _delete_file_from_bunny(object_path: str):
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+        "AccessKey": os.environ["BUNNY_ACCESS_KEY"]
     }
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
@@ -569,6 +559,7 @@ async def _create_post_document(
     community_level: str = 'city',
 ) -> dict:
     import random as _random
+    from datetime import timezone
 
     # Use provided category or infer from caption keywords
     _inferred_category = category
@@ -623,8 +614,8 @@ async def _create_post_document(
         'city': user_loc.get('city'),
         'state': user_loc.get('state'),
         'country': user_loc.get('country'),
-        'created_at': datetime.utcnow(),
-        'updated_at': datetime.utcnow(),
+        'created_at': datetime.now(timezone.utc),
+        'updated_at': datetime.now(timezone.utc),
     }
 
     if metadata:
@@ -656,7 +647,7 @@ async def _create_post_document(
     # 2. DB Filter Layer (fallback)
     try:
         from datetime import timedelta, timezone
-        threshold_dt = datetime.utcnow() - timedelta(seconds=180)
+        threshold_dt = datetime.now(timezone.utc) - timedelta(seconds=180)
         # If mock database is active, use string comparison; otherwise use datetime
         threshold = (threshold_dt.isoformat() + 'Z') if db.use_mock else threshold_dt
         
@@ -672,13 +663,17 @@ async def _create_post_document(
                 if r_created:
                     if isinstance(r_created, str):
                         try:
-                            r_created_dt = datetime.fromisoformat(r_created.replace('Z', '+00:00')).replace(tzinfo=None)
+                            r_created_dt = datetime.fromisoformat(r_created.replace('Z', '+00:00'))
+                            if r_created_dt.tzinfo is None:
+                                r_created_dt = r_created_dt.replace(tzinfo=timezone.utc)
                         except Exception:
-                            r_created_dt = datetime.min
+                            r_created_dt = datetime.min.replace(tzinfo=timezone.utc)
+                    elif isinstance(r_created, datetime):
+                        r_created_dt = r_created if r_created.tzinfo is not None else r_created.replace(tzinfo=timezone.utc)
                     else:
-                        r_created_dt = r_created.replace(tzinfo=None) if hasattr(r_created, 'tzinfo') and r_created.tzinfo is not None else r_created
+                        r_created_dt = datetime.min.replace(tzinfo=timezone.utc)
                     
-                    time_diff = datetime.utcnow() - r_created_dt
+                    time_diff = datetime.now(timezone.utc) - r_created_dt
                     if time_diff.total_seconds() < 180:
                         recent_caption = (recent.get('caption') or '').strip()
                         recent_media = (recent.get('media_path') or '').strip()
@@ -908,7 +903,7 @@ async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
         await db.create_document('deleted_records', {
             'record_id': post_id,
             'table_name': 'feeds',
-            'deleted_at': datetime.utcnow()
+            'deleted_at': datetime.now(timezone.utc)
         })
     except Exception as e:
         logger.error("Failed to write to deleted_records: %s", e)
@@ -996,11 +991,11 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'aadhaar_reference_id': vendor.get('aadhaar_reference_id'),
         'review_status': 'pending' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else vendor.get('kyc_status'),
         'review_state': 'needs_admin_action' if vendor.get('kyc_status') in [None, 'pending', 'manual_review'] else 'closed',
-        'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.utcnow().isoformat() + 'Z'),
+        'updated_at': vendor.get('updated_at') or vendor.get('created_at') or (datetime.now(timezone.utc).isoformat() + 'Z'),
     }
 
 
-async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: dict = None):
+async def _sync_vendor_to_admin_queue(db: FirestoreDB, vendor_id: str, vendor: dict | None = None):
     """Upsert vendor review snapshot used by future admin panel."""
     if not vendor:
         vendor = await db.get_document('vendors', vendor_id)
@@ -1026,12 +1021,12 @@ def _get_configured_firebase_test_numbers() -> List[str]:
 
 
 def _normalize_phone(phone: str) -> str:
-    phone = str(phone or '').strip()
+    phone = (phone or '').strip()
     return ''.join(ch for ch in phone if ch.isdigit() or ch == '+')
 
 
 def _digits_only(phone: str) -> str:
-    return ''.join(ch for ch in str(phone or '') if ch.isdigit())
+    return ''.join(ch for ch in (phone or '') if ch.isdigit())
 
 
 def _is_configured_firebase_test_phone(phone: str) -> bool:
@@ -1174,11 +1169,11 @@ class ProcessTimeAndCORSMiddleware:
             })
             return
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         async def send_wrapper(message):
             if message["type"] == "http.response.start":
-                process_time = (datetime.utcnow() - start_time).total_seconds()
+                process_time = (datetime.now(timezone.utc) - start_time).total_seconds()
                 headers_list = list(message.get("headers", []))
                 headers_dict = {}
                 for k, v in headers_list:
@@ -1270,7 +1265,7 @@ async def health_check():
     
     return {
         "status": "healthy" if is_firebase_enabled() else "degraded",
-        "timestamp": datetime.utcnow().isoformat() + 'Z',
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "version": "2.2.0",
         "services": {
             "firestore": firestore_status,
@@ -1411,7 +1406,7 @@ def _build_turn_credential(user_id: str) -> tuple[Optional[str], Optional[str], 
 
     if settings.TURN_SHARED_SECRET:
         ttl_seconds = max(settings.TURN_TTL_SECONDS, 300)
-        expires_at = int((datetime.utcnow() + timedelta(seconds=ttl_seconds)).timestamp())
+        expires_at = int((datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)).timestamp())
         username = f"{expires_at}:{user_id}"
         digest = hmac.new(
             settings.TURN_SHARED_SECRET.encode('utf-8'),
@@ -1434,7 +1429,7 @@ def _sanitize_livekit_room(value: str) -> str:
 
 def _build_livekit_token(user_id: str, sl_id: str, room: str) -> tuple[str, int]:
     ttl_seconds = max(settings.LIVEKIT_TOKEN_TTL_SECONDS, 300)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     expires_at = int((now + timedelta(seconds=ttl_seconds)).timestamp())
     identity = _sanitize_livekit_room(f"{user_id}-{uuid4().hex[:8]}")
     participant_name = sl_id or user_id
@@ -1489,8 +1484,8 @@ async def get_realtime_sfu_token(room: str = 'mantra-jaap-live-room', token_data
             'reason': 'livekit_not_configured',
         }
 
-    user_id = token_data.get('user_id', 'anonymous')
-    sl_id = token_data.get('sl_id', user_id)
+    user_id = token_data.get('user_id', 'anonymous') or 'anonymous'
+    sl_id = token_data.get('sl_id') or user_id
     livekit_room = _sanitize_livekit_room(f"{settings.LIVEKIT_ROOM_PREFIX}-{room}")
     token, expires_at = _build_livekit_token(user_id, sl_id, livekit_room)
 
@@ -1565,34 +1560,39 @@ async def reset_database(confirm: str = ""):
     try:
         # Delete all users
         users = await db.query_documents('users', [])
-        for user in users:
-            await db.delete_document('users', user['id'])
-            deleted["users"] += 1
+        if users:
+            user_ids = [u['id'] for u in users if 'id' in u]
+            deleted["users"] = await db.batch_delete_documents('users', user_ids)
         
         # Delete all chats and their messages
         chats = await db.query_documents('chats', [])
-        for chat in chats:
-            # Delete messages subcollection
-            try:
-                deleted_messages = await db.delete_subcollection('chats', chat['id'], 'messages')
-                deleted["messages"] += deleted_messages
-            except Exception as e:
-                logger.error(f"Failed to delete messages for chat {chat['id']}: {e}")
+        if chats:
+            chat_ids = []
+            for chat in chats:
+                if 'id' not in chat:
+                    continue
+                chat_id = chat['id']
+                chat_ids.append(chat_id)
+                # Delete messages subcollection
+                try:
+                    deleted_messages = await db.delete_subcollection('chats', chat_id, 'messages')
+                    deleted["messages"] += deleted_messages
+                except Exception as e:
+                    logger.error(f"Failed to delete messages for chat {chat_id}: {e}")
 
-            await db.delete_document('chats', chat['id'])
-            deleted["chats"] += 1
+            deleted["chats"] = await db.batch_delete_documents('chats', chat_ids)
         
         # Delete all communities
         communities = await db.query_documents('communities', [])
-        for community in communities:
-            await db.delete_document('communities', community['id'])
-            deleted["communities"] += 1
+        if communities:
+            comm_ids = [c['id'] for c in communities if 'id' in c]
+            deleted["communities"] = await db.batch_delete_documents('communities', comm_ids)
         
         # Delete all OTPs
         otps = await db.query_documents('otps', [])
-        for otp in otps:
-            await db.delete_document('otps', otp['id'])
-            deleted["otps"] += 1
+        if otps:
+            otp_ids = [o['id'] for o in otps if 'id' in o]
+            deleted["otps"] = await db.batch_delete_documents('otps', otp_ids)
         
         logger.info(f"Database reset completed: {deleted}")
         return {
@@ -1758,8 +1758,8 @@ async def admin_panel_login(data: dict = Body(...)):
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
 
-    expected_username = os.getenv('ADMIN_PANEL_USERNAME', 'Admin')
-    expected_password = os.getenv('ADMIN_PANEL_PASSWORD', 'admin123')
+    expected_username = os.environ['ADMIN_PANEL_USERNAME']
+    expected_password = os.environ['ADMIN_PANEL_PASSWORD']
 
     if username != expected_username or password != expected_password:
         raise HTTPException(status_code=401, detail="Invalid admin credentials")
@@ -1807,7 +1807,7 @@ async def register_user(user_data: UserCreate, _: bool = Depends(auth_rate_limit
             if is_valid_image(photo_data):
                 # Compress to 512px max and optimize
                 photo_data = compress_base64_image(photo_data, max_size=512, quality=75)
-                logger.info(f"Profile photo compressed successfully")
+                logger.info("Profile photo compressed successfully")
 
                 # If the resulting photo still exceeds Firestore field limit, upload to Firebase Storage
                 if len(photo_data) > 950000:
@@ -2145,7 +2145,7 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
         await db.add_member_to_community(cid, user_id)
     
     # Update user with location and communities
-    existing_defaults = user.get('default_communities', []) or []
+    existing_defaults = (user.get('default_communities', []) if user else []) or []
     await db.update_document('users', user_id, {
         'location': loc,
         'home_location': loc,
@@ -2216,7 +2216,7 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
         verification_level = user.get('verification_level', 'state')
         
     # Get user's currently joined communities to find old location-based ones
-    current_communities = user.get('communities', []) or []
+    current_communities = (user.get('communities', []) if user else []) or []
     non_location_community_ids = []
     old_location_community_ids = []
     
@@ -2931,7 +2931,7 @@ async def get_bunny_media(filepath: str):
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{filepath}"
     headers = {
-        "AccessKey": os.getenv("BUNNY_READ_ACCESS_KEY") or os.getenv("BUNNY_ACCESS_KEY") or "bb3aebf9-f52b-4224-bc824e379f94-5e76-4b3d"
+        "AccessKey": os.environ.get("BUNNY_READ_ACCESS_KEY") or os.environ["BUNNY_ACCESS_KEY"]
     }
     
     ext = filepath.split('.')[-1].lower()
@@ -2945,7 +2945,6 @@ async def get_bunny_media(filepath: str):
     elif ext == 'mov':
         content_type = "video/quicktime"
         
-    from fastapi.responses import StreamingResponse
     
     async def file_sender():
         try:
@@ -2993,7 +2992,7 @@ async def get_library_cdn(filepath: str):
 @api_router.get('/posts/bunny-upload-credentials')
 async def get_bunny_upload_credentials(token_data: dict = Depends(verify_token)):
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
-    bunny_access_key = os.getenv("BUNNY_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+    bunny_access_key = os.environ["BUNNY_ACCESS_KEY"]
     pull_zone_url = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     
     return {
@@ -4726,11 +4725,11 @@ async def add_post_comment(post_id: str, data: dict = Body(...), token_data: dic
         'username': user.get('name') or user.get('sl_id') or 'User',
         'user_photo': user.get('photo'),
         'text': text,
-        'created_at': datetime.utcnow(),
+        'created_at': datetime.now(timezone.utc),
     }
     if parent_id:
         comment_doc['parent_id'] = parent_id
-        comment_doc['reply_to_username'] = parent_comment.get('username')
+        comment_doc['reply_to_username'] = parent_comment.get('username') if parent_comment else None
 
     comment_id = await db.create_document('post_comments', comment_doc)
     comment_doc['id'] = comment_id
@@ -4904,6 +4903,9 @@ async def delete_post_comment(post_id: str, comment_id: str, token_data: dict = 
     })
 
     updated_post = await db.get_document('posts', post_id)
+    if not updated_post:
+        updated_post = post.copy()
+        updated_post['id'] = post_id
     updated_post['comments_count'] = comments_count
     updated_post['liked_by_me'] = user_id in (updated_post.get('liked_by', []) or [])
     updated_post['top_comments'] = top_comments[:5]
@@ -4981,6 +4983,8 @@ async def report_post(post_id: str, data: dict = Body(default={}), token_data: d
 async def get_verification_status(token_data: dict = Depends(verify_token)):
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     return {
         "is_verified": user.get("is_verified", False),
         "member_type": "Verified Member" if user.get("is_verified") else "Basic Member",
@@ -5226,6 +5230,8 @@ async def submit_personality_verification(data: dict, token_data: dict = Depends
 async def get_profile_completion(token_data: dict = Depends(verify_token)):
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     
     fields = [
         "name", "photo", "language", "location", "kuldevi", "kuldevi_temple_area",
@@ -5255,6 +5261,9 @@ async def get_profile_completion(token_data: dict = Depends(verify_token)):
 async def get_horoscope(token_data: dict = Depends(verify_token)):
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     if not all(
         user.get(f)
@@ -6021,11 +6030,12 @@ async def create_community(
 
         # 5. Fetch owner name
         owner_user = await db.get_document('users', owner_id)
-        owner_name = owner_user.get('name') or "A user"
+        owner_name = owner_user.get('name') if owner_user else "A user"
 
         # 6. Send in-app notifications + push notifications to all invited admins and members
+        notification_docs = []
         for admin_id in admin_ids:
-            await db.create_document('notifications', {
+            notification_docs.append({
                 "user_id": admin_id,
                 "title": "Community Group Invitation",
                 "body": f"{owner_name} has invited you as an ADMIN to help create the community group '{data.name}'.",
@@ -6052,7 +6062,7 @@ async def create_community(
                 logger.warning(f"Failed to send push to admin {admin_id}: {push_err}")
 
         for member_id in member_ids:
-            await db.create_document('notifications', {
+            notification_docs.append({
                 "user_id": member_id,
                 "title": "Community Group Invitation",
                 "body": f"{owner_name} has invited you as a MEMBER to help create the community group '{data.name}'.",
@@ -6077,6 +6087,9 @@ async def create_community(
                 )
             except Exception as push_err:
                 logger.warning(f"Failed to send push to member {member_id}: {push_err}")
+
+        if notification_docs:
+            await db.batch_create_documents('notifications', notification_docs)
 
         return {
             "message": "Community group creation request submitted. Waiting for consensus approval from invited users.",
@@ -6122,7 +6135,7 @@ async def respond_to_community_request(
                         notif_data = json.loads(notif_data)
                     except Exception:
                         pass
-                if notif_data.get('request_id') == request_id:
+                if isinstance(notif_data, dict) and notif_data.get('request_id') == request_id:
                     await db.delete_document('notifications', notif['id'])
         except Exception as notif_err:
             logger.warning(f"Failed to delete notification during community request response: {notif_err}")
@@ -6145,7 +6158,7 @@ async def respond_to_community_request(
 
         # 2. Fetch responder name
         responder_user = await db.get_document('users', user_id)
-        responder_name = responder_user.get('name') or "A user"
+        responder_name = (responder_user.get('name') if responder_user else None) or "A user"
         comm_name = request_doc.get('name', 'Community')
 
         responses = request_doc.get('responses', {})
@@ -6203,6 +6216,9 @@ async def respond_to_community_request(
                 "member_ids": member_ids
             }
 
+            if not owner_id:
+                raise HTTPException(status_code=400, detail="Community request does not have a valid owner_id.")
+
             # Call FirebaseCommunityService to create the live community
             created_community = await FirebaseCommunityService.create_user_community(owner_id, community_payload)
 
@@ -6222,8 +6238,9 @@ async def respond_to_community_request(
             })
 
             # Notify all invited users
+            notification_docs = []
             for invited_uid in invited_users:
-                await db.create_document('notifications', {
+                notification_docs.append({
                     "user_id": invited_uid,
                     "title": "Community Group Live!",
                     "body": f"All members have accepted! The community group '{comm_name}' is now live. Tap to join the chat.",
@@ -6236,6 +6253,8 @@ async def respond_to_community_request(
                     "is_read": False,
                     "created_at": datetime.utcnow().isoformat() + 'Z'
                 })
+            if notification_docs:
+                await db.batch_create_documents('notifications', notification_docs)
 
             return {
                 "message": "Invitation accepted. Consensus achieved! Community group has been created and is now live.",
@@ -6282,6 +6301,17 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
             'community_creation_requests',
             filters=[('owner_id', '==', owner_id)]
         )
+        # Gather all unique user IDs to prevent N+1 query loops
+        all_user_ids = set()
+        for req in (requests or []):
+            all_user_ids.update(req.get('admin_ids', []))
+            all_user_ids.update(req.get('member_ids', []))
+
+        users_map = {}
+        if all_user_ids:
+            user_docs = await db.get_documents_batch('users', list(all_user_ids))
+            users_map = {u.get('id'): u for u in user_docs if u and u.get('id')}
+
         result = []
         for req in (requests or []):
             # Enrich with user names for admin_ids and member_ids
@@ -6291,7 +6321,7 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
 
             admin_list = []
             for uid in admin_ids:
-                user_doc = await db.get_document('users', uid)
+                user_doc = users_map.get(uid) or {}
                 admin_list.append({
                     'id': uid,
                     'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
@@ -6301,7 +6331,7 @@ async def get_my_creation_requests(token_data: dict = Depends(verify_token)):
 
             member_list = []
             for uid in member_ids:
-                user_doc = await db.get_document('users', uid)
+                user_doc = users_map.get(uid) or {}
                 member_list.append({
                     'id': uid,
                     'name': user_doc.get('name', 'Unknown') if user_doc else 'Unknown',
@@ -6373,7 +6403,7 @@ async def resend_community_invite(
 
         # 6. Fetch owner name
         owner_user = await db.get_document('users', owner_id)
-        owner_name = owner_user.get('name') or "A user"
+        owner_name = (owner_user.get('name') if owner_user else None) or "A user"
         comm_name = request_doc.get('name', 'Community')
         
         role = "admin" if target_user_id in admin_ids else "member"
@@ -6450,6 +6480,9 @@ async def join_community_direct(
 async def discover_communities(token_data: dict = Depends(verify_token)):
     """Discover popular communities"""
     return await FirebaseCommunityService.discover_communities(token_data["user_id"])
+
+
+
 
 
 @api_router.get("/communities/{community_id}")
@@ -6561,6 +6594,8 @@ async def send_community_message(
     db = await get_db()
     user_id = token_data["user_id"]
     user = await db.get_document('users', user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     
     # Resolve fallback community IDs
     if community_id in ['mumbai-fallback', 'city_default', 'maharashtra-fallback', 'bharat-fallback']:
@@ -6588,8 +6623,8 @@ async def send_community_message(
                 
                 fetched = await db.get_documents_batch('communities', community_ids)
                 for comm in fetched:
-                    if comm and comm.get('type') == target_type:
-                        community_id = comm.get('id')
+                    if comm and comm.get('type') == target_type and comm.get('id'):
+                        community_id = str(comm['id'])
                         break
             except Exception as ex:
                 logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in main.py send: {ex}")
@@ -6648,7 +6683,7 @@ async def send_community_message(
         raise HTTPException(status_code=403, detail="Not a community member")
 
     # Check verification (state and country groups require verification)
-    community_doc = community if 'community' in locals() and community else await db.get_document('communities', community_id)
+    community_doc = locals().get('community') or await db.get_document('communities', community_id)
     comm_type = community_doc.get('type') if community_doc else None
     if comm_type in ['state', 'country']:
         is_verified = user.get('is_verified', False)
@@ -6770,14 +6805,14 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
         elif community_id == 'bharat-fallback':
             target_type = 'country'
             
-        user_loc = user.get('location') or user.get('home_location')
-        if user_loc:
+        user_loc = (user.get('location') or user.get('home_location')) if user else None
+        if user_loc and user:
             from services.firebase_community_service import FirebaseCommunityService
             try:
                 from google.cloud import firestore
                 community_ids = await FirebaseCommunityService.join_location_communities(user_id, user_loc)
                 # Sync back to user document if missing
-                user_comms = set(user.get('communities', []))
+                user_comms = set(user.get('communities', []) if user else [])
                 missing_ids = [cid for cid in community_ids if cid not in user_comms]
                 if missing_ids:
                     await db._run_sync(
@@ -6788,8 +6823,10 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
                 fetched = await db.get_documents_batch('communities', community_ids)
                 for comm in fetched:
                     if comm and comm.get('type') == target_type:
-                        community_id = comm.get('id')
-                        break
+                        cid = comm.get('id')
+                        if cid:
+                            community_id = str(cid)
+                            break
             except Exception as ex:
                 logger.warning(f"Failed to resolve fallback community ID {community_id} for user {user_id} in main.py get: {ex}")
 
@@ -6801,8 +6838,9 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
     # Enforce personality verification access limits for state/country groups
     comm_type = community.get('type')
     if comm_type in ['state', 'country']:
-        is_verified = user.get('is_verified', False)
-        verification_level = user.get('verification_level', 'state')
+        user_dict = user or {}
+        is_verified = user_dict.get('is_verified', False)
+        verification_level = user_dict.get('verification_level', 'state')
         if not is_verified:
             raise HTTPException(status_code=403, detail="Only verified personalities can access state/country level communities")
         if comm_type == 'country' and verification_level != 'national':
@@ -6879,7 +6917,7 @@ async def toggle_community_message_like(
                 community = await db.get_document('communities', community_id)
                 comm_name = community.get('name', 'Community') if community else 'Community'
                 actor_user = await db.get_document('users', user_id)
-                actor_name = actor_user.get('name') or actor_user.get('sl_id') or 'Someone'
+                actor_name = (actor_user.get('name') or actor_user.get('sl_id') or 'Someone') if actor_user else 'Someone'
                 
                 # Create notification doc
                 await db.create_document('notifications', {
@@ -6940,7 +6978,7 @@ async def add_community_message_comment(
     if not text:
         raise HTTPException(status_code=400, detail='Comment text is required')
         
-    user = await db.get_document('users', user_id)
+    user = (await db.get_document('users', user_id)) or {}
     comment_doc = {
         'post_id': message_id,
         'user_id': user_id,
@@ -7081,6 +7119,8 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     sender = await db.get_document('users', token_data["user_id"])
     recipient = await db.get_user_by_sl_id(message.recipient_sl_id)
     
+    if not sender:
+        raise HTTPException(status_code=404, detail="Sender user not found")
     if not recipient:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -7157,7 +7197,7 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
                     'request_by': sender_id,
                     'request_retry_after': None,
                     'request_updated_at': now,
-                    'last_message': message.content[:100],
+                    'last_message': (message.content or "")[:100],
                     'updated_at': now,
                 })
                 chat = await db.get_document('chats', chat_id)
@@ -7175,7 +7215,7 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
             'chat_type': 'private',
             'members': sorted_members,
             'created_at': now,
-            'last_message': message.content[:100],  # Preview of last message
+            'last_message': (message.content or "")[:100],  # Preview of last message
             'updated_at': now,
             'request_status': 'pending',
             'request_by': sender_id,
@@ -7187,7 +7227,7 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
     else:
         # Update chat with last message
         await db.update_document('chats', chat_id, {
-            'last_message': message.content[:100],
+            'last_message': (message.content or "")[:100],
             'updated_at': now
         })
     
@@ -7235,7 +7275,7 @@ async def send_dm(message: DirectMessageCreate, token_data: dict = Depends(verif
         await push_service.notify_new_dm(
             recipient_id=recipient_id,
             sender_name=sender['name'],
-            message_preview=message.content,
+            message_preview=message.content or "",
             chat_id=chat_id
         )
     except Exception as e:
@@ -7590,7 +7630,7 @@ async def mark_messages_read(chat_id: str, token_data: dict = Depends(verify_tok
     
     # Check if user has read receipts enabled
     user = await db.get_document('users', user_id)
-    if not user.get('privacy_settings', {}).get('read_receipts', True):
+    if not (user or {}).get('privacy_settings', {}).get('read_receipts', True):
         # User has disabled read receipts, don't update
         return {"message": "Read receipts disabled"}
     
@@ -7632,6 +7672,9 @@ async def get_privacy_settings(token_data: dict = Depends(verify_token)):
         'profile_photo': 'everyone',  # Who can see profile photo
     }
     
+    if not user:
+        return default_settings
+    
     return user.get('privacy_settings', default_settings)
 
 
@@ -7671,7 +7714,7 @@ async def get_circles(token_data: dict = Depends(verify_token)):
     user = await db.get_document('users', user_id)
     
     circles = []
-    user_circle_ids = list(user.get('circles', []))
+    user_circle_ids = list(user.get('circles', [])) if user else []
     
     if user_circle_ids:
         try:
@@ -7742,6 +7785,10 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
     while await db.find_one('circles', [('code', '==', code)]):
         code = generate_circle_code(data.name)
     
+    user_name = user.get('name') if user else 'User'
+    user_sl_id = user.get('sl_id') if user else None
+    user_photo = user.get('photo') if user else None
+
     circle_data = {
         "name": data.name,
         "description": data.description or "",
@@ -7754,9 +7801,9 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
         "members": [user_id],
         "member_details": [{
             "user_id": user_id,
-            "name": user['name'],
-            "sl_id": user.get('sl_id'),
-            "photo": user.get('photo'),
+            "name": user_name,
+            "sl_id": user_sl_id,
+            "photo": user_photo,
             "joined_at": datetime.utcnow().isoformat() + 'Z'
         }]
     }
@@ -7764,9 +7811,15 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
     # Add optional selected members to the circle (excluding creator duplicate)
     added_member_ids = []
     if data.member_ids:
-        for member_id in data.member_ids:
-            if member_id and member_id != user_id and member_id not in circle_data['members']:
-                member_doc = await db.get_document('users', member_id)
+        # Filter and deduplicate valid member IDs to fetch
+        valid_member_ids = list(set([m_id for m_id in data.member_ids if m_id and m_id != user_id and m_id not in circle_data['members']]))
+
+        if valid_member_ids:
+            member_docs_list = await db.get_documents_batch('users', valid_member_ids)
+            member_docs_by_id = {doc.get('id', ''): doc for doc in member_docs_list if doc}
+
+            for member_id in valid_member_ids:
+                member_doc = member_docs_by_id.get(member_id)
                 if member_doc:
                     circle_data['members'].append(member_id)
                     circle_data['member_details'].append({
@@ -7774,7 +7827,7 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
                         "name": member_doc.get('name', ''),
                         "sl_id": member_doc.get('sl_id'),
                         "photo": member_doc.get('photo'),
-                        "joined_at": datetime.utcnow().isoformat() + 'Z'
+                        "joined_at": datetime.now(timezone.utc).isoformat()
                     })
                     added_member_ids.append(member_id)
 
@@ -7788,10 +7841,11 @@ async def create_circle(data: CircleCreate, token_data: dict = Depends(verify_to
     if added_member_ids:
         try:
             from services.push_notification_service import push_service
+            inviter_name = (user.get('name') or 'Someone') if user else 'Someone'
             await push_service.notify_circle_invite(
                 circle_id=circle_id,
                 circle_name=circle_data['name'],
-                inviter_name=user.get('name', 'Someone'),
+                inviter_name=inviter_name,
                 member_ids=added_member_ids
             )
         except Exception as e:
@@ -7942,9 +7996,9 @@ async def join_circle(data: CircleJoin, token_data: dict = Depends(verify_token)
         request_data = {
             "circle_id": circle_id,
             "user_id": user_id,
-            "user_name": user['name'],
-            "user_sl_id": user.get('sl_id'),
-            "user_photo": user.get('photo'),
+            "user_name": (user.get('name') if user else None) or (user.get('sl_id') if user else None) or 'User',
+            "user_sl_id": user.get('sl_id') if user else None,
+            "user_photo": user.get('photo') if user else None,
             "status": "pending"
         }
         await db.create_document('circle_requests', request_data)
@@ -8043,7 +8097,8 @@ async def transfer_circle_admin(circle_id: str, member_id: str, token_data: dict
         'admin_ids': updated_admin_ids,
     }
     if not circle.get('admin_id'):
-        update_payload['admin_id'] = admin_ids[0] if admin_ids else user_id
+        admin_id_val: str = admin_ids[0] if admin_ids else user_id
+        update_payload['admin_id'] = admin_id_val
 
     await db.update_document('circles', circle_id, update_payload)
     logger.info(f"Admin rights for circle {circle_id} granted by {user_id} to {member_id}")
@@ -8270,6 +8325,11 @@ async def send_circle_message(
     
     # Ensure chat exists
     chat = await db.get_document('chats', chat_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    sender_name = user.get('name') or user.get('sl_id') or 'User'
+
     if not chat:
         await db.set_document('chats', chat_id, {
             'type': 'circle',
@@ -8279,26 +8339,26 @@ async def send_circle_message(
     
     # Add message to subcollection
     msg_data = {
-        'sender_id': user['id'],
-        'sender_name': user['name'],
+        'sender_id': user_id,
+        'sender_name': sender_name,
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
         'content': message.content,
         'message_type': message.message_type.value,
-        'created_at': datetime.utcnow().isoformat() + 'Z'
+        'created_at': datetime.now(timezone.utc).isoformat()
     }
     
     msg_id = await db.add_message_to_chat(chat_id, msg_data.copy())
     
     response_data = {
         'id': msg_id,
-        'sender_id': user['id'],
-        'sender_name': user['name'],
+        'sender_id': user_id,
+        'sender_name': sender_name,
         'sender_photo': user.get('photo'),
         'sender_sl_id': user.get('sl_id'),
         'content': message.content,
         'message_type': message.message_type.value,
-        'created_at': datetime.utcnow().isoformat() + 'Z'
+        'created_at': datetime.now(timezone.utc).isoformat()
     }
 
     # Notify mentioned users in this circle message
@@ -8349,7 +8409,7 @@ async def get_temples(token_data: dict = Depends(verify_token)):
 
 
 @api_router.get("/temples/nearby")
-async def get_nearby_temples(lat: float = None, lng: float = None, token_data: dict = Depends(verify_token)):
+async def get_nearby_temples(lat: Optional[float] = None, lng: Optional[float] = None, token_data: dict = Depends(verify_token)):
     """Get temples, optionally filtered by location"""
     from services.temple_service import TempleService
     user_id = token_data.get("user_id")
@@ -8379,11 +8439,14 @@ async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
     db = await get_db()
     user = await db.get_document('users', token_data["user_id"])
     
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
     # Check KYC verification for temple role
     if user.get('kyc_status') != 'verified' or user.get('kyc_role') != 'temple':
         raise HTTPException(status_code=403, detail="Only verified temple admins can create temple pages")
     
-    temple_id = data.get('temple_id') or f"temple_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{token_data['user_id'][:8]}"
+    temple_id = data.get('temple_id') or f"temple_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{token_data['user_id'][:8]}"
     
     temple_data = {
         'temple_id': temple_id,
@@ -8399,7 +8462,7 @@ async def create_temple(data: dict, token_data: dict = Depends(verify_token)):
         'contact': data.get('contact', ''),
         'images': data.get('images', []),
         'admin_id': token_data['user_id'],
-        'admin_name': user['name'],
+        'admin_name': user.get('name') or user.get('sl_id') or 'Admin',
         'followers': [],
         'is_verified': True,
         'community_type': 'temple_channel',
@@ -9550,7 +9613,7 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
 
     if report.get('status') in ['approved', 'denied', 'resolved']:
         return {
-            'message': f"Report already reviewed",
+            'message': "Report already reviewed",
             'report_id': report_id,
             'status': report.get('status'),
         }
@@ -9947,7 +10010,6 @@ async def ai_chat(
     3. Those shlokas are injected as grounded context
     4. Groq LLM responds as Krishna, grounded in actual Gita wisdom
     """
-    import os
     import asyncio
 
     messages = data.get("messages", [])
@@ -10469,11 +10531,11 @@ async def get_nakshatra_report(
 
     try:
         data = await astrology_api_service.get_kundli_data(
-            lat=float(resolved_lat),
-            lon=float(resolved_lng),
+            lat=resolved_lat,
+            lon=resolved_lng,
             dob_str=str(dob_str),
             tob_str=str(tob_str),
-            tz=float(resolved_tz)
+            tz=resolved_tz
         )
         return data
     except Exception as exc:
@@ -10558,7 +10620,7 @@ async def send_blood_request_otp(request: OTPRequest):
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
         
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # Retrieve current status from database (bypass cache)
     record = await db.find_one("blood_request_otp_verifications", [("phone", "==", mobile)])
@@ -10671,7 +10733,7 @@ async def verify_blood_request_otp(request: OTPVerify):
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
         
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     # Retrieve current status from database (bypass cache)
     record = await db.find_one("blood_request_otp_verifications", [("phone", "==", mobile)])
@@ -10743,7 +10805,7 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     """Create a new help request"""
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
+    user = (await db.get_document('users', user_id)) or {}
     
     # Check if user already has an active request
     existing = await db.find_one('help_requests', [
@@ -10769,7 +10831,7 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
         # Retrieve verification record (bypass cache)
         record = await db.find_one("blood_request_otp_verifications", [("phone", "==", contact_mobile)])
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         verified = False
         if record and record.get("verified", False):
             # Check if verified status has expired
@@ -10798,11 +10860,11 @@ async def create_help_request(data: HelpRequestCreate, token_data: dict = Depend
     location = data.location
     if not location:
         if data.community_level.value == 'area':
-            location = user.get('location_area', {}).get('area', 'Unknown')
+            location = (user.get('location_area') or {}).get('area', 'Unknown')
         elif data.community_level.value == 'city':
-            location = user.get('location_area', {}).get('city', 'Unknown')
+            location = (user.get('location_area') or {}).get('city', 'Unknown')
         elif data.community_level.value == 'state':
-            location = user.get('location_area', {}).get('state', 'Unknown')
+            location = (user.get('location_area') or {}).get('state', 'Unknown')
         else:
             location = 'India'
     
@@ -11166,7 +11228,7 @@ async def get_vendors(
                     except Exception:
                         pass
                         
-            if valid_c:
+            if valid_c and v_lat is not None and v_lng is not None:
                 # Haversine formula
                 R = 6371  # Earth radius in km
                 lat1, lon1 = math.radians(lat), math.radians(lng)
@@ -11546,7 +11608,7 @@ async def upload_vendor_kyc_file(
             expiration=timedelta(days=7),
             method="GET"
         )
-        signed_url_expires_at = (datetime.utcnow() + timedelta(days=7)).isoformat()
+        signed_url_expires_at = (datetime.now(timezone.utc) + timedelta(days=7)).isoformat()
     except Exception as e:
         logger.warning(f"Could not generate signed URL for {object_path}: {e}")
 
@@ -11833,7 +11895,7 @@ async def _get_sandbox_headers() -> dict:
         auth_header = sandbox_auth
 
     if not auth_header:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         cached_token = _sandbox_auth_cache.get("token")
         cached_expiry = _sandbox_auth_cache.get("expires_at")
         if cached_token and cached_expiry and cached_expiry > now:
@@ -11846,7 +11908,7 @@ async def _get_sandbox_headers() -> dict:
             auth_headers = {
                 "x-api-key": sandbox_api_key,
                 "x-api-secret": sandbox_api_secret,
-                "x-api-version": str(sandbox_api_version),
+                "x-api-version": sandbox_api_version,
             }
             try:
                 def _auth():
@@ -11877,7 +11939,7 @@ async def _get_sandbox_headers() -> dict:
     return {
         "Authorization": auth_header,
         "x-api-key": sandbox_api_key,
-        "x-api-version": str(sandbox_api_version),
+        "x-api-version": sandbox_api_version,
         "Content-Type": "application/json",
     }
 
@@ -12021,7 +12083,7 @@ async def verify_vendor_aadhaar_otp(vendor_id: str, data: dict = Body(...), toke
 
     await db.update_document('vendors', vendor_id, {
         'kyc_status': 'manual_review',
-        'aadhaar_otp_verified_at': datetime.utcnow().isoformat() + 'Z',
+        'aadhaar_otp_verified_at': datetime.now(timezone.utc).isoformat(),
         'aadhaar_reference_id': reference_id,
     })
     await _sync_vendor_to_admin_queue(db, vendor_id)
@@ -12076,7 +12138,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     
     from services.nattyfish_service import _normalize_phone
     try:
-        mobile = _normalize_phone(phone)
+        mobile = _normalize_phone(str(phone))
         def _get_otp_docs():
             return db.client.collection("otp_verifications").where("phone", "==", mobile).where("purpose", "==", "delete_business").limit(1).get()
         docs = await db._run_sync(_get_otp_docs)
@@ -12140,7 +12202,7 @@ async def create_or_update_job_profile(data: JobProfileCreate, token_data: dict 
         "owner_id": user_id,
         "name": (data.name or (user or {}).get('name') or '').strip(),
         "current_address": (data.current_address or '').strip(),
-        "experience_years": int(data.experience_years or 0),
+        "experience_years": data.experience_years or 0,
         "profession": (data.profession or '').strip(),
         "preferred_work_city": (data.preferred_work_city or '').strip(),
         "latitude": data.latitude,
@@ -12297,7 +12359,7 @@ async def upload_job_profile_file(
     try:
         bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
 
-        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S%f')
+        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
         if doc_type == 'photo':
             object_path = f"jobs/{profile_id}/photos/{timestamp}.{extension}"
         else:
@@ -12356,7 +12418,7 @@ async def get_vendor_review_queue(
             f.write("Attempting query with ordering...\n")
         records = await db.query_documents(
             'vendor_admin_reviews',
-            filters=filters if filters else None,
+            filters=filters,
             order_by='updated_at',
             order_direction='DESCENDING',
             limit=limit,
@@ -12369,7 +12431,7 @@ async def get_vendor_review_queue(
         try:
             records = await db.query_documents(
                 'vendor_admin_reviews',
-                filters=filters if filters else None,
+                filters=filters,
             )
             with open(log_path, 'a') as f:
                 f.write(f"Fallback query fetched {len(records)} records. Types of updated_at:\n")
@@ -12408,7 +12470,7 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
 
     await db.update_document('vendors', vendor_id, {
         'kyc_status': 'verified',
-        'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
+        'kyc_verified_at': datetime.now(timezone.utc).isoformat(),
         'kyc_reviewed_by': admin_user_id,
         'kyc_review_note': data.get('note'),
     })
@@ -12417,7 +12479,7 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
         **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'verified'}),
         'review_status': 'approved',
         'review_state': 'closed',
-        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
+        'reviewed_at': datetime.now(timezone.utc).isoformat(),
         'reviewed_by': admin_user_id,
         'review_note': data.get('note'),
     })
@@ -12427,7 +12489,7 @@ async def admin_approve_vendor(vendor_id: str, data: dict = Body(default={}), to
     if owner_id:
         await db.update_document('users', owner_id, {
             'kyc_status': 'verified',
-            'kyc_verified_at': datetime.utcnow().isoformat() + 'Z',
+            'kyc_verified_at': datetime.now(timezone.utc).isoformat(),
             'is_verified': True,
             'kyc_role': 'vendor'
         })
@@ -12455,14 +12517,14 @@ async def admin_reject_vendor(vendor_id: str, data: dict = Body(default={}), tok
         'kyc_status': 'rejected',
         'kyc_rejection_reason': reason,
         'kyc_reviewed_by': admin_user_id,
-        'kyc_reviewed_at': datetime.utcnow().isoformat() + 'Z',
+        'kyc_reviewed_at': datetime.now(timezone.utc).isoformat(),
     })
 
     await db.set_document('vendor_admin_reviews', vendor_id, {
         **_build_vendor_admin_snapshot({**vendor, 'id': vendor_id, 'kyc_status': 'rejected'}),
         'review_status': 'rejected',
         'review_state': 'closed',
-        'reviewed_at': datetime.utcnow().isoformat() + 'Z',
+        'reviewed_at': datetime.now(timezone.utc).isoformat(),
         'reviewed_by': admin_user_id,
         'rejection_reason': reason,
     })
@@ -12506,10 +12568,12 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
 
     reviews = await db.query_documents('vendor_admin_reviews', filters=[('vendor_id', '==', vendor_id)])
     for review in reviews:
-        try:
-            await db.delete_document('vendor_admin_reviews', review.get('id'))
-        except Exception:
-            pass
+        doc_id = review.get('id')
+        if doc_id:
+            try:
+                await db.delete_document('vendor_admin_reviews', doc_id)
+            except Exception:
+                pass
 
     # Delete vendor
     if vendor:
@@ -12537,7 +12601,9 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
             try:
                 kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', owner_id)])
                 for doc in kyc_docs:
-                    await db.delete_document('kyc_submissions', doc.get('id'))
+                    doc_id = doc.get('id')
+                    if doc_id:
+                        await db.delete_document('kyc_submissions', str(doc_id))
             except Exception:
                 pass
 
@@ -12554,19 +12620,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
     """Create a community request (help, blood, medical, financial, petition)"""
     db = await get_db()
     user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
-    
-    # CHECK: User can only have ONE active request at a time (Disabled as per user request to allow multiple active requests)
-    # existing_active = await db.find_one('community_requests', [
-    #     ('user_id', '==', user_id),
-    #     ('status', '==', 'active')
-    # ])
-    # 
-    # if existing_active:
-    #     raise HTTPException(
-    #         status_code=400, 
-    #         detail="You already have an active request. Please mark it as fulfilled before creating a new one."
-    #     )
+    user = (await db.get_document('users', user_id)) or {}
     
     # Get user location info for visibility matching
     location_area = user.get('home_location', {}) or user.get('location', {})
@@ -12574,6 +12628,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
         location_area = {}
     
     resolved_community_id = data.community_id
+    comms_by_id = {}
     if not resolved_community_id:
         user_community_ids = user.get('communities', []) or []
         
@@ -12695,7 +12750,7 @@ async def create_community_request(data: CommunityRequestCreate, token_data: dic
                 body = f"[{data.request_type.value.upper()}] {data.title}"
                 notification_data = {
                     'type': 'community_request',
-                    'requestId': str(request_id),
+                    'requestId': request_id,
                     'community_id': str(resolved_community_id),
                 }
                 # Enqueue multicast notifications and database saves
@@ -12853,7 +12908,7 @@ async def get_community_requests(
     # Sort requests: 
     # 1. State/National requests created < 24h ago matching user location go to TOP
     # 2. Others following by date (descending)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     def _request_priority(r):
         vis = r.get('visibility_level', 'area')
         c_at = r.get('created_at')
@@ -12987,7 +13042,7 @@ async def toggle_request_interest(request_id: str, token_data: dict = Depends(ve
 
                 notif_data = {
                     'type': 'community_interest',
-                    'requestId': str(request_id),
+                    'requestId': request_id,
                     'community_id': str(request.get('community_id', '')),
                     'action': 'found' if is_lost_found else 'interested',
                 }
@@ -13078,7 +13133,7 @@ async def _get_nearest_users(
     candidates = []
     
     # Calculate 10 minutes ago
-    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+    ten_minutes_ago = datetime.now(timezone.utc) - timedelta(minutes=10)
     
     for user in users:
         if user.get('id') == user_id:
@@ -13132,17 +13187,21 @@ async def _get_community_users(
         return []
     
     community_members = set()
-    for comm_id in user_communities[:3]:
-        comm = await db.get_document('communities', comm_id)
-        if comm:
-            members = comm.get('members', [])
-            for member_id in members:
-                if member_id != user_id:
-                    community_members.add(member_id)
-                    if len(community_members) >= max_users:
-                        break
-        if len(community_members) >= max_users:
-            break
+
+    # ⚡ Bolt Optimization: Batch fetch up to 3 communities to prevent N+1 queries
+    comm_ids_to_fetch = user_communities[:3]
+    if comm_ids_to_fetch:
+        fetched_comms = await db.get_documents_batch('communities', comm_ids_to_fetch)
+        for comm in fetched_comms:
+            if comm:
+                members = comm.get('members', [])
+                for member_id in members:
+                    if member_id != user_id:
+                        community_members.add(member_id)
+                        if len(community_members) >= max_users:
+                            break
+            if len(community_members) >= max_users:
+                break
     
     logger.info(f"_get_community_users: found {len(community_members)} community members")
     return list(community_members)[:max_users]
@@ -13192,6 +13251,8 @@ async def _escalate_sos_notifications(sos_id: str, all_user_ids: list):
         })
 
         sos_alert = await db.get_document('sos_alerts', sos_id)
+        if not sos_alert:
+            return
         title = f"Emergency SOS nearby: {sos_alert.get('emergency_type', 'Emergency')}"
         body = f"{sos_alert.get('user_name')} needs help at {sos_alert.get('micro_location', 'nearby')}"
         
@@ -13229,7 +13290,7 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
                 'notification_type': notification_type,
                 'data': data,
                 'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z'
+                'created_at': datetime.now(timezone.utc).isoformat()
             }
             notification_id = await db.create_document('notifications', notification_data)
             notification_data['id'] = notification_id
@@ -13265,19 +13326,21 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         raise HTTPException(status_code=400, detail="You already have an active SOS alert")
     
     # Get location info from user if not provided
-    area = data.area or user.get('location_area', {}).get('area', 'Unknown')
-    city = data.city or user.get('location_area', {}).get('city', 'Unknown')
-    state = data.state or user.get('location_area', {}).get('state', 'Unknown')
+    user_dict = user or {}
+    user_location = user_dict.get('location_area') or {}
+    area = data.area or user_location.get('area', 'Unknown')
+    city = data.city or user_location.get('city', 'Unknown')
+    state = data.state or user_location.get('state', 'Unknown')
     
     # Create SOS alert with 30 minute expiry
-    expires_at = datetime.utcnow() + timedelta(minutes=30)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=30)
     
     sos_data = {
         "user_id": user_id,
-        "user_name": user.get('name'),
-        "user_photo": user.get('photo'),
-        "user_sl_id": user.get('sl_id'),
-        "phone_number": user.get('phone'),
+        "user_name": user_dict.get('name'),
+        "user_photo": user_dict.get('photo'),
+        "user_sl_id": user_dict.get('sl_id'),
+        "phone_number": user_dict.get('phone'),
         "latitude": data.latitude,
         "longitude": data.longitude,
         "emergency_type": data.emergency_type,
@@ -13290,7 +13353,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         "escalation_level": 1,
         "notified_user_ids": [],
         "escalation_step": 1,
-        "created_at": datetime.utcnow().isoformat() + 'Z',
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "expires_at": expires_at.isoformat()
     }
     
@@ -13314,7 +13377,7 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         logger.info("SOS: Few users found within 1km/10min, expanding search to 10km/24h")
         expanded_users = []
         users = await db.query_documents('users')
-        one_day_ago = datetime.utcnow() - timedelta(hours=24)
+        one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         for u in users:
             uid = u.get('id')
             if uid == user_id or uid in all_target_user_ids:
@@ -13359,18 +13422,18 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         
         # Simple message format
         sos_type_display = sos_data['emergency_type'].title() if sos_data['emergency_type'] else 'Emergency'
-        title = f"🚨 {user.get('name')} created a {sos_type_display} SOS"
+        title = f"🚨 {user_dict.get('name', 'User')} created a {sos_type_display} SOS"
         body = f"Location: {sos_data['micro_location'] or area}"
         
         notification_data = {
             'type': 'sos_alert',
             'sos_id': sos_id,
-            'creator_name': user.get('name', 'User'),
-            'creator_sl_id': user.get('sl_id', ''),
+            'creator_name': user_dict.get('name', 'User'),
+            'creator_sl_id': user_dict.get('sl_id', ''),
             'sos_type': sos_data['emergency_type'] or 'emergency',
             'latitude': str(data.latitude),
             'longitude': str(data.longitude),
-            'phone': user.get('phone', ''),
+            'phone': user_dict.get('phone', ''),
             'micro_location': sos_data['micro_location'] or '',
         }
         
@@ -13381,17 +13444,17 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         await task_queue.enqueue(_save_bulk_notifications, db, all_target_user_ids, title, body, 'sos', notification_data)
 
     # Broadcast to community chat
-    community_ids = user.get('communities', [])
+    community_ids = user_dict.get('communities', [])
     for comm_id in community_ids[:3]:  # Broadcast to first 3 communities
         try:
             alert_message = {
                 'sender_id': 'system',
                 'sender_name': 'Emergency Alert',
-                'content': f"🚨 EMERGENCY SOS\n\nUser: {user.get('name')}\nLocation: {area}, {city}\n\nTap to help or call {user.get('phone')}",
+                'content': f"🚨 EMERGENCY SOS\n\nUser: {user_dict.get('name', 'User')}\nLocation: {area}, {city}\n\nTap to help or call {user_dict.get('phone', 'N/A')}",
                 'message_type': 'sos_alert',
                 'sos_id': sos_id,
                 'sos_data': sos_data,
-                'created_at': datetime.utcnow().isoformat() + 'Z'
+                'created_at': datetime.now(timezone.utc).isoformat()
             }
             chat_id = f"community_{comm_id}_chat"
             await db.add_message_to_chat(chat_id, alert_message)
@@ -13433,7 +13496,7 @@ async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), to
         "creator_id": alert.get("user_id"),
         "creator_name": alert.get("user_name"),
         "reason": reason,
-        "created_at": datetime.utcnow().isoformat() + 'Z'
+        "created_at": datetime.now(timezone.utc).isoformat()
     }
     
     report_id = await db.create_document('sos_misuse_reports', report_data)
@@ -13515,7 +13578,7 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
     
     await db.update_document('sos_alerts', sos_id, {
         'status': status,
-        'resolved_at': datetime.utcnow().isoformat() + 'Z'
+        'resolved_at': datetime.now(timezone.utc).isoformat()
     })
     
     if status == 'resolved':
@@ -13540,7 +13603,7 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                     'notification_type': 'sos',
                     'data': notification_data,
                     'is_read': False,
-                    'created_at': datetime.utcnow().isoformat() + 'Z'
+                    'created_at': datetime.now(timezone.utc).isoformat()
                 })
             except Exception as e:
                 logger.error(f"Failed to send/save SOS resolved notification for responder {responder_id}: {e}")
@@ -13585,34 +13648,34 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     
     responder_data = {
         "user_id": user_id,
-        "user_name": user.get('name'),
-        "user_photo": user.get('photo'),
+        "user_name": (user or {}).get('name', 'User'),
+        "user_photo": (user or {}).get('photo'),
         "response": response,
         "status": 'on_the_way' if response == 'coming' else 'called',
-        "responded_at": datetime.utcnow().isoformat() + 'Z'
+        "responded_at": datetime.now(timezone.utc).isoformat()
     }
     
     await db.array_union_update('sos_alerts', sos_id, 'responders', [responder_data])
     
     # Get updated responder count
     updated_alert = await db.get_document('sos_alerts', sos_id)
-    responder_count = len(updated_alert.get('responders', []) or [])
+    responder_count = len((updated_alert or {}).get('responders', []) or [])
     
     # Send notification to SOS creator with count
-    creator_user_id = updated_alert.get('user_id')
+    creator_user_id = (updated_alert or {}).get('user_id')
     if creator_user_id:
         count_msg = f"{responder_count} {'person is' if responder_count == 1 else 'people are'} on the way to help"
         notification_data = {
             'type': 'sos_responder_count', 
             'sos_id': sos_id, 
             'responder_count': str(responder_count),
-            'responder_name': user.get('name'),
+            'responder_name': (user or {}).get('name', 'User'),
             'response': response
         }
         await task_queue.enqueue(
             FirebaseNotificationService.send_push_notification,
             creator_user_id,
-            f'{user.get("name")} is coming to help!',
+            f'{(user or {}).get("name", "User")} is coming to help!',
             count_msg,
             notification_data
         )
@@ -13622,12 +13685,12 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
         try:
             await db.create_document('notifications', {
                 'user_id': creator_user_id,
-                'title': f'{user.get("name")} is coming to help!',
+                'title': f'{(user or {}).get("name", "User")} is coming to help!',
                 'body': count_msg,
                 'notification_type': 'sos',
                 'data': notification_data,
                 'is_read': False,
-                'created_at': datetime.utcnow().isoformat() + 'Z'
+                'created_at': datetime.now(timezone.utc).isoformat()
             })
         except Exception as e:
             logger.error(f"Failed to save SOS responder notification: {e}")
@@ -13635,7 +13698,7 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
     await sio.emit('sos_response', {
         'sos_id': sos_id,
         'responder_id': user_id,
-        'responder_name': user.get('name'),
+        'responder_name': (user or {}).get('name', 'User'),
         'responder_count': responder_count,
         'response': response
     })
@@ -13834,7 +13897,6 @@ HOROSCOPE_TEMPLATES = {
 
 def calculate_panchang(date: datetime, lat: float = 28.6139, lng: float = 77.2090):
     """Calculate Panchang for given date and location"""
-    import math
     
     # Calculate day of year
     day_of_year = date.timetuple().tm_yday
@@ -14158,10 +14220,10 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             }
         if "detailed_predictions" not in data or not isinstance(data["detailed_predictions"], dict):
             data["detailed_predictions"] = {
-                "finance": f"Opportunities for wealth and new growth are on the horizon. Be mindful of your investments today.",
-                "love": f"Spiritual connections will deepen. Communicate with honesty and open your heart to your loved ones.",
-                "health": f"Maintain your vitality with mindful practices like yoga or meditation. Keep your energy high.",
-                "overall": f"A beautiful day focused on self-reflection and spiritual growth. The stars favor your determination."
+                "finance": "Opportunities for wealth and new growth are on the horizon. Be mindful of your investments today.",
+                "love": "Spiritual connections will deepen. Communicate with honesty and open your heart to your loved ones.",
+                "health": "Maintain your vitality with mindful practices like yoga or meditation. Keep your energy high.",
+                "overall": "A beautiful day focused on self-reflection and spiritual growth. The stars favor your determination."
             }
         
         # Cache the generated result for 12 hours
@@ -14996,7 +15058,8 @@ async def home_init(seen_ids: str = '', token_data: dict = Depends(verify_token)
 
 
 # Include router
-# app.include_router(api_router) moved to bottom to ensure all routes are included
+# app.include_router(api_router)
+# app.include_router(e2ee_router, prefix="/api") moved to bottom to ensure all routes are included
 
 
 # =================== SOCKET.IO ===================
@@ -15396,32 +15459,35 @@ async def register_jaap_reminder(
     # We want to check if ANY of these sessions are currently subscribed.
     # If yes, we toggle all of them OFF (delete).
     # If no, we toggle all of them ON (create).
-    any_active = False
-    for session in sessions:
-        reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
-        existing = await db.get_document("jaap_reminders", reminder_id)
-        if existing and existing.get("active", False):
-            any_active = True
-            break
+
+    # ⚡ Bolt Optimization: Batch fetch instead of N+1 get_document calls
+    reminder_ids = [f"{user_id}:{mantra_type}:{session.lower()}" for session in sessions]
+    existing_docs = await db.get_documents_batch("jaap_reminders", reminder_ids)
+
+    any_active = any(doc and doc.get("active", False) for doc in existing_docs)
 
     if any_active:
         # Toggle off: delete all
-        for session in sessions:
-            reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
-            await db.delete_document("jaap_reminders", reminder_id)
+        # ⚡ Bolt Optimization: Batch delete instead of N+1 delete_document calls
+        await db.batch_delete_documents("jaap_reminders", reminder_ids)
         return {"message": f"Reminders removed for {mantra_type} jaap", "active": False}
     else:
         # Toggle on: create all
+        # ⚡ Bolt Optimization: Concurrent creates instead of sequential await
+        create_tasks = []
+        now_ts = datetime.utcnow().isoformat() + 'Z'
         for session in sessions:
             reminder_id = f"{user_id}:{mantra_type}:{session.lower()}"
             reminder_data = {
                 "user_id": user_id,
                 "mantra_type": mantra_type,
                 "session_name": session,
-                "created_at": datetime.utcnow().isoformat() + 'Z',
+                "created_at": now_ts,
                 "active": True
             }
-            await db.create_document("jaap_reminders", reminder_data, doc_id=reminder_id)
+            create_tasks.append(db.create_document("jaap_reminders", reminder_data, doc_id=reminder_id))
+
+        await asyncio.gather(*create_tasks)
         return {"message": f"Reminders set for all sessions of {mantra_type} jaap!", "active": True}
 
 
@@ -15719,6 +15785,7 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
 
 
 app.include_router(api_router)
+app.include_router(e2ee_router, prefix="/api")
 app.include_router(video_upload_router)
 app.mount("/socket.io", socket_app)
 

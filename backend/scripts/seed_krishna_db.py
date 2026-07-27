@@ -29,8 +29,8 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger("seed_krishna")
 
 # -- Config --
-CHROMA_API_KEY = os.environ.get("CHROMA_API_KEY", "ck-4VkTsJANy78AW6spNfLMywoYDNh7R4mkebwYysmZizRh")
-CHROMA_TENANT = os.environ.get("CHROMA_TENANT", "9a04c579-4ed1-4f4a-914a-d65b427af626")
+CHROMA_API_KEY = os.environ["CHROMA_API_KEY"]
+CHROMA_TENANT = os.environ["CHROMA_TENANT"]
 CHROMA_DATABASE = os.environ.get("CHROMA_DATABASE", "default_database")
 CHROMA_COLLECTION = "krishna_gita_knowledge"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")

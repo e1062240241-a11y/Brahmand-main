@@ -32,7 +32,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Notifications from 'expo-notifications';
-import { getCommunity, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch, reportContent, reportComment } from '../../src/services/api';
+import { decryptGroupMessage, getKeys, decryptSymmetricKey, generateSymmetricKey, encryptSymmetricKeyForUser } from '../../src/utils/cryptoUtil';
+import { getCommunity, getCommunityKey, addCommunityKey, getCommunityMessages, sendCommunityMessage, deleteCommunityMessage, resolveCommunityRequest, deleteCommunityRequest, sendDirectMessage, getUserProfile, parseApiError, getKYCStatus, toggleRequestInterest, getUsersBatch, reportContent, reportComment } from '../../src/services/api';
 import { scheduleEventReminderNotification } from '../../src/services/pushNotifications';
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
@@ -850,6 +851,9 @@ export default function CommunityDetailScreen() {
   const [fullScreenMedia, setFullScreenMedia] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [activeComments, setActiveComments] = useState<any[]>([]);
+
+  const [cachedSymmetricKey, setCachedSymmetricKey] = useState<string | undefined>(undefined);
+
   const [expandedPosts, setExpandedPosts] = useState<Record<string, boolean>>({});
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -3910,7 +3914,8 @@ export default function CommunityDetailScreen() {
               i === 0 ? (contactNumber || undefined) : undefined,
               i === 0 ? (sevaDetails || undefined) : undefined,
               i === 0 ? (postLocation || undefined) : undefined,
-              i === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined
+              i === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
+              cachedSymmetricKey
             );
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
 

@@ -8,6 +8,7 @@ export default class User extends Model {
   @text('sl_id') slId: string
   @text('photo') photo?: string
   @text('bio') bio?: string
+  @text('public_key') publicKey?: string
   @readonly @date('created_at') createdAt: Date
   @readonly @date('updated_at') updatedAt: Date
 }

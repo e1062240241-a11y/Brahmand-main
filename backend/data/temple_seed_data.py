@@ -90,6 +90,7 @@ TEMPLE_SEED_DATA = [
         "deity": "Lord Shiva",
         "aarti_timings": {"Mangala Aarti": "5:30 AM", "Madhyan Aarti": "12:00 PM", "Sandhya Aarti": "7:30 PM"},
         "guidance": "Reach Aurangabad and continue by road toward Ellora caves area; Grishneshwar temple is nearby with local signage. Combine darshan with off-peak timings to avoid heavy tourist congestion.",
+        "youtube_url": "https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1",
         "coords": {"latitude": 20.0258, "longitude": 75.178},
         "timings": {},
         "contact": "",

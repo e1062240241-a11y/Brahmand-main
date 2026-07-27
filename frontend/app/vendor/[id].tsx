@@ -1,4 +1,5 @@
 import React from 'react';
+import { Image } from 'expo-image';
 import {
   View,
   Text,
@@ -7,7 +8,6 @@ import {
   TouchableOpacity,
   Linking,
   Alert,
-  Image,
   BackHandler,
   ActivityIndicator,
   Dimensions,
@@ -449,7 +449,7 @@ export default function VendorProfileScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryContainer}>
               {galleryImages.map((photo: string, index: number) => (
                 <TouchableOpacity key={index} activeOpacity={0.85} onPress={() => setSelectedImage(photo)}>
-                  <Image source={{ uri: photo }} style={styles.galleryPhoto} resizeMode="cover" />
+                  <Image source={{ uri: photo }} style={styles.galleryPhoto} contentFit="cover" cachePolicy="memory-disk" />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -584,14 +584,16 @@ export default function VendorProfileScreen() {
         onRequestClose={() => setSelectedImage(null)}
       >
         <View style={styles.modalContainer}>
-          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedImage(null)}>
+          <TouchableOpacity style={styles.modalCloseButton} onPress={() => setSelectedImage(null)} activeOpacity={0.7}>
             <Ionicons name="close" size={28} color="#FFFFFF" />
           </TouchableOpacity>
           {selectedImage && (
             <Image
               source={{ uri: selectedImage }}
               style={styles.fullImage}
-              resizeMode="contain"
+              contentFit="contain"
+              transition={0}
+              cachePolicy="memory-disk"
             />
           )}
         </View>
@@ -953,5 +955,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F26522',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 20,
+  },
+  fullImage: {
+    width: '100%',
+    height: '80%',
   },
 });

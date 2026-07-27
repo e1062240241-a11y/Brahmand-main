@@ -125,7 +125,12 @@ export const UploadProgressBanner = () => {
           </View>
 
           {(status === 'success' || status === 'error') && (
-            <TouchableOpacity onPress={reset} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={reset}
+              style={styles.closeBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close banner"
+            >
               <Ionicons name="close" size={20} color={COLORS.textSecondary} />
             </TouchableOpacity>
           )}

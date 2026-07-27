@@ -336,8 +336,12 @@ class PushNotificationService:
             logger.info(f"No FCM token for user {recipient_id}")
             return False
         
-        # Truncate message preview
-        preview = message_preview[:100] + '...' if len(message_preview) > 100 else message_preview
+        # Truncate message preview or hide if encrypted
+        is_encrypted = message_preview and len(message_preview) > 30 and (
+            not message_preview.startswith("http") and not (" " in message_preview)
+        )
+        preview = "You have a new message." if is_encrypted else (message_preview[:100] + '...' if len(message_preview) > 100 else message_preview)
+
         
         result = cls.send_notification(
             token=token,
@@ -420,8 +424,12 @@ class PushNotificationService:
         if not tokens:
             return {'success_count': 0, 'failure_count': 0}
         
-        # Truncate message preview
-        preview = message_preview[:100] + '...' if len(message_preview) > 100 else message_preview
+        # Truncate message preview or hide if encrypted
+        is_encrypted = message_preview and len(message_preview) > 30 and (
+            not message_preview.startswith("http") and not (" " in message_preview)
+        )
+        preview = "You have a new message." if is_encrypted else (message_preview[:100] + '...' if len(message_preview) > 100 else message_preview)
+
         
         result = cls.send_multicast(
             tokens=tokens,
@@ -502,7 +510,12 @@ class PushNotificationService:
         if not tokens:
             return {'success_count': 0, 'failure_count': 0}
             
-        preview = message_preview[:100] + '...' if len(message_preview) > 100 else message_preview
+
+        is_encrypted = message_preview and len(message_preview) > 30 and (
+            not message_preview.startswith("http") and not (" " in message_preview)
+        )
+        preview = "You have a new message." if is_encrypted else (message_preview[:100] + '...' if len(message_preview) > 100 else message_preview)
+
         
         result = cls.send_multicast(
             tokens=tokens,

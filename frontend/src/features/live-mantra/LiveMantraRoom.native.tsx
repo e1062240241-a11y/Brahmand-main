@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { requestRecordingPermissionsAsync, useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets , SafeAreaView } from 'react-native-safe-area-context';
 import {
   Animated,
@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
   StatusBar,
+  AppState,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -396,6 +397,16 @@ export const LiveMantraRoom = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        if (AppState.currentState === 'active') {
+          cleanupAgora();
+        }
+      };
+    }, [])
+  );
 
   useEffect(() => {
     const checkWindow = () => {

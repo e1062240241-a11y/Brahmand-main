@@ -327,6 +327,49 @@ class FirestoreDB:
         
         return await self._run_sync(_create)
     
+
+    async def batch_create_documents(self, collection: str, docs: List[Dict[str, Any]]) -> List[str]:
+        """Create multiple documents in a collection using a batch."""
+        if not docs:
+            return []
+
+        now_iso = datetime.utcnow().isoformat() + 'Z'
+        generated_ids = []
+
+        if self.use_mock:
+            import uuid
+            coll = self._mock_collections.setdefault(collection, {})
+            for data in docs:
+                doc_id = str(uuid.uuid4())
+                generated_ids.append(doc_id)
+                data_copy = fast_copy(data)
+                if 'created_at' not in data_copy:
+                    data_copy['created_at'] = now_iso
+                if 'updated_at' not in data_copy:
+                    data_copy['updated_at'] = now_iso
+                data_copy['id'] = doc_id
+                coll[doc_id] = data_copy
+            return generated_ids
+
+        def _batch():
+            batch = self.client.batch()
+            coll_ref = self.client.collection(collection)
+            for data in docs:
+                doc_ref = coll_ref.document()  # Auto-generate ID
+                generated_ids.append(doc_ref.id)
+
+                data_copy = dict(data)
+                if 'created_at' not in data_copy:
+                    data_copy['created_at'] = now_iso
+                if 'updated_at' not in data_copy:
+                    data_copy['updated_at'] = now_iso
+
+                batch.set(doc_ref, data_copy)
+            batch.commit()
+            return generated_ids
+
+        return await self._run_sync(_batch)
+
     async def get_document(self, collection: str, doc_id: str) -> Optional[Dict[str, Any]]:
         """Get a document by ID with caching"""
         cache_key = f"{collection}:{doc_id}"
@@ -409,6 +452,47 @@ class FirestoreDB:
         for doc_id, _ in updates:
             await self._cache.delete(f"{collection}:{doc_id}")
     
+
+    async def batch_delete_documents(self, collection: str, doc_ids: List[str], batch_size: int = 500) -> int:
+        """Delete multiple documents in a collection using batched writes."""
+        if not doc_ids:
+            return 0
+
+        if self.use_mock:
+            coll = self._mock_collections.setdefault(collection, {})
+            deleted_count = 0
+            for doc_id in doc_ids:
+                if doc_id in coll:
+                    del coll[doc_id]
+                    deleted_count += 1
+                self._cache.delete(f"{collection}:{doc_id}")
+            return deleted_count
+
+        def _batch():
+            deleted_count = 0
+            coll_ref = self.client.collection(collection)
+
+            # Process in chunks of batch_size (Firestore limit is 500)
+            for i in range(0, len(doc_ids), batch_size):
+                chunk = doc_ids[i:i + batch_size]
+                batch = self.client.batch()
+
+                for doc_id in chunk:
+                    batch.delete(coll_ref.document(doc_id))
+                    deleted_count += 1
+
+                batch.commit()
+
+            return deleted_count
+
+        result = await self._run_sync(_batch)
+
+        # Invalidate cache for all deleted documents
+        for doc_id in doc_ids:
+            await self._cache.delete(f"{collection}:{doc_id}")
+
+        return result
+
     async def delete_document(self, collection: str, doc_id: str) -> bool:
         """Delete a document and invalidate cache"""
         if self.use_mock:

@@ -40,14 +40,11 @@ export const useSafeVideoPlayer = (
         const oldPlayer = playerRef.current;
         playerRef.current = null;
         setPlayer(null);
-        setTimeout(() => {
+        try {
           if (isPlayerValid(oldPlayer)) {
-            try {
-              oldPlayer.pause();
-              oldPlayer.release();
-            } catch (e) {}
+            oldPlayer.pause();
           }
-        }, 300);
+        } catch (e) {}
       }
       return;
     }
@@ -74,14 +71,11 @@ export const useSafeVideoPlayer = (
 
       if (playerRef.current && playerRef.current !== newPlayer) {
         const oldPlayer = playerRef.current;
-        setTimeout(() => {
+        try {
           if (isPlayerValid(oldPlayer)) {
-            try {
-              oldPlayer.pause();
-              oldPlayer.release();
-            } catch (e) {}
+            oldPlayer.pause();
           }
-        }, 300);
+        } catch (e) {}
       }
 
       playerRef.current = newPlayer;
@@ -91,14 +85,11 @@ export const useSafeVideoPlayer = (
     return () => {
       if (newPlayer) {
         playerRef.current = null;
-        setTimeout(() => {
+        try {
           if (isPlayerValid(newPlayer)) {
-            try {
-              newPlayer.pause();
-              newPlayer.release();
-            } catch (e) {}
+            newPlayer.pause();
           }
-        }, 300);
+        } catch (e) {}
       }
     };
   }, [typeof source === 'string' ? source : JSON.stringify(source)]);

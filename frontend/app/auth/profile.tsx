@@ -52,7 +52,7 @@ const INDIAN_CITIES = [
 export default function ProfileScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone: string }>();
-  const { login } = useAuthStore();
+  const { login, updateUser } = useAuthStore();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isAndroid = Platform.OS === 'android';
@@ -279,15 +279,23 @@ export default function ProfileScreen() {
 
       if (reverseGeocode && reverseGeocode.length > 0) {
         const address = reverseGeocode[0];
+        const detectedCityName = address.city || address.subregion || address.district || address.region || '';
         const readableLocation = [
-          address.city || address.subregion || address.district,
+          detectedCityName,
           address.region,
           address.country
         ].filter(Boolean).join(', ');
         const finalLoc = readableLocation || `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
         setCurrentCity(finalLoc);
         setLocation(finalLoc);
-        setGeocodeAddress({ city: address.city || address.subregion || address.district || '', region: address.region || '', country: address.country || '' });
+        if (detectedCityName) {
+          setCity(detectedCityName);
+        }
+        setGeocodeAddress({
+          city: detectedCityName,
+          region: address.region || '',
+          country: address.country || ''
+        });
       } else {
         const fallbackLoc = `${loc.coords.latitude.toFixed(4)}, ${loc.coords.longitude.toFixed(4)}`;
         setCurrentCity(fallbackLoc);
@@ -362,12 +370,15 @@ export default function ProfileScreen() {
       // Join communities based on location
       try {
         const locData = geocodeAddress || { city: city.trim(), region: '', country: '' };
-        await setupLocation({
+        const locRes = await setupLocation({
           country: locData.country || 'Bharat',
           state: locData.region || '',
-          city: locData.city || city.trim(),
+          city: city.trim() || locData.city || 'Mumbai',
           area: '',
         });
+        if (locRes?.data?.user) {
+          updateUser(locRes.data.user);
+        }
       } catch (locErr) {
         console.warn('Community join failed (non-blocking):', locErr);
       }

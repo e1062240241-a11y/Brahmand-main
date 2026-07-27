@@ -68,9 +68,14 @@ export const useFeedStore = create<FeedState>((set, get) => ({
             console.warn('[Feed Validation Store] Duplicate post ID detected and filtered out:', idStr);
           }
         }
+        const MAX_POSTS_PER_TAB = 50;
+        const trimmedPosts = validPosts.length > MAX_POSTS_PER_TAB
+          ? validPosts.slice(validPosts.length - MAX_POSTS_PER_TAB)
+          : validPosts;
+
         data = {
           ...data,
-          posts: validPosts,
+          posts: trimmedPosts,
         };
       }
 

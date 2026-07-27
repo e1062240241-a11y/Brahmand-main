@@ -2,7 +2,7 @@
   "expo": {
     "name": "Brahmand",
     "slug": "sanatan-lok",
-    "version": "1.1.5",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "sanatanlok",
@@ -146,6 +146,11 @@
             "deploymentTarget": "16.0",
             "useFrameworks": "static",
             "buildReactNativeFromSource": true
+          },
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "ndkVersion": "28.0.12916984"
           }
         }
       ],

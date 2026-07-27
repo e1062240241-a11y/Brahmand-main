@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Path, Rect } from 'react-native-svg';
-import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { useNavigation } from '@react-navigation/native';
 import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -700,16 +700,21 @@ export default function LiveJaapRoomView() {
     }
   };
 
+  const safePauseAudioPlayer = (player: any) => {
+    if (!player) return;
+    try {
+      if (player.released || player.isReleased) return;
+      const _ = player.status;
+      player.pause();
+    } catch (e) {
+      // Audio player already released natively — safely ignore
+    }
+  };
+
   // Explicit unmount cleanup for native background audio player
   useEffect(() => {
     return () => {
-      if (bgPlayer) {
-        try {
-          bgPlayer.pause();
-        } catch (e) {
-          console.warn('Failed to pause bgPlayer on unmount:', e);
-        }
-      }
+      safePauseAudioPlayer(bgPlayer);
     };
   }, [bgPlayer]);
 
@@ -744,6 +749,22 @@ export default function LiveJaapRoomView() {
       cleanupAgora();
     };
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        // Step 1: Tab switch / navigation away inside app
+        if (AppState.currentState === 'active') {
+          safePauseAudioPlayer(bgPlayer);
+          cleanupAgora();
+          const rName = 'jaap_' + (mantraType || 'gayatri');
+          socketService.leaveRoom(rName);
+        }
+        // Step 2: Screen off / app backgrounded while user is still on Live Jaap screen
+        // AppState is 'background' or 'inactive' => Do NOT leave room or kill channel, let background audio continue playing!
+      };
+    }, [bgPlayer, mantraType])
+  );
 
   const navigation = useNavigation();
   const allowedToRemoveRef = useRef(false);

@@ -17,6 +17,8 @@
 		D41980FBAEB84573B3BF273E /* bell.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C123174796A44241AB3AA5F1 /* bell.mp3 */; };
 		EC0CC7BE3A48422C878755A1 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 0C3F6A843ABF492F86062CB4 /* GoogleService-Info.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
+		BF116D1F549444EFA5FB339E /* bell_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = 9FED024C44444E42A33CC487 /* bell_ios.caf */; };
+		6DE172A721E641B9A7D7A6C1 /* soundreality_mayday_166011_ios.caf in Resources */ = {isa = PBXBuildFile; fileRef = 68CE5CD1E2FB4B32BB67A9F3 /* soundreality_mayday_166011_ios.caf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -36,6 +38,8 @@
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Brahmand/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Brahmand-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Brahmand-Bridging-Header.h"; path = "Brahmand/Brahmand-Bridging-Header.h"; sourceTree = "<group>"; };
 		F2A287BE64CDF62322923155 /* Pods_Brahmand.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Brahmand.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		9FED024C44444E42A33CC487 /* bell_ios.caf */ = {isa = PBXFileReference; name = "bell_ios.caf"; path = "Brahmand/bell_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		68CE5CD1E2FB4B32BB67A9F3 /* soundreality_mayday_166011_ios.caf */ = {isa = PBXFileReference; name = "soundreality_mayday_166011_ios.caf"; path = "Brahmand/soundreality_mayday_166011_ios.caf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +67,8 @@
 				C123174796A44241AB3AA5F1 /* bell.mp3 */,
 				6B630EBA5B344E49B55DC6EF /* soundreality_mayday_166011.mp3 */,
 				25AE47222610D129FE441C13 /* PrivacyInfo.xcprivacy */,
+				9FED024C44444E42A33CC487 /* bell_ios.caf */,
+				68CE5CD1E2FB4B32BB67A9F3 /* soundreality_mayday_166011_ios.caf */,
 			);
 			name = Brahmand;
 			sourceTree = "<group>";
@@ -213,6 +219,8 @@
 				D41980FBAEB84573B3BF273E /* bell.mp3 in Resources */,
 				72A846DE7C294FA190531FD9 /* soundreality_mayday_166011.mp3 in Resources */,
 				2C4AF9DD28A35903ED5ABF19 /* PrivacyInfo.xcprivacy in Resources */,
+				BF116D1F549444EFA5FB339E /* bell_ios.caf in Resources */,
+				6DE172A721E641B9A7D7A6C1 /* soundreality_mayday_166011_ios.caf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -486,7 +494,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -494,7 +502,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.brahmand.app;
-				PRODUCT_NAME = Brahmand;
+				PRODUCT_NAME = "Brahmand";
 				SWIFT_OBJC_BRIDGING_HEADER = "Brahmand/Brahmand-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -520,7 +528,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -528,7 +536,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.brahmand.app;
-				PRODUCT_NAME = Brahmand;
+				PRODUCT_NAME = "Brahmand";
 				SWIFT_OBJC_BRIDGING_HEADER = "Brahmand/Brahmand-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
