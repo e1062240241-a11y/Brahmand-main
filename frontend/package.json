@@ -71,7 +71,6 @@
     "expo-status-bar": "~55.0.6",
     "expo-symbols": "~55.0.9",
     "expo-system-ui": "~55.0.20",
-    "expo-text-recognition": "^0.1.1",
     "expo-tracking-transparency": "~55.0.16",
     "expo-video": "~55.0.19",
     "expo-web-browser": "~55.0.18",
@@ -125,7 +124,6 @@
       "reactNativeDirectoryCheck": {
         "exclude": [
           "expo-face-detector",
-          "expo-text-recognition",
           "@nozbe/watermelondb"
         ],
         "listUnknownPackages": false

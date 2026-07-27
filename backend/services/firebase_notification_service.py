@@ -323,7 +323,7 @@ class FirebaseNotificationService:
                 failed_tokens = []
                 for token in fcm_native_tokens:
                     try:
-                        message_kwargs = {
+                        message_kwargs: dict[str, Any] = {
                             'notification': notification,
                             'data': data or {},
                             'token': token
@@ -506,7 +506,7 @@ class FirebaseNotificationService:
                                 )
                             )
                         
-                        message_kwargs = {
+                        message_kwargs: dict[str, Any] = {
                             'notification': fcm.Notification(title=title, body=body),
                             'data': data or {},
                             'tokens': chunk
