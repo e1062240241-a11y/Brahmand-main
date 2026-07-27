@@ -9931,19 +9931,23 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
 
 @api_router.get("/notifications")
 async def get_notifications(token_data: dict = Depends(verify_token)):
+    user_id = token_data["user_id"]
     from services.firebase_notification_service import FirebaseNotificationService
     try:
-        return await FirebaseNotificationService.get_user_notifications(token_data["user_id"], limit=50)
+        notifications = await FirebaseNotificationService.get_user_notifications(user_id, limit=50)
     except Exception as e:
         logger.warning(f"Failed to query notifications via service: {e}. Falling back to unsorted local query.")
         db = await get_db()
         notifications = await db.query_documents(
             'notifications', 
-            filters=[('user_id', '==', token_data["user_id"])], 
+            filters=[('user_id', '==', user_id)], 
             limit=50
         )
         notifications.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
-        return notifications
+    
+    # Strictly guarantee that returned notifications belong ONLY to current authenticated user_id
+    strict_notifications = [n for n in (notifications or []) if str(n.get('user_id', '')) == str(user_id)]
+    return strict_notifications
 
 
 @api_router.get("/notifications/unread-count")

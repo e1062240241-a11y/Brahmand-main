@@ -552,8 +552,9 @@ class FirebaseNotificationService:
         
         # Fetch all matching without order_by to avoid Firestore index requirement
         docs = await db.query_documents('notifications', filters=filters)
-        docs.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
-        return docs[:limit]
+        filtered = [d for d in (docs or []) if str(d.get('user_id', '')) == str(user_id)]
+        filtered.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        return filtered[:limit]
     
     @staticmethod
     async def mark_as_read(user_id: str, notification_id: str) -> Dict[str, Any]:
