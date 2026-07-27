@@ -40,28 +40,21 @@ export const useBlockStore = create<BlockState>((set, get) => ({
       let blockedByMe: string[] = [];
       let blockedMe: string[] = [];
 
-      if (Platform.OS === 'android') {
-        try {
-          [blockedByMe, blockedMe] = await Promise.all([
-            getBlockedUsers(currentUserId),
-            getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[]),
-          ]);
-        } catch (firestoreError) {
-          console.warn('[blockStore] Android: Firestore read failed, falling back to backend API:', firestoreError);
-          try {
-            const response = await getBlockedUsersApi();
-            if (response && response.data) {
-              blockedByMe = response.data.map((u: any) => String(u.id));
-            }
-          } catch (apiError) {
-            console.warn('[blockStore] Android backend API fallback also failed:', apiError);
-          }
-        }
-      } else {
+      try {
         [blockedByMe, blockedMe] = await Promise.all([
           getBlockedUsers(currentUserId),
           getUsersWhoBlockedMe(currentUserId).catch(() => [] as string[]),
         ]);
+      } catch (_firebaseError) {
+        // Direct Firestore read restricted by rules, seamlessly fallback to backend API
+        try {
+          const response = await getBlockedUsersApi();
+          if (response && response.data) {
+            blockedByMe = response.data.map((u: any) => String(u.id));
+          }
+        } catch (apiError) {
+          console.warn('[blockStore] Backend API fallback failed:', apiError);
+        }
       }
 
       const combined = Array.from(new Set([...blockedByMe, ...blockedMe]));
