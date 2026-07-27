@@ -365,22 +365,36 @@ export default function KycSubmitScreen() {
       return;
     }
 
+    const cleanPhone = phoneNumber.trim();
+    let fullPhone = cleanPhone;
+    if (cleanPhone) {
+      fullPhone = cleanPhone.startsWith('+') ? cleanPhone : `${countryCode}${cleanPhone}`;
+    } else {
+      fullPhone = params.verifiedPhone || (user as any)?.kyc_verified_phone || user?.phone || '';
+    }
+
     setSubmitLoading(true);
     try {
       const response = await submitKYC({
         kyc_role: 'vendor',
-        id_type: 'aadhaar',
+        id_type: idType,
         id_number: idNumber.trim() || '123456789012',
         id_photo: idPhotoBase64,
         selfie_photo: selfieBase64,
         bypass_validation: false,
-        full_name: fullName,
+        full_name: fullName.trim(),
+        phone_number: fullPhone,
+        date_of_birth: dob.trim(),
       });
 
       const newStatus = (response?.data?.status || 'pending') as KycStatus;
       const requestNo = response?.data?.kyc_request_no;
       setKycStatus(newStatus);
-      updateUser({ kyc_status: newStatus } as any);
+      updateUser({
+        kyc_status: newStatus,
+        kyc_verified_phone: fullPhone || (user as any)?.kyc_verified_phone,
+        phone: fullPhone || user?.phone,
+      } as any);
 
       if (requestNo) {
         router.replace({
@@ -461,7 +475,7 @@ export default function KycSubmitScreen() {
                   </View>
                   <TouchableOpacity 
                     style={styles.primaryBtn} 
-                    onPress={() => returnUrl ? router.replace(returnUrl as any) : router.replace('/kyc')}
+                    onPress={() => returnUrl ? router.replace(returnUrl as any) : router.replace('/(tabs)/profile')}
                   >
                     <Text style={styles.primaryBtnText}>Go Back</Text>
                   </TouchableOpacity>

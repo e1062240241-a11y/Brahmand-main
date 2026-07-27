@@ -237,6 +237,13 @@ export default function KYCStatusScreen() {
   const { user, updateUser } = useAuthStore();
   const [loadingStatus, setLoadingStatus] = useState(true);
 
+  useEffect(() => {
+    router.replace({
+      pathname: '/kyc-submit',
+      params: returnUrl ? { returnUrl } : {}
+    } as any);
+  }, [returnUrl, router]);
+
   // Phone state
   const initialPhone =
     (user as any)?.kyc_verified_phone ||

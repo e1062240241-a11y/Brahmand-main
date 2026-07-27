@@ -136,7 +136,7 @@ export default function VendorDashboardScreen() {
         Alert.alert(
           'KYC Required',
           'Please complete your KYC verification to access the dashboard.',
-          [{ text: 'OK', onPress: () => router.replace('/kyc') }]
+          [{ text: 'OK', onPress: () => router.replace('/kyc-submit') }]
         );
       }
     }
@@ -217,7 +217,7 @@ export default function VendorDashboardScreen() {
               const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
               if (!isUserVerified) {
                 router.replace({
-                  pathname: '/kyc',
+                  pathname: '/kyc-submit',
                   params: { returnUrl: '/(tabs)/vendor' }
                 });
               } else {
@@ -461,7 +461,7 @@ export default function VendorDashboardScreen() {
   };
 
   const handleOpenKyc = () => {
-    router.push('/kyc');
+    router.push('/kyc-submit');
   };
 
   const handleDeleteBusiness = async () => {

@@ -964,6 +964,7 @@ async def _ensure_admin_user(token_data: dict):
 
 def _build_vendor_admin_snapshot(vendor: dict) -> dict:
     """Build admin-facing snapshot of vendor profile and KYC fields."""
+    phone = vendor.get('phone_number') or vendor.get('contact_number')
     return {
         'vendor_id': vendor.get('id'),
         'owner_id': vendor.get('owner_id'),
@@ -973,7 +974,8 @@ def _build_vendor_admin_snapshot(vendor: dict) -> dict:
         'categories': vendor.get('categories', []),
         'full_address': vendor.get('full_address'),
         'location_link': vendor.get('location_link'),
-        'phone_number': vendor.get('phone_number'),
+        'phone_number': phone,
+        'contact_number': phone,
         'latitude': vendor.get('latitude'),
         'longitude': vendor.get('longitude'),
         'photos': vendor.get('photos', []),
@@ -8844,6 +8846,19 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         if uploaded_url:
             selfie_photo = uploaded_url
     
+    phone_number = (data.get('phone_number') or data.get('phone') or data.get('kyc_verified_phone') or '').strip()
+    full_name = (data.get('full_name') or '').strip()
+    date_of_birth = (data.get('date_of_birth') or data.get('dob') or '').strip()
+
+    user_doc = await db.get_document('users', user_id)
+    if not phone_number and user_doc:
+        phone_number = (
+            user_doc.get('kyc_verified_phone')
+            or user_doc.get('phone')
+            or user_doc.get('phone_number')
+            or ''
+        ).strip()
+
     # Store KYC documents (for admin review)
     kyc_data = {
         'kyc_status': 'pending',
@@ -8857,6 +8872,16 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         'kyc_verified_at': None,
         'is_verified': False,
     }
+
+    if phone_number:
+        kyc_data['kyc_verified_phone'] = phone_number
+        kyc_data['phone'] = phone_number
+        kyc_data['phone_number'] = phone_number
+
+    if full_name:
+        kyc_data['name'] = full_name
+    if date_of_birth:
+        kyc_data['date_of_birth'] = date_of_birth
 
     match_result = {'status': 'pending', 'distance': None, 'reason': 'awaiting_admin_review'}
     if id_type == 'pan' and kyc_data['kyc_id_photo'] and kyc_data['kyc_selfie_photo']:
@@ -8884,6 +8909,11 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
                 'kyc_status': kyc_data['kyc_status'],
                 'kyc_rejection_reason': None
             }
+            if phone_number:
+                vendor_updates['phone_number'] = phone_number
+                vendor_updates['contact_number'] = phone_number
+            if full_name:
+                vendor_updates['owner_name'] = full_name
             if id_type == 'aadhaar':
                 vendor_updates['aadhar_url'] = id_photo
             elif id_type == 'pan':
@@ -9095,13 +9125,19 @@ async def sync_legacy_kyc_data_in_db():
                 
             # Phone sync
             u_phone = u.get('kyc_verified_phone') or u.get('phone') or u.get('phone_number')
-            v_phone = v.get('phone_number') if v else None
+            v_phone = (v.get('phone_number') or v.get('contact_number')) if v else None
             best_phone = u_phone or v_phone
             
-            if best_phone and not u.get('kyc_verified_phone'):
-                updates['kyc_verified_phone'] = best_phone
-            if best_phone and v and not v.get('phone_number'):
-                v_updates['phone_number'] = best_phone
+            if best_phone:
+                if not u.get('kyc_verified_phone'):
+                    updates['kyc_verified_phone'] = best_phone
+                if not u.get('phone'):
+                    updates['phone'] = best_phone
+                if v:
+                    if not v.get('phone_number'):
+                        v_updates['phone_number'] = best_phone
+                    if not v.get('contact_number'):
+                        v_updates['contact_number'] = best_phone
                 
             # Document URLs sync from vendor if user photos missing
             if v:

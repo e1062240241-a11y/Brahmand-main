@@ -112,7 +112,7 @@ export default function JobProfileDetailScreen() {
       return true;
     }
 
-    router.push('/kyc');
+    router.push('/kyc-submit');
     return false;
   }, [loadKycStatus, user, myVendor?.kyc_status, router]);
 
