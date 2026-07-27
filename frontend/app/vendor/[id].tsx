@@ -95,10 +95,8 @@ export default function VendorProfileScreen() {
     }
     setVendorError(false);
 
-    let isMounted = true;
     getVendor(id)
       .then((res) => {
-        if (!isMounted) return;
         const data = res?.data;
         if (data && data.id) {
           setFetchedVendor(data);
@@ -107,46 +105,33 @@ export default function VendorProfileScreen() {
         }
       })
       .catch(() => {
-        if (isMounted && !vendor) {
+        if (!vendor) {
           setVendorError(true);
         }
       })
       .finally(() => {
-        if (isMounted) {
-          setVendorLoading(false);
-        }
+        setVendorLoading(false);
       });
-
-    return () => {
-      isMounted = false;
-      // Unmount memory cleanup: release fetched vendor object from memory when leaving screen
-      setFetchedVendor(null);
-      setSelectedImage(null);
-      setUserCoords(null);
-      setVendorCoords(null);
-    };
   }, [id]);
 
   const [vendorCoords, setVendorCoords] = React.useState<{ lat: number; lng: number } | null>(null);
 
   React.useEffect(() => {
-    if (user?.home_location?.latitude && user?.home_location?.longitude) {
-      setUserCoords({ lat: Number(user.home_location.latitude), lng: Number(user.home_location.longitude) });
-    } else {
-      (async () => {
-        try {
-          const { status } = await Location.getForegroundPermissionsAsync();
-          if (status === 'granted') {
-            const loc = await Location.getLastKnownPositionAsync();
-            if (loc?.coords) {
-              setUserCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-            }
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+          if (loc?.coords) {
+            setUserCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
           }
-        } catch (err) {
-          // Ignore location fallback failure
         }
-      })();
-    }
+      } catch (err) {
+        if (user?.home_location?.latitude && user?.home_location?.longitude) {
+          setUserCoords({ lat: Number(user.home_location.latitude), lng: Number(user.home_location.longitude) });
+        }
+      }
+    })();
   }, [user?.home_location]);
 
   React.useEffect(() => {
@@ -155,8 +140,19 @@ export default function VendorProfileScreen() {
     const vLng = Number(vendor.longitude);
     if (Number.isFinite(vLat) && Number.isFinite(vLng) && Math.abs(vLat) > 0.001 && Math.abs(vLng) > 0.001) {
       setVendorCoords({ lat: vLat, lng: vLng });
+    } else if (vendor.full_address || vendor.address) {
+      const addr = (vendor.full_address || vendor.address || '').trim();
+      if (addr) {
+        Location.geocodeAsync(addr)
+          .then((results) => {
+            if (results && results.length > 0) {
+              setVendorCoords({ lat: results[0].latitude, lng: results[0].longitude });
+            }
+          })
+          .catch(() => {});
+      }
     }
-  }, [vendor?.id, vendor?.latitude, vendor?.longitude]);
+  }, [vendor?.id, vendor?.latitude, vendor?.longitude, vendor?.full_address, vendor?.address]);
 
   const calculatedDistance = React.useMemo(() => {
     if (!vendor) return null;
