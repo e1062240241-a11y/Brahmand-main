@@ -546,7 +546,7 @@ class FirebaseNotificationService:
         """Get user notifications"""
         db = await FirebaseNotificationService.get_db()
         
-        filters = [('user_id', '==', user_id)]
+        filters: List[Tuple[str, str, Any]] = [('user_id', '==', user_id)]
         if unread_only:
             filters.append(('is_read', '==', False))
         
