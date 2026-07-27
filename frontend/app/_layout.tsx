@@ -15,8 +15,6 @@ import { COLORS } from '../src/constants/theme';
 import { useAdminStore } from '../src/store/adminStore';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold } from '@expo-google-fonts/outfit';
-import { Cinzel_700Bold } from '@expo-google-fonts/cinzel';
-import { Poppins_400Regular } from '@expo-google-fonts/poppins';
 import { MuteProvider } from '../src/contexts/MuteContext';
 import { useNotificationStore } from '../src/store/notificationStore';
 import { ToastContainer } from '../src/components/ToastContainer';
@@ -1152,7 +1150,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     (async () => {
-      setFontsReady(true);
       try {
         const Font = require('expo-font');
         await Font.loadAsync({
@@ -1164,12 +1161,13 @@ export default function RootLayout() {
           Outfit_500Medium,
           Outfit_600SemiBold,
           Outfit_700Bold,
-          'Cinzel': Cinzel_700Bold,
-          'Poppins': Poppins_400Regular,
+          'Cinzel': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/cinzel/Cinzel%5Bwght%5D.ttf' },
+          'Poppins': { uri: 'https://raw.githubusercontent.com/google/fonts/main/ofl/poppins/Poppins-Regular.ttf' },
         });
       } catch (e) {
         console.warn('[Fonts] Non-blocking font load failed:', e);
       }
+      setFontsReady(true);
     })();
   }, []);
 

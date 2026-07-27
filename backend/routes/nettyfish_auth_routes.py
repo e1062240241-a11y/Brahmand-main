@@ -33,39 +33,25 @@ async def send_nettyfish_otp(request: OTPRequest):
 
     purpose = request.purpose.strip() if request.purpose else "kyc"
 
-    # Store OTP in Firestore or Mock DB
-    from config.firestore_db import FirestoreDB
-    if getattr(FirestoreDB, "use_mock", False):
-        coll = FirestoreDB._mock_collections.setdefault("otp_verifications", {})
-        doc_data = {
-            "id": mobile,
-            "phone": mobile,
-            "otp": otp,
-            "purpose": purpose,
-            "expires_at": expires_at.isoformat() + 'Z',
-            "attempts": 0,
-            "created_at": datetime.utcnow().isoformat() + 'Z'
-        }
-        coll[mobile] = doc_data
+    # Store OTP in Firestore
+    collection_ref = db.collection("otp_verifications")
+
+    # Check if there's an existing record for this phone + purpose to update, or create a new one
+    docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
+
+    data = {
+        "phone": mobile,
+        "otp": otp,
+        "purpose": purpose,
+        "expires_at": expires_at,
+        "attempts": 0
+    }
+
+    if docs:
+        for doc in docs:
+            doc.reference.update(data)
     else:
-        collection_ref = db.collection("otp_verifications")
-
-        # Check if there's an existing record for this phone + purpose to update, or create a new one
-        docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
-
-        data = {
-            "phone": mobile,
-            "otp": otp,
-            "purpose": purpose,
-            "expires_at": expires_at,
-            "attempts": 0
-        }
-
-        if docs:
-            for doc in docs:
-                doc.reference.update(data)
-        else:
-            collection_ref.add(data)
+        collection_ref.add(data)
 
     # Build SMS text using the DLT-registered template.
     # NATTYFISH_MESSAGE_TEMPLATE must match the template registered with TRAI exactly.
@@ -101,63 +87,33 @@ async def verify_nettyfish_otp(request: OTPVerify):
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    from config.firestore_db import FirestoreDB
-    if getattr(FirestoreDB, "use_mock", False):
-        coll = FirestoreDB._mock_collections.get("otp_verifications", {})
-        doc = None
-        record = None
-        for doc_id, item in list(coll.items()):
-            if item.get("phone") == mobile and item.get("purpose") == purpose:
-                record = item
-                doc_key = doc_id
-                break
-        if not record:
-            raise HTTPException(status_code=400, detail="No OTP request found for this number. Please request a new OTP.")
+    collection_ref = db.collection("otp_verifications")
+    docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
 
-        expires_at = record.get("expires_at")
-        if isinstance(expires_at, str):
-            try:
-                expires_at_dt = datetime.fromisoformat(expires_at.replace('Z', '+00:00')).replace(tzinfo=None)
-                if datetime.utcnow() > expires_at_dt:
-                    raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
-            except ValueError:
-                pass
+    if not docs:
+        raise HTTPException(status_code=400, detail="No OTP request found for this number. Please request a new OTP.")
 
-        attempts = record.get("attempts", 0)
-        if attempts >= 5:
-            raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
+    doc = docs[0]
+    record = doc.to_dict()
 
-        if record.get("otp") != user_otp:
-            record["attempts"] = attempts + 1
-            raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
+    # Check expiry
+    # Note: Firestore might return datetime with timezone info depending on configuration
+    expires_at = record.get("expires_at")
+    if hasattr(expires_at, "timestamp"):
+        # it's a datetime-like object
+        if expires_at.timestamp() < datetime.utcnow().timestamp():
+             raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
 
-        coll.pop(doc_key, None)
-    else:
-        collection_ref = db.collection("otp_verifications")
-        docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
+    attempts = record.get("attempts", 0)
+    if attempts >= 5:
+        raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
 
-        if not docs:
-            raise HTTPException(status_code=400, detail="No OTP request found for this number. Please request a new OTP.")
+    if record.get("otp") != user_otp:
+        doc.reference.update({"attempts": attempts + 1})
+        raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
 
-        doc = docs[0]
-        record = doc.to_dict()
-
-        # Check expiry
-        expires_at = record.get("expires_at")
-        if hasattr(expires_at, "timestamp"):
-            if expires_at.timestamp() < datetime.utcnow().timestamp():
-                 raise HTTPException(status_code=400, detail="OTP has expired. Please request a new one.")
-
-        attempts = record.get("attempts", 0)
-        if attempts >= 5:
-            raise HTTPException(status_code=400, detail="Too many failed attempts. Please request a new OTP.")
-
-        if record.get("otp") != user_otp:
-            doc.reference.update({"attempts": attempts + 1})
-            raise HTTPException(status_code=400, detail="Invalid OTP. Please try again.")
-
-        # Success: delete the OTP record
-        doc.reference.delete()
+    # Success: delete the OTP record
+    doc.reference.delete()
 
     # Record OTP verification timestamp for KYC 12-hour window
     now_iso = datetime.utcnow().isoformat()

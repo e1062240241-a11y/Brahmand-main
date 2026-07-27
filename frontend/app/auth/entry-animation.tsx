@@ -73,7 +73,7 @@ export default function EntryAnimationScreen() {
   const { token } = useAuthStore();
   const [agreed, setAgreed] = useState(false);
 
-  const containerOpacity = useRef(new Animated.Value(1)).current;
+  const containerOpacity = useRef(new Animated.Value(0)).current;
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 

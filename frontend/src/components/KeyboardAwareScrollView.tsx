@@ -19,27 +19,31 @@ export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, Key
   extraScrollHeight = 160,
   ...props
 }, ref) => {
-  if (Platform.OS === 'android') {
-    return (
-      <ScrollView
-        ref={ref as any}
-        style={style}
-        contentContainerStyle={contentContainerStyle}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        {...(props as any)}
-      >
-        {children}
-      </ScrollView>
-    );
-  }
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setKeyboardHeight(e.endCoordinates?.height || 0);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   return (
     <RNKeyboardAwareScrollView
       ref={ref}
       style={style}
-      contentContainerStyle={contentContainerStyle}
-      enableOnAndroid={false}
+      contentContainerStyle={[
+        contentContainerStyle,
+        Platform.OS === 'android' && keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : null,
+      ]}
+      enableOnAndroid={true}
       enableAutomaticScroll={true}
       extraHeight={extraHeight}
       extraScrollHeight={extraScrollHeight}
