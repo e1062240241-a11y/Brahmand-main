@@ -13509,8 +13509,11 @@ async def get_nearby_sos_alerts(
     lat: Optional[float] = None,
     lng: Optional[float] = None,
     radius: float = 1.0,  # km
-    token_data: dict = Depends(verify_token)
+    token_data: Optional[dict] = Depends(optional_verify_token)
 ):
+    if not token_data or not token_data.get("user_id"):
+        return []
+
     current_user_id = token_data["user_id"]
     db = await get_db()
     

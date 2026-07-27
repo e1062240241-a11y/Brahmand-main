@@ -956,23 +956,4 @@ const styles = StyleSheet.create({
     color: '#F26522',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCloseButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    zIndex: 10,
-    padding: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 20,
-  },
-  fullImage: {
-    width: '100%',
-    height: '80%',
-  },
 });

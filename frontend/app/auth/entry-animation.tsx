@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, Platform, useWindowDimensions } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Circle, Mask } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
 import { FONTS } from '../../src/constants/theme';
@@ -69,6 +69,7 @@ const IconItem = ({ icon: Icon, label, isWide, customWidth }: any) => (
 
 export default function EntryAnimationScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ accepted?: string }>();
   const { token } = useAuthStore();
   const [agreed, setAgreed] = useState(false);
 
@@ -95,6 +96,12 @@ export default function EntryAnimationScreen() {
 
   const continueButtonWidth = isAndroid ? Math.min(359, screenWidth - 32) : 359;
   const continueButtonMargin = isAndroid ? (isSmallScreen ? 16 : 30) : 30;
+
+  useEffect(() => {
+    if (params.accepted === 'true') {
+      setAgreed(true);
+    }
+  }, [params.accepted]);
 
   useEffect(() => {
     if (token) {
@@ -155,10 +162,10 @@ export default function EntryAnimationScreen() {
 
         {/* Icons Row */}
         <View style={[styles.iconsRow, { width: iconsRowWidth, gap: iconsRowGap, marginTop: iconsRowMargin, marginBottom: iconsRowMargin }]}>
-          <IconItem icon={DharmaIcon} label="Dharma" />
-          <IconItem icon={SafetyIcon} label="Safety" />
-          <IconItem icon={TrustedIcon} label="Trusted" customWidth={44} />
-          <IconItem icon={CommunityIcon} label="Community" isWide={true} />
+          <IconItem icon={DharmaIcon} label="Dharma" customWidth={58} />
+          <IconItem icon={SafetyIcon} label="Safety" customWidth={52} />
+          <IconItem icon={TrustedIcon} label="Trusted" customWidth={54} />
+          <IconItem icon={CommunityIcon} label="Community" isWide={true} customWidth={68} />
         </View>
 
         {/* Checkbox and Terms Section */}
@@ -280,11 +287,13 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    fontFamily: 'Poppins',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
     color: '#F5EEDC',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     textAlign: 'center',
     lineHeight: 18,
+    includeFontPadding: false,
+    paddingHorizontal: 4,
   },
   iconsRow: {
     flexDirection: 'row',
@@ -297,11 +306,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   iconItemContainer: {
-    width: 45,
+    minWidth: 52,
     alignItems: 'center',
   },
   iconItemContainerWide: {
-    width: 66,
+    minWidth: 68,
   },
   iconEllipse: {
     width: 45,
@@ -319,9 +328,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'normal',
     fontWeight: '500',
-    lineHeight: 20,
+    lineHeight: 16,
     letterSpacing: -0.15,
     textAlign: 'center',
+    includeFontPadding: false,
   },
   checkboxContainer: {
     flexDirection: 'row',
