@@ -1,6 +1,4 @@
-## Sentinel's Journal
-
-## 2024-05-24 - [Remove Hardcoded Fallback Secrets in Configuration]
-**Vulnerability:** Found hardcoded fallback values for sensitive API keys and secrets (`JWT_SECRET`, `ASTROLOGY_API_USER_ID`, `ASTROLOGY_API_TOKEN`, `VEDIC_ASTRO_API_KEY`, `ENCRYPTION_KEY`) in `backend/config/settings.py`.
-**Learning:** Hardcoding default values for sensitive keys in source code is dangerous, even as fallbacks. It risks unintentional leakage of production secrets into version control or exposing sensitive configurations.
-**Prevention:** Always default sensitive environment variables to empty strings (`''`) or `None`, forcing the application to fail securely if these keys are missing from the deployment environment, adhering strictly to the principle of "fail securely".
+## 2024-07-25 - Prevent Insecure Fallbacks for Secrets
+**Vulnerability:** The codebase was using `os.getenv("SECRET_NAME") or "hardcoded_secret_value"` as fallback for sensitive keys (like Bunny.net access keys and admin credentials). This means if the environment variable fails to load or is misconfigured, the application silently falls back to a publicly known/hardcoded credential instead of failing securely.
+**Learning:** Hardcoded fallback values for cryptographic keys, admin passwords, or external API secrets present a massive security risk, especially in open-source or shared repositories. Silent failures (where the app continues running with weak credentials) are worse than loud failures (where the app crashes on startup).
+**Prevention:** Use explicit `os.environ["SECRET_NAME"]` for critical credentials instead of `os.getenv` with a default. This enforces a "Fail Fast, Fail Securely" pattern by throwing a `KeyError` at initialization if the secret is missing, guaranteeing the application never starts in a compromised state.
