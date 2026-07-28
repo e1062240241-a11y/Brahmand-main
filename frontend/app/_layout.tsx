@@ -9,7 +9,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../src/store/authStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
 import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
-import { sendDirectMessage, getCommunities, getCircles, getConversations, discoverCommunities } from '../src/services/api';
+import { sendDirectMessage, getCommunities, getCircles, getConversations, discoverCommunities, getFestivalList } from '../src/services/api';
+import { syncFestivalReminders } from '../src/utils/festivalReminders';
 import { getAllMutedConversations } from '../src/services/mutedChats';
 import { COLORS } from '../src/constants/theme';
 import { useAdminStore } from '../src/store/adminStore';
@@ -855,7 +856,13 @@ export default function RootLayout() {
   useEffect(() => {
     if (isLoading || !token || !isAuthenticated || pushInitStartedRef.current) return;
     pushInitStartedRef.current = true;
-    initPushNotifications().catch((error) => {
+    initPushNotifications().then(() => {
+      getFestivalList().then((res) => {
+        if (res?.data && Array.isArray(res.data)) {
+          syncFestivalReminders(res.data).catch((err) => console.warn('[FestivalPush] Startup sync failed:', err));
+        }
+      }).catch((e) => console.warn('[FestivalPush] Failed to fetch festival list:', e));
+    }).catch((error) => {
       console.warn('[Push] Auto init on app load failed:', error);
     });
   }, [isLoading, token, isAuthenticated, initPushNotifications]);

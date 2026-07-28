@@ -394,7 +394,7 @@ export default function VendorScreen() {
         }
       }
     } catch (error) {
-      if (Platform.OS === 'web' && hasHomeCoordinates) {
+      if (hasHomeCoordinates) {
         setUserLocation({
           lat: homeLatitude!,
           lng: homeLongitude!,

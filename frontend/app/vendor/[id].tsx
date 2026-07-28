@@ -164,40 +164,74 @@ export default function VendorProfileScreen() {
   const [vendorCoords, setVendorCoords] = React.useState<{ lat: number; lng: number } | null>(null);
 
   React.useEffect(() => {
+    let isMounted = true;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
-          const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          if (loc?.coords) {
+          const loc = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+          ]);
+          if (loc?.coords && isMounted) {
             setUserCoords({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+            return;
           }
         }
-      } catch (err) {
-        if (user?.home_location?.latitude && user?.home_location?.longitude) {
-          setUserCoords({ lat: Number(user.home_location.latitude), lng: Number(user.home_location.longitude) });
-        }
+      } catch (err) {}
+
+      const homeLoc = (user as any)?.home_location;
+      const hLat = Number(homeLoc?.latitude ?? homeLoc?.lat);
+      const hLng = Number(homeLoc?.longitude ?? homeLoc?.lng);
+      if (Number.isFinite(hLat) && Number.isFinite(hLng) && Math.abs(hLat) > 0.001 && Math.abs(hLng) > 0.001) {
+        if (isMounted) setUserCoords({ lat: hLat, lng: hLng });
+        return;
+      }
+
+      const areaStr = [homeLoc?.area, homeLoc?.city, homeLoc?.state].filter(Boolean).join(', ');
+      if (areaStr) {
+        try {
+          const res = await forwardGeocode(areaStr);
+          if (res.data?.latitude && res.data?.longitude && isMounted) {
+            setUserCoords({ lat: Number(res.data.latitude), lng: Number(res.data.longitude) });
+          }
+        } catch (e) {}
       }
     })();
+    return () => { isMounted = false; };
   }, [user?.home_location]);
 
   React.useEffect(() => {
     if (!vendor) return;
+    let isMounted = true;
     const vLat = Number(vendor.latitude);
     const vLng = Number(vendor.longitude);
     if (Number.isFinite(vLat) && Number.isFinite(vLng) && Math.abs(vLat) > 0.001 && Math.abs(vLng) > 0.001) {
       setVendorCoords({ lat: vLat, lng: vLng });
-    } else if (vendor.full_address || vendor.address) {
-      const addr = (vendor.full_address || vendor.address || '').trim();
-      if (addr) {
-        Location.geocodeAsync(addr)
-          .then((results) => {
-            if (results && results.length > 0) {
-              setVendorCoords({ lat: results[0].latitude, lng: results[0].longitude });
+      return;
+    }
+
+    const addr = (vendor.full_address || vendor.address || '').trim();
+    if (addr) {
+      Location.geocodeAsync(addr)
+        .then((results) => {
+          if (results && results.length > 0 && isMounted) {
+            setVendorCoords({ lat: results[0].latitude, lng: results[0].longitude });
+          } else {
+            forwardGeocode(addr).then((res) => {
+              if (res.data?.latitude && res.data?.longitude && isMounted) {
+                setVendorCoords({ lat: Number(res.data.latitude), lng: Number(res.data.longitude) });
+              }
+            }).catch(() => {});
+          }
+        })
+        .catch(() => {
+          forwardGeocode(addr).then((res) => {
+            if (res.data?.latitude && res.data?.longitude && isMounted) {
+              setVendorCoords({ lat: Number(res.data.latitude), lng: Number(res.data.longitude) });
             }
-          })
-          .catch(() => {});
-      }
+          }).catch(() => {});
+        });
     }
   }, [vendor?.id, vendor?.latitude, vendor?.longitude, vendor?.full_address, vendor?.address]);
 

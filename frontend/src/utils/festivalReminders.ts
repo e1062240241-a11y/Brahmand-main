@@ -73,13 +73,88 @@ async function scheduleLocalNotif(title: string, body: string, data: any, trigge
   }
 }
 
+async function scheduleNotificationsForFestival(
+  festival: { id?: string; name?: string; festival_name?: string; date: string }
+): Promise<string[]> {
+  const festivalId = festival.id || festival.name || festival.festival_name;
+  if (!festivalId || !festival.date) return [];
+
+  const festivalName = festival.name || festival.festival_name || 'Festival';
+  const festDateStr = festival.date;
+  const festivalDate = new Date(`${festDateStr}T00:00:00`);
+  if (isNaN(festivalDate.getTime())) return [];
+
+  const now = new Date();
+  const notificationIds: string[] = [];
+  const notificationData = { type: 'festival_reminder', festivalId };
+
+  // 1. Day before - Morning (9:00 AM)
+  const dayBefore9AM = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
+  dayBefore9AM.setHours(9, 0, 0, 0);
+  if (dayBefore9AM > now) {
+    const id = await scheduleLocalNotif(
+      `🪔 Tomorrow: ${festivalName}`,
+      `Get ready! ${festivalName} begins tomorrow.`,
+      notificationData,
+      dayBefore9AM
+    );
+    if (id) notificationIds.push(id);
+  }
+
+  // 2. Day before - Evening (8:00 PM)
+  const dayBefore8PM = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
+  dayBefore8PM.setHours(20, 0, 0, 0);
+  if (dayBefore8PM > now) {
+    const id = await scheduleLocalNotif(
+      `🪔 Tomorrow: ${festivalName}`,
+      `Reminder: ${festivalName} is tomorrow!`,
+      notificationData,
+      dayBefore8PM
+    );
+    if (id) notificationIds.push(id);
+  }
+
+  // 3. Festival Day - Morning (8:00 AM)
+  const festivalDay8AM = new Date(festivalDate.getTime());
+  festivalDay8AM.setHours(8, 0, 0, 0);
+  if (festivalDay8AM > now) {
+    const id = await scheduleLocalNotif(
+      `🪔 Today is ${festivalName}!`,
+      `Wishing you a joyful and blessed ${festivalName}!`,
+      notificationData,
+      festivalDay8AM
+    );
+    if (id) notificationIds.push(id);
+  }
+
+  // 4. Fallback Trigger (Immediate alert if festival is tomorrow/today & pre-scheduled times passed)
+  const isTomorrow = now.toDateString() === new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000).toDateString();
+  const isToday = now.toDateString() === festivalDate.toDateString();
+
+  if ((isTomorrow || isToday) && notificationIds.length === 0) {
+    const festivalEnd = new Date(festivalDate.getTime());
+    festivalEnd.setHours(23, 59, 59, 999);
+
+    if (now < festivalEnd) {
+      const immediateTrigger = new Date(now.getTime() + 10 * 1000); // 10s from now
+      const id = await scheduleLocalNotif(
+        `🪔 ${isToday ? 'Today' : 'Tomorrow'} is ${festivalName}!`,
+        `Don't miss out! ${festivalName} ${isToday ? 'is today' : 'begins tomorrow'}.`,
+        notificationData,
+        immediateTrigger
+      );
+      if (id) notificationIds.push(id);
+    }
+  }
+
+  return notificationIds;
+}
+
 export async function toggleFestivalReminder(
   festival: { id?: string; name?: string; festival_name?: string; date: string }
 ): Promise<boolean> {
   const festivalId = festival.id || festival.name || festival.festival_name;
   if (!festivalId) return false;
-
-  const festivalName = festival.name || festival.festival_name || 'Festival';
 
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -96,41 +171,15 @@ export async function toggleFestivalReminder(
 
   if (currentState && currentState.enabled) {
     for (const notifId of currentState.notificationIds) {
-      await Notifications.cancelScheduledNotificationAsync(notifId);
+      try {
+        await Notifications.cancelScheduledNotificationAsync(notifId);
+      } catch (_) {}
     }
     await saveFestivalReminderState(festivalId, null);
     return false;
   }
 
-  const festDateStr = festival.date;
-  const festivalDate = new Date(`${festDateStr}T00:00:00`);
-  if (isNaN(festivalDate.getTime())) {
-    throw new Error('Invalid festival date');
-  }
-
-  const oneDayBefore = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
-  
-  const reminder9AM = new Date(oneDayBefore);
-  reminder9AM.setHours(9, 0, 0, 0);
-
-  const reminder9PM = new Date(oneDayBefore);
-  reminder9PM.setHours(21, 0, 0, 0);
-
-  const now = new Date();
-  const notificationIds: string[] = [];
-  const title = `🪔 Tomorrow: ${festivalName}`;
-  const body = `Get ready! ${festivalName} begins tomorrow.`;
-  const notificationData = { type: 'festival_reminder', festivalId };
-
-  if (reminder9AM > now) {
-    const id = await scheduleLocalNotif(title, body, notificationData, reminder9AM);
-    if (id) notificationIds.push(id);
-  }
-
-  if (reminder9PM > now) {
-    const id = await scheduleLocalNotif(title, body, notificationData, reminder9PM);
-    if (id) notificationIds.push(id);
-  }
+  const notificationIds = await scheduleNotificationsForFestival(festival);
 
   if (notificationIds.length === 0) {
     throw new Error('Reminder times have already passed for this festival.');
@@ -138,7 +187,7 @@ export async function toggleFestivalReminder(
 
   await saveFestivalReminderState(festivalId, {
     enabled: true,
-    festivalDate: festDateStr,
+    festivalDate: festival.date,
     notificationIds
   });
 
@@ -147,67 +196,49 @@ export async function toggleFestivalReminder(
 
 export async function syncFestivalReminders(festivals: any[]) {
   try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
+
     const data = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!data) return;
-    const reminders = JSON.parse(data);
+    const reminders = data ? JSON.parse(data) : {};
     let changed = false;
+    const now = new Date();
 
     for (const festival of festivals) {
       const festivalId = festival.id || festival.name || festival.festival_name;
-      if (!festivalId || !reminders[festivalId]) continue;
+      if (!festivalId || !festival.date) continue;
 
-      const state = reminders[festivalId];
-      if (state.festivalDate !== festival.date) {
-        for (const notifId of state.notificationIds) {
-          await Notifications.cancelScheduledNotificationAsync(notifId);
-        }
-        
-        const festDateStr = festival.date;
-        const festivalDate = new Date(`${festDateStr}T00:00:00`);
-        if (isNaN(festivalDate.getTime())) {
+      const festDateStr = festival.date;
+      const festivalDate = new Date(`${festDateStr}T00:00:00`);
+      if (isNaN(festivalDate.getTime())) continue;
+
+      // Skip past festivals
+      const festivalEnd = new Date(festivalDate.getTime());
+      festivalEnd.setHours(23, 59, 59, 999);
+      if (now > festivalEnd) {
+        if (reminders[festivalId]) {
           delete reminders[festivalId];
           changed = true;
-          continue;
         }
+        continue;
+      }
 
-        const oneDayBefore = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
-        const reminder9AM = new Date(oneDayBefore);
-        reminder9AM.setHours(9, 0, 0, 0);
-        const reminder9PM = new Date(oneDayBefore);
-        reminder9PM.setHours(21, 0, 0, 0);
-
-        const now = new Date();
-        const notificationIds: string[] = [];
-        const festivalName = festival.name || festival.festival_name || 'Festival';
-        const title = `🪔 Tomorrow: ${festivalName}`;
-        const body = `Get ready! ${festivalName} begins tomorrow.`;
-        const notificationData = { type: 'festival_reminder', festivalId };
-
-        if (reminder9AM > now) {
-          const id = await scheduleLocalNotif(title, body, notificationData, reminder9AM);
-          if (id) notificationIds.push(id);
+      const existing = reminders[festivalId];
+      if (!existing || existing.festivalDate !== festDateStr) {
+        if (existing?.notificationIds) {
+          for (const notifId of existing.notificationIds) {
+            try { await Notifications.cancelScheduledNotificationAsync(notifId); } catch (_) {}
+          }
         }
-        if (reminder9PM > now) {
-          const id = await scheduleLocalNotif(title, body, notificationData, reminder9PM);
-          if (id) notificationIds.push(id);
-        }
-
-        if (notificationIds.length === 0) {
-          delete reminders[festivalId];
-        } else {
+        const notificationIds = await scheduleNotificationsForFestival(festival);
+        if (notificationIds.length > 0) {
           reminders[festivalId] = {
             enabled: true,
             festivalDate: festDateStr,
             notificationIds
           };
+          changed = true;
         }
-        changed = true;
-      } else {
-         const festivalDate = new Date(`${state.festivalDate}T00:00:00`);
-         if (festivalDate.getTime() < Date.now() - 48 * 60 * 60 * 1000) { 
-            delete reminders[festivalId];
-            changed = true;
-         }
       }
     }
 
@@ -236,68 +267,26 @@ export async function toggleAllFestivals(
   const allReminders = await getAllFestivalReminders();
 
   if (!enableAll) {
-    // Cancel all
     for (const key in allReminders) {
       for (const notifId of allReminders[key].notificationIds) {
-        await Notifications.cancelScheduledNotificationAsync(notifId);
+        try { await Notifications.cancelScheduledNotificationAsync(notifId); } catch (_) {}
       }
     }
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({}));
     return;
   }
 
-  // Enable all upcoming
   let changed = false;
-  const now = new Date();
 
   for (const festival of festivals) {
     const festivalId = festival.id || festival.name || festival.festival_name;
     if (!festivalId) continue;
 
-    const festDateStr = festival.date;
-    const festivalDate = new Date(`${festDateStr}T00:00:00`);
-    if (isNaN(festivalDate.getTime())) continue;
-
-    const oneDayBefore = new Date(festivalDate.getTime() - 24 * 60 * 60 * 1000);
-    const reminder9AM = new Date(oneDayBefore);
-    reminder9AM.setHours(9, 0, 0, 0);
-    const reminder9PM = new Date(oneDayBefore);
-    reminder9PM.setHours(21, 0, 0, 0);
-
-    // Skip if already passed
-    if (reminder9PM <= now) continue;
-
-    // Skip if already enabled with correct date
-    if (allReminders[festivalId] && allReminders[festivalId].festivalDate === festDateStr) {
-      continue;
-    }
-
-    // Cancel old ones if date changed
-    if (allReminders[festivalId]) {
-      for (const notifId of allReminders[festivalId].notificationIds) {
-        await Notifications.cancelScheduledNotificationAsync(notifId);
-      }
-    }
-
-    const notificationIds: string[] = [];
-    const festivalName = festival.name || festival.festival_name || 'Festival';
-    const title = `🪔 Tomorrow: ${festivalName}`;
-    const body = `Get ready! ${festivalName} begins tomorrow.`;
-    const notificationData = { type: 'festival_reminder', festivalId };
-
-    if (reminder9AM > now) {
-      const id = await scheduleLocalNotif(title, body, notificationData, reminder9AM);
-      if (id) notificationIds.push(id);
-    }
-    if (reminder9PM > now) {
-      const id = await scheduleLocalNotif(title, body, notificationData, reminder9PM);
-      if (id) notificationIds.push(id);
-    }
-
+    const notificationIds = await scheduleNotificationsForFestival(festival);
     if (notificationIds.length > 0) {
       allReminders[festivalId] = {
         enabled: true,
-        festivalDate: festDateStr,
+        festivalDate: festival.date,
         notificationIds
       };
       changed = true;

@@ -5657,6 +5657,24 @@ async def _geocode_address(full_address: str) -> tuple[float | None, float | Non
         logger.warning(f"Nominatim geocoding failed for address '{clean_address}': {e}")
 
     return None, None
+
+
+@api_router.post("/geocode/forward")
+async def forward_geocode_endpoint(data: dict):
+    """Forward geocode an address query to latitude and longitude coordinates."""
+    query = (data.get("query") or "").strip()
+    if not query:
+        return {"status": "error", "message": "Query string required", "latitude": None, "longitude": None, "results": []}
+    lat, lng = await _geocode_address(query)
+    if lat is not None and lng is not None:
+        return {
+            "status": "success",
+            "latitude": lat,
+            "longitude": lng,
+            "results": [{"latitude": lat, "longitude": lng, "formatted_address": query}]
+        }
+    return {"status": "error", "message": "Location not found", "latitude": None, "longitude": None, "results": []}
+
 INDIAN_CITIES_FALLBACK = [
     {"name": "Ahmedabad", "state": "Gujarat", "display_name": "Ahmedabad, Gujarat, Bharat"},
     {"name": "Agra", "state": "Uttar Pradesh", "display_name": "Agra, Uttar Pradesh, Bharat"},
@@ -11578,42 +11596,41 @@ async def get_vendors(
                 or search_lower in (v.get('business_description') or '').lower()
             ]
 
-    # Calculate distance if coordinates provided
-    if lat and lng:
-        import math
-        for vendor in vendors:
-            v_lat = vendor.get('latitude')
-            v_lng = vendor.get('longitude')
-            
-            valid_c = (
-                v_lat is not None and v_lng is not None and
-                isinstance(v_lat, (int, float)) and isinstance(v_lng, (int, float)) and
-                abs(v_lat) > 0.001 and abs(v_lng) > 0.001
-            )
-            
-            if not valid_c and vendor.get('full_address'):
-                geo_lat, geo_lng = await _geocode_address(vendor.get('full_address'))
-                if geo_lat is not None and geo_lng is not None:
-                    vendor['latitude'] = geo_lat
-                    vendor['longitude'] = geo_lng
-                    v_lat, v_lng = geo_lat, geo_lng
-                    valid_c = True
-                    try:
-                        await db.update_document('vendors', vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng})
-                    except Exception:
-                        pass
-                        
-            if valid_c and v_lat is not None and v_lng is not None:
-                # Haversine formula
-                R = 6371  # Earth radius in km
-                lat1, lon1 = math.radians(lat), math.radians(lng)
-                lat2, lon2 = math.radians(v_lat), math.radians(v_lng)
-                dlat, dlon = lat2 - lat1, lon2 - lon1
-                a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-                vendor['distance'] = R * 2 * math.asin(math.sqrt(a))
-            else:
-                vendor['distance'] = None
+    import math
+    for vendor in vendors:
+        v_lat = vendor.get('latitude')
+        v_lng = vendor.get('longitude')
+        
+        valid_c = (
+            v_lat is not None and v_lng is not None and
+            isinstance(v_lat, (int, float)) and isinstance(v_lng, (int, float)) and
+            abs(v_lat) > 0.001 and abs(v_lng) > 0.001
+        )
+        
+        if not valid_c and vendor.get('full_address'):
+            geo_lat, geo_lng = await _geocode_address(vendor.get('full_address'))
+            if geo_lat is not None and geo_lng is not None:
+                vendor['latitude'] = geo_lat
+                vendor['longitude'] = geo_lng
+                v_lat, v_lng = geo_lat, geo_lng
+                valid_c = True
+                try:
+                    await db.update_document('vendors', vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng})
+                except Exception:
+                    pass
+                    
+        if lat and lng and valid_c and v_lat is not None and v_lng is not None:
+            # Haversine formula
+            R = 6371  # Earth radius in km
+            lat1, lon1 = math.radians(lat), math.radians(lng)
+            lat2, lon2 = math.radians(v_lat), math.radians(v_lng)
+            dlat, dlon = lat2 - lat1, lon2 - lon1
+            a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+            vendor['distance'] = R * 2 * math.asin(math.sqrt(a))
+        else:
+            vendor['distance'] = None
 
+    if lat and lng:
         # Sort by Search Relevance -> Location Tier -> SubTier -> Distance
         def _compute_ranking(v: dict) -> tuple:
             rel_score = 5
@@ -11625,11 +11642,11 @@ async def get_vendors(
 
                 if name == term or name.startswith(term):
                     rel_score = 1
-                elif term in name:
+                elif any(c == term or c.startswith(term) for c in cats):
                     rel_score = 2
-                elif any(term in c for c in cats):
+                elif term in name:
                     rel_score = 3
-                elif term in addr:
+                elif any(term in c for c in cats):
                     rel_score = 4
 
             d = v.get('distance')

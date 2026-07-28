@@ -209,7 +209,7 @@ const FestivalPage = () => {
           {festivals.map((festival, index) => {
             const color = CARD_COLORS[index % CARD_COLORS.length];
             const festivalName = festival.name || festival.festival_name || '';
-            const festivalImg = getFestivalImage(festivalName);
+            const festivalImg = getFestivalImage(festival);
             
             return (
               <TouchableOpacity 

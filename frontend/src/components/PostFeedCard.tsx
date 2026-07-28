@@ -833,6 +833,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: 'transparent',
     marginBottom: 0,
+    paddingBottom: 12,
     width: '100%',
   },
   headerRow: {

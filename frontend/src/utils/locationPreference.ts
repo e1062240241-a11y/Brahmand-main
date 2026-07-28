@@ -113,6 +113,8 @@ export function computeLocationTier(
     };
   }
 
+  const formattedDistSuffix = typeof effectiveDist === 'number' && Number.isFinite(effectiveDist) ? ` • ${effectiveDist.toFixed(1)} km` : '';
+
   // Tier 2: Same Area
   if (
     userArea.length > 1 &&
@@ -124,7 +126,7 @@ export function computeLocationTier(
       subTier: 1,
       label: 'Area',
       dist: effectiveDist,
-      fullLabel: `Area • ${displayArea}`,
+      fullLabel: `Area • ${displayArea}${formattedDistSuffix}`,
     };
   }
 
@@ -139,7 +141,7 @@ export function computeLocationTier(
       subTier: 1,
       label: 'City',
       dist: effectiveDist,
-      fullLabel: `City • ${displayCity}`,
+      fullLabel: `City • ${displayCity}${formattedDistSuffix}`,
     };
   }
 
@@ -154,7 +156,7 @@ export function computeLocationTier(
       subTier: 1,
       label: 'State',
       dist: effectiveDist,
-      fullLabel: `State • ${displayState}`,
+      fullLabel: `State • ${displayState}${formattedDistSuffix}`,
     };
   }
 
@@ -169,7 +171,7 @@ export function computeLocationTier(
       subTier: 1,
       label: 'Country',
       dist: effectiveDist,
-      fullLabel: `Country • ${displayCountry}`,
+      fullLabel: `Country • ${displayCountry}${formattedDistSuffix}`,
     };
   }
 
