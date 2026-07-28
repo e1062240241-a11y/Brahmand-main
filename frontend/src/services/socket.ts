@@ -181,6 +181,10 @@ class SocketService {
     if (!this.socket) return;
     this.socket.emit(eventName, data);
   }
+
+  emitEvent(eventName: string, data?: any) {
+    this.emit(eventName, data);
+  }
 }
 
 export const socketService = new SocketService();

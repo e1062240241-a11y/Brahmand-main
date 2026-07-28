@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,7 @@ import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedInde
 import { usePassportStore } from '../../store/passportStore';
 import { useTranslation } from '../../utils/i18n';
 import { socketService } from '../../services/socket';
-import api from '../../services/api';
+import api, { getAgoraToken } from '../../services/api';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const LiveCountdown = React.memo(({ targetDate }: { targetDate: Date | null }) => {
@@ -608,7 +608,7 @@ export default function LiveJaapRoomView() {
                   "Hanuman Chalisa Completed",
                   "Completed 1 full Hanuman Chalisa jaap session."
                 );
-                setShowCompletion(true);
+                // Stay in the live room for continuous chanting; do not kick user out
               } else {
                 if (next % 108 === 0) {
                   const readableMantra = mantraType === 'shiva' 
@@ -851,7 +851,15 @@ export default function LiveJaapRoomView() {
       socketService.joinRoom(rName);
     }).catch(err => console.warn('Socket connection failed in LiveJaapRoomView:', err));
 
+    const handleJaapReaction = (data: { emoji: string }) => {
+      if (data && data.emoji) {
+        addReaction(data.emoji, false);
+      }
+    };
+    socketService.onEvent('jaap_reaction', handleJaapReaction);
+
     return () => {
+      socketService.offEvent('jaap_reaction', handleJaapReaction);
       socketService.leaveRoom(rName);
     };
   }, [mantraType]);
@@ -930,14 +938,66 @@ export default function LiveJaapRoomView() {
     return () => clearTimeout(timer);
   }, [currentIndex, isHolding, WORDS, mantraType, isSessionActive]);
 
-  const addReaction = (emoji: string) => {
-    const id = Date.now() + Math.random();
-    const anim = new Animated.Value(0);
-    setReactions(prev => [...prev, { id, emoji, anim }]);
-    Animated.timing(anim, {
-      toValue: 1, duration: 2500, easing: Easing.out(Easing.quad), useNativeDriver: true,
-    }).start(() => { setReactions(prev => prev.filter(r => r.id !== id)); });
+  const toggleMic = async () => {
+    const nextMicState = !isMicEnabled;
+
+    if (nextMicState) {
+      try {
+        console.log('[LiveJaapRoom] Requesting microphone permission...');
+        if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+          await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log('[LiveJaapRoom] Web microphone permission GRANTED');
+        } else {
+          const { requestRecordingPermissionsAsync } = require('expo-audio');
+          const perm = await requestRecordingPermissionsAsync();
+          console.log('[LiveJaapRoom] Native microphone permission response:', perm);
+        }
+      } catch (permErr) {
+        console.warn('[LiveJaapRoom] Microphone permission denied or error:', permErr);
+      }
+    }
+
+    setIsMicEnabled(nextMicState);
+
+    try {
+      console.log('[LiveJaapRoom] Requesting Agora Token for channel: mantra-jaap-live-room...');
+      const tokenConfig = await getAgoraToken('mantra-jaap-live-room');
+      console.log('====================================================');
+      console.log('[LiveJaapRoom] AGORA TOKEN RECEIVED:');
+      console.log(JSON.stringify(tokenConfig, null, 2));
+      console.log('====================================================');
+    } catch (err) {
+      console.warn('[LiveJaapRoom] Failed to fetch Agora token:', err);
+    }
   };
+
+  const lastReactionTimeRef = useRef<number>(0);
+
+  const addReaction = useCallback((emoji: string, broadcast = true) => {
+    const now = Date.now();
+    if (!broadcast && now - lastReactionTimeRef.current < 180) {
+      return;
+    }
+    lastReactionTimeRef.current = now;
+
+    const id = now + Math.random();
+    const anim = new Animated.Value(0);
+    setReactions(prev => {
+      const updated = prev.length >= 6 ? prev.slice(1) : prev;
+      return [...updated, { id, emoji, anim }];
+    });
+    if (broadcast) {
+      const rName = 'jaap_' + (mantraType || 'gayatri');
+      socketService.emitEvent('jaap_reaction', { room: rName, emoji });
+    }
+    Animated.timing(anim, {
+      toValue: 1, duration: 1800, easing: Easing.out(Easing.quad), useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        setReactions(prev => prev.filter(r => r.id !== id));
+      }
+    });
+  }, [mantraType]);
 
   useEffect(() => {
     if (showCompletion) {
@@ -1190,7 +1250,7 @@ export default function LiveJaapRoomView() {
 
                 {/* Controls Bar */}
                 <View style={styles.controlsBarNew}>
-                  <TouchableOpacity onPress={() => setIsMicEnabled(!isMicEnabled)} style={isMicEnabled ? styles.volumeMuteBtnNew : styles.controlIconBtnNew}>
+                  <TouchableOpacity onPress={toggleMic} style={isMicEnabled ? styles.volumeMuteBtnNew : styles.controlIconBtnNew}>
                     {isMicEnabled ? (
                       <Svg width={18} height={24} viewBox="0 0 18 24" fill="none">
                         <Rect x="5.25" y="1" width="7.5" height="13.5" rx="3.75" fill="#FFF" />

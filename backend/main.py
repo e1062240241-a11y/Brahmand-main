@@ -15373,6 +15373,22 @@ async def audio_chunk(sid, data):
     await sio.emit('audio_chunk', payload, to=room, skip_sid=sid)
 
 
+@sio.event
+async def jaap_reaction(sid, data):
+    """Broadcast live reaction emoji to all active participants in a Jaap room."""
+    room = data.get('room')
+    emoji = data.get('emoji')
+    if not room or not emoji:
+        return
+        
+    payload = {
+        'emoji': emoji,
+        'fromSid': sid,
+        'timestamp': data.get('timestamp')
+    }
+    await sio.emit('jaap_reaction', payload, to=room)
+
+
 @sio.on('send_dm')
 async def handle_send_dm_socket(sid, data):
     """Handle direct message sent via Socket.IO for 0ms delay real-time private chat."""
