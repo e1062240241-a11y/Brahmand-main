@@ -133,7 +133,7 @@ export const PostFeedCard = memo(({
     post?.thumbnailUrl;
 
   const posterUrl = String(
-    post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || ''
+    post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || rawMediaUrl || ''
   );
   let mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
   if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
