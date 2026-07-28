@@ -17,6 +17,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '../src/utils/i18n';
 import Svg, { Path } from 'react-native-svg';
 
+import { ProfileCompletionCard } from '../src/components/ProfileCompletionCard';
+
 const { width } = Dimensions.get('window');
 
 export default function KYCSuccessScreen() {
@@ -33,11 +35,7 @@ export default function KYCSuccessScreen() {
   };
 
   const handleViewRequest = () => {
-    if (returnUrl) {
-      router.replace(returnUrl as any);
-    } else {
-      router.replace('/kyc-submit' as any);
-    }
+    router.replace('/vendor/dashboard' as any);
   };
 
   const handleShare = async () => {
@@ -65,14 +63,11 @@ export default function KYCSuccessScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Illustration */}
-          <View style={styles.illustrationContainer}>
-            <Image 
-              source={require('../assets/images/verification_thank_you_illustration.jpg')} 
-              style={styles.illustration}
-              resizeMode="cover"
-            />
-          </View>
+          {/* Profile Completion Card (Replaces success animation) */}
+          <ProfileCompletionCard
+            progress={60}
+            onEditProfile={() => router.push('/vendor/dashboard')}
+          />
 
           {/* Title */}
           <Text style={styles.mainTitle}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {View, 
   Text, 
   StyleSheet, 
@@ -8,10 +8,13 @@ import {View,
   Modal,
   ActivityIndicator,
   BackHandler,
-  KeyboardAvoidingView,
-  Platform} from 'react-native';
+  Platform,
+  ScrollView,
+  StyleProp,
+  ViewStyle,
+  TextStyle} from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { useVendorStore, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
@@ -22,6 +25,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { Avatar } from '../../src/components/Avatar';
+import { ProfileCompletionCard } from '../../src/components/ProfileCompletionCard';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 import api, { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
@@ -50,7 +54,235 @@ const GalleryIcon = () => (
   </Svg>
 );
 
+interface FormInputProps extends React.ComponentProps<typeof TextInput> {
+  containerStyle?: StyleProp<ViewStyle>;
+}
+
+const FormInput = React.memo<FormInputProps>(({ containerStyle, style, placeholder, ...props }) => {
+  useEffect(() => {
+    console.log(`[FormInput: ${placeholder || 'Input'}] Mounted`);
+    return () => console.log(`[FormInput: ${placeholder || 'Input'}] Unmounted`);
+  }, [placeholder]);
+
+  console.log(`[FormInput: ${placeholder || 'Input'}] Rendered`);
+
+  return (
+    <View style={containerStyle}>
+      <TextInput style={style} placeholder={placeholder} {...props} />
+    </View>
+  );
+});
+FormInput.displayName = 'FormInput';
+
+
+
+interface CategoryEditModalProps {
+  visible: boolean;
+  initialCategories: string[];
+  onClose: () => void;
+  onSave: (categories: string[]) => void;
+}
+
+const CategoryEditModal = React.memo<CategoryEditModalProps>(({
+  visible,
+  initialCategories,
+  onClose,
+  onSave,
+}) => {
+  const insets = useSafeAreaInsets();
+  const [editCategories, setEditCategories] = useState<string[]>(initialCategories);
+  const [categorySearch, setCategorySearch] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setEditCategories(initialCategories);
+      setCategorySearch('');
+    }
+  }, [visible, initialCategories]);
+
+  const addCategory = useCallback((cat: string) => {
+    const trimmed = cat.trim();
+    if (!trimmed) return;
+    setEditCategories(prev => {
+      if (prev.length >= 5) {
+        Alert.alert('Limit', 'Maximum 5 categories allowed');
+        return prev;
+      }
+      if (!prev.includes(trimmed)) {
+        return [...prev, trimmed];
+      }
+      return prev;
+    });
+    setCategorySearch('');
+  }, []);
+
+  const removeCategory = useCallback((cat: string) => {
+    setEditCategories(prev => prev.filter(c => c !== cat));
+  }, []);
+
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch) return [];
+    const searchLower = categorySearch.toLowerCase();
+    return DEFAULT_CATEGORIES.filter(c =>
+      c.toLowerCase().includes(searchLower) &&
+      !editCategories.includes(c)
+    ).slice(0, 5);
+  }, [categorySearch, editCategories]);
+
+  const handleSave = useCallback(() => {
+    if (editCategories.length === 0) {
+      Alert.alert('Error', 'Please select at least one category');
+      return;
+    }
+    if (editCategories.length > 5) {
+      Alert.alert('Error', 'Maximum 5 categories allowed');
+      return;
+    }
+    onSave(editCategories);
+    onClose();
+  }, [editCategories, onSave, onClose]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+      hardwareAccelerated={Platform.OS === 'android'}
+      statusBarTranslucent={Platform.OS === 'android'}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Update Categories</Text>
+            <TouchableOpacity onPress={onClose}>
+              <Ionicons name="close" size={24} color="#5C3B24" />
+            </TouchableOpacity>
+          </View>
+
+          <KeyboardAwareScrollView
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 16 }}
+          >
+            <View>
+              <Text style={styles.modalInputLabel}>
+                Selected Categories ({editCategories.length}/5)
+              </Text>
+              <View style={styles.modalSelectedCats}>
+                {editCategories.map((cat, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.modalSelectedCatChip}
+                    onPress={() => removeCategory(cat)}
+                  >
+                    <Text style={styles.modalSelectedCatText}>{cat}</Text>
+                    <Ionicons name="close" size={14} color="#A04100" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Search or add category..."
+                placeholderTextColor="#9A897E"
+                value={categorySearch}
+                onChangeText={setCategorySearch}
+              />
+
+              {filteredCategories.length > 0 && (
+                <View style={styles.modalSuggestions}>
+                  {filteredCategories.map((cat, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.modalSuggestionItem}
+                      onPress={() => addCategory(cat)}
+                    >
+                      <Text style={styles.modalSuggestionText}>{cat}</Text>
+                      <Ionicons name="add" size={18} color="#C67A53" />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {categorySearch && !filteredCategories.includes(categorySearch) && (
+                <TouchableOpacity
+                  style={styles.modalAddCustomBtn}
+                  onPress={() => addCategory(categorySearch)}
+                >
+                  <Ionicons name="add-circle" size={18} color="#C67A53" />
+                  <Text style={styles.modalAddCustomText}>
+                    Add "{categorySearch}" as new category
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.modalSaveBtn}
+              onPress={handleSave}
+            >
+              <Text style={styles.modalSaveBtnText}>Save Changes</Text>
+            </TouchableOpacity>
+          </KeyboardAwareScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+});
+CategoryEditModal.displayName = 'CategoryEditModal';
+
+const GallerySection = React.memo<{
+  galleryPhotos: { url: string | null; slot: number; isLoading?: boolean }[];
+  nextSlot: number;
+  loadingSlot: number | null;
+  onPickImage: (slot: number) => void;
+}>(({ galleryPhotos, nextSlot, loadingSlot, onPickImage }) => {
+  return (
+    <View style={styles.card}>
+      <View style={[styles.cardHeader, { justifyContent: 'space-between' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <GalleryIcon />
+          <Text style={styles.cardTitle}>Gallery</Text>
+        </View>
+        {nextSlot < 5 && (
+          <TouchableOpacity onPress={() => onPickImage(nextSlot)}>
+            <Text style={styles.addPhotoLink}>Add Photo</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
+        {galleryPhotos.map((item, idx) => (
+          <View key={idx} style={styles.galleryImageContainer}>
+            {item.url ? (
+              <Image source={{ uri: item.url }} style={styles.galleryImage} />
+            ) : (
+              <View style={[styles.galleryImage, { backgroundColor: '#FAF8F5', justifyContent: 'center', alignItems: 'center' }]}>
+                <ActivityIndicator size="small" color="#A04100" />
+              </View>
+            )}
+            {loadingSlot === item.slot && item.url && (
+              <View style={styles.galleryImageLoader}>
+                <ActivityIndicator size="small" color="#fff" />
+              </View>
+            )}
+          </View>
+        ))}
+        {galleryPhotos.length === 0 && (
+          <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
+        )}
+      </ScrollView>
+    </View>
+  );
+});
+GallerySection.displayName = 'GallerySection';
+
 export default function VendorDashboardScreen() {
+  console.log('[VendorDashboardScreen render]');
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { myVendor, fetchMyVendor, updateVendor, updateBusinessProfile, deleteVendor, uploadBusinessImage } = useVendorStore();
   const { user, isLoading: authLoading, isAuthenticated, updateUser } = useAuthStore();
@@ -77,13 +309,26 @@ export default function VendorDashboardScreen() {
     setPhoneVerifying(false);
   };
 
-
+  // Memoized input change handlers to isolate re-renders per field
+  const handleOwnerNameChange = useCallback((text: string) => setOwnerName(text), []);
+  const handleBusinessNameChange = useCallback((text: string) => setBusinessName(text), []);
+  const handleEmailChange = useCallback((text: string) => setEmailVal(text), []);
+  const handleWebsiteChange = useCallback((text: string) => setWebsiteVal(text), []);
+  const handleInstagramChange = useCallback((text: string) => setInstagramVal(text), []);
+  const handleWhatsappChange = useCallback((text: string) => setWhatsappVal(text), []);
+  const handleDescriptionChange = useCallback((text: string) => setDescriptionVal(text), []);
+  const handleAddressChange = useCallback((text: string) => setAddressVal(text), []);
+  const handleOffersChange = useCallback((text: string) => setOffersVal(text), []);
+  const handleEditCategories = useCallback(() => {
+    setEditModal('categories');
+  }, []);
+  const handleSaveCategories = useCallback((newCategories: string[]) => {
+    setCategoriesVal(newCategories);
+  }, []);
 
   // Edit modals
   const [editModal, setEditModal] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
-  const [editCategories, setEditCategories] = useState<string[]>([]);
-  const [categorySearch, setCategorySearch] = useState('');
 
   // Editable Form states matching the mockup
   const [ownerName, setOwnerName] = useState('');
@@ -120,6 +365,23 @@ export default function VendorDashboardScreen() {
     }
   }, [myVendor]);
 
+  // Diagnostic log hooks to identify state updates on typing
+  useEffect(() => {
+    console.log('[VendorDashboardScreen] myVendor changed');
+  }, [myVendor]);
+
+  useEffect(() => {
+    console.log('[VendorDashboardScreen] user changed');
+  }, [user]);
+
+  useEffect(() => {
+    console.log('[VendorDashboardScreen] ownerName changed:', ownerName);
+  }, [ownerName]);
+
+  useEffect(() => {
+    console.log('[VendorDashboardScreen] businessName changed:', businessName);
+  }, [businessName]);
+
   // Redirect if not authenticated or not KYC verified
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -130,13 +392,13 @@ export default function VendorDashboardScreen() {
     if (!authLoading && !isInitializing && myVendor) {
       const isUserVerified = (user as any)?.kyc_status === 'verified';
       const isVendorVerified = myVendor?.kyc_status === 'verified';
-      const isUserPending = (user as any)?.kyc_status === 'pending' || (user as any)?.kyc_status === 'manual_review';
-      const isVendorPending = myVendor?.kyc_status === 'pending' || myVendor?.kyc_status === 'manual_review';
+      const isUserPending = (user as any)?.kyc_status === 'pending';
+      const isVendorPending = myVendor?.kyc_status === 'pending';
       if (!isUserVerified && !isVendorVerified && !isUserPending && !isVendorPending) {
         Alert.alert(
           'KYC Required',
           'Please complete your KYC verification to access the dashboard.',
-          [{ text: 'OK', onPress: () => router.replace('/kyc-submit') }]
+          [{ text: 'OK', onPress: () => router.replace('/kyc') }]
         );
       }
     }
@@ -183,6 +445,74 @@ export default function VendorDashboardScreen() {
     };
   }, [router]);
 
+  const isUserVerified = (user as any)?.kyc_status === 'verified';
+  const isVendorVerified = myVendor?.kyc_status === 'verified';
+  const isVerified = isUserVerified || isVendorVerified;
+
+  const galleryPhotos = useMemo(() => {
+    const list: { url: string | null; slot: number; isLoading?: boolean }[] = [];
+    const images = myVendor?.business_gallery_images || [];
+    for (let i = 1; i < 5; i++) {
+      if (images[i]) {
+        list.push({ url: images[i], slot: i });
+      } else if (loadingSlot === i) {
+        list.push({ url: null, slot: i, isLoading: true });
+      }
+    }
+    if (list.length === 0 && myVendor?.photos && myVendor.photos.length > 1) {
+      for (let i = 1; i < myVendor.photos.length; i++) {
+        list.push({ url: myVendor.photos[i], slot: i });
+      }
+    }
+    return list;
+  }, [myVendor?.business_gallery_images, myVendor?.photos, loadingSlot]);
+
+  const nextGallerySlot = useMemo(() => {
+    const images = myVendor?.business_gallery_images || [];
+    for (let i = 1; i < 5; i++) {
+      if (!images[i]) return i;
+    }
+    return 5;
+  }, [myVendor?.business_gallery_images]);
+
+  const pickAndUploadImage = useCallback(async (slot: number) => {
+    if (!myVendor) return;
+    if (!isVerified) {
+      Alert.alert('Verification Required', 'Business photos can be uploaded only after KYC verification.');
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (permission.status !== 'granted') {
+      Alert.alert('Permission Denied', 'Media library access is required.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const asset = result.assets[0];
+    const fileName = (asset as any).fileName || `business-${slot + 1}.jpg`;
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const localUri = asset.uri;
+
+    try {
+      setLoadingSlot(slot);
+      await uploadBusinessImage(myVendor.id, slot, { uri: localUri, name: fileName, type: mimeType });
+      await fetchMyVendor();
+      Alert.alert('Success', 'Photo uploaded successfully.');
+    } catch (error: any) {
+      Alert.alert('Upload failed', error?.response?.data?.detail || 'Could not upload image.');
+    } finally {
+      setLoadingSlot(null);
+    }
+  }, [myVendor, isVerified, uploadBusinessImage, fetchMyVendor]);
+
   // KYC Guard: Redirect to KYC if not verified
   const isUserVerifiedForGuard = (user as any)?.kyc_status === 'verified';
   const isVendorVerifiedForGuard = myVendor?.kyc_status === 'verified';
@@ -217,7 +547,7 @@ export default function VendorDashboardScreen() {
               const isUserVerified = (user as any)?.kyc_status === 'verified' || Boolean((user as any)?.is_verified);
               if (!isUserVerified) {
                 router.replace({
-                  pathname: '/kyc-submit',
+                  pathname: '/kyc',
                   params: { returnUrl: '/(tabs)/vendor' }
                 });
               } else {
@@ -233,34 +563,6 @@ export default function VendorDashboardScreen() {
   }
 
   const profileUri = (myVendor.business_gallery_images && myVendor.business_gallery_images[0]) || (myVendor.photos && myVendor.photos[0]);
-
-  const getGalleryPhotos = () => {
-    const list: { url: string | null; slot: number; isLoading?: boolean }[] = [];
-    const images = myVendor.business_gallery_images || [];
-    for (let i = 1; i < 5; i++) {
-      if (images[i]) {
-        list.push({ url: images[i], slot: i });
-      } else if (loadingSlot === i) {
-        list.push({ url: null, slot: i, isLoading: true });
-      }
-    }
-    if (list.length === 0 && myVendor.photos && myVendor.photos.length > 1) {
-      for (let i = 1; i < myVendor.photos.length; i++) {
-        list.push({ url: myVendor.photos[i], slot: i });
-      }
-    }
-    return list;
-  };
-
-  const galleryPhotos = getGalleryPhotos();
-
-  const getNextGallerySlot = () => {
-    const images = myVendor.business_gallery_images || [];
-    for (let i = 1; i < 5; i++) {
-      if (!images[i]) return i;
-    }
-    return 5;
-  };
 
   const handleEditBusinessName = () => {
     setEditValue(myVendor.business_name);
@@ -283,17 +585,12 @@ export default function VendorDashboardScreen() {
     setEditModal('business_description');
   };
 
-  const handleEditCategories = () => {
-    setEditCategories([...myVendor.categories]);
-    setEditModal('categories');
-  };
+
 
   const formatKycStatus = (status?: string) => {
     switch (status) {
       case 'verified':
         return 'KYC Verified';
-      case 'manual_review':
-        return 'Admin Review';
       case 'rejected':
         return 'Rejected';
       default:
@@ -305,8 +602,6 @@ export default function VendorDashboardScreen() {
     switch (status) {
       case 'verified':
         return '#DFF7E3';
-      case 'manual_review':
-        return '#FFF5D6';
       case 'rejected':
         return '#FAD6D6';
       default:
@@ -341,18 +636,6 @@ export default function VendorDashboardScreen() {
             return;
           }
           setPhoneVal(editValue);
-          setEditModal(null);
-          break;
-        case 'categories':
-          if (editCategories.length === 0) {
-            Alert.alert('Error', 'Please select at least one category');
-            return;
-          }
-          if (editCategories.length > 5) {
-            Alert.alert('Error', 'Maximum 5 categories allowed');
-            return;
-          }
-          setCategoriesVal(editCategories);
           setEditModal(null);
           break;
         case 'weekday_hours':
@@ -417,42 +700,12 @@ export default function VendorDashboardScreen() {
     }
   };
 
-  const addCategory = (cat: string) => {
-    if (editCategories.length >= 5) {
-      Alert.alert('Limit', 'Maximum 5 categories allowed');
-      return;
-    }
-    if (!editCategories.includes(cat)) {
-      setEditCategories([...editCategories, cat]);
-    }
-    setCategorySearch('');
-  };
-
-  const removeCategory = (cat: string) => {
-    setEditCategories(editCategories.filter(c => c !== cat));
-  };
-
-  const filteredCategories = categorySearch
-    ? DEFAULT_CATEGORIES.filter(c => 
-        c.toLowerCase().includes(categorySearch.toLowerCase()) &&
-        !editCategories.includes(c)
-      ).slice(0, 5)
-    : [];
-
-  const isUserVerified = (user as any)?.kyc_status === 'verified';
-  const isVendorVerified = myVendor?.kyc_status === 'verified';
-  const isVerified = isUserVerified || isVendorVerified;
-
-  const isUserManualReview = (user as any)?.kyc_status === 'manual_review';
-  const isVendorManualReview = myVendor?.kyc_status === 'manual_review';
-  const isManualReview = isUserManualReview || isVendorManualReview;
-
-  const isUserPending = (user as any)?.kyc_status === 'pending' || isUserManualReview;
-  const isVendorPending = myVendor?.kyc_status === 'pending' || isVendorManualReview;
+  const isUserPending = (user as any)?.kyc_status === 'pending';
+  const isVendorPending = myVendor?.kyc_status === 'pending';
 
   const isUserKycVerified = isUserVerified;
-  const effectiveKycStatus = isVerified ? 'verified' : (isManualReview ? 'manual_review' : (myVendor?.kyc_status || (user as any)?.kyc_status || 'pending'));
-  const isReviewOrVerified = isManualReview || isVerified;
+  const effectiveKycStatus = isVerified ? 'verified' : (myVendor?.kyc_status || (user as any)?.kyc_status || 'pending');
+  const isReviewOrVerified = isVerified;
   const isVendorApproved = isVerified;
   const hasVerifiedKyc = isVerified;
 
@@ -461,7 +714,7 @@ export default function VendorDashboardScreen() {
   };
 
   const handleOpenKyc = () => {
-    router.push('/kyc-submit');
+    router.push('/kyc');
   };
 
   const handleDeleteBusiness = async () => {
@@ -535,43 +788,7 @@ export default function VendorDashboardScreen() {
     setEditModal('sunday_hours');
   };
 
-  const pickAndUploadImage = async (slot: number) => {
-    if (!myVendor) return;
-    if (!isVerified) {
-      Alert.alert('Verification Required', 'Business photos can be uploaded only after KYC verification.');
-      return;
-    }
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permission.status !== 'granted') {
-      Alert.alert('Permission Denied', 'Media library access is required.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.7,
-    });
-
-    if (result.canceled || !result.assets?.length) return;
-
-    const asset = result.assets[0];
-    const fileName = (asset as any).fileName || `business-${slot + 1}.jpg`;
-    const mimeType = asset.mimeType || 'image/jpeg';
-    const localUri = asset.uri;
-
-    try {
-      setLoadingSlot(slot);
-      await uploadBusinessImage(myVendor.id, slot, { uri: localUri, name: fileName, type: mimeType });
-      await fetchMyVendor();
-      Alert.alert('Success', 'Photo uploaded successfully.');
-    } catch (error: any) {
-      Alert.alert('Upload failed', error?.response?.data?.detail || 'Could not upload image.');
-    } finally {
-      setLoadingSlot(null);
-    }
-  };
 
   const handleSaveAll = async () => {
     // 0. KYC Verification Check: Must be approved by admin panel
@@ -836,15 +1053,14 @@ export default function VendorDashboardScreen() {
           </View>
 
           <Text style={styles.inputLabel}>Full Name <Text style={{ color: '#E53E3E' }}>*</Text></Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={ownerName}
-              onChangeText={setOwnerName}
-              placeholder="Full Name"
-              placeholderTextColor="#9A897E"
-            />
-          </View>
+          <FormInput
+            containerStyle={styles.inputContainer}
+            style={styles.textInput}
+            value={ownerName}
+            onChangeText={handleOwnerNameChange}
+            placeholder="Full Name"
+            placeholderTextColor="#9A897E"
+          />
 
           <Text style={styles.inputLabel}>Phone Number <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <TouchableOpacity style={styles.inputContainer} onPress={handleEditPhone}>
@@ -853,17 +1069,16 @@ export default function VendorDashboardScreen() {
           </TouchableOpacity>
 
           <Text style={styles.inputLabel}>Email Address <Text style={{ color: '#E53E3E' }}>*</Text></Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={emailVal}
-              onChangeText={setEmailVal}
-              placeholder="Email Address"
-              placeholderTextColor="#9A897E"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
+          <FormInput
+            containerStyle={styles.inputContainer}
+            style={styles.textInput}
+            value={emailVal}
+            onChangeText={handleEmailChange}
+            placeholder="Email Address"
+            placeholderTextColor="#9A897E"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
         </View>
 
         {/* Section: Contact Information */}
@@ -874,44 +1089,41 @@ export default function VendorDashboardScreen() {
           </View>
 
           <Text style={styles.inputLabel}>Website Link</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={websiteVal}
-              onChangeText={setWebsiteVal}
-              placeholder="Website Link"
-              placeholderTextColor="#9A897E"
-              keyboardType="url"
-              autoCapitalize="none"
-              editable={isVerified}
-            />
-          </View>
+          <FormInput
+            containerStyle={styles.inputContainer}
+            style={styles.textInput}
+            value={websiteVal}
+            onChangeText={handleWebsiteChange}
+            placeholder="Website Link"
+            placeholderTextColor="#9A897E"
+            keyboardType="url"
+            autoCapitalize="none"
+            editable={isVerified}
+          />
 
           <Text style={styles.inputLabel}>Instagram</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={instagramVal}
-              onChangeText={setInstagramVal}
-              placeholder="Instagram handle (e.g. @username)"
-              placeholderTextColor="#9A897E"
-              autoCapitalize="none"
-              editable={isVerified}
-            />
-          </View>
+          <FormInput
+            containerStyle={styles.inputContainer}
+            style={styles.textInput}
+            value={instagramVal}
+            onChangeText={handleInstagramChange}
+            placeholder="Instagram handle (e.g. @username)"
+            placeholderTextColor="#9A897E"
+            autoCapitalize="none"
+            editable={isVerified}
+          />
 
           <Text style={styles.inputLabel}>WhatsApp</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={whatsappVal}
-              onChangeText={setWhatsappVal}
-              placeholder="WhatsApp Number"
-              placeholderTextColor="#9A897E"
-              keyboardType="phone-pad"
-              editable={isVerified}
-            />
-          </View>
+          <FormInput
+            containerStyle={styles.inputContainer}
+            style={styles.textInput}
+            value={whatsappVal}
+            onChangeText={handleWhatsappChange}
+            placeholder="WhatsApp Number"
+            placeholderTextColor="#9A897E"
+            keyboardType="phone-pad"
+            editable={isVerified}
+          />
         </View>
 
         {/* Section: Business Information */}
@@ -922,15 +1134,14 @@ export default function VendorDashboardScreen() {
           </View>
 
           <Text style={styles.inputLabel}>Business Name <Text style={{ color: '#E53E3E' }}>*</Text></Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              value={businessName}
-              onChangeText={setBusinessName}
-              placeholder="Business Name"
-              placeholderTextColor="#9A897E"
-            />
-          </View>
+          <FormInput
+            containerStyle={styles.inputContainer}
+            style={styles.textInput}
+            value={businessName}
+            onChangeText={handleBusinessNameChange}
+            placeholder="Business Name"
+            placeholderTextColor="#9A897E"
+          />
 
           <Text style={styles.inputLabel}>Categories <Text style={{ color: '#E53E3E' }}>*</Text></Text>
           <View style={styles.categoriesRow}>
@@ -949,30 +1160,28 @@ export default function VendorDashboardScreen() {
           </View>
 
           <Text style={[styles.inputLabel, { marginTop: 14 }]}>Description <Text style={{ color: '#E53E3E' }}>*</Text></Text>
-          <View style={[styles.inputContainer, styles.descriptionContainer]}>
-            <TextInput
-              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
-              value={descriptionVal}
-              onChangeText={setDescriptionVal}
-              placeholder="Description"
-              placeholderTextColor="#9A897E"
-              multiline
-              numberOfLines={4}
-            />
-          </View>
+          <FormInput
+            containerStyle={DESCRIPTION_CONTAINER_STYLE}
+            style={TEXTAREA_FULL_STYLE}
+            value={descriptionVal}
+            onChangeText={handleDescriptionChange}
+            placeholder="Description"
+            placeholderTextColor="#9A897E"
+            multiline
+            numberOfLines={4}
+          />
 
           <Text style={styles.inputLabel}>Address <Text style={{ color: '#E53E3E' }}>*</Text></Text>
-          <View style={[styles.inputContainer, styles.addressContainer]}>
-            <TextInput
-              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
-              value={addressVal}
-              onChangeText={setAddressVal}
-              placeholder="Address"
-              placeholderTextColor="#9A897E"
-              multiline
-              numberOfLines={3}
-            />
-          </View>
+          <FormInput
+            containerStyle={ADDRESS_CONTAINER_STYLE}
+            style={TEXTAREA_FULL_STYLE}
+            value={addressVal}
+            onChangeText={handleAddressChange}
+            placeholder="Address"
+            placeholderTextColor="#9A897E"
+            multiline
+            numberOfLines={3}
+          />
 
           <Text style={styles.inputLabel}>Business Hours</Text>
           <View style={styles.hoursBox}>
@@ -1001,41 +1210,12 @@ export default function VendorDashboardScreen() {
         </View>
 
         {/* Section: Gallery */}
-        <View style={styles.card}>
-          <View style={[styles.cardHeader, { justifyContent: 'space-between' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <GalleryIcon />
-              <Text style={styles.cardTitle}>Gallery</Text>
-            </View>
-            {getNextGallerySlot() < 5 && (
-              <TouchableOpacity onPress={() => pickAndUploadImage(getNextGallerySlot())}>
-                <Text style={styles.addPhotoLink}>Add Photo</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <KeyboardAwareScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.galleryScroll}>
-            {galleryPhotos.map((item, idx) => (
-              <View key={idx} style={styles.galleryImageContainer}>
-                {item.url ? (
-                  <Image source={{ uri: item.url }} style={styles.galleryImage} />
-                ) : (
-                  <View style={[styles.galleryImage, { backgroundColor: '#FAF8F5', justifyContent: 'center', alignItems: 'center' }]}>
-                    <ActivityIndicator size="small" color="#A04100" />
-                  </View>
-                )}
-                {loadingSlot === item.slot && item.url && (
-                  <View style={styles.galleryImageLoader}>
-                    <ActivityIndicator size="small" color="#fff" />
-                  </View>
-                )}
-              </View>
-            ))}
-            {galleryPhotos.length === 0 && (
-              <Text style={styles.emptyGalleryText}>No gallery photos uploaded yet.</Text>
-            )}
-          </KeyboardAwareScrollView>
-        </View>
+        <GallerySection
+          galleryPhotos={galleryPhotos}
+          nextSlot={nextGallerySlot}
+          loadingSlot={loadingSlot}
+          onPickImage={pickAndUploadImage}
+        />
 
         {/* Section: Offers & Deals */}
         <View style={styles.card}>
@@ -1045,18 +1225,17 @@ export default function VendorDashboardScreen() {
           </View>
 
           <Text style={styles.inputLabel}>Current Offers</Text>
-          <View style={[styles.inputContainer, styles.descriptionContainer]}>
-            <TextInput
-              style={[styles.textInput, styles.textAreaInput, { height: '100%' }]}
-              value={offersVal}
-              onChangeText={setOffersVal}
-              placeholder="e.g. 10% off on first order, Buy 1 Get 1 free, etc."
-              placeholderTextColor="#9A897E"
-              multiline
-              numberOfLines={3}
-              editable={isVerified}
-            />
-          </View>
+          <FormInput
+            containerStyle={DESCRIPTION_CONTAINER_STYLE}
+            style={TEXTAREA_FULL_STYLE}
+            value={offersVal}
+            onChangeText={handleOffersChange}
+            placeholder="e.g. 10% off on first order, Buy 1 Get 1 free, etc."
+            placeholderTextColor="#9A897E"
+            multiline
+            numberOfLines={3}
+            editable={isVerified}
+          />
         </View>
 
         {/* Section: Delete Account */}
@@ -1091,158 +1270,105 @@ export default function VendorDashboardScreen() {
         </View>
       </KeyboardAwareScrollView>
 
-      {/* Edit Modal (used for Category/Phone verification/Hours popups) */}
+      {/* Edit Modal (used for Phone verification/Hours popups) */}
       <Modal
-        visible={editModal !== null}
+        visible={editModal !== null && editModal !== 'categories'}
         transparent
-        animationType="slide"
+        animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+        hardwareAccelerated={Platform.OS === 'android'}
+        statusBarTranslucent={Platform.OS === 'android'}
         onRequestClose={() => {
           setEditModal(null);
           resetPhoneVerification();
         }}
       >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>
-                  {editModal === 'phone' && 'Update Phone'}
-                  {editModal === 'categories' && 'Update Categories'}
-                  {editModal === 'weekday_hours' && 'Mon - Sat Hours'}
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editModal === 'phone' && 'Update Phone'}
+                {editModal === 'weekday_hours' && 'Mon - Sat Hours'}
+                {editModal === 'sunday_hours' && 'Sunday Hours'}
+              </Text>
+              <TouchableOpacity onPress={() => {
+                setEditModal(null);
+                resetPhoneVerification();
+              }}>
+                <Ionicons name="close" size={24} color="#5C3B24" />
+              </TouchableOpacity>
+            </View>
+
+            <KeyboardAwareScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 16 }}>
+              <View>
+                <Text style={styles.modalInputLabel}>
+                  {editModal === 'phone' && 'Phone Number'}
+                  {editModal === 'weekday_hours' && 'Weekday Hours (Mon - Sat)'}
                   {editModal === 'sunday_hours' && 'Sunday Hours'}
                 </Text>
-                <TouchableOpacity onPress={() => {
-                  setEditModal(null);
-                  resetPhoneVerification();
-                }}>
-                  <Ionicons name="close" size={24} color="#5C3B24" />
-                </TouchableOpacity>
-              </View>
+                <TextInput
+                  style={styles.modalInput}
+                  value={editValue}
+                  onChangeText={(text) => {
+                    setEditValue(text);
+                    if (editModal === 'phone') {
+                      resetPhoneVerification();
+                    }
+                  }}
+                  keyboardType={editModal === 'phone' ? 'phone-pad' : 'default'}
+                />
 
-              {editModal === 'categories' ? (
-                <View>
-                  <Text style={styles.modalInputLabel}>Selected Categories ({editCategories.length}/5)</Text>
-                  <View style={styles.modalSelectedCats}>
-                    {editCategories.map((cat, idx) => (
-                      <TouchableOpacity 
-                        key={idx} 
-                        style={styles.modalSelectedCatChip}
-                        onPress={() => removeCategory(cat)}
+                {editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && (
+                  <View style={styles.phoneVerificationSection}>
+                    {phoneOtpMessage ? <Text style={styles.phoneVerificationMessage}>{phoneOtpMessage}</Text> : null}
+                    {phoneOtpError ? <Text style={styles.phoneVerificationError}>{phoneOtpError}</Text> : null}
+
+                    {phoneOtpStage === 'idle' && (
+                      <TouchableOpacity
+                        style={[styles.modalVerifyBtn, phoneSending && styles.modalVerifyBtnDisabled]}
+                        onPress={handleSendPhoneOtp}
+                        disabled={phoneSending}
                       >
-                        <Text style={styles.modalSelectedCatText}>{cat}</Text>
-                        <Ionicons name="close" size={14} color="#A04100" />
+                        {phoneSending ? (
+                          <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.modalVerifyBtnText}>Send OTP</Text>
+                        )}
                       </TouchableOpacity>
-                    ))}
-                  </View>
-                  
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Search or add category..."
-                    placeholderTextColor="#9A897E"
-                    value={categorySearch}
-                    onChangeText={setCategorySearch}
-                  />
-                  
-                  {filteredCategories.length > 0 && (
-                    <View style={styles.modalSuggestions}>
-                      {filteredCategories.map((cat, idx) => (
-                        <TouchableOpacity
-                          key={idx}
-                          style={styles.modalSuggestionItem}
-                          onPress={() => addCategory(cat)}
-                        >
-                          <Text style={styles.modalSuggestionText}>{cat}</Text>
-                          <Ionicons name="add" size={18} color="#C67A53" />
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                  
-                  {categorySearch && !filteredCategories.includes(categorySearch) && (
-                    <TouchableOpacity
-                      style={styles.modalAddCustomBtn}
-                      onPress={() => addCategory(categorySearch)}
-                    >
-                      <Ionicons name="add-circle" size={18} color="#C67A53" />
-                      <Text style={styles.modalAddCustomText}>Add "{categorySearch}" as new category</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ) : (
-                <View>
-                  <Text style={styles.modalInputLabel}>
-                    {editModal === 'phone' && 'Phone Number'}
-                    {editModal === 'weekday_hours' && 'Weekday Hours (Mon - Sat)'}
-                    {editModal === 'sunday_hours' && 'Sunday Hours'}
-                  </Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={editValue}
-                    onChangeText={(text) => {
-                      setEditValue(text);
-                      if (editModal === 'phone') {
-                        resetPhoneVerification();
-                      }
-                    }}
-                    keyboardType={editModal === 'phone' ? 'phone-pad' : 'default'}
-                  />
+                    )}
 
-                  {editModal === 'phone' && editValue.replace(/[^0-9]/g, '') !== myVendor.phone_number.replace(/[^0-9]/g, '') && (
-                    <View style={styles.phoneVerificationSection}>
-                      {phoneOtpMessage ? <Text style={styles.phoneVerificationMessage}>{phoneOtpMessage}</Text> : null}
-                      {phoneOtpError ? <Text style={styles.phoneVerificationError}>{phoneOtpError}</Text> : null}
-
-                      {phoneOtpStage === 'idle' && (
+                    {phoneOtpStage === 'sent' && (
+                      <>
+                        <TextInput
+                          style={styles.modalInput}
+                          value={phoneOtp}
+                          onChangeText={setPhoneOtp}
+                          placeholder="Enter OTP"
+                          placeholderTextColor="#9A897E"
+                          keyboardType="phone-pad"
+                          maxLength={6}
+                          textContentType="oneTimeCode"
+                          autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
+                        />
                         <TouchableOpacity
-                          style={[styles.modalVerifyBtn, phoneSending && styles.modalVerifyBtnDisabled]}
-                          onPress={handleSendPhoneOtp}
-                          disabled={phoneSending}
+                          style={[styles.modalVerifyBtn, phoneVerifying && styles.modalVerifyBtnDisabled]}
+                          onPress={handleVerifyPhoneOtp}
+                          disabled={phoneVerifying}
                         >
-                          {phoneSending ? (
+                          {phoneVerifying ? (
                             <ActivityIndicator color="#FFFFFF" />
                           ) : (
-                            <Text style={styles.modalVerifyBtnText}>Send OTP</Text>
+                            <Text style={styles.modalVerifyBtnText}>Verify OTP</Text>
                           )}
                         </TouchableOpacity>
-                      )}
+                      </>
+                    )}
 
-                      {phoneOtpStage === 'sent' && (
-                        <>
-                          <TextInput
-                            style={styles.modalInput}
-                            value={phoneOtp}
-                            onChangeText={setPhoneOtp}
-                            placeholder="Enter OTP"
-                            placeholderTextColor="#9A897E"
-                            keyboardType="phone-pad"
-                            maxLength={6}
-                            textContentType="oneTimeCode"
-                            autoComplete={Platform.OS === 'android' ? 'sms-otp' : 'one-time-code'}
-                          />
-                          <TouchableOpacity
-                            style={[styles.modalVerifyBtn, phoneVerifying && styles.modalVerifyBtnDisabled]}
-                            onPress={handleVerifyPhoneOtp}
-                            disabled={phoneVerifying}
-                          >
-                            {phoneVerifying ? (
-                              <ActivityIndicator color="#FFFFFF" />
-                            ) : (
-                              <Text style={styles.modalVerifyBtnText}>Verify OTP</Text>
-                            )}
-                          </TouchableOpacity>
-                        </>
-                      )}
-
-                      {phoneOtpStage === 'verified' && (
-                        <Text style={styles.phoneVerificationSuccess}>Phone verified. Press Save Changes below.</Text>
-                      )}
-                    </View>
-                  )}
-                </View>
-              )}
+                    {phoneOtpStage === 'verified' && (
+                      <Text style={styles.phoneVerificationSuccess}>Phone verified. Press Save Changes below.</Text>
+                    )}
+                  </View>
+                )}
+              </View>
 
               <TouchableOpacity
                 style={[styles.modalSaveBtn, loading && styles.modalSaveBtnDisabled]}
@@ -1251,10 +1377,18 @@ export default function VendorDashboardScreen() {
               >
                 <Text style={styles.modalSaveBtnText}>Save Changes</Text>
               </TouchableOpacity>
-            </View>
+            </KeyboardAwareScrollView>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </Modal>
+
+      {/* Extracted Category Edit Modal with Local State */}
+      <CategoryEditModal
+        visible={editModal === 'categories'}
+        initialCategories={categoriesVal}
+        onClose={() => setEditModal(null)}
+        onSave={handleSaveCategories}
+      />
     </SafeAreaView>
   );
 }
@@ -1717,3 +1851,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
+
+// Module scope hoisted style constants placed after StyleSheet declaration to preserve React.memo equality
+const TEXTAREA_FULL_STYLE: StyleProp<TextStyle> = [styles.textInput, styles.textAreaInput, { height: '100%' }];
+const DESCRIPTION_CONTAINER_STYLE: StyleProp<ViewStyle> = [styles.inputContainer, styles.descriptionContainer];
+const ADDRESS_CONTAINER_STYLE: StyleProp<ViewStyle> = [styles.inputContainer, styles.addressContainer];

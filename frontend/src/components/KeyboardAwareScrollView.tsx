@@ -1,6 +1,6 @@
-import React, { forwardRef, useState, useEffect } from 'react';
+import React, { forwardRef } from 'react';
 import { KeyboardAwareScrollView as RNKeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { ScrollView, StyleProp, ViewStyle, ScrollViewProps, Platform, Keyboard } from 'react-native';
+import { ScrollView, StyleProp, ViewStyle, ScrollViewProps, Platform } from 'react-native';
 
 interface KeyboardAwareScrollViewProps extends ScrollViewProps {
   style?: StyleProp<ViewStyle>;
@@ -9,6 +9,7 @@ interface KeyboardAwareScrollViewProps extends ScrollViewProps {
   extraScrollHeight?: number;
   enableOnAndroid?: boolean;
   enableAutomaticScroll?: boolean;
+  keyboardOpeningTime?: number;
 }
 
 export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, KeyboardAwareScrollViewProps>(({
@@ -17,34 +18,33 @@ export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, Key
   contentContainerStyle,
   extraHeight = 120,
   extraScrollHeight = 160,
+  enableAutomaticScroll = Platform.OS === 'ios',
+  keyboardOpeningTime = 0,
   ...props
 }, ref) => {
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android') return;
-    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates?.height || 0);
-    });
-    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-    });
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
+  if (Platform.OS === 'android') {
+    return (
+      <ScrollView
+        ref={ref as any}
+        style={style}
+        contentContainerStyle={contentContainerStyle}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        {...props}
+      >
+        {children}
+      </ScrollView>
+    );
+  }
 
   return (
     <RNKeyboardAwareScrollView
       ref={ref}
       style={style}
-      contentContainerStyle={[
-        contentContainerStyle,
-        Platform.OS === 'android' && keyboardHeight > 0 ? { paddingBottom: keyboardHeight } : null,
-      ]}
+      contentContainerStyle={contentContainerStyle}
       enableOnAndroid={true}
-      enableAutomaticScroll={true}
+      enableAutomaticScroll={enableAutomaticScroll}
+      keyboardOpeningTime={keyboardOpeningTime}
       extraHeight={extraHeight}
       extraScrollHeight={extraScrollHeight}
       keyboardShouldPersistTaps="handled"

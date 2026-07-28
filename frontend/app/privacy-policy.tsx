@@ -649,12 +649,23 @@ export default function PrivacyPolicyScreen() {
 
       {/* Floating Footer */}
       {!isAtBottom && (
-        <View style={styles.footerContainer}>
+        <View 
+          style={[
+            styles.footerContainer, 
+            { paddingBottom: Math.max(insets.bottom, 16) }
+          ]} 
+          pointerEvents="box-none"
+        >
           <LinearGradient
-            colors={['rgba(0, 0, 0, 0)', '#000000']}
-            style={styles.footerGradient}
+            colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.95)', '#000000']}
+            locations={[0, 0.4, 1]}
+            style={[
+              styles.footerGradient, 
+              { paddingBottom: Math.max(insets.bottom, 16) }
+            ]}
+            pointerEvents="box-none"
           >
-            <TouchableOpacity style={styles.scrollButton} onPress={handleScrollButtonPress}>
+            <TouchableOpacity style={styles.scrollButton} onPress={handleScrollButtonPress} activeOpacity={0.8}>
               <Text style={styles.scrollButtonText}>Scroll to Bottom</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -793,20 +804,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 106,
     zIndex: 10,
   },
   footerGradient: {
-    flex: 1,
+    paddingTop: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+    paddingHorizontal: 20,
   },
   scrollButton: {
-    paddingTop: 17,
-    paddingBottom: 18,
-    paddingLeft: 102,
-    paddingRight: 102,
+    paddingVertical: 14,
+    paddingHorizontal: 60,
     borderRadius: 100,
     borderWidth: 2,
     borderColor: '#FF7B00',

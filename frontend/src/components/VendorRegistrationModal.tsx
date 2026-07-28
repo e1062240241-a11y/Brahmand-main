@@ -837,68 +837,81 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <Text style={styles.label}>Categories *</Text>
             <View style={{ marginBottom: SPACING.md }}>
               <TouchableOpacity 
-                style={styles.dropdownInputContainer}
+                style={styles.chipInputContainer}
+                activeOpacity={0.7}
                 onPress={() => {
                   setSelectedTempCategories(categories);
                   setShowCategorySelector(true);
                 }}
               >
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
-                  placeholder="Select categories"
-                  placeholderTextColor={COLORS.textLight}
-                  editable={false}
-                  pointerEvents="none"
-                  value={Platform.OS === 'android' ? categories.join(', ') : (categories.length > 0 ? `${categories.length} selected` : "")}
-                />
+                <View style={styles.chipInputContent}>
+                  {categories.length === 0 ? (
+                    <Text style={styles.placeholderText}>Select categories</Text>
+                  ) : (
+                    <View style={styles.chipsRow}>
+                      {categories.map((cat, idx) => (
+                        <View key={idx} style={styles.inlineCategoryTag}>
+                          <Text style={styles.categoryTagText}>{cat}</Text>
+                          <TouchableOpacity 
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            onPress={() => setCategories(categories.filter(c => c !== cat))}
+                          >
+                            <Ionicons name="close-circle" size={16} color={COLORS.primary} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
                 <View style={styles.dropdownToggleButton}>
                   <Ionicons name="chevron-forward" size={20} color={COLORS.textSecondary} />
                 </View>
               </TouchableOpacity>
             </View>
 
-            {/* Selected Categories */}
-            {categories.length > 0 && (
-              <View style={[styles.selectedCategories, { marginBottom: SPACING.md }]}>
-                {categories.map((cat, idx) => (
-                  <View key={idx} style={styles.categoryTag}>
-                    <Text style={styles.categoryTagText}>{cat}</Text>
-                    <TouchableOpacity onPress={() => setCategories(categories.filter(c => c !== cat))}>
-                      <Ionicons name="close-circle" size={16} color={COLORS.primary} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
-
             {/* Sub Categories */}
             <Text style={styles.label}>Sub Categories</Text>
             <View style={{ marginBottom: SPACING.md }}>
-              <View style={styles.dropdownInputContainer}>
-                <TextInput
-                  style={[styles.input, { flex: 1, borderTopRightRadius: 0, borderBottomRightRadius: 0 }]}
-                  placeholder="Select or search a subcategory"
-                  placeholderTextColor={COLORS.textLight}
-                  value={subCategoryInput}
-                  onChangeText={(text) => {
-                    const filtered = text.replace(/[^a-zA-Z\s]/g, '');
-                    setSubCategoryInput(filtered.slice(0, 30));
-                    setShowSubCategoryDropdown(true);
-                  }}
-                  onFocus={() => setShowSubCategoryDropdown(true)}
-                  onSubmitEditing={() => {
-                    const subCat = subCategoryInput.trim();
-                    if (subCat && !subCategories.includes(subCat)) {
-                      if (subCategories.length >= 5) {
-                        Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
-                        return;
-                      }
-                      setSubCategories([...subCategories, subCat]);
-                    }
-                    setSubCategoryInput('');
-                    setShowSubCategoryDropdown(false);
-                  }}
-                />
+              <View style={styles.chipInputContainer}>
+                <View style={styles.chipInputContent}>
+                  <View style={styles.chipsRow}>
+                    {subCategories.map((subCat, idx) => (
+                      <View key={idx} style={styles.inlineCategoryTag}>
+                        <Text style={styles.categoryTagText}>{subCat}</Text>
+                        <TouchableOpacity 
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          onPress={() => setSubCategories(subCategories.filter(s => s !== subCat))}
+                        >
+                          <Ionicons name="close-circle" size={16} color={COLORS.primary} />
+                        </TouchableOpacity>
+                      </View>
+                    ))}
+                    <TextInput
+                      style={styles.inlineTextInput}
+                      placeholder={subCategories.length === 0 ? "Select or search a subcategory" : "Add..."}
+                      placeholderTextColor={COLORS.textLight}
+                      value={subCategoryInput}
+                      onChangeText={(text) => {
+                        const filtered = text.replace(/[^a-zA-Z\s]/g, '');
+                        setSubCategoryInput(filtered.slice(0, 30));
+                        setShowSubCategoryDropdown(true);
+                      }}
+                      onFocus={() => setShowSubCategoryDropdown(true)}
+                      onSubmitEditing={() => {
+                        const subCat = subCategoryInput.trim();
+                        if (subCat && !subCategories.includes(subCat)) {
+                          if (subCategories.length >= 5) {
+                            Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
+                            return;
+                          }
+                          setSubCategories([...subCategories, subCat]);
+                        }
+                        setSubCategoryInput('');
+                        setShowSubCategoryDropdown(false);
+                      }}
+                    />
+                  </View>
+                </View>
                 <TouchableOpacity
                   style={styles.dropdownToggleButton}
                   onPress={() => {
@@ -967,20 +980,6 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 </View>
               )}
             </View>
-
-            {/* Selected Sub Categories */}
-            {subCategories.length > 0 && (
-              <View style={[styles.selectedCategories, { marginBottom: SPACING.md }]}>
-                {subCategories.map((subCat, idx) => (
-                  <View key={idx} style={styles.categoryTag}>
-                    <Text style={styles.categoryTagText}>{subCat}</Text>
-                    <TouchableOpacity onPress={() => setSubCategories(subCategories.filter(s => s !== subCat))}>
-                      <Ionicons name="close-circle" size={16} color={COLORS.primary} />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
 
             {/* Address */}
             <Text style={styles.label}>Full Address *</Text>
@@ -1541,6 +1540,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8FAFC',
     borderRadius: 16,
     overflow: 'hidden',
+  },
+  chipInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    minHeight: 56,
+    paddingLeft: SPACING.md,
+    paddingRight: 4,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.00)',
+  },
+  chipInputContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inlineCategoryTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF7ED',
+    borderWidth: 1,
+    borderColor: '#FF8D57',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+    gap: 4,
+  },
+  placeholderText: {
+    fontSize: 15,
+    color: COLORS.textLight,
+  },
+  inlineTextInput: {
+    flex: 1,
+    minWidth: 120,
+    fontSize: 15,
+    color: COLORS.text,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
   },
   dropdownToggleButton: {
     paddingHorizontal: SPACING.md,
