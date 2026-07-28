@@ -152,11 +152,12 @@ export default function KycSubmitScreen() {
         const serverStatus = (response?.data?.kyc_status || null) as KycStatus;
         const verifiedPhone = response?.data?.kyc_verified_phone;
         setKycStatus(serverStatus);
+        const currentUser = useAuthStore.getState().user;
         if (serverStatus) {
           updateUser({
             kyc_status: serverStatus,
             is_verified: Boolean(response?.data?.is_verified) || serverStatus === 'verified',
-            kyc_verified_phone: verifiedPhone || (user as any)?.kyc_verified_phone
+            kyc_verified_phone: verifiedPhone || (currentUser as any)?.kyc_verified_phone
           } as any);
         }
         if (verifiedPhone) {
@@ -170,7 +171,7 @@ export default function KycSubmitScreen() {
           }
           setPhoneNumber(phoneVal);
         }
-        const hasVerifiedPhone = Boolean(params.verifiedPhone || verifiedPhone || (user as any)?.kyc_verified_phone || user?.phone);
+        const hasVerifiedPhone = Boolean(params.verifiedPhone || verifiedPhone || (currentUser as any)?.kyc_verified_phone || currentUser?.phone);
         const isAlreadyPendingOrVerified = serverStatus === 'verified' || serverStatus === 'pending' || serverStatus === 'manual_review';
         if (!hasVerifiedPhone && !isAlreadyPendingOrVerified) {
           router.replace({
@@ -187,7 +188,7 @@ export default function KycSubmitScreen() {
     };
 
     loadStatus();
-  }, [updateUser, params.verifiedPhone, returnUrl, router, user]);
+  }, [updateUser, params.verifiedPhone, returnUrl, router]);
 
   const [uploadError, setUploadError] = useState<string | null>(null);
 
