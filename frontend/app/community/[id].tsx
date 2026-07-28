@@ -746,6 +746,7 @@ export default function CommunityDetailScreen() {
 
   const [activeVideoKey, setActiveVideoKey] = useState<string | null>(null);
 
+  const activeVideoKeyRef = useRef<string | null>(null);
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     const isVideoItem = (item: any) => {
       if (!item) return false;
@@ -768,10 +769,10 @@ export default function CommunityDetailScreen() {
     };
 
     const firstVideoItem = viewableItems.find((vi: any) => isVideoItem(vi.item));
-    if (firstVideoItem) {
-      setActiveVideoKey(String(firstVideoItem.key));
-    } else {
-      setActiveVideoKey(null);
+    const nextKey = firstVideoItem ? String(firstVideoItem.key) : null;
+    if (activeVideoKeyRef.current !== nextKey) {
+      activeVideoKeyRef.current = nextKey;
+      setActiveVideoKey(nextKey);
     }
   }).current;
 
@@ -4230,6 +4231,7 @@ export default function CommunityDetailScreen() {
         windowSize={3}
         removeClippedSubviews={Platform.OS !== 'web'}
         updateCellsBatchingPeriod={100}
+        scrollEventThrottle={32}
         renderItem={({ item }) => {
           if (item.type === 'festivals_header') {
             return (

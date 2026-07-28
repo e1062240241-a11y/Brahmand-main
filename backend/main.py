@@ -746,6 +746,8 @@ def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]
                 if (
                     path_user_id != post_user_id
                     and path_user_id not in KNOWN_SYSTEM_STORAGE_FOLDERS
+                    and path_user_id != post.get('original_owner_id')
+                    and not post.get('is_transferred')
                     and (registered_user_ids is None or path_user_id in registered_user_ids)
                     and post.get('source') != 'repost'
                     and not post.get('original_post_id')

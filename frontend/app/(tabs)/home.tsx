@@ -1774,8 +1774,10 @@ export default function HomeScreen() {
     }
   });
 
-  const handleHomeScroll = useCallback(() => {
+  const handleHomeScroll = useCallback((event: any) => {
     lastUserInteractionTime.current = Date.now();
+    const yOffset = event?.nativeEvent?.contentOffset?.y || 0;
+    currentScrollY.current = yOffset;
   }, []);
   const loadHomeRequests = useCallback(async () => {
     // Legacy function, replaced by initializeHome
@@ -1811,15 +1813,17 @@ export default function HomeScreen() {
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress' as any, () => {
       if (navigation.isFocused()) {
-        const isAtTop = currentScrollY.current <= 10;
+        const isAtTop = currentScrollY.current <= 15;
         if (isAtTop) {
           onRefresh();
         } else {
           if (scrollViewRef.current) {
-            if (typeof scrollViewRef.current.scrollTo === 'function') {
+            if (typeof (scrollViewRef.current as any).scrollToOffset === 'function') {
+              (scrollViewRef.current as any).scrollToOffset({ offset: 0, animated: true });
+            } else if (typeof scrollViewRef.current.scrollTo === 'function') {
               scrollViewRef.current.scrollTo({ y: 0, animated: true });
-            } else if (typeof (scrollViewRef.current as any).scrollToPosition === 'function') {
-              (scrollViewRef.current as any).scrollToPosition(0, 0, true);
+            } else if (typeof (scrollViewRef.current as any).scrollToIndex === 'function') {
+              (scrollViewRef.current as any).scrollToIndex({ index: 0, animated: true });
             }
           }
         }
@@ -3763,6 +3767,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1 }}>
             {/* @ts-ignore */}
             <FlashList<any>
+              ref={scrollViewRef}
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
               keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
               renderItem={renderFeedPost}
