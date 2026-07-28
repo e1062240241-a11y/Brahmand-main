@@ -751,7 +751,7 @@ def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]
                     and not post.get('original_post_id')
                 ):
                     logger.warning(
-                        f"Security Barrier Blocked: Post {post.get('id')} (user_id: {post_user_id}) media folder belongs to another real user {path_user_id}"
+                        f"Security Barrier Blocked: Post {post.get('id')} (user_id: {post.get('user_id')}) media folder belongs to another real user {path_user_id}"
                     )
                     continue
 
