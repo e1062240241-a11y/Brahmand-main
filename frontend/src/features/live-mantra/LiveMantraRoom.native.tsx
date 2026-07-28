@@ -25,6 +25,8 @@ import {
   IRtcEngine,
   RtcConnection,
   IRtcEngineEventHandler,
+  AudioScenarioType,
+  AudioProfileType,
 } from 'react-native-agora';
 import { useKeepAwake } from 'expo-keep-awake';
 
@@ -164,7 +166,8 @@ export const LiveMantraRoom = () => {
       console.log('[Agora] Initializing engine with AppID:', config.appId);
       await engine.current.initialize({
         appId: config.appId,
-        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        channelProfile: ChannelProfileType.ChannelProfileCommunication,
+        audioScenario: AudioScenarioType.AudioScenarioGameStreaming,
       });
       agoraInitializedRef.current = true;
       engine.current.registerEventHandler({
@@ -224,12 +227,23 @@ export const LiveMantraRoom = () => {
       });
 
       await engine.current.enableAudio();
-      await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
-      
+      await engine.current.setAudioProfile(
+        AudioProfileType.AudioProfileSpeechStandard,
+        AudioScenarioType.AudioScenarioGameStreaming
+      );
+      await engine.current.setEnableSpeakerphone(true);
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: 'mixWithOthers',
+        shouldRouteThroughEarpiece: false,
+        shouldPlayInBackground: true,
+        allowsRecording: true,
+        allowsBackgroundRecording: true,
+      });
+
       console.log('[Agora] Attempting to join channel:', ROOM_NAME, 'with UID:', agoraUidRef.current);
       const joinResult = await engine.current.joinChannel(config.token, ROOM_NAME, agoraUidRef.current, {
-        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
-        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        channelProfile: ChannelProfileType.ChannelProfileCommunication,
         publishMicrophoneTrack: true,
         autoSubscribeAudio: true,
       });
@@ -270,7 +284,22 @@ export const LiveMantraRoom = () => {
 
   const startVoiceLoop = async () => {
     try {
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        interruptionMode: 'mixWithOthers',
+        shouldRouteThroughEarpiece: false,
+        shouldPlayInBackground: true,
+        allowsRecording: true,
+        allowsBackgroundRecording: true,
+      });
+      await engine.current.enableAudio();
+      await engine.current.enableLocalAudio(true);
       await engine.current.muteLocalAudioStream(false);
+      await engine.current.setEnableSpeakerphone(true);
+      await engine.current.updateChannelMediaOptions({
+        publishMicrophoneTrack: true,
+        autoSubscribeAudio: true,
+      });
       setMicStatus('Agora mic live');
     } catch (error) {
       console.warn('Failed to start Agora mic', error);
@@ -282,6 +311,11 @@ export const LiveMantraRoom = () => {
   const stopVoiceLoop = async () => {
     try {
       await engine.current.muteLocalAudioStream(true);
+      await engine.current.enableLocalAudio(false);
+      await engine.current.updateChannelMediaOptions({
+        publishMicrophoneTrack: false,
+        autoSubscribeAudio: true,
+      });
       setMicStatus(isMicEnabled ? 'Microphone paused' : 'Microphone off');
     } catch {
       // noop

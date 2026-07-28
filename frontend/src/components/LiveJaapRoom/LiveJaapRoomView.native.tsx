@@ -600,7 +600,7 @@ export default function LiveJaapRoomView() {
                 "Hanuman Chalisa Completed",
                 "Completed 1 full Hanuman Chalisa jaap session."
               );
-              setShowCompletion(true);
+              // Stay in the live room for continuous chanting; do not kick user out
             } else {
               if (next % 108 === 0) {
                 const readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : 'Gayatri Mantra';
@@ -730,11 +730,11 @@ export default function LiveJaapRoomView() {
       try {
         await setAudioModeAsync({
           playsInSilentMode: true,
-          interruptionMode: 'doNotMix',
+          interruptionMode: 'mixWithOthers',
           shouldRouteThroughEarpiece: false,
           shouldPlayInBackground: true,
-          allowsRecording: isMicEnabled,
-          allowsBackgroundRecording: isMicEnabled,
+          allowsRecording: true,
+          allowsBackgroundRecording: true,
         });
       } catch (error) {
         console.warn('Failed to set audio mode in LiveJaapRoom:', error);
@@ -828,11 +828,17 @@ export default function LiveJaapRoomView() {
         setActiveDevotees(Math.max(18, finalCount));
       }
     };
-    socketService.onEvent('room_active_count', handleActiveCount);
+    const handleJaapReaction = (data: { emoji: string }) => {
+      if (data && data.emoji) {
+        addReaction(data.emoji, false);
+      }
+    };
+    socketService.onEvent('jaap_reaction', handleJaapReaction);
 
     return () => {
       socketService.offEvent('peer_joined', handlePeerJoined);
       socketService.offEvent('room_active_count', handleActiveCount);
+      socketService.offEvent('jaap_reaction', handleJaapReaction);
       socketService.leaveRoom(rName);
     };
   }, [mantraType, bgPlayer]);
@@ -921,15 +927,31 @@ export default function LiveJaapRoomView() {
 
   const setupAgora = async () => {
     try {
+      console.log('[LiveJaapRoom.native] Requesting Agora Token for channel:', ROOM_NAME);
       const config = await getAgoraToken(ROOM_NAME);
+      console.log('====================================================');
+      console.log('[LiveJaapRoom.native] AGORA TOKEN RECEIVED:');
+      console.log(JSON.stringify(config, null, 2));
+      console.log('====================================================');
+
       if (!config.enabled || !config.token || !config.appId) {
+        console.warn('[LiveJaapRoom.native] Agora not configured or token missing:', config);
         setMicStatus(isMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
         setParticipantLabel(t('agoraNotConfigured'));
         return;
       }
+
+      // Request recording permission
+      try {
+        const perm = await requestRecordingPermissionsAsync();
+        console.log('[LiveJaapRoom.native] Microphone recording permission status:', perm);
+      } catch (pErr) {
+        console.warn('[LiveJaapRoom.native] Failed to request mic permission:', pErr);
+      }
       await engine.current.initialize({
         appId: config.appId,
-        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        channelProfile: ChannelProfileType.ChannelProfileCommunication,
+        audioScenario: AudioScenarioType.AudioScenarioGameStreaming,
       });
       agoraInitializedRef.current = true;
       engine.current.registerEventHandler({
@@ -950,9 +972,11 @@ export default function LiveJaapRoomView() {
           }
         },
         onUserJoined: (connection: RtcConnection, remoteUid: number) => {
+          console.log('[Agora] Remote user joined channel:', remoteUid);
           setRemotePeers(prev => prev + 1);
         },
         onUserOffline: (connection: RtcConnection, remoteUid: number) => {
+          console.log('[Agora] Remote user offline:', remoteUid);
           setRemotePeers(prev => Math.max(0, prev - 1));
         },
         onStreamMessage: (connection: RtcConnection, remoteUid: number, streamId: number, data: Uint8Array) => {
@@ -970,13 +994,20 @@ export default function LiveJaapRoomView() {
           console.warn('[Agora] error code:', err, msg);
         }
       });
-      const role = isMicEnabled ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience;
-      await engine.current.setClientRole(role);
+      await engine.current.enableAudio();
+      await engine.current.setAudioProfile(
+        AudioProfileType.AudioProfileSpeechStandard,
+        AudioScenarioType.AudioScenarioGameStreaming
+      );
+      await engine.current.setEnableSpeakerphone(true);
+      await engine.current.enableLocalAudio(isMicEnabled);
+      await engine.current.muteLocalAudioStream(!isMicEnabled);
+
+      console.log('[LiveJaapRoom.native] Joining channel:', ROOM_NAME, 'Communication Profile...');
       await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
-        clientRoleType: role,
-        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        channelProfile: ChannelProfileType.ChannelProfileCommunication,
         publishMicrophoneTrack: isMicEnabled,
-        autoSubscribeAudio: false,
+        autoSubscribeAudio: true,
       });
     } catch (error) {
       console.warn('[Agora] setup error:', error);
@@ -1005,17 +1036,39 @@ export default function LiveJaapRoomView() {
 
   const toggleMic = async () => {
     const nextMicState = !isMicEnabled;
+
+    if (nextMicState) {
+      try {
+        console.log('[LiveJaapRoom.native] Requesting mic recording permission...');
+        const perm = await requestRecordingPermissionsAsync();
+        console.log('[LiveJaapRoom.native] Mic permission result:', perm);
+      } catch (pErr) {
+        console.warn('[LiveJaapRoom.native] Mic permission request failed:', pErr);
+      }
+
+      try {
+        console.log('[LiveJaapRoom.native] Requesting fresh Agora token for channel:', ROOM_NAME);
+        const tokenConfig = await getAgoraToken(ROOM_NAME);
+        console.log('====================================================');
+        console.log('[LiveJaapRoom.native] MIC TOGGLE AGORA TOKEN:');
+        console.log(JSON.stringify(tokenConfig, null, 2));
+        console.log('====================================================');
+      } catch (tErr) {
+        console.warn('[LiveJaapRoom.native] Failed to fetch Agora token on toggle:', tErr);
+      }
+    }
+
     setIsMicEnabled(nextMicState);
     setMicStatus(nextMicState ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
 
     try {
       await setAudioModeAsync({
         playsInSilentMode: true,
-        interruptionMode: 'doNotMix',
+        interruptionMode: 'mixWithOthers',
         shouldRouteThroughEarpiece: false,
         shouldPlayInBackground: true,
-        allowsRecording: nextMicState,
-        allowsBackgroundRecording: nextMicState,
+        allowsRecording: true,
+        allowsBackgroundRecording: true,
       });
     } catch (err) {
       console.warn('Failed to update audio mode:', err);
@@ -1025,12 +1078,23 @@ export default function LiveJaapRoomView() {
       try {
         if (nextMicState) {
           await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
+          await engine.current.enableAudio();
           await engine.current.enableLocalAudio(true);
           await engine.current.muteLocalAudioStream(false);
+          await engine.current.setEnableSpeakerphone(true);
+          await engine.current.updateChannelMediaOptions({
+            publishMicrophoneTrack: true,
+            autoSubscribeAudio: true,
+          });
+          console.log('[LiveJaapRoom.native] Mic UNMUTED & voice stream published!');
         } else {
           await engine.current.muteLocalAudioStream(true);
           await engine.current.enableLocalAudio(false);
-          await engine.current.setClientRole(ClientRoleType.ClientRoleAudience);
+          await engine.current.updateChannelMediaOptions({
+            publishMicrophoneTrack: false,
+            autoSubscribeAudio: true,
+          });
+          console.log('[LiveJaapRoom.native] Mic MUTED & voice stream stopped.');
         }
       } catch (e) {
         console.warn('[Agora] toggleMic error:', e);
@@ -1038,33 +1102,50 @@ export default function LiveJaapRoomView() {
     }
   };
 
-  const addReaction = (emoji: string, broadcast = true) => {
-    const id = Date.now() + Math.random();
+  const lastReactionTimeRef = useRef<number>(0);
+
+  const addReaction = useCallback((emoji: string, broadcast = true) => {
+    const now = Date.now();
+    // Rate-limit incoming reactions to max 1 per 200ms per client to preserve 60 FPS
+    if (!broadcast && now - lastReactionTimeRef.current < 180) {
+      return;
+    }
+    lastReactionTimeRef.current = now;
+
+    const id = now + Math.random();
     const anim = new Animated.Value(0);
+    
     setReactions(prev => {
-      const updated = [...prev, { id, emoji, anim }];
-      return updated.slice(-15);
+      // Keep max 6 active floating animations at a time to prevent JS thread drops
+      const updated = prev.length >= 6 ? prev.slice(1) : prev;
+      return [...updated, { id, emoji, anim }];
     });
     
-    if (broadcast && streamIdRef.current !== null) {
-      try {
-        const message = JSON.stringify({ type: 'reaction', emoji });
-        const data = new TextEncoder().encode(message);
-        engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
-      } catch (e) {
-        console.warn('[Agora] sendStreamMessage failed:', e);
+    if (broadcast) {
+      const rName = 'jaap_' + (mantraType || 'gayatri');
+      socketService.emitEvent('jaap_reaction', { room: rName, emoji });
+      if (streamIdRef.current !== null) {
+        try {
+          const message = JSON.stringify({ type: 'reaction', emoji });
+          const data = new TextEncoder().encode(message);
+          engine.current.sendStreamMessage(streamIdRef.current, data, data.length);
+        } catch (e) {
+          console.warn('[Agora] sendStreamMessage failed:', e);
+        }
       }
     }
 
     Animated.timing(anim, {
       toValue: 1,
-      duration: 2500,
+      duration: 1800,
       easing: Easing.out(Easing.quad),
       useNativeDriver: true,
-    }).start(() => {
-      setReactions(prev => prev.filter(r => r.id !== id));
+    }).start(({ finished }) => {
+      if (finished) {
+        setReactions(prev => prev.filter(r => r.id !== id));
+      }
     });
-  };
+  }, [mantraType]);
 
   useEffect(() => {
     if (showCompletion) {
