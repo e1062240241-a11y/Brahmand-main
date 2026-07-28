@@ -718,7 +718,7 @@ async def _create_post_document(
     return post_doc
 
 
-KNOWN_SYSTEM_STORAGE_FOLDERS = {'rAR1Nev9VOh836E0ATBz', 'meGpOhOsKmsDeNTnDjr3'}
+KNOWN_SYSTEM_STORAGE_FOLDERS = {'rAR1Nev9VOh836E0ATBz', 'meGpOhOsKmsDeNTnDjr3', 'OsMLOIVGUbV8hVDU0dpr', 'P28LHYDrR9WBsJoleKW0'}
 
 def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]] = None) -> list[dict]:
     """
