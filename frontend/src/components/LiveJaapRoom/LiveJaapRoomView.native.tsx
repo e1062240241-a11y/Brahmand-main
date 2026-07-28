@@ -30,6 +30,7 @@ import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedInde
 import {
   createAgoraRtcEngine,
   ChannelProfileType,
+  ClientRoleType,
   IRtcEngine,
   RtcConnection,
   AudioScenarioType,
@@ -385,7 +386,7 @@ export default function LiveJaapRoomView() {
   const agoraJoinedRef = useRef(false);
   const agoraInitializedRef = useRef(false);
   
-  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 500, keepAudioSessionActive: true });
+  const bgPlayer = useAudioPlayer(MANTRA_BG_AUDIO[mantraType || 'gayatri'] || MANTRA_BG_AUDIO.gayatri, { updateInterval: 500, keepAudioSessionActive: false });
   const audioStatus = useAudioPlayerStatus(bgPlayer);
 
   // Polling loop for smooth subtitle highlight updates on Native
@@ -1004,12 +1005,14 @@ export default function LiveJaapRoomView() {
       });
       await engine.current.enableAudio();
       await engine.current.setAudioProfile(
-        AudioProfileType.AudioProfileSpeechStandard,
-        AudioScenarioType.AudioScenarioGameStreaming
+        AudioProfileType.AudioProfileMusicStandard,
+        AudioScenarioType.AudioScenarioDefault
       );
+      await engine.current.setDefaultAudioRouteToSpeakerphone(true);
       await engine.current.setEnableSpeakerphone(true);
       await engine.current.muteAllRemoteAudioStreams(false);
       await engine.current.adjustPlaybackSignalVolume(100);
+      await engine.current.adjustRecordingSignalVolume(400);
       await engine.current.setClientRole(
         shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience
       );
@@ -1018,7 +1021,7 @@ export default function LiveJaapRoomView() {
 
       console.log('[LiveJaapRoom.native] Joining channel:', ROOM_NAME, 'LiveBroadcasting Profile...');
       await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
-        channelProfile: ChannelProfileType.ChannelProfileCommunication,
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
         clientRoleType: shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience,
         publishMicrophoneTrack: shouldPublishMic,
         autoSubscribeAudio: true,
@@ -1059,17 +1062,6 @@ export default function LiveJaapRoomView() {
       } catch (pErr) {
         console.warn('[LiveJaapRoom.native] Mic permission request failed:', pErr);
       }
-
-      try {
-        console.log('[LiveJaapRoom.native] Requesting fresh Agora token for channel:', ROOM_NAME);
-        const tokenConfig = await getAgoraToken(ROOM_NAME);
-        console.log('====================================================');
-        console.log('[LiveJaapRoom.native] MIC TOGGLE AGORA TOKEN:');
-        console.log(JSON.stringify(tokenConfig, null, 2));
-        console.log('====================================================');
-      } catch (tErr) {
-        console.warn('[LiveJaapRoom.native] Failed to fetch Agora token on toggle:', tErr);
-      }
     }
 
     setIsMicEnabled(nextMicState);
@@ -1096,22 +1088,29 @@ export default function LiveJaapRoomView() {
     if (agoraJoinedRef.current) {
       try {
         if (nextMicState) {
+          await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
           await engine.current.enableAudio();
           await engine.current.enableLocalAudio(true);
           await engine.current.muteLocalAudioStream(false);
+          await engine.current.adjustRecordingSignalVolume(400);
+          await engine.current.setDefaultAudioRouteToSpeakerphone(true);
           await engine.current.setEnableSpeakerphone(true);
           await engine.current.updateChannelMediaOptions({
+            clientRoleType: ClientRoleType.ClientRoleBroadcaster,
             publishMicrophoneTrack: true,
             autoSubscribeAudio: true,
           });
           console.log('[LiveJaapRoom.native] Mic UNMUTED & voice stream published!');
         } else {
           await engine.current.muteLocalAudioStream(true);
+          await engine.current.enableLocalAudio(false);
+          await engine.current.setClientRole(ClientRoleType.ClientRoleAudience);
           await engine.current.updateChannelMediaOptions({
+            clientRoleType: ClientRoleType.ClientRoleAudience,
             publishMicrophoneTrack: false,
             autoSubscribeAudio: true,
           });
-          console.log('[LiveJaapRoom.native] Mic MUTED & voice stream stopped.');
+          console.log('[LiveJaapRoom.native] Mic MUTED (Role set to Audience) & remote audio active.');
         }
       } catch (e) {
         console.warn('[Agora] toggleMic error:', e);
