@@ -1012,12 +1012,14 @@ export default function HomeScreen() {
                 }
 
                 if (existingRecord) {
-                  batchOperations.push(
-                    existingRecord.prepareUpdate((record: any) => {
-                      record.username = item.username || '';
-                      record.userPhoto = item.user_photo || null;
-                      record.mediaUrl = item.media_url || null;
-                      record.mediaType = item.media_type || 'image';
+                  // Only prepare update if record is not currently dirty / modified in another uncommitted transaction
+                  if (existingRecord._status === 'synced' || existingRecord._status === 'created') {
+                    batchOperations.push(
+                      existingRecord.prepareUpdate((record: any) => {
+                        record.username = item.username || '';
+                        record.userPhoto = item.user_photo || null;
+                        record.mediaUrl = item.media_url || null;
+                        record.mediaType = item.media_type || 'image';
                       record.caption = item.caption || null;
                       record.likesCount = item.likes_count || 0;
                       record.commentsCount = item.comments_count || 0;
@@ -1025,6 +1027,7 @@ export default function HomeScreen() {
                       record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
                     })
                   );
+                  }
                 } else {
                   batchOperations.push(
                     feedsCollection.prepareCreate((record: any) => {
