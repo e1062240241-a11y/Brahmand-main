@@ -269,11 +269,12 @@ export default function KYCStatusScreen() {
     if (rawPhone && !phoneNumber) {
       setPhoneNumber(formatPhoneNumber(rawPhone));
     }
-  }, [user, myVendor, phoneNumber]);
+  }, [user?.id, myVendor?.id]);
 
   const checkPhoneVerificationValidity = useCallback(async (serverVerifiedAt?: string | null) => {
     try {
-      const storageKey = `kyc_phone_verified_at_${user?.id || 'default'}`;
+      const currentUser = useAuthStore.getState().user;
+      const storageKey = `kyc_phone_verified_at_${currentUser?.id || 'default'}`;
       let verifiedTimeMs = 0;
 
       if (serverVerifiedAt) {
@@ -297,7 +298,7 @@ export default function KYCStatusScreen() {
     } catch (e) {
       console.warn('Error checking phone verification timestamp:', e);
     }
-  }, [user?.id]);
+  }, []);
 
   const refreshKycStatus = useCallback(async () => {
     try {
@@ -308,15 +309,18 @@ export default function KYCStatusScreen() {
       const serverVerifiedPhone = response?.data?.kyc_verified_phone || null;
       const isVerifiedStatus = Boolean(response?.data?.is_verified) || serverStatus === 'verified';
 
+      const currentUser = useAuthStore.getState().user;
+      const currentVendor = useVendorStore.getState().myVendor;
+
       updateUser({
         kyc_status: serverStatus,
         is_verified: isVerifiedStatus,
         kyc_submitted_at: response?.data?.submitted_at || null,
         kyc_verified_at: response?.data?.verified_at || null,
-        kyc_verified_phone: serverVerifiedPhone || (user as any)?.kyc_verified_phone || user?.phone,
+        kyc_verified_phone: serverVerifiedPhone || (currentUser as any)?.kyc_verified_phone || currentUser?.phone,
       } as any);
 
-      const rawPhone = serverVerifiedPhone || (user as any)?.kyc_verified_phone || user?.phone || (user as any)?.phone_number || myVendor?.phone_number || '';
+      const rawPhone = serverVerifiedPhone || (currentUser as any)?.kyc_verified_phone || currentUser?.phone || (currentUser as any)?.phone_number || currentVendor?.phone_number || '';
       if (rawPhone) {
         setPhoneNumber(formatPhoneNumber(rawPhone));
       }
@@ -332,7 +336,7 @@ export default function KYCStatusScreen() {
     } finally {
       setLoadingStatus(false);
     }
-  }, [fetchMyVendor, updateUser, checkPhoneVerificationValidity, user, myVendor]);
+  }, [fetchMyVendor, updateUser, checkPhoneVerificationValidity]);
 
   useEffect(() => {
     refreshKycStatus();
