@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { parseApiError, searchHospitals } from '../../src/services/api';
 import { useAuthStore } from '../../src/store/authStore';
+import { HospitalSearchInput } from '../../src/components/HospitalSearchInput';
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 const URGENCY_OPTIONS = ['Low', 'Medium', 'High', 'Urgent'];
@@ -181,44 +182,16 @@ export default function CommunityRequestBloodPage() {
 
         <View style={styles.fieldSection}>
           <Text style={styles.fieldLabel}>Hospital Name</Text>
-          {hospitalName.length >= 1 && !selectedHospital && (
-            <View style={styles.suggestionsCard}>
-              {isHospitalSearching ? (
-                <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
-              ) : hospitalSuggestions.length > 0 ? (
-                hospitalSuggestions.map((item, index) => (
-                  <TouchableOpacity
-                    key={`${item.name}-${index}`}
-                    style={styles.suggestionItem}
-                    onPress={() => handleHospitalSelect(item)}
-                  >
-                    <Text style={styles.suggestionName}>{item.name}</Text>
-                    <Text style={styles.suggestionMeta}>{item.address || item.city || item.name}</Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View>
-                  <Text style={styles.suggestionStatus}>No hospitals found</Text>
-                  <TouchableOpacity
-                    style={styles.suggestionItem}
-                    onPress={() => handleHospitalSelect({ name: hospitalName.trim(), address: hospitalName.trim(), area: '', city: '' })}
-                  >
-                    <Text style={styles.suggestionName}>Use hospital name as typed</Text>
-                    <Text style={styles.suggestionMeta}>{hospitalName.trim()}</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-          <TextInput
-            style={styles.input}
-            placeholder="Search hospital name..."
-            placeholderTextColor={COLORS.textLight}
+          <HospitalSearchInput
             value={hospitalName}
-            onChangeText={(text) => {
-              setHospitalName(text);
-              setSelectedHospital(null);
+            onSelect={(h) => {
+              setHospitalName(h.name);
+              setSelectedHospital(h);
+              if (h.address || h.city) {
+                setLocation(h.address || h.city);
+              }
             }}
+            placeholder="Search hospital name..."
           />
         </View>
 

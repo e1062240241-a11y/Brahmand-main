@@ -5657,73 +5657,247 @@ async def _geocode_address(full_address: str) -> tuple[float | None, float | Non
         logger.warning(f"Nominatim geocoding failed for address '{clean_address}': {e}")
 
     return None, None
+INDIAN_CITIES_FALLBACK = [
+    {"name": "Ahmedabad", "state": "Gujarat", "display_name": "Ahmedabad, Gujarat, Bharat"},
+    {"name": "Agra", "state": "Uttar Pradesh", "display_name": "Agra, Uttar Pradesh, Bharat"},
+    {"name": "Amritsar", "state": "Punjab", "display_name": "Amritsar, Punjab, Bharat"},
+    {"name": "Ayodhya", "state": "Uttar Pradesh", "display_name": "Ayodhya, Uttar Pradesh, Bharat"},
+    {"name": "Allahabad (Prayagraj)", "state": "Uttar Pradesh", "display_name": "Prayagraj, Uttar Pradesh, Bharat"},
+    {"name": "Anand", "state": "Gujarat", "display_name": "Anand, Gujarat, Bharat"},
+    {"name": "Ajmer", "state": "Rajasthan", "display_name": "Ajmer, Rajasthan, Bharat"},
+    {"name": "Aligarh", "state": "Uttar Pradesh", "display_name": "Aligarh, Uttar Pradesh, Bharat"},
+    {"name": "Bengaluru", "state": "Karnataka", "display_name": "Bengaluru, Karnataka, Bharat"},
+    {"name": "Bhopal", "state": "Madhya Pradesh", "display_name": "Bhopal, Madhya Pradesh, Bharat"},
+    {"name": "Bhubaneswar", "state": "Odisha", "display_name": "Bhubaneswar, Odisha, Bharat"},
+    {"name": "Bikaner", "state": "Rajasthan", "display_name": "Bikaner, Rajasthan, Bharat"},
+    {"name": "Bareilly", "state": "Uttar Pradesh", "display_name": "Bareilly, Uttar Pradesh, Bharat"},
+    {"name": "Belagavi", "state": "Karnataka", "display_name": "Belagavi, Karnataka, Bharat"},
+    {"name": "Bhavnagar", "state": "Gujarat", "display_name": "Bhavnagar, Gujarat, Bharat"},
+    {"name": "Chennai", "state": "Tamil Nadu", "display_name": "Chennai, Tamil Nadu, Bharat"},
+    {"name": "Chandigarh", "state": "Punjab / Haryana", "display_name": "Chandigarh, Bharat"},
+    {"name": "Coimbatore", "state": "Tamil Nadu", "display_name": "Coimbatore, Tamil Nadu, Bharat"},
+    {"name": "Cuttack", "state": "Odisha", "display_name": "Cuttack, Odisha, Bharat"},
+    {"name": "Calicut (Kozhikode)", "state": "Kerala", "display_name": "Kozhikode, Kerala, Bharat"},
+    {"name": "Delhi", "state": "Delhi NCR", "display_name": "New Delhi, Delhi NCR, Bharat"},
+    {"name": "Dehradun", "state": "Uttarakhand", "display_name": "Dehradun, Uttarakhand, Bharat"},
+    {"name": "Dhanbad", "state": "Jharkhand", "display_name": "Dhanbad, Jharkhand, Bharat"},
+    {"name": "Dwarka", "state": "Gujarat", "display_name": "Dwarka, Gujarat, Bharat"},
+    {"name": "Dharamshala", "state": "Himachal Pradesh", "display_name": "Dharamshala, Himachal Pradesh, Bharat"},
+    {"name": "Durgapur", "state": "West Bengal", "display_name": "Durgapur, West Bengal, Bharat"},
+    {"name": "Ernakulam", "state": "Kerala", "display_name": "Ernakulam, Kochi, Kerala, Bharat"},
+    {"name": "Erode", "state": "Tamil Nadu", "display_name": "Erode, Tamil Nadu, Bharat"},
+    {"name": "Faridabad", "state": "Haryana", "display_name": "Faridabad, Haryana, Bharat"},
+    {"name": "Ghaziabad", "state": "Uttar Pradesh", "display_name": "Ghaziabad, Uttar Pradesh, Bharat"},
+    {"name": "Gurgaon (Gurugram)", "state": "Haryana", "display_name": "Gurugram, Haryana, Bharat"},
+    {"name": "Guwahati", "state": "Assam", "display_name": "Guwahati, Assam, Bharat"},
+    {"name": "Gwalior", "state": "Madhya Pradesh", "display_name": "Gwalior, Madhya Pradesh, Bharat"},
+    {"name": "Gaya", "state": "Bihar", "display_name": "Gaya, Bihar, Bharat"},
+    {"name": "Gandhinagar", "state": "Gujarat", "display_name": "Gandhinagar, Gujarat, Bharat"},
+    {"name": "Gorakhpur", "state": "Uttar Pradesh", "display_name": "Gorakhpur, Uttar Pradesh, Bharat"},
+    {"name": "Hyderabad", "state": "Telangana", "display_name": "Hyderabad, Telangana, Bharat"},
+    {"name": "Haridwar", "state": "Uttarakhand", "display_name": "Haridwar, Uttarakhand, Bharat"},
+    {"name": "Hisar", "state": "Haryana", "display_name": "Hisar, Haryana, Bharat"},
+    {"name": "Howrah", "state": "West Bengal", "display_name": "Howrah, West Bengal, Bharat"},
+    {"name": "Hubballi", "state": "Karnataka", "display_name": "Hubballi, Karnataka, Bharat"},
+    {"name": "Indore", "state": "Madhya Pradesh", "display_name": "Indore, Madhya Pradesh, Bharat"},
+    {"name": "Imphal", "state": "Manipur", "display_name": "Imphal, Manipur, Bharat"},
+    {"name": "Itanagar", "state": "Arunachal Pradesh", "display_name": "Itanagar, Arunachal Pradesh, Bharat"},
+    {"name": "Jaipur", "state": "Rajasthan", "display_name": "Jaipur, Rajasthan, Bharat"},
+    {"name": "Jodhpur", "state": "Rajasthan", "display_name": "Jodhpur, Rajasthan, Bharat"},
+    {"name": "Jamshedpur", "state": "Jharkhand", "display_name": "Jamshedpur, Jharkhand, Bharat"},
+    {"name": "Jabalpur", "state": "Madhya Pradesh", "display_name": "Jabalpur, Madhya Pradesh, Bharat"},
+    {"name": "Jammu", "state": "Jammu & Kashmir", "display_name": "Jammu, J&K, Bharat"},
+    {"name": "Junagadh", "state": "Gujarat", "display_name": "Junagadh, Gujarat, Bharat"},
+    {"name": "Jhansi", "state": "Uttar Pradesh", "display_name": "Jhansi, Uttar Pradesh, Bharat"},
+    {"name": "Kolkata", "state": "West Bengal", "display_name": "Kolkata, West Bengal, Bharat"},
+    {"name": "Kochi", "state": "Kerala", "display_name": "Kochi, Kerala, Bharat"},
+    {"name": "Kanpur", "state": "Uttar Pradesh", "display_name": "Kanpur, Uttar Pradesh, Bharat"},
+    {"name": "Kota", "state": "Rajasthan", "display_name": "Kota, Rajasthan, Bharat"},
+    {"name": "Karnal", "state": "Haryana", "display_name": "Karnal, Haryana, Bharat"},
+    {"name": "Kollam", "state": "Kerala", "display_name": "Kollam, Kerala, Bharat"},
+    {"name": "Kanchipuram", "state": "Tamil Nadu", "display_name": "Kanchipuram, Tamil Nadu, Bharat"},
+    {"name": "Lucknow", "state": "Uttar Pradesh", "display_name": "Lucknow, Uttar Pradesh, Bharat"},
+    {"name": "Ludhiana", "state": "Punjab", "display_name": "Ludhiana, Punjab, Bharat"},
+    {"name": "Leh", "state": "Ladakh", "display_name": "Leh, Ladakh, Bharat"},
+    {"name": "Latur", "state": "Maharashtra", "display_name": "Latur, Maharashtra, Bharat"},
+    {"name": "Mumbai", "state": "Maharashtra", "display_name": "Mumbai, Maharashtra, Bharat"},
+    {"name": "Madurai", "state": "Tamil Nadu", "display_name": "Madurai, Tamil Nadu, Bharat"},
+    {"name": "Mysuru", "state": "Karnataka", "display_name": "Mysuru, Karnataka, Bharat"},
+    {"name": "Meerut", "state": "Uttar Pradesh", "display_name": "Meerut, Uttar Pradesh, Bharat"},
+    {"name": "Mangaluru", "state": "Karnataka", "display_name": "Mangaluru, Karnataka, Bharat"},
+    {"name": "Mathura", "state": "Uttar Pradesh", "display_name": "Mathura, Uttar Pradesh, Bharat"},
+    {"name": "Mohali", "state": "Punjab", "display_name": "Mohali, Punjab, Bharat"},
+    {"name": "Moradabad", "state": "Uttar Pradesh", "display_name": "Moradabad, Uttar Pradesh, Bharat"},
+    {"name": "Nagpur", "state": "Maharashtra", "display_name": "Nagpur, Maharashtra, Bharat"},
+    {"name": "Noida", "state": "Uttar Pradesh", "display_name": "Noida, Uttar Pradesh, Bharat"},
+    {"name": "Nashik", "state": "Maharashtra", "display_name": "Nashik, Maharashtra, Bharat"},
+    {"name": "Navi Mumbai", "state": "Maharashtra", "display_name": "Navi Mumbai, Maharashtra, Bharat"},
+    {"name": "Nanded", "state": "Maharashtra", "display_name": "Nanded, Maharashtra, Bharat"},
+    {"name": "Ooty", "state": "Tamil Nadu", "display_name": "Ooty, Tamil Nadu, Bharat"},
+    {"name": "Pune", "state": "Maharashtra", "display_name": "Pune, Maharashtra, Bharat"},
+    {"name": "Patna", "state": "Bihar", "display_name": "Patna, Bihar, Bharat"},
+    {"name": "Puducherry", "state": "Puducherry", "display_name": "Puducherry, Bharat"},
+    {"name": "Panaji", "state": "Goa", "display_name": "Panaji, Goa, Bharat"},
+    {"name": "Prayagraj", "state": "Uttar Pradesh", "display_name": "Prayagraj, Uttar Pradesh, Bharat"},
+    {"name": "Puri", "state": "Odisha", "display_name": "Puri, Odisha, Bharat"},
+    {"name": "Panipat", "state": "Haryana", "display_name": "Panipat, Haryana, Bharat"},
+    {"name": "Rajkot", "state": "Gujarat", "display_name": "Rajkot, Gujarat, Bharat"},
+    {"name": "Ranchi", "state": "Jharkhand", "display_name": "Ranchi, Jharkhand, Bharat"},
+    {"name": "Raipur", "state": "Chhattisgarh", "display_name": "Raipur, Chhattisgarh, Bharat"},
+    {"name": "Rourkela", "state": "Odisha", "display_name": "Rourkela, Odisha, Bharat"},
+    {"name": "Rishikesh", "state": "Uttarakhand", "display_name": "Rishikesh, Uttarakhand, Bharat"},
+    {"name": "Surat", "state": "Gujarat", "display_name": "Surat, Gujarat, Bharat"},
+    {"name": "Srinagar", "state": "Jammu & Kashmir", "display_name": "Srinagar, J&K, Bharat"},
+    {"name": "Shimla", "state": "Himachal Pradesh", "display_name": "Shimla, Himachal Pradesh, Bharat"},
+    {"name": "Siliguri", "state": "West Bengal", "display_name": "Siliguri, West Bengal, Bharat"},
+    {"name": "Solapur", "state": "Maharashtra", "display_name": "Solapur, Maharashtra, Bharat"},
+    {"name": "Salem", "state": "Tamil Nadu", "display_name": "Salem, Tamil Nadu, Bharat"},
+    {"name": "Thiruvananthapuram", "state": "Kerala", "display_name": "Thiruvananthapuram, Kerala, Bharat"},
+    {"name": "Tirupati", "state": "Andhra Pradesh", "display_name": "Tirupati, Andhra Pradesh, Bharat"},
+    {"name": "Thane", "state": "Maharashtra", "display_name": "Thane, Maharashtra, Bharat"},
+    {"name": "Thrissur", "state": "Kerala", "display_name": "Thrissur, Kerala, Bharat"},
+    {"name": "Tiruchirappalli", "state": "Tamil Nadu", "display_name": "Tiruchirappalli, Tamil Nadu, Bharat"},
+    {"name": "Udaipur", "state": "Rajasthan", "display_name": "Udaipur, Rajasthan, Bharat"},
+    {"name": "Ujjain", "state": "Madhya Pradesh", "display_name": "Ujjain, Madhya Pradesh, Bharat"},
+    {"name": "Vadodara", "state": "Gujarat", "display_name": "Vadodara, Gujarat, Bharat"},
+    {"name": "Varanasi", "state": "Uttar Pradesh", "display_name": "Varanasi, Uttar Pradesh, Bharat"},
+    {"name": "Vijayawada", "state": "Andhra Pradesh", "display_name": "Vijayawada, Andhra Pradesh, Bharat"},
+    {"name": "Visakhapatnam", "state": "Andhra Pradesh", "display_name": "Visakhapatnam, Andhra Pradesh, Bharat"},
+    {"name": "Vellore", "state": "Tamil Nadu", "display_name": "Vellore, Tamil Nadu, Bharat"},
+    {"name": "Vrindavan", "state": "Uttar Pradesh", "display_name": "Vrindavan, Uttar Pradesh, Bharat"},
+    {"name": "Warangal", "state": "Telangana", "display_name": "Warangal, Telangana, Bharat"},
+    {"name": "Wayanad", "state": "Kerala", "display_name": "Wayanad, Kerala, Bharat"},
+]
+
 @api_router.post("/geocode/forward")
 async def forward_geocode(request: dict):
-    """Forward geocode place text to coordinates using Google Maps API"""
+    """Forward geocode place text to coordinates using Google Maps / Places API with fallback"""
     query = str(request.get("query") or "").strip()
     if not query:
         raise HTTPException(status_code=400, detail="query is required")
 
     api_key = os.environ.get("GOOGLE_PLACES_API_KEY") or os.environ.get("GOOGLE_MAPS_API_KEY")
-    if not api_key:
-         raise HTTPException(status_code=500, detail="Google Maps API key not configured")
+    results = []
 
+    # 1. Try Google Places Autocomplete API first for search-as-you-type
+    if api_key:
+        try:
+            url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+            params = {
+                "input": query,
+                "key": api_key,
+                "language": "en",
+                "components": "country:in"
+            }
+            session = get_shared_client_session()
+            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    predictions = data.get("predictions", [])
+                    if predictions:
+                        for pred in predictions:
+                            main_text = pred.get("structured_formatting", {}).get("main_text", "")
+                            sec_text = pred.get("structured_formatting", {}).get("secondary_text", "")
+                            disp_name = pred.get("description", "")
+                            results.append(normalize_location({
+                                "latitude": 0.0,
+                                "longitude": 0.0,
+                                "display_name": disp_name,
+                                "country": "Bharat",
+                                "state": sec_text,
+                                "city": main_text or sec_text,
+                                "area": sec_text,
+                            }))
+                        return results
+        except Exception as e:
+            logger.warning(f"Google Places Autocomplete failed: {e}")
+
+    # 2. Fallback to Google Geocode API if Autocomplete produced no results
+    if api_key:
+        try:
+            url = "https://maps.googleapis.com/maps/api/geocode/json"
+            params = {
+                "address": query,
+                "key": api_key,
+                "language": "en",
+                "components": "country:in"
+            }
+            session = get_shared_client_session()
+            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    if data.get("status") == "OK" and data.get("results"):
+                        for res in data["results"]:
+                            lat = res["geometry"]["location"]["lat"]
+                            lon = res["geometry"]["location"]["lng"]
+                            addr_components = res.get("address_components", [])
+                            city = state = country = area = ""
+                            for comp in addr_components:
+                                types = comp.get("types", [])
+                                if "country" in types:
+                                    country = comp.get("long_name", "").replace("India", "Bharat")
+                                if "administrative_area_level_1" in types:
+                                    state = comp.get("long_name", "")
+                                if "locality" in types or "administrative_area_level_2" in types:
+                                    city = comp.get("long_name", "")
+                                if "sublocality" in types or "neighborhood" in types:
+                                    area = comp.get("long_name", "")
+                            results.append(normalize_location({
+                                "latitude": float(lat),
+                                "longitude": float(lon),
+                                "display_name": res.get("formatted_address", ""),
+                                "country": country or "Bharat",
+                                "state": state or "Unknown",
+                                "city": city or "Unknown",
+                                "area": area or "Unknown",
+                            }))
+                        return results
+        except Exception as e:
+            logger.warning(f"Google Geocode failed: {e}")
+
+    # 3. Fallback to Nominatim OSM search if Google API fails or is unavailable
     try:
-        url = "https://maps.googleapis.com/maps/api/geocode/json"
-        params = {
-            "address": query,
-            "key": api_key,
-            "language": "en",
-            "components": "country:in"
-        }
-
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {"q": query, "format": "json", "countrycodes": "in", "limit": 8}
+        headers = {"User-Agent": "BrahmandApp/1.0"}
         session = get_shared_client_session()
-        async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+        async with session.get(url, params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as resp:
             if resp.status == 200:
                 data = await resp.json()
-                if data.get("status") == "OK" and data.get("results"):
-                    results = []
-                    for res in data["results"]:
-                        lat = res["geometry"]["location"]["lat"]
-                        lon = res["geometry"]["location"]["lng"]
-                        addr_components = res.get("address_components", [])
-                        
-                        city = ""
-                        state = ""
-                        country = ""
-                        area = ""
-                        
-                        for comp in addr_components:
-                            types = comp.get("types", [])
-                            if "country" in types:
-                                country = comp.get("long_name", "").replace("India", "Bharat")
-                            if "administrative_area_level_1" in types:
-                                state = comp.get("long_name", "")
-                            if "locality" in types or "administrative_area_level_2" in types:
-                                city = comp.get("long_name", "")
-                            if "sublocality" in types or "neighborhood" in types:
-                                area = comp.get("long_name", "")
-                        
+                if isinstance(data, list) and len(data) > 0:
+                    for item in data:
                         results.append(normalize_location({
-                            "latitude": float(lat),
-                            "longitude": float(lon),
-                            "display_name": res.get("formatted_address", ""),
-                            "country": country or "Bharat",
-                            "state": state or "Unknown",
-                            "city": city or "Unknown",
-                            "area": area or "Unknown",
+                            "latitude": float(item.get("lat", 0)),
+                            "longitude": float(item.get("lon", 0)),
+                            "display_name": item.get("display_name", ""),
+                            "country": "Bharat",
+                            "state": "",
+                            "city": item.get("name", ""),
+                            "area": item.get("display_name", ""),
                         }))
-                    
                     return results
-                else:
-                    raise HTTPException(status_code=404, detail=f"Location not found: {data.get('status')}")
-            else:
-                raise HTTPException(status_code=resp.status, detail="Google Geocode API error")
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"Google Forward Geocoding error: {e}")
-        raise HTTPException(status_code=500, detail="Failed to geocode this location")
+        logger.warning(f"Nominatim fallback search failed: {e}")
+
+    # 4. Fallback to matching INDIAN_CITIES_FALLBACK
+    q_lower = query.lower()
+    city_matches = [
+        normalize_location({
+            "latitude": 0.0,
+            "longitude": 0.0,
+            "display_name": c["display_name"],
+            "country": "Bharat",
+            "state": c["state"],
+            "city": c["name"],
+            "area": c["name"],
+        })
+        for c in INDIAN_CITIES_FALLBACK
+        if q_lower in c["name"].lower() or q_lower in c["display_name"].lower() or c["name"].lower().startswith(q_lower)
+    ]
+    if city_matches:
+        return city_matches[:10]
+
+    return []
 
 
 @api_router.post("/places/hospitals/search")
@@ -5733,7 +5907,7 @@ async def search_hospitals(request: dict):
     limit = int(request.get("limit") or 10)
     limit = max(1, min(limit, 20))
 
-    if len(query) < 2:
+    if len(query) < 1:
         return {
             "results": [
                 {"name": name, "address": name, "area": "", "city": ""}
@@ -5748,7 +5922,10 @@ async def search_hospitals(request: dict):
     )
 
     if not api_key:
-        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+        q_lower = query.lower()
+        starts_with = [h for h in HOSPITAL_SEARCH_FALLBACK if h.lower().startswith(q_lower)]
+        contains = [h for h in HOSPITAL_SEARCH_FALLBACK if q_lower in h.lower() and not h.lower().startswith(q_lower)]
+        filtered = starts_with + contains
         return {
             "results": [
                 {"name": name, "address": name, "area": "", "city": ""}
@@ -5846,7 +6023,10 @@ async def search_hospitals(request: dict):
                         break
 
         if not normalized:
-            filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+            q_lower = query.lower()
+            starts_with = [h for h in HOSPITAL_SEARCH_FALLBACK if h.lower().startswith(q_lower)]
+            contains = [h for h in HOSPITAL_SEARCH_FALLBACK if q_lower in h.lower() and not h.lower().startswith(q_lower)]
+            filtered = starts_with + contains
             normalized = [
                 {"name": name, "address": name, "area": "", "city": ""}
                 for name in filtered[:limit]
@@ -5857,7 +6037,10 @@ async def search_hospitals(request: dict):
         raise
     except Exception as e:
         logger.error(f"Hospital search error: {e}")
-        filtered = [h for h in HOSPITAL_SEARCH_FALLBACK if query.lower() in h.lower()]
+        q_lower = query.lower()
+        starts_with = [h for h in HOSPITAL_SEARCH_FALLBACK if h.lower().startswith(q_lower)]
+        contains = [h for h in HOSPITAL_SEARCH_FALLBACK if q_lower in h.lower() and not h.lower().startswith(q_lower)]
+        filtered = starts_with + contains
         return {
             "results": [
                 {"name": name, "address": name, "area": "", "city": ""}
@@ -11251,10 +11434,14 @@ async def get_vendors(
     search: Optional[str] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
+    area: Optional[str] = None,
+    city: Optional[str] = None,
+    state: Optional[str] = None,
+    country: Optional[str] = None,
     limit: int = 50,
     token_data: Optional[dict] = Depends(optional_verify_token)
 ):
-    """Get vendors with optional filters - only shows KYC-verified vendors"""
+    """Get vendors with optional filters and location preference sorting (Nearby -> Area -> City -> State -> Country)"""
     db = await get_db()
 
     vendors = await db.query_documents('vendors', limit=limit)
@@ -11310,44 +11497,86 @@ async def get_vendors(
     vendors = [v for v in vendors if _is_kyc_cleared(v)]
 
     # Filter by category flexibly if provided
-    if category:
-        def _category_matches(v_cats: list, target_cat: str) -> bool:
-            if not target_cat:
-                return True
-            t = str(target_cat).strip().lower()
-            if not t:
-                return True
-                
-            groups = [
-                {'pandit', 'panditji', 'pandits', 'pooja', 'pooja samagri', 'pandit services'},
-                {'astrologer', 'astrology', 'astrologers', 'vastu'},
-                {'electrician', 'electrical', 'electronics', 'electricians'},
-                {'carpenter', 'carpentry', 'woodwork'},
-                {'plumber', 'plumbing'},
-                {'general store', 'grocery', 'sweets', 'kirana', 'store', 'departmental store'},
-                {'dairy', 'milk', 'dairy products'},
-                {'salon', 'parlour', 'barber', 'beauty', 'hair'},
-                {'gym', 'fitness', 'yoga', 'gym trainer', 'yoga trainer'},
-                {'restaurant', 'catering', 'food'},
-            ]
+    def _is_category_match(v_cats: list, target_cat: str) -> bool:
+        if not target_cat:
+            return True
+        t = str(target_cat).strip().lower()
+        if not t:
+            return True
+            
+        groups = [
+            {'pandit', 'panditji', 'pandits', 'pooja', 'pooja samagri', 'purohit', 'pandit services'},
+            {'astrologer', 'astrology', 'astrologers', 'vastu', 'jyotish'},
+            {'electrician', 'electrical', 'electronics', 'electricians', 'electric repair'},
+            {'carpenter', 'carpentry', 'woodwork', 'carpenters'},
+            {'plumber', 'plumbing', 'plumbers', 'pipe repair'},
+            {'general store', 'grocery', 'sweets', 'kirana', 'store', 'departmental store', 'supermarket'},
+            {'dairy', 'milk', 'dairy products'},
+            {'salon', 'parlour', 'barber', 'beauty', 'hair', 'haircut'},
+            {'gym', 'fitness', 'yoga', 'gym trainer', 'yoga trainer', 'workout', 'health club'},
+            {'restaurant', 'catering', 'food', 'bakery', 'cafe', 'baker', 'cake', 'pastry'},
+            {'doctor', 'clinic', 'hospital', 'medical', 'physician', 'pharmacy'},
+            {'mechanic', 'auto repair', 'garage', 'bike repair', 'car repair'},
+            {'painter', 'painting', 'wall painter'},
+            {'tailor', 'boutique', 'stitching'},
+            {'cleaner', 'housemaid', 'maid', 'cleaning', 'cook'},
+        ]
 
-            for cat in v_cats:
-                c = str(cat).strip().lower()
-                if c == t or c in t or t in c:
+        for cat in (v_cats or []):
+            c = str(cat).strip().lower()
+            if c == t or c in t or t in c:
+                return True
+            for g in groups:
+                if any(item in c or c in item for item in g) and any(item in t or t in item for item in g):
                     return True
-                for g in groups:
-                    if any(item in c or c in item for item in g) and any(item in t or t in item for item in g):
-                        return True
+        return False
+
+    def _is_category_query(query_str: str) -> bool:
+        if not query_str or not query_str.strip():
             return False
+        q = query_str.strip().lower()
+        cat_keywords = {
+            'gym', 'fitness', 'yoga', 'workout',
+            'bakery', 'cake', 'sweets', 'baker',
+            'pandit', 'panditji', 'pooja', 'purohit',
+            'electrician', 'electrical', 'electric',
+            'plumber', 'plumbing',
+            'doctor', 'clinic', 'hospital', 'medical', 'pharmacy',
+            'carpenter', 'carpentry', 'woodwork',
+            'salon', 'parlour', 'barber', 'beauty', 'haircut',
+            'grocery', 'kirana', 'general store', 'supermarket',
+            'dairy', 'milk',
+            'astrologer', 'astrology', 'vastu', 'jyotish',
+            'restaurant', 'catering', 'cafe', 'food',
+            'mechanic', 'garage', 'repair',
+            'tailor', 'boutique',
+            'painter', 'painting',
+            'cleaner', 'maid', 'cook'
+        }
+        return any(k == q or k in q or q in k for k in cat_keywords)
 
-        vendors = [v for v in vendors if _category_matches(v.get('categories', []), category)]
+    if category:
+        vendors = [v for v in vendors if _is_category_match(v.get('categories', []), category)]
 
-    # Filter by search term if provided
-    if search:
-        search_lower = search.lower()
-        vendors = [v for v in vendors if
-                   search_lower in v.get('business_name', '').lower() or
-                   any(search_lower in str(cat).lower() for cat in v.get('categories', []))]
+    # Filter by search term with smart category prioritization
+    if search and search.strip():
+        search_lower = search.strip().lower()
+        is_cat_q = _is_category_query(search_lower)
+
+        strong_matches = [
+            v for v in vendors
+            if search_lower in (v.get('business_name') or '').lower()
+            or _is_category_match(v.get('categories', []), search_lower)
+        ]
+
+        if is_cat_q or len(strong_matches) > 0:
+            vendors = strong_matches
+        else:
+            vendors = [
+                v for v in vendors
+                if search_lower in (v.get('full_address') or '').lower()
+                or search_lower in (v.get('business_description') or '').lower()
+            ]
 
     # Calculate distance if coordinates provided
     if lat and lng:
@@ -11385,8 +11614,58 @@ async def get_vendors(
             else:
                 vendor['distance'] = None
 
-        # Sort by distance
-        vendors.sort(key=lambda v: v.get('distance') or 999999)
+        # Sort by Search Relevance -> Location Tier -> SubTier -> Distance
+        def _compute_ranking(v: dict) -> tuple:
+            rel_score = 5
+            if search and search.strip():
+                term = search.strip().lower()
+                name = (v.get('business_name') or '').lower()
+                cats = [str(c).lower() for c in (v.get('categories') or [])]
+                addr = (v.get('full_address') or '').lower()
+
+                if name == term or name.startswith(term):
+                    rel_score = 1
+                elif term in name:
+                    rel_score = 2
+                elif any(term in c for c in cats):
+                    rel_score = 3
+                elif term in addr:
+                    rel_score = 4
+
+            d = v.get('distance')
+            tier = 6
+            sub_tier = 1
+
+            if d is not None and isinstance(d, (int, float)) and 0 <= d <= 25:
+                tier = 1
+                if d <= 2:
+                    sub_tier = 1  # Immediate (<= 2km)
+                elif d <= 5:
+                    sub_tier = 2  # Very Near (<= 5km)
+                elif d <= 10:
+                    sub_tier = 3  # Near (<= 10km)
+                else:
+                    sub_tier = 4  # Nearby (<= 25km)
+            else:
+                addr = (v.get('full_address') or '').lower()
+                v_area = (v.get('area') or '').lower()
+                v_city = (v.get('city') or '').lower()
+                v_state = (v.get('state') or '').lower()
+                v_country = (v.get('country') or '').lower()
+
+                if area and (area.lower() in v_area or area.lower() in addr):
+                    tier = 2
+                elif city and (city.lower() in v_city or city.lower() in addr):
+                    tier = 3
+                elif state and (state.lower() in v_state or state.lower() in addr):
+                    tier = 4
+                elif country and (country.lower() in v_country or country.lower() in addr):
+                    tier = 5
+
+            dist_val = d if (d is not None and isinstance(d, (int, float))) else 999999
+            return (rel_score, tier, sub_tier, dist_val)
+
+        vendors.sort(key=_compute_ranking)
 
     return vendors
 

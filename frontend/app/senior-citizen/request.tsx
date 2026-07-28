@@ -199,7 +199,7 @@ export default function SeniorCitizenRequestScreen() {
                     }
                     return results;
                   }}
-                  minimumQueryLength={2}
+                  minimumQueryLength={1}
                   inputContainerStyle={styles.searchInputContainer}
                   inputStyle={styles.searchInput}
                   dropdownStyle={styles.suggestionsContainer}

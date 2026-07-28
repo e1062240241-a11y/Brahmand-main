@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
   autocompleteWrapper: { position: 'relative', zIndex: 10 },
   suggestionsCard: {
     position: 'absolute',
-    bottom: 58,
+    top: 54,
     left: 0,
     right: 0,
     backgroundColor: '#FFF',

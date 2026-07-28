@@ -25,8 +25,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance, { calculateHaversineDistance } from '../../src/utils/formatDistance';
+import { sortItemsByLocationPreference, computeLocationTier } from '../../src/utils/locationPreference';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import { isCategoryMatch } from '../../src/utils/categoryMatcher';
+import { isCategoryMatch, filterVendorsBySmartSearch } from '../../src/utils/categoryMatcher';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
 import VendorCategories from '../../src/components/VendorCategories';
@@ -575,6 +576,17 @@ export default function VendorScreen() {
     }).start();
   }, [showCategoryFilter, filterAnim]);
 
+  const userLocInfo = React.useMemo(() => {
+    return {
+      latitude: userLocation?.lat ?? homeLatitude,
+      longitude: userLocation?.lng ?? homeLongitude,
+      area: homeLocation?.area,
+      city: homeLocation?.city,
+      state: homeLocation?.state,
+      country: homeLocation?.country,
+    };
+  }, [userLocation, homeLocation, homeLatitude, homeLongitude]);
+
   const displayVendors = React.useMemo(() => {
     let filtered = vendors || [];
     const effectiveCategory = searchCategory !== 'All' ? searchCategory : activeTab;
@@ -587,26 +599,19 @@ export default function VendorScreen() {
     }
 
     if (searchTerm && searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter((v) => {
-        const name = (v.business_name || '').toLowerCase();
-        return name.includes(term);
-      });
+      filtered = filterVendorsBySmartSearch(filtered, searchTerm);
     }
 
     // Map each vendor with its live dynamic distance
     const withDist = filtered.map((v) => {
-      const dynDist = calculateHaversineDistance(userLocation?.lat, userLocation?.lng, v.latitude, v.longitude);
+      const dynDist = calculateHaversineDistance(userLocInfo.latitude, userLocInfo.longitude, v.latitude, v.longitude);
       const effectiveDist = dynDist !== null ? dynDist : (typeof v.distance === 'number' ? v.distance : undefined);
       return { ...v, effectiveDist };
     });
 
-    // Show vendors within 8km radius if location is available, or all vendors if none found within 8km
-    const nearbyVendors = userLocation ? withDist.filter((v) => typeof v.effectiveDist === 'number' && v.effectiveDist <= 8) : withDist;
-    const resultList = nearbyVendors.length > 0 ? nearbyVendors : withDist;
-
-    return resultList.sort((a, b) => (a.effectiveDist ?? 9999) - (b.effectiveDist ?? 9999));
-  }, [vendors, activeTab, searchTerm, searchCategory, userLocation]);
+    // Sort by Search Relevance -> Location Tier -> SubTier -> Distance
+    return sortItemsByLocationPreference(withDist, userLocInfo, searchTerm);
+  }, [vendors, activeTab, searchTerm, searchCategory, userLocInfo]);
 
   const displayJobProfiles = React.useMemo(() => {
     let filtered = [...(jobProfiles || [])];
@@ -616,18 +621,18 @@ export default function VendorScreen() {
       filtered = filtered.filter((profile) => (profile.profession || '').toLowerCase().includes(target));
     }
 
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter((profile) => {
-        const name = (profile.name || '').toLowerCase();
-        const profession = (profile.profession || '').toLowerCase();
-        const city = (profile.preferred_work_city || '').toLowerCase();
-        return name.includes(term) || profession.includes(term) || city.includes(term);
-      });
+    if (searchTerm && searchTerm.trim()) {
+      filtered = filterVendorsBySmartSearch(filtered, searchTerm);
     }
 
-    return filtered.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
-  }, [jobProfiles, searchCategory, searchTerm]);
+    const withDist = filtered.map((p) => {
+      const dynDist = calculateHaversineDistance(userLocInfo.latitude, userLocInfo.longitude, p.latitude, p.longitude);
+      const effectiveDist = dynDist !== null ? dynDist : (typeof p.distance === 'number' ? p.distance : undefined);
+      return { ...p, effectiveDist };
+    });
+
+    return sortItemsByLocationPreference(withDist, userLocInfo, searchTerm);
+  }, [jobProfiles, searchCategory, searchTerm, userLocInfo]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -759,18 +764,14 @@ export default function VendorScreen() {
         myVendor?.kyc_status === 'verified';
 
       if (isAlreadyVerified) {
-        if (Platform.OS === 'web') {
-          window.alert(localT('approvedMsg') || 'Your business is registered and your KYC is verified across the app.');
-        } else {
-          Alert.alert(
-            localT('approvedTitle') || 'Business Registered!',
-            localT('approvedMsg') || 'Your business is registered and your KYC is verified across the app.'
-          );
-        }
+        router.push({
+          pathname: `/vendor/${newVendor.id}`,
+          params: { justCreated: 'true' }
+        });
       } else {
         router.push({
           pathname: '/kyc',
-          params: { returnUrl: '/(tabs)/vendor' }
+          params: { returnUrl: `/vendor/${newVendor.id}?justCreated=true` }
         });
       }
     } catch (error: any) {
@@ -898,11 +899,16 @@ export default function VendorScreen() {
             </View>
           )}
           
-          {/* Distance */}
-          <View style={styles.distanceRow}>
-            <Ionicons name="location" size={12} color={COLORS.textLight} />
-            <Text style={styles.distanceText}>{formatDistance(item.effectiveDist ?? item.distance)}</Text>
-          </View>
+          {/* Distance & Location Preference Sub-Tier Badge */}
+          {(() => {
+            const locTier = computeLocationTier(item, userLocInfo);
+            return (
+              <View style={styles.distanceRow}>
+                <Ionicons name="location" size={12} color={COLORS.primary} />
+                <Text style={styles.distanceText}>{locTier.fullLabel}</Text>
+              </View>
+            );
+          })()}
         </View>
 
         {/* Call Button */}

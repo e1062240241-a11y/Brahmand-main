@@ -425,7 +425,8 @@ const styles = StyleSheet.create({
     top: 56,
   },
   dropdownAbove: {
-    bottom: Platform.OS === 'android' ? 56 : 52,
+    bottom: '100%',
+    marginBottom: 6,
   },
   scrollView: {
     maxHeight: 220,

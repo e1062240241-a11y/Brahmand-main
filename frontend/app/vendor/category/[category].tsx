@@ -7,7 +7,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useVendorStore } from '../../../src/store/vendorStore';
 import formatDistance, { calculateHaversineDistance } from '../../../src/utils/formatDistance';
-import { isCategoryMatch } from '../../../src/utils/categoryMatcher';
+import { isCategoryMatch, filterVendorsBySmartSearch } from '../../../src/utils/categoryMatcher';
+import { useAuthStore } from '../../../src/store/authStore';
+import { sortItemsByLocationPreference, computeLocationTier } from '../../../src/utils/locationPreference';
 
 export default function CategoryScreen() {
   const router = useRouter();
@@ -15,7 +17,9 @@ export default function CategoryScreen() {
   const { category } = useLocalSearchParams<{ category: string }>();
   const [searchTerm, setSearchTerm] = useState('');
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  
+  const user = useAuthStore(state => state.user);
+  const homeLocation = (user as any)?.home_location;
+
   const { vendors, fetchVendors } = useVendorStore();
   const [displayVendors, setDisplayVendors] = useState<any[]>([]);
 
@@ -27,16 +31,36 @@ export default function CategoryScreen() {
   }, []);
 
   useEffect(() => {
-    const term = (category || '').trim();
-    const filtered = vendors.filter(v => {
+    const catTerm = (category || '').trim();
+    let filtered = vendors.filter(v => {
       const cats = v.categories || [];
-      const hasCat = cats.some(c => isCategoryMatch(c, term));
-      const hasName = (v.business_name || '').toLowerCase().includes(term.toLowerCase());
-      const isSearchMatch = searchTerm ? (v.business_name || '').toLowerCase().includes(searchTerm.toLowerCase()) : true;
-      return (hasCat || hasName) && isSearchMatch;
+      const hasCat = cats.some(c => isCategoryMatch(c, catTerm));
+      const hasName = (v.business_name || '').toLowerCase().includes(catTerm.toLowerCase());
+      return hasCat || hasName;
     });
-    setDisplayVendors(filtered);
-  }, [vendors, category, searchTerm]);
+
+    if (searchTerm && searchTerm.trim()) {
+      filtered = filterVendorsBySmartSearch(filtered, searchTerm);
+    }
+
+    const userLocInfo = {
+      latitude: userCoords?.latitude ?? homeLocation?.latitude,
+      longitude: userCoords?.longitude ?? homeLocation?.longitude,
+      area: homeLocation?.area,
+      city: homeLocation?.city,
+      state: homeLocation?.state,
+      country: homeLocation?.country,
+    };
+
+    const withDist = filtered.map(v => {
+      const dynDist = calculateHaversineDistance(userLocInfo.latitude, userLocInfo.longitude, v.latitude, v.longitude);
+      const effectiveDist = dynDist !== null ? dynDist : (typeof v.distance === 'number' ? v.distance : undefined);
+      return { ...v, effectiveDist };
+    });
+
+    const sorted = sortItemsByLocationPreference(withDist, userLocInfo, searchTerm);
+    setDisplayVendors(sorted);
+  }, [vendors, category, searchTerm, userCoords, homeLocation]);
 
   const handleCall = (phone: string) => {
     if (phone) {
@@ -49,9 +73,17 @@ export default function CategoryScreen() {
     const displayName = item.business_name && item.business_name.length > 0 ? item.business_name : 'Unnamed Business';
     const displayTag = (item.categories && item.categories.length > 0) ? item.categories[0] : category;
     
-    const dynDist = calculateHaversineDistance(userCoords?.latitude, userCoords?.longitude, item.latitude, item.longitude);
-    const effectiveDist = dynDist !== null ? dynDist : (typeof item.distance === 'number' ? item.distance : undefined);
-    const distanceStr = effectiveDist !== undefined ? formatDistance(effectiveDist) : 'Distance unknown';
+    const userLocInfo = {
+      latitude: userCoords?.latitude ?? homeLocation?.latitude,
+      longitude: userCoords?.longitude ?? homeLocation?.longitude,
+      area: homeLocation?.area,
+      city: homeLocation?.city,
+      state: homeLocation?.state,
+      country: homeLocation?.country,
+    };
+
+    const locTier = computeLocationTier(item, userLocInfo);
+    const distanceStr = locTier.fullLabel;
 
     return (
       <TouchableOpacity 

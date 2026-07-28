@@ -13,6 +13,7 @@ import {
   Dimensions,
   Platform,
   Modal,
+  Animated,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,7 +31,7 @@ import { formatDistance, calculateHaversineDistance } from '../../src/utils/form
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function VendorProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [userCoords, setUserCoords] = React.useState<{ lat: number; lng: number } | null>(null);
@@ -42,6 +43,52 @@ export default function VendorProfileScreen() {
   const [vendorLoading, setVendorLoading] = React.useState(false);
   const [vendorError, setVendorError] = React.useState(false);
   const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
+
+  // Transition state & animation values for business creation (lasts 2.5-3 seconds)
+  const [showCreationTransition, setShowCreationTransition] = React.useState(justCreated === 'true');
+  const creationFadeAnim = React.useRef(new Animated.Value(1)).current;
+  const creationScaleAnim = React.useRef(new Animated.Value(0.85)).current;
+  const creationProgressAnim = React.useRef(new Animated.Value(0)).current;
+  const editBtnPulseAnim = React.useRef(new Animated.Value(1)).current;
+
+  React.useEffect(() => {
+    if (justCreated === 'true') {
+      setShowCreationTransition(true);
+
+      // Spring in card
+      Animated.spring(creationScaleAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+
+      // Fill progress bar over 2.5 seconds (2500ms)
+      Animated.timing(creationProgressAnim, {
+        toValue: 1,
+        duration: 2500,
+        useNativeDriver: false,
+      }).start(() => {
+        // Fade out overlay over 500ms
+        Animated.timing(creationFadeAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }).start(() => {
+          setShowCreationTransition(false);
+          router.setParams({ justCreated: undefined });
+
+          // Pulse edit profile button to attract attention
+          Animated.sequence([
+            Animated.timing(editBtnPulseAnim, { toValue: 1.25, duration: 250, useNativeDriver: true }),
+            Animated.timing(editBtnPulseAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+            Animated.timing(editBtnPulseAnim, { toValue: 1.2, duration: 200, useNativeDriver: true }),
+            Animated.timing(editBtnPulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+          ]).start();
+        });
+      });
+    }
+  }, [justCreated]);
 
   // First try from myVendor (fastest & most up-to-date for owner) or local vendors store, fall back to API fetch
   const storeVendor = (myVendor?.id === id ? myVendor : null) || vendors.find(v => v.id === id);
@@ -315,20 +362,27 @@ export default function VendorProfileScreen() {
           </View>
         </View>
         {isOwner && (
-          <TouchableOpacity 
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: '#FF6600',
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              borderRadius: 16,
-            }}
-            onPress={() => router.push('/vendor/dashboard')}
-          >
-            <Ionicons name="pencil" size={14} color="#FFF" style={{ marginRight: 4 }} />
-            <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Edit Profile</Text>
-          </TouchableOpacity>
+          <Animated.View style={{ transform: [{ scale: editBtnPulseAnim }] }}>
+            <TouchableOpacity 
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FF6600',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 16,
+                shadowColor: '#FF6600',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.4,
+                shadowRadius: 4,
+                elevation: 4,
+              }}
+              onPress={() => router.push('/vendor/dashboard')}
+            >
+              <Ionicons name="pencil" size={14} color="#FFF" style={{ marginRight: 4 }} />
+              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Edit Profile</Text>
+            </TouchableOpacity>
+          </Animated.View>
         )}
       </View>
 
@@ -595,6 +649,65 @@ export default function VendorProfileScreen() {
           )}
         </View>
       </Modal>
+      {/* 2-3 Second Business Creation Transition Overlay */}
+      {showCreationTransition && (
+        <Animated.View
+          style={[
+            styles.creationOverlay,
+            {
+              opacity: creationFadeAnim,
+            },
+          ]}
+          pointerEvents="auto"
+        >
+          <Animated.View
+            style={[
+              styles.creationCard,
+              {
+                transform: [{ scale: creationScaleAnim }],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={['#FF6600', '#FF8D57', '#FFA066']}
+              style={styles.creationGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.creationBadgeContainer}>
+                <Ionicons name="checkmark-circle" size={56} color="#FFFFFF" />
+              </View>
+
+              <Text style={styles.creationTitle}>Business Registered! 🎉</Text>
+              <Text style={styles.creationSubtitle}>
+                Welcome to your new business profile. Setting up your page...
+              </Text>
+
+              {/* Progress bar container (2.5s fill) */}
+              <View style={styles.progressBarBackground}>
+                <Animated.View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width: creationProgressAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0%', '100%'],
+                      }),
+                    },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.creationFeatureRow}>
+                <Ionicons name="sparkles" size={16} color="#FFE5D9" />
+                <Text style={styles.creationFeatureText}>
+                  Transitioning to your Business & Edit Profile...
+                </Text>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        </Animated.View>
+      )}
     </LinearGradient>
   );
 }
@@ -946,6 +1059,80 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#F26522',
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  creationOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    zIndex: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  creationCard: {
+    width: '92%',
+    maxWidth: 380,
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 12,
+  },
+  creationGradient: {
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+    alignItems: 'center',
+  },
+  creationBadgeContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  creationTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  creationSubtitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#FFEFE5',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
+  },
+  progressBarBackground: {
+    width: '100%',
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 4,
+  },
+  creationFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  creationFeatureText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFEFE5',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
   },
 });

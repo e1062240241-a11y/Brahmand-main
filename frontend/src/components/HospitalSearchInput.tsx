@@ -1,34 +1,65 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
+  Alert,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
-import { searchHospitals } from '../services/api';
+import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../constants/theme';
+import { searchHospitals, reverseGeocode } from '../services/api';
+import { ensureForegroundPermission, getCurrentPosition } from '../services/location';
 
-interface HospitalSearchInputProps {
-  value: string;
-  onSelect: (hospital: { name: string; address: string; area: string; city: string }) => void;
-  placeholder?: string;
-}
-
-interface HospitalSuggestion {
+export interface HospitalSuggestion {
   name: string;
   address: string;
   area: string;
   city: string;
+  [key: string]: any;
+}
+
+export interface HospitalSearchInputProps {
+  value: string;
+  onSelect: (hospital: HospitalSuggestion) => void;
+  placeholder?: string;
+  label?: string;
+  showGpsButton?: boolean;
+  onGpsDetect?: () => void;
+  forceShowAbove?: boolean;
+  containerStyle?: ViewStyle;
+  inputContainerStyle?: ViewStyle;
+  inputStyle?: TextStyle;
+  dropdownStyle?: ViewStyle;
 }
 
 export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
   value,
   onSelect,
-  placeholder = 'Search hospital name...',
+  placeholder = 'Search hospital name or area...',
+  label,
+  showGpsButton = true,
+  onGpsDetect,
+  forceShowAbove = true,
+  containerStyle,
+  inputContainerStyle,
+  inputStyle,
+  dropdownStyle,
 }) => {
-  const [selectedArea, setSelectedArea] = useState('');
-  const [hospitalQuery, setHospitalQuery] = useState('');
-  const [manualResults, setManualResults] = useState<HospitalSuggestion[]>([]);
+  const [hospitalQuery, setHospitalQuery] = useState(value || '');
+  const [suggestions, setSuggestions] = useState<HospitalSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<HospitalSuggestion | null>(null);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sync external value
   useEffect(() => {
     setHospitalQuery(value || '');
   }, [value]);
@@ -41,126 +72,223 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
     };
   }, []);
 
-  const handleManualChange = (text: string) => {
+  // Search logic starting from 1st character (minimumQueryLength = 1)
+  const performSearch = useCallback(async (queryText: string) => {
+    const q = queryText.trim();
+    if (q.length < 1) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await searchHospitals(q, 10);
+      const rows = response?.data?.results || response?.data || [];
+      if (Array.isArray(rows) && rows.length > 0) {
+        const normalized: HospitalSuggestion[] = rows
+          .filter((item: any) => item && (item.name || item.display_name))
+          .map((item: any) => ({
+            name: item.name || item.display_name,
+            address: item.address || item.formatted_address || item.name || '',
+            area: item.area || '',
+            city: item.city || '',
+          }));
+        setSuggestions(normalized);
+      } else {
+        setSuggestions([]);
+      }
+    } catch (err) {
+      console.warn('Hospital search failed:', err);
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleChangeText = (text: string) => {
     setHospitalQuery(text);
+    if (selectedItem) {
+      setSelectedItem(null);
+    }
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
 
-    const q = text.trim();
-    if (q.length < 2) {
-      setManualResults([]);
-      setHasSearched(false);
+    if (text.trim().length < 1) {
+      setSuggestions([]);
       return;
     }
 
-    setHasSearched(true);
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const response = await searchHospitals(q, 10);
-        const rows = response?.data?.results;
-        if (Array.isArray(rows) && rows.length > 0) {
-          const normalized: HospitalSuggestion[] = rows
-            .filter((item: any) => item && item.name)
-            .map((item: any) => ({
-              name: item.name,
-              address: item.address || item.name,
-              area: item.area || '',
-              city: item.city || '',
-            }));
-          setManualResults(normalized);
-        } else {
-          setManualResults([]);
-        }
-      } catch {
-        setManualResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 350);
+    debounceRef.current = setTimeout(() => {
+      performSearch(text);
+    }, 300);
   };
 
-  const handleManualSelect = (hospital: HospitalSuggestion) => {
-    setHospitalQuery(hospital.name);
-    setManualResults([]);
-    onSelect({
-      name: hospital.name,
-      address: hospital.address || hospital.name,
-      area: hospital.area || '',
-      city: hospital.city || '',
-    });
-    setSelectedArea(hospital.area || '');
+  const handleSelectHospital = (item: HospitalSuggestion) => {
+    setHospitalQuery(item.name);
+    setSelectedItem(item);
+    setSuggestions([]);
+    setIsFocused(false);
+    onSelect(item);
   };
 
   const handleClear = () => {
-    setSelectedArea('');
     setHospitalQuery('');
-    setManualResults([]);
-    setHasSearched(false);
+    setSelectedItem(null);
+    setSuggestions([]);
     onSelect({ name: '', address: '', area: '', city: '' });
   };
 
+  const handleGpsClick = async () => {
+    if (onGpsDetect) {
+      onGpsDetect();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const hasPermission = await ensureForegroundPermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Denied', 'Please grant location permissions to detect your current position.');
+        return;
+      }
+      const position = await getCurrentPosition({ accuracy: 3 });
+      const { latitude, longitude } = position.coords;
+      const response = await reverseGeocode(latitude, longitude);
+      const data = response.data;
+      if (data && (data.display_name || data.name)) {
+        const detectedName = data.display_name || data.name;
+        const hospitalObj: HospitalSuggestion = {
+          name: detectedName,
+          address: detectedName,
+          area: data.area || '',
+          city: data.city || '',
+        };
+        handleSelectHospital(hospitalObj);
+      } else {
+        Alert.alert('Detection Failed', 'Could not resolve address for current location.');
+      }
+    } catch (err) {
+      console.error('GPS detection failed:', err);
+      Alert.alert('Detection Error', 'Unable to fetch current location.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    if (hospitalQuery.trim().length >= 1 && !selectedItem) {
+      performSearch(hospitalQuery);
+    }
+  };
+
+  const handleBlur = () => {
+    // Delay blur to allow item onPress to trigger smoothly
+    setTimeout(() => {
+      setIsFocused(false);
+    }, 250);
+  };
+
+  const showSuggestions = isFocused && hospitalQuery.trim().length >= 1 && !selectedItem;
+
   return (
-    <View style={styles.container}>
-      {loading ? (
-        <View style={styles.loaderRow}>
-          <ActivityIndicator size="small" color={COLORS.primary} />
-          <Text style={styles.loaderText}>Searching hospitals...</Text>
+    <View style={[styles.container, containerStyle]}>
+      {label && <Text style={styles.label}>{label}</Text>}
+
+      <View style={styles.inputWrapperContainer}>
+        <View style={[styles.inputContainer, inputContainerStyle]}>
+          {showGpsButton && (
+            <TouchableOpacity onPress={handleGpsClick} style={styles.gpsIconButton} disabled={loading}>
+              <Ionicons name="location-sharp" size={18} color="#E53935" />
+            </TouchableOpacity>
+          )}
+
+          <TextInput
+            style={[styles.input, inputStyle]}
+            placeholder={placeholder}
+            placeholderTextColor="#BBB"
+            value={hospitalQuery}
+            onChangeText={handleChangeText}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            autoCorrect={false}
+          />
+
+          {loading ? (
+            <ActivityIndicator size="small" color="#E53935" style={styles.rightIcon} />
+          ) : hospitalQuery.length > 0 ? (
+            <TouchableOpacity onPress={handleClear} style={styles.rightIcon}>
+              <Ionicons name="close-circle" size={18} color="#BBB" />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.rightIcon}>
+              <Ionicons name="search" size={18} color="#BBB" />
+            </View>
+          )}
         </View>
-      ) : (
-        hasSearched && manualResults.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hospitalChipScroll}>
-            {manualResults.map((hospital) => (
-              <Pressable
-                key={`${hospital.name}-${hospital.address}`}
-                style={({ pressed }) => [
-                  styles.hospitalChip,
-                  hospitalQuery === hospital.name && styles.hospitalChipSelected,
-                  pressed && { opacity: 0.7 }
-                ]}
-                onPress={() => handleManualSelect(hospital)}
-                android_ripple={{ color: COLORS.primary + '20', borderless: false }}
+
+        {/* Floating Autocomplete Overlay Dropdown */}
+        {showSuggestions && (
+          <View style={[styles.dropdownContainer, forceShowAbove ? styles.dropdownAbove : styles.dropdownBelow, dropdownStyle]}>
+            {loading && suggestions.length === 0 ? (
+              <Text style={styles.statusText}>Searching hospitals...</Text>
+            ) : suggestions.length > 0 ? (
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+                style={{ maxHeight: 200 }}
               >
-                <Text
-                  style={[
-                    styles.hospitalChipText,
-                    hospitalQuery === hospital.name && styles.hospitalChipTextSelected,
-                  ]}
+                {suggestions.map((item, index) => (
+                  <TouchableOpacity
+                    key={`${item.name}-${index}`}
+                    style={styles.suggestionItem}
+                    onPress={() => handleSelectHospital(item)}
+                  >
+                    <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
+                    <View style={styles.suggestionTextCol}>
+                      <Text style={styles.suggestionTitle} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      {item.address && item.address !== item.name ? (
+                        <Text style={styles.suggestionAddress} numberOfLines={1}>
+                          {item.address}
+                        </Text>
+                      ) : (item.area || item.city) ? (
+                        <Text style={styles.suggestionAddress} numberOfLines={1}>
+                          {[item.area, item.city].filter(Boolean).join(', ')}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <View>
+                <Text style={styles.statusText}>No hospitals found</Text>
+                <TouchableOpacity
+                  style={styles.suggestionItem}
+                  onPress={() =>
+                    handleSelectHospital({
+                      name: hospitalQuery.trim(),
+                      address: hospitalQuery.trim(),
+                      area: '',
+                      city: '',
+                    })
+                  }
                 >
-                  {hospital.name}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )
-      )}
-
-      <TextInput
-        style={styles.textInput}
-        placeholder={placeholder}
-        placeholderTextColor={COLORS.textLight}
-        value={hospitalQuery}
-        onChangeText={handleManualChange}
-      />
-
-      {value && (
-        <Pressable
-          onPress={handleClear}
-          style={({ pressed }) => [styles.clearButton, pressed && { opacity: 0.7 }]}
-          android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 10 }}
-        >
-          <Ionicons name="close-circle" size={18} color={COLORS.textLight} />
-        </Pressable>
-      )}
-
-      {selectedArea ? (
-        <View style={styles.areaInfoContainer}>
-          <Ionicons name="location" size={14} color={COLORS.primary} />
-          <Text style={styles.areaInfoText}>Area: {selectedArea}</Text>
-        </View>
-      ) : null}
+                  <Ionicons name="add-circle-outline" size={18} color="#E53935" style={{ marginRight: 8 }} />
+                  <Text style={styles.suggestionTitle} numberOfLines={1}>
+                    Use "{hospitalQuery.trim()}" as typed
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -170,75 +298,93 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 100,
   },
-  textInputContainer: {
-    backgroundColor: COLORS.background,
-    borderRadius: BORDER_RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.divider,
-    paddingHorizontal: SPACING.xs,
+  label: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#333',
+    marginBottom: 8,
+    marginLeft: 2,
   },
-  textInput: {
-    backgroundColor: COLORS.background,
-    color: COLORS.text,
+  inputWrapperContainer: {
+    position: 'relative',
+    zIndex: 999,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9F9FB',
+    borderWidth: 1,
+    borderColor: '#F0F0F3',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    minHeight: 52,
+  },
+  gpsIconButton: {
+    padding: 6,
+    marginRight: 4,
+  },
+  input: {
+    flex: 1,
     fontSize: 15,
-    paddingVertical: SPACING.sm,
+    fontFamily: FONTS.regular,
+    color: '#333',
+    paddingVertical: 12,
   },
-  clearButton: {
+  rightIcon: {
+    padding: 6,
+  },
+  dropdownContainer: {
     position: 'absolute',
-    right: 10,
-    top: '50%',
-    marginTop: -9,
-    zIndex: 10,
-  },
-  areaInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    backgroundColor: `${COLORS.primary}10`,
-    borderRadius: BORDER_RADIUS.sm,
-  },
-  areaInfoText: {
-    marginLeft: SPACING.xs,
-    fontSize: 13,
-    color: COLORS.primary,
-    fontWeight: '500',
-  },
-  hospitalChipScroll: {
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.sm,
-  },
-  hospitalChip: {
-    paddingVertical: SPACING.xs,
-    paddingHorizontal: SPACING.sm,
-    borderRadius: BORDER_RADIUS.lg,
-    backgroundColor: COLORS.background,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.divider,
-    marginRight: SPACING.xs,
+    borderColor: '#F0F0F3',
+    maxHeight: 220,
+    zIndex: 9999,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
   },
-  hospitalChipSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+  dropdownAbove: {
+    bottom: 58,
+    shadowOffset: { width: 0, height: -6 },
   },
-  hospitalChipText: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
+  dropdownBelow: {
+    top: 58,
+    shadowOffset: { width: 0, height: 6 },
   },
-  hospitalChipTextSelected: {
-    color: COLORS.surface,
-  },
-  loaderRow: {
+  suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.xs,
-    marginBottom: SPACING.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F7',
   },
-  loaderText: {
-    marginLeft: SPACING.xs,
+  suggestionTextCol: {
+    flex: 1,
+  },
+  suggestionTitle: {
+    fontSize: 14,
+    fontFamily: FONTS.bold,
+    color: '#222',
+  },
+  suggestionAddress: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    fontFamily: FONTS.regular,
+    color: '#888',
+    marginTop: 2,
+  },
+  statusText: {
+    padding: 14,
+    fontSize: 13,
+    fontFamily: FONTS.regular,
+    color: '#888',
+    textAlign: 'center',
   },
 });
 
