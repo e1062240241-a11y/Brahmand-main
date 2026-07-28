@@ -25,7 +25,6 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { Avatar } from '../../src/components/Avatar';
-import { ProfileCompletionCard } from '../../src/components/ProfileCompletionCard';
 import { DeleteOTPModal } from '../../src/components/DeleteOTPModal';
 import api, { sendOTP, verifyOTP, getKYCStatus } from '../../src/services/api';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
@@ -148,16 +147,21 @@ const CategoryEditModal = React.memo<CategoryEditModalProps>(({
     <Modal
       visible={visible}
       transparent
-      animationType={Platform.OS === 'android' ? 'fade' : 'slide'}
+      animationType="fade"
       hardwareAccelerated={Platform.OS === 'android'}
       statusBarTranslucent={Platform.OS === 'android'}
       onRequestClose={onClose}
     >
-      <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
+      <View style={styles.centerModalOverlay}>
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        />
+        <View style={styles.centerModalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Update Categories</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <Ionicons name="close" size={24} color="#5C3B24" />
             </TouchableOpacity>
           </View>
@@ -1282,8 +1286,16 @@ export default function VendorDashboardScreen() {
           resetPhoneVerification();
         }}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: Math.max(24, insets.bottom + 16) }]}>
+        <View style={styles.centerModalOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            activeOpacity={1}
+            onPress={() => {
+              setEditModal(null);
+              resetPhoneVerification();
+            }}
+          />
+          <View style={styles.centerModalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
                 {editModal === 'phone' && 'Update Phone'}
@@ -1680,6 +1692,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#D34F40',
+  },
+  centerModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 40,
+  },
+  centerModalContent: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 420,
+    maxHeight: '80%',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
   },
   modalOverlay: {
     flex: 1,

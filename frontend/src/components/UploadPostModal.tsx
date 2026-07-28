@@ -857,9 +857,20 @@ export const UploadPostModal = ({
           <Text style={styles.title}>
             {t("language") === "hi" ? "नई पोस्ट बनाएं" : "Create New Post"}
           </Text>
-          <View style={styles.iconBtn} />
+          <TouchableOpacity
+            onPress={handleUpload}
+            disabled={!canUpload}
+            style={[styles.topPostBtn, !canUpload && styles.topPostBtnDisabled]}
+            accessibilityLabel="Create post"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.topPostBtnText, !canUpload && styles.topPostBtnTextDisabled]}>
+              {t("createPost")}
+            </Text>
+          </TouchableOpacity>
         </View>
         <KeyboardAwareScrollView
+          style={{ flex: 1 }}
           scrollEnabled={scrollEnabled}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
@@ -1220,7 +1231,7 @@ export const UploadPostModal = ({
                 />
                 <Text style={styles.muteLabel}>
                   {t("language") === "hi"
-                    ? "ऑडियो म्यूट करें"
+                    ? "ऑдио म्यूट करें"
                     : "Mute Audio"}
                 </Text>
                 <Switch
@@ -1232,38 +1243,38 @@ export const UploadPostModal = ({
               </View>
             )}
           </View>
-
-          <View style={styles.bottomBar}>
-            {uploading ? (
-              <UploadingProgress
-                uploadProgress={uploadProgress}
-                isCompressing={isCompressing}
-                t={t}
-              />
-            ) : (
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={styles.draftBtn}
-                  onPress={handleSaveDraft}
-                >
-                  <Text style={styles.draftBtnText}>
-                    {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.submitBtn,
-                    !canUpload && styles.uploadBtnDisabled,
-                  ]}
-                  onPress={handleUpload}
-                  disabled={!canUpload}
-                >
-                  <Text style={styles.submitBtnText}>{t("createPost")}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
         </KeyboardAwareScrollView>
+
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, SPACING.md) }]}>
+          {uploading ? (
+            <UploadingProgress
+              uploadProgress={uploadProgress}
+              isCompressing={isCompressing}
+              t={t}
+            />
+          ) : (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.draftBtn}
+                onPress={handleSaveDraft}
+              >
+                <Text style={styles.draftBtnText}>
+                  {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.submitBtn,
+                  !canUpload && styles.uploadBtnDisabled,
+                ]}
+                onPress={handleUpload}
+                disabled={!canUpload}
+              >
+                <Text style={styles.submitBtnText}>{t("createPost")}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </View>
     </Modal>
   );
@@ -1296,10 +1307,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  topPostBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topPostBtnDisabled: {
+    backgroundColor: "#E0E0E0",
+  },
+  topPostBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  topPostBtnTextDisabled: {
+    color: "#A0A0A0",
+  },
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 140 : 120,
+    paddingBottom: 24,
   },
   mediaContainer: {
     marginBottom: 16,

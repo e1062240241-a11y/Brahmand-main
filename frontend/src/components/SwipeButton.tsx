@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, PanResponder, Dimensions, Platform } from 'react-native';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { View, Text, StyleSheet, PanResponder, Dimensions, Platform, LayoutChangeEvent } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,10 +20,11 @@ interface SwipeButtonProps {
 }
 
 export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps) {
-  const buttonWidth = SCREEN_WIDTH - 50;
   const circleWidth = 48;
   const padding = 4;
-  const slideDistance = buttonWidth - circleWidth - (padding * 2);
+
+  const [containerWidth, setContainerWidth] = useState(SCREEN_WIDTH - 50);
+  const slideDistance = Math.max(0, containerWidth - circleWidth - (padding * 2));
 
   const translateX = useSharedValue(0);
   const pulseScale = useSharedValue(1);
@@ -37,7 +38,7 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
     onSwipeComplete();
     setTimeout(() => {
       swipedRef.current = false;
-      translateX.value = 0;
+      translateX.value = withTiming(0, { duration: 250 });
     }, 1000);
   }, [onSwipeComplete, translateX]);
 
@@ -62,7 +63,7 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
 
   // Onboarding micro-interaction: plays 3 times per page visit after 800-1200ms delay
   useEffect(() => {
-    if (hasPlayedHintRef.current) return;
+    if (hasPlayedHintRef.current || slideDistance <= 0) return;
 
     const timer = setTimeout(() => {
       if (swipedRef.current || hasPlayedHintRef.current) return;
@@ -75,18 +76,18 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
       // 2. Subtle pulse/glow on ॐ handle (repeated 3 times)
       pulseScale.value = withRepeat(
         withSequence(
-          withTiming(1.15, { duration: 350, easing: Easing.out(Easing.ease) }),
+          withTiming(1.08, { duration: 350, easing: Easing.out(Easing.ease) }),
           withTiming(1, { duration: 350, easing: Easing.inOut(Easing.ease) })
         ),
         3,
         false
       );
 
-      // 3. Slide 25% to right and return smoothly (repeated 3 times)
+      // 3. Slide 20% to right and return smoothly without overshoot (repeated 3 times)
       translateX.value = withRepeat(
         withSequence(
-          withTiming(slideDistance * 0.25, { duration: 450, easing: Easing.out(Easing.quad) }),
-          withSpring(0, { stiffness: 80, damping: 12 })
+          withTiming(slideDistance * 0.2, { duration: 450, easing: Easing.out(Easing.quad) }),
+          withSpring(0, { stiffness: 120, damping: 20, mass: 1, overshootClamping: true })
         ),
         3,
         false,
@@ -136,39 +137,55 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
             }
           });
         } else {
-          translateX.value = withSpring(0, { stiffness: 80, damping: 12 });
+          translateX.value = withSpring(0, { stiffness: 120, damping: 20, mass: 1, overshootClamping: true });
         }
       },
       onPanResponderTerminate: () => {
         if (!swipedRef.current) {
-          translateX.value = withSpring(0, { stiffness: 80, damping: 12 });
+          translateX.value = withSpring(0, { stiffness: 120, damping: 20, mass: 1, overshootClamping: true });
         }
       },
     })
   ).current;
 
-  // Reanimated 60 FPS animated styles
-  const titleAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: Math.max(0, 1 - translateX.value / (slideDistance * 0.5)),
-  }));
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const measuredWidth = e.nativeEvent.layout.width;
+    if (measuredWidth > 0 && Math.abs(measuredWidth - containerWidth) > 1) {
+      setContainerWidth(measuredWidth);
+    }
+  };
 
-  const trackFillAnimatedStyle = useAnimatedStyle(() => ({
-    width: translateX.value + circleWidth + padding * 2,
-  }));
+  // Reanimated 60 FPS animated styles with strict clamping
+  const titleAnimatedStyle = useAnimatedStyle(() => {
+    const clampedX = Math.max(0, Math.min(slideDistance, translateX.value));
+    return {
+      opacity: Math.max(0, 1 - (slideDistance > 0 ? clampedX / (slideDistance * 0.5) : 0)),
+    };
+  });
 
-  const circleAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { scale: pulseScale.value },
-    ],
-  }));
+  const trackFillAnimatedStyle = useAnimatedStyle(() => {
+    const clampedX = Math.max(0, Math.min(slideDistance, translateX.value));
+    return {
+      width: clampedX + circleWidth + padding * 2,
+    };
+  });
+
+  const circleAnimatedStyle = useAnimatedStyle(() => {
+    const clampedX = Math.max(0, Math.min(slideDistance, translateX.value));
+    return {
+      transform: [
+        { translateX: clampedX },
+        { scale: pulseScale.value },
+      ],
+    };
+  });
 
   const hintAnimatedStyle = useAnimatedStyle(() => ({
     opacity: hintOpacity.value,
   }));
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={handleLayout}>
       {/* Orange track fill */}
       <Animated.View style={[styles.filledTrack, trackFillAnimatedStyle]} />
 

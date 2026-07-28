@@ -28,7 +28,6 @@ import formatDistance, { calculateHaversineDistance } from '../../src/utils/form
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
-import { ProfileCompletionCard } from '../../src/components/ProfileCompletionCard';
 import VendorCategories from '../../src/components/VendorCategories';
 import { useTranslation } from '../../src/utils/i18n';
 import { useIsFocused } from '@react-navigation/native';
@@ -266,7 +265,6 @@ export default function VendorScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [showJobProfileModal, setShowJobProfileModal] = useState(false);
-  const [showCompletionCard, setShowCompletionCard] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -746,9 +744,8 @@ export default function VendorScreen() {
         }
       }
       
-      // Close modal immediately and show floating profile completion card
+      // Close modal immediately after registration
       setShowRegistrationModal(false);
-      setShowCompletionCard(true);
       
       // Refresh vendor data in background
       await Promise.all([
@@ -1397,33 +1394,7 @@ export default function VendorScreen() {
         onSubmit={handleCreateJobProfile}
       />
 
-      {/* Profile Completion Card Floating Overlay */}
-      <Modal
-        visible={showCompletionCard}
-        transparent
-        animationType="fade"
-        hardwareAccelerated={Platform.OS === 'android'}
-        statusBarTranslucent={Platform.OS === 'android'}
-        onRequestClose={() => setShowCompletionCard(false)}
-      >
-        <TouchableOpacity
-          activeOpacity={1}
-          style={styles.completionModalOverlay}
-          onPress={() => setShowCompletionCard(false)}
-        >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-            <ProfileCompletionCard
-              progress={60}
-              onClose={() => setShowCompletionCard(false)}
-              autoDismissMs={3000}
-              onEditProfile={() => {
-                setShowCompletionCard(false);
-                router.push('/vendor/dashboard');
-              }}
-            />
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+
 
 
 
@@ -2087,13 +2058,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingBottom: 7,
-  },
-  completionModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 16,
   },
 });
 
