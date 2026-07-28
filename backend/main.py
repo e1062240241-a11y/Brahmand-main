@@ -2924,10 +2924,6 @@ async def share_profile_preview(user_id: str):
             description = bio
         else:
             description = f"View {name}'s profile and posts on Brahmand App."
-            
-        photo = user_doc.get('photo') or user_doc.get('avatar_url')
-        if photo and isinstance(photo, str) and photo.startswith("http"):
-            image_url = photo
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -2982,10 +2978,6 @@ async def share_post_preview(post_id: str):
             description = caption
         else:
             title = f"Post by {username} on Brahmand"
-
-        media_url = post.get('media_url') or post.get('imageUrl') or post.get('image_url')
-        if media_url and isinstance(media_url, str) and media_url.startswith("http"):
-            image_url = media_url
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
