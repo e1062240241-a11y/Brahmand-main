@@ -540,6 +540,8 @@ export const LiveMantraRoom = () => {
             }}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Close room"
           >
             <Ionicons name="close" size={24} color="#FFF" />
           </TouchableOpacity>
@@ -551,6 +553,8 @@ export const LiveMantraRoom = () => {
             onPress={() => setIsMuted((prev) => !prev)}
             style={styles.muteButton}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? 'Unmute audio' : 'Mute audio'}
           >
             <Ionicons
               name={isMuted ? 'volume-mute' : 'volume-high'}
@@ -629,7 +633,12 @@ export const LiveMantraRoom = () => {
 
             <View style={styles.transparentControlBar}>
               <View style={styles.leftControls}>
-                <TouchableOpacity onPress={handleMicToggle} style={styles.iconCircle}>
+                <TouchableOpacity
+                  onPress={handleMicToggle}
+                  style={styles.iconCircle}
+                  accessibilityRole="button"
+                  accessibilityLabel={isMicEnabled ? 'Disable microphone' : 'Enable microphone'}
+                >
                   <Ionicons name={isMicEnabled ? "mic" : "mic-off"} size={22} color={isMicEnabled ? "#4CD964" : "#FFF"} />
                 </TouchableOpacity>
                 
@@ -642,6 +651,8 @@ export const LiveMantraRoom = () => {
                     }
                   }} 
                   style={[styles.iconCircle, { backgroundColor: '#FF3B30' }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Leave room"
                 >
                   <Ionicons name="call" size={20} color="#FFF" />
                 </TouchableOpacity>
@@ -653,6 +664,8 @@ export const LiveMantraRoom = () => {
                     key={emoji} 
                     onPress={() => addReaction(emoji)}
                     style={styles.reactionBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Send ${emoji} reaction`}
                   >
                     <Text style={styles.reactionBtnText}>{emoji}</Text>
                   </TouchableOpacity>
