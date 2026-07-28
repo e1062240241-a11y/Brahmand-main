@@ -150,12 +150,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // 1. Reset auth store state immediately so the UI responds instantly
     set({ user: null, token: null, isAuthenticated: false, fcmToken: null });
 
-    // 2. Clear secure storage immediately (crucial for web so redirect reload doesn't restore session)
+    // 2. Clear secure storage and user notifications cache
     try {
       await secureStorage.removeItem('auth_token');
       await secureStorage.removeItem('user');
+      const { useNotificationStore } = require('./notificationStore');
+      useNotificationStore.getState().clearRecentNotifications();
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      if (AsyncStorage) {
+        AsyncStorage.removeItem('notifications_cache_data').catch(() => {});
+      }
     } catch (err) {
-      console.warn('[Auth] Failed to clear secure storage:', err);
+      console.warn('[Auth] Failed to clear secure storage / notification cache:', err);
     }
 
     // 3. Perform backend API logout and Firebase sign out in the background (non-blocking)

@@ -422,7 +422,7 @@ export default function VendorDashboardScreen() {
       }
     };
     initialize();
-  }, [fetchMyVendor, updateUser]);
+  }, []);
 
   const handleBack = () => {
     if (router.canGoBack()) {

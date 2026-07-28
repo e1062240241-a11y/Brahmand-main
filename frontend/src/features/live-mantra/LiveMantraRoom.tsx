@@ -190,6 +190,8 @@ export const LiveMantraRoom = () => {
           <TouchableOpacity
             onPress={() => setIsMuted((prev) => !prev)}
             style={styles.muteButton}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? 'Unmute audio' : 'Mute audio'}
           >
             <Ionicons name={isMuted ? 'volume-mute' : 'volume-high'} size={22} color="#FFF" />
           </TouchableOpacity>
@@ -240,6 +242,8 @@ export const LiveMantraRoom = () => {
             <TouchableOpacity
               style={[styles.controlButton, isMicEnabled && styles.controlButtonActive]}
               onPress={() => setIsMicEnabled(!isMicEnabled)}
+              accessibilityRole="button"
+              accessibilityLabel={isMicEnabled ? 'Disable microphone' : 'Enable microphone'}
             >
               <Ionicons name={isMicEnabled ? 'mic' : 'mic-off'} size={22} color="#FFF" />
               <Text style={styles.controlLabel}>{isMicEnabled ? 'Mic On' : 'Mic Off'}</Text>
@@ -252,6 +256,8 @@ export const LiveMantraRoom = () => {
         style={styles.closeButton}
         onPress={handleClose}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Close room"
       >
         <Ionicons name="close" size={26} color="#FFF" />
       </TouchableOpacity>

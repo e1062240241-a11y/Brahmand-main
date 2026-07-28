@@ -42,8 +42,8 @@ class Settings:
     WORKER_COUNT: int = int(os.environ.get('WORKER_COUNT', 4))
     
     # WebSocket
-    WS_PING_INTERVAL: int = 25
-    WS_PING_TIMEOUT: int = 20
+    WS_PING_INTERVAL: int = int(os.environ.get('WS_PING_INTERVAL', 25))
+    WS_PING_TIMEOUT: int = int(os.environ.get('WS_PING_TIMEOUT', 60))
 
     # Realtime audio ICE servers
     STUN_URLS: str = os.environ.get(

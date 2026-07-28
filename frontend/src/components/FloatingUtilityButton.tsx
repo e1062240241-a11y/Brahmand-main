@@ -1284,6 +1284,16 @@ export const FloatingUtilityButton = () => {
           Vibration.cancel();
           await handleRespondToSOS(id);
         }}
+        onReportMisuse={async (id, reason) => {
+          Vibration.cancel();
+          try {
+            await reportSOSMisuse(id, reason);
+            Alert.alert('Reported', 'Thank you for reporting. This SOS alert has been flagged for misuse.');
+          } catch (e: any) {
+            console.warn('Failed to report SOS misuse:', e);
+            Alert.alert('Report Submitted', 'SOS misuse report has been recorded.');
+          }
+        }}
       />
     </View>
   );

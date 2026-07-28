@@ -375,7 +375,7 @@ class FirestoreDB:
         cache_key = f"{collection}:{doc_id}"
         cached_doc = await self._cache.get(cache_key)
         if cached_doc:
-            logger.info(f"Cache HIT for {cache_key}")
+            logger.debug(f"Cache HIT for {cache_key}")
             return fast_copy(cached_doc)
             
         if self.use_mock:

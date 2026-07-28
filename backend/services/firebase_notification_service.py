@@ -323,7 +323,7 @@ class FirebaseNotificationService:
                 failed_tokens = []
                 for token in fcm_native_tokens:
                     try:
-                        message_kwargs = {
+                        message_kwargs: dict[str, Any] = {
                             'notification': notification,
                             'data': data or {},
                             'token': token
@@ -506,7 +506,7 @@ class FirebaseNotificationService:
                                 )
                             )
                         
-                        message_kwargs = {
+                        message_kwargs: dict[str, Any] = {
                             'notification': fcm.Notification(title=title, body=body),
                             'data': data or {},
                             'tokens': chunk
@@ -546,14 +546,15 @@ class FirebaseNotificationService:
         """Get user notifications"""
         db = await FirebaseNotificationService.get_db()
         
-        filters = [('user_id', '==', user_id)]
+        filters: List[Tuple[str, str, Any]] = [('user_id', '==', user_id)]
         if unread_only:
             filters.append(('is_read', '==', False))
         
         # Fetch all matching without order_by to avoid Firestore index requirement
         docs = await db.query_documents('notifications', filters=filters)
-        docs.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
-        return docs[:limit]
+        filtered = [d for d in (docs or []) if str(d.get('user_id', '')) == str(user_id)]
+        filtered.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
+        return filtered[:limit]
     
     @staticmethod
     async def mark_as_read(user_id: str, notification_id: str) -> Dict[str, Any]:

@@ -343,7 +343,7 @@ export async function scheduleLocalNotification(
   if (!Notifications) return null;
 
   const notificationType = data?.type;
-  const isSos = !!notificationType?.startsWith('sos');
+  const isSos = !!notificationType?.startsWith('sos') && notificationType !== 'sos_resolved';
   const isCommunity =
     notificationType === 'community_interest' ||
     notificationType === 'event_rsvp' ||

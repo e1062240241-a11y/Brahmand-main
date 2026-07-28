@@ -1220,7 +1220,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     response = JSONResponse(
         status_code=500,
-        content={"detail": f"Global Error: {str(exc)}"}
+        content={"detail": "An internal server error occurred."}
     )
     origin = request.headers.get("origin") or ""
     if _is_origin_allowed(origin):
@@ -9949,19 +9949,23 @@ async def cancel_event_attendance(event_id: str, token_data: dict = Depends(veri
 
 @api_router.get("/notifications")
 async def get_notifications(token_data: dict = Depends(verify_token)):
+    user_id = token_data["user_id"]
     from services.firebase_notification_service import FirebaseNotificationService
     try:
-        return await FirebaseNotificationService.get_user_notifications(token_data["user_id"], limit=50)
+        notifications = await FirebaseNotificationService.get_user_notifications(user_id, limit=50)
     except Exception as e:
         logger.warning(f"Failed to query notifications via service: {e}. Falling back to unsorted local query.")
         db = await get_db()
         notifications = await db.query_documents(
             'notifications', 
-            filters=[('user_id', '==', token_data["user_id"])], 
+            filters=[('user_id', '==', user_id)], 
             limit=50
         )
         notifications.sort(key=lambda x: str(x.get('created_at', '')), reverse=True)
-        return notifications
+    
+    # Strictly guarantee that returned notifications belong ONLY to current authenticated user_id
+    strict_notifications = [n for n in (notifications or []) if str(n.get('user_id', '')) == str(user_id)]
+    return strict_notifications
 
 
 @api_router.get("/notifications/unread-count")
@@ -13514,12 +13518,6 @@ async def report_sos_misuse(sos_id: str, reason: str = Body(..., embed=True), to
     if not alert:
         raise HTTPException(status_code=404, detail="SOS alert not found")
         
-    # Verify the user has accepted/responded to this SOS
-    responders = alert.get('responders', []) or []
-    has_responded = any(r.get('user_id') == user_id for r in responders)
-    if not has_responded:
-        raise HTTPException(status_code=403, detail="Only responders who accepted the SOS can report it as misuse")
-        
     # Save the misuse report to database
     report_data = {
         "sos_id": sos_id,
@@ -13635,7 +13633,7 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                     'user_id': responder_id,
                     'title': 'SOS Resolved',
                     'body': f"{alert.get('user_name')} is safe now. Thank you for helping.",
-                    'notification_type': 'sos',
+                    'notification_type': 'sos_resolved',
                     'data': notification_data,
                     'is_read': False,
                     'created_at': datetime.now(timezone.utc).isoformat()

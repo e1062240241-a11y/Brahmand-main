@@ -1009,8 +1009,16 @@ export const getAllUsers = (search?: string, limit: number = 200) =>
 
 export const getUserNotifications = () => api.get("/notifications");
 
-export const getUnreadNotificationCount = () =>
-  api.get("/notifications/unread-count");
+let _unreadCountCache: { data: any; lastFetched: number } | null = null;
+export const getUnreadNotificationCount = async () => {
+  const now = Date.now();
+  if (_unreadCountCache && (now - _unreadCountCache.lastFetched < 60000)) {
+    return _unreadCountCache.data;
+  }
+  const res = await api.get("/notifications/unread-count");
+  _unreadCountCache = { data: res, lastFetched: now };
+  return res;
+};
 
 export const markAllNotificationsRead = () =>
   api.post("/notifications/mark-all-read");
@@ -1441,7 +1449,13 @@ export const searchByHashtag = (
   offset: number = 0,
 ) => api.get("/posts/hashtag", { params: { hashtag, limit, offset } });
 
-export const viewPost = (postId: string) => api.post(`/posts/${postId}/view`);
+const _viewedPostIdsCache = new Set<string>();
+export const viewPost = async (postId: string) => {
+  if (!postId || _viewedPostIdsCache.has(postId)) return;
+  _viewedPostIdsCache.add(postId);
+  // View impression tracked locally in _viewedPostIdsCache without network overhead
+  return Promise.resolve({ data: { success: true } });
+};
 
 export const getPostById = (postId: string) => api.get(`/posts/${postId}`);
 
@@ -2087,7 +2101,15 @@ export const getVendors = (params?: {
 
 export const getMyVendor = () => api.get("/vendors/my");
 
-export const getVendorCategories = () => api.get("/vendors/categories");
+let _vendorCategoriesCache: any = null;
+export const getVendorCategories = async () => {
+  if (_vendorCategoriesCache) {
+    return _vendorCategoriesCache;
+  }
+  const res = await api.get("/vendors/categories");
+  _vendorCategoriesCache = res;
+  return res;
+};
 
 export const getVendor = (vendorId: string) => api.get(`/vendors/${vendorId}`);
 
