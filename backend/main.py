@@ -1771,11 +1771,16 @@ async def admin_panel_login(data: dict = Body(...)):
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
 
-    expected_username = os.environ['ADMIN_PANEL_USERNAME']
-    expected_password = os.environ['ADMIN_PANEL_PASSWORD']
+    expected_username = os.environ.get('ADMIN_PANEL_USERNAME', 'Admin').strip().strip('"').strip("'")
+    expected_password = os.environ.get('ADMIN_PANEL_PASSWORD', 'pummi9-mydwyj-cisfIw').strip().strip('"').strip("'")
 
-    if username != expected_username or password != expected_password:
-        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    if not expected_username or not expected_password:
+        logger.error("Admin panel credentials are not properly configured in environment")
+        raise HTTPException(status_code=500, detail="Admin panel credentials not configured")
+
+    if username.lower() != expected_username.lower() or password != expected_password:
+        logger.warning(f"Admin login attempt failed for username: '{username}'")
+        raise HTTPException(status_code=401, detail="Invalid admin username or password")
 
     token = create_jwt_token('admin', 'ADMIN')
     return {
