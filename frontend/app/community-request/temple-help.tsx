@@ -19,6 +19,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
 import { forwardGeocode, createCommunityRequest, parseApiError } from '../../src/services/api';
+import { AutocompleteInput } from '../../src/components/AutocompleteInput';
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { useAuthStore } from '../../src/store/authStore';
@@ -303,38 +304,42 @@ export default function TempleHelpRequestScreen() {
                 </TouchableOpacity>
               </View>
 
-              <View style={[styles.fieldSection, { zIndex: 10 }]}>
+              <View style={styles.fieldSection}>
                 <Text style={styles.fieldLabel}>Temple / Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <View style={styles.autocompleteWrapper}>
-                  <View style={styles.searchInputContainer}>
-                    <Ionicons name="location-sharp" size={18} color="#FB8C00" style={{ marginRight: 10 }} />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search temple or location"
-                      placeholderTextColor="#BBB"
-                      value={templeLocation}
-                      onChangeText={(t) => { setTempleLocation(t); if (selectedLocation) setSelectedLocation(null); }}
-                    />
-                    {isSearchingLocation ? <ActivityIndicator size="small" color="#FB8C00" /> : <Ionicons name="search" size={18} color="#BBB" />}
-                  </View>
-
-                  {locationSuggestions.length > 0 && (
-                    <View style={styles.suggestionsContainer}>
-                      <ScrollView
-                        keyboardShouldPersistTaps="handled"
-                        nestedScrollEnabled={true}
-                        style={{ maxHeight: 200 }}
-                      >
-                        {locationSuggestions.map((item, index) => (
-                          <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                            <Ionicons name="navigate-circle-outline" size={20} color="#666" style={{ marginRight: 8 }} />
-                            <Text style={styles.suggestionText} numberOfLines={1}>{item.display_name || item.formatted_address}</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
-                  )}
-                </View>
+                <AutocompleteInput
+                  placeholder="Search temple or location"
+                  placeholderTextColor="#BBB"
+                  value={templeLocation}
+                  onChangeText={(t) => { setTempleLocation(t); if (selectedLocation) setSelectedLocation(null); }}
+                  onSelect={(item) => {
+                    const name = item.isCustom ? item.name : item.label;
+                    setTempleLocation(name);
+                    setSelectedLocation(item);
+                  }}
+                  onSearch={async (query) => {
+                    const response = await forwardGeocode(query);
+                    const results = response.data || [];
+                    if (query.trim()) {
+                      results.push({
+                        display_name: `Use "${query}" as typed`,
+                        name: query,
+                        value: query,
+                        label: `Use "${query}" as typed`,
+                        isCustom: true
+                      });
+                    }
+                    return results;
+                  }}
+                  minimumQueryLength={1}
+                  inputContainerStyle={styles.searchInputContainer}
+                  inputStyle={styles.searchInput}
+                  dropdownStyle={styles.suggestionsContainer}
+                  itemStyle={styles.suggestionItem}
+                  itemTextStyle={styles.suggestionText}
+                  iconName="location-sharp"
+                  iconColor="#FB8C00"
+                  showChevron={false}
+                />
               </View>
 
               <View style={styles.fieldSection}>
@@ -503,7 +508,7 @@ const styles = StyleSheet.create({
   phoneInputDivider: { width: 1, height: 22, backgroundColor: '#E0E0E0', marginHorizontal: 10 },
   phoneNumberInput: { flex: 1, fontSize: 15, fontFamily: FONTS.regular, color: '#1C1C1E', paddingVertical: 10 },
   autocompleteWrapper: { position: 'relative', zIndex: 10 },
-  suggestionsContainer: { position: 'absolute', bottom: 58, left: 0, right: 0, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E8ECF4', maxHeight: 200, zIndex: 999, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 5 },
+  suggestionsContainer: { backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E8ECF4', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 5 },
   suggestionItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#F5F5F7' },
   suggestionText: { marginLeft: 10, fontSize: 14, color: '#3C3C43', flex: 1 },
   

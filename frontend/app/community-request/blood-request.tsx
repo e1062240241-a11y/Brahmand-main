@@ -25,6 +25,7 @@ import { searchHospitals, createCommunityRequest, parseApiError, reverseGeocode 
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
+import { HospitalSearchInput } from '../../src/components/HospitalSearchInput';
 
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
@@ -320,57 +321,14 @@ export default function BloodRequestScreen() {
 
               <View style={[styles.fieldSection, { zIndex: 10 }]}>
                 <Text style={styles.fieldLabel}>Hospital Location <Text style={styles.requiredAsterisk}>*</Text></Text>
-                <View style={styles.autocompleteWrapper}>
-                  <View style={styles.searchInputContainer}>
-                    <TouchableOpacity onPress={handleGpsDetect} style={{ padding: 4 }} disabled={isSearchingLocation}>
-                      <Ionicons name="location-sharp" size={18} color="#E53935" style={{ marginRight: 6 }} />
-                    </TouchableOpacity>
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search hospital or area"
-                      placeholderTextColor="#BBB"
-                      value={location}
-                      onChangeText={(t) => { setLocation(t); if (selectedLocation) setSelectedLocation(null); }}
-                    />
-                    {isSearchingLocation ? (
-                      <ActivityIndicator size="small" color="#E53935" />
-                    ) : location.length > 0 ? (
-                      <TouchableOpacity onPress={() => { setLocation(''); setSelectedLocation(null); setLocationSuggestions([]); }} style={{ padding: 4 }}>
-                        <Ionicons name="close-circle" size={18} color="#BBB" />
-                      </TouchableOpacity>
-                    ) : (
-                      <Ionicons name="search" size={18} color="#BBB" />
-                    )}
-                  </View>
-
-                  {location.trim().length >= 1 && !selectedLocation && (
-                    <View style={styles.suggestionsContainer}>
-                      {isSearchingLocation ? (
-                        <Text style={styles.suggestionStatus}>Searching hospitals...</Text>
-                      ) : locationSuggestions.length === 0 ? (
-                        <Text style={styles.suggestionStatus}>No hospitals found</Text>
-                      ) : (
-                        <ScrollView
-                          keyboardShouldPersistTaps="handled"
-                          nestedScrollEnabled={true}
-                          style={{ maxHeight: 200 }}
-                        >
-                          {locationSuggestions.map((item, index) => (
-                            <TouchableOpacity key={index} style={styles.suggestionItem} onPress={() => handleLocationSelect(item)}>
-                              <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 8 }} />
-                              <View style={styles.suggestionTextContainer}>
-                                <Text style={styles.suggestionName} numberOfLines={1}>{item.name || item.display_name}</Text>
-                                {(item.address || item.display_name) && (
-                                  <Text style={styles.suggestionAddress} numberOfLines={1}>{item.address || item.display_name}</Text>
-                                )}
-                              </View>
-                            </TouchableOpacity>
-                          ))}
-                        </ScrollView>
-                      )}
-                    </View>
-                  )}
-                </View>
+                <HospitalSearchInput
+                  value={location}
+                  onSelect={(h) => {
+                    setLocation(h.name);
+                    setSelectedLocation(h);
+                  }}
+                  placeholder="Search hospital or area"
+                />
               </View>
 
               <View style={styles.fieldSection}>

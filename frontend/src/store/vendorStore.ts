@@ -11,7 +11,8 @@ import {
   getVendorCategories,
   deleteVendor as deleteVendorAPI
 } from '../services/api';
-import { isCategoryMatch } from '../utils/categoryMatcher';
+import { isCategoryMatch, filterVendorsBySmartSearch } from '../utils/categoryMatcher';
+import { sortItemsByLocationPreference } from '../utils/locationPreference';
 
 export interface Vendor {
   id: string;
@@ -460,25 +461,13 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
       });
     }
 
-    // Filter by search term
+    // Filter by search term with smart category prioritization
     if (searchTerm && searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter((v) => {
-        const name = (v.business_name || '').toLowerCase();
-        const address = (v.full_address || '').toLowerCase();
-        const categories = v.categories || [];
-        const categoryMatch = categories.some((c) => isCategoryMatch(c, term) || (c || '').toLowerCase().includes(term));
-
-        return (
-          name.includes(term) ||
-          address.includes(term) ||
-          categoryMatch
-        );
-      });
+      filtered = filterVendorsBySmartSearch(filtered, searchTerm);
     }
 
-    // Sort by distance
-    return filtered.sort((a, b) => (a.distance || 9999) - (b.distance || 9999));
+    // Sort by search relevance -> location preference priority
+    return sortItemsByLocationPreference(filtered, null, searchTerm);
   },
 }));
 
