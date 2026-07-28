@@ -1,11 +1,4 @@
-💡 **What:**
-Replaced iterative loops for database collection deletion in `reset_database` endpoint with a single highly optimized `batch_delete_documents` execution. The new method within `FirestoreDB` takes a list of `doc_ids` and batches them into groups of up to 500, resolving the network bottleneck.
-
-🎯 **Why:**
-The previous implementation performed sequential `delete_document` iterations inside a loop for each document across `users`, `chats`, `communities`, and `otps` (N+1 query problem). This led to massive latency on bulk teardowns and effectively resulted in severe network timeouts when testing large data setups.
-
-📊 **Measured Improvement:**
-Based on local benchmark simulations matching the network profile:
-* **Baseline** (Iterative O(N)): 1,000 document deletes took **~10.3s**
-* **Optimized** (Batched Chunking): 1,000 document deletes took **~0.02s**
-* **Change:** ~497x faster execution time. This transforms the endpoint from a massive network bottleneck that often times out to a near-instant database wipe.
+💡 What: The optimization refactored the `push_sync_changes` endpoint in `backend/main.py`. Previously, the code fetched the `users` document using `await db.get_document` and immediately pushed an update for each sync key (e.g., `library_progress`, `passport_journeys`, `passport_badges`, `passport_certificates`) individually. Now, it queries the document once, batches all these dictionary updates in memory, and performs a single database write.
+🎯 Why: Multiple overlapping reads and writes cause unnecessary N+1 I/O overhead on the backend and stress the Firestore database when syncing heavy user profiles.
+📊 Impact: Reduces Firestore reads by up to 3 and writes by up to 3 per sync request, decreasing latency and database billing proportional to sync volume.
+🔬 Measurement: Execute a sync pull that updates multiple fields (e.g., badges and library progress) simultaneously. Watch the backend logs or Firestore query count—it will now execute only 1 read and 1 write instead of 2-4.
