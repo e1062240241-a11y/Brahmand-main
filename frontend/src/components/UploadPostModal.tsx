@@ -73,7 +73,12 @@ const UploadVideoPreview = React.memo(({
     };
   }, [player]);
 
-  const fallback = <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }} />;
+  const fallback = (
+    <View style={{ width: '100%', height: '100%', backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' }}>
+      <Image source={{ uri }} style={{ width: '100%', height: '100%', position: 'absolute' }} contentFit="cover" />
+      <ActivityIndicator size="small" color="#FFF" />
+    </View>
+  );
 
   if (!ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
     return fallback;

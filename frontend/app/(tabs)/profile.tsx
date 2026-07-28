@@ -727,13 +727,20 @@ export default function ProfileScreen() {
     fetchProfile(!user);
   }, [userId]);
 
-  // Listen for background video/post uploads (disabled posts feed update)
+  // Listen for background video/post uploads and instantly prepend to profile feed & increment posts count
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('post_uploaded', (newPost: any) => {
       console.log('[Profile] post_uploaded event received:', newPost?.id);
+      if (newPost && (!newPost.user_id || newPost.user_id === userId)) {
+        setPosts((prev) => {
+          if (prev.some((p) => String(p.id) === String(newPost.id))) return prev;
+          return [newPost, ...prev];
+        });
+        setPostsCount((prev) => prev + 1);
+      }
     });
     return () => sub.remove();
-  }, []);
+  }, [userId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
