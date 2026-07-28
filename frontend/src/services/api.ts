@@ -522,13 +522,44 @@ api.interceptors.response.use(
       return api(config);
     }
 
-    // Handle 401 Unauthorized or 403 unauthenticated globally by logging out and redirecting to splash
+    // Handle 401 Unauthorized - attempt silent token refresh before logging out
     if (status === 401 || (status === 403 && error.response?.data?.detail === "Not authenticated")) {
       const isAuthUrl = /auth\/|login|register|otp/i.test(config?.url || "");
-      if (!isAuthUrl) {
-        console.warn(
-          `[API] ${status} Unauthenticated received. Triggering automatic logout...`,
-        );
+      const isRefreshUrl = /auth\/token\/refresh/i.test(config?.url || "");
+
+      // Don't attempt refresh for auth URLs or if we're already refreshing
+      if (!isAuthUrl && !isRefreshUrl && !config._isRefreshRetry) {
+        try {
+          const oldToken = await secureStorage.getItem("auth_token");
+          if (oldToken) {
+            console.info("[API] 401 received - attempting silent token refresh...");
+            const refreshResponse = await axios.post(
+              `${API_URL}/api/auth/token/refresh`,
+              {},
+              {
+                headers: { Authorization: `Bearer ${oldToken}` },
+                timeout: 10000,
+              },
+            );
+
+            if (refreshResponse.data?.token) {
+              const newToken = refreshResponse.data.token;
+              await secureStorage.setItem("auth_token", newToken);
+              console.info("[API] Token refreshed successfully, retrying original request...");
+
+              // Retry the original request with the new token
+              config._isRefreshRetry = true;
+              config.headers.Authorization = `Bearer ${newToken}`;
+              return api(config);
+            }
+          }
+        } catch (refreshErr: any) {
+          console.warn(
+            `[API] Token refresh failed (${refreshErr?.response?.status || refreshErr?.message}). Logging out...`,
+          );
+        }
+
+        // Refresh failed or no token - force logout
         try {
           const { useAuthStore } = require("../store/authStore");
           useAuthStore.getState().logout();

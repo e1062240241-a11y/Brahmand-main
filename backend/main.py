@@ -413,10 +413,15 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     filename = f"{uuid4().hex}.{extension}"
     object_path = f"posts/{user_id}/{filename}"
 
+    bunny_access_key = os.environ.get("BUNNY_ACCESS_KEY")
+    if not bunny_access_key:
+        logger.error("BUNNY_ACCESS_KEY environment variable is not set!")
+        raise HTTPException(status_code=500, detail="Media storage service is not configured. Please contact support.")
+
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.environ["BUNNY_ACCESS_KEY"],
+        "AccessKey": bunny_access_key,
         "Content-Type": content_type
     }
 
@@ -426,6 +431,9 @@ async def _upload_post_media_to_bunny(user_id: str, file_bytes: bytes, content_t
     async with session.put(bunny_url, data=file_bytes, headers=headers, timeout=timeout) as resp:
         if resp.status not in (200, 201):
             resp_text = await resp.text()
+            logger.error(f"Bunny.net upload failed: status={resp.status}, zone={bunny_zone}, path={object_path}, response={resp_text[:500]}")
+            if resp.status == 401:
+                raise HTTPException(status_code=500, detail="Media storage rejected the upload. Please contact support.")
             raise Exception(f"Bunny.net upload failed with status {resp.status}: {resp_text}")
 
     pull_zone = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
@@ -443,10 +451,15 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
     filename = f"{uuid4().hex}.{extension}"
     object_path = f"posts/{user_id}/{filename}"
 
+    bunny_access_key = os.environ.get("BUNNY_ACCESS_KEY", "")
+    if not bunny_access_key:
+        logger.error("BUNNY_ACCESS_KEY environment variable is not set!")
+        raise HTTPException(status_code=500, detail="Media storage service is not configured. Please contact support.")
+
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.environ["BUNNY_ACCESS_KEY"],
+        "AccessKey": bunny_access_key,
         "Content-Type": content_type
     }
 
@@ -472,10 +485,14 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
 
 async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
     """Download a file from Bunny.net storage to a local file path."""
+    bunny_access_key = os.environ.get("BUNNY_ACCESS_KEY", "")
+    if not bunny_access_key:
+        raise Exception("BUNNY_ACCESS_KEY environment variable is not set")
+
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.environ["BUNNY_ACCESS_KEY"]
+        "AccessKey": bunny_access_key
     }
     logger.info(f"Downloading from Bunny.net: {bunny_url} to {local_path}")
     timeout = aiohttp.ClientTimeout(total=600, connect=30)
@@ -495,10 +512,15 @@ async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
 
 async def _delete_file_from_bunny(object_path: str):
     """Delete a file from Bunny.net storage."""
+    bunny_access_key = os.environ.get("BUNNY_ACCESS_KEY", "")
+    if not bunny_access_key:
+        logger.error("BUNNY_ACCESS_KEY not set, cannot delete from Bunny.net")
+        return
+
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{object_path}"
     headers = {
-        "AccessKey": os.environ["BUNNY_ACCESS_KEY"]
+        "AccessKey": bunny_access_key
     }
     logger.info(f"Deleting from Bunny.net storage: {bunny_url}")
     timeout = aiohttp.ClientTimeout(total=60, connect=10)
@@ -2853,6 +2875,67 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
 
 DEFAULT_BRAHMAND_LOGO = "https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png"
 
+@api_router.get("/share/profile/{user_id}", response_class=HTMLResponse)
+@api_router.get("/profile/{user_id}", response_class=HTMLResponse)
+async def share_profile_preview(user_id: str):
+    """Generate dynamic HTML Open Graph preview card for shared profile links."""
+    db = await get_db()
+    user_doc = await db.get_document('users', user_id)
+    
+    title = "Brahmand Profile"
+    description = "Check out this profile on Brahmand - Connect with your local spiritual community."
+    image_url = DEFAULT_BRAHMAND_LOGO
+
+    if user_doc:
+        name = user_doc.get('name') or 'Brahmand User'
+        sl_id = user_doc.get('sl_id')
+        handle = f" (@{sl_id})" if sl_id else ""
+        title = f"{name}{handle} on Brahmand"
+        bio = (user_doc.get('bio') or '').strip()
+        if bio:
+            description = bio
+        else:
+            description = f"View {name}'s profile and posts on Brahmand App."
+            
+        photo = user_doc.get('photo') or user_doc.get('avatar_url')
+        if photo and isinstance(photo, str) and photo.startswith("http"):
+            image_url = photo
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{title}</title>
+    <meta name="description" content="{description}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:site_name" content="Brahmand">
+    <meta property="og:description" content="{description}">
+    <meta property="og:type" content="profile">
+    <meta property="og:url" content="https://brahmand.app/profile/{user_id}">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:image:secure_url" content="{image_url}">
+    <meta property="og:image:width" content="512">
+    <meta property="og:image:height" content="512">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{image_url}">
+    <link rel="icon" href="{DEFAULT_BRAHMAND_LOGO}">
+    <link rel="apple-touch-icon" href="{DEFAULT_BRAHMAND_LOGO}">
+    <script>
+        window.location.href = "sanatanlok://profile/{user_id}";
+    </script>
+</head>
+<body style="font-family: system-ui; text-align: center; padding: 40px; background: #FFF8F0; color: #5C250A;">
+    <img src="{image_url}" alt="Brahmand Profile" style="width: 100px; height: 100px; border-radius: 50px; margin-bottom: 20px; object-fit: cover;">
+    <h2>{title}</h2>
+    <p>{description}</p>
+    <a href="sanatanlok://profile/{user_id}" style="display: inline-block; background: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px;">Open in Brahmand App</a>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
+
+
 @api_router.get("/share/post/{post_id}", response_class=HTMLResponse)
 async def share_post_preview(post_id: str):
     """Generate dynamic HTML Open Graph preview card for shared post links."""
@@ -2931,7 +3014,7 @@ async def get_bunny_media(filepath: str):
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
     bunny_url = f"https://sg.storage.bunnycdn.com/{bunny_zone}/{filepath}"
     headers = {
-        "AccessKey": os.environ.get("BUNNY_READ_ACCESS_KEY") or os.environ["BUNNY_ACCESS_KEY"]
+        "AccessKey": os.environ.get("BUNNY_READ_ACCESS_KEY") or os.environ.get("BUNNY_ACCESS_KEY", "")
     }
     
     ext = filepath.split('.')[-1].lower()
@@ -2992,7 +3075,9 @@ async def get_library_cdn(filepath: str):
 @api_router.get('/posts/bunny-upload-credentials')
 async def get_bunny_upload_credentials(token_data: dict = Depends(verify_token)):
     bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
-    bunny_access_key = os.environ["BUNNY_ACCESS_KEY"]
+    bunny_access_key = os.environ.get("BUNNY_ACCESS_KEY", "")
+    if not bunny_access_key:
+        raise HTTPException(status_code=500, detail="Media storage service is not configured. Please contact support.")
     pull_zone_url = os.getenv("BUNNY_PULL_ZONE_URL") or "https://brahmandfeed23.b-cdn.net"
     
     return {

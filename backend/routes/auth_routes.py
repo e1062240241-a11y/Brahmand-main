@@ -4,7 +4,9 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from models.schemas import OTPRequest, OTPVerify, UserCreate, FirebaseTokenRequest
 from services.firebase_auth_service import FirebaseAuthService as AuthService
 from middleware.rate_limiter import auth_rate_limit
-from middleware.security import verify_token
+from middleware.security import verify_token, create_jwt_token
+import jwt as pyjwt
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -194,3 +196,66 @@ async def clean_locust_data(token_data: dict = Depends(verify_token)):
         "db_mode": "mock" if getattr(FirestoreDB, "use_mock", False) else "production"
     }
 
+
+@router.post("/token/refresh")
+async def refresh_token(request: Request):
+    """Refresh an expired JWT token without requiring re-login.
+    
+    Accepts the old (possibly expired) token in the Authorization header.
+    If the token is expired but was issued less than 7 days ago, a new token is issued.
+    If the token signature is invalid or the user doesn't exist, returns 401.
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization header")
+    
+    old_token = auth_header[7:]
+    
+    try:
+        # Decode WITHOUT verifying expiration to extract user_id and sl_id
+        payload = pyjwt.decode(
+            old_token,
+            settings.JWT_SECRET,
+            algorithms=[settings.JWT_ALGORITHM],
+            options={"verify_exp": False}
+        )
+    except Exception as e:
+        logger.warning(f"Token refresh failed - invalid token: {e}")
+        raise HTTPException(status_code=401, detail="Invalid token - please login again")
+    
+    user_id = payload.get("user_id")
+    sl_id = payload.get("sl_id")
+    
+    if not user_id or not sl_id:
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    
+    # Check the token hasn't been expired for too long (7-day grace window)
+    import time
+    exp = payload.get("exp", 0)
+    now = time.time()
+    max_grace_seconds = 7 * 24 * 3600  # 7 days
+    if exp > 0 and (now - exp) > max_grace_seconds:
+        logger.warning(f"Token refresh rejected for user {user_id} - token expired more than 7 days ago")
+        raise HTTPException(status_code=401, detail="Token expired too long ago - please login again")
+    
+    # Verify user still exists in database
+    try:
+        from config.database import get_database
+        from config.firestore_db import FirestoreDB
+        db_client = await get_database()
+        db = FirestoreDB(db_client)
+        user_data = await db.get_document('users', user_id)
+        if not user_data:
+            raise HTTPException(status_code=401, detail="User account not found")
+        if user_data.get('is_blocked'):
+            raise HTTPException(status_code=403, detail="User account is blocked/deactivated")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Token refresh - DB lookup failed for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to verify user account")
+    
+    # Issue fresh token
+    new_token = create_jwt_token(user_id, sl_id)
+    logger.info(f"Token refreshed for user {user_id}")
+    return {"token": new_token, "user_id": user_id}

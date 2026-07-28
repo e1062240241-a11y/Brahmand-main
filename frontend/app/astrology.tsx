@@ -32,11 +32,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', img: require('../assets/images/festivals/cosmic/cos1.png') },
-  { key: 'character', label: 'Character', img: require('../assets/images/festivals/cosmic/cos2.png') },
-  { key: 'education', label: 'Education', img: require('../assets/images/festivals/cosmic/cos3.png') },
-  { key: 'family', label: 'Family', img: require('../assets/images/festivals/cosmic/cos4.png') },
-  { key: 'health', label: 'Health', img: require('../assets/images/festivals/cosmic/cos5.png') },
+  { key: 'physical', label: 'Physical', iconType: 'Ionicons', iconName: 'body-outline', img: require('../assets/images/festivals/cosmic/cos1.png') },
+  { key: 'character', label: 'Character', iconType: 'MaterialCommunityIcons', iconName: 'head-heart-outline', img: require('../assets/images/festivals/cosmic/cos2.png') },
+  { key: 'education', label: 'Education', iconType: 'Ionicons', iconName: 'school-outline', img: require('../assets/images/festivals/cosmic/cos3.png') },
+  { key: 'family', label: 'Family', iconType: 'MaterialCommunityIcons', iconName: 'home-heart', img: require('../assets/images/festivals/cosmic/cos4.png') },
+  { key: 'health', label: 'Health', iconType: 'Ionicons', iconName: 'fitness-outline', img: require('../assets/images/festivals/cosmic/cos5.png') },
 ];
 
 const CITIES_DB = [
@@ -444,6 +444,33 @@ export default function AstrologyScreen() {
     }
   };
 
+  const report = useMemo(() => ({
+    physical: data?.gem_suggestion?.response?.life_stone
+      ? `Life Stone suggestion: ${data.gem_suggestion.response.life_stone.name}. Wear it on your ${data.gem_suggestion.response.life_stone.finger} made of ${data.gem_suggestion.response.life_stone.metal}.`
+      : 'No physical gemstone details available.',
+    character: data?.rudraksha_suggestion?.response?.detail || 'No character description available.',
+    education: data?.mangal_dosha?.response?.description || 'No education status details available.',
+    family: data?.pitra_dosha?.response?.description || 'No family status details available.',
+    health: data?.sadhesati_status?.response?.description || 'No health status details available.',
+  }), [data]);
+
+  const handleSelectCosmicTab = useCallback((key: string | null) => {
+    requestAnimationFrame(() => {
+      setActiveCosmicTab(key);
+    });
+  }, []);
+
+  const activeTabObj = useMemo(() => COSMIC_TABS.find(t => t.key === activeCosmicTab), [activeCosmicTab]);
+  const activeReportText = useMemo(() => {
+    if (!activeCosmicTab || !report) return '';
+    for (const [key, paragraphs] of Object.entries(report)) {
+      if (key.toLowerCase().includes(activeCosmicTab)) {
+        return normalizeTextBlock(paragraphs);
+      }
+    }
+    return '';
+  }, [activeCosmicTab, report]);
+
   if (loading) {
     return (
       <BrandedLoading message="Mapping your cosmic stars..." />
@@ -468,32 +495,7 @@ export default function AstrologyScreen() {
     Vashya: data?.gem_suggestion?.response?.life_stone?.name || '-',
   };
 
-  const report = {
-    physical: data?.gem_suggestion?.response?.life_stone
-      ? `Life Stone suggestion: ${data.gem_suggestion.response.life_stone.name}. Wear it on your ${data.gem_suggestion.response.life_stone.finger} made of ${data.gem_suggestion.response.life_stone.metal}.`
-      : 'No physical gemstone details available.',
-    character: data?.rudraksha_suggestion?.response?.detail || 'No character description available.',
-    education: data?.mangal_dosha?.response?.description || 'No education status details available.',
-    family: data?.pitra_dosha?.response?.description || 'No family status details available.',
-    health: data?.sadhesati_status?.response?.description || 'No health status details available.',
-  };
 
-  const handleSelectCosmicTab = useCallback((key: string | null) => {
-    requestAnimationFrame(() => {
-      setActiveCosmicTab(key);
-    });
-  }, []);
-
-  const activeTabObj = useMemo(() => COSMIC_TABS.find(t => t.key === activeCosmicTab), [activeCosmicTab]);
-  const activeReportText = useMemo(() => {
-    if (!activeCosmicTab || !report) return '';
-    for (const [key, paragraphs] of Object.entries(report)) {
-      if (key.toLowerCase().includes(activeCosmicTab)) {
-        return normalizeTextBlock(paragraphs);
-      }
-    }
-    return '';
-  }, [activeCosmicTab, report]);
 
   const attributes = [
     { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.png'), color: '#F59E0B' },
@@ -906,7 +908,11 @@ export default function AstrologyScreen() {
                       activeOpacity={0.8}
                     >
                       <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
-                        <Image source={tab.img} style={[{ width: 36, height: 36, aspectRatio: 1 }, isActive && { tintColor: '#FFF' }]} resizeMode="contain" />
+                        {tab.iconType === 'Ionicons' ? (
+                          <Ionicons name={tab.iconName as any} size={24} color={isActive ? '#FFF' : '#C67C4E'} />
+                        ) : (
+                          <MaterialCommunityIcons name={tab.iconName as any} size={24} color={isActive ? '#FFF' : '#C67C4E'} />
+                        )}
                       </View>
                       <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
                     </TouchableOpacity>
@@ -926,7 +932,11 @@ export default function AstrologyScreen() {
                     {activeTabObj ? (
                       <>
                         <View style={styles.modalIconWrap}>
-                          <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
+                          {activeTabObj.iconType === 'Ionicons' ? (
+                            <Ionicons name={activeTabObj.iconName as any} size={24} color="#FFF" />
+                          ) : (
+                            <MaterialCommunityIcons name={activeTabObj.iconName as any} size={24} color="#FFF" />
+                          )}
                         </View>
                         <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
                         <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
