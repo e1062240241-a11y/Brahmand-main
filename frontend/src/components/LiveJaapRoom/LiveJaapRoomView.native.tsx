@@ -30,7 +30,6 @@ import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedInde
 import {
   createAgoraRtcEngine,
   ChannelProfileType,
-  ClientRoleType,
   IRtcEngine,
   RtcConnection,
   AudioScenarioType,
@@ -981,6 +980,7 @@ export default function LiveJaapRoomView() {
         },
         onUserJoined: (connection: RtcConnection, remoteUid: number) => {
           console.log('[Agora] Remote user joined channel:', remoteUid);
+          engine.current.muteRemoteAudioStream(remoteUid, false);
           setRemotePeers(prev => prev + 1);
         },
         onUserOffline: (connection: RtcConnection, remoteUid: number) => {
@@ -1008,6 +1008,8 @@ export default function LiveJaapRoomView() {
         AudioScenarioType.AudioScenarioGameStreaming
       );
       await engine.current.setEnableSpeakerphone(true);
+      await engine.current.muteAllRemoteAudioStreams(false);
+      await engine.current.adjustPlaybackSignalVolume(100);
       await engine.current.setClientRole(
         shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience
       );
@@ -1016,7 +1018,7 @@ export default function LiveJaapRoomView() {
 
       console.log('[LiveJaapRoom.native] Joining channel:', ROOM_NAME, 'LiveBroadcasting Profile...');
       await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
-        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        channelProfile: ChannelProfileType.ChannelProfileCommunication,
         clientRoleType: shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience,
         publishMicrophoneTrack: shouldPublishMic,
         autoSubscribeAudio: true,
@@ -1094,7 +1096,6 @@ export default function LiveJaapRoomView() {
     if (agoraJoinedRef.current) {
       try {
         if (nextMicState) {
-          await engine.current.setClientRole(ClientRoleType.ClientRoleBroadcaster);
           await engine.current.enableAudio();
           await engine.current.enableLocalAudio(true);
           await engine.current.muteLocalAudioStream(false);
@@ -1106,7 +1107,6 @@ export default function LiveJaapRoomView() {
           console.log('[LiveJaapRoom.native] Mic UNMUTED & voice stream published!');
         } else {
           await engine.current.muteLocalAudioStream(true);
-          await engine.current.enableLocalAudio(false);
           await engine.current.updateChannelMediaOptions({
             publishMicrophoneTrack: false,
             autoSubscribeAudio: true,
