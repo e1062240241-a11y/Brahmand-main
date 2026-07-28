@@ -11249,11 +11249,7 @@ async def get_vendors(
     """Get vendors with optional filters - only shows KYC-verified vendors"""
     db = await get_db()
 
-    filters = []
-    if category:
-        filters.append(('categories', 'array_contains', category))
-
-    vendors = await db.query_documents('vendors', filters=filters, limit=limit)
+    vendors = await db.query_documents('vendors', limit=limit)
 
     vendor_ids = [v['id'] for v in vendors if v.get('id')]
     owner_ids = list({v.get('owner_id') for v in vendors if v.get('owner_id')})
@@ -11281,34 +11277,69 @@ async def get_vendors(
             vendor['user_is_verified'] = user_doc.get('is_verified')
 
     # ── KYC GATE: Only show vendors who have completed KYC verification ──
-    # A vendor is considered verified if:
-    #   - kyc_status, review_status, or user_kyc_status is 'verified' or 'approved'
-    #   - And none of them are 'rejected'
-    #   - Or it's a legacy/seeded vendor with no owner_id
     def _is_kyc_cleared(v: dict) -> bool:
         kyc = (v.get('kyc_status') or '').lower()
         rev = (v.get('review_status') or '').lower()
+        rev_state = (v.get('review_state') or '').lower()
         user_kyc = (v.get('user_kyc_status') or '').lower()
+        is_ver = bool(v.get('is_verified'))
+        user_is_ver = bool(v.get('user_is_verified'))
         
         # Deny if explicitly rejected
-        if kyc in ('rejected', 'denied') or rev in ('rejected', 'denied') or user_kyc in ('rejected', 'denied'):
+        if kyc in ('rejected', 'denied') or rev in ('rejected', 'denied') or user_kyc in ('rejected', 'denied') or rev_state in ('rejected', 'denied'):
             return False
             
         return (
+            is_ver or
+            user_is_ver or
             kyc in ('verified', 'approved') or
             rev in ('verified', 'approved') or
+            rev_state in ('verified', 'approved') or
             user_kyc in ('verified', 'approved') or
             not v.get('owner_id')
         )
 
     vendors = [v for v in vendors if _is_kyc_cleared(v)]
 
+    # Filter by category flexibly if provided
+    if category:
+        def _category_matches(v_cats: list, target_cat: str) -> bool:
+            if not target_cat:
+                return True
+            t = str(target_cat).strip().lower()
+            if not t:
+                return True
+                
+            groups = [
+                {'pandit', 'panditji', 'pandits', 'pooja', 'pooja samagri', 'pandit services'},
+                {'astrologer', 'astrology', 'astrologers', 'vastu'},
+                {'electrician', 'electrical', 'electronics', 'electricians'},
+                {'carpenter', 'carpentry', 'woodwork'},
+                {'plumber', 'plumbing'},
+                {'general store', 'grocery', 'sweets', 'kirana', 'store', 'departmental store'},
+                {'dairy', 'milk', 'dairy products'},
+                {'salon', 'parlour', 'barber', 'beauty', 'hair'},
+                {'gym', 'fitness', 'yoga', 'gym trainer', 'yoga trainer'},
+                {'restaurant', 'catering', 'food'},
+            ]
+
+            for cat in v_cats:
+                c = str(cat).strip().lower()
+                if c == t or c in t or t in c:
+                    return True
+                for g in groups:
+                    if any(item in c or c in item for item in g) and any(item in t or t in item for item in g):
+                        return True
+            return False
+
+        vendors = [v for v in vendors if _category_matches(v.get('categories', []), category)]
+
     # Filter by search term if provided
     if search:
         search_lower = search.lower()
         vendors = [v for v in vendors if
                    search_lower in v.get('business_name', '').lower() or
-                   any(search_lower in cat.lower() for cat in v.get('categories', []))]
+                   any(search_lower in str(cat).lower() for cat in v.get('categories', []))]
 
     # Calculate distance if coordinates provided
     if lat and lng:

@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import formatDistance, { calculateHaversineDistance } from '../../src/utils/formatDistance';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
+import { isCategoryMatch } from '../../src/utils/categoryMatcher';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
 import { JobProfileModal } from '../../src/components/JobProfileModal';
 import VendorCategories from '../../src/components/VendorCategories';
@@ -579,10 +580,9 @@ export default function VendorScreen() {
     const effectiveCategory = searchCategory !== 'All' ? searchCategory : activeTab;
 
     if (effectiveCategory && effectiveCategory !== 'Nearby') {
-      const lowerCategory = effectiveCategory.toLowerCase();
       filtered = filtered.filter((v) => {
         const categories = v.categories || [];
-        return categories.some((c) => (c || '').toLowerCase().includes(lowerCategory));
+        return categories.some((c) => isCategoryMatch(c, effectiveCategory));
       });
     }
 

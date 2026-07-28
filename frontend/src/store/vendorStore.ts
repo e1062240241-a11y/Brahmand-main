@@ -11,6 +11,7 @@ import {
   getVendorCategories,
   deleteVendor as deleteVendorAPI
 } from '../services/api';
+import { isCategoryMatch } from '../utils/categoryMatcher';
 
 export interface Vendor {
   id: string;
@@ -453,10 +454,9 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
 
     // Filter by category
     if (category && category !== 'Nearby') {
-      const lowerCategory = category.toLowerCase();
       filtered = filtered.filter((v) => {
         const categories = v.categories || [];
-        return categories.some((c) => (c || '').toLowerCase().includes(lowerCategory));
+        return categories.some((c) => isCategoryMatch(c, category));
       });
     }
 
@@ -467,7 +467,7 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
         const name = (v.business_name || '').toLowerCase();
         const address = (v.full_address || '').toLowerCase();
         const categories = v.categories || [];
-        const categoryMatch = categories.some((c) => (c || '').toLowerCase().includes(term));
+        const categoryMatch = categories.some((c) => isCategoryMatch(c, term) || (c || '').toLowerCase().includes(term));
 
         return (
           name.includes(term) ||

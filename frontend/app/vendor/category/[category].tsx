@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { useVendorStore } from '../../../src/store/vendorStore';
 import formatDistance, { calculateHaversineDistance } from '../../../src/utils/formatDistance';
+import { isCategoryMatch } from '../../../src/utils/categoryMatcher';
 
 export default function CategoryScreen() {
   const router = useRouter();
@@ -26,11 +27,11 @@ export default function CategoryScreen() {
   }, []);
 
   useEffect(() => {
-    const term = (category || '').toLowerCase();
+    const term = (category || '').trim();
     const filtered = vendors.filter(v => {
       const cats = v.categories || [];
-      const hasCat = cats.some(c => c.toLowerCase().includes(term));
-      const hasName = (v.business_name || '').toLowerCase().includes(term);
+      const hasCat = cats.some(c => isCategoryMatch(c, term));
+      const hasName = (v.business_name || '').toLowerCase().includes(term.toLowerCase());
       const isSearchMatch = searchTerm ? (v.business_name || '').toLowerCase().includes(searchTerm.toLowerCase()) : true;
       return (hasCat || hasName) && isSearchMatch;
     });
