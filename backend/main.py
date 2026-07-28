@@ -1565,6 +1565,14 @@ async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: di
         privilege_expiration_time
     )
 
+    logger.info(
+        "Agora RTC token generated channel=%s uid=%s expiresAt=%s tokenPrefix=%s...",
+        channel,
+        uid,
+        privilege_expiration_time,
+        token[:12],
+    )
+
     return {
         'enabled': True,
         'appId': settings.AGORA_APP_ID,
