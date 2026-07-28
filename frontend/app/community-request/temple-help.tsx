@@ -77,7 +77,7 @@ export default function TempleHelpRequestScreen() {
   useEffect(() => {
     if (!isKycVerified) {
       router.replace({
-        pathname: '/kyc-submit',
+        pathname: '/kyc',
         params: { returnUrl: '/community-request' }
       });
     }

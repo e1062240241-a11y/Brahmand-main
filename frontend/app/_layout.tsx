@@ -665,7 +665,12 @@ export default function RootLayout() {
     pathname.includes('/profile') ||
     pathname.includes('/reel') ||
     pathname.includes('/post/') ||
-    pathname === '/community-tweets';
+    pathname === '/community-tweets' ||
+    pathname === '/index' ||
+    pathname === '/' ||
+    pathname === '' ||
+    pathname.includes('/auth') ||
+    pathname.includes('/privacy-policy');
   const { isLoading, loadStoredAuth, token, isAuthenticated, initPushNotifications } = useAuthStore();
   const { loadStoredAdminAuth } = useAdminStore();
   const pushInitStartedRef = useRef(false);
@@ -1199,6 +1204,14 @@ export default function RootLayout() {
             <Stack.Screen
               key="index"
               name="index"
+              options={{
+                animation: 'fade',
+                gestureEnabled: false
+              }}
+            />
+            <Stack.Screen
+              key="auth/entry-animation"
+              name="auth/entry-animation"
               options={{
                 animation: 'fade',
                 gestureEnabled: false

@@ -41,6 +41,15 @@ function isNetworkError(error: any): boolean {
   );
 }
 
+function isAuthError(error: any): boolean {
+  return (
+    error?.response?.status === 401 ||
+    error?.response?.status === 403 ||
+    error?.response?.data?.detail === 'Not authenticated' ||
+    (typeof error?.message === 'string' && error.message.toLowerCase().includes('not authenticated'))
+  );
+}
+
 /**
  * Lightweight check to see if the backend is reachable before attempting sync.
  * Uses a short 5-second timeout so we fail fast when offline.
@@ -113,10 +122,10 @@ export async function syncDatabase() {
 
             return { changes, timestamp };
           } catch (error: any) {
-            if (isNetworkError(error)) {
+            if (isNetworkError(error) || isAuthError(error)) {
               // Return empty changeset so WatermelonDB sync completes cleanly
               // and the local DB is left completely untouched.
-              if (__DEV__) console.warn('[Sync] Pull skipped — network unavailable');
+              if (__DEV__) console.warn('[Sync] Pull skipped — network or auth unavailable');
               return buildEmptyChangeset(lastPulledAt ?? null);
             }
 
@@ -145,9 +154,9 @@ export async function syncDatabase() {
               last_pulled_at: lastPulledAt,
             });
           } catch (error: any) {
-            if (isNetworkError(error)) {
-              // Don't throw; pending local changes will be retried on the next sync cycle
-              if (__DEV__) console.warn('[Sync] Push skipped — network unavailable');
+            if (isNetworkError(error) || isAuthError(error)) {
+              // Don't throw; pending local changes will be retried on next sync cycle
+              if (__DEV__) console.warn('[Sync] Push skipped — network or auth unavailable');
               return;
             }
 

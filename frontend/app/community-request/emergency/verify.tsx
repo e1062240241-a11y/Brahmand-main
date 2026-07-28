@@ -75,7 +75,7 @@ export default function CommunityRequestEmergencyVerifyPage() {
 
   const handleCompleteKyc = () => {
     router.push({
-      pathname: '/kyc-submit',
+      pathname: '/kyc',
       params: { returnUrl: '/community-request/emergency-help' }
     });
   };
@@ -83,7 +83,7 @@ export default function CommunityRequestEmergencyVerifyPage() {
   const handleSendOtp = () => {
     if (!isKycVerified) {
       router.push({
-        pathname: '/kyc-submit',
+        pathname: '/kyc',
         params: { returnUrl: '/community-request/emergency-help' }
       });
       return;
@@ -111,7 +111,7 @@ export default function CommunityRequestEmergencyVerifyPage() {
   const handleContinue = () => {
     if (!isKycVerified) {
       router.push({
-        pathname: '/kyc-submit',
+        pathname: '/kyc',
         params: { returnUrl: '/community-request/emergency-help' }
       });
       return;

@@ -170,6 +170,15 @@ export default function KycSubmitScreen() {
           }
           setPhoneNumber(phoneVal);
         }
+        const hasVerifiedPhone = Boolean(params.verifiedPhone || verifiedPhone || (user as any)?.kyc_verified_phone || user?.phone);
+        const isAlreadyPendingOrVerified = serverStatus === 'verified' || serverStatus === 'pending' || serverStatus === 'manual_review';
+        if (!hasVerifiedPhone && !isAlreadyPendingOrVerified) {
+          router.replace({
+            pathname: '/kyc',
+            params: returnUrl ? { returnUrl } : {}
+          } as any);
+          return;
+        }
       } catch {
         setKycStatus(null);
       } finally {
@@ -178,7 +187,7 @@ export default function KycSubmitScreen() {
     };
 
     loadStatus();
-  }, [updateUser]);
+  }, [updateUser, params.verifiedPhone, returnUrl, router, user]);
 
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -474,7 +483,7 @@ export default function KycSubmitScreen() {
                     </Text>
                   </View>
                   <TouchableOpacity 
-                    style={styles.primaryBtn} 
+                    style={[styles.primaryBtn, styles.shortGoBackBtn]} 
                     onPress={() => returnUrl ? router.replace(returnUrl as any) : router.replace('/(tabs)/profile')}
                   >
                     <Text style={styles.primaryBtnText}>Go Back</Text>
@@ -515,20 +524,12 @@ export default function KycSubmitScreen() {
                       {/* DOB input */}
                       <View style={styles.inputContainer}>
                         <View style={styles.inputWrapper}>
-                          <TouchableOpacity 
-                            onPress={() => {
-                              setDobDate(defaultDobDate);
-                              setShowDatePicker(true);
-                            }}
-                            activeOpacity={0.7}
-                          >
-                            <Svg width={18} height={20} viewBox="0 0 18 20" fill="none" style={{ marginLeft: 12, marginRight: 8, width: 17.78 }}>
-                              <Path d="M5.92664 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                              <Path d="M11.8534 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                              <Path d="M3.7042 4.07422H14.0759C14.8936 4.07422 15.5575 4.73813 15.5575 5.55589V15.9276C15.5575 16.7453 14.8936 17.4092 14.0759 17.4092H3.7042C2.88645 17.4092 2.22253 16.7453 2.22253 15.9276V5.55589C2.22253 4.73813 2.88645 4.07422 3.7042 4.07422V4.07422" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                              <Path d="M2.22253 8.51758H15.5575" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
-                            </Svg>
-                          </TouchableOpacity>
+                          <Svg width={18} height={20} viewBox="0 0 18 20" fill="none" style={{ marginLeft: 12, marginRight: 8, width: 17.78 }}>
+                            <Path d="M5.92664 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                            <Path d="M11.8534 2.5918V5.55513" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                            <Path d="M3.7042 4.07422H14.0759C14.8936 4.07422 15.5575 4.73813 15.5575 5.55589V15.9276C15.5575 16.7453 14.8936 17.4092 14.0759 17.4092H3.7042C2.88645 17.4092 2.22253 16.7453 2.22253 15.9276V5.55589C2.22253 4.73813 2.88645 4.07422 3.7042 4.07422V4.07422" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                            <Path d="M2.22253 8.51758H15.5575" stroke="#9CA3AF" strokeWidth={1.48167} strokeLinecap="round" strokeLinejoin="round"/>
+                          </Svg>
                           <TextInput
                             style={styles.textInput}
                             placeholder="DD/MM/YYYY (e.g. 15/08/1998)"
@@ -1154,6 +1155,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 15,
     elevation: 8,
+  },
+  shortGoBackBtn: {
+    width: 180,
+    height: 44,
+    borderRadius: 22,
   },
   submitBtnPosition: {
     marginTop: 8,

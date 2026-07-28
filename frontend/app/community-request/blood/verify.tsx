@@ -75,7 +75,7 @@ export default function CommunityRequestBloodVerifyPage() {
 
   const handleCompleteKyc = () => {
     router.push({
-      pathname: '/kyc-submit',
+      pathname: '/kyc',
       params: { returnUrl: '/community-request/blood-request' }
     });
   };
@@ -83,7 +83,7 @@ export default function CommunityRequestBloodVerifyPage() {
   const handleSendOtp = () => {
     if (!isKycVerified) {
       router.push({
-        pathname: '/kyc-submit',
+        pathname: '/kyc',
         params: { returnUrl: '/community-request/blood-request' }
       });
       return;
