@@ -742,9 +742,7 @@ export default function LiveJaapRoomView() {
     };
     initAudioMode();
 
-    if (initialMic === 'true') {
-      setupAgora();
-    }
+    setupAgora(initialMic === 'true');
     return () => {
       cleanupAgora();
     };
@@ -925,8 +923,18 @@ export default function LiveJaapRoomView() {
     return () => clearTimeout(timer);
   }, [currentIndex, isHolding, WORDS, mantraType, isSessionActive]);
 
-  const setupAgora = async () => {
+  const setupAgora = async (shouldPublishMic = isMicEnabled) => {
     try {
+      if (agoraJoinedRef.current) {
+        await engine.current.updateChannelMediaOptions({
+          publishMicrophoneTrack: shouldPublishMic,
+          autoSubscribeAudio: true,
+        });
+        await engine.current.enableLocalAudio(shouldPublishMic);
+        await engine.current.muteLocalAudioStream(!shouldPublishMic);
+        return;
+      }
+
       console.log('[LiveJaapRoom.native] Requesting Agora Token for channel:', ROOM_NAME);
       const config = await getAgoraToken(ROOM_NAME);
       console.log('====================================================');
@@ -950,7 +958,7 @@ export default function LiveJaapRoomView() {
       }
       await engine.current.initialize({
         appId: config.appId,
-        channelProfile: ChannelProfileType.ChannelProfileCommunication,
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
         audioScenario: AudioScenarioType.AudioScenarioGameStreaming,
       });
       agoraInitializedRef.current = true;
@@ -958,7 +966,7 @@ export default function LiveJaapRoomView() {
         onJoinChannelSuccess: (connection: RtcConnection) => {
           agoraJoinedRef.current = true;
           setParticipantLabel(`${t('connectedTo')} ${roomTitle || 'Sangat'}`);
-          setMicStatus(isMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+          setMicStatus(shouldPublishMic ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
           
           // Create data stream for reactions
           try {
@@ -1000,13 +1008,17 @@ export default function LiveJaapRoomView() {
         AudioScenarioType.AudioScenarioGameStreaming
       );
       await engine.current.setEnableSpeakerphone(true);
-      await engine.current.enableLocalAudio(isMicEnabled);
-      await engine.current.muteLocalAudioStream(!isMicEnabled);
+      await engine.current.setClientRole(
+        shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience
+      );
+      await engine.current.enableLocalAudio(shouldPublishMic);
+      await engine.current.muteLocalAudioStream(!shouldPublishMic);
 
-      console.log('[LiveJaapRoom.native] Joining channel:', ROOM_NAME, 'Communication Profile...');
+      console.log('[LiveJaapRoom.native] Joining channel:', ROOM_NAME, 'LiveBroadcasting Profile...');
       await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
-        channelProfile: ChannelProfileType.ChannelProfileCommunication,
-        publishMicrophoneTrack: isMicEnabled,
+        channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
+        clientRoleType: shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience,
+        publishMicrophoneTrack: shouldPublishMic,
         autoSubscribeAudio: true,
       });
     } catch (error) {
@@ -1072,6 +1084,11 @@ export default function LiveJaapRoomView() {
       });
     } catch (err) {
       console.warn('Failed to update audio mode:', err);
+    }
+
+    if (!agoraJoinedRef.current) {
+      await setupAgora(nextMicState);
+      return;
     }
 
     if (agoraJoinedRef.current) {
