@@ -3018,7 +3018,7 @@ export default function CommunityDetailScreen() {
     );
   };
   const renderFestivalItem = ({ item, index }: { item: any; index: number }) => {
-    const festImg = getFestivalImage(item.name);
+    const festImg = getFestivalImage(item);
     
     let formattedDate = '';
     const rawDate = item.date || item.start_date || item.festival_date;

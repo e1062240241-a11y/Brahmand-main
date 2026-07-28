@@ -1472,6 +1472,9 @@ const UserProfileScreen = () => {
             <FlatList
               ref={detailFlatListRef}
               data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
+              contentContainerStyle={{
+                paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
+              }}
               renderItem={({ item }) => (
                 <PostFeedCard
                   post={item}
@@ -1519,6 +1522,9 @@ const UserProfileScreen = () => {
             <FlatList
               ref={detailFlatListRef}
               data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
+              contentContainerStyle={{
+                paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
+              }}
               renderItem={({ item }) => (
                 <PostFeedCard
                   post={item}

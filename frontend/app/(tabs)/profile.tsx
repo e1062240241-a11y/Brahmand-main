@@ -1673,6 +1673,9 @@ export default function ProfileScreen() {
               maxToRenderPerBatch={3}
               windowSize={5}
               removeClippedSubviews={Platform.OS === 'android'}
+              contentContainerStyle={{
+                paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
+              }}
                 renderItem={({ item, index }) => {
                   const postKey = item && item.id ? `profile-detail-${item.id}` : `profile-detail-idx-${index}`;
                   return (

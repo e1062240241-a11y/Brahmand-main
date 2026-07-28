@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -97,7 +98,7 @@ export default function PrivacySettingsScreen() {
       </View>
 
       {/* Settings */}
-      <View style={styles.content}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Read Receipts */}
         <View style={styles.settingSection}>
           <Text style={styles.sectionTitle}>Messages</Text>
@@ -197,7 +198,7 @@ export default function PrivacySettingsScreen() {
             </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -206,6 +207,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  scrollView: {
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -232,8 +236,8 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
   content: {
-    flex: 1,
     padding: SPACING.md,
+    paddingBottom: SPACING.xl * 2.5,
   },
   settingSection: {
     marginBottom: SPACING.xl,
