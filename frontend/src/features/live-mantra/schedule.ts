@@ -222,32 +222,26 @@ export type HanumanStatus =
     };
 
 export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
-  const currentHour = now.getHours();
-  const currentMin = now.getMinutes();
+  const chalisaDurationMs = CHALISA_DURATION * 1000;
+  const cycleDurationMs = (CHALISA_DURATION + 10) * 1000;
 
   for (const session of HANUMAN_SESSIONS) {
-    let isMatch = false;
     let sessionStart = new Date(now);
-    
-    // Calculate session start time
-    if (session.endHour < session.startHour || (session.endHour === session.startHour && session.endMin < session.startMin)) {
-      if (currentHour >= session.startHour || (currentHour === session.startHour && currentMin >= session.startMin)) {
-        sessionStart.setHours(session.startHour, session.startMin, 0, 0);
-      } else if (currentHour < session.endHour || (currentHour === session.endHour && currentMin < session.endMin)) {
-        sessionStart.setDate(sessionStart.getDate() - 1);
-        sessionStart.setHours(session.startHour, session.startMin, 0, 0);
+    sessionStart.setHours(session.startHour, session.startMin, 0, 0);
+
+    // If current time is earlier than start time, check if we are in yesterday's session window
+    if (now < sessionStart) {
+      const yesterdayStart = new Date(sessionStart);
+      yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+      const yesterdayEnd = new Date(yesterdayStart.getTime() + session.reps * cycleDurationMs);
+      if (now >= yesterdayStart && now < yesterdayEnd) {
+        sessionStart = yesterdayStart;
       }
-    } else {
-      sessionStart.setHours(session.startHour, session.startMin, 0, 0);
     }
 
-    const chalisaDurationMs = CHALISA_DURATION * 1000;
-    const cycleDurationMs = (CHALISA_DURATION + 10) * 1000;
     const sessionEnd = new Date(sessionStart.getTime() + session.reps * cycleDurationMs);
 
-    isMatch = now >= sessionStart && now < sessionEnd;
-
-    if (isMatch) {
+    if (now >= sessionStart && now < sessionEnd) {
       const elapsedMs = now.getTime() - sessionStart.getTime();
       const currentRep = Math.floor(elapsedMs / cycleDurationMs);
 
@@ -295,7 +289,7 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
   for (const session of HANUMAN_SESSIONS) {
     let startCandidate = new Date(now);
     startCandidate.setHours(session.startHour, session.startMin, 0, 0);
-    if (startCandidate < now) {
+    if (startCandidate <= now) {
       startCandidate.setDate(startCandidate.getDate() + 1);
     }
     const diff = startCandidate.getTime() - now.getTime();

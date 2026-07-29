@@ -319,18 +319,34 @@ export default function LiveJaapRoomView() {
     accKeyRef.current = accKey;
   }, [countKey, accKey]);
 
-  // Load personal count and accumulated progress from AsyncStorage
+  // Load personal count and accumulated progress from AsyncStorage, with cleanup on session end / exit
   useEffect(() => {
-    AsyncStorage.getItem(countKey).then(val => {
-      if (val) setPersonalCount(parseInt(val, 10));
-      else setPersonalCount(0);
-    });
+    const status = mantraType === 'hanuman' ? getCurrentHanumanStatus(new Date()) : getCurrentOtherJaapStatus(new Date(), mantraType);
+    if (!status.isActive || ('isCompleted' in status && status.isCompleted)) {
+      AsyncStorage.removeItem(countKey);
+      AsyncStorage.removeItem(accKey);
+      setPersonalCount(0);
+      accumulatedTimeRef.current = 0;
+    } else {
+      AsyncStorage.getItem(countKey).then(val => {
+        if (val) setPersonalCount(parseInt(val, 10));
+        else setPersonalCount(0);
+      });
 
-    AsyncStorage.getItem(accKey).then(val => {
-      if (val) accumulatedTimeRef.current = parseFloat(val);
-      else accumulatedTimeRef.current = 0;
-    });
-  }, [countKey, accKey]);
+      AsyncStorage.getItem(accKey).then(val => {
+        if (val) accumulatedTimeRef.current = parseFloat(val);
+        else accumulatedTimeRef.current = 0;
+      });
+    }
+
+    return () => {
+      const exitStatus = mantraType === 'hanuman' ? getCurrentHanumanStatus(new Date()) : getCurrentOtherJaapStatus(new Date(), mantraType);
+      if (!exitStatus.isActive || ('isCompleted' in exitStatus && exitStatus.isCompleted)) {
+        AsyncStorage.removeItem(countKey);
+        AsyncStorage.removeItem(accKey);
+      }
+    };
+  }, [countKey, accKey, mantraType]);
 
   const isFocused = useIsFocused();
   const appStateRef = useRef(AppState.currentState);

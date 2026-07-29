@@ -1020,13 +1020,13 @@ export default function HomeScreen() {
                         record.userPhoto = item.user_photo || null;
                         record.mediaUrl = item.media_url || null;
                         record.mediaType = item.media_type || 'image';
-                      record.caption = item.caption || null;
-                      record.likesCount = item.likes_count || 0;
-                      record.commentsCount = item.comments_count || 0;
-                      record.likedByMe = !!item.liked_by_me;
-                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                    })
-                  );
+                        record.caption = item.caption || null;
+                        record.likesCount = item.likes_count || 0;
+                        record.commentsCount = item.comments_count || 0;
+                        record.likedByMe = !!item.liked_by_me;
+                        record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
+                      })
+                    );
                   }
                 } else {
                   batchOperations.push(
@@ -3088,10 +3088,12 @@ export default function HomeScreen() {
                             }]}>
                               {hanumanStatus.isActive
                                 ? (t('language') === 'hi'
-                                    ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप पूर्ण`
-                                    : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done so far`)
+                                  ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप पूर्ण`
+                                  : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done so far`)
                                 : (hanumanStatus.nextSessionStart
-                                  ? (t('language') === 'hi' ? `${formatTime(hanumanStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(hanumanStatus.nextSessionStart)}`)
+                                  ? (t('language') === 'hi'
+                                    ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
+                                    : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
                                   : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
                             </Text>
                           </View>

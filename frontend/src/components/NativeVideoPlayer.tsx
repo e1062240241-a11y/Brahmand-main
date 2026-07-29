@@ -30,6 +30,7 @@ const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
       try {
         p.loop = true;
         p.muted = isMuted;
+        p.staysActiveInBackground = false;
         if (p.bufferOptions) {
           p.bufferOptions = {
             preferredForwardBufferDuration: 5,
