@@ -208,7 +208,8 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-secure-store",
-      "expo-tracking-transparency"
+      "expo-tracking-transparency",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true
@@ -221,7 +222,9 @@
     },
     "owner": "virralpatel",
     "updates": {
-      "url": "https://u.expo.dev/4a6b7ff9-0931-43e9-9264-42f7dd7e63a5"
+      "url": "https://u.expo.dev/4a6b7ff9-0931-43e9-9264-42f7dd7e63a5",
+      "fallbackToCacheTimeout": 30000,
+      "checkAutomatically": "ON_LOAD"
     },
     "runtimeVersion": "1.0.0"
   }
