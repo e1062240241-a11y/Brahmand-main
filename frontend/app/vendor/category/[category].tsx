@@ -25,9 +25,22 @@ export default function CategoryScreen() {
 
   useEffect(() => {
     fetchVendors();
-    Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
-      .then(loc => setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude }))
-      .catch(() => {});
+    (async () => {
+      try {
+        const lastKnown = await Location.getLastKnownPositionAsync({});
+        if (lastKnown?.coords) {
+          setUserCoords({ latitude: lastKnown.coords.latitude, longitude: lastKnown.coords.longitude });
+          return;
+        }
+      } catch (e) {}
+
+      try {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (loc?.coords) {
+          setUserCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+        }
+      } catch (e) {}
+    })();
   }, []);
 
   useEffect(() => {
@@ -43,9 +56,12 @@ export default function CategoryScreen() {
       filtered = filterVendorsBySmartSearch(filtered, searchTerm);
     }
 
+    const hLat = Number(homeLocation?.latitude ?? homeLocation?.lat);
+    const hLng = Number(homeLocation?.longitude ?? homeLocation?.lng);
+
     const userLocInfo = {
-      latitude: userCoords?.latitude ?? homeLocation?.latitude,
-      longitude: userCoords?.longitude ?? homeLocation?.longitude,
+      latitude: userCoords?.latitude ?? (Number.isFinite(hLat) && Math.abs(hLat) > 0.001 ? hLat : undefined),
+      longitude: userCoords?.longitude ?? (Number.isFinite(hLng) && Math.abs(hLng) > 0.001 ? hLng : undefined),
       area: homeLocation?.area,
       city: homeLocation?.city,
       state: homeLocation?.state,
@@ -73,9 +89,12 @@ export default function CategoryScreen() {
     const displayName = item.business_name && item.business_name.length > 0 ? item.business_name : 'Unnamed Business';
     const displayTag = (item.categories && item.categories.length > 0) ? item.categories[0] : category;
     
+    const hLat = Number(homeLocation?.latitude ?? homeLocation?.lat);
+    const hLng = Number(homeLocation?.longitude ?? homeLocation?.lng);
+
     const userLocInfo = {
-      latitude: userCoords?.latitude ?? homeLocation?.latitude,
-      longitude: userCoords?.longitude ?? homeLocation?.longitude,
+      latitude: userCoords?.latitude ?? (Number.isFinite(hLat) && Math.abs(hLat) > 0.001 ? hLat : undefined),
+      longitude: userCoords?.longitude ?? (Number.isFinite(hLng) && Math.abs(hLng) > 0.001 ? hLng : undefined),
       area: homeLocation?.area,
       city: homeLocation?.city,
       state: homeLocation?.state,
@@ -83,7 +102,10 @@ export default function CategoryScreen() {
     };
 
     const locTier = computeLocationTier(item, userLocInfo);
-    const distanceStr = locTier.fullLabel;
+    let distanceStr = locTier.fullLabel;
+    if (!distanceStr || distanceStr === 'Location unknown' || distanceStr === 'Location unavailable') {
+      distanceStr = (item.full_address || item.address || item.current_address || item.preferred_work_city || item.city || 'India').trim();
+    }
 
     return (
       <TouchableOpacity 

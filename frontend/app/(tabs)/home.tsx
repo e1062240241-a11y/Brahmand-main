@@ -2686,7 +2686,7 @@ export default function HomeScreen() {
                   fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
                   fontSize: Platform.OS === 'android' ? 26 : 28,
                   fontStyle: 'normal',
-                  fontWeight: '500',
+                  fontWeight: '400',
                   lineHeight: Platform.OS === 'android' ? 32 : 36,
                   letterSpacing: 0,
                 }}>BRAHMAND</Text>

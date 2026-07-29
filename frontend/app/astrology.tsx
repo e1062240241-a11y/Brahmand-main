@@ -32,11 +32,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', iconType: 'Ionicons', iconName: 'body-outline', img: require('../assets/images/festivals/cosmic/cos1.png') },
-  { key: 'character', label: 'Character', iconType: 'MaterialCommunityIcons', iconName: 'head-heart-outline', img: require('../assets/images/festivals/cosmic/cos2.png') },
-  { key: 'education', label: 'Education', iconType: 'Ionicons', iconName: 'school-outline', img: require('../assets/images/festivals/cosmic/cos3.png') },
-  { key: 'family', label: 'Family', iconType: 'MaterialCommunityIcons', iconName: 'home-heart', img: require('../assets/images/festivals/cosmic/cos4.png') },
-  { key: 'health', label: 'Health', iconType: 'Ionicons', iconName: 'fitness-outline', img: require('../assets/images/festivals/cosmic/cos5.png') },
+  { key: 'physical', label: 'Physical', img: require('../assets/images/festivals/cosmic/cos1.png') },
+  { key: 'character', label: 'Character', img: require('../assets/images/festivals/cosmic/cos2.png') },
+  { key: 'education', label: 'Education', img: require('../assets/images/festivals/cosmic/cos3.png') },
+  { key: 'family', label: 'Family', img: require('../assets/images/festivals/cosmic/cos4.png') },
+  { key: 'health', label: 'Health', img: require('../assets/images/festivals/cosmic/cos5.png') },
 ];
 
 const CITIES_DB = [
@@ -908,11 +908,7 @@ export default function AstrologyScreen() {
                       activeOpacity={0.8}
                     >
                       <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
-                        {tab.iconType === 'Ionicons' ? (
-                          <Ionicons name={tab.iconName as any} size={24} color={isActive ? '#FFF' : '#C67C4E'} />
-                        ) : (
-                          <MaterialCommunityIcons name={tab.iconName as any} size={24} color={isActive ? '#FFF' : '#C67C4E'} />
-                        )}
+                        <Image source={tab.img} style={{ width: 28, height: 28 }} resizeMode="contain" />
                       </View>
                       <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
                     </TouchableOpacity>
@@ -932,11 +928,7 @@ export default function AstrologyScreen() {
                     {activeTabObj ? (
                       <>
                         <View style={styles.modalIconWrap}>
-                          {activeTabObj.iconType === 'Ionicons' ? (
-                            <Ionicons name={activeTabObj.iconName as any} size={24} color="#FFF" />
-                          ) : (
-                            <MaterialCommunityIcons name={activeTabObj.iconName as any} size={24} color="#FFF" />
-                          )}
+                          <Image source={activeTabObj.img} style={{ width: 32, height: 32 }} resizeMode="contain" />
                         </View>
                         <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
                         <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>

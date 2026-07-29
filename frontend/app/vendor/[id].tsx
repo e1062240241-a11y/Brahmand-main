@@ -27,6 +27,7 @@ import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { getUserProfile, sendDirectMessage, getVendor, forwardGeocode } from '../../src/services/api';
 import { formatDistance, calculateHaversineDistance } from '../../src/utils/formatDistance';
+import { computeLocationTier } from '../../src/utils/locationPreference';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -170,6 +171,15 @@ export default function VendorProfileScreen() {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status === 'granted') {
+          // Fast check for last known position to prevent initial delay/Distance unknown flash
+          try {
+            const lastKnown = await Location.getLastKnownPositionAsync({});
+            if (lastKnown?.coords && isMounted) {
+              setUserCoords({ lat: lastKnown.coords.latitude, lng: lastKnown.coords.longitude });
+              return;
+            }
+          } catch (e) {}
+
           const loc = await Promise.race([
             Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
             new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
@@ -239,8 +249,12 @@ export default function VendorProfileScreen() {
   const calculatedDistance = React.useMemo(() => {
     if (!vendor) return null;
 
-    const uLat = userCoords?.lat ?? (user?.home_location?.latitude ? Number(user.home_location.latitude) : null);
-    const uLng = userCoords?.lng ?? (user?.home_location?.longitude ? Number(user.home_location.longitude) : null);
+    const homeLoc = (user as any)?.home_location;
+    const hLat = Number(homeLoc?.latitude ?? homeLoc?.lat);
+    const hLng = Number(homeLoc?.longitude ?? homeLoc?.lng);
+
+    const uLat = userCoords?.lat ?? (Number.isFinite(hLat) && Math.abs(hLat) > 0.001 ? hLat : null);
+    const uLng = userCoords?.lng ?? (Number.isFinite(hLng) && Math.abs(hLng) > 0.001 ? hLng : null);
     const vLat = vendorCoords?.lat ?? (vendor.latitude ? Number(vendor.latitude) : null);
     const vLng = vendorCoords?.lng ?? (vendor.longitude ? Number(vendor.longitude) : null);
 
@@ -249,13 +263,44 @@ export default function VendorProfileScreen() {
       return dynamicDist;
     }
 
-    // Secondary Fallback: If distance was pre-calculated and dynamic coordinates are unavailable
-    if (vendor.distance !== undefined && vendor.distance !== null && Number.isFinite(Number(vendor.distance))) {
-      return Number(vendor.distance);
+    // Secondary Fallback: If distance was pre-calculated or attached to vendor object
+    const storedDist = (vendor as any)?.effectiveDist ?? vendor?.distance;
+    if (storedDist !== undefined && storedDist !== null && Number.isFinite(Number(storedDist))) {
+      return Number(storedDist);
     }
 
     return null;
   }, [vendor, vendorCoords, userCoords, user?.home_location]);
+
+  const locationDisplayText = React.useMemo(() => {
+    if (calculatedDistance !== null && Number.isFinite(calculatedDistance)) {
+      return formatDistance(calculatedDistance);
+    }
+
+    if (!vendor) return 'Location unknown';
+
+    const homeLoc = (user as any)?.home_location;
+    const userLocInfo = {
+      latitude: userCoords?.lat ?? Number(homeLoc?.latitude ?? homeLoc?.lat),
+      longitude: userCoords?.lng ?? Number(homeLoc?.longitude ?? homeLoc?.lng),
+      area: homeLoc?.area,
+      city: homeLoc?.city,
+      state: homeLoc?.state,
+      country: homeLoc?.country,
+    };
+
+    const locTier = computeLocationTier(vendor, userLocInfo);
+    if (locTier.fullLabel && locTier.fullLabel !== 'Location unknown') {
+      return locTier.fullLabel;
+    }
+
+    const addr = (vendor.full_address || vendor.address || (vendor as any).preferred_work_city || '').trim();
+    if (addr) {
+      return addr;
+    }
+
+    return 'Location unknown';
+  }, [calculatedDistance, vendor, userCoords, user?.home_location]);
 
   if (vendorLoading) {
     return (
@@ -537,7 +582,7 @@ export default function VendorProfileScreen() {
                   />
                 </G>
               </Svg>
-              <Text style={styles.metaText}>{formatDistance(calculatedDistance)}</Text>
+              <Text style={styles.metaText}>{locationDisplayText}</Text>
             </View>
           </View>
         </View>

@@ -326,8 +326,10 @@ export default function VendorScreen() {
   const searchInputRef = useRef<TextInput | null>(null);
   const registerBtnRef = useRef<any>(null);
   const homeLocation = (user as any)?.home_location;
-  const homeLatitude = homeLocation?.latitude;
-  const homeLongitude = homeLocation?.longitude;
+  const hLatVal = Number(homeLocation?.latitude ?? homeLocation?.lat);
+  const hLngVal = Number(homeLocation?.longitude ?? homeLocation?.lng);
+  const homeLatitude = Number.isFinite(hLatVal) && Math.abs(hLatVal) > 0.001 ? hLatVal : undefined;
+  const homeLongitude = Number.isFinite(hLngVal) && Math.abs(hLngVal) > 0.001 ? hLngVal : undefined;
   const hasHomeCoordinates = typeof homeLatitude === 'number' && typeof homeLongitude === 'number';
 
   const jobProfessionFilters = React.useMemo(() => {

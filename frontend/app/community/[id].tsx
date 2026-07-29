@@ -5948,6 +5948,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF', 
     justifyContent: 'center', 
     alignItems: 'center', 
+    overflow: 'hidden',
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

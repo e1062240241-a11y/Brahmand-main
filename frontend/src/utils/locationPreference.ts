@@ -175,12 +175,29 @@ export function computeLocationTier(
     };
   }
 
+  const fallbackLocationStr = (
+    item.full_address ||
+    item.address ||
+    item.current_address ||
+    item.preferred_work_city ||
+    item.city ||
+    item.area ||
+    ''
+  ).trim();
+
+  let fallbackFullLabel = 'Location unavailable';
+  if (typeof effectiveDist === 'number' && Number.isFinite(effectiveDist)) {
+    fallbackFullLabel = `${effectiveDist.toFixed(1)} km`;
+  } else if (fallbackLocationStr) {
+    fallbackFullLabel = fallbackLocationStr;
+  }
+
   return {
     tier: 6,
     subTier: 1,
     label: 'Other',
     dist: effectiveDist,
-    fullLabel: typeof effectiveDist === 'number' ? `${effectiveDist.toFixed(1)} km` : 'Location unknown',
+    fullLabel: fallbackFullLabel,
   };
 }
 
