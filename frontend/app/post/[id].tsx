@@ -577,14 +577,14 @@ const PostScreen = () => {
   const activePostKeyRef = useRef<string | null>(null);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
-    if (viewableItems.length > 0) {
-      const top = viewableItems[0];
-      const key = String(top.key || top.item?.id || '');
+    if (viewableItems && viewableItems.length > 0) {
+      const valid = viewableItems.find((v: any) => v.isViewable && (v.item?.id || v.item?.id === 0)) || viewableItems[0];
+      const key = valid?.item?.id !== undefined ? String(valid.item.id) : String(valid?.key || '');
       if (key && key !== activePostKeyRef.current) {
         activePostKeyRef.current = key;
         setActivePostKey(key);
-        if (top.item?.id) {
-          seenPostIdsRef.current.add(String(top.item.id));
+        if (valid.item?.id) {
+          seenPostIdsRef.current.add(String(valid.item.id));
         }
       }
     }

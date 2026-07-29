@@ -297,24 +297,40 @@ export default function LiveJaapRoomView() {
 
   // Load personal count and accumulated progress from AsyncStorage
   useEffect(() => {
-    AsyncStorage.getItem(countKey).then(val => {
-      if (val) {
-        const parsed = parseInt(val, 10);
-        setPersonalCount(isNaN(parsed) ? 0 : parsed);
-      } else {
-        setPersonalCount(0);
-      }
-    });
+    const status = mantraType === 'hanuman' ? getCurrentHanumanStatus(new Date()) : getCurrentOtherJaapStatus(new Date(), mantraType);
+    if (!status.isActive || ('isCompleted' in status && status.isCompleted)) {
+      AsyncStorage.removeItem(countKey);
+      AsyncStorage.removeItem(accKey);
+      setPersonalCount(0);
+      accumulatedTimeRef.current = 0;
+    } else {
+      AsyncStorage.getItem(countKey).then(val => {
+        if (val) {
+          const parsed = parseInt(val, 10);
+          setPersonalCount(isNaN(parsed) ? 0 : parsed);
+        } else {
+          setPersonalCount(0);
+        }
+      });
 
-    AsyncStorage.getItem(accKey).then(val => {
-      if (val) {
-        const parsed = parseFloat(val);
-        accumulatedTimeRef.current = isNaN(parsed) ? 0 : parsed;
-      } else {
-        accumulatedTimeRef.current = 0;
+      AsyncStorage.getItem(accKey).then(val => {
+        if (val) {
+          const parsed = parseFloat(val);
+          accumulatedTimeRef.current = isNaN(parsed) ? 0 : parsed;
+        } else {
+          accumulatedTimeRef.current = 0;
+        }
+      });
+    }
+
+    return () => {
+      const exitStatus = mantraType === 'hanuman' ? getCurrentHanumanStatus(new Date()) : getCurrentOtherJaapStatus(new Date(), mantraType);
+      if (!exitStatus.isActive || ('isCompleted' in exitStatus && exitStatus.isCompleted)) {
+        AsyncStorage.removeItem(countKey);
+        AsyncStorage.removeItem(accKey);
       }
-    });
-  }, [countKey, accKey]);
+    };
+  }, [countKey, accKey, mantraType]);
 
   useEffect(() => {
     const timer = setInterval(() => {

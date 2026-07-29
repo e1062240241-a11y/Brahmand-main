@@ -104,6 +104,7 @@ export const PostFeedCard = memo(({
 }: PostFeedCardProps) => {
   const { t, language } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const isFocused = useIsFocused();
   const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
@@ -138,10 +139,12 @@ export const PostFeedCard = memo(({
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
 
   useEffect(() => {
-    if (isActive && !shouldLoadVideo) {
+    if (isActive && isFocused) {
       setShouldLoadVideo(true);
+    } else {
+      setShouldLoadVideo(false);
     }
-  }, [isActive, shouldLoadVideo]);
+  }, [isActive, isFocused]);
 
   // Reset video loading state when view is recycled by FlashList
   useEffect(() => {
@@ -286,7 +289,6 @@ export const PostFeedCard = memo(({
     };
   }, [post, displayRatio, feedHeight]);
 
-  const isFocused = useIsFocused();
   const [appState, setAppState] = useState(AppState.currentState);
 
   useEffect(() => {
