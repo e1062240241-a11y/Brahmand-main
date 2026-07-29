@@ -3,6 +3,11 @@
 **Learning:** Hardcoded fallback values for cryptographic keys, admin passwords, or external API secrets present a massive security risk, especially in open-source or shared repositories. Silent failures (where the app continues running with weak credentials) are worse than loud failures (where the app crashes on startup).
 **Prevention:** Use explicit `os.environ["SECRET_NAME"]` for critical credentials instead of `os.getenv` with a default. This enforces a "Fail Fast, Fail Securely" pattern by throwing a `KeyError` at initialization if the secret is missing, guaranteeing the application never starts in a compromised state.
 
+## 2026-07-28 - Prevent Empty String Fallbacks for Cryptographic Keys
+**Vulnerability:** The application was using `os.environ.get('JWT_SECRET', '')` and `os.environ.get('ENCRYPTION_KEY', '')` as fallbacks for critical cryptographic keys. This means if the environment variable is missing, the application starts with an empty string as the key, compromising JWT signing and data encryption.
+**Learning:** Using empty strings as fallbacks for sensitive environment variables is an insecure practice. It allows the application to start in a vulnerable state without the developer realizing the key is missing. This is a severe security risk.
+**Prevention:** Always use strict dictionary lookup (`os.environ['JWT_SECRET']`) for critical cryptographic keys to ensure the application fails fast with a `KeyError` on startup if the key is missing, preventing it from starting insecurely.
+
 ## 2026-07-27 - Mask Exception Details in Global Error Handler
 **Vulnerability:** The `global_exception_handler` in `backend/main.py` was returning raw exception messages directly to the client via a `JSONResponse` (`content={"detail": f"Global Error: {str(exc)}"}`).
 **Learning:** Returning `str(exc)` in 500 error responses acts as an Information Exposure (CWE-200) vulnerability. It can leak sensitive system information—such as file paths, database structure, or API connection errors—directly to malicious actors probing the API. While detailed error messages are useful during development, they should never be exposed in production.

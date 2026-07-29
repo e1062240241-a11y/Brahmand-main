@@ -25,7 +25,7 @@ class Settings:
     CACHE_TTL: int = int(os.environ.get('CACHE_TTL', 300))  # 5 minutes default
     
     # JWT Configuration
-    JWT_SECRET: str = os.environ.get('JWT_SECRET', '')
+    JWT_SECRET: str = os.environ['JWT_SECRET']
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 720  # 30 days
     
@@ -35,7 +35,7 @@ class Settings:
     RATE_LIMIT_MESSAGING: int = 30  # Message sending
     
     # Security
-    ENCRYPTION_KEY: str = os.environ.get('ENCRYPTION_KEY', '')
+    ENCRYPTION_KEY: str = os.environ['ENCRYPTION_KEY']
     
     # Performance
     MAX_CONNECTIONS: int = int(os.environ.get('MAX_CONNECTIONS', 100))
