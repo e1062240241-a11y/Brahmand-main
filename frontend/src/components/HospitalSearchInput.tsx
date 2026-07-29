@@ -201,7 +201,13 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
       <View style={styles.inputWrapperContainer}>
         <View style={[styles.inputContainer, inputContainerStyle]}>
           {showGpsButton && (
-            <TouchableOpacity onPress={handleGpsClick} style={styles.gpsIconButton} disabled={loading}>
+            <TouchableOpacity
+              onPress={handleGpsClick}
+              style={styles.gpsIconButton}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Detect current location"
+            >
               <Ionicons name="location-sharp" size={18} color="#E53935" />
             </TouchableOpacity>
           )}
@@ -220,7 +226,12 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
           {loading ? (
             <ActivityIndicator size="small" color="#E53935" style={styles.rightIcon} />
           ) : hospitalQuery.length > 0 ? (
-            <TouchableOpacity onPress={handleClear} style={styles.rightIcon}>
+            <TouchableOpacity
+              onPress={handleClear}
+              style={styles.rightIcon}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search input"
+            >
               <Ionicons name="close-circle" size={18} color="#BBB" />
             </TouchableOpacity>
           ) : (
@@ -246,6 +257,8 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
                     key={`${item.name}-${index}`}
                     style={styles.suggestionItem}
                     onPress={() => handleSelectHospital(item)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Select hospital: ${item.name}`}
                   >
                     <Ionicons name="navigate-circle-outline" size={20} color="#E53935" style={{ marginRight: 10 }} />
                     <View style={styles.suggestionTextCol}>
@@ -278,6 +291,8 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
                       city: '',
                     })
                   }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use custom search query: ${hospitalQuery.trim()}`}
                 >
                   <Ionicons name="add-circle-outline" size={18} color="#E53935" style={{ marginRight: 8 }} />
                   <Text style={styles.suggestionTitle} numberOfLines={1}>
