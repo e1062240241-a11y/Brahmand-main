@@ -1,57 +1,51 @@
 const defaultDiya = require('../../assets/images/traditional_diya_footer.png');
 const defaultFestival = require('../../assets/images/custom_festival_icon_2.png');
-const ganeshImg = require('../../assets/images/upcoming_ganesh.jpg');
-const durgaImg = require('../../assets/images/upcoming_durga.png');
-const shivaImg = require('../../assets/images/upcoming_shiva.jpg');
-const gangaImg = require('../../assets/images/upcoming_ganga.jpg');
-const radhaImg = require('../../assets/images/upcoming_radha_rani.png');
-const hanumanImg = require('../../assets/images/hanuman_gathering.jpg');
 
-// Dedicated Festival Image Assets with exact local artwork matching
-const akshayaTritiya = defaultFestival;
-const anantChaturdashi = defaultFestival;
-const ashadhiEkadashi = defaultFestival;
-const bhaiDooj = defaultFestival;
-const bohagBihu = defaultFestival;
-const chaitraSukhladi = defaultFestival;
-const chhathPuja = defaultFestival;
-const dhanteras = defaultFestival;
-const dhanuSankranti = defaultFestival;
-const diwali = defaultFestival;
-const durgaAshtami = durgaImg;
-const dussehra = defaultFestival;
-const ganeshChaturthi = ganeshImg;
-const geetaJayanti = defaultFestival;
-const govardhanPuja = defaultFestival;
-const guruPurnima = defaultFestival;
-const hanumanJanmotsav = hanumanImg;
-const happyHoli = defaultFestival;
-const hariyaliTeej = defaultFestival;
-const hindiNewYear = defaultFestival;
-const holikaDahan = defaultFestival;
-const jagannathRathYatra = defaultFestival;
-const janmashtami = radhaImg;
-const kajariTeej = defaultFestival;
-const kartikPurnima = defaultFestival;
-const karvaChauth = defaultFestival;
-const maghBihu = defaultFestival;
-const mahaNavami = durgaImg;
-const mahaSaptami = durgaImg;
-const mahaShivaratri = shivaImg;
-const mahalayaAmavasya = defaultFestival;
-const maharishiValmikiJayanti = defaultFestival;
-const makarSankranti = defaultFestival;
-const nagPanchami = defaultFestival;
-const onam = defaultFestival;
-const rakshaBandhan = defaultFestival;
-const ramNavami = defaultFestival;
-const savitriPooja = defaultFestival;
-const sharadNavratri = durgaImg;
-const sharadPurnima = defaultFestival;
-const thaipusam = defaultFestival;
-const vaisakhi = defaultFestival;
-const vasantPanchami = defaultFestival;
-const vishwakarmaPuja = defaultFestival;
+// Dedicated Festival Image Assets from assets/images/festivals/
+const akshayaTritiya = require('../../assets/images/festivals/Akshaya Tritiya.jpg');
+const anantChaturdashi = require('../../assets/images/festivals/Anant Chaturdashi.jpg');
+const ashadhiEkadashi = require('../../assets/images/festivals/Ashadhi Ekadashi_.jpg');
+const bhaiDooj = require('../../assets/images/festivals/Bhai Dooj.jpg');
+const bohagBihu = require('../../assets/images/festivals/Bohag Bihu.jpg');
+const chaitraSukhladi = require('../../assets/images/festivals/Chaitra Sukhladi.jpg');
+const chhathPuja = require('../../assets/images/festivals/Chhath Puja.jpg');
+const dhanteras = require('../../assets/images/festivals/Dhanteras.jpg');
+const dhanuSankranti = require('../../assets/images/festivals/Dhanu Sankranti.jpeg');
+const diwali = require('../../assets/images/festivals/Diwali.jpeg');
+const durgaAshtami = require('../../assets/images/festivals/Durga Ashtami.jpeg');
+const dussehra = require('../../assets/images/festivals/Dussehra.jpg');
+const ganeshChaturthi = require('../../assets/images/festivals/Ganesh Chaturthi.jpeg');
+const geetaJayanti = require('../../assets/images/festivals/Geeta Jayanti.jpg');
+const govardhanPuja = require('../../assets/images/festivals/Govardhan Puja.jpg');
+const guruPurnima = require('../../assets/images/festivals/Guru Purnima.jpg');
+const hanumanJanmotsav = require('../../assets/images/festivals/Hanuman janmotsav.jpg');
+const happyHoli = require('../../assets/images/festivals/Happy Holi.jpg');
+const hariyaliTeej = require('../../assets/images/festivals/Hariyali Teej.jpeg');
+const hindiNewYear = require('../../assets/images/festivals/Hindi New Year.jpg');
+const holikaDahan = require('../../assets/images/festivals/Holika Dahan.jpg');
+const jagannathRathYatra = require('../../assets/images/festivals/Jagannath Rath Yatra.jpg');
+const janmashtami = require('../../assets/images/festivals/Janmashtami.jpg');
+const kajariTeej = require('../../assets/images/festivals/Kajari Teej.jpeg');
+const kartikPurnima = require('../../assets/images/festivals/Kartik Purnima.jpeg');
+const karvaChauth = require('../../assets/images/festivals/Karva Chauth.jpg');
+const maghBihu = require('../../assets/images/festivals/Magh Bihu.jpg');
+const mahaNavami = require('../../assets/images/festivals/Maha Navami.jpeg');
+const mahaSaptami = require('../../assets/images/festivals/Maha Saptami.jpg');
+const mahaShivaratri = require('../../assets/images/festivals/Maha Shivaratri.jpeg');
+const mahalayaAmavasya = require('../../assets/images/festivals/Mahalaya Amavasya.jpg');
+const maharishiValmikiJayanti = require('../../assets/images/festivals/Maharishi Valmiki Jayanti.jpg');
+const makarSankranti = require('../../assets/images/festivals/Makar Sankranti.png');
+const nagPanchami = require('../../assets/images/festivals/Nag Panchami.jpg');
+const onam = require('../../assets/images/festivals/Onam.jpg');
+const rakshaBandhan = require('../../assets/images/festivals/Raksha Bandhan.jpg');
+const ramNavami = require('../../assets/images/festivals/Ram Navami.jpg');
+const savitriPooja = require('../../assets/images/festivals/Savitri Pooja_.jpg');
+const sharadNavratri = require('../../assets/images/festivals/Sharad Navratri.jpg');
+const sharadPurnima = require('../../assets/images/festivals/Sharad Purnima.jpg');
+const thaipusam = require('../../assets/images/festivals/Thaipusam.jpg');
+const vaisakhi = require('../../assets/images/festivals/Vaisakhi.jpg');
+const vasantPanchami = require('../../assets/images/festivals/Vasant Panchami.jpg');
+const vishwakarmaPuja = require('../../assets/images/festivals/Vishwakarma Puja.jpeg');
 
 export const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Makar Sankranti': makarSankranti,
@@ -69,6 +63,7 @@ export const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Dhanteras': dhanteras,
   'Dhanu Sankranti': dhanuSankranti,
   'Diwali': diwali,
+  'Deepavali': diwali,
   'Naraka Chaturdashi': diwali,
   'Durga Ashtami': durgaAshtami,
   'Maha Ashtami': durgaAshtami,
@@ -137,8 +132,9 @@ export const getFestivalImage = (festivalInput: any) => {
   if (!nameStr || typeof nameStr !== 'string') return fallback;
 
   const trimmed = nameStr.trim();
+  if (!trimmed) return fallback;
 
-  // 1. Direct match in map
+  // 1. Direct exact key match
   if (FESTIVAL_IMAGE_MAP[trimmed]) {
     return FESTIVAL_IMAGE_MAP[trimmed];
   }
@@ -150,35 +146,57 @@ export const getFestivalImage = (festivalInput: any) => {
     return FESTIVAL_IMAGE_MAP[exactKey];
   }
 
-  // 3. Handle names separated by slashes or commas e.g. "Makar Sankranti / Pongal", "Dussehra / Vijayadashami"
+  // 3. Handle names separated by slashes or dashes (e.g. "Makar Sankranti / Pongal")
   const segments = searchLower.split(/[\/\,\-\–]/).map(s => s.trim()).filter(Boolean);
   for (const seg of segments) {
-    // Exact segment match
     const segMatch = Object.keys(FESTIVAL_IMAGE_MAP).find(k => k.toLowerCase() === seg);
     if (segMatch) {
       return FESTIVAL_IMAGE_MAP[segMatch];
     }
   }
 
-  // 4. Substring match on segments
-  for (const seg of segments) {
-    const subMatch = Object.keys(FESTIVAL_IMAGE_MAP).find(k => {
-      const kLower = k.toLowerCase();
-      return seg.includes(kLower) || kLower.includes(seg);
-    });
-    if (subMatch) {
-      return FESTIVAL_IMAGE_MAP[subMatch];
-    }
-  }
-
-  // 5. Overall substring match
-  const fallbackMatch = Object.keys(FESTIVAL_IMAGE_MAP).find(k => {
-    const kLower = k.toLowerCase();
-    return searchLower.includes(kLower) || kLower.includes(searchLower);
-  });
-  if (fallbackMatch) {
-    return FESTIVAL_IMAGE_MAP[fallbackMatch];
-  }
+  // 4. Targeted Key Term Match to prevent accidental substring mismatches (like "Jayanti" or "Navami")
+  if (searchLower.includes('shiva') || searchLower.includes('shivaratri')) return mahaShivaratri;
+  if (searchLower.includes('ganesh') || searchLower.includes('ganpati')) return ganeshChaturthi;
+  if (searchLower.includes('hanuman') || searchLower.includes('janmotsav')) return hanumanJanmotsav;
+  if (searchLower.includes('janmashtami') || searchLower.includes('krishna')) return janmashtami;
+  if (searchLower.includes('chhath')) return chhathPuja;
+  if (searchLower.includes('dhanteras')) return dhanteras;
+  if (searchLower.includes('dussehra') || searchLower.includes('vijayadashami')) return dussehra;
+  if (searchLower.includes('diwali') || searchLower.includes('deepavali')) return diwali;
+  if (searchLower.includes('ram navami') || searchLower.includes('rama navami')) return ramNavami;
+  if (searchLower.includes('durga ashtami') || searchLower.includes('maha ashtami')) return durgaAshtami;
+  if (searchLower.includes('maha navami')) return mahaNavami;
+  if (searchLower.includes('maha saptami')) return mahaSaptami;
+  if (searchLower.includes('sharad navratri') || searchLower.includes('navratri')) return sharadNavratri;
+  if (searchLower.includes('holika')) return holikaDahan;
+  if (searchLower.includes('holi')) return happyHoli;
+  if (searchLower.includes('karva') || searchLower.includes('karwa')) return karvaChauth;
+  if (searchLower.includes('raksha') || searchLower.includes('rakhi')) return rakshaBandhan;
+  if (searchLower.includes('makar') || searchLower.includes('sankranti') || searchLower.includes('pongal')) return makarSankranti;
+  if (searchLower.includes('onam')) return onam;
+  if (searchLower.includes('geeta') || searchLower.includes('gita')) return geetaJayanti;
+  if (searchLower.includes('valmiki')) return maharishiValmikiJayanti;
+  if (searchLower.includes('guru purnima')) return guruPurnima;
+  if (searchLower.includes('bhai dooj')) return bhaiDooj;
+  if (searchLower.includes('govardhan')) return govardhanPuja;
+  if (searchLower.includes('nag') || searchLower.includes('naga')) return nagPanchami;
+  if (searchLower.includes('vishwakarma')) return vishwakarmaPuja;
+  if (searchLower.includes('vasant') || searchLower.includes('saraswati')) return vasantPanchami;
+  if (searchLower.includes('akshaya') || searchLower.includes('tritiya')) return akshayaTritiya;
+  if (searchLower.includes('hariyali teej')) return hariyaliTeej;
+  if (searchLower.includes('kajari teej')) return kajariTeej;
+  if (searchLower.includes('magh bihu')) return maghBihu;
+  if (searchLower.includes('bohag bihu') || searchLower.includes('bihu')) return bohagBihu;
+  if (searchLower.includes('baisakhi') || searchLower.includes('vaisakhi')) return vaisakhi;
+  if (searchLower.includes('rath yatra') || searchLower.includes('jagannath')) return jagannathRathYatra;
+  if (searchLower.includes('thaipusam')) return thaipusam;
+  if (searchLower.includes('ekadashi')) return ashadhiEkadashi;
+  if (searchLower.includes('savitri')) return savitriPooja;
+  if (searchLower.includes('anant')) return anantChaturdashi;
+  if (searchLower.includes('kartik purnima')) return kartikPurnima;
+  if (searchLower.includes('sharad purnima')) return sharadPurnima;
 
   return fallback;
 };
+

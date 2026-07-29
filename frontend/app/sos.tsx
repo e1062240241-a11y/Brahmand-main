@@ -89,7 +89,7 @@ export default function SOSScreen() {
         },
         timestamp: Date.now(),
       });
-      const parts = [locData.area, locData.city, locData.state].filter(Boolean);
+      const parts = [locData.area, locData.city, locData.state, locData.country].filter(Boolean);
       setMicroLocation(locData.display_name || parts.join(', ') || '');
       setGpsErrorType(null);
     }
@@ -1028,10 +1028,10 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 14,
     color: '#333',
-    minHeight: 50,
+    minHeight: 70,
   },
   countdownContainer: {
     flex: 1,

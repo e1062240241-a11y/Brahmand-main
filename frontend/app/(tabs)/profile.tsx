@@ -28,7 +28,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import * as ImagePicker from 'expo-image-picker';
+import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
 import { useAuthStore } from '../../src/store/authStore';
 import { useUploadStore } from '../../src/store/uploadStore';
 import api, {
@@ -368,7 +368,7 @@ export default function ProfileScreen() {
   }, [userId]);
 
   const uploadProfileImage = async (
-    asset: ImagePicker.ImagePickerAsset,
+    asset: any,
     field: 'photo' | 'cover_photo'
   ) => {
     showToast(field === 'photo' ? 'Uploading profile photo...' : 'Uploading cover photo...');
@@ -401,6 +401,11 @@ export default function ProfileScreen() {
 
   const pickProfileImage = async (field: 'photo' | 'cover_photo', source: 'library' | 'camera') => {
     try {
+      const ImagePicker = getSafeImagePicker();
+      if (!ImagePicker) {
+        showToast('Image picker native module is not available. Rebuild app with npx expo run:android.');
+        return;
+      }
       if (source === 'camera') {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
@@ -428,7 +433,7 @@ export default function ProfileScreen() {
           ? ImagePicker.launchCameraAsync
           : ImagePicker.launchImageLibraryAsync;
       const result = await launcher({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'] as any,
         allowsEditing: true,
         aspect: field === 'photo' ? [1, 1] : undefined,
         quality: 0.85,

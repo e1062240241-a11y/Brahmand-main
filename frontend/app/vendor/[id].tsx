@@ -25,7 +25,7 @@ import * as Location from 'expo-location';
 import { COLORS, SPACING } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore } from '../../src/store/vendorStore';
-import { getUserProfile, sendDirectMessage, getVendor } from '../../src/services/api';
+import { getUserProfile, sendDirectMessage, getVendor, forwardGeocode } from '../../src/services/api';
 import { formatDistance, calculateHaversineDistance } from '../../src/utils/formatDistance';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

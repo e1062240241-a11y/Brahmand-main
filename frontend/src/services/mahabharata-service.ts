@@ -1,7 +1,7 @@
-import { getMahabharataBook } from '../../src/services/api';
+import { getMahabharataBook, API_URL } from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CDN_BASE = '/api/library-cdn';
+const CDN_BASE = `${API_URL}/api/library-cdn`;
 const TOTAL_CHAPTERS = 18;
 const PREFETCH_AHEAD = 3;
 const RAW_PREFIX = 'raw:mahabharata:';

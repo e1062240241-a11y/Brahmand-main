@@ -1017,8 +1017,8 @@ if (!temple) {
  <View style={styles.templeIconLarge}>
  <Image source={templeImageSource} style={styles.templeIconLargeImage} resizeMode="cover" />
  </View>
- <Text style={styles.templeName}>{displayName}</Text>
- {temple.deity && <Text style={styles.templeDeity}>{temple.deity}</Text>}
+            <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
+            {temple.deity && <Text style={styles.templeDeity} numberOfLines={1}>{temple.deity}</Text>}
  <TouchableOpacity
  style={styles.locationCard}
  onPress={openTempleLocation}
@@ -1280,8 +1280,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 10,
     marginBottom: 16,
-    padding: 16,
+    padding: 20,
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   templeIconLarge: {
     width: 90,
@@ -1294,15 +1302,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: '#FFFFFF',
-    shadowColor: '#FF6600',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
   },
   templeIconLargeImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 45,
   },
   templeName: {
     fontSize: 26,

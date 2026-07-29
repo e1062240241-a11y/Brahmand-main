@@ -128,7 +128,9 @@ export default function PhoneScreen() {
         const isAppNotAuthorized =
           errCode === 'auth/app-not-authorized' ||
           errCode === 'auth/invalid-app-credential' ||
+          errCode === 'auth/missing-client-identifier' ||
           errMsg.includes('app-not-authorized') ||
+          errMsg.includes('missing-client-identifier') ||
           errMsg.includes('play_integrity_token') ||
           errMsg.includes('not authorized');
 

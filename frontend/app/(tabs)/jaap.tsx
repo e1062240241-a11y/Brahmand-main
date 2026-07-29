@@ -1125,8 +1125,8 @@ export default function JaapLandingScreen() {
 
                     <Image source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} style={styles.newTempleCardImg} resizeMode="cover" />
                     <View style={styles.newTempleCardInfo}>
-                      <View style={{ marginTop: -10 }}>
-                        <Text style={styles.newTempleCardDeity}>
+                      <View>
+                        <Text style={styles.newTempleCardDeity} numberOfLines={1}>
                           {(() => {
                             let rawDeity = item.deity || 'LORD SHIVA';
                             if (item.name?.toLowerCase().includes('iskcon') || item.name?.toLowerCase().includes('borivali')) {
@@ -1144,8 +1144,8 @@ export default function JaapLandingScreen() {
                             return rawDeity;
                           })()}
                         </Text>
-                        <Text style={styles.newTempleCardName}>{getTranslatedTempleName(item.name || '')}</Text>
-                        <Text style={styles.newTempleCardLoc}>{getTranslatedTempleLocation(getTempleLocation(item), item.name)}</Text>
+                        <Text style={styles.newTempleCardName} numberOfLines={2}>{getTranslatedTempleName(item.name || '')}</Text>
+                        <Text style={styles.newTempleCardLoc} numberOfLines={1}>{getTranslatedTempleLocation(getTempleLocation(item), item.name)}</Text>
                       </View>
                     </View>
                   </Pressable>
@@ -1574,12 +1574,12 @@ const styles = StyleSheet.create({
   newTempleSearchInput: { flex: 1, fontSize: 14, color: '#333', fontFamily: 'Inter_500Medium' },
   filterIconBtn: { padding: 4 },
   newTempleListPadding: { paddingHorizontal: 16, paddingBottom: 20 },
-  newTempleCard: { backgroundColor: '#FFF', height: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center', position: 'relative' },
+  newTempleCard: { backgroundColor: '#FFF', minHeight: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center', position: 'relative', overflow: 'hidden' },
   newTempleCardImg: { width: 80, height: 95, borderRadius: 12 },
   newTempleCardInfo: { flex: 1, marginLeft: 16, justifyContent: 'center' },
-  newTempleCardDeity: { color: '#FF6B35', fontSize: 12, fontWeight: '700', lineHeight: 16, letterSpacing: 0.3, textTransform: 'uppercase', marginBottom: 12, alignSelf: 'center' },
-  newTempleCardName: { color: '#1C1C1E', fontSize: 16, fontWeight: '700', lineHeight: 27 },
-  newTempleCardLoc: { color: 'rgba(0, 0, 0, 0.61)', fontSize: 14, fontWeight: '400', lineHeight: 21, marginBottom: 8 },
+  newTempleCardDeity: { color: '#FF6B35', fontSize: 11, fontWeight: '700', lineHeight: 15, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2, alignSelf: 'flex-start' },
+  newTempleCardName: { color: '#1C1C1E', fontSize: 15, fontWeight: '700', lineHeight: 20, marginBottom: 2 },
+  newTempleCardLoc: { color: 'rgba(0, 0, 0, 0.61)', fontSize: 13, fontWeight: '400', lineHeight: 18 },
   newTempleOpenBtn: { width: 190, height: 32, justifyContent: 'center', alignItems: 'center', borderRadius: 12, borderWidth: 2, borderColor: '#FF7B00', alignSelf: 'center' },
   newTempleOpenBtnText: { color: '#FF7B00', fontSize: 14, fontWeight: '600', textAlign: 'center' },
   blueBadge: { position: 'absolute', top: -8, left: 12, backgroundColor: '#0084FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, zIndex: 10 },

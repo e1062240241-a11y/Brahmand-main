@@ -13,6 +13,7 @@ export function formatNativeGeocodedAddress(place: any): string {
   const district = place.district ? String(place.district).trim() : '';
   const city = place.city ? String(place.city).trim() : '';
   const region = place.region ? String(place.region).trim() : '';
+  const country = place.country ? String(place.country).trim() : '';
   const postalCode = place.postalCode ? String(place.postalCode).trim() : '';
 
   let streetAddress = '';
@@ -34,9 +35,7 @@ export function formatNativeGeocodedAddress(place: any): string {
     streetAddress = name;
   }
 
-  const area = subLocality || district || '';
-
-  const rawParts = [streetAddress, area, city, region, postalCode];
+  const rawParts = [streetAddress, subLocality, district, city, region, postalCode, country];
   const parts: string[] = [];
 
   for (const p of rawParts) {
@@ -51,7 +50,7 @@ export function formatNativeGeocodedAddress(place: any): string {
 
 /**
  * Robustly fetch the full detailed address string given coordinates and optional native geocode results.
- * Falls back to the backend reverse geocode (Google Maps API) if native geocoding is brief or incomplete.
+ * Always attempts backend reverse geocode (Google Maps API) to ensure complete, full address detail.
  */
 export async function fetchFullAddress(
   latitude: number,
@@ -64,20 +63,20 @@ export async function fetchFullAddress(
     address = formatNativeGeocodedAddress(nativeResults[0]);
   }
 
-  // If address is missing, too short, or lacks detail, invoke backend reverse geocode API
-  if (!address || address.length < 15 || !address.includes(',')) {
-    try {
-      const res = await reverseGeocode(latitude, longitude);
-      if (res?.data) {
-        const backendAddr = res.data.display_name || 
-          [res.data.area, res.data.city, res.data.state, res.data.country].filter(Boolean).join(', ');
-        if (backendAddr && backendAddr.length > address.length) {
+  try {
+    const res = await reverseGeocode(latitude, longitude);
+    if (res?.data) {
+      const backendAddr = res.data.display_name || 
+        [res.data.area, res.data.city, res.data.state, res.data.country].filter(Boolean).join(', ');
+      
+      if (backendAddr && backendAddr.trim().length > 0) {
+        if (!address || backendAddr.length >= address.length || !address.includes(',')) {
           address = backendAddr;
         }
       }
-    } catch (e) {
-      console.warn('[LocationHelper] Backend reverse geocode fallback error:', e);
     }
+  } catch (e) {
+    console.warn('[LocationHelper] Backend reverse geocode fallback error:', e);
   }
 
   return address;

@@ -1104,17 +1104,28 @@ export default function CommunityDetailScreen() {
   }, [community?.type]);
 
   useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
-      setKeyboardHeight(e.endCoordinates.height);
+    const onShow = (e: any) => {
+      if (e?.endCoordinates?.height) {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
       setKeyboardVisible(true);
-    });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+    };
+
+    const onHide = () => {
       setKeyboardHeight(0);
       setKeyboardVisible(false);
-    });
+    };
+
+    const showSub1 = Keyboard.addListener('keyboardWillShow', onShow);
+    const showSub2 = Keyboard.addListener('keyboardDidShow', onShow);
+    const hideSub1 = Keyboard.addListener('keyboardWillHide', onHide);
+    const hideSub2 = Keyboard.addListener('keyboardDidHide', onHide);
+
     return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
+      showSub1.remove();
+      showSub2.remove();
+      hideSub1.remove();
+      hideSub2.remove();
     };
   }, []);
 
@@ -4986,7 +4997,7 @@ export default function CommunityDetailScreen() {
                 <CosmicCharacterRing text={newMessage} />
               </View>
             </View>
-            {Platform.OS === 'android' && keyboardVisible && (
+            {Platform.OS === 'android' && keyboardVisible && keyboardHeight > 0 && (
               <View style={{ height: keyboardHeight }} />
             )}
           </KeyboardAvoidingView>

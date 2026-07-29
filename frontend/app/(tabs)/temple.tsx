@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   catPillTextActive: { color: '#FF6600' },
 
   templeListContainer: { paddingHorizontal: 20, paddingBottom: 40 },
-  templeItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', height: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 15, elevation: 2, shadowOpacity: 0.05, shadowRadius: 5 },
+  templeItemCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', height: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 15, elevation: 2, shadowOpacity: 0.05, shadowRadius: 5, overflow: 'hidden' },
   templeItemImage: { width: 80, height: 95, borderRadius: 15 },
   templeItemInfo: { flex: 1, marginLeft: 15 },
   templeItemName: { fontSize: 16, fontFamily: FONTS.bold, color: '#111', marginBottom: 4 },

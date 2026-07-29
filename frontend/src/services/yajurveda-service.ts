@@ -1,7 +1,7 @@
-import { getYajurvedaChapter } from '../../src/services/api';
+import { getYajurvedaChapter, API_URL } from '../../src/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CDN_BASE = '/api/library-cdn';
+const CDN_BASE = `${API_URL}/api/library-cdn`;
 const TOTAL_CHAPTERS = 40;
 const PREFETCH_AHEAD = 3;
 const RAW_PREFIX = 'raw:yajurveda:';

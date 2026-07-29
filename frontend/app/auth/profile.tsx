@@ -14,7 +14,7 @@ import {View,
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { getSafeImagePicker } from '../../src/utils/safeImagePicker';
 import * as Location from 'expo-location';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -310,22 +310,33 @@ export default function ProfileScreen() {
   };
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      alert('Camera roll permission needed');
-      return;
-    }
+    try {
+      const ImagePicker = getSafeImagePicker();
+      if (!ImagePicker) {
+        alert('Image picker native module is not available. Please rebuild the app using npx expo run:android.');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.3,
-      base64: true,
-    });
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Camera roll permission needed');
+        return;
+      }
 
-    if (!result.canceled && result.assets[0].base64) {
-      setPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'] as any,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.3,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]?.base64) {
+        setPhoto(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      }
+    } catch (err) {
+      console.warn('Error launching image picker:', err);
+      alert('Could not open image picker.');
     }
   };
 

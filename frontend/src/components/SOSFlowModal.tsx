@@ -72,8 +72,10 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const handleConfirmManualLocation = (locData: LocationData) => {
     if (locData.latitude && locData.longitude) {
       setCoords({ latitude: locData.latitude, longitude: locData.longitude });
-      const parts = [locData.area, locData.city, locData.state].filter(Boolean);
-      setAddress(parts.join(', ') || locData.display_name || 'Selected Location');
+      const parts = [locData.area, locData.city, locData.state, locData.country].filter(Boolean);
+      const fullAddr = locData.display_name || parts.join(', ') || 'Selected Location';
+      setAddress(fullAddr);
+      setMicroLocation(fullAddr);
     }
     setPickerVisible(false);
   };
@@ -359,7 +361,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         </View>
         <View style={styles.locationInfo}>
           <Text style={styles.locationLabel}>Location detected (Tap to change)</Text>
-          <Text style={styles.locationAddress} numberOfLines={1}>
+          <Text style={styles.locationAddress} numberOfLines={3}>
             {address}
           </Text>
         </View>
@@ -791,7 +793,8 @@ const styles = StyleSheet.create({
     borderColor: '#F0F0F0',
     borderRadius: 16,
     paddingHorizontal: 16,
-    height: 64,
+    minHeight: 64,
+    paddingVertical: 8,
     marginBottom: 40,
   },
   input: {

@@ -765,7 +765,7 @@ export default function VendorScreen() {
 
       if (isAlreadyVerified) {
         router.push({
-          pathname: `/vendor/${newVendor.id}`,
+          pathname: `/vendor/${newVendor.id}` as any,
           params: { justCreated: 'true' }
         });
       } else {

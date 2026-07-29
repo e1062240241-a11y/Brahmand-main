@@ -17,7 +17,7 @@ import {ActivityIndicator,
   ScrollView,
   Image as RNImage} from "react-native";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
+import { getSafeImagePicker } from "../utils/safeImagePicker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -606,6 +606,11 @@ export const UploadPostModal = ({
       );
       return;
     }
+    const ImagePicker = getSafeImagePicker();
+    if (!ImagePicker) {
+      alert("Image picker native module is not available. Please rebuild the app using npx expo run:android.");
+      return;
+    }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") return alert("Camera permission is required.");
     const result = await ImagePicker.launchCameraAsync({
@@ -619,6 +624,11 @@ export const UploadPostModal = ({
   };
 
   const selectFromPhotoGallery = async () => {
+    const ImagePicker = getSafeImagePicker();
+    if (!ImagePicker) {
+      alert("Image picker native module is not available. Please rebuild the app using npx expo run:android.");
+      return;
+    }
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted")
       return alert("Photo library permission is required.");
