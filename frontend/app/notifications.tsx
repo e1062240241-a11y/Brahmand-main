@@ -127,6 +127,35 @@ export default function NotificationsScreen() {
       });
     }
     try {
+      await useNotificationStore.getState().loadStoredNotifications();
+
+      let presentedList: any[] = [];
+      try {
+        const Notifications = await import('expo-notifications');
+        const presented = await Notifications.getPresentedNotificationsAsync();
+        if (Array.isArray(presented)) {
+          presented.forEach((item) => {
+            if (item?.request?.content) {
+              const notifId = item.request.identifier || `${item.request.content.title}:${item.date}`;
+              const normalized = {
+                id: notifId,
+                title: item.request.content.title || '',
+                body: item.request.content.body || '',
+                data: item.request.content.data || {},
+                type: item.request.content.data?.type || 'general',
+                created_at: item.date ? new Date(item.date).toISOString() : new Date().toISOString(),
+                time: item.date ? new Date(item.date).toISOString() : new Date().toISOString(),
+                is_read: false,
+              };
+              presentedList.push(normalized);
+              useNotificationStore.getState().addRecentNotification(item);
+            }
+          });
+        }
+      } catch (e) {
+        console.warn('[Notifications] Failed to get presented notifications:', e);
+      }
+
       const [countRes, notificationsRes] = await Promise.all([
         getUnreadNotificationCount().catch(() => ({ data: 0 })),
         getUserNotifications().catch(() => ({ data: [] })),
@@ -138,32 +167,35 @@ export default function NotificationsScreen() {
       setUnreadCount(countValue || 0);
       
       const serverNotifications = normalizeNotificationsResponse(notificationsRes.data);
-      const pendingNotifications = recentNotifications.filter((recent) =>
-        serverNotifications.every((serverNotif: any) => (serverNotif.id || serverNotif._id) !== (recent.id || recent._id)),
-      );
-      let rawList = [...pendingNotifications, ...serverNotifications];
+      const currentRecent = useNotificationStore.getState().recentNotifications;
+      let rawList = [...presentedList, ...currentRecent, ...serverNotifications];
       
-      const uniqueNotifications = [];
-      const seenTitles = new Set();
+      const uniqueNotifications: any[] = [];
       const seenIds = new Set();
+      const seenFestivalKeys = new Set();
+
       for (const notif of rawList) {
+        if (!notif) continue;
         const notifId = notif.id || notif._id;
-        const titleKey = (notif.title || '') + '|' + (notif.body || '');
-        
-        if (notif.title?.includes('Tomorrow:')) {
-          if (!seenTitles.has(titleKey)) {
-            uniqueNotifications.push(notif);
-            seenTitles.add(titleKey);
-            if (notifId) seenIds.add(notifId);
-          }
-        } else {
-          if (notifId && !seenIds.has(notifId)) {
-            uniqueNotifications.push(notif);
-            seenIds.add(notifId);
-          } else if (!notifId) {
-            uniqueNotifications.push(notif);
-          }
+        const itemData = typeof notif.data === 'string'
+          ? (() => { try { return JSON.parse(notif.data); } catch { return null; } })()
+          : notif.data;
+        const isFestival = notif.type === 'festival_reminder' || itemData?.type === 'festival_reminder' || notif.title?.includes('Tomorrow:') || notif.title?.includes('Today is');
+
+        if (notifId && seenIds.has(notifId)) {
+          continue;
         }
+
+        if (isFestival) {
+          const festKey = `${(notif.title || '').trim()}|${(notif.body || '').trim()}`;
+          if (seenFestivalKeys.has(festKey)) {
+            continue;
+          }
+          seenFestivalKeys.add(festKey);
+        }
+
+        if (notifId) seenIds.add(notifId);
+        uniqueNotifications.push(notif);
       }
       
       let notificationsList = uniqueNotifications;
@@ -547,11 +579,24 @@ export default function NotificationsScreen() {
  
         {/* Middle Side: Content */}
         <View style={styles.notificationContent}>
-          <Text style={styles.notificationText}>
-            <Text style={{ fontWeight: '700' }}>{actorName}</Text>
-            {actorUser?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
-            {' '}{item.body ? item.body.replace(itemData?.actor_name || actorName || '', '').trim() : 'sent a notification.'}
-          </Text>
+          {item.type === 'festival_reminder' || itemData?.type === 'festival_reminder' || actionBadge?.name === 'calendar' || (!actorId && item.title) ? (
+            <View>
+              {item.title ? (
+                <Text style={{ fontWeight: '700', fontSize: 14, color: '#000', marginBottom: 2 }}>
+                  {item.title}
+                </Text>
+              ) : null}
+              <Text style={{ fontSize: 13, color: '#444' }}>
+                {item.body || 'Festival notification details.'}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.notificationText}>
+              <Text style={{ fontWeight: '700' }}>{actorName}</Text>
+              {actorUser?.isVerified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+              {' '}{item.body ? item.body.replace(itemData?.actor_name || actorName || '', '').trim() : 'sent a notification.'}
+            </Text>
+          )}
           
           {isInvite && (
             <View style={styles.inviteButtonsRow}>

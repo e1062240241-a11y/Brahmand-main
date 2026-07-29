@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { COLORS, FONTS } from '../constants/theme';
 import { reverseGeocode } from '../services/api';
+import { fetchFullAddress } from '../utils/locationHelper';
 import { LocationPickerModal, LocationData } from './LocationPickerModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -143,40 +144,23 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
       setAddress(fallbackAddr);
       setCoords({ latitude: location.coords.latitude, longitude: location.coords.longitude });
 
-      // Try geocoding with timeout
+      // Try geocoding with timeout and fallback
       try {
-        const results = await reverseGeocodeWithTimeout({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
-        }, 3000);
+        let results: any[] = [];
+        try {
+          results = await reverseGeocodeWithTimeout({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+          }, 3000);
+        } catch (_) {}
 
-        if (results.length > 0) {
-          const place = results[0] as any;
-          const parts = [
-            place.name || place.street,
-            place.subLocality || place.district,
-            place.city,
-          ].filter(Boolean);
-          const nativeAddr = parts.join(', ');
-          if (nativeAddr) {
-            setAddress(nativeAddr);
-            return;
-          }
+        const fullAddr = await fetchFullAddress(location.coords.latitude, location.coords.longitude, results);
+        if (fullAddr) {
+          setAddress(fullAddr);
+          setMicroLocation(fullAddr);
         }
       } catch (e) {
-        console.warn('[SOSModal] Native geocoding failed', e);
-      }
-
-      // Try backend fallback
-      try {
-        const res = await reverseGeocode(location.coords.latitude, location.coords.longitude);
-        if (res.data) {
-          const addressText = res.data.display_name || 
-            `${res.data.area || ''}, ${res.data.city || ''}, ${res.data.state || ''}`.replace(/^, /, '');
-          if (addressText) setAddress(addressText);
-        }
-      } catch (e) {
-        console.warn('[SOSModal] Backend reverse geocode failed', e);
+        console.warn('[SOSModal] Address fetching failed', e);
       }
     } catch (error) {
       console.error('Fetch address error:', error);

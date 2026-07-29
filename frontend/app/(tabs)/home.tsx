@@ -43,6 +43,7 @@ import { useFeedStore } from '../../src/store/feedStore';
 import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { useBlockStore } from '../../src/store/blockStore';
+import { formatNativeGeocodedAddress } from '../../src/utils/locationHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
@@ -1202,23 +1203,13 @@ export default function HomeScreen() {
         });
 
         if (reverse.length > 0) {
-          const place: any = reverse[0];
-          // Construct most exact location possible: Name/Street + SubLocality/District + City
-          const parts = [
-            place.name || place.street,
-            place.subLocality || place.district,
-            place.city
-          ].filter(Boolean);
-
-          // Only take top 2 most specific parts to keep it clean but exact
-          const exactLocation = parts.slice(0, 2).join(', ') || 'Bharat';
-
-          setLiveLocation(exactLocation);
+          const formatted = formatNativeGeocodedAddress(reverse[0]);
+          setLiveLocation(formatted || 'Bharat');
         } else {
           // Fallback to API if native fails
           const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
           if (response.data) {
-            setLiveLocation(response.data.area || response.data.city || 'Bharat');
+            setLiveLocation(response.data.display_name || response.data.area || response.data.city || 'Bharat');
           } else {
             setLiveLocation('Bharat');
           }

@@ -25,6 +25,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthStore } from '../../src/store/authStore';
+import { useTabBar } from '../../src/contexts/TabBarContext';
 import { getUserProfile, followUser, unfollowUser, viewPost, deletePost, getPostComments, addPostComment, togglePostLike, repostPost, deletePostComment, reportPost } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
@@ -105,12 +106,29 @@ const UserProfileScreen = () => {
     };
   }, []);
 
+  // Tab bar visibility control
+  let showTabBar: (() => void) | undefined;
+  let hideTabBar: (() => void) | undefined;
+  try {
+    const tabBar = useTabBar();
+    showTabBar = tabBar.showTabBar;
+    hideTabBar = tabBar.hideTabBar;
+  } catch (e) {}
+
+  const [selectedCommentPost, setSelectedCommentPost] = useState<any>(null);
+  const [commentModalVisible, setCommentModalVisible] = useState(false);
+
   useEffect(() => {
     if ((Platform.OS as string) !== 'android') return;
 
     const backAction = () => {
+      if (commentModalVisible) {
+        setCommentModalVisible(false);
+        return true;
+      }
       if (postModalVisible) {
         setPostModalVisible(false);
+        showTabBar?.();
         return true;
       }
       return false;
@@ -122,7 +140,7 @@ const UserProfileScreen = () => {
     );
 
     return () => backHandler.remove();
-  }, [postModalVisible]);
+  }, [postModalVisible, commentModalVisible]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) {
@@ -139,13 +157,11 @@ const UserProfileScreen = () => {
     setSelectedPost(post);
     setViewablePostId(post.id);
     setPostModalVisible(true);
+    hideTabBar?.();
     try {
       viewPost(post.id);
     } catch (e) { }
   };
-
-  const [selectedCommentPost, setSelectedCommentPost] = useState<any>(null);
-  const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState('');
@@ -945,7 +961,7 @@ const UserProfileScreen = () => {
           </View>
         )}
 
-        {/* View Count and Comments Count Overlay */}
+        {/* View Count and Likes Count Overlay */}
         <View style={styles.gridOverlay}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <View style={styles.viewCountBadge}>
@@ -953,8 +969,13 @@ const UserProfileScreen = () => {
               <Text style={styles.viewCountText}>{views >= 1000 ? `${(views / 1000).toFixed(1)}K` : views}</Text>
             </View>
             <View style={styles.viewCountBadge}>
-              <Ionicons name="chatbubble" size={10} color="#FFF" />
-              <Text style={styles.viewCountText}>{item.comments_count || 0}</Text>
+              <Ionicons name="heart" size={10} color="#FFF" />
+              <Text style={styles.viewCountText}>
+                {(() => {
+                  const likes = item.likes_count ?? item.likesCount ?? 0;
+                  return likes >= 1000 ? `${(likes / 1000).toFixed(1)}K` : likes;
+                })()}
+              </Text>
             </View>
           </View>
         </View>

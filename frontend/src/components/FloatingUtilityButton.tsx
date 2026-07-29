@@ -33,6 +33,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, BORDER_RADIUS } from '../constants/theme';
 import { useHelpRequestStore } from '../store/helpRequestStore';
+import { fetchFullAddress } from '../utils/locationHelper';
 import { useAuthStore } from '../store/authStore';
 import { useTranslation } from '../utils/i18n';
 import {
@@ -627,26 +628,22 @@ export const FloatingUtilityButton = () => {
         setLocationFetched(true);
         setFetchedCoordinates({ latitude: location.coords.latitude, longitude: location.coords.longitude });
 
-        // Try native reverse geocoding for a readable address
+        // Reverse geocoding for detailed address
         try {
-          const results = await Location.reverseGeocodeAsync({
-            latitude: location.coords.latitude,
-            longitude: location.coords.longitude,
-          });
-          if (results.length > 0) {
-            const place: any = results[0];
-            const parts = [
-              place.name || place.street,
-              place.subLocality || place.district,
-              place.city,
-            ].filter(Boolean);
-            const addr = parts.join(', ');
-            if (addr && !microLocation) {
-              setMicroLocation(addr);
-            }
+          let results: any[] = [];
+          try {
+            results = await Location.reverseGeocodeAsync({
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
+            });
+          } catch (_) {}
+
+          const addr = await fetchFullAddress(location.coords.latitude, location.coords.longitude, results);
+          if (addr && !microLocation) {
+            setMicroLocation(addr);
           }
         } catch (e) {
-          console.warn('[FloatingUtility] Native reverse geocode failed:', e);
+          console.warn('[FloatingUtility] Reverse geocode failed:', e);
         }
       }
     } catch (error) {

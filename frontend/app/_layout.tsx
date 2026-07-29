@@ -457,6 +457,12 @@ function useNotificationResponseHandler() {
         return;
       }
 
+      try {
+        useNotificationStore.getState().addRecentNotification(response.notification);
+      } catch (e) {
+        console.warn('[Push] Failed to add recent notification on response:', e);
+      }
+
       const actionId = response.actionIdentifier || response.actionId || 'default';
       const data = response.notification.request.content.data;
       const responseKey = getResponseKey(response);
@@ -802,6 +808,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     useLanguageStore.getState().loadLanguage();
+    useNotificationStore.getState().loadStoredNotifications();
     Promise.allSettled([loadStoredAuth(), loadStoredAdminAuth()]).then((results) => {
       const authErr = results[0].status === 'rejected' ? results[0].reason : null;
       const adminErr = results[1].status === 'rejected' ? results[1].reason : null;
@@ -860,6 +867,59 @@ export default function RootLayout() {
       getFestivalList().then((res) => {
         if (res?.data && Array.isArray(res.data)) {
           syncFestivalReminders(res.data).catch((err) => console.warn('[FestivalPush] Startup sync failed:', err));
+          
+          // Check if today is a festival and show a toast notification & message once per day
+          const now = new Date();
+          const todayYMD = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+          
+          res.data.forEach(async (festival: any) => {
+            if (!festival || !festival.date) return;
+            const festivalName = festival.name || festival.festival_name || 'Festival';
+            const festDateStr = festival.date;
+            
+            let isToday = false;
+            if (festDateStr === todayYMD) {
+              isToday = true;
+            } else {
+              const parsedDate = new Date(`${festDateStr}T00:00:00`);
+              if (!isNaN(parsedDate.getTime()) && parsedDate.toDateString() === now.toDateString()) {
+                isToday = true;
+              }
+            }
+
+            if (isToday) {
+              const storageKey = `@today_festival_toast_${todayYMD}_${festival.id || festivalName}`;
+              try {
+                const alreadyShown = await AsyncStorage.getItem(storageKey);
+                if (!alreadyShown) {
+                  await AsyncStorage.setItem(storageKey, 'true');
+                  
+                  toast.show(
+                    `Today is ${festivalName}! Check the Festivals tab for more information.`,
+                    'info',
+                    7000,
+                    [{ text: 'Check Festivals', style: 'default', onPress: () => safeNavigate(() => router.push('/festivals')) }],
+                    undefined,
+                    `🪔 Today is ${festivalName}!`,
+                    () => safeNavigate(() => router.push('/festivals'))
+                  );
+
+                  useNotificationStore.getState().addRecentNotification({
+                    id: `festival_today_${festival.id || festivalName}_${todayYMD}`,
+                    title: `🪔 Today is ${festivalName}!`,
+                    body: `Today is ${festivalName}! Check the Festivals tab for more information.`,
+                    type: 'festival_reminder',
+                    data: { type: 'festival_reminder', festivalId: festival.id || festivalName },
+                    created_at: new Date().toISOString(),
+                    time: new Date().toISOString(),
+                    is_read: false,
+                  });
+                }
+              } catch (err) {
+                console.warn('[FestivalToast] Error showing festival toast:', err);
+              }
+            }
+          });
         }
       }).catch((e) => console.warn('[FestivalPush] Failed to fetch festival list:', e));
     }).catch((error) => {

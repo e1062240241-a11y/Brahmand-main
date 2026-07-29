@@ -17,7 +17,8 @@ import {View,
   Keyboard,
   Pressable,
   StatusBar
-, DeviceEventEmitter , KeyboardAvoidingView, Share, ActionSheetIOS} from 'react-native';
+, DeviceEventEmitter , KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler } from 'react-native';
+import { useTabBar } from '../../src/contexts/TabBarContext';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -216,6 +217,43 @@ export default function ProfileScreen() {
       hideSubscription.remove();
     };
   }, []);
+
+  // Tab bar visibility control
+  let showTabBar: (() => void) | undefined;
+  let hideTabBar: (() => void) | undefined;
+  try {
+    const tabBar = useTabBar();
+    showTabBar = tabBar.showTabBar;
+    hideTabBar = tabBar.hideTabBar;
+  } catch (e) {}
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const backAction = () => {
+      if (commentModalVisible) {
+        setCommentModalVisible(false);
+        return true;
+      }
+      if (showLanguageModal) {
+        setShowLanguageModal(false);
+        return true;
+      }
+      if (showSettingsModal) {
+        setShowSettingsModal(false);
+        return true;
+      }
+      if (postModalVisible) {
+        setPostModalVisible(false);
+        showTabBar?.();
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [postModalVisible, commentModalVisible, showLanguageModal, showSettingsModal]);
   const [postComments, setPostComments] = useState<any[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -889,6 +927,7 @@ export default function ProfileScreen() {
     if (!post?.id) return;
     setSelectedPost(post);
     setPostModalVisible(true);
+    hideTabBar?.();
     setEditedCaption(post?.caption || '');
     hasScrolledToPost.current = false;
     setActivePostKey(null);
@@ -1185,7 +1224,7 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* View and Comment Count Overlay */}
+        {/* View and Like Count Overlay */}
         <View style={{
           position: 'absolute',
           top: 0,
@@ -1222,9 +1261,12 @@ export default function ProfileScreen() {
               alignSelf: 'flex-start',
               gap: 4,
             }}>
-              <Ionicons name="chatbubble" size={10} color="#FFF" />
+              <Ionicons name="heart" size={10} color="#FFF" />
               <Text style={{ color: '#FFF', fontSize: 10, fontWeight: 'bold' }}>
-                {item.comments_count || 0}
+                {(() => {
+                  const likes = item.likes_count ?? item.likesCount ?? 0;
+                  return likes >= 1000 ? `${(likes / 1000).toFixed(1)}K` : likes;
+                })()}
               </Text>
             </View>
           </View>
@@ -1655,10 +1697,14 @@ export default function ProfileScreen() {
           visible={postModalVisible}
           animationType="slide"
           presentationStyle="fullScreen"
+          onRequestClose={() => {
+            setPostModalVisible(false);
+            showTabBar?.();
+          }}
         >
           <View style={styles.postDetailContainer}>
             <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
-              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
+              <TouchableOpacity onPress={() => { setPostModalVisible(false); showTabBar?.(); }} style={styles.backButton}>
                 <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
               </TouchableOpacity>
               <Text style={styles.postDetailTitle}>

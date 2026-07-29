@@ -190,10 +190,20 @@ const resolvedWebApiUrl = runtimeWebApiUrl
 
 const getMetroHostIp = (): string | null => {
   try {
-    const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.29.108:8081"
-    if (hostUri) {
-      const ip = hostUri.split(":")[0];
-      if (ip && ip !== "127.0.0.1" && ip !== "localhost") {
+    const candidateUris = [
+      Constants.expoConfig?.hostUri,
+      (Constants as any).expoGoConfig?.debuggerHost,
+      (Constants as any).manifest?.debuggerHost,
+      (Constants as any).manifest2?.extra?.expoGo?.developer?.manifest?.debuggerHost,
+      (Constants as any).nativeAppManifest?.debuggerHost,
+      Constants.linkingUri,
+    ];
+
+    for (const uri of candidateUris) {
+      if (!uri) continue;
+      const cleanUri = uri.includes("://") ? uri.split("://")[1] : uri;
+      const ip = cleanUri ? cleanUri.split(":")[0] : null;
+      if (ip && ip !== "127.0.0.1" && ip !== "localhost" && /^[\d.]+$/.test(ip)) {
         return ip;
       }
     }
