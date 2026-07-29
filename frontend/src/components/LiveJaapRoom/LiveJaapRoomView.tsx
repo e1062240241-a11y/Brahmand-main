@@ -609,21 +609,19 @@ export default function LiveJaapRoomView() {
                   "Completed 1 full Hanuman Chalisa jaap session."
                 );
                 // Stay in the live room for continuous chanting; do not kick user out
-              } else {
-                if (next % 108 === 0) {
-                  const readableMantra = mantraType === 'shiva' 
-                    ? (t('language') === 'hi' ? 'ॐ नमः शिवाय' : 'Om Namah Shivaya') 
-                    : (t('language') === 'hi' ? 'गायत्री मंत्र' : 'Gayatri Mantra');
-                  usePassportStore.getState().awardBadge(
-                    t('language') === 'hi' 
-                      ? `${readableMantra} माला पूर्ण हुई`
-                      : `${readableMantra} Mala Completed`,
-                    t('language') === 'hi'
-                      ? `${readableMantra} की 1 पूरी माला (108 जाप) पूर्ण की।`
-                      : `Completed 1 full Mala (108 chants) of ${readableMantra}.`
-                  );
-                  setShowCompletion(true);
-                }
+              } else if (next % 108 === 0) {
+                const readableMantra = mantraType === 'shiva' 
+                  ? (t('language') === 'hi' ? 'ॐ नमः शिवाय' : 'Om Namah Shivaya') 
+                  : (t('language') === 'hi' ? 'गायत्री मंत्र' : 'Gayatri Mantra');
+                usePassportStore.getState().awardBadge(
+                  t('language') === 'hi' 
+                    ? `${readableMantra} माला पूर्ण हुई`
+                    : `${readableMantra} Mala Completed`,
+                  t('language') === 'hi'
+                    ? `${readableMantra} की 1 पूरी माला (108 जाप) पूर्ण की।`
+                    : `Completed 1 full Mala (108 chants) of ${readableMantra}.`
+                );
+                // Continuous Chanting: Stay in live room & do not auto-redirect on 108 mala completion
               }
               return next;
             });
