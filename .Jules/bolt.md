@@ -1,8 +1,25 @@
-- Optimization: Replaced O(N) iterative deletion in `reset_database` with `batch_delete_documents` inside `FirestoreDB`. Groups deletes in chunks of 500. This dramatically speeds up testing resets by cutting down redundant network transactions.
-## 2024-07-26 - [Batch Operations in Firestore]
-**Learning:** Using `await db.get_documents_batch` and `await db.batch_delete_documents` is crucial for eliminating N+1 query loops when interacting with multiple documents in this Python Cloud Run backend. Looping over IDs and sequentially awaiting `db.get_document` blocks the event loop and significantly hurts performance.
-**Action:** Always check `for` loops containing `await db.get_document` or `await db.delete_document` in Firestore queries, and replace them with their respective batch counterparts, especially in frequently hit fallback logic or paginated feeds.
+## FlashList View Recycling Optimization for Heavy Media
 
-## 2024-07-28 - [Batch Fetching in DM Conversations]
-**Learning:** The `get_conversations` method in the DM messaging service was sequentially querying individual user documents inside a loop of up to 50 items. This resulted in an N+1 database bottleneck that slows down loading user inboxes.
-**Action:** Replace looped `await db.get_document` calls with a single `await db.get_documents_batch` when hydrating user information into arrays of items like direct messaging conversations.
+*When to apply:* When rendering complex native views (like `expo-video` players or WebViews) inside a `FlashList` in React Native.
+
+*The Problem:*
+`FlashList` recycles view components to achieve high scrolling performance. If a list item renders a heavy native component, and that list item is scrolled off-screen, `FlashList` will recycle that view instance for a *new* item coming on-screen. If local state (e.g., `hasLoadedVideo`, `isPlaying`) is not explicitly reset when the data prop (e.g., `post.id`) changes, the recycled view will erroneously maintain the previous item's heavy state. This leads to immediate concurrent mounting of multiple off-screen heavy components, bypassing any lazy-loading logic and causing immediate memory pressure, network saturation, and OOM crashes.
+
+*The Solution:*
+Implement a lifecycle reset mechanism tied directly to the unique identifier of the item data. Use a `useEffect` hook that listens for changes to the item's ID (e.g., `post.id`) to force a reset of any heavy local state back to its uninitialized default.
+
+```tsx
+// Inside the recycled list item component (e.g., FeedCard)
+
+const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+
+// Lazy load trigger
+useEffect(() => {
+  if (isActive && !shouldLoadVideo) setShouldLoadVideo(true);
+}, [isActive, shouldLoadVideo]);
+
+// CRITICAL: Reset heavy state when FlashList recycles the view for a new item
+useEffect(() => {
+  setShouldLoadVideo(false);
+}, [item?.id]); // Watch for ID change
+```
