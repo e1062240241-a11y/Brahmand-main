@@ -595,7 +595,7 @@ const PostScreen = () => {
     return (
       <PostFeedCard
         post={item}
-        isActive={activePostKeyRef.current === postKey}
+        isActive={activePostKey === postKey}
         onComment={handleOpenComment}
         openCommentsOnCaptionPress
         onShare={handleSharePost}
@@ -631,6 +631,12 @@ const PostScreen = () => {
       ) : (
         <SafeFlashList
           ref={listRef}
+          extraData={activePostKey}
+          removeClippedSubviews={true}
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          estimatedItemSize={550}
           data={visibleFeedPosts}
           renderItem={renderItem}
           keyExtractor={keyExtractor}

@@ -116,6 +116,18 @@ export const PostFeedCard = memo(({
 
   const [dynamicRatio, setDynamicRatio] = useState(initialRawRatio || 4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+
+  useEffect(() => {
+    if (isActive && !shouldLoadVideo) {
+      setShouldLoadVideo(true);
+    }
+  }, [isActive, shouldLoadVideo]);
+
+  // Reset video loading state when view is recycled by FlashList
+  useEffect(() => {
+    setShouldLoadVideo(false);
+  }, [post?.id]);
 
   useEffect(() => {
     if (initialRawRatio) {
@@ -539,28 +551,38 @@ export const PostFeedCard = memo(({
                 </>
               ) : (
                 <>
-                  {isActive ? (
+                  {/* Always mount poster underneath */}
+                  <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
+                    {videoPosterUrl ? (
+                      <Image
+                        source={{ uri: videoPosterUrl }}
+                        style={[StyleSheet.absoluteFill, getFilterStyle(filterName)]}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        priority={isActive || shouldLoadVideo ? "high" : "low"}
+                        transition={0}
+                        onLoad={() => {
+                          if (!shouldLoadVideo) setMediaLoading(false);
+                        }}
+                        onError={handlePosterError}
+                      />
+                    ) : null}
+                  </View>
+
+                  {/* Mount video on top only when shouldLoadVideo is true */}
+                  {shouldLoadVideo && (
                     <NativeVideoPlayer
                       mediaUrl={mediaUrl}
                       shouldPlay={shouldPlay}
                       isMuted={isMuted}
                       onFirstFrameRender={() => setMediaLoading(false)}
-                      style={cropStyle ? { ...cropStyle, ...getFilterStyle(filterName) } : { width: '100%', height: '100%', ...getFilterStyle(filterName) }}
+                      style={[
+                        StyleSheet.absoluteFill,
+                        { zIndex: 3 },
+                        cropStyle ? { ...cropStyle, ...getFilterStyle(filterName) } : { ...getFilterStyle(filterName) }
+                      ]}
                       contentFit="cover"
                     />
-                  ) : (
-                    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
-                      {videoPosterUrl ? (
-                        <Image
-                          source={{ uri: videoPosterUrl }}
-                          style={StyleSheet.absoluteFill}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          priority="low"
-                          onError={handlePosterError}
-                        />
-                      ) : null}
-                    </View>
                   )}
                 </>
               )}
