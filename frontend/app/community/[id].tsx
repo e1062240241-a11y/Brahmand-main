@@ -53,7 +53,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop, G, Path } from 'react-native-svg';
 
 import { getFestivalImage } from '../../src/constants/festivalImages';
 
@@ -154,69 +154,134 @@ function getLocalCategory(content: string): string | undefined {
   return undefined;
 }
 
-const CharacterProgressCircle = ({ textLength }: { textLength: number }) => {
-  const size = 30;
-  const strokeWidth = 2.5;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
+const CosmicCharacterRing = ({ textLength, text }: { textLength?: number; text?: string }) => {
+  const size = 64;
+  const padding = 4;
+  const strokeWidth = 3.5;
+  const radius = (size - padding * 2 - strokeWidth) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const circumference = 2 * Math.PI * radius;
   const limit = 250;
 
-  const currentTextLength = textLength > 0 && textLength % limit === 0 ? limit : textLength % limit;
-  const threadCount = Math.floor(textLength / limit) + (textLength % limit > 0 ? 1 : 0);
+  // Exclude spaces from character count
+  const effectiveLength = typeof text === 'string'
+    ? text.replace(/\s/g, '').length
+    : (textLength || 0);
+
+  const currentTextLength = effectiveLength > 0 && effectiveLength % limit === 0 ? limit : effectiveLength % limit;
+  const threadCount = Math.floor(effectiveLength / limit) + (effectiveLength % limit > 0 ? 1 : 0);
+  const remaining = limit - currentTextLength;
 
   const percentage = Math.min((currentTextLength / limit) * 100, 100);
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-  const remaining = limit - currentTextLength;
-  let strokeColor = '#1D9BF0'; // Twitter blue
-  if (remaining <= 0) {
-    strokeColor = '#F4212E'; // Red
-  } else if (remaining <= 20) {
-    strokeColor = '#F5B800'; // Yellow
+  // Light Blue Ring Gradient Colors (#38BDF8 Sky Light Blue)
+  let stopColor1 = '#38BDF8';
+  let stopColor2 = '#0284C7';
+
+  if (percentage >= 80 || remaining <= 20) {
+    stopColor1 = '#FF3D00';
+    stopColor2 = '#D50000';
+  } else if (percentage >= 50) {
+    stopColor1 = '#38BDF8';
+    stopColor2 = '#00B0FF';
   }
 
+  // Sacred geometry outer mandala circles in soft white with increased opacity
+  const sgRadius = radius * 0.45;
+  const sgCircles = useMemo(() => {
+    const circles = [];
+    for (let i = 0; i < 6; i++) {
+      const a = (i * 60 * Math.PI) / 180;
+      circles.push({
+        x: cx + sgRadius * Math.cos(a),
+        y: cy + sgRadius * Math.sin(a),
+      });
+    }
+    return circles;
+  }, [cx, cy, sgRadius]);
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
       {threadCount > 1 && (
-        <View style={{ backgroundColor: '#EFF3F4', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
-          <Text style={{ fontSize: 11, color: '#536471', fontWeight: 'bold' }}>{threadCount} posts</Text>
+        <View style={{
+          backgroundColor: 'rgba(56, 189, 248, 0.12)',
+          borderColor: 'rgba(56, 189, 248, 0.3)',
+          borderWidth: 1,
+          paddingHorizontal: 10,
+          paddingVertical: 3,
+          borderRadius: 14,
+        }}>
+          <Text style={{ fontSize: 11, color: '#38BDF8', fontFamily: FONTS.bold }}>
+            {threadCount} posts
+          </Text>
         </View>
       )}
+
       <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
         <Svg width={size} height={size}>
-          {/* Background Circle */}
+          <Defs>
+            <SvgLinearGradient id="cosmicGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <Stop offset="0%" stopColor={stopColor1} />
+              <Stop offset="100%" stopColor={stopColor2} />
+            </SvgLinearGradient>
+          </Defs>
+
+          {/* Sacred Geometry Mandala Background Pattern in Soft White (Opacity increased to 0.45) */}
+          <G opacity={0.45}>
+            {sgCircles.map((circle, idx) => (
+              <Circle
+                key={idx}
+                cx={circle.x}
+                cy={circle.y}
+                r={sgRadius}
+                stroke="#FFFFFF"
+                strokeWidth={0.8}
+                fill="none"
+              />
+            ))}
+          </G>
+
+          {/* Background Orbit Ring */}
           <Circle
-            cx={size / 2}
-            cy={size / 2}
+            cx={cx}
+            cy={cy}
             r={radius}
-            stroke="#EFF3F4"
+            stroke="rgba(255, 255, 255, 0.15)"
             strokeWidth={strokeWidth}
             fill="transparent"
           />
-          {/* Foreground Progress Circle */}
+
+          {/* Foreground Progress Orbit Ring */}
           <Circle
-            cx={size / 2}
-            cy={size / 2}
+            cx={cx}
+            cy={cy}
             r={radius}
-            stroke={strokeColor}
-            strokeWidth={remaining < 0 ? strokeWidth + 0.5 : strokeWidth}
+            stroke="url(#cosmicGradient)"
+            strokeWidth={remaining <= 0 ? strokeWidth + 0.6 : strokeWidth}
             fill="transparent"
             strokeDasharray={circumference}
             strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            transform={`rotate(-90 ${cx} ${cy})`}
           />
         </Svg>
-        {remaining <= 20 && (
-          <Text style={{
-            position: 'absolute',
-            fontSize: remaining <= 0 ? 10 : 11,
-            fontWeight: 'bold',
-            color: remaining <= 0 ? '#F4212E' : '#536471'
-          }}>
+
+        {/* Center Display: Character Count Remaining */}
+        <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+          <Text
+            style={{
+              fontSize: remaining <= 0 ? 12 : remaining < 100 ? 15 : 13,
+              fontWeight: '700',
+              fontFamily: FONTS.bold,
+              color: remaining <= 0 ? '#FF2D55' : remaining <= 20 ? '#FF9500' : '#FFFFFF',
+              lineHeight: 16,
+            }}
+          >
             {remaining}
           </Text>
-        )}
+        </View>
       </View>
     </View>
   );
@@ -2568,15 +2633,24 @@ export default function CommunityDetailScreen() {
             )}
 
             {(() => {
-              const posterPhone = (item as any).contact_number || 
+              const explicitPhone = (item as any).contact_number || 
                 (item as any).contact || 
                 (item as any).user_phone || 
+                (item as any).phone;
+
+              const itemCat = String((item as any).category || '').toLowerCase();
+              const isRequestType = (item as any).isRequestInFeed || 
+                ['requests', 'seva', 'lost & found', 'temple updates'].includes(itemCat) || 
+                (item as any).request_type;
+
+              // Only show Call & WhatsApp buttons if an explicit contact number was set on the post or if it's a request/help category
+              const posterPhone = explicitPhone || (isRequestType ? (
                 (item as any).user?.phone || 
                 (item as any).user?.phone_number || 
                 (item as any).user?.contact_number || 
                 (item as any).user?.contact || 
-                (item as any).phone || 
-                (user?.id && (user.id === (item as any).sender_id || user.id === (item as any).user_id || user.id === (item as any).user?.id) ? ((user as any)?.phone || (user as any)?.phone_number) : '');
+                (user?.id && (user.id === (item as any).sender_id || user.id === (item as any).user_id || user.id === (item as any).user?.id) ? ((user as any)?.phone || (user as any)?.phone_number) : '')
+              ) : '');
 
               const isTempleUpdate = (item as any).category === 'Temple Updates';
 
@@ -3779,6 +3853,20 @@ export default function CommunityDetailScreen() {
   const executeCreatePost = async (categoryOverride?: string) => {
     if (!newMessage.trim() && !selectedImage) return;
 
+    // Check verification requirement for State and National groups
+    const isRestrictedGroup = community?.type && ['state', 'country', 'national'].includes(community.type);
+    if (isRestrictedGroup && !isKycVerified) {
+      Alert.alert(
+        'Verification Required',
+        'Only verified members can post in State and National community groups. Please verify your profile to post.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Verify Now', onPress: () => router.push('/kyc') }
+        ]
+      );
+      return;
+    }
+
     if (Platform.OS === 'android') {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     }
@@ -3939,7 +4027,18 @@ export default function CommunityDetailScreen() {
           } catch (error) {
             console.error('Failed to send real message chunk:', error);
             const errMsg = parseApiError(error);
-            Alert.alert('Post Failed', errMsg);
+            if (errMsg.includes('Only verified members can post') || errMsg.includes('verified members')) {
+              Alert.alert(
+                'Verification Required',
+                'Only verified members can post in State and National community groups. Please verify your profile to post.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Verify Now', onPress: () => router.push('/kyc') }
+                ]
+              );
+            } else {
+              Alert.alert('Post Failed', errMsg);
+            }
             // Remove the optimistic post on failure
             if (Platform.OS === 'ios') {
               newPosts.forEach(np => {
@@ -4873,17 +4972,23 @@ export default function CommunityDetailScreen() {
               justifyContent: 'space-between',
               alignItems: 'center',
               paddingHorizontal: 16,
-              paddingVertical: 10,
+              paddingTop: 10,
+              paddingBottom: Platform.OS === 'android' 
+                ? (keyboardVisible ? 10 : Math.max(insets.bottom, 28)) 
+                : (keyboardVisible ? 10 : Math.max(insets.bottom, 14)),
               borderTopWidth: 1,
-              borderTopColor: 'rgba(0,0,0,0.05)',
-              backgroundColor: 'rgba(255,255,255,0.5)'
+              borderTopColor: 'rgba(244, 163, 34, 0.15)',
+              backgroundColor: '#0C0A1A'
             }}>
               <View />
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <CharacterProgressCircle textLength={newMessage.length} />
+                <CosmicCharacterRing text={newMessage} />
               </View>
             </View>
+            {Platform.OS === 'android' && keyboardVisible && (
+              <View style={{ height: keyboardHeight }} />
+            )}
           </KeyboardAvoidingView>
         </View>
         </LinearGradient>

@@ -31,6 +31,7 @@ import { formatTimeAgo, formatDateTimeIST, formatReelDate } from '../utils/dateU
 import { useGlobalMute } from '../contexts/MuteContext';
 import { getFilterStyle, getOverlayStyle } from '../utils/filters';
 import { useTranslation } from '../utils/i18n';
+import { useTabBar } from '../contexts/TabBarContext';
 
 const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 
@@ -109,6 +110,23 @@ export const PostFeedCard = memo(({
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
   const [menuVisible, setMenuVisible] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Tab bar visibility control
+  let showTabBar: (() => void) | undefined;
+  let hideTabBar: (() => void) | undefined;
+  try {
+    const tabBar = useTabBar();
+    showTabBar = tabBar.showTabBar;
+    hideTabBar = tabBar.hideTabBar;
+  } catch (e) {}
+
+  useEffect(() => {
+    if (isFullscreen) {
+      hideTabBar?.();
+    } else {
+      showTabBar?.();
+    }
+  }, [isFullscreen]);
   const [mediaLoading, setMediaLoading] = useState(true);
   const [showSpinner, setShowSpinner] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);

@@ -159,6 +159,8 @@ export default function CreateCommunityScreen() {
 
   // User explicitly said: 1st screen = Image 1 (Roles), 2nd screen = Image 2 (Landing)
 
+  const bottomPadding = Math.max(insets.bottom, 16);
+
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.header}>
@@ -166,7 +168,7 @@ export default function CreateCommunityScreen() {
           <Ionicons name="chevron-back" size={24} color="#000" />
         </TouchableOpacity>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}>
         <Text style={styles.title}>Create a Community</Text>
         <Text style={styles.subtitle}>Build a trusted and active community{"\n"}with a strong founding team.</Text>
 
@@ -212,7 +214,7 @@ export default function CreateCommunityScreen() {
           </View>
         </View>
       </KeyboardAwareScrollView>
-      <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
+      <TouchableOpacity style={[styles.continueButton, { marginBottom: bottomPadding }]} onPress={handleNext}>
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
     </View>
@@ -226,7 +228,7 @@ export default function CreateCommunityScreen() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Community</Text>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding + 24 }]}>
         <View style={styles.tabsContainer}>
           <View style={styles.activeTab}><Text style={styles.activeTabText}>My Communities</Text></View>
           <TouchableOpacity
@@ -247,7 +249,7 @@ export default function CreateCommunityScreen() {
         <Text style={styles.landingTitle}>Build your local community</Text>
         <Text style={styles.landingSub}>Bring people together, share{"\n"}updates and make an impact.</Text>
 
-        <TouchableOpacity style={styles.mainCreateButton} onPress={handleNext}>
+        <TouchableOpacity style={[styles.mainCreateButton, { marginBottom: bottomPadding }]} onPress={handleNext}>
           <Ionicons name="add" size={24} color="#FFF" />
           <Text style={styles.mainCreateButtonText}>Create Community</Text>
         </TouchableOpacity>
@@ -282,7 +284,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 1 of 5</Text>
         </View>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}>
         <Text style={styles.sectionTitle}>Select Community Type</Text>
 
         {[
@@ -316,7 +318,7 @@ export default function CreateCommunityScreen() {
           </TouchableOpacity>
         ))}
       </KeyboardAwareScrollView>
-      <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
+      <TouchableOpacity style={[styles.continueButton, { marginBottom: bottomPadding }]} onPress={handleNext}>
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
     </View>
@@ -333,7 +335,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 2 of 5</Text>
         </View>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}>
         <Text style={styles.sectionTitle}>Basic Information</Text>
 
         <View style={styles.inputGroup}>
@@ -409,7 +411,7 @@ export default function CreateCommunityScreen() {
 
       </KeyboardAwareScrollView>
       <TouchableOpacity
-        style={[styles.continueButton, !formData.name || !formData.description ? styles.disabledButton : null]}
+        style={[styles.continueButton, { marginBottom: bottomPadding }, !formData.name || !formData.description ? styles.disabledButton : null]}
         onPress={handleNext}
         disabled={!formData.name || !formData.description}
       >
@@ -429,7 +431,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 3 of 5</Text>
         </View>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}>
         <Text style={styles.inputLabel}>Community Picture</Text>
          <TouchableOpacity
            style={styles.imageUploadBox}
@@ -495,7 +497,7 @@ export default function CreateCommunityScreen() {
           )}
         </View>
       </KeyboardAwareScrollView>
-      <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
+      <TouchableOpacity style={[styles.continueButton, { marginBottom: bottomPadding }]} onPress={handleNext}>
         <Text style={styles.continueButtonText}>Continue</Text>
       </TouchableOpacity>
     </View>
@@ -533,7 +535,7 @@ export default function CreateCommunityScreen() {
         <FlatList
           data={users}
           keyExtractor={item => item.id}
-          contentContainerStyle={{ paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
           renderItem={({ item }) => {
             const isAdmin = selectedAdmins.find(u => u.id === item.id);
             const isMember = selectedMembers.find(u => u.id === item.id);
@@ -569,12 +571,12 @@ export default function CreateCommunityScreen() {
         />
       )}
 
-      <View style={styles.selectionFooter}>
+      <View style={[styles.selectionFooter, { paddingBottom: bottomPadding }]}>
         <Text style={styles.countInfo}>
           Admins: {selectedAdmins.length} | Members: {selectedMembers.length}
         </Text>
         <TouchableOpacity
-          style={[styles.continueButton, (selectedAdmins.length + selectedMembers.length === 0) && styles.disabledButton]}
+          style={[styles.continueButton, { marginBottom: 0 }, (selectedAdmins.length + selectedMembers.length === 0) && styles.disabledButton]}
           onPress={handleNext}
           disabled={selectedAdmins.length + selectedMembers.length === 0}
         >
@@ -616,7 +618,7 @@ export default function CreateCommunityScreen() {
           !selectedMembers.find(m => m.id === u.id)
         )}
         keyExtractor={item => item.id}
-        contentContainerStyle={{ paddingHorizontal: 16 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
         renderItem={({ item }) => (
           <View style={styles.userItem}>
             <Avatar name={item.name} photo={item.photo} size={44} />
@@ -642,7 +644,7 @@ export default function CreateCommunityScreen() {
         )}
       />
 
-      <TouchableOpacity style={styles.continueButton} onPress={handleNext}>
+      <TouchableOpacity style={[styles.continueButton, { marginBottom: bottomPadding }]} onPress={handleNext}>
         <Text style={styles.continueButtonText}>Review Details</Text>
       </TouchableOpacity>
     </View>
@@ -659,7 +661,7 @@ export default function CreateCommunityScreen() {
           <Text style={styles.stepIndicator}>Step 6 of 6</Text>
         </View>
       </View>
-      <KeyboardAwareScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAwareScrollView contentContainerStyle={[styles.scrollContent, { paddingBottom: 24 }]}>
         <View style={styles.reviewCard}>
           <Text style={styles.reviewLabel}>COMMUNITY NAME</Text>
           <Text style={styles.reviewValue}>{formData.name}</Text>
@@ -696,7 +698,7 @@ export default function CreateCommunityScreen() {
         </View>
       </KeyboardAwareScrollView>
       <TouchableOpacity
-        style={[styles.continueButton, loading && styles.disabledButton]}
+        style={[styles.continueButton, { marginBottom: bottomPadding }, loading && styles.disabledButton]}
         onPress={handleSubmit}
         disabled={loading}
       >
@@ -706,32 +708,32 @@ export default function CreateCommunityScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         {step === 1 && renderStep1()}
-      {step === 2 && renderStep2()}
-      {step === 3 && renderStep3()}
-      {step === 4 && renderStep4()}
-      {step === 5 && renderStep5()}
-      {step === 6 && renderStep6()}
-      {step === 7 && renderStep7()}
-      {step === 8 && renderStep8()}
-      {step === 9 && (
-        <View style={styles.successContainer}>
-           <Ionicons name="checkmark-circle" size={100} color={COLORS.success} />
-           <Text style={styles.successTitle}>Request Submitted!</Text>
-           <Text style={styles.successSub}>
-             Your community group creation request has been initiated. Invitations have been sent to your selected admins and members. Once they all accept, your local community group will be activated and become live!
-           </Text>
-           <TouchableOpacity style={styles.finishButton} onPress={() => router.replace('/(tabs)/messages')}>
-             <Text style={styles.finishButtonText}>Back to Chats</Text>
-           </TouchableOpacity>
-        </View>
-      )}
+        {step === 2 && renderStep2()}
+        {step === 3 && renderStep3()}
+        {step === 4 && renderStep4()}
+        {step === 5 && renderStep5()}
+        {step === 6 && renderStep6()}
+        {step === 7 && renderStep7()}
+        {step === 8 && renderStep8()}
+        {step === 9 && (
+          <View style={styles.successContainer}>
+             <Ionicons name="checkmark-circle" size={100} color={COLORS.success} />
+             <Text style={styles.successTitle}>Request Submitted!</Text>
+             <Text style={styles.successSub}>
+               Your community group creation request has been initiated. Invitations have been sent to your selected admins and members. Once they all accept, your local community group will be activated and become live!
+             </Text>
+             <TouchableOpacity style={[styles.finishButton, { marginBottom: bottomPadding }]} onPress={() => router.replace('/(tabs)/messages')}>
+               <Text style={styles.finishButtonText}>Back to Chats</Text>
+             </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

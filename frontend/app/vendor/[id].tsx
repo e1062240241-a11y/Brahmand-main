@@ -43,6 +43,7 @@ export default function VendorProfileScreen() {
   const [vendorLoading, setVendorLoading] = React.useState(false);
   const [vendorError, setVendorError] = React.useState(false);
   const [selectedImage, setSelectedImage] = React.useState<string | null>(null);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = React.useState(false);
 
   // Transition state & animation values for business creation (lasts 2.5-3 seconds)
   const [showCreationTransition, setShowCreationTransition] = React.useState(justCreated === 'true');
@@ -484,7 +485,32 @@ export default function VendorProfileScreen() {
           </View>
 
           {vendor.business_description ? (
-            <Text style={styles.businessDescriptionText}>{vendor.business_description}</Text>
+            <View style={{ marginTop: 12 }}>
+              <Text
+                style={[styles.businessDescriptionText, { marginTop: 0 }]}
+                numberOfLines={isDescriptionExpanded ? undefined : 3}
+              >
+                {vendor.business_description}
+              </Text>
+              {vendor.business_description.length > 90 && (
+                <TouchableOpacity
+                  onPress={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                  activeOpacity={0.7}
+                  style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center' }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={styles.readMoreText}>
+                    {isDescriptionExpanded ? 'Read Less' : 'Read More'}
+                  </Text>
+                  <Ionicons
+                    name={isDescriptionExpanded ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color="#FF8D57"
+                    style={{ marginLeft: 3 }}
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
           ) : null}
 
           {/* Meta Info Row */}
@@ -934,6 +960,12 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     lineHeight: 20,
     marginTop: 12,
+    fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
+  },
+  readMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF8D57',
     fontFamily: Platform.OS === 'ios' ? 'SF Pro' : 'System',
   },
   metaRow: {

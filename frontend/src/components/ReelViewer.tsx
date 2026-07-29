@@ -16,7 +16,8 @@ import {
   Alert,
   AppState,
   ActionSheetIOS,
- Share, KeyboardAvoidingView, Keyboard } from 'react-native';
+  Share, KeyboardAvoidingView, Keyboard, BackHandler } from 'react-native';
+import { useTabBar } from '../contexts/TabBarContext';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { ReportModal } from './ReportModal';
@@ -1087,6 +1088,50 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const [reportCommentModalVisible, setReportCommentModalVisible] = useState(false);
   const [pendingReportComment, setPendingReportComment] = useState<any | null>(null);
   const [commentModalToRestore, setCommentModalToRestore] = useState(false);
+
+  // Tab bar visibility control
+  let showTabBar: (() => void) | undefined;
+  let hideTabBar: (() => void) | undefined;
+  try {
+    const tabBar = useTabBar();
+    showTabBar = tabBar.showTabBar;
+    hideTabBar = tabBar.hideTabBar;
+  } catch (e) {}
+
+  useEffect(() => {
+    if (isVisible) {
+      hideTabBar?.();
+    } else {
+      showTabBar?.();
+    }
+    return () => {
+      showTabBar?.();
+    };
+  }, [isVisible]);
+
+  // Hardware Back Button handler on Android
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !isVisible) return;
+    const backAction = () => {
+      if (reportCommentModalVisible) {
+        setReportCommentModalVisible(false);
+        return true;
+      }
+      if (isCommentVisible) {
+        setIsCommentVisible(false);
+        return true;
+      }
+      if (isShareVisible) {
+        setIsShareVisible(false);
+        return true;
+      }
+      showTabBar?.();
+      onClose?.();
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [isVisible, reportCommentModalVisible, isCommentVisible, isShareVisible, onClose]);
 
   const handleCommentMenuPress = useCallback((comment: any) => {
     if (!comment || !user?.id) return;

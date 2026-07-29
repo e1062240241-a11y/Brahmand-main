@@ -244,9 +244,9 @@ async function isOnline(): Promise<boolean> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
-    await fetch('https://clients3.google.com/generate_204', { method: 'HEAD', signal: controller.signal });
+    const res = await fetch('https://clients3.google.com/generate_204', { method: 'HEAD', signal: controller.signal }).catch(() => null);
     clearTimeout(timeout);
-    return true;
+    return !!res;
   } catch {
     return false;
   }

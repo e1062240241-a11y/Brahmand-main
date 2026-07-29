@@ -13,7 +13,8 @@ import {View,
   Pressable,
   ActivityIndicator,
   Keyboard,
-  Dimensions} from 'react-native';
+  Dimensions,
+  ScrollView} from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,7 +25,6 @@ import { FONTS } from '../src/constants/theme';
 import { BrandedLoading } from '../src/components/BrandedLoading';
 import { useAuthStore } from '../src/store/authStore';
 import Svg, { Path } from 'react-native-svg';
-import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -419,9 +419,10 @@ export default function MyKrishnaChat() {
 
           {/* ── Suggestions chips (only shown before first user message) ── */}
           {showSuggestions && !historyLoading && (
-            <KeyboardAwareScrollView
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
               style={styles.suggestionsScroll}
               contentContainerStyle={styles.suggestionsContent}
             >
@@ -435,7 +436,7 @@ export default function MyKrishnaChat() {
                   <Text style={styles.chipText}>{s}</Text>
                 </Pressable>
               ))}
-            </KeyboardAwareScrollView>
+            </ScrollView>
           )}
 
           {/* ── Info Banner ── */}
@@ -633,18 +634,23 @@ const styles = StyleSheet.create({
   },
 
   // Suggestion chips
-  suggestionsScroll: { maxHeight: 50 },
+  suggestionsScroll: {
+    flexGrow: 0,
+    maxHeight: 52,
+    marginBottom: 4,
+  },
   suggestionsContent: {
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 4,
     gap: 8,
     flexDirection: 'row',
+    alignItems: 'center',
   },
   chip: {
     backgroundColor: '#FFF',
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.2)',
     shadowColor: '#000',
@@ -652,11 +658,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chipText: {
     color: '#000',
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: FONTS.medium,
+    lineHeight: 18,
   },
 
   // Info Banner

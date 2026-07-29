@@ -59,6 +59,7 @@ const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export default function DiscoverCommunitiesScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -397,7 +398,7 @@ export default function DiscoverCommunitiesScreen() {
   const completedRequests = myRequests.filter(r => r.status !== 'pending');
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.headerBar}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -435,7 +436,7 @@ export default function DiscoverCommunitiesScreen() {
       ) : (
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom + 20, 60) }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => fetchAll(true)} />
           }

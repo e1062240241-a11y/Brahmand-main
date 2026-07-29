@@ -153,12 +153,12 @@ class FirebaseMessagingService:
         if not is_member:
             raise ValueError("Not a community member")
         
-        # Check verification (state and country groups require verification; city groups do not)
+        # Check verification (state and country groups require verification; city, interest, and user groups do not)
         community_doc = community if 'community' in locals() and community else await db.get_document('communities', community_id)
-        is_city_group = (community_doc.get('type') == 'city') if community_doc else False
+        is_restricted_group = (community_doc.get('type') in ['state', 'country', 'national']) if community_doc else False
         
-        if not is_city_group and not user.get('is_verified', False):
-            raise ValueError("Only verified members can post in community groups")
+        if is_restricted_group and not user.get('is_verified', False):
+            raise ValueError("Only verified members can post in State & National community groups")
         
         # Moderate content
         is_ok, reason = moderate_content(content)

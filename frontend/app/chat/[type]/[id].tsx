@@ -673,7 +673,19 @@ const ChatScreen = ({
           });
         } catch (e) {}
       }
-      Alert.alert('Error', error.response?.data?.detail || 'Failed to send message');
+      const errMsg = error.response?.data?.detail || error.message || 'Failed to send message';
+      if (errMsg.includes('Only verified members can post') || errMsg.includes('verified members')) {
+        Alert.alert(
+          'Verification Required',
+          'Only verified members can post in State and National community groups. Please verify your profile to post.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Verify Now', onPress: () => router.push('/kyc') }
+          ]
+        );
+      } else {
+        Alert.alert('Error', errMsg);
+      }
     }
   };
 

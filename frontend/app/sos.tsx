@@ -14,6 +14,7 @@ import { LocationPickerModal, LocationData } from '../src/components/LocationPic
 import { useAuthStore } from '../src/store/authStore';
 import { createSOSAlert, resolveMyActiveSOS, getMySOSAlert, reverseGeocode } from '../src/services/api';
 import { KeyboardAwareScrollView } from '../src/components/KeyboardAwareScrollView';
+import { fetchFullAddress } from '../src/utils/locationHelper';
 
 const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // On Android physical devices the effective screen area is smaller due to status bar + nav bar
@@ -89,7 +90,7 @@ export default function SOSScreen() {
         timestamp: Date.now(),
       });
       const parts = [locData.area, locData.city, locData.state].filter(Boolean);
-      setMicroLocation(parts.join(', ') || locData.display_name || '');
+      setMicroLocation(locData.display_name || parts.join(', ') || '');
       setGpsErrorType(null);
     }
     setPickerVisible(false);
@@ -185,19 +186,17 @@ export default function SOSScreen() {
         setLocation(loc);
         setGpsErrorType(null);
         try {
-          const results = await reverseGeocodeWithTimeout({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude
-          }, 3000);
+          let results: any[] = [];
+          try {
+            results = await reverseGeocodeWithTimeout({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude
+            }, 3000);
+          } catch (_) {}
           
-          if (results.length > 0) {
-            const place = results[0] as any;
-            const parts = [
-              place.name || place.street,
-              place.subLocality || place.district,
-              place.city,
-            ].filter(Boolean);
-            setMicroLocation(parts.join(', ') || '');
+          const fullAddr = await fetchFullAddress(loc.coords.latitude, loc.coords.longitude, results);
+          if (fullAddr) {
+            setMicroLocation(fullAddr);
           }
         } catch (e) {
           console.warn('[SOS] Reverse geocoding failed', e);

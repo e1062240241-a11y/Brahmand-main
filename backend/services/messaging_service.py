@@ -128,12 +128,12 @@ class MessagingService:
         if not is_member:
             raise ValueError("Not a community member")
         
-        # Check verification for posting (state and country groups require verification; city groups do not)
+        # Check verification for posting (state and country groups require verification; city, interest, and user groups do not)
         community_doc = community if 'community' in locals() and community else (await db.communities.find_one({"_id": ObjectId(community_id)}) if ObjectId.is_valid(community_id) else None)
-        is_city_group = (community_doc.get('type') == 'city') if community_doc else False
+        is_restricted_group = (community_doc.get('type') in ['state', 'country', 'national']) if community_doc else False
         
-        if not is_city_group and not user.get("is_verified", False):
-            raise ValueError("Only verified members can post in community groups")
+        if is_restricted_group and not user.get("is_verified", False):
+            raise ValueError("Only verified members can post in State & National community groups")
         
         # Content moderation
         is_ok, reason = moderate_content(content)
