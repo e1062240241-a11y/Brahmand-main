@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../database';
 
 export type LibraryBookProgress = {
@@ -32,8 +33,9 @@ export const useLibraryStore = create<LibraryState>()(
         try {
           await database.write(async () => {
             const collection = database.get('library_progress');
-            try {
-              const existing = await collection.find(progress.id);
+            const records = await collection.query(Q.where('id', progress.id)).fetch();
+            const existing = records && records.length > 0 ? records[0] : null;
+            if (existing) {
               await existing.update((record: any) => {
                 record.chapterName = progress.chapterName;
                 record.chapterNum = progress.chapterNum;
@@ -42,7 +44,7 @@ export const useLibraryStore = create<LibraryState>()(
                 record.progressPercent = progress.progressPercent;
                 record.lastOpenedTime = progress.lastOpenedTime;
               });
-            } catch {
+            } else {
               await collection.create((record: any) => {
                 record._raw.id = progress.id;
                 record.bookId = progress.id;

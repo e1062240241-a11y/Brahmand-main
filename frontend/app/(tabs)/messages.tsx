@@ -988,8 +988,9 @@ function MessagesScreen({
                 const communitiesCollection = database.get('communities');
                 const batchOps: any[] = [];
                 for (const comm of allComms) {
-                  try {
-                    const existing = await communitiesCollection.find(comm.id);
+                  const records = await communitiesCollection.query(Q.where('id', comm.id)).fetch();
+                  const existing = records && records.length > 0 ? records[0] : null;
+                  if (existing) {
                     batchOps.push(
                       existing.prepareUpdate((record: any) => {
                         record.name = comm.name;
@@ -999,7 +1000,7 @@ function MessagesScreen({
                         record.memberCount = comm.member_count || 0;
                       })
                     );
-                  } catch {
+                  } else {
                     batchOps.push(
                       communitiesCollection.prepareCreate((record: any) => {
                         record._raw.id = comm.id;
@@ -1109,8 +1110,9 @@ function MessagesScreen({
 
                 // Upsert Circles
                 for (const circle of allCircles) {
-                  try {
-                    const existing = await conversationsCollection.find(circle.id);
+                  const records = await conversationsCollection.query(Q.where('id', circle.id)).fetch();
+                  const existing = records && records.length > 0 ? records[0] : null;
+                  if (existing) {
                     batchOps.push(
                       existing.prepareUpdate((record: any) => {
                         record.name = circle.name;
@@ -1122,7 +1124,7 @@ function MessagesScreen({
                         record.updatedAt = new Date();
                       })
                     );
-                  } catch {
+                  } else {
                     batchOps.push(
                       conversationsCollection.prepareCreate((record: any) => {
                         record._raw.id = circle.id;
@@ -1142,8 +1144,9 @@ function MessagesScreen({
                 // Upsert DMs
                 for (const dm of allDMs) {
                   const dmId = dm.conversation_id || dm.id;
-                  try {
-                    const existing = await conversationsCollection.find(dmId);
+                  const records = await conversationsCollection.query(Q.where('id', dmId)).fetch();
+                  const existing = records && records.length > 0 ? records[0] : null;
+                  if (existing) {
                     batchOps.push(
                       existing.prepareUpdate((record: any) => {
                         record.name = dm.user?.name;
@@ -1157,7 +1160,7 @@ function MessagesScreen({
                         record.updatedAt = new Date();
                       })
                     );
-                  } catch {
+                  } else {
                     batchOps.push(
                       conversationsCollection.prepareCreate((record: any) => {
                         record._raw.id = dmId;

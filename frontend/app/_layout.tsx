@@ -1132,9 +1132,11 @@ export default function RootLayout() {
             (async () => {
               try {
                 const { database } = require('../src/database');
+                const { Q } = require('@nozbe/watermelondb');
                 if (database) {
                   const feedCollection = database.get('feeds');
-                  const post = await feedCollection.find(postId);
+                  const matchingPosts = await feedCollection.query(Q.where('id', postId)).fetch();
+                  const post = matchingPosts && matchingPosts.length > 0 ? matchingPosts[0] : null;
                   if (post) {
                     await database.write(async () => {
                       await post.destroyPermanently();
