@@ -998,6 +998,7 @@ export default function HomeScreen() {
         InteractionManager.runAfterInteractions(async () => {
           try {
             const { database } = require('../../src/database');
+            const { Q } = require('@nozbe/watermelondb');
             if (database) {
               const feedsCollection = database.get('feeds');
               const batchOperations: any[] = [];
@@ -1005,9 +1006,10 @@ export default function HomeScreen() {
                 const recordId = String(item.id || item.media_url);
                 if (!recordId) continue;
 
-                let existingRecord;
+                let existingRecord = null;
                 try {
-                  existingRecord = await feedsCollection.find(recordId);
+                  const matchingRecords = await feedsCollection.query(Q.where('id', recordId)).fetch();
+                  existingRecord = matchingRecords && matchingRecords.length > 0 ? matchingRecords[0] : null;
                 } catch {
                   existingRecord = null;
                 }

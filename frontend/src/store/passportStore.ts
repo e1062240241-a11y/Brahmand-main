@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { secureStorage } from '../utils/secureStorage';
+import { Q } from '@nozbe/watermelondb';
 import { database } from '../database';
 import { useAuthStore } from './authStore';
 import {
@@ -296,13 +297,14 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       try {
         await database.write(async () => {
           const coll = database.get('passport_badges');
-          try {
-            const existing = await coll.find(targetBadge.id);
+          const records = await coll.query(Q.where('id', targetBadge.id)).fetch();
+          const existing = records && records.length > 0 ? records[0] : null;
+          if (existing) {
             await existing.update((record: any) => {
               record.count = targetBadge.count;
               record.earnedAt = targetBadge.earned_at;
             });
-          } catch {
+          } else {
             await coll.create((record: any) => {
               record._raw.id = targetBadge.id;
               record.title = targetBadge.title;

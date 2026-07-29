@@ -216,9 +216,10 @@ export default function CommunityTweetsScreen() {
           const communityMessagesCollection = database.get('community_messages');
           for (const msg of apiMessages) {
             const recordId = msg.id || msg._id || Math.random().toString(36).substring(7);
-            let existingRecord;
+            let existingRecord = null;
             try {
-              existingRecord = await communityMessagesCollection.find(recordId);
+              const records = await communityMessagesCollection.query(Q.where('id', recordId)).fetch();
+              existingRecord = records && records.length > 0 ? records[0] : null;
             } catch {
               existingRecord = null;
             }
