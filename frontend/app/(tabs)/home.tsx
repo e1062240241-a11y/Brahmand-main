@@ -1575,6 +1575,15 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Always reset scroll to absolute top whenever user enters or comes back to Home screen
+      if (scrollViewRef.current) {
+        if (typeof (scrollViewRef.current as any).scrollToOffset === 'function') {
+          (scrollViewRef.current as any).scrollToOffset({ offset: 0, animated: false });
+        } else if (typeof scrollViewRef.current.scrollTo === 'function') {
+          scrollViewRef.current.scrollTo({ y: 0, animated: false });
+        }
+      }
+
       // ⚡ Instant Tab Switch: Render screen immediately, defer network/store syncs until animation finishes
       const task = InteractionManager.runAfterInteractions(() => {
         const currentActiveTab = useFeedStore.getState().activeTab;

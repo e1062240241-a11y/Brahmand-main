@@ -31,7 +31,6 @@ import { originalAlert } from '../src/utils/nativeAlert';
 import { setAudioModeAsync } from 'expo-audio';
 
 import * as ExpoLinking from 'expo-linking';
-import * as Updates from 'expo-updates';
 
 import { useLanguageStore } from '../src/utils/i18n';
 import { safeNavigate } from '../src/utils/safeNavigation';
@@ -800,16 +799,19 @@ export default function RootLayout() {
   useEffect(() => {
     initSyncQueueListener();
 
-    if (!__DEV__) {
+    if (!__DEV__ && Platform.OS !== 'web') {
       (async () => {
         try {
-          const update = await Updates.checkForUpdateAsync();
-          if (update.isAvailable) {
-            await Updates.fetchUpdateAsync();
-            await Updates.reloadAsync();
+          const Updates = require('expo-updates');
+          if (Updates && typeof Updates.checkForUpdateAsync === 'function') {
+            const update = await Updates.checkForUpdateAsync();
+            if (update && update.isAvailable) {
+              await Updates.fetchUpdateAsync();
+              await Updates.reloadAsync();
+            }
           }
         } catch (e) {
-          console.warn('[Updates] Failed to check for update:', e);
+          console.warn('[Updates] Auto-check skipped:', e);
         }
       })();
     }

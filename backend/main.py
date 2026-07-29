@@ -9133,9 +9133,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         has_id_photo = bool(data.get('id_photo'))
         if not otp_verified and not user_phone.startswith("+919999") and not has_id_photo:
             raise HTTPException(status_code=400, detail="Please verify Aadhaar OTP before submitting KYC")
-        # Relaxed check as requested to allow re-uploads of different Aadhaar documents
-        # if otp_aadhaar and otp_aadhaar != id_number:
-        #     raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
     # Compress and upload photos if provided
     id_photo = data.get('id_photo')

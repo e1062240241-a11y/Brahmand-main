@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Animated,
   TextInput,
+  AppState,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -256,7 +257,16 @@ export const PostFeedCard = memo(({
   }, [post, displayRatio, feedHeight]);
 
   const isFocused = useIsFocused();
-  const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen;
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      setAppState(nextAppState);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active';
   const videoRef = useRef<any>(null);
 
   useEffect(() => {
