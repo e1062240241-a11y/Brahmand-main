@@ -198,8 +198,18 @@ const ACCEPTED_MEDIA_TYPES = ["image/*", "video/*"];
 const ACCEPTED_VIDEO_MIME_TYPES = [
   "video/mp4",
   "video/quicktime",
+  "video/mov",
+  "video/x-mov",
   "video/webm",
   "video/x-matroska",
+  "video/m4v",
+  "video/x-m4v",
+  "video/hevc",
+  "video/3gpp",
+  "video/3gp",
+  "video/avi",
+  "video/x-msvideo",
+  "video/*",
 ];
 const FILTERS = ["Normal", "Vivid", "Warm", "Cool"];
 
@@ -613,8 +623,9 @@ export const UploadPostModal = ({
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") return alert("Camera permission is required.");
+    const mediaTypesToUse = ImagePicker.MediaTypeOptions?.All || ImagePicker.MediaTypeOptions?.Videos || ["images", "videos"];
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ["images", "videos"] as any,
+      mediaTypes: mediaTypesToUse as any,
       allowsEditing: false,
       quality: 0.9,
       videoMaxDuration: 60,
@@ -632,8 +643,9 @@ export const UploadPostModal = ({
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted")
       return alert("Photo library permission is required.");
+    const mediaTypesToUse = ImagePicker.MediaTypeOptions?.All || ImagePicker.MediaTypeOptions?.Videos || ["images", "videos"];
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images", "videos"] as any,
+      mediaTypes: mediaTypesToUse as any,
       allowsEditing: false,
       quality: 0.9,
       videoMaxDuration: 60,
@@ -662,6 +674,7 @@ export const UploadPostModal = ({
     }
     if (
       !mimeType.startsWith("image/") &&
+      !mimeType.startsWith("video/") &&
       !ACCEPTED_VIDEO_MIME_TYPES.includes(mimeType)
     ) {
       return alert("Only image files and mp4/mov videos are supported.");
@@ -700,23 +713,58 @@ export const UploadPostModal = ({
   };
 
   const handleAssetSelected = (asset: any) => {
-    const mimeType =
-      asset.mimeType || (asset.type === "video" ? "video/mp4" : "image/jpeg");
-    const mediaType = asset.type === "video" ? "video" : "image";
-    if (mediaType === "image" && !mimeType.startsWith("image/"))
+    if (!asset || !asset.uri) return;
+
+    const uriLower = (asset.uri || "").split("?")[0].toLowerCase();
+    const isVideoUri =
+      asset.type === "video" ||
+      asset.mediaType === "video" ||
+      (asset.mimeType && asset.mimeType.toLowerCase().startsWith("video/")) ||
+      uriLower.endsWith(".mp4") ||
+      uriLower.endsWith(".mov") ||
+      uriLower.endsWith(".m4v") ||
+      uriLower.endsWith(".webm") ||
+      uriLower.endsWith(".mkv") ||
+      uriLower.endsWith(".3gp") ||
+      uriLower.endsWith(".qt");
+
+    const mediaType: "image" | "video" = isVideoUri ? "video" : "image";
+
+    let mimeType = asset.mimeType;
+    if (!mimeType) {
+      if (mediaType === "video") {
+        if (uriLower.endsWith(".mov") || uriLower.endsWith(".qt")) {
+          mimeType = "video/quicktime";
+        } else {
+          mimeType = "video/mp4";
+        }
+      } else {
+        mimeType = "image/jpeg";
+      }
+    }
+
+    if (mediaType === "image" && !mimeType.startsWith("image/")) {
       return alert("Only image files are supported for photos.");
-    if (mediaType === "video" && !ACCEPTED_VIDEO_MIME_TYPES.includes(mimeType))
-      return alert("Only mp4 and mov videos are supported.");
+    }
 
     if (mediaType === "video") {
-      if (asset.duration && asset.duration > 60000) {
-        // 60 seconds (duration is usually in ms here for ImagePicker)
-        const toast = require("../store/toastStore").toast;
-        toast.error("Video size above limit. Maximum duration is 60 seconds.");
-        return;
+      const isAcceptedMime =
+        mimeType.startsWith("video/") ||
+        ACCEPTED_VIDEO_MIME_TYPES.includes(mimeType);
+
+      if (!isAcceptedMime) {
+        return alert("Only mp4 and mov videos are supported.");
+      }
+
+      if (asset.duration) {
+        const durationInSec = asset.duration > 1000 ? asset.duration / 1000 : asset.duration;
+        if (durationInSec > 60.5) {
+          const toast = require("../store/toastStore").toast;
+          toast.error("Video size above limit. Maximum duration is 60 seconds.");
+          return;
+        }
       }
       if (asset.fileSize && asset.fileSize > 1024 * 1024 * 1024) {
-        // 1GB
         const toast = require("../store/toastStore").toast;
         toast.error("Video size above limit. Maximum file size is 1GB.");
         return;
