@@ -604,7 +604,7 @@ const PostScreen = () => {
         theme="light"
       />
     );
-  }, [handleOpenComment, handleSharePost, handleRepost, handleUserPress]);
+  }, [activePostKey, handleOpenComment, handleSharePost, handleRepost, handleUserPress]);
 
   const keyExtractor = useCallback((item: any, index: number) => {
     if (!item || item.id === undefined || item.id === null) {
@@ -644,7 +644,6 @@ const PostScreen = () => {
           viewabilityConfig={viewabilityConfig}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          estimatedItemSize={500}
           contentContainerStyle={styles.listContent}
           ListFooterComponent={
             loadingMore ? (
