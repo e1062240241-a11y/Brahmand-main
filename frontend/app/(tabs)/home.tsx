@@ -1566,6 +1566,15 @@ export default function HomeScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Always reset scroll to absolute top whenever user enters or comes back to Home screen
+      if (scrollViewRef.current) {
+        if (typeof (scrollViewRef.current as any).scrollToOffset === 'function') {
+          (scrollViewRef.current as any).scrollToOffset({ offset: 0, animated: false });
+        } else if (typeof scrollViewRef.current.scrollTo === 'function') {
+          scrollViewRef.current.scrollTo({ y: 0, animated: false });
+        }
+      }
+
       // ⚡ Instant Tab Switch: Render screen immediately, defer network/store syncs until animation finishes
       const task = InteractionManager.runAfterInteractions(() => {
         const currentActiveTab = useFeedStore.getState().activeTab;
@@ -1765,8 +1774,10 @@ export default function HomeScreen() {
     }
   });
 
-  const handleHomeScroll = useCallback(() => {
+  const handleHomeScroll = useCallback((event: any) => {
     lastUserInteractionTime.current = Date.now();
+    const yOffset = event?.nativeEvent?.contentOffset?.y || 0;
+    currentScrollY.current = yOffset;
   }, []);
   const loadHomeRequests = useCallback(async () => {
     // Legacy function, replaced by initializeHome
@@ -1802,15 +1813,17 @@ export default function HomeScreen() {
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress' as any, () => {
       if (navigation.isFocused()) {
-        const isAtTop = currentScrollY.current <= 10;
+        const isAtTop = currentScrollY.current <= 15;
         if (isAtTop) {
           onRefresh();
         } else {
           if (scrollViewRef.current) {
-            if (typeof scrollViewRef.current.scrollTo === 'function') {
+            if (typeof (scrollViewRef.current as any).scrollToOffset === 'function') {
+              (scrollViewRef.current as any).scrollToOffset({ offset: 0, animated: true });
+            } else if (typeof scrollViewRef.current.scrollTo === 'function') {
               scrollViewRef.current.scrollTo({ y: 0, animated: true });
-            } else if (typeof (scrollViewRef.current as any).scrollToPosition === 'function') {
-              (scrollViewRef.current as any).scrollToPosition(0, 0, true);
+            } else if (typeof (scrollViewRef.current as any).scrollToIndex === 'function') {
+              (scrollViewRef.current as any).scrollToIndex({ index: 0, animated: true });
             }
           }
         }
@@ -3065,7 +3078,9 @@ export default function HomeScreen() {
                               fontSize: 12
                             }]}>
                               {hanumanStatus.isActive
-                                ? `${t('liveUntil')} ${hanumanStatus.sessionEnd ? formatTime(hanumanStatus.sessionEnd) : '5:00 PM'}`
+                                ? (t('language') === 'hi'
+                                    ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप पूर्ण`
+                                    : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done so far`)
                                 : (hanumanStatus.nextSessionStart
                                   ? (t('language') === 'hi' ? `${formatTime(hanumanStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(hanumanStatus.nextSessionStart)}`)
                                   : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
@@ -3754,6 +3769,7 @@ export default function HomeScreen() {
           <View style={{ flex: 1 }}>
             {/* @ts-ignore */}
             <FlashList<any>
+              ref={scrollViewRef}
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
               keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
               renderItem={renderFeedPost}

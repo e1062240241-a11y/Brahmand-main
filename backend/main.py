@@ -718,7 +718,7 @@ async def _create_post_document(
     return post_doc
 
 
-KNOWN_SYSTEM_STORAGE_FOLDERS = {'rAR1Nev9VOh836E0ATBz', 'meGpOhOsKmsDeNTnDjr3'}
+KNOWN_SYSTEM_STORAGE_FOLDERS = {'rAR1Nev9VOh836E0ATBz', 'meGpOhOsKmsDeNTnDjr3', 'OsMLOIVGUbV8hVDU0dpr', 'P28LHYDrR9WBsJoleKW0'}
 
 def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]] = None) -> list[dict]:
     """
@@ -746,6 +746,8 @@ def _deduplicate_posts(posts: list[dict], registered_user_ids: Optional[set[str]
                 if (
                     path_user_id != post_user_id
                     and path_user_id not in KNOWN_SYSTEM_STORAGE_FOLDERS
+                    and path_user_id != post.get('original_owner_id')
+                    and not post.get('is_transferred')
                     and (registered_user_ids is None or path_user_id in registered_user_ids)
                     and post.get('source') != 'repost'
                     and not post.get('original_post_id')
@@ -2922,10 +2924,6 @@ async def share_profile_preview(user_id: str):
             description = bio
         else:
             description = f"View {name}'s profile and posts on Brahmand App."
-            
-        photo = user_doc.get('photo') or user_doc.get('avatar_url')
-        if photo and isinstance(photo, str) and photo.startswith("http"):
-            image_url = photo
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -2980,10 +2978,6 @@ async def share_post_preview(post_id: str):
             description = caption
         else:
             title = f"Post by {username} on Brahmand"
-
-        media_url = post.get('media_url') or post.get('imageUrl') or post.get('image_url')
-        if media_url and isinstance(media_url, str) and media_url.startswith("http"):
-            image_url = media_url
 
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -9139,9 +9133,6 @@ async def submit_kyc(data: dict, token_data: dict = Depends(verify_token)):
         has_id_photo = bool(data.get('id_photo'))
         if not otp_verified and not user_phone.startswith("+919999") and not has_id_photo:
             raise HTTPException(status_code=400, detail="Please verify Aadhaar OTP before submitting KYC")
-        # Relaxed check as requested to allow re-uploads of different Aadhaar documents
-        # if otp_aadhaar and otp_aadhaar != id_number:
-        #     raise HTTPException(status_code=400, detail="Aadhaar number does not match the OTP-verified number")
     
     # Compress and upload photos if provided
     id_photo = data.get('id_photo')
@@ -15351,101 +15342,94 @@ async def push_sync_changes(body: dict = Body(...), token_data: dict = Depends(v
             except Exception as e:
                 logger.error("Error pushing community message created: %s", e)
 
-    if 'library_progress' in changes:
+    # ⚡ Bolt Optimization: Batch fetch & update user document for sync fields
+    user_sync_keys = ['library_progress', 'passport_journeys', 'passport_badges', 'passport_certificates']
+    if any(k in changes for k in user_sync_keys):
         try:
-            lib_changes = changes['library_progress']
             user_doc = await db.get_document('users', user_id)
             if user_doc:
-                current_lib = user_doc.get('library_progress', {})
-                for item in lib_changes.get('created', []) + lib_changes.get('updated', []):
-                    book_id = item.get('book_id')
-                    if book_id:
-                        current_lib[book_id] = {
-                            'chapterName': item.get('chapter_name', ''),
-                            'chapterNum': item.get('chapter_num', 0),
-                            'lastReadPage': item.get('last_read_page', 0),
-                            'totalPages': item.get('total_pages', 0),
-                            'progressPercent': item.get('progress_percent', 0),
-                            'lastOpenedTime': item.get('last_opened_time', 0)
-                        }
-                for book_id in lib_changes.get('deleted', []):
-                    current_lib.pop(book_id, None)
-                await db.update_document('users', user_id, {'library_progress': current_lib})
-        except Exception as e:
-            logger.error("Error pushing library progress: %s", e)
+                user_updates = {}
 
-    if 'passport_journeys' in changes:
-        try:
-            journey_changes = changes['passport_journeys']
-            user_doc = await db.get_document('users', user_id)
-            if user_doc:
-                current_journeys = user_doc.get('passport_journeys', [])
-                journey_dict = {j.get('id'): j for j in current_journeys if j.get('id')}
-                for item in journey_changes.get('created', []) + journey_changes.get('updated', []):
-                    jid = item.get('id')
-                    if jid:
-                        answers_raw = item.get('answers', '[]')
-                        try:
-                            answers_list = json.loads(answers_raw) if isinstance(answers_raw, str) else answers_raw
-                        except Exception:
-                            answers_list = []
-                        journey_dict[jid] = {
-                            'id': jid,
-                            'location': item.get('location', ''),
-                            'date': item.get('date', ''),
-                            'story': item.get('story', ''),
-                            'answers': answers_list
-                        }
-                for jid in journey_changes.get('deleted', []):
-                    journey_dict.pop(jid, None)
-                await db.update_document('users', user_id, {'passport_journeys': list(journey_dict.values())})
-        except Exception as e:
-            logger.error("Error pushing passport journeys: %s", e)
+                if 'library_progress' in changes:
+                    lib_changes = changes['library_progress']
+                    current_lib = user_doc.get('library_progress', {})
+                    for item in lib_changes.get('created', []) + lib_changes.get('updated', []):
+                        book_id = item.get('book_id')
+                        if book_id:
+                            current_lib[book_id] = {
+                                'chapterName': item.get('chapter_name', ''),
+                                'chapterNum': item.get('chapter_num', 0),
+                                'lastReadPage': item.get('last_read_page', 0),
+                                'totalPages': item.get('total_pages', 0),
+                                'progressPercent': item.get('progress_percent', 0),
+                                'lastOpenedTime': item.get('last_opened_time', 0)
+                            }
+                    for book_id in lib_changes.get('deleted', []):
+                        current_lib.pop(book_id, None)
+                    user_updates['library_progress'] = current_lib
 
-    if 'passport_badges' in changes:
-        try:
-            badge_changes = changes['passport_badges']
-            user_doc = await db.get_document('users', user_id)
-            if user_doc:
-                current_badges = user_doc.get('passport_badges', [])
-                badge_dict = {b.get('id'): b for b in current_badges if b.get('id')}
-                for item in badge_changes.get('created', []) + badge_changes.get('updated', []):
-                    bid = item.get('id')
-                    if bid:
-                        badge_dict[bid] = {
-                            'id': bid,
-                            'title': item.get('title', ''),
-                            'description': item.get('description', ''),
-                            'earned_at': item.get('earned_at', ''),
-                            'count': item.get('count', 1)
-                        }
-                for bid in badge_changes.get('deleted', []):
-                    badge_dict.pop(bid, None)
-                await db.update_document('users', user_id, {'passport_badges': list(badge_dict.values())})
-        except Exception as e:
-            logger.error("Error pushing passport badges: %s", e)
+                if 'passport_journeys' in changes:
+                    journey_changes = changes['passport_journeys']
+                    current_journeys = user_doc.get('passport_journeys', [])
+                    journey_dict = {j.get('id'): j for j in current_journeys if j.get('id')}
+                    for item in journey_changes.get('created', []) + journey_changes.get('updated', []):
+                        jid = item.get('id')
+                        if jid:
+                            answers_raw = item.get('answers', '[]')
+                            try:
+                                answers_list = json.loads(answers_raw) if isinstance(answers_raw, str) else answers_raw
+                            except Exception:
+                                answers_list = []
+                            journey_dict[jid] = {
+                                'id': jid,
+                                'location': item.get('location', ''),
+                                'date': item.get('date', ''),
+                                'story': item.get('story', ''),
+                                'answers': answers_list
+                            }
+                    for jid in journey_changes.get('deleted', []):
+                        journey_dict.pop(jid, None)
+                    user_updates['passport_journeys'] = list(journey_dict.values())
 
-    if 'passport_certificates' in changes:
-        try:
-            cert_changes = changes['passport_certificates']
-            user_doc = await db.get_document('users', user_id)
-            if user_doc:
-                current_certs = user_doc.get('passport_certificates', [])
-                cert_dict = {c.get('id'): c for c in current_certs if c.get('id')}
-                for item in cert_changes.get('created', []) + cert_changes.get('updated', []):
-                    cid = item.get('id')
-                    if cid:
-                        cert_dict[cid] = {
-                            'id': cid,
-                            'book_name': item.get('book_name', ''),
-                            'completion_days': item.get('completion_days', 0),
-                            'date': item.get('date', '')
-                        }
-                for cid in cert_changes.get('deleted', []):
-                    cert_dict.pop(cid, None)
-                await db.update_document('users', user_id, {'passport_certificates': list(cert_dict.values())})
+                if 'passport_badges' in changes:
+                    badge_changes = changes['passport_badges']
+                    current_badges = user_doc.get('passport_badges', [])
+                    badge_dict = {b.get('id'): b for b in current_badges if b.get('id')}
+                    for item in badge_changes.get('created', []) + badge_changes.get('updated', []):
+                        bid = item.get('id')
+                        if bid:
+                            badge_dict[bid] = {
+                                'id': bid,
+                                'title': item.get('title', ''),
+                                'description': item.get('description', ''),
+                                'earned_at': item.get('earned_at', ''),
+                                'count': item.get('count', 1)
+                            }
+                    for bid in badge_changes.get('deleted', []):
+                        badge_dict.pop(bid, None)
+                    user_updates['passport_badges'] = list(badge_dict.values())
+
+                if 'passport_certificates' in changes:
+                    cert_changes = changes['passport_certificates']
+                    current_certs = user_doc.get('passport_certificates', [])
+                    cert_dict = {c.get('id'): c for c in current_certs if c.get('id')}
+                    for item in cert_changes.get('created', []) + cert_changes.get('updated', []):
+                        cid = item.get('id')
+                        if cid:
+                            cert_dict[cid] = {
+                                'id': cid,
+                                'book_name': item.get('book_name', ''),
+                                'completion_days': item.get('completion_days', 0),
+                                'date': item.get('date', '')
+                            }
+                    for cid in cert_changes.get('deleted', []):
+                        cert_dict.pop(cid, None)
+                    user_updates['passport_certificates'] = list(cert_dict.values())
+
+                if user_updates:
+                    await db.update_document('users', user_id, user_updates)
         except Exception as e:
-            logger.error("Error pushing passport certificates: %s", e)
+            logger.error("Error pushing batched user sync changes: %s", e)
 
     return Response(status_code=200)
 

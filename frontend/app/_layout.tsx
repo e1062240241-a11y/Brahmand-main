@@ -804,6 +804,23 @@ export default function RootLayout() {
 
   useEffect(() => {
     initSyncQueueListener();
+
+    if (!__DEV__ && Platform.OS !== 'web') {
+      (async () => {
+        try {
+          const Updates = require('expo-updates');
+          if (Updates && typeof Updates.checkForUpdateAsync === 'function') {
+            const update = await Updates.checkForUpdateAsync();
+            if (update && update.isAvailable) {
+              await Updates.fetchUpdateAsync();
+              await Updates.reloadAsync();
+            }
+          }
+        } catch (e) {
+          console.warn('[Updates] Auto-check skipped:', e);
+        }
+      })();
+    }
   }, []);
 
   useEffect(() => {

@@ -1268,14 +1268,12 @@ function MessagesScreen({
     if (!isFocused) return;
     if (activeTopTab === 'Community' && requests.length > 0) {
       const totalCount = requests.length;
+      let currentIndex = 0;
       const timer = setInterval(() => {
-        setActiveRequestIndex((prev) => {
-          const nextIndex = (prev + 1) % totalCount;
-          const cardWidth = 132; // actual layout card width (120) + margin (12)
-          activeRequestScrollRef.current?.scrollTo({ x: nextIndex * cardWidth, animated: true });
-          return nextIndex;
-        });
-      }, 4000); // Advance every 4 seconds
+        currentIndex = (currentIndex + 1) % totalCount;
+        const cardWidth = 132;
+        activeRequestScrollRef.current?.scrollTo({ x: currentIndex * cardWidth, animated: true });
+      }, 5000); // 5 seconds interval, direct ref scroll without state re-render loop
       return () => clearInterval(timer);
     }
   }, [activeTopTab, requests.length, isFocused]);
@@ -1504,7 +1502,7 @@ function MessagesScreen({
         overScrollMode="never"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
         onScroll={onMessagesScrollTabBar}
-        scrollEventThrottle={16}
+        scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
       >
         {activeTopTab === 'Community' ? (
           !hasValidLocation ? (

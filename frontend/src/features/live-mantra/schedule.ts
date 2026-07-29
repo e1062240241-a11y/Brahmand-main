@@ -196,8 +196,8 @@ export type HanumanSession = {
 };
 
 export const HANUMAN_SESSIONS: HanumanSession[] = [
-  { name: 'Morning', startHour: 6, startMin: 0, endHour: 12, endMin: 0, reps: 26, startRoundOffset: 1 },
-  { name: 'Evening', startHour: 18, startMin: 0, endHour: 0, endMin: 0, reps: 25, startRoundOffset: 27 },
+  { name: 'Morning', startHour: 6, startMin: 0, endHour: 12, endMin: 0, reps: 21, startRoundOffset: 1 },
+  { name: 'Evening', startHour: 18, startMin: 0, endHour: 0, endMin: 0, reps: 21, startRoundOffset: 22 },
 ];
 
 export const CHALISA_DURATION = 961.39; // seconds
@@ -228,30 +228,27 @@ export const getCurrentHanumanStatus = (now = new Date()): HanumanStatus => {
   for (const session of HANUMAN_SESSIONS) {
     let isMatch = false;
     let sessionStart = new Date(now);
-    let sessionEnd = new Date(now);
-
+    
+    // Calculate session start time
     if (session.endHour < session.startHour || (session.endHour === session.startHour && session.endMin < session.startMin)) {
       if (currentHour >= session.startHour || (currentHour === session.startHour && currentMin >= session.startMin)) {
         sessionStart.setHours(session.startHour, session.startMin, 0, 0);
-        sessionEnd.setDate(sessionEnd.getDate() + 1);
-        sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
-        isMatch = now >= sessionStart && now < sessionEnd;
       } else if (currentHour < session.endHour || (currentHour === session.endHour && currentMin < session.endMin)) {
         sessionStart.setDate(sessionStart.getDate() - 1);
         sessionStart.setHours(session.startHour, session.startMin, 0, 0);
-        sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
-        isMatch = now >= sessionStart && now < sessionEnd;
       }
     } else {
       sessionStart.setHours(session.startHour, session.startMin, 0, 0);
-      sessionEnd.setHours(session.endHour, session.endMin, 0, 0);
-      isMatch = now >= sessionStart && now < sessionEnd;
     }
+
+    const chalisaDurationMs = CHALISA_DURATION * 1000;
+    const cycleDurationMs = (CHALISA_DURATION + 10) * 1000;
+    const sessionEnd = new Date(sessionStart.getTime() + session.reps * cycleDurationMs);
+
+    isMatch = now >= sessionStart && now < sessionEnd;
 
     if (isMatch) {
       const elapsedMs = now.getTime() - sessionStart.getTime();
-      const chalisaDurationMs = CHALISA_DURATION * 1000;
-      const cycleDurationMs = (CHALISA_DURATION + 10) * 1000;
       const currentRep = Math.floor(elapsedMs / cycleDurationMs);
 
       if (currentRep < session.reps) {

@@ -595,7 +595,7 @@ const PostScreen = () => {
     return (
       <PostFeedCard
         post={item}
-        isActive={activePostKeyRef.current === postKey}
+        isActive={activePostKey === postKey}
         onComment={handleOpenComment}
         openCommentsOnCaptionPress
         onShare={handleSharePost}
@@ -604,7 +604,7 @@ const PostScreen = () => {
         theme="light"
       />
     );
-  }, [handleOpenComment, handleSharePost, handleRepost, handleUserPress]);
+  }, [activePostKey, handleOpenComment, handleSharePost, handleRepost, handleUserPress]);
 
   const keyExtractor = useCallback((item: any, index: number) => {
     if (!item || item.id === undefined || item.id === null) {
@@ -631,6 +631,12 @@ const PostScreen = () => {
       ) : (
         <SafeFlashList
           ref={listRef}
+          extraData={activePostKey}
+          removeClippedSubviews={true}
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          windowSize={3}
+          estimatedItemSize={550}
           data={visibleFeedPosts}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
@@ -638,7 +644,6 @@ const PostScreen = () => {
           viewabilityConfig={viewabilityConfig}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
-          estimatedItemSize={500}
           contentContainerStyle={styles.listContent}
           ListFooterComponent={
             loadingMore ? (

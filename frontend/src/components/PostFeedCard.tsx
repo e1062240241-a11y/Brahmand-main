@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Animated,
   TextInput,
+  AppState,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -134,6 +135,18 @@ export const PostFeedCard = memo(({
 
   const [dynamicRatio, setDynamicRatio] = useState(initialRawRatio || 4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+  const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+
+  useEffect(() => {
+    if (isActive && !shouldLoadVideo) {
+      setShouldLoadVideo(true);
+    }
+  }, [isActive, shouldLoadVideo]);
+
+  // Reset video loading state when view is recycled by FlashList
+  useEffect(() => {
+    setShouldLoadVideo(false);
+  }, [post?.id]);
 
   useEffect(() => {
     if (initialRawRatio) {
@@ -151,7 +164,7 @@ export const PostFeedCard = memo(({
     post?.thumbnailUrl;
 
   const posterUrl = String(
-    post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || ''
+    post?.thumbnail_url || post?.thumbnailUrl || post?.metadata?.thumbnail_url || post?.metadata?.thumbnailUrl || rawMediaUrl || ''
   );
   let mediaUrl = rawMediaUrl ? String(rawMediaUrl) : '';
   if (mediaUrl.includes('.a.run.app') && mediaUrl.startsWith('http://')) {
@@ -274,7 +287,16 @@ export const PostFeedCard = memo(({
   }, [post, displayRatio, feedHeight]);
 
   const isFocused = useIsFocused();
-  const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen;
+  const [appState, setAppState] = useState(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      setAppState(nextAppState);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active';
   const videoRef = useRef<any>(null);
 
   useEffect(() => {
@@ -557,28 +579,38 @@ export const PostFeedCard = memo(({
                 </>
               ) : (
                 <>
-                  {isActive ? (
+                  {/* Always mount poster underneath */}
+                  <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
+                    {videoPosterUrl ? (
+                      <Image
+                        source={{ uri: videoPosterUrl }}
+                        style={[StyleSheet.absoluteFill, getFilterStyle(filterName)]}
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        priority={isActive || shouldLoadVideo ? "high" : "low"}
+                        transition={0}
+                        onLoad={() => {
+                          if (!shouldLoadVideo) setMediaLoading(false);
+                        }}
+                        onError={handlePosterError}
+                      />
+                    ) : null}
+                  </View>
+
+                  {/* Mount video on top only when shouldLoadVideo is true */}
+                  {shouldLoadVideo && (
                     <NativeVideoPlayer
                       mediaUrl={mediaUrl}
                       shouldPlay={shouldPlay}
                       isMuted={isMuted}
                       onFirstFrameRender={() => setMediaLoading(false)}
-                      style={cropStyle ? { ...cropStyle, ...getFilterStyle(filterName) } : { width: '100%', height: '100%', ...getFilterStyle(filterName) }}
+                      style={[
+                        StyleSheet.absoluteFill,
+                        { zIndex: 3 },
+                        cropStyle ? { ...cropStyle, ...getFilterStyle(filterName) } : { ...getFilterStyle(filterName) }
+                      ]}
                       contentFit="cover"
                     />
-                  ) : (
-                    <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
-                      {videoPosterUrl ? (
-                        <Image
-                          source={{ uri: videoPosterUrl }}
-                          style={StyleSheet.absoluteFill}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          priority="low"
-                          onError={handlePosterError}
-                        />
-                      ) : null}
-                    </View>
                   )}
                 </>
               )}
