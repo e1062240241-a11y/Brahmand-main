@@ -3087,7 +3087,9 @@ export default function HomeScreen() {
                               fontSize: 12
                             }]}>
                               {hanumanStatus.isActive
-                                ? `${t('liveUntil')} ${hanumanStatus.sessionEnd ? formatTime(hanumanStatus.sessionEnd) : '5:00 PM'}`
+                                ? (t('language') === 'hi'
+                                    ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप पूर्ण`
+                                    : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done so far`)
                                 : (hanumanStatus.nextSessionStart
                                   ? (t('language') === 'hi' ? `${formatTime(hanumanStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(hanumanStatus.nextSessionStart)}`)
                                   : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}

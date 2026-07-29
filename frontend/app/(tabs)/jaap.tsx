@@ -761,7 +761,9 @@ export default function JaapLandingScreen() {
                     if (hanumanStatus.isCompleted) {
                       liveLabel = t('language') === 'hi' ? 'पूरा हुआ' : 'COMPLETED';
                     } else {
-                      liveLabel = t('language') === 'hi' ? `लाइव • ${hanumanStatus.roundOfDay}/51` : `LIVE • ${hanumanStatus.roundOfDay}/51`;
+                      liveLabel = t('language') === 'hi'
+                        ? `लाइव • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप`
+                        : `LIVE • ${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done`;
                     }
                   } else {
                     if (hanumanStatus.nextSessionStart) {
