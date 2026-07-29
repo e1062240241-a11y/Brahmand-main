@@ -143,8 +143,16 @@ const UserProfileScreen = () => {
   }, [postModalVisible, commentModalVisible]);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      setViewablePostId(viewableItems[0].item.id);
+    if (viewableItems && viewableItems.length > 0) {
+      let mostVisible = viewableItems[0];
+      for (const v of viewableItems) {
+        if (v && v.isViewable && (v.percentVisible ?? 0) > (mostVisible?.percentVisible ?? 0)) {
+          mostVisible = v;
+        }
+      }
+      if (mostVisible?.item?.id) {
+        setViewablePostId(mostVisible.item.id);
+      }
     }
   }).current;
 

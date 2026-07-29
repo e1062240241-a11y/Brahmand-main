@@ -573,18 +573,30 @@ const PostScreen = () => {
     }
   }, [router]);
 
-  const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 60 }).current;
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 45,
+    minimumViewTime: 100,
+  }).current;
   const activePostKeyRef = useRef<string | null>(null);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
     if (viewableItems && viewableItems.length > 0) {
-      const valid = viewableItems.find((v: any) => v.isViewable && (v.item?.id || v.item?.id === 0)) || viewableItems[0];
-      const key = valid?.item?.id !== undefined ? String(valid.item.id) : String(valid?.key || '');
-      if (key && key !== activePostKeyRef.current) {
-        activePostKeyRef.current = key;
-        setActivePostKey(key);
-        if (valid.item?.id) {
-          seenPostIdsRef.current.add(String(valid.item.id));
+      let mostVisible = viewableItems[0];
+      for (const v of viewableItems) {
+        if (v && v.isViewable && (v.percentVisible ?? 0) > (mostVisible?.percentVisible ?? 0)) {
+          mostVisible = v;
+        }
+      }
+      if (mostVisible && mostVisible.item) {
+        const key = mostVisible.item.id !== undefined && mostVisible.item.id !== null
+          ? String(mostVisible.item.id)
+          : String(mostVisible.key || '');
+        if (key && key !== activePostKeyRef.current) {
+          activePostKeyRef.current = key;
+          setActivePostKey(key);
+          if (mostVisible.item.id) {
+            seenPostIdsRef.current.add(String(mostVisible.item.id));
+          }
         }
       }
     }
