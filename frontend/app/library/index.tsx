@@ -337,6 +337,18 @@ function LibraryPage() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+
+          {/* ── Katha Button ── */}
+          <View style={styles.jathaBtnWrapper}>
+            <TouchableOpacity
+              style={styles.jathaBtn}
+              onPress={() => router.push('/library/katha' as any)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.jathaBtnText}>Katha</Text>
+              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
+            </TouchableOpacity>
+          </View>
         </View>
 
 
@@ -748,6 +760,30 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: FONTS.bold,
     fontWeight: '600',
+  },
+  jathaBtnWrapper: {
+    paddingHorizontal: H_PADDING,
+    marginTop: 14,
+  },
+  jathaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: ORANGE,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    shadowColor: ORANGE,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  jathaBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: FONTS.bold,
   },
 });
 

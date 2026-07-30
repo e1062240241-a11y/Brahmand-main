@@ -41,17 +41,27 @@ const UploadVideoPreview = React.memo(({
   uri,
   style,
   selectedFilter,
+  isMuted = false,
 }: {
   uri: string;
   style: any;
   selectedFilter: any;
+  isMuted?: boolean;
 }) => {
   const player = useSafeVideoPlayer(uri, (p) => {
     if (p) {
       p.loop = true;
-      p.muted = false;
+      p.muted = isMuted;
     }
   });
+
+  useEffect(() => {
+    if (isPlayerValid(player)) {
+      try {
+        player.muted = isMuted;
+      } catch (e) {}
+    }
+  }, [player, isMuted]);
 
   useEffect(() => {
     if (isPlayerValid(player)) {
@@ -161,7 +171,13 @@ UploadingProgress.displayName = "UploadingProgress";
 let UploadDocumentPicker: any = null;
 const getUploadDocumentPicker = async () => {
   if (!UploadDocumentPicker) {
-    UploadDocumentPicker = await import("expo-document-picker");
+    try {
+      const mod = await import("expo-document-picker");
+      UploadDocumentPicker = mod?.getDocumentAsync ? mod : (mod?.default || mod);
+    } catch (err) {
+      console.warn("Failed to load expo-document-picker:", err);
+      UploadDocumentPicker = null;
+    }
   }
   return UploadDocumentPicker;
 };
@@ -656,7 +672,12 @@ export const UploadPostModal = ({
 
   const selectFromFiles = async () => {
     const DocumentPicker = await getUploadDocumentPicker();
-    const result = await DocumentPicker.getDocumentAsync({
+    const getDocFn = DocumentPicker?.getDocumentAsync || DocumentPicker?.default?.getDocumentAsync;
+    if (!getDocFn) {
+      alert("Document picker module is unavailable. Please select from photo gallery or rebuild the native app.");
+      return;
+    }
+    const result = await getDocFn({
       type: ACCEPTED_MEDIA_TYPES,
       multiple: false,
       copyToCacheDirectory: true,
@@ -1005,7 +1026,7 @@ export const UploadPostModal = ({
                       <video
                         src={selectedMedia.uri}
                         loop
-                        muted
+                        muted={mutedAudio}
                         autoPlay
                         style={{
                           width: "100%",
@@ -1019,6 +1040,7 @@ export const UploadPostModal = ({
                         uri={selectedMedia.uri}
                         style={videoPreviewStyle}
                         selectedFilter={selectedFilter}
+                        isMuted={mutedAudio}
                       />
                     ) : (
                       <View

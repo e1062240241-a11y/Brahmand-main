@@ -75,6 +75,9 @@ const getTempleImageByName = (name: string) => {
   if (lowerName.includes('shirdi') || lowerName.includes('sai baba')) {
     return TEMPLE_IMAGES['other-shirdi-sai-baba-temple-maharashtra'];
   }
+  if (lowerName.includes('dwarkadhish') || lowerName.includes('dwarakdhish') || lowerName.includes('dwarakadheesh') || lowerName.includes('dwarka')) {
+    return TEMPLE_IMAGES['jyotirling-nageshwar-temple-dwarka'];
+  }
   if (lowerName.includes('tirumala') || lowerName.includes('venkateswara') || lowerName.includes('tirupati') || lowerName.includes('balaji')) {
     return TEMPLE_IMAGES['other-tirupati-balaji-temple-andhra-pradesh'];
   }

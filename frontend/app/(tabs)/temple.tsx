@@ -200,6 +200,37 @@ export default function TempleScreen() {
     }
   }, [searchQuery, selectedCategory, selectedLocations]);
 
+  // Fallback to API data if WatermelonDB hasn't populated displayTemples
+  useEffect(() => {
+    if (displayTemples.length === 0 && temples.length > 0) {
+      let filtered = [...temples];
+      if (selectedCategory !== 'All') {
+        if (selectedCategory === 'Jyotirlinga') {
+          filtered = filtered.filter((t: any) => t.category === 'Jyotirlinga');
+        } else {
+          filtered = filtered.filter((t: any) => t.category !== 'Jyotirlinga');
+        }
+      }
+      if (searchQuery.trim().length > 0) {
+        const q = searchQuery.trim().toLowerCase();
+        filtered = filtered.filter((t: any) => 
+          (t.name || '').toLowerCase().includes(q) ||
+          (getTempleLocation(t) || '').toLowerCase().includes(q) ||
+          (t.deity || '').toLowerCase().includes(q)
+        );
+      }
+      setDisplayTemples(filtered.map((t: any) => ({
+        id: t.temple_id || t.id,
+        name: t.name,
+        location: t.location,
+        deity: t.deity,
+        category: t.category,
+        image_url: t.image_url,
+        is_verified: t.is_verified,
+      })));
+    }
+  }, [temples, displayTemples.length, selectedCategory, searchQuery]);
+
   // Reset pagination on filter or search parameters change
   useEffect(() => {
     loadMoreTemples(1, true);
@@ -241,23 +272,24 @@ export default function TempleScreen() {
             const localTemplesMap = new Map(localTemples.map((t: any) => [t.templeId, t]));
 
             const recordsToCreateOrUpdate = response.data.map((temple: any) => {
-              const existingRecord = localTemplesMap.get(String(temple.id)) as any;
+              const templeKey = String(temple.temple_id || temple.id);
+              const existingRecord = localTemplesMap.get(templeKey) as any;
               if (existingRecord) {
                 return existingRecord.prepareUpdate((record: any) => {
                   record.name = temple.name || '';
-                  record.location = temple.location || '';
+                  record.location = typeof temple.location === 'object' ? [temple.location.area, temple.location.city, temple.location.state].filter(Boolean).join(', ') : (temple.location || '');
                   record.deity = temple.deity || '';
-                  record.category = temple.category || '';
+                  record.category = temple.category || 'Sacred';
                   record.imageUrl = temple.image_url || '';
                   record.isVerified = temple.is_verified || false;
                 });
               } else {
                 return templeCollection.prepareCreate((record: any) => {
-                  record.templeId = String(temple.id);
+                  record.templeId = templeKey;
                   record.name = temple.name || '';
-                  record.location = temple.location || '';
+                  record.location = typeof temple.location === 'object' ? [temple.location.area, temple.location.city, temple.location.state].filter(Boolean).join(', ') : (temple.location || '');
                   record.deity = temple.deity || '';
-                  record.category = temple.category || '';
+                  record.category = temple.category || 'Sacred';
                   record.imageUrl = temple.image_url || '';
                   record.isVerified = temple.is_verified || false;
                 });

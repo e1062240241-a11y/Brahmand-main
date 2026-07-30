@@ -230,30 +230,24 @@ async def lifespan(app: FastAPI):
     _panchang_prefetch_task = None
     logger.info("Panchang prefetch loop disabled")
     
-    # Update ISKCON Bangalore temple (Robust)
-    async def update_iskcon():
+    # Ensure Shri Dwarkadhish Temple and ISKCON exist/update in backend DB
+    async def seed_missing_temples():
         try:
             db = await get_db()
-            # Find the temple first
-            temples = await db.query_documents('temples', limit=100)
-            target_id = None
-            for t in temples:
-                if t.get('temple_id') == 'other-iskcon-temple-bangalore-karnataka' or 'ISKCON Temple Bangalore' in t.get('name', ''):
-                    target_id = t.get('id') # Actual Firestore document ID
-                    break
-            
-            if target_id:
-                await db.update_document('temples', target_id, {
-                    'name': 'ISKCON Bangalore aarti',
-                    'youtube_url': 'https://www.youtube.com/live/cVlUJPTObdk?si=CZlANF07SSYPDMj3'
-                })
-                logger.info(f"Successfully updated ISKCON Bangalore temple (Doc ID: {target_id}).")
-            else:
-                logger.warning("ISKCON Bangalore temple not found in database!")
+            from data.temple_seed_data import TEMPLE_SEED_DATA
+            for t_data in TEMPLE_SEED_DATA:
+                existing = await db.find_one('temples', [('temple_id', '==', t_data['temple_id'])])
+                if not existing:
+                    doc = dict(t_data)
+                    doc['followers'] = []
+                    doc['community_type'] = 'temple_channel'
+                    doc['created_at'] = datetime.utcnow()
+                    await db.create_document('temples', doc)
+                    logger.info(f"Auto-seeded temple: {t_data['name']}")
         except Exception as e:
-            logger.error(f"Failed to update ISKCON Bangalore: {e}")
+            logger.error(f"Failed auto-seeding temples: {e}")
     
-    asyncio.create_task(update_iskcon())
+    asyncio.create_task(seed_missing_temples())
     
     yield
     

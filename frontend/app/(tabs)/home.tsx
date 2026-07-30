@@ -637,6 +637,7 @@ export default function HomeScreen() {
     { id: 'other-shirdi-sai-baba-temple-maharashtra', name: 'Shirdi Sai Baba Aarti' },
     { id: 'shri-mahalakshmi-mandir', name: 'Shri Mahalakshmi Mandir' },
     { id: 'other-iskcon-temple-bangalore-karnataka', name: 'ISKCON Bangalore' },
+    { id: 'other-shri-dwarkadhish-temple-dwarka', name: 'Shri Dwarkadhish Temple' },
     { id: 'other-siddhivinayak-temple-mumbai', name: 'Shree Siddhivinayak Ganapati Temple' },
     { id: 'other-tirupati-balaji-temple-andhra-pradesh', name: 'Tirupati Balaji Temple' }
   ];
@@ -650,6 +651,7 @@ export default function HomeScreen() {
     'other-shirdi-sai-baba-temple-maharashtra': 'https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A',
     'shri-mahalakshmi-mandir': 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
     'other-iskcon-temple-bangalore-karnataka': 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
+    'other-shri-dwarkadhish-temple-dwarka': 'https://www.youtube.com/embed/live_stream?channel=UCcMSlXWOYWCPiFR3-sM-rEg',
     'other-siddhivinayak-temple-mumbai': 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
     'other-tirupati-balaji-temple-andhra-pradesh': 'https://www.youtube.com/live/dwsS3bxweBw?si=QsVpIa_kHuh0FPB6'
   };
@@ -1780,7 +1782,8 @@ export default function HomeScreen() {
     lastUserInteractionTime.current = Date.now();
     const yOffset = event?.nativeEvent?.contentOffset?.y || 0;
     currentScrollY.current = yOffset;
-  }, []);
+    onHomeScrollTabBar(event);
+  }, [onHomeScrollTabBar]);
   const loadHomeRequests = useCallback(async () => {
     // Legacy function, replaced by initializeHome
   }, []);
@@ -3023,6 +3026,17 @@ export default function HomeScreen() {
                 }}
                 scrollEventThrottle={16}
               >
+                {/* Panditji Banner (First) */}
+                <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={{ flex: 1 }}
+                    onPress={() => router.push('/vendor/category/panditji')}
+                  >
+                    <Image source={require('../../assets/images/panditji.png')} style={[styles.featuredLiveImage, { borderRadius: 15 }]} resizeMode="cover" />
+                  </TouchableOpacity>
+                </View>
+
                 <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
                   <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                     <LinearGradient
@@ -3287,6 +3301,7 @@ export default function HomeScreen() {
               <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, zIndex: 10 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 0 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 1 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 2 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
               </View>
             </View>
           </View>
@@ -3518,7 +3533,15 @@ export default function HomeScreen() {
                 const aarti1 = ROTATING_AARTIS[activeAartiIndex];
                 return (
                   <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                    <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
+                      onPress={() => {
+                        setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti1.id] || '');
+                        setSelectedAartiTitle(aarti1.name);
+                        setIsAartiModalVisible(true);
+                      }}
+                    >
                       <HomeCardTextureBg texture="lavender">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                           <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
@@ -3530,14 +3553,17 @@ export default function HomeScreen() {
                               {t('notify')} {t('me')}
                             </Text>
                             <TouchableOpacity
-                              onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`)}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`);
+                              }}
                               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             >
                               <Ionicons name="notifications-outline" size={15} color="#000" />
                             </TouchableOpacity>
                           </View>
                         </View>
-                        <TouchableOpacity
+                        <View
                           style={{
                             width: '85%',
                             height: 28,
@@ -3553,16 +3579,11 @@ export default function HomeScreen() {
                             elevation: 4,
                             marginBottom: 6,
                           }}
-                          onPress={() => {
-                            setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti1.id] || '');
-                            setSelectedAartiTitle(aarti1.name);
-                            setIsAartiModalVisible(true);
-                          }}
                         >
                           <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
-                        </TouchableOpacity>
+                        </View>
                       </HomeCardTextureBg>
-                    </View>
+                    </TouchableOpacity>
                     <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                       <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
                         <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
@@ -3577,7 +3598,15 @@ export default function HomeScreen() {
                 const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
                 return (
                   <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
-                    <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
+                      onPress={() => {
+                        setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti2.id] || '');
+                        setSelectedAartiTitle(aarti2.name);
+                        setIsAartiModalVisible(true);
+                      }}
+                    >
                       <HomeCardTextureBg texture="lavender">
                         <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                           <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
@@ -3589,14 +3618,17 @@ export default function HomeScreen() {
                               {t('notify')} {t('me')}
                             </Text>
                             <TouchableOpacity
-                              onPress={() => Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`)}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`);
+                              }}
                               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             >
                               <Ionicons name="notifications-outline" size={15} color="#000" />
                             </TouchableOpacity>
                           </View>
                         </View>
-                        <TouchableOpacity
+                        <View
                           style={{
                             width: '85%',
                             height: 28,
@@ -3612,16 +3644,11 @@ export default function HomeScreen() {
                             elevation: 4,
                             marginBottom: 6,
                           }}
-                          onPress={() => {
-                            setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti2.id] || '');
-                            setSelectedAartiTitle(aarti2.name);
-                            setIsAartiModalVisible(true);
-                          }}
                         >
                           <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
-                        </TouchableOpacity>
+                        </View>
                       </HomeCardTextureBg>
-                    </View>
+                    </TouchableOpacity>
                     <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
                       <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
                         <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
