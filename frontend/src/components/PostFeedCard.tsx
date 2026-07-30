@@ -118,7 +118,7 @@ export const PostFeedCard = memo(({
     const tabBar = useTabBar();
     showTabBar = tabBar.showTabBar;
     hideTabBar = tabBar.hideTabBar;
-  } catch (e) {}
+  } catch (e) { }
 
   useEffect(() => {
     if (isFullscreen) {
@@ -245,7 +245,7 @@ export const PostFeedCard = memo(({
   const cropStyle = useMemo(() => {
     const cropX = post?.crop_offset_x ?? post?.metadata?.crop_offset_x;
     const cropY = post?.crop_offset_y ?? post?.metadata?.crop_offset_y;
-    
+
     if (cropX === undefined && cropY === undefined) {
       return null;
     }
@@ -275,9 +275,9 @@ export const PostFeedCard = memo(({
     const transformStyle = Platform.OS === 'web'
       ? `translateX(${translateX}px) translateY(${translateY}px)`
       : [
-          { translateX },
-          { translateY }
-        ];
+        { translateX },
+        { translateY }
+      ];
 
     return {
       position: 'absolute' as const,
@@ -336,7 +336,7 @@ export const PostFeedCard = memo(({
       if (Platform.OS === 'web' && videoRef.current) {
         try {
           videoRef.current.pause();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, []);
@@ -747,8 +747,8 @@ export const PostFeedCard = memo(({
             fontSize: 14
           }}>
             {likesCount > 0 ? (
-              t('language') === 'hi' 
-                ? `${likesCount.toLocaleString()} पसंद` 
+              t('language') === 'hi'
+                ? `${likesCount.toLocaleString()} पसंद`
                 : `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}`
             ) : (
               t('language') === 'hi' ? 'पसंद करने वाले पहले बनें' : 'Be the first to like'
@@ -775,7 +775,7 @@ export const PostFeedCard = memo(({
               <Text style={styles.charCountTextInline}>{editedCaption?.length || 0}/500</Text>
             </View>
           </View>
-          
+
           {/* Quick Emoji Helper */}
           <View style={styles.quickEmojisContainerInline}>
             {['✨', '🙏', '🕉️', '🌸', '🚩', '📿'].map((emoji) => (
@@ -816,7 +816,7 @@ export const PostFeedCard = memo(({
               <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
                 <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
                   {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
-                </Text> 
+                </Text>
                 {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                   seg.isHashtag ? (
                     <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
@@ -846,7 +846,7 @@ export const PostFeedCard = memo(({
       {!isEditing && (
         <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
           <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
-            {commentsCount > 0 
+            {commentsCount > 0
               ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
               : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
           </Text>
@@ -859,7 +859,7 @@ export const PostFeedCard = memo(({
             <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
               <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>
                 {comment?.username || 'User'} {comment?.is_verified && <MaterialCommunityIcons name="check-decagram" size={12} color="#FF6B00" style={{ marginRight: 2 }} />}
-              </Text> 
+              </Text>
               <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>{comment?.text || ''}</Text>
             </Text>
           ))}
