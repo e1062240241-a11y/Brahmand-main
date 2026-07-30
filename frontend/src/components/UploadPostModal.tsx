@@ -902,42 +902,46 @@ export const UploadPostModal = ({
       statusBarTranslucent={Platform.OS === 'android'}
       onRequestClose={resetAndClose}
     >
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <View style={styles.appBar}>
-          <TouchableOpacity
-            onPress={resetAndClose}
-            style={styles.iconBtn}
-            accessibilityLabel="Close modal"
-            accessibilityRole="button"
-          >
-            <MaterialIcons name="close" size={28} color={COLORS.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>
-            {t("language") === "hi" ? "नई पोस्ट बनाएं" : "Create New Post"}
-          </Text>
-          <TouchableOpacity
-            onPress={handleUpload}
-            disabled={!canUpload}
-            style={[styles.topPostBtn, !canUpload && styles.topPostBtnDisabled]}
-            accessibilityLabel="Create post"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.topPostBtnText, !canUpload && styles.topPostBtnTextDisabled]}>
-              {t("createPost")}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+          <View style={styles.appBar}>
+            <TouchableOpacity
+              onPress={resetAndClose}
+              style={styles.iconBtn}
+              accessibilityLabel="Close modal"
+              accessibilityRole="button"
+            >
+              <MaterialIcons name="close" size={28} color={COLORS.text} />
+            </TouchableOpacity>
+            <Text style={styles.title}>
+              {t("language") === "hi" ? "नई पोस्ट बनाएं" : "Create New Post"}
             </Text>
-          </TouchableOpacity>
-        </View>
-        <KeyboardAwareScrollView
-          style={{ flex: 1 }}
-          scrollEnabled={scrollEnabled}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          extraScrollHeight={Platform.OS === 'ios' ? 140 : 160}
-          extraHeight={Platform.OS === 'ios' ? 140 : 160}
-          enableOnAndroid={true}
-          enableAutomaticScroll={true}
-        >
+            <TouchableOpacity
+              onPress={handleUpload}
+              disabled={!canUpload}
+              style={[styles.topPostBtn, !canUpload && styles.topPostBtnDisabled]}
+              accessibilityLabel="Create post"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.topPostBtnText, !canUpload && styles.topPostBtnTextDisabled]}>
+                {t("createPost")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <KeyboardAwareScrollView
+            style={{ flex: 1 }}
+            scrollEnabled={scrollEnabled}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: 120 }]}
+            keyboardShouldPersistTaps="handled"
+            extraScrollHeight={180}
+            extraHeight={180}
+            enableOnAndroid={true}
+            enableAutomaticScroll={true}
+          >
           <View style={styles.mediaContainer}>
             <View
               style={[
@@ -1334,7 +1338,8 @@ export const UploadPostModal = ({
           )}
         </View>
       </View>
-    </Modal>
+    </KeyboardAvoidingView>
+  </Modal>
   );
 };
 

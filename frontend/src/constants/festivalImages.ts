@@ -118,14 +118,22 @@ export const FESTIVAL_IMAGE_MAP: Record<string, any> = {
 };
 
 export const getFestivalImage = (festivalInput: any) => {
-  const fallback = defaultDiya;
+  const fallback = defaultFestival || defaultDiya;
   if (!festivalInput) return fallback;
+
+  // 0. If festivalInput itself is a require module ID (number)
+  if (typeof festivalInput === 'number') {
+    return festivalInput;
+  }
 
   let nameStr = '';
   if (typeof festivalInput === 'object') {
     // If festivalInput.image is a direct numeric asset require module
     if (typeof festivalInput.image === 'number') {
       return festivalInput.image;
+    }
+    if (typeof festivalInput.image_url === 'number') {
+      return festivalInput.image_url;
     }
     const remoteUrl = festivalInput.image || festivalInput.image_url || festivalInput.photo || festivalInput.imageUrl;
     if (remoteUrl && typeof remoteUrl === 'string' && remoteUrl.startsWith('http')) {

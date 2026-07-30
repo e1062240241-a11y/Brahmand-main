@@ -6,11 +6,11 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  Image,
   Dimensions,
   Platform,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -223,7 +223,9 @@ const FestivalPage = () => {
                   <Image
                     source={festivalImg}
                     style={[StyleSheet.absoluteFillObject, { opacity: 0.15 }]}
-                    resizeMode="cover"
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    transition={100}
                   />
 
                   {/* Card Content Overlay */}
@@ -240,7 +242,9 @@ const FestivalPage = () => {
                           <Image
                             source={festivalImg}
                             style={styles.artworkImage}
-                            resizeMode="cover"
+                            contentFit="cover"
+                            cachePolicy="memory-disk"
+                            transition={100}
                           />
                         </View>
                         <View style={styles.chevronWrapper}>

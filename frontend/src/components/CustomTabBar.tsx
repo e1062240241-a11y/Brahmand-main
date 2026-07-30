@@ -32,7 +32,7 @@ const TAB_META: Record<string, { activeIcon: string; inactiveIcon: string; label
 // Icon centre-X positions in the 373dp design coordinate system.
 const DESIGN_ICON_POSITIONS: Record<number, number[]> = {
   0: [63,  160,   215,   270,   325],
-  1: [31,  131,   224,   276,   328],
+  1: [34.5, 131,   224,   276,   328],
   2: [38,   94, 186.5,   279,   335],
   3: [32,   84,   136,   219,   325],
   4: [48,  103,   158,   213,   310],
@@ -59,10 +59,28 @@ interface CapsuleGeometry {
 function getCapsuleGeometry(activeIndex: number): CapsuleGeometry {
   const safeIndex = activeIndex >= 0 && activeIndex < 5 ? activeIndex : 0;
   const GAP = 6;
+  const capsuleH = 67.5;
   const tabWidth = getActiveTabWidth(safeIndex);
   const centerX = getDesignIconPositions(safeIndex)[safeIndex];
   const L_active = centerX - tabWidth / 2;
   const R_active = centerX + tabWidth / 2;
+
+  // When safeIndex === 1 (Community tab is active), Home is index 0.
+  // Home icon center is at x = 31. Home circle width is capsuleH (67.5).
+  // Home circle center is at 34.5 (left = 0.75, width = 67.5).
+  // Community active capsule starts after GAP (0.75 + 67.5 + 6 = 74.25).
+  if (safeIndex === 1) {
+    const leftW = capsuleH; // 67.5dp width = perfect circle
+    const activeX = 74.25;
+    return {
+      leftRect: { x: 0.75, w: leftW },
+      rightRect: R_active < 353 ? { x: R_active + GAP, w: DESIGN_BAR_WIDTH - 0.75 - (R_active + GAP) } : null,
+      activeRect: {
+        x: activeX,
+        w: R_active - activeX,
+      },
+    };
+  }
 
   return {
     leftRect:  L_active > 20  ? { x: 0.75,        w: L_active - GAP - 0.75                    } : null,

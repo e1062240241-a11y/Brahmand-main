@@ -3140,7 +3140,9 @@ export default function CommunityDetailScreen() {
             <Image
               source={festImg}
               style={{ width: '100%', height: '100%', borderRadius: 28 }}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={100}
             />
           ) : (
             <Ionicons name="calendar-outline" size={24} color="#FF6B00" />

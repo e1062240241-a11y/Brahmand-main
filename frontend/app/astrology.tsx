@@ -12,6 +12,8 @@ import {
   Image,
   Modal,
   Platform,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -137,8 +139,11 @@ export default function AstrologyScreen() {
   const [filteredCities, setFilteredCities] = useState<any[]>([]);
   const [selectedLat, setSelectedLat] = useState<number | null>(null);
   const [selectedLon, setSelectedLon] = useState<number | null>(null);
-  const [isFocusedMain, setIsFocusedMain] = useState(false);
   const [isFocusedModal, setIsFocusedModal] = useState(false);
+  const [isFocusedMain, setIsFocusedMain] = useState(false);
+
+  const mainScrollRef = useRef<any>(null);
+  const modalScrollRef = useRef<any>(null);
   const [validationError, setValidationError] = useState('');
   const [calculating, setCalculating] = useState(false);
 
@@ -330,30 +335,56 @@ export default function AstrologyScreen() {
     setPlaceOfBirth(val);
     setSelectedLat(null);
     setSelectedLon(null);
-    
-    if (val.trim().length >= 2) {
+
+    const trimmed = val.trim();
+    if (trimmed.length >= 1) {
       // Instant local search suggestions first
       const localFiltered = CITIES_DB.filter(city =>
-        city.toLowerCase().includes(val.toLowerCase())
+        city.toLowerCase().includes(trimmed.toLowerCase())
       ).map(city => ({
         display_name: city,
         latitude: null,
-        longitude: null
+        longitude: null,
+        isAddOption: false,
+        value: city,
       }));
-      setFilteredCities(localFiltered.slice(0, 5));
 
-      // Network API search suggestions
+      const makeSuggestionsList = (list: any[]) => {
+        const hasExact = list.some(
+          item => (item.value || item.display_name).toLowerCase() === trimmed.toLowerCase()
+        );
+        const result = [...list];
+        if (!hasExact) {
+          result.push({
+            display_name: `Add "${trimmed}"`,
+            value: trimmed,
+            latitude: null,
+            longitude: null,
+            isAddOption: true,
+          });
+        }
+        return result;
+      };
+
+      setFilteredCities(makeSuggestionsList(localFiltered.slice(0, 8)));
+
+      // Network API search suggestions (supports villages, talukas & local regions via Nominatim/Google)
       try {
-        const response = await forwardGeocode(val);
+        const response = await forwardGeocode(trimmed);
         if (response && response.data && Array.isArray(response.data)) {
           const apiSuggestions = response.data.map((item: any) => ({
             display_name: item.display_name,
+            value: item.display_name,
             latitude: item.latitude,
-            longitude: item.longitude
+            longitude: item.longitude,
+            isAddOption: false,
           }));
-          if (apiSuggestions.length > 0) {
-            setFilteredCities(apiSuggestions.slice(0, 5));
-          }
+
+          const existingNames = new Set(apiSuggestions.map((a: any) => a.display_name.toLowerCase()));
+          const remainingLocal = localFiltered.filter(l => !existingNames.has(l.display_name.toLowerCase()));
+          const combined = [...apiSuggestions, ...remainingLocal].slice(0, 8);
+
+          setFilteredCities(makeSuggestionsList(combined));
         }
       } catch (err) {
         console.warn('Failed to fetch place of birth suggestions:', err);
@@ -534,6 +565,7 @@ export default function AstrologyScreen() {
 
       {showForm ? (
         <KeyboardAwareScrollView
+          ref={mainScrollRef}
           style={styles.content}
           contentContainerStyle={styles.formScrollContent}
           keyboardShouldPersistTaps="handled"
@@ -684,15 +716,22 @@ export default function AstrologyScreen() {
                       key={idx}
                       style={styles.suggestionItem}
                       onPress={() => {
-                        setPlaceOfBirth(city.display_name);
+                        setPlaceOfBirth(city.isAddOption ? city.value : city.display_name);
                         setSelectedLat(city.latitude);
                         setSelectedLon(city.longitude);
                         setFilteredCities([]);
                         setIsFocusedMain(false);
                       }}
                     >
-                      <Ionicons name="location-outline" size={14} color="#7D685E" style={{ marginRight: 8 }} />
-                      <Text style={styles.suggestionText}>{city.display_name}</Text>
+                      <Ionicons
+                        name={city.isAddOption ? "add-circle-outline" : "location-outline"}
+                        size={15}
+                        color={city.isAddOption ? "#FF7B00" : "#7D685E"}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={[styles.suggestionText, city.isAddOption && { color: '#FF7B00', fontWeight: '600' }]}>
+                        {city.display_name}
+                      </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -704,7 +743,10 @@ export default function AstrologyScreen() {
                 value={placeOfBirth}
                 onFocus={() => {
                   setIsFocusedMain(true);
-                  if (placeOfBirth.trim().length >= 2) {
+                  setTimeout(() => {
+                    mainScrollRef.current?.scrollToEnd({ animated: true });
+                  }, 120);
+                  if (placeOfBirth.trim().length >= 1) {
                     handlePlaceOfBirthChange(placeOfBirth);
                   }
                 }}
@@ -956,233 +998,249 @@ export default function AstrologyScreen() {
         animationType="slide"
         onRequestClose={() => setShowModal(false)}
       >
-        <TouchableOpacity 
-          style={styles.bottomSheetOverlay} 
-          activeOpacity={1} 
-          onPress={() => setShowModal(false)}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.bottomSheetOverlay}
         >
           <TouchableOpacity 
+            style={{ flex: 1, width: '100%', justifyContent: 'flex-end' }} 
             activeOpacity={1} 
-            style={styles.bottomSheetCard}
+            onPress={() => setShowModal(false)}
           >
-            <View style={styles.bottomSheetHeader}>
-              <View style={{ width: 24 }} />
-              <Text style={styles.bottomSheetTitle}>Change Birth Details</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)} style={styles.bottomSheetClose}>
-                <Ionicons name="close" size={24} color="#5A4136" />
-              </TouchableOpacity>
-            </View>
-
-            <KeyboardAwareScrollView
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalScrollContent}
+            <TouchableOpacity 
+              activeOpacity={1} 
+              style={styles.bottomSheetCard}
             >
-              {/* Date of Birth */}
-              <View style={styles.inputGroup}>
-                <View style={styles.labelRow}>
-                  <Ionicons name="calendar-outline" size={15} color="#5A4136" />
-                  <Text style={styles.inputLabel}>Date of Birth</Text>
-                </View>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setShowDatePicker(!showDatePicker);
-                    setShowTimePicker(false);
-                  }}
-                  style={styles.touchableInput}
-                >
-                  <Text style={{ fontSize: 16, color: date ? '#1B1C1C' : '#A9968F' }}>
-                    {date ? formatDateString(date) : 'dd/mm/yyyy'}
-                  </Text>
+              <View style={styles.bottomSheetHeader}>
+                <View style={{ width: 24 }} />
+                <Text style={styles.bottomSheetTitle}>Change Birth Details</Text>
+                <TouchableOpacity onPress={() => setShowModal(false)} style={styles.bottomSheetClose}>
+                  <Ionicons name="close" size={24} color="#5A4136" />
                 </TouchableOpacity>
-
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={date || new Date()}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      if (Platform.OS === 'android') {
-                        setShowDatePicker(false);
-                      }
-                      if (selectedDate) {
-                        setDate(selectedDate);
-                      }
-                    }}
-                    style={styles.pickerStyle}
-                  />
-                )}
               </View>
 
-              {/* Time of Birth */}
-              <View style={styles.inputGroup}>
-                <View style={styles.labelRow}>
-                  <Ionicons name="time-outline" size={15} color="#5A4136" />
-                  <Text style={styles.inputLabel}>Time of Birth</Text>
-                </View>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    setShowTimePicker(!showTimePicker);
-                    setShowDatePicker(false);
-                  }}
-                  style={styles.touchableInput}
-                >
-                  <Text style={{ fontSize: 16, color: timeOfBirth ? '#1B1C1C' : '#A9968F' }}>
-                    {getDisplayTime()}
-                  </Text>
-                </TouchableOpacity>
-
-                {showTimePicker && (
-                  <DateTimePicker
-                    value={getTimeValue()}
-                    mode="time"
-                    is24Hour={true}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedTime) => {
-                      if (Platform.OS === 'android') {
-                        setShowTimePicker(false);
-                      }
-                      if (selectedTime) {
-                        setTimeOfBirth(formatTimeString(selectedTime.getHours(), selectedTime.getMinutes()));
-                      }
-                    }}
-                    style={styles.pickerStyle}
-                  />
-                )}
-              </View>
-
-              {/* Gender */}
-              <View style={styles.inputGroup}>
-                <View style={styles.labelRow}>
-                  <Ionicons name="transgender-outline" size={15} color="#5A4136" />
-                  <Text style={styles.inputLabel}>Gender</Text>
-                </View>
-                <View style={styles.genderRowContainer}>
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => setGender('male')}
-                    style={[styles.genderButton, gender === 'male' && styles.genderButtonActive]}
-                  >
-                    <Ionicons
-                      name="male"
-                      size={16}
-                      color={gender === 'male' ? '#FF7B00' : '#7D685E'}
-                    />
-                    <Text style={[styles.genderButtonText, gender === 'male' && styles.genderButtonTextActive]}>
-                      Male
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => setGender('female')}
-                    style={[styles.genderButton, gender === 'female' && styles.genderButtonActive]}
-                  >
-                    <Ionicons
-                      name="female"
-                      size={16}
-                      color={gender === 'female' ? '#FF7B00' : '#7D685E'}
-                    />
-                    <Text style={[styles.genderButtonText, gender === 'female' && styles.genderButtonTextActive]}>
-                      Female
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => setGender('other')}
-                    style={[styles.genderButton, gender === 'other' && styles.genderButtonActive]}
-                  >
-                    <Ionicons
-                      name="transgender"
-                      size={16}
-                      color={gender === 'other' ? '#FF7B00' : '#7D685E'}
-                    />
-                    <Text style={[styles.genderButtonText, gender === 'other' && styles.genderButtonTextActive]}>
-                      Other
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Place of Birth */}
-              <View style={styles.inputGroup}>
-                <View style={styles.labelRow}>
-                  <Ionicons name="location-outline" size={15} color="#5A4136" />
-                  <Text style={styles.inputLabel}>Place of Birth</Text>
-                </View>
-                {filteredCities.length > 0 && isFocusedModal && (
-                  <View style={styles.suggestionsContainerAbove}>
-                    {filteredCities.map((city, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={styles.suggestionItem}
-                        onPress={() => {
-                          setPlaceOfBirth(city.display_name);
-                          setSelectedLat(city.latitude);
-                          setSelectedLon(city.longitude);
-                          setFilteredCities([]);
-                          setIsFocusedModal(false);
-                        }}
-                      >
-                        <Ionicons name="location-outline" size={14} color="#7D685E" style={{ marginRight: 8 }} />
-                        <Text style={styles.suggestionText}>{city.display_name}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="City, State or Country"
-                  placeholderTextColor="#A9968F"
-                  value={placeOfBirth}
-                  onFocus={() => {
-                    setIsFocusedModal(true);
-                    if (placeOfBirth.trim().length >= 2) {
-                      handlePlaceOfBirthChange(placeOfBirth);
-                    }
-                  }}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      setIsFocusedModal(false);
-                    }, 250);
-                  }}
-                  onChangeText={handlePlaceOfBirthChange}
-                />
-              </View>
-
-              {/* Info Box */}
-              <View style={styles.infoNotice}>
-                <Ionicons name="information-circle-outline" size={20} color="#FF7B00" />
-                <Text style={styles.infoNoticeText}>
-                  Explore your Vedic birth chart and see how planetary placements shape your current cosmic phase.
-                </Text>
-              </View>
-
-              {/* Validation Error */}
-              {!!validationError && (
-                <Text style={styles.errorText}>{validationError}</Text>
-              )}
-
-              {/* Calculate Button */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={styles.calculateBtn}
-                onPress={handleCalculate}
-                disabled={calculating}
+              <KeyboardAwareScrollView
+                ref={modalScrollRef}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.modalScrollContent}
               >
-                <Text style={styles.calculateBtnText}>
-                  {calculating ? 'Calculating...' : 'Calculate Kundli'}
-                </Text>
-                {!calculating && <Ionicons name="chevron-forward" size={18} color="#FFF" />}
-              </TouchableOpacity>
+                {/* Date of Birth */}
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="calendar-outline" size={15} color="#5A4136" />
+                    <Text style={styles.inputLabel}>Date of Birth</Text>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setShowDatePicker(!showDatePicker);
+                      setShowTimePicker(false);
+                    }}
+                    style={styles.touchableInput}
+                  >
+                    <Text style={{ fontSize: 16, color: date ? '#1B1C1C' : '#A9968F' }}>
+                      {date ? formatDateString(date) : 'dd/mm/yyyy'}
+                    </Text>
+                  </TouchableOpacity>
 
-              <View style={{ height: Platform.OS === 'android' ? 36 : 20 }} />
-            </KeyboardAwareScrollView>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={date || new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                      onChange={(event, selectedDate) => {
+                        if (Platform.OS === 'android') {
+                          setShowDatePicker(false);
+                        }
+                        if (selectedDate) {
+                          setDate(selectedDate);
+                        }
+                      }}
+                      style={styles.pickerStyle}
+                    />
+                  )}
+                </View>
+
+                {/* Time of Birth */}
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="time-outline" size={15} color="#5A4136" />
+                    <Text style={styles.inputLabel}>Time of Birth</Text>
+                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      setShowTimePicker(!showTimePicker);
+                      setShowDatePicker(false);
+                    }}
+                    style={styles.touchableInput}
+                  >
+                    <Text style={{ fontSize: 16, color: timeOfBirth ? '#1B1C1C' : '#A9968F' }}>
+                      {getDisplayTime()}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {showTimePicker && (
+                    <DateTimePicker
+                      value={getTimeValue()}
+                      mode="time"
+                      is24Hour={true}
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(event, selectedTime) => {
+                        if (Platform.OS === 'android') {
+                          setShowTimePicker(false);
+                        }
+                        if (selectedTime) {
+                          setTimeOfBirth(formatTimeString(selectedTime.getHours(), selectedTime.getMinutes()));
+                        }
+                      }}
+                      style={styles.pickerStyle}
+                    />
+                  )}
+                </View>
+
+                {/* Gender */}
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="transgender-outline" size={15} color="#5A4136" />
+                    <Text style={styles.inputLabel}>Gender</Text>
+                  </View>
+                  <View style={styles.genderRowContainer}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => setGender('male')}
+                      style={[styles.genderButton, gender === 'male' && styles.genderButtonActive]}
+                    >
+                      <Ionicons
+                        name="male"
+                        size={16}
+                        color={gender === 'male' ? '#FF7B00' : '#7D685E'}
+                      />
+                      <Text style={[styles.genderButtonText, gender === 'male' && styles.genderButtonTextActive]}>
+                        Male
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => setGender('female')}
+                      style={[styles.genderButton, gender === 'female' && styles.genderButtonActive]}
+                    >
+                      <Ionicons
+                        name="female"
+                        size={16}
+                        color={gender === 'female' ? '#FF7B00' : '#7D685E'}
+                      />
+                      <Text style={[styles.genderButtonText, gender === 'female' && styles.genderButtonTextActive]}>
+                        Female
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => setGender('other')}
+                      style={[styles.genderButton, gender === 'other' && styles.genderButtonActive]}
+                    >
+                      <Ionicons
+                        name="transgender"
+                        size={16}
+                        color={gender === 'other' ? '#FF7B00' : '#7D685E'}
+                      />
+                      <Text style={[styles.genderButtonText, gender === 'other' && styles.genderButtonTextActive]}>
+                        Other
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Place of Birth */}
+                <View style={styles.inputGroup}>
+                  <View style={styles.labelRow}>
+                    <Ionicons name="location-outline" size={15} color="#5A4136" />
+                    <Text style={styles.inputLabel}>Place of Birth</Text>
+                  </View>
+                  {filteredCities.length > 0 && isFocusedModal && (
+                    <View style={styles.suggestionsContainerAbove}>
+                      {filteredCities.map((city, idx) => (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.suggestionItem}
+                          onPress={() => {
+                            setPlaceOfBirth(city.isAddOption ? city.value : city.display_name);
+                            setSelectedLat(city.latitude);
+                            setSelectedLon(city.longitude);
+                            setFilteredCities([]);
+                            setIsFocusedModal(false);
+                          }}
+                        >
+                          <Ionicons
+                            name={city.isAddOption ? "add-circle-outline" : "location-outline"}
+                            size={15}
+                            color={city.isAddOption ? "#FF7B00" : "#7D685E"}
+                            style={{ marginRight: 8 }}
+                          />
+                          <Text style={[styles.suggestionText, city.isAddOption && { color: '#FF7B00', fontWeight: '600' }]}>
+                            {city.display_name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="City, State or Country"
+                    placeholderTextColor="#A9968F"
+                    value={placeOfBirth}
+                    onFocus={() => {
+                      setIsFocusedModal(true);
+                      setTimeout(() => {
+                        modalScrollRef.current?.scrollToEnd({ animated: true });
+                      }, 120);
+                      if (placeOfBirth.trim().length >= 1) {
+                        handlePlaceOfBirthChange(placeOfBirth);
+                      }
+                    }}
+                    onBlur={() => {
+                      setTimeout(() => {
+                        setIsFocusedModal(false);
+                      }, 250);
+                    }}
+                    onChangeText={handlePlaceOfBirthChange}
+                  />
+                </View>
+
+                {/* Info Box */}
+                <View style={styles.infoNotice}>
+                  <Ionicons name="information-circle-outline" size={20} color="#FF7B00" />
+                  <Text style={styles.infoNoticeText}>
+                    Explore your Vedic birth chart and see how planetary placements shape your current cosmic phase.
+                  </Text>
+                </View>
+
+                {/* Validation Error */}
+                {!!validationError && (
+                  <Text style={styles.errorText}>{validationError}</Text>
+                )}
+
+                {/* Calculate Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.calculateBtn}
+                  onPress={handleCalculate}
+                  disabled={calculating}
+                >
+                  <Text style={styles.calculateBtnText}>
+                    {calculating ? 'Calculating...' : 'Calculate Kundli'}
+                  </Text>
+                  {!calculating && <Ionicons name="chevron-forward" size={18} color="#FFF" />}
+                </TouchableOpacity>
+
+                <View style={{ height: Platform.OS === 'android' ? 60 : 20 }} />
+              </KeyboardAwareScrollView>
+            </TouchableOpacity>
           </TouchableOpacity>
-        </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </LinearGradient>
   );
@@ -1223,7 +1281,7 @@ const styles = StyleSheet.create({
   formScrollContent: {
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'android' ? 140 : 40,
   },
   formCard: {
     backgroundColor: '#FFF',
@@ -1790,6 +1848,6 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   modalScrollContent: {
-    paddingBottom: 24,
+    paddingBottom: Platform.OS === 'android' ? 140 : 24,
   },
 });
