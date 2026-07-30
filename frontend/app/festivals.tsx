@@ -1,20 +1,21 @@
 // accessibility: placeholder
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
   Platform,
   Alert,
+  InteractionManager,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { FlashList } from '@shopify/flash-list';
 import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
@@ -23,6 +24,8 @@ import { syncFestivalReminders, toggleAllFestivals, getAllFestivalReminders } fr
 import { useNotificationStore } from '../src/store/notificationStore';
 
 import { FESTIVAL_IMAGE_MAP, getFestivalImage } from '../src/constants/festivalImages';
+
+const SafeFlashList = FlashList as any;
 
 const CARD_COLORS = [
   '#FFE082', // Yellow
@@ -33,15 +36,6 @@ const CARD_COLORS = [
   '#FFCC80', // Orange
   '#CFD8DC', // Blue Grey
 ];
-
-const hexToRgba = (hex: string, alpha: number) => {
-  if (!hex || typeof hex !== 'string') return `rgba(255, 255, 255, ${alpha})`;
-  let c = hex.replace('#', '');
-  if (c.length === 3) c = c.split('').map(x => x + x).join('');
-  const num = parseInt(c, 16);
-  if (isNaN(num)) return `rgba(255, 255, 255, ${alpha})`;
-  return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
-};
 
 const formatFestivalDate = (dateStr: string) => {
   if (!dateStr) return '';
@@ -59,6 +53,54 @@ const formatFestivalDate = (dateStr: string) => {
   }
   return dateStr;
 };
+
+interface FestivalItemProps {
+  festival: any;
+  index: number;
+  onPress: (index: number) => void;
+}
+
+const FestivalItem = React.memo(({ festival, index, onPress }: FestivalItemProps) => {
+  const color = CARD_COLORS[index % CARD_COLORS.length];
+  const festivalName = festival.name || festival.festival_name || '';
+  const festivalImg = useMemo(() => getFestivalImage(festival), [festival]);
+  const formattedDate = useMemo(() => formatFestivalDate(festival.date), [festival.date]);
+
+  return (
+    <TouchableOpacity 
+      activeOpacity={0.9}
+      style={{ marginBottom: 12 }}
+      onPress={() => onPress(index)}
+    >
+      <View style={[styles.festivalCardContainer, { backgroundColor: color }]}>
+        {/* Card Content Overlay */}
+        <View style={styles.cardInnerPadding}>
+          <View style={styles.cardContent}>
+            <View style={styles.cardTextContainer}>
+              <Text style={styles.cardLabel}>Festival</Text>
+              <Text style={styles.cardName}>{festivalName}</Text>
+              <Text style={styles.cardDate}>{formattedDate}</Text>
+            </View>
+            
+            <View style={styles.cardRightSection}>
+              <View style={styles.artworkBox}>
+                <Image
+                  source={festivalImg}
+                  style={styles.artworkImage}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                />
+              </View>
+              <View style={styles.chevronWrapper}>
+                <Ionicons name="chevron-forward" size={16} color="#000000" />
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+});
 
 const FestivalPage = () => {
   const router = useRouter();
@@ -80,22 +122,32 @@ const FestivalPage = () => {
   };
 
   useEffect(() => {
+    let isMounted = true;
     const loadFestivals = async () => {
       try {
         const response = await getFestivalList();
         const items = response.data || [];
-        setFestivals(items);
-        checkGlobalReminderState();
-        syncFestivalReminders(items).catch(e => console.warn(e));
+        if (isMounted) {
+          setFestivals(items);
+          setLoading(false);
+        }
+        InteractionManager.runAfterInteractions(() => {
+          if (isMounted) {
+            checkGlobalReminderState();
+            syncFestivalReminders(items).catch(e => console.warn(e));
+          }
+        });
       } catch (err) {
         console.warn('Failed to load festivals', err);
-        setError('Could not load festivals.');
-      } finally {
-        setLoading(false);
+        if (isMounted) {
+          setError('Could not load festivals.');
+          setLoading(false);
+        }
       }
     };
 
     loadFestivals();
+    return () => { isMounted = false; };
   }, []);
 
   const handleToggleAll = async () => {
@@ -129,8 +181,39 @@ const FestivalPage = () => {
     }
   };
 
+  const handleItemPress = useCallback((index: number) => {
+    router.push(`/festival-detail?index=${index}`);
+  }, [router]);
+
   const userName = user?.name?.split(' ')[0] || 'Daniel';
   const nextFestivalName = festivals[0]?.name || festivals[0]?.festival_name || 'Upcoming';
+
+  const renderHeader = useMemo(() => (
+    <View style={styles.heroCard}>
+      <Text style={styles.statisticsLabel}>Discover</Text>
+      <Text style={styles.heroTitle}>
+        Hello {userName} 👋{'\n'}upcoming{'\n'}
+        <Text style={styles.heroTitleBold}>festivals</Text>
+      </Text>
+      
+      <View style={styles.pillsRow}>
+        <View style={styles.pill}>
+          <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
+          <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.arrowIconContainer}
+          onPress={handleToggleAll}
+        >
+          <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  ), [userName, nextFestivalName, handleToggleAll]);
+
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => (
+    <FestivalItem festival={item} index={index} onPress={handleItemPress} />
+  ), [handleItemPress]);
 
   if (loading) {
     return (
@@ -178,86 +261,19 @@ const FestivalPage = () => {
           </TouchableOpacity>
         </View>
 
-        <ScrollView 
-          style={styles.scrollView}
+        <SafeFlashList
+          data={festivals}
+          renderItem={renderItem}
+          keyExtractor={(item: any, idx: number) => item.id || item.name || String(idx)}
+          ListHeaderComponent={renderHeader}
+          estimatedItemSize={132}
+          drawDistance={400}
+          overrideItemLayout={(layout: any) => {
+            layout.size = 132;
+          }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
-        >
-          {/* Main Hero Banner / Card */}
-          <View style={styles.heroCard}>
-            <Text style={styles.statisticsLabel}>Discover</Text>
-            <Text style={styles.heroTitle}>
-              Hello {userName} 👋{'\n'}upcoming{'\n'}
-              <Text style={styles.heroTitleBold}>festivals</Text>
-            </Text>
-            
-            <View style={styles.pillsRow}>
-              <View style={styles.pill}>
-                <Ionicons name="calendar-outline" size={14} color="#D32F2F" />
-                <Text style={styles.pillText} numberOfLines={1}>{nextFestivalName}</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.arrowIconContainer}
-                onPress={handleToggleAll}
-              >
-                <Ionicons name="arrow-up-outline" size={18} color="#000000" style={{ transform: [{ rotate: '45deg' }] }} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Festival Cards with Right Artwork Frame */}
-          {festivals.map((festival, index) => {
-            const color = CARD_COLORS[index % CARD_COLORS.length];
-            const festivalName = festival.name || festival.festival_name || '';
-            const festivalImg = getFestivalImage(festival);
-            
-            return (
-              <TouchableOpacity 
-                key={festivalName || index}
-                activeOpacity={0.9}
-                style={{ marginBottom: 12 }}
-                onPress={() => router.push(`/festival-detail?index=${index}`)}
-              >
-                <View style={[styles.festivalCardContainer, { backgroundColor: color }]}>
-                  {/* Subtle background image watermark */}
-                  <Image
-                    source={festivalImg}
-                    style={[StyleSheet.absoluteFillObject, { opacity: 0.15 }]}
-                    contentFit="cover"
-                    cachePolicy="memory-disk"
-                    transition={100}
-                  />
-
-                  {/* Card Content Overlay */}
-                  <View style={styles.cardInnerPadding}>
-                    <View style={styles.cardContent}>
-                      <View style={styles.cardTextContainer}>
-                        <Text style={styles.cardLabel}>Festival</Text>
-                        <Text style={styles.cardName}>{festivalName}</Text>
-                        <Text style={styles.cardDate}>{formatFestivalDate(festival.date)}</Text>
-                      </View>
-                      
-                      <View style={styles.cardRightSection}>
-                        <View style={styles.artworkBox}>
-                          <Image
-                            source={festivalImg}
-                            style={styles.artworkImage}
-                            contentFit="cover"
-                            cachePolicy="memory-disk"
-                            transition={100}
-                          />
-                        </View>
-                        <View style={styles.chevronWrapper}>
-                          <Ionicons name="chevron-forward" size={16} color="#000000" />
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+        />
       </SafeAreaView>
     </LinearGradient>
   );
@@ -386,7 +402,7 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 20,
     overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF5F0',
     borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.8)',
     elevation: 3,
