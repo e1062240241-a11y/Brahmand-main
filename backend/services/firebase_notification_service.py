@@ -382,12 +382,14 @@ class FirebaseNotificationService:
                 except Exception as e:
                     logger.warning(f"Error checking block status in send_multicast: {e}")
             
+            # ⚡ Bolt Optimization: Batch fetch instead of N+1 get_document calls
             # Collect all FCM and Expo tokens from users (at most 1 per user to prevent duplicate notifications)
             all_fcm_tokens = []
             all_expo_tokens = []
             users_with_tokens = 0
-            for user_id in user_ids:
-                user = await db.get_document('users', user_id)
+
+            user_docs = await db.get_documents_batch('users', user_ids)
+            for user in user_docs:
                 if user:
                     primary_token = user.get('fcm_token')
                     if primary_token:
