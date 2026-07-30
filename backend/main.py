@@ -5870,22 +5870,40 @@ async def forward_geocode(request: dict):
     # 3. Fallback to Nominatim OSM search if Google API fails or is unavailable
     try:
         url = "https://nominatim.openstreetmap.org/search"
-        params = {"q": query, "format": "json", "countrycodes": "in", "limit": 8}
-        headers = {"User-Agent": "BrahmandApp/1.0"}
+        params = {
+            "q": query,
+            "format": "json",
+            "countrycodes": "in",
+            "addressdetails": 1,
+            "limit": 12
+        }
+        headers = {"User-Agent": "BrahmandApp/1.0 (contact@brahmand.app)"}
         session = get_shared_client_session()
         async with session.get(url, params=params, headers=headers, timeout=aiohttp.ClientTimeout(total=5)) as resp:
             if resp.status == 200:
                 data = await resp.json()
                 if isinstance(data, list) and len(data) > 0:
                     for item in data:
+                        addr = item.get("address", {})
+                        locality = (
+                            addr.get("village") or
+                            addr.get("hamlet") or
+                            addr.get("town") or
+                            addr.get("city") or
+                            addr.get("suburb") or
+                            addr.get("county") or
+                            item.get("name", "")
+                        )
+                        state = addr.get("state", "")
+                        disp_name = item.get("display_name", "")
                         results.append(normalize_location({
                             "latitude": float(item.get("lat", 0)),
                             "longitude": float(item.get("lon", 0)),
-                            "display_name": item.get("display_name", ""),
+                            "display_name": disp_name,
                             "country": "Bharat",
-                            "state": "",
-                            "city": item.get("name", ""),
-                            "area": item.get("display_name", ""),
+                            "state": state,
+                            "city": locality,
+                            "area": disp_name,
                         }))
                     return results
     except Exception as e:

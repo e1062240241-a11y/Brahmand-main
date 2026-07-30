@@ -181,19 +181,38 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
       return;
     }
 
+    const appendAddOptionIfNeeded = (items: AutocompleteItem[]) => {
+      if (!trimmed) return items;
+      const hasExact = items.some(
+        item => item.label.toLowerCase() === trimmed.toLowerCase() || item.value.toLowerCase() === trimmed.toLowerCase()
+      );
+      if (!hasExact) {
+        return [
+          ...items,
+          {
+            label: `Add "${trimmed}"`,
+            value: trimmed,
+            isCustom: true,
+          },
+        ];
+      }
+      return items;
+    };
+
     // Dynamic search via onSearch callback
     if (onSearch) {
       setLoading(true);
       try {
         const results = await onSearch(trimmed);
         if (Array.isArray(results)) {
-          setSuggestions(results.map(getNormalizedItem));
+          const normalized = results.map(getNormalizedItem);
+          setSuggestions(appendAddOptionIfNeeded(normalized));
         } else {
-          setSuggestions([]);
+          setSuggestions(appendAddOptionIfNeeded([]));
         }
       } catch (err) {
         console.warn('AutocompleteInput search error:', err);
-        setSuggestions([]);
+        setSuggestions(appendAddOptionIfNeeded([]));
       } finally {
         setLoading(false);
       }
@@ -203,14 +222,16 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     // Static data filtering
     if (data) {
       if (disableLocalFilter) {
-        setSuggestions(data.map(getNormalizedItem));
+        setSuggestions(appendAddOptionIfNeeded(data.map(getNormalizedItem)));
       } else {
         const lowerQuery = trimmed.toLowerCase();
         const filtered = data
           .map(getNormalizedItem)
           .filter(item => item.label.toLowerCase().includes(lowerQuery));
-        setSuggestions(filtered.slice(0, 5));
+        setSuggestions(appendAddOptionIfNeeded(filtered.slice(0, 5)));
       }
+    } else if (trimmed.length > 0) {
+      setSuggestions(appendAddOptionIfNeeded([]));
     }
   }, [data, onSearch, disableLocalFilter, showSuggestionsOnFocusEmpty, minimumQueryLength, getNormalizedItem]);
 
@@ -338,8 +359,20 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                     ]}
                     onPress={() => handleSelect(item)}
                   >
-                    <Ionicons name="location-outline" size={16} color={COLORS.primary} style={styles.itemIcon} />
-                    <Text style={[styles.itemText, itemTextStyle]} numberOfLines={1}>
+                    <Ionicons
+                      name={item.isCustom ? "add-circle-outline" : "location-outline"}
+                      size={16}
+                      color={COLORS.primary}
+                      style={styles.itemIcon}
+                    />
+                    <Text
+                      style={[
+                        styles.itemText,
+                        item.isCustom && { color: COLORS.primary, fontWeight: '600' },
+                        itemTextStyle
+                      ]}
+                      numberOfLines={1}
+                    >
                       {item.label}
                     </Text>
                   </TouchableOpacity>

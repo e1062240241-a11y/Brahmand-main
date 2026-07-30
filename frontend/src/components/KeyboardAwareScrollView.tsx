@@ -18,37 +18,22 @@ export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, Key
   contentContainerStyle,
   extraHeight = 120,
   extraScrollHeight = 160,
-  enableAutomaticScroll = Platform.OS === 'ios',
-  keyboardOpeningTime = 0,
+  enableOnAndroid = true,
+  enableAutomaticScroll = true,
+  keyboardOpeningTime = 250,
   ...props
 }, ref) => {
-  if (Platform.OS === 'android') {
-    return (
-      <ScrollView
-        ref={ref as any}
-        style={style}
-        contentContainerStyle={contentContainerStyle}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        {...props}
-      >
-        {children}
-      </ScrollView>
-    );
-  }
-
   return (
     <RNKeyboardAwareScrollView
       ref={ref}
       style={style}
       contentContainerStyle={contentContainerStyle}
-      enableOnAndroid={true}
+      enableOnAndroid={enableOnAndroid}
       enableAutomaticScroll={enableAutomaticScroll}
       keyboardOpeningTime={keyboardOpeningTime}
       extraHeight={extraHeight}
       extraScrollHeight={extraScrollHeight}
       keyboardShouldPersistTaps="handled"
-      // Setting resetScrollToCoords to null lets the component restore the previous scroll position on dismiss
       resetScrollToCoords={null as any}
       showsVerticalScrollIndicator={false}
       {...props}
@@ -61,3 +46,5 @@ export const KeyboardAwareScrollView = forwardRef<RNKeyboardAwareScrollView, Key
 KeyboardAwareScrollView.displayName = 'KeyboardAwareScrollView';
 
 export type KeyboardAwareScrollView = RNKeyboardAwareScrollView & ScrollView;
+
+
