@@ -43,6 +43,9 @@ export const useSafeVideoPlayer = (
         try {
           if (isPlayerValid(oldPlayer)) {
             oldPlayer.pause();
+            if (typeof oldPlayer.release === 'function') {
+              oldPlayer.release();
+            }
           }
         } catch (e) {}
       }
@@ -74,6 +77,9 @@ export const useSafeVideoPlayer = (
         try {
           if (isPlayerValid(oldPlayer)) {
             oldPlayer.pause();
+            if (typeof oldPlayer.release === 'function') {
+              oldPlayer.release();
+            }
           }
         } catch (e) {}
       }
@@ -88,6 +94,9 @@ export const useSafeVideoPlayer = (
         try {
           if (isPlayerValid(newPlayer)) {
             newPlayer.pause();
+            if (typeof newPlayer.release === 'function') {
+              newPlayer.release();
+            }
           }
         } catch (e) {}
       }

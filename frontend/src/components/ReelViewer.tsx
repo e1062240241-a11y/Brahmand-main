@@ -155,10 +155,9 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
   const durationRef = useRef(0);
   const timeIntervalRef = useRef<any>(null);
 
-useEffect(() => {
-    if (!player) return;
-    let rafId: number;
-    const tick = () => {
+  useEffect(() => {
+    if (!player || !isActive) return;
+    const interval = setInterval(() => {
       try {
         const ct = player.currentTime || 0;
         setCurrentTime(ct);
@@ -168,11 +167,9 @@ useEffect(() => {
           setDuration(pd);
         }
       } catch {}
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [player]);
+    }, 250);
+    return () => clearInterval(interval);
+  }, [player, isActive]);
 
   const seekPlayerRef = useRef<(pageX: number) => void>(() => { });
 
