@@ -196,6 +196,9 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
         <TouchableOpacity 
           style={styles.toggleButton}
           onPress={() => setIsExpanded(!isExpanded)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: isExpanded }}
+          accessibilityLabel={isExpanded ? "Collapse voice order" : "Expand voice order"}
         >
           <Ionicons 
             name={isExpanded ? "chevron-up" : "chevron-down"} 
@@ -212,6 +215,8 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
             <TouchableOpacity 
               style={[styles.micButton, isListening && styles.micButtonActive]}
               onPress={startSpeechRecognition}
+              accessibilityRole="button"
+              accessibilityLabel={isListening ? "Stop listening" : "Start listening"}
             >
               <Ionicons 
                 name={isListening ? "mic" : "mic-outline"} 
