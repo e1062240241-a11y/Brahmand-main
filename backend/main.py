@@ -7182,19 +7182,20 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
             
     messages = await db.get_chat_messages(chat_id, limit, before_timestamp=before_dt)
 
-    # Decorate messages with live verification data so old posts also show the badge
+    # ⚡ Bolt Optimization: Batch fetch instead of N+1 get_document calls
     sender_ids = list({m.get('sender_id') for m in messages if m.get('sender_id')})
     sender_map: dict = {}
-    for sid in sender_ids:
+    if sender_ids:
         try:
-            u = await db.get_document('users', sid)
-            if u:
-                sender_map[sid] = {
-                    'is_verified': u.get('is_verified', False),
-                    'verification_level': u.get('verification_level', 'state'),
-                }
-        except Exception:
-            pass
+            users_list = await db.get_documents_batch('users', sender_ids)
+            for u in users_list:
+                if u and u.get('id'):
+                    sender_map[u['id']] = {
+                        'is_verified': u.get('is_verified', False),
+                        'verification_level': u.get('verification_level', 'state'),
+                    }
+        except Exception as e:
+            logger.warning(f"Failed to batch fetch users for community messages: {e}")
 
     for msg in messages:
         sid = msg.get('sender_id')
