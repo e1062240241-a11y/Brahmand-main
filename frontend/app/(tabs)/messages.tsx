@@ -24,6 +24,7 @@ import {
   InteractionManager,
   Keyboard,
 } from 'react-native';
+import { InstagramSpinner, InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
@@ -1503,10 +1504,11 @@ function MessagesScreen({
         contentContainerStyle={styles.mainContentContainer}
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
+        refreshControl={<InstagramRefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
         onScroll={onMessagesScrollTabBar}
         scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
       >
+        <InstagramSpinner refreshing={refreshing} color="#8E8E93" />
         {activeTopTab === 'Community' ? (
           !hasValidLocation ? (
             <View style={styles.noLocationContainer}>
