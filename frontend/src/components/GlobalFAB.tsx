@@ -399,6 +399,8 @@ export function GlobalFAB() {
           style={fabStyles.overlay}
           activeOpacity={1}
           onPress={toggleFab}
+          accessibilityRole="button"
+          accessibilityLabel="Close FAB menu overlay"
         >
           <Animated.View
             style={[
@@ -623,6 +625,8 @@ export function GlobalFAB() {
                               Alert.alert('Location Not Available', 'This SOS has no coordinate details.');
                             }
                           }}
+                          accessibilityRole="button"
+                          accessibilityLabel="Open map for SOS location"
                         >
                           <MaterialCommunityIcons name="navigation" size={22} color="#FFF" />
                           <Text style={fabStyles.responderBtnText}>MAP</Text>
@@ -679,6 +683,9 @@ export function GlobalFAB() {
           style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
           activeOpacity={0.85}
           onPress={toggleFab}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle FAB menu"
+          accessibilityState={{ expanded: fabExpanded }}
         >
           {activeSOS || nearbySOSAlerts.length > 0 ? (
             <MaterialCommunityIcons name="alarm-light" size={30} color="#FFF" />
