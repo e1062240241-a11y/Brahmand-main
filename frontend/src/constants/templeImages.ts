@@ -107,6 +107,7 @@ const getTempleImageByName = (name: string) => {
   }
   if (lowerName.includes('iskcon') && (lowerName.includes('juhu') || lowerName.includes('mumbai'))) {
     return TEMPLE_IMAGES['other-iskcon-temple-mumbai'];
+  }
   if (lowerName.includes('dwarkadhish') || lowerName.includes('dwarakdhish') || lowerName.includes('dwarakadheesh') || lowerName.includes('dwarka')) {
     return TEMPLE_IMAGES['jyotirling-nageshwar-temple-dwarka'];
   }
