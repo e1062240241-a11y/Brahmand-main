@@ -3107,6 +3107,11 @@ export default function HomeScreen() {
                               </Text>
                             </View>
                           </View>
+
+                          <View style={[styles.liveBadge, { alignSelf: 'flex-start', backgroundColor: '#FF0000', paddingHorizontal: 8 }]}>
+                            <View style={styles.liveDot} />
+                            <Text style={[styles.liveBadgeText, { marginLeft: 4 }]}>LIVE</Text>
+                          </View>
                         </View>
 
                         {/* Bottom Button Row */}
@@ -3130,7 +3135,7 @@ export default function HomeScreen() {
                             onPress={() => router.push('/library/katha')}
                           >
                             <Ionicons name="play" size={14} color="#FFF" />
-                            <Text style={styles.joinJaapButtonText}>
+                            <Text style={styles.joinJaapText}>
                               {t('language') === 'hi' ? 'लाइव कथा देखें' : 'Join Live Katha'}
                             </Text>
                           </Pressable>

@@ -1,25 +1,190 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Image,
-  Dimensions,
   Platform,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeVideoView, useSafeVideoPlayer, isPlayerValid } from '../../src/components/SafeVideoView';
+import { useIsFocused } from '@react-navigation/native';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+let ExpoVideoModule: any = null;
+try {
+  ExpoVideoModule = require('expo-video');
+} catch (_e) {}
 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://brahmand.app';
 const shamikPathakCover = require('../../assets/images/shamik_pathak_ji.jpg');
+
+interface KathaEpisode {
+  id: string;
+  title: string;
+  episode_number: number;
+  date: string;
+  duration: string;
+  guru_name: string;
+  video_url: string;
+  thumbnail_url: string;
+  description?: string;
+}
+
+interface KathaStatus {
+  is_live: boolean;
+  mode: string; // LIVE_BROADCAST, REPEAT_TELECAST, OFF_AIR
+  title: string;
+  guru_name: string;
+  banner_message: string;
+  next_stream_at: string;
+}
 
 export default function KathaPage() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const isFocused = useIsFocused();
+  const scrollViewRef = useRef<any>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [status, setStatus] = useState<KathaStatus>({
+    is_live: false,
+    mode: 'OFF_AIR',
+    title: 'Acharya Shamik Pathak Ji — Saavan Katha',
+    guru_name: 'Acharya Shamik Pathak Ji',
+    banner_message: 'Daily Live at 8:00 AM – 8:30 AM & Repeat Telecast at 8:00 PM – 8:30 PM IST',
+    next_stream_at: '2026-08-13T08:00:00+05:30',
+  });
+
+  const [episodes, setEpisodes] = useState<KathaEpisode[]>([]);
+  const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(null);
+
+  // Custom Hotstar Minimalist Player States
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showControls, setShowControls] = useState(true);
+  const hideControlsTimer = useRef<any>(null);
+
+  const activeVideoUrl = activeEpisode?.video_url || 'https://brahmandfeed23.b-cdn.net/katha/acharya_shamik/saavan_katha/ep1.mp4';
+
+  const player = useSafeVideoPlayer(activeVideoUrl, (p) => {
+    try {
+      p.loop = false;
+      p.muted = false;
+      p.play();
+    } catch (_e) {}
+  });
+
+  // Zero-Heat Thermal Management: Instantly pause video when screen loses focus
+  useEffect(() => {
+    if (!isFocused && isPlayerValid(player)) {
+      try {
+        player.pause();
+        setIsPlaying(false);
+      } catch (_e) {}
+    }
+  }, [isFocused, player]);
+
+  // Auto-hide custom Hotstar controls after 3.5 seconds
+  const resetControlsTimer = () => {
+    setShowControls(true);
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    hideControlsTimer.current = setTimeout(() => {
+      setShowControls(false);
+    }, 3500);
+  };
+
+  useEffect(() => {
+    resetControlsTimer();
+    return () => {
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    };
+  }, [activeVideoUrl]);
+
+  const togglePlayPause = () => {
+    resetControlsTimer();
+    if (!isPlayerValid(player)) return;
+    try {
+      if (isPlaying) {
+        player.pause();
+        setIsPlaying(false);
+      } else {
+        player.play();
+        setIsPlaying(true);
+      }
+    } catch (_e) {}
+  };
+
+  const toggleMute = () => {
+    resetControlsTimer();
+    if (!isPlayerValid(player)) return;
+    try {
+      player.muted = !isMuted;
+      setIsMuted(!isMuted);
+    } catch (_e) {}
+  };
+
+  const fetchKathaData = async () => {
+    try {
+      // 1. Fetch status
+      const statusRes = await fetch(`${API_BASE_URL}/api/katha/status`);
+      if (statusRes.ok) {
+        const statusJson = await statusRes.json();
+        if (statusJson.status === 'success') {
+          setStatus({
+            is_live: statusJson.is_live,
+            mode: statusJson.mode,
+            title: statusJson.title,
+            guru_name: statusJson.guru_name,
+            banner_message: statusJson.banner_message,
+            next_stream_at: statusJson.next_stream_at,
+          });
+        }
+      }
+
+      // 2. Fetch episodes
+      const epRes = await fetch(`${API_BASE_URL}/api/katha/episodes`);
+      if (epRes.ok) {
+        const epJson = await epRes.json();
+        if (epJson.status === 'success' && Array.isArray(epJson.episodes)) {
+          setEpisodes(epJson.episodes);
+          if (epJson.episodes.length > 0 && !activeEpisode) {
+            setActiveEpisode(epJson.episodes[0]);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[KathaPage] Error fetching data:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchKathaData();
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchKathaData();
+  };
+
+  const handleSelectEpisode = (ep: KathaEpisode) => {
+    setActiveEpisode(ep);
+    setIsPlaying(true);
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ y: 0, animated: true });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -35,39 +200,192 @@ export default function KathaPage() {
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={22} color="#1B1C1C" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Katha</Text>
+        <Text style={styles.headerTitle}>Saavan Katha</Text>
         <View style={{ width: 38 }} />
       </View>
 
-      {/* Content Container */}
-      <View style={styles.content}>
-        {/* Sample Card (Library Listing Style) */}
-        <TouchableOpacity
-          style={styles.bookCard}
-          activeOpacity={0.92}
-        >
-          <View style={styles.coverBox}>
-            <Image source={shamikPathakCover} style={styles.coverImg} resizeMode="cover" />
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: '0%' }]} />
-            </View>
-            <TouchableOpacity style={styles.heartBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="heart-outline" size={15} color="#FFF" />
-            </TouchableOpacity>
+      <ScrollView
+        ref={scrollViewRef}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B00" />
+        }
+      >
+        {/* Main Player & Hotstar Custom Minimalist Controls */}
+        <View style={styles.playerContainer}>
+          <Pressable
+            style={styles.playerWrapper}
+            onPress={resetControlsTimer}
+          >
+            {activeVideoUrl ? (
+              <SafeVideoView
+                player={player}
+                ExpoVideoModule={ExpoVideoModule}
+                style={styles.videoPlayer}
+                nativeControls={false}
+                contentFit="cover"
+              />
+            ) : (
+              <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
+            )}
+
+            {/* Hotstar Minimalist Control Overlay (No Seeking Bar, Live Speed Stream) */}
+            {showControls && (
+              <View style={styles.hotstarOverlay}>
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.7)', 'transparent', 'rgba(0,0,0,0.85)']}
+                  style={StyleSheet.absoluteFillObject}
+                />
+
+                {/* Top Badge Info */}
+                <View style={styles.hotstarTopRow}>
+                  {status.is_live ? (
+                    <View style={[styles.statusBadge, { backgroundColor: '#FF0000' }]}>
+                      <View style={styles.liveDot} />
+                      <Text style={styles.badgeText}>
+                        {status.mode === 'REPEAT_TELECAST' ? 'REPEAT TELECAST' : 'LIVE NOW'}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.statusBadge, { backgroundColor: 'rgba(0,0,0,0.65)' }]}>
+                      <Ionicons name="radio" size={12} color="#FF6B00" style={{ marginRight: 5 }} />
+                      <Text style={[styles.badgeText, { color: '#FFF' }]}>
+                        {activeEpisode ? `DAY ${activeEpisode.episode_number}` : '8:00 AM & 8:00 PM'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Center Big Play/Pause Button */}
+                <TouchableOpacity
+                  style={styles.centerPlayBtn}
+                  activeOpacity={0.8}
+                  onPress={togglePlayPause}
+                >
+                  <Ionicons
+                    name={isPlaying ? "pause" : "play"}
+                    size={32}
+                    color="#FFF"
+                    style={{ marginLeft: isPlaying ? 0 : 3 }}
+                  />
+                </TouchableOpacity>
+
+                {/* Bottom Control Bar */}
+                <View style={styles.hotstarBottomBar}>
+                  <TouchableOpacity
+                    style={styles.bottomControlBtn}
+                    onPress={togglePlayPause}
+                  >
+                    <Ionicons
+                      name={isPlaying ? "pause" : "play"}
+                      size={20}
+                      color="#FFF"
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.bottomControlBtn}
+                    onPress={toggleMute}
+                  >
+                    <Ionicons
+                      name={isMuted ? "volume-mute" : "volume-high"}
+                      size={20}
+                      color="#FFF"
+                    />
+                  </TouchableOpacity>
+
+                  {/* Strictly Broadcast Live Stream Label - NO SEEKBAR / NO SCRUBBING */}
+                  <View style={styles.liveStreamLabelWrap}>
+                    <View style={styles.smallRedDot} />
+                    <Text style={styles.liveStreamLabelText}>
+                      LIVE STREAM • NATURAL BROADCAST SPEED
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </Pressable>
+
+          {/* Active Episode Details */}
+          <View style={styles.activeDetails}>
+            <Text style={styles.activeTitle}>
+              {activeEpisode ? activeEpisode.title : status.title}
+            </Text>
+            <Text style={styles.guruSubtitle}>
+              {activeEpisode?.guru_name || status.guru_name} • Spiritual Guru & Astrologer
+            </Text>
+            <Text style={styles.scheduleText}>
+              {status.banner_message}
+            </Text>
+          </View>
+        </View>
+
+        {/* Episode Library Section */}
+        <View style={styles.librarySection}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
+            <Text style={styles.sectionTitle}>Saavan Katha Episodes</Text>
           </View>
 
-          <View style={styles.bookMeta}>
-            <Text style={styles.bookName} numberOfLines={1}>Shamik Pathak ji</Text>
-            <Text style={styles.bookSub} numberOfLines={1}>Spiritual Guru,Astrologer,Panditji</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
+          {loading ? (
+            <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 30 }} />
+          ) : episodes.length > 0 ? (
+            episodes.map((ep) => {
+              const isSelected = activeEpisode?.id === ep.id;
+              return (
+                <TouchableOpacity
+                  key={ep.id}
+                  style={[styles.episodeCard, isSelected && styles.episodeCardSelected]}
+                  activeOpacity={0.88}
+                  onPress={() => handleSelectEpisode(ep)}
+                >
+                  <View style={styles.thumbnailBox}>
+                    <Image
+                      source={ep.thumbnail_url ? { uri: ep.thumbnail_url } : shamikPathakCover}
+                      style={styles.thumbnailImg}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.playOverlay}>
+                      <Ionicons
+                        name={isSelected && isPlaying ? "pause" : "play"}
+                        size={20}
+                        color="#FFF"
+                      />
+                    </View>
+                    <View style={styles.durationTag}>
+                      <Text style={styles.durationText}>{ep.duration}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.episodeMeta}>
+                    <View style={styles.epHeaderRow}>
+                      <Text style={styles.epBadge}>Day {ep.episode_number}</Text>
+                      <Text style={styles.epDate}>{ep.date}</Text>
+                    </View>
+
+                    <Text style={styles.epTitle} numberOfLines={2}>
+                      {ep.title}
+                    </Text>
+
+                    <Text style={styles.epGuru} numberOfLines={1}>
+                      {ep.guru_name}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>No episodes uploaded yet. Check back during live broadcast!</Text>
+            </View>
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
-const CARD_W = 192;
-const CARD_COVER_H = 300;
 const DARK = '#1B1C1C';
 const BROWN = '#5A4136';
 const ORANGE = '#FF6B00';
@@ -103,76 +421,241 @@ const styles = StyleSheet.create({
     color: DARK,
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
     letterSpacing: -0.4,
-    lineHeight: 28,
   },
-  content: {
-    paddingTop: 20,
-    paddingLeft: 22,
+  playerContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
-  bookCard: {
-    width: CARD_W,
-  },
-  coverBox: {
+  playerWrapper: {
     width: '100%',
-    height: CARD_COVER_H,
-    position: 'relative',
-    borderRadius: 20,
+    height: 220,
+    borderRadius: 18,
     overflow: 'hidden',
+    backgroundColor: '#000',
+    position: 'relative',
     shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  coverImg: {
+  videoPlayer: {
     width: '100%',
     height: '100%',
   },
-  progressTrack: {
+  hotstarOverlay: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    backgroundColor: 'rgba(160,65,0,0.20)',
+    inset: 0,
+    justifyContent: 'space-between',
+    padding: 12,
   },
-  progressFill: {
+  hotstarTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  liveDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFF',
+    marginRight: 6,
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  centerPlayBtn: {
+    alignSelf: 'center',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255,107,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  hotstarBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  bottomControlBtn: {
+    padding: 6,
+  },
+  liveStreamLabelWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,0,0,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,0,0,0.4)',
+  },
+  smallRedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FF0000',
+    marginRight: 6,
+  },
+  liveStreamLabelText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  activeDetails: {
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+  },
+  activeTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: DARK,
+    marginBottom: 4,
+    lineHeight: 24,
+  },
+  guruSubtitle: {
+    fontSize: 13,
+    color: BROWN,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  scheduleText: {
+    fontSize: 12,
+    color: ORANGE,
+    fontWeight: '700',
+  },
+  librarySection: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 14,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: DARK,
+  },
+  episodeCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF8F3',
+    borderRadius: 16,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,0,0.15)',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  episodeCardSelected: {
+    borderColor: ORANGE,
+    backgroundColor: '#FFF0E5',
+    borderWidth: 1.5,
+  },
+  thumbnailBox: {
+    width: 120,
+    height: 80,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  thumbnailImg: {
+    width: '100%',
     height: '100%',
-    backgroundColor: ORANGE,
-    borderRadius: 2,
   },
-  heartBtn: {
+  playOverlay: {
     position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  bookMeta: {
-    paddingHorizontal: 4,
-    paddingTop: 14,
-    paddingBottom: 14,
+  durationTag: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  durationText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  episodeMeta: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  epHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  bookName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: DARK,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     marginBottom: 4,
-    lineHeight: 22,
-    textAlign: 'center',
   },
-  bookSub: {
+  epBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: ORANGE,
+    backgroundColor: 'rgba(255,107,0,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  epDate: {
+    fontSize: 11,
+    color: '#888',
+    fontWeight: '500',
+  },
+  epTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: DARK,
+    marginBottom: 4,
+    lineHeight: 19,
+  },
+  epGuru: {
     fontSize: 12,
     color: BROWN,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    letterSpacing: 0.2,
-    lineHeight: 18,
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    padding: 30,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#888',
+    fontSize: 14,
     textAlign: 'center',
   },
 });
