@@ -697,22 +697,22 @@ export default function HomeScreen() {
   const vendorIntervalRef = useRef<any>(null);
   const topFeaturesIntervalRef = useRef<any>(null);
   const clockIntervalRef = useRef<any>(null);
-  const lastUserInteractionTime = useRef<number>(Date.now());
 
   useEffect(() => {
     if (!isFocused) return;
+
+    // Rotate internal info inside Aarti and Request cards
     aartiIntervalRef.current = setInterval(() => {
       if (AppState.currentState !== 'active') return;
-      if (Date.now() - lastUserInteractionTime.current > 60000) return; // Pause rotation after 60s idle
       setActiveAartiIndex(prev => (prev + 1) % ROTATING_AARTIS.length);
       setActiveRequestIndex(prev => prev + 1);
-    }, 12000);
+    }, 5000);
 
+    // Rotate internal info inside Vendor card
     vendorIntervalRef.current = setInterval(() => {
       if (AppState.currentState !== 'active') return;
-      if (Date.now() - lastUserInteractionTime.current > 60000) return; // Pause rotation after 60s idle
       setActiveVendorIndex(prev => prev + 1);
-    }, 20000);
+    }, 6000);
 
     return () => {
       if (aartiIntervalRef.current) clearInterval(aartiIntervalRef.current);
@@ -819,7 +819,6 @@ export default function HomeScreen() {
     const TOTAL_CARDS = baseQuickAccess.length;
     topFeaturesIntervalRef.current = setInterval(() => {
       if (AppState.currentState !== 'active') return;
-      if (Date.now() - lastUserInteractionTime.current > 60000) return; // Pause rotation after 60s idle
       topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
       topFeaturesScrollRef.current?.scrollTo({
         x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
@@ -1788,7 +1787,6 @@ export default function HomeScreen() {
   });
 
   const handleHomeScroll = useCallback((event: any) => {
-    lastUserInteractionTime.current = Date.now();
     const yOffset = event?.nativeEvent?.contentOffset?.y || 0;
     currentScrollY.current = yOffset;
     onHomeScrollTabBar(event);

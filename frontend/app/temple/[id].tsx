@@ -753,14 +753,14 @@ function getYoutubeAppUrl(url: string) {
 function getYoutubeEmbedUrl(url: string) {
   if (!url) return '';
   if (url.includes('embed/live_stream')) {
-    return url + '&autoplay=1&enablejsapi=1';
+    return url + '&autoplay=1&enablejsapi=1&origin=https://www.youtube.com&playsinline=1';
   }
   if (url.includes('embed/')) {
     return url;
   }
   const videoId = getYoutubeVideoId(url);
   if (videoId) {
-    return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0`;
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&origin=https://www.youtube.com&playsinline=1&rel=0`;
   }
   if (url.includes('@')) {
     const handle = url.split('@')[1].split('/')[0].split('?')[0];
@@ -806,81 +806,26 @@ export default function TempleDetailScreen() {
     if (!resolvedYoutubeUrl) return null;
     const videoId = getYoutubeVideoId(resolvedYoutubeUrl);
 
+    let targetUri = resolvedYoutubeUrl;
     if (videoId) {
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-            <style>
-              * { margin: 0; padding: 0; box-sizing: border-box; }
-              body, html { width: 100%; height: 100%; background-color: #000; overflow: hidden; }
-              iframe { width: 100%; height: 100%; border: none; }
-            </style>
-          </head>
-          <body>
-            <iframe 
-              src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1" 
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-              allowfullscreen>
-            </iframe>
-          </body>
-        </html>
-      `;
-
-      return (
-        <WebView
-          source={{ html: htmlContent, baseUrl: 'https://www.youtube-nocookie.com' }}
-          originWhitelist={['*']}
-          userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
-          style={styles.youtubeFrame}
-          javaScriptEnabled
-          domStorageEnabled
-          allowsFullscreenVideo
-          allowsInlineMediaPlayback
-          mediaPlaybackRequiresUserAction={false}
-        />
-      );
-    }
-
-    // Handle channel handles (@handle) by embedding the live stream iframe directly
-    let embedSrc = resolvedYoutubeUrl;
-    if (resolvedYoutubeUrl.includes('@')) {
+      targetUri = `https://www.youtube.com/embed/${videoId}?autoplay=1&playsinline=1&enablejsapi=1&rel=0&modestbranding=1`;
+    } else if (resolvedYoutubeUrl.includes('@')) {
       const handle = resolvedYoutubeUrl.split('@')[1].split('/')[0].split('?')[0];
-      embedSrc = `https://www.youtube.com/embed/live_stream?channel_handle=${handle}&autoplay=1`;
+      targetUri = `https://www.youtube.com/embed/live_stream?channel_handle=${handle}&autoplay=1&enablejsapi=1&playsinline=1`;
+    } else if (resolvedYoutubeUrl.includes('embed/live_stream') && !resolvedYoutubeUrl.includes('autoplay=1')) {
+      targetUri = resolvedYoutubeUrl.includes('?') ? `${resolvedYoutubeUrl}&autoplay=1&enablejsapi=1&playsinline=1` : `${resolvedYoutubeUrl}?autoplay=1&enablejsapi=1&playsinline=1`;
     }
-
-    const channelHtmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body, html { width: 100%; height: 100%; background-color: #000; overflow: hidden; }
-            iframe { width: 100%; height: 100%; border: none; }
-          </style>
-        </head>
-        <body>
-          <iframe 
-            src="${embedSrc}" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-            allowfullscreen>
-          </iframe>
-        </body>
-      </html>
-    `;
 
     return (
       <WebView
-        source={{ html: channelHtmlContent, baseUrl: 'https://www.youtube.com' }}
+        source={{ uri: targetUri }}
         originWhitelist={['*']}
-        userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
         style={styles.youtubeFrame}
         javaScriptEnabled
         domStorageEnabled
         allowsFullscreenVideo
         allowsInlineMediaPlayback
+        userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1"
         mediaPlaybackRequiresUserAction={false}
       />
     );
@@ -1327,9 +1272,22 @@ if (!temple) {
   allowFullScreen
   />
   ) : (
-  youtubeWebViewContent
+  isYoutubeModalVisible ? youtubeWebViewContent : null
   )}
   </View>
+  {resolvedYoutubeUrl ? (
+    <TouchableOpacity 
+      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFF0F0', paddingVertical: 10, paddingHorizontal: 16, borderTopWidth: 1, borderTopColor: '#FFE0E0', gap: 8 }}
+      onPress={() => Linking.openURL(getYoutubeAppUrl(resolvedYoutubeUrl))}
+      activeOpacity={0.8}
+    >
+      <Ionicons name="logo-youtube" size={20} color="#FF0000" />
+      <Text style={{ fontSize: 13, fontWeight: '600', color: '#D32F2F' }}>
+        {t('language') === 'hi' ? 'यूट्यूब ऐप में डायरेक्ट देखें' : 'Watch Directly in YouTube App'}
+      </Text>
+      <Ionicons name="open-outline" size={14} color="#D32F2F" />
+    </TouchableOpacity>
+  ) : null}
   </View>
   </View>
   </Modal>
