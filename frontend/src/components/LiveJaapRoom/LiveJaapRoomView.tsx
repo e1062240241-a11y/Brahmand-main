@@ -52,31 +52,31 @@ const LiveCountdown = React.memo(({ targetDate }: { targetDate: Date | null }) =
 const MANTRA_DATA: Record<string, { text: string; bg: any }> = {
   gayatri: {
     text: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं भर्गो देवस्य धीमहि धियो यो नः प्रचोदयात्',
-    bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
+    bg: require('../../../assets/images/jaap_hero_shiva_final.webp'),
   },
 hanuman: {
     text: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि बरनऊँ रघुबर बिमल जसु जो दायकु फल चारि बुद्धिहीन तनु जानिके सुमिरौं पवन-कुमार बल बुधि बिद्या देहु मोहिं हरहु कलेस बिकार जय हनुमान ज्ञान गुन सागर जय कपीस तिहुँ लोक उजागर',
-    bg: require('../../../assets/images/hanuman_jaap_card_v2.png'),
+    bg: require('../../../assets/images/hanuman_jaap_card_v2.webp'),
   },
   krishna: {
     text: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे हरे राम हरे राम राम राम हरे हरे',
-    bg: require('../../../assets/images/krishna_jaap_card_v2.png'),
+    bg: require('../../../assets/images/krishna_jaap_card_v2.webp'),
   },
   shiva: {
     text: 'ॐ\u00A0नमः\u00A0शिवाय',
-    bg: require('../../../assets/images/shiva_jaap_card_v2.png'),
+    bg: require('../../../assets/images/shiva_jaap_card_v2.webp'),
   },
   mrityunjaya: {
     text: 'ॐ त्र्यम्बकं यजामहे सुगन्धिं पुष्टिवर्धनम् उर्वारुकमिव बन्धनान् मृत्योर्मुक्षीय मामृतात्',
-    bg: require('../../../assets/images/jaap_hero_shiva_final.png'),
+    bg: require('../../../assets/images/jaap_hero_shiva_final.webp'),
   },
   ganesh: {
     text: 'ॐ गं गणपतये नमः ॐ गं गणपतये नमः ॐ गं गणपतये नमः ॐ गं गणपतये नमः',
-    bg: require('../../../assets/images/ganesh_jaap_card.png'),
+    bg: require('../../../assets/images/ganesh_jaap_card.webp'),
   },
   laxmi: {
     text: 'ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः ॐ श्रीं महालक्ष्म्यै नमः',
-    bg: require('../../../assets/images/laxmi_jaap_card.png'),
+    bg: require('../../../assets/images/laxmi_jaap_card.webp'),
   },
   shani_chalisa: {
     text: 'जय गणेश गिरिजा सुवन मंगल करन कृपाल दीनन के दुख दूर करि कीजै नाथ निहाल जय जय श्री शनिदेव प्रभु सुनहु विनय महाराज करहु कृपा हे रवि तनय राखहु जन की लाज जयति जयति शनिदेव दयाला करत सदा भक्तन प्रतिपाला चारि भुजा तनु श्याम विराजै माथे मुकुट छविली छाजै परम विशाल रूप अति सुन्दर तेज प्रताप जगत् प्रकाशक लोह अस्त्र कालिका प्यारा चंवर ढुरै प्यारे सिर द्वारा खड्ग त्रिशूल कुठार हाथ मह पल मह शत्रु करहि सब दाह मह पिंगल मन्द सुनयन लाला अति मन्द रूप सोहै विकराला कंचन थार आरती कीजै जा पर कुंकुम अक्षत दीजै कंचन दीप जलै दिन राती आरती करत भक्त हरषाती जय जय शनिदेव रवि नन्दन विध्न हरण मंगल के बन्दन लोह मन्दिर अति सुन्दर साजे घण्टा शंख झांझ बहु बाजे कीजै कृपा भक्तन पर स्वामी घट घट वासी अन्तर्यामी भक्तन के हित अवतार लीन्हा असुर मारि सुरन सुख दीन्हा जबहिं राम बनवासहि गयऊ तबहिं शनि कोप कोप भयो लछिमन को लगि शक्ति बाना तबहिं शनि कोप भयो अपमाना रावन की लंका जल गई तबहिं शनि कोप भयो दुःखदाई कौरव पाण्डव युद्ध भयो जब तबहिं शनि कोप भयो दुःख तब विक्रम पर जब कोप दिखायो पल मह राज पाट सब गयो हरिश्चन्द्र राजा बलवन्ता पल मह भयो भिखारी अनन्ता कीजै कृपा दयालु विधाता तुम हो जग के भाग्य विधाता तुमको ध्यावै जो मन लाई ताके दुख सब जाहिं नसाई जो यह चालीसा नित गावै ताके सब संकट कट जावै मन्दिर मह आरती करै जो कोय ताके घर मह मंगल होय शनिदेव की आरती गावै सो नर मनवाञ्छित फल पावै',
@@ -1028,7 +1028,7 @@ export default function LiveJaapRoomView() {
 
   return (
     <ImageBackground
-      source={require('../../../assets/images/live_jaap_room_bg.png')}
+      source={require('../../../assets/images/live_jaap_room_bg.webp')}
       style={styles.container}
       resizeMode="cover"
     >

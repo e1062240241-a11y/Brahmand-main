@@ -26,7 +26,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // ── Assets ────────────────────────────────────────────────────────────────
 const geetaCover = require('../../assets/images/featured_book_6.jpg');
 const ramcharitmanasCover = require('../../assets/images/featured_book_1.jpg');
-const atharvavedCover = require('../../assets/images/user_upload_0.png');
+const atharvavedCover = require('../../assets/images/user_upload_0.webp');
 const mahabharataCover = require('../../assets/images/featured_book_4.jpg');
 const rigvedaCover = require('../../assets/images/featured_book_2.jpg');
 const ramayanCover = require('../../assets/images/featured_book_5.jpg');

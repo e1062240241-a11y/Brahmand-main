@@ -292,7 +292,7 @@ function BloodDropIcon() {
 function LotusIcon() {
   return (
     <Image
-      source={require('../../assets/images/sai_flower_lotus_icon.png')}
+      source={require('../../assets/images/sai_flower_lotus_icon.webp')}
       style={styles.saiLotusIcon}
       resizeMode="contain"
       accessibilityLabel="Lotus flower"
@@ -303,7 +303,7 @@ function LotusIcon() {
 function TempleIcon() {
   return (
     <Image
-      source={require('../../assets/images/home_temple_icon.png')}
+      source={require('../../assets/images/home_temple_icon.webp')}
       style={styles.actionCardIcon}
       resizeMode="contain"
       accessibilityLabel="Temple"
@@ -314,7 +314,7 @@ function TempleIcon() {
 function ShopIcon() {
   return (
     <Image
-      source={require('../../assets/images/home_shop_icon.png')}
+      source={require('../../assets/images/home_shop_icon.webp')}
       style={styles.actionCardIcon}
       resizeMode="contain"
       accessibilityLabel="Shop"
@@ -326,8 +326,8 @@ const PAGE_PADDING = 16;
 const CARD_RADIUS = 18;
 
 const HOME_CARD_TEXTURES = {
-  rose: require('../../assets/images/home_card_bg_rose.png'),
-  peach: require('../../assets/images/home_card_bg_peach.png'),
+  rose: require('../../assets/images/home_card_bg_rose.webp'),
+  peach: require('../../assets/images/home_card_bg_peach.webp'),
   mint: require('../../assets/images/home_card_bg_mint.jpg'),
   cyan: require('../../assets/images/home_card_bg_mint.jpg'),
   lavender: require('../../assets/images/home_card_bg_lavender.jpg'),
@@ -376,10 +376,10 @@ function HomeCardTextureBg({
 }
 
 const shivaImage = require('../../assets/images/image temple/SomnathTemple.jpg');
-const communityPhoneImage = require('../../assets/images/community_phone.png');
+const communityPhoneImage = require('../../assets/images/community_phone.webp');
 const kundliChartImage = require('../../assets/images/kundli_chart.jpg');
 const astrologerMockImg = require('../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg');
-const salonMockImg = require('../../assets/images/tab-bar/rashi/vendor/salon.png');
+const salonMockImg = require('../../assets/images/tab-bar/rashi/vendor/salon.webp');
 const electricianMockImg = require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg');
 const FEED_PAGE_SIZE = 10;
 
@@ -2952,36 +2952,36 @@ export default function HomeScreen() {
                           </View>
                         ) : item.label === 'My Krishn' ? (
                           <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                            <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                              <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 42, height: 42 }} contentFit="contain" />
+                            <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                              <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.webp')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 42, height: 42 }} contentFit="contain" />
                             </ImageBackground>
                           </View>
                         ) : item.label === 'Panchang' ? (
                           <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                            <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                              <Image source={require('../../assets/images/panchang_icon_3.png')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
+                            <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                              <Image source={require('../../assets/images/panchang_icon_3.webp')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
                             </ImageBackground>
                           </View>
                         ) : item.label === 'Kundli' ? (
                           <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                            <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                              <Image source={require('../../assets/images/custom_kundli_icon.png')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 44, height: 44 }} resizeMode="contain" />
+                            <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                              <Image source={require('../../assets/images/custom_kundli_icon.webp')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 44, height: 44 }} resizeMode="contain" />
                             </ImageBackground>
                           </View>
                         ) : item.label === 'Brahmand Passport' ? (
                           <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 58, overflow: 'visible' } : { overflow: 'visible', width: 52, height: 67 }]}>
-                            <Image source={require('../../assets/images/custom_passport_icon.png')} style={Platform.OS === 'android' ? { width: 46, height: 58, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
+                            <Image source={require('../../assets/images/custom_passport_icon.webp')} style={Platform.OS === 'android' ? { width: 46, height: 58, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
                           </View>
                         ) : item.label === 'Festival' ? (
                           <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                            <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                              <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
+                            <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                              <Image source={require('../../assets/images/custom_festival_icon_2.webp')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
                             </ImageBackground>
                           </View>
                         ) : item.label === 'Brahmand Library' ? (
                           <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
-                            <ImageBackground source={require('../../assets/images/orange_circle_bg.png')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
-                              <Image source={require('../../assets/images/library_icon_3.png')} style={Platform.OS === 'android' ? { width: 22, height: 22 } : { width: 24, height: 24 }} resizeMode="contain" />
+                            <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                              <Image source={require('../../assets/images/library_icon_3.webp')} style={Platform.OS === 'android' ? { width: 22, height: 22 } : { width: 24, height: 24 }} resizeMode="contain" />
                             </ImageBackground>
                           </View>
                         ) : (
@@ -3040,7 +3040,7 @@ export default function HomeScreen() {
                     style={{ flex: 1, borderRadius: 15, overflow: 'hidden' }}
                     onPress={() => router.push('/library/katha')}
                   >
-                    <ImageBackground source={require('../../assets/images/panditji.png')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
+                    <ImageBackground source={require('../../assets/images/panditji.webp')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                       <LinearGradient
                         colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.85)']}
                         style={styles.featuredLiveOverlay}
@@ -3792,7 +3792,7 @@ export default function HomeScreen() {
                     });
                   }}
                 >
-                  <Image source={require('../../assets/images/mumbai_pin.png')} style={styles.communityCardIcon} />
+                  <Image source={require('../../assets/images/mumbai_pin.webp')} style={styles.communityCardIcon} />
                   <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                     <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('cityCommunity').toUpperCase()}</Text>
                     <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
@@ -3836,7 +3836,7 @@ export default function HomeScreen() {
                   }}
                 >
                   <View style={styles.communityCardIconBox}>
-                    <Image source={require('../../assets/images/food_sharing.png')} style={styles.communityCardIconRound} />
+                    <Image source={require('../../assets/images/food_sharing.webp')} style={styles.communityCardIconRound} />
                   </View>
                   <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
                     <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>

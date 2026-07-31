@@ -528,7 +528,7 @@ function PassportTimelineScreen({
 
             <View style={styles.illustrationWrapper}>
               <Image 
-                source={require('../../assets/images/certificate_fixed.png')}
+                source={require('../../assets/images/certificate_fixed.webp')}
                 style={{ width: 120, height: 120 }}
                 contentFit="contain"
               />

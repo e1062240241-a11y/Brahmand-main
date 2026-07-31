@@ -720,7 +720,7 @@ function MessagesScreen({
 
   const renderMedalIcon = () => (
     <Image
-      source={require('../../assets/images/community_medal_icon.png')}
+      source={require('../../assets/images/community_medal_icon.webp')}
       style={styles.medalIconImage}
       resizeMode="contain"
     />
@@ -807,7 +807,7 @@ function MessagesScreen({
           >
             <View style={styles.mumbaiIconSquare}>
               <Image
-                source={require('../../assets/images/mumbai_pin.png')}
+                source={require('../../assets/images/mumbai_pin.webp')}
                 style={styles.mumbaiIconImage}
                 resizeMode="contain"
               />

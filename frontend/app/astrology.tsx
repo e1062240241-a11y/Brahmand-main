@@ -34,11 +34,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', img: require('../assets/images/cosmic/cos1.png') },
-  { key: 'character', label: 'Character', img: require('../assets/images/cosmic/cos2.png') },
-  { key: 'education', label: 'Education', img: require('../assets/images/cosmic/cos3.png') },
-  { key: 'family', label: 'Family', img: require('../assets/images/cosmic/cos4.png') },
-  { key: 'health', label: 'Health', img: require('../assets/images/cosmic/cos5.png') },
+  { key: 'physical', label: 'Physical', img: require('../assets/images/cosmic/cos1.webp') },
+  { key: 'character', label: 'Character', img: require('../assets/images/cosmic/cos2.webp') },
+  { key: 'education', label: 'Education', img: require('../assets/images/cosmic/cos3.webp') },
+  { key: 'family', label: 'Family', img: require('../assets/images/cosmic/cos4.webp') },
+  { key: 'health', label: 'Health', img: require('../assets/images/cosmic/cos5.webp') },
 ];
 
 const CITIES_DB = [
@@ -529,14 +529,14 @@ export default function AstrologyScreen() {
 
 
   const attributes = [
-    { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.png'), color: '#F59E0B' },
-    { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.png'), color: '#C67C4E' },
-    { label: 'CHARAN', value: details.Charan, img: require('../assets/images/iconattributes/Icon3.png'), color: '#10B981' },
-    { label: 'GAN', value: details.Gan, img: require('../assets/images/iconattributes/Icon4.png'), color: '#14B8A6' },
-    { label: 'YONI', value: details.Yoni, img: require('../assets/images/iconattributes/Icon5.png'), color: '#EC4899' },
-    { label: 'NADI', value: details.Nadi, img: require('../assets/images/iconattributes/Icon6.png'), color: '#EF4444' },
-    { label: 'VARNA', value: details.Varna, img: require('../assets/images/iconattributes/Icon7.png'), color: '#3B82F6' },
-    { label: 'VASHYA', value: details.Vashya, img: require('../assets/images/iconattributes/Icon8.png'), color: '#C67C4E' },
+    { label: 'NAKSHATRA LORD', value: details.NaksahtraLord, img: require('../assets/images/iconattributes/Icon1.webp'), color: '#F59E0B' },
+    { label: 'RASHI LORD', value: details.SignLord, img: require('../assets/images/iconattributes/Icon2.webp'), color: '#C67C4E' },
+    { label: 'CHARAN', value: details.Charan, img: require('../assets/images/iconattributes/Icon3.webp'), color: '#10B981' },
+    { label: 'GAN', value: details.Gan, img: require('../assets/images/iconattributes/Icon4.webp'), color: '#14B8A6' },
+    { label: 'YONI', value: details.Yoni, img: require('../assets/images/iconattributes/Icon5.webp'), color: '#EC4899' },
+    { label: 'NADI', value: details.Nadi, img: require('../assets/images/iconattributes/Icon6.webp'), color: '#EF4444' },
+    { label: 'VARNA', value: details.Varna, img: require('../assets/images/iconattributes/Icon7.webp'), color: '#3B82F6' },
+    { label: 'VASHYA', value: details.Vashya, img: require('../assets/images/iconattributes/Icon8.webp'), color: '#C67C4E' },
   ];
 
   return (

@@ -36,10 +36,10 @@ import { loadBhagavadGitaChapter, prefetchBhagavadGitaChapters, cleanupBhagavadG
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Bhagavad Gita image provided by the user
-const geeta3DImage = require('../../assets/images/bhagavad_gita_3d_new.png');
+const geeta3DImage = require('../../assets/images/bhagavad_gita_3d_new.webp');
 // Custom bookmark icons
-const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
-const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
+const bookmarkIconImage = require('../../assets/images/bookmark_icon.webp');
+const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.webp');
 
 const BOOK_ID = 'bhagvad-geeta';
 const TOTAL_CHAPTERS = 18;
@@ -347,7 +347,7 @@ export default function BhagavadGita3DPage() {
         </LinearGradient>
       ) : (
         <View style={{ flex: 1 }}>
-          <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
+          <ImageBackground source={require('../../assets/images/clean_parchment_bg.webp')} style={styles.root}>
             {/* Unified Sticky Header */}
             <View style={{
               backgroundColor: nightMode ? 'rgba(30, 20, 15, 0.95)' : 'rgba(234, 209, 163, 0.95)',

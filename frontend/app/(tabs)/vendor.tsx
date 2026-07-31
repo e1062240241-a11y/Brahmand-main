@@ -1156,7 +1156,7 @@ export default function VendorScreen() {
                 />
                 <View style={styles.figmaServiceBadge}>
                   <Image 
-                    source={require('../../assets/images/tab-bar/rashi/vendor/siren.png')} 
+                    source={require('../../assets/images/tab-bar/rashi/vendor/siren.webp')} 
                     style={{ width: 12, height: 12, marginRight: 2 }} 
                     resizeMode="contain"
                   />
@@ -1177,7 +1177,7 @@ export default function VendorScreen() {
                   <Image source={require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/lightning.png')} 
+                      source={require('../../assets/images/tab-bar/rashi/vendor/lightning.webp')} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -1195,7 +1195,7 @@ export default function VendorScreen() {
                   <Image source={require('../../assets/images/tab-bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.png')} 
+                      source={require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.webp')} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -1210,10 +1210,10 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Carpenter */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Carpenter' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/carpener.png')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/carpener.webp')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/hammer_custom.png')} 
+                      source={require('../../assets/images/tab-bar/rashi/vendor/hammer_custom.webp')} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                   />
@@ -1228,10 +1228,10 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Plumber */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Plumber' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/plumber.png')} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/plumber.webp')} style={{ position: 'absolute', width: cardWidth * 1.42, height: 102, left: -cardWidth * 0.21, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/plumber_icon.png')} 
+                      source={require('../../assets/images/tab-bar/rashi/vendor/plumber_icon.webp')} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -1264,7 +1264,7 @@ export default function VendorScreen() {
           {/* Colorful Background Container for the Business Section */}
           <View style={{ marginTop: -30, paddingBottom: 32, alignItems: 'center' }}>
             <Image 
-              source={require('../../assets/images/tab-bar/rashi/vendor/background.png')} 
+              source={require('../../assets/images/tab-bar/rashi/vendor/background.webp')} 
               style={{ position: 'absolute', width: VSCREEN_WIDTH, height: 364, top: 0 }} 
               resizeMode="cover" 
             />
@@ -1289,7 +1289,7 @@ export default function VendorScreen() {
                   <Image source={require('../../assets/images/tab-bar/rashi/vendor/generalstore.jpg')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/general_store.png')} 
+                      source={require('../../assets/images/tab-bar/rashi/vendor/general_store.webp')} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -1306,7 +1306,7 @@ export default function VendorScreen() {
                   <Image source={require('../../assets/images/tab-bar/rashi/vendor/dairy.jpg')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/cow.png')} 
+                      source={require('../../assets/images/tab-bar/rashi/vendor/cow.webp')} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />
@@ -1322,10 +1322,10 @@ export default function VendorScreen() {
               </View>
               <View style={[styles.figmaBusinessRightCol, { width: businessRightColWidth }]}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 195 }]} onPress={() => router.push('/vendor/category/Salon' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/salon.png')} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/salon.webp')} style={{ position: 'absolute', width: businessRightColWidth * 3.22, height: 197, left: -businessRightColWidth * 1.11, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
-                      source={require('../../assets/images/tab-bar/rashi/vendor/salon_icon.png')} 
+                      source={require('../../assets/images/tab-bar/rashi/vendor/salon_icon.webp')} 
                       style={{ width: 12, height: 12, marginRight: 2 }} 
                       resizeMode="contain"
                     />

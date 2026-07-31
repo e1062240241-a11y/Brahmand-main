@@ -144,13 +144,13 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
   const getBadgeImage = (title: string) => {
     const cleanTitle = title.toLowerCase();
     if (cleanTitle.includes('gita')) {
-      return require('../../../assets/images/bhagavad_gita_3d_new.png');
+      return require('../../../assets/images/bhagavad_gita_3d_new.webp');
     } else if (cleanTitle.includes('mahabharat')) {
       return require('../../../assets/images/mahabharata.jpg');
     } else if (cleanTitle.includes('ramayan') || cleanTitle.includes('ramcharit')) {
       return require('../../../assets/images/Ramcharitmanas.jpg');
     }
-    return require('../../../assets/images/community_medal_icon.png');
+    return require('../../../assets/images/community_medal_icon.webp');
   };
 
   const handleShare = async () => {
@@ -245,7 +245,7 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
           </View>
         ) : isGita ? (
           <Image 
-            source={require('../../../assets/images/PhotoshopPreview_Image 1.png')} 
+            source={require('../../../assets/images/PhotoshopPreview_Image 1.webp')} 
             style={styles.gitaBadgeImage} 
             contentFit="contain"
           />

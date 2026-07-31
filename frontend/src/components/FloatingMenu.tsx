@@ -188,22 +188,22 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                             }}
                           >
                             <ImageBackground 
-                              source={require('../../assets/images/tab-bar/back.png')} 
+                              source={require('../../assets/images/tab-bar/back.webp')} 
                               style={{ width: itemSize, height: itemSize, justifyContent: 'center', alignItems: 'center', borderRadius: itemRadius, overflow: 'hidden' }} 
                               imageStyle={{ borderRadius: itemRadius, resizeMode: 'cover' }}
                             >
                               {item.key === 'myKrishna' ? (
-                                <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.png')} style={{ width: 48, height: 48 }} contentFit="contain" />
+                                <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.webp')} style={{ width: 48, height: 48 }} contentFit="contain" />
                               ) : item.key === 'festival' ? (
-                                <Image source={require('../../assets/images/custom_festival_icon_2.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_festival_icon_2.webp')} style={{ width: 36, height: 36 }} resizeMode="contain" />
                               ) : item.key === 'kundli' ? (
-                                <Image source={require('../../assets/images/tab-bar/hand_eye_phosphor.png')} style={{ width: 36, height: 36 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/tab-bar/hand_eye_phosphor.webp')} style={{ width: 36, height: 36 }} resizeMode="contain" />
                               ) : item.key === 'brahmandPassport' ? (
-                                <Image source={require('../../assets/images/custom_passport_icon.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/custom_passport_icon.webp')} style={{ width: 48, height: 48 }} resizeMode="contain" />
                               ) : item.key === 'panchang' ? (
-                                <Image source={require('../../assets/images/panchang_icon_3.png')} style={{ width: 34, height: 34 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/panchang_icon_3.webp')} style={{ width: 34, height: 34 }} resizeMode="contain" />
                               ) : item.key === 'brahmandLibrary' ? (
-                                <Image source={require('../../assets/images/library_icon_3.png')} style={{ width: 34, height: 34 }} resizeMode="contain" />
+                                <Image source={require('../../assets/images/library_icon_3.webp')} style={{ width: 34, height: 34 }} resizeMode="contain" />
                               ) : (
                                 <Ionicons name={item.icon as any} size={28} color="#FFF" />
                               )}
@@ -269,7 +269,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
           onPress={toggleFab}
         >
           <ExpoImage
-            source={require('../../assets/images/tab-bar/my_krishna.png')}
+            source={require('../../assets/images/tab-bar/my_krishna.webp')}
             style={fabStyles.fabIcon}
             contentFit="cover"
           />

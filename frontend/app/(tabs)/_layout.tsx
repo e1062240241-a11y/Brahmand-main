@@ -86,7 +86,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <View style={styles.iconContainer}>
               <Image
-                source={require('../../assets/images/jaap_tab_icon.png')}
+                source={require('../../assets/images/jaap_tab_icon.webp')}
                 style={[styles.jaapTabIcon, { tintColor: color }]}
                 resizeMode="contain"
               />
