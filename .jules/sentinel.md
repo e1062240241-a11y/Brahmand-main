@@ -12,3 +12,8 @@
 **Vulnerability:** The `global_exception_handler` in `backend/main.py` was returning raw exception messages directly to the client via a `JSONResponse` (`content={"detail": f"Global Error: {str(exc)}"}`).
 **Learning:** Returning `str(exc)` in 500 error responses acts as an Information Exposure (CWE-200) vulnerability. It can leak sensitive system information—such as file paths, database structure, or API connection errors—directly to malicious actors probing the API. While detailed error messages are useful during development, they should never be exposed in production.
 **Prevention:** Always return a generic error message (e.g., "An internal server error occurred.") to the client while ensuring the actual exception details are recorded securely on the server via robust logging (e.g., `logger.error(..., exc_info=True)`).
+
+## 2026-07-30 - Remove Hardcoded Secrets from Scratch Scripts
+**Vulnerability:** A fallback for a Bunny.net access key was hardcoded in `backend/scratch/backup_bunny.py`.
+**Learning:** Even 'scratch' or utility scripts are part of the codebase and can leak secrets if checked into source control or shared. Relying on hardcoded values bypasses security measures, especially since utility scripts might not be rigorously reviewed.
+**Prevention:** Treat utility and scratch scripts with the same security rigor as production code. Require environment variables for all secrets and fail securely with a clear error message (e.g., using `sys.exit(1)`) instead of defaulting to a hardcoded secret.

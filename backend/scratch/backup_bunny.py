@@ -8,9 +8,15 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
 load_dotenv(dotenv_path=env_path)
 
+import sys
+
 bunny_zone = os.getenv("BUNNY_STORAGE_ZONE") or "brahmand"
 # Prefer write access key if available, otherwise read key
-bunny_key = os.getenv("BUNNY_ACCESS_KEY") or os.getenv("BUNNY_READ_ACCESS_KEY") or "47413ed1-3dd9-471d-aa2b39e96bbe-ef36-4314"
+bunny_key = os.getenv("BUNNY_ACCESS_KEY") or os.getenv("BUNNY_READ_ACCESS_KEY")
+
+if not bunny_key:
+    print("Error: BUNNY_ACCESS_KEY or BUNNY_READ_ACCESS_KEY environment variable must be set.", file=sys.stderr)
+    sys.exit(1)
 
 print(f"Using Bunny Zone: {bunny_zone}")
 
