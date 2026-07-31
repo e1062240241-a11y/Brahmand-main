@@ -3826,13 +3826,8 @@ export default function HomeScreen() {
                 if (!hasMoreFeed || loadingMoreFeed) return;
                 loadFeedPosts(feedOffset, true, activeTab);
               }}
-              refreshControl={<InstagramRefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
-              ListHeaderComponent={
-                <>
-                  <InstagramSpinner refreshing={isRefreshing} color="#FFFFFF" />
-                  {memoizedHeader}
-                </>
-              }
+              refreshControl={<InstagramRefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
+              ListHeaderComponent={memoizedHeader}
             />
           </View>
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing, RefreshControl } from 'react-native';
+import { View, StyleSheet, Animated, Easing, RefreshControl, Platform } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 // ponytail: Instagram / Threads style custom spinner
@@ -70,22 +70,28 @@ export const InstagramSpinner: React.FC<InstagramSpinnerProps> = ({
   );
 };
 
-// ponytail: Standard RefreshControl wrapper configured with minimalist Instagram style props (transparent tint/progress view)
-export const InstagramRefreshControl: React.FC<React.ComponentProps<typeof RefreshControl>> = ({
-  tintColor = 'transparent',
-  colors = ['transparent'],
-  progressBackgroundColor = 'transparent',
+// ponytail: Platform-optimized RefreshControl
+// iOS: Uses native smooth spinner (visible immediately on pull, spins with drag, triggers early)
+// Android: Clean white circular background badge around the spinner with primary tint color
+export const InstagramRefreshControl: React.FC<
+  React.ComponentProps<typeof RefreshControl> & { colors?: string[] }
+> = ({
+  tintColor = '#8E8E93',
+  colors = ['#FF7A00', '#8E8E93'],
+  progressBackgroundColor = '#FFFFFF',
+  progressViewOffset = 20,
   ...props
 }) => {
-  return (
-    <RefreshControl
-      tintColor={tintColor}
-      colors={colors}
-      progressBackgroundColor={progressBackgroundColor}
-      {...props}
-    />
-  );
-};
+    return (
+      <RefreshControl
+        tintColor={Platform.OS === 'ios' ? tintColor : undefined}
+        colors={Platform.OS === 'android' ? colors : undefined}
+        progressBackgroundColor={Platform.OS === 'android' ? progressBackgroundColor : undefined}
+        progressViewOffset={progressViewOffset}
+        {...props}
+      />
+    );
+  };
 
 const styles = StyleSheet.create({
   container: {

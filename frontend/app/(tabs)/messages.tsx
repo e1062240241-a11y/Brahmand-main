@@ -1508,7 +1508,6 @@ function MessagesScreen({
         onScroll={onMessagesScrollTabBar}
         scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
       >
-        <InstagramSpinner refreshing={refreshing} color="#8E8E93" />
         {activeTopTab === 'Community' ? (
           !hasValidLocation ? (
             <View style={styles.noLocationContainer}>
