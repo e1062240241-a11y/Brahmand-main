@@ -313,7 +313,7 @@ TEMPLE_SEED_DATA = [
         "deity": "Goddess Mahalaxmi",
         "aarti_timings": {"Morning Aarti": "7:00 AM", "Dhoop Aarti": "6:30 PM", "Shej Aarti": "10:00 PM"},
         "guidance": "Reach Mahalaxmi railway station (Western Line) and take a short taxi or walk towards Bhulabhai Desai Road. Expect heavy crowds during Navratri festivals, so plan your visit during early morning hours for peaceful darshan.",
-        "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCcMSlXWOYWCPiFR3-sM-rEg",
+        "youtube_url": "https://youtu.be/DHRoHpI_rcI",
         "coords": {"latitude": 18.9774, "longitude": 72.8066},
         "timings": {"Darshan": "6:00 AM - 10:00 PM"},
         "contact": "022 2351 4732",
