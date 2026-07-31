@@ -338,7 +338,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
   ],
   description: 'Shri Mahalakshmi Mandir is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area. It is dedicated to Mahalakshmi the central deity of Devi Mahatmyam. The temple was built in 1831 by Dhakji Dadaji.',
   guidance: 'Guidance: Reach Mahalaxmi railway station (Western Line) and take a short taxi or walk towards Bhulabhai Desai Road. Expect heavy crowds during Navratri festivals, so plan your visit during early morning hours for peaceful darshan.',
-  youtubeUrl: 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
+  youtubeUrl: 'https://youtu.be/DHRoHpI_rcI',
   },
   'ISKCON Juhu Mumbai': {
     aliases: ['iskcon juhu', 'iskcon mumbai', 'juhu temple', 'radha rasabihari', 'iskconjuhutemple', 'iskconjuhu', 'juhutemple'],
@@ -354,21 +354,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
     youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC1vJ4RlWSHP6n0xL2G1tkYQ',
   },
   'Shri Dwarkadhish Temple – Dwarka': {
-    aliases: ['other-shri-dwarkadhish-temple-dwarka', 'dwarkadhish', 'dwarakdhish', 'dwarakdhish tmple', 'dwarakadheesh', 'dwarka temple', 'dwaraka dhish', 'shri dwaraka dhish temple', 'shri dwarkadhish temple', 'dwarka'],
-    locationLabel: 'Dwarka, Gujarat',
-    coords: { latitude: 22.2378, longitude: 68.9678 },
-    aartiSessions: [
-      { title: 'Mangla Aarti', time: '6:30 AM' },
-      { title: 'Shringar Aarti', time: '10:30 AM' },
-      { title: 'Sandhya Aarti', time: '7:30 PM' },
-      { title: 'Shayan Aarti', time: '8:30 PM' },
-    ],
-    description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat. It is one of the premier Char Dham pilgrimage sites.',
-    guidance: 'Guidance: Located in Dwarka city center. Easily accessible via Dwarka Railway Station. Early morning Mangla Aarti offers a sublime spiritual experience.',
-    youtubeUrl: 'https://www.youtube.com/@shridwarkadhishmandirofficial',
-  },
-  'other-shri-dwarkadhish-temple-dwarka': {
-    aliases: ['other-shri-dwarkadhish-temple-dwarka', 'dwarkadhish', 'dwarakdhish', 'dwarka'],
+    aliases: ['dwarkadhish', 'dwarakdhish', 'dwarakdhish tmple', 'dwarakadheesh', 'dwarka temple', 'dwaraka dhish', 'shri dwaraka dhish temple', 'shri dwarkadhish temple', 'dwarka'],
     locationLabel: 'Dwarka, Gujarat',
     coords: { latitude: 22.2378, longitude: 68.9678 },
     aartiSessions: [
@@ -655,7 +641,6 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
     description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat.',
     location: 'Dwarka, Gujarat',
     aarti_timings: { 'Mangla Aarti': '6:30 AM', 'Shringar Aarti': '10:30 AM', 'Sandhya Aarti': '7:30 PM', 'Shayan Aarti': '8:30 PM' },
-    youtube_url: 'https://www.youtube.com/@shridwarkadhishmandirofficial',
     timings: {},
     contact: '',
     is_following: false,
@@ -758,19 +743,29 @@ function getYoutubeAppUrl(url: string) {
     const channelId = url.split('channel=')[1].split('&')[0];
     return `https://www.youtube.com/channel/${channelId}/live`;
   }
+  if (url.includes('@')) {
+    const handle = url.split('@')[1].split('/')[0].split('?')[0];
+    return `https://www.youtube.com/@${handle}/live`;
+  }
   return url;
 }
 
 function getYoutubeEmbedUrl(url: string) {
+  if (!url) return '';
   if (url.includes('embed/live_stream')) {
     return url + '&autoplay=1&enablejsapi=1';
   }
-  if (url.includes('@')) {
-    // YouTube handle channel URL -> convert to live stream/channel page webview or app target
+  if (url.includes('embed/')) {
     return url;
   }
   const videoId = getYoutubeVideoId(url);
-  if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
+  if (videoId) {
+    return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0`;
+  }
+  if (url.includes('@')) {
+    const handle = url.split('@')[1].split('/')[0].split('?')[0];
+    return `https://www.youtube.com/@${handle}/live`;
+  }
   return url;
 }
 
@@ -794,8 +789,8 @@ export default function TempleDetailScreen() {
  const [isFollowing, setIsFollowing] = useState(false);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
-  const templeKey = getSpecialTempleKey(temple?.name || resolvedTempleId);
-  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || SPECIAL_TEMPLE_DATA[resolvedTempleId] || null;
+  const templeKey = getSpecialTempleKey(temple?.name || '');
+  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
@@ -809,16 +804,76 @@ export default function TempleDetailScreen() {
   // Memoize WebView content to prevent re-renders during playback
   const youtubeWebViewContent = React.useMemo(() => {
     if (!resolvedYoutubeUrl) return null;
-    const embedUrl = getYoutubeEmbedUrl(resolvedYoutubeUrl);
+    const videoId = getYoutubeVideoId(resolvedYoutubeUrl);
+
+    if (videoId) {
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body, html { width: 100%; height: 100%; background-color: #000; overflow: hidden; }
+              iframe { width: 100%; height: 100%; border: none; }
+            </style>
+          </head>
+          <body>
+            <iframe 
+              src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              allowfullscreen>
+            </iframe>
+          </body>
+        </html>
+      `;
+
+      return (
+        <WebView
+          source={{ html: htmlContent, baseUrl: 'https://www.youtube-nocookie.com' }}
+          originWhitelist={['*']}
+          userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+          style={styles.youtubeFrame}
+          javaScriptEnabled
+          domStorageEnabled
+          allowsFullscreenVideo
+          allowsInlineMediaPlayback
+          mediaPlaybackRequiresUserAction={false}
+        />
+      );
+    }
+
+    // Handle channel handles (@handle) by embedding the live stream iframe directly
+    let embedSrc = resolvedYoutubeUrl;
+    if (resolvedYoutubeUrl.includes('@')) {
+      const handle = resolvedYoutubeUrl.split('@')[1].split('/')[0].split('?')[0];
+      embedSrc = `https://www.youtube.com/embed/live_stream?channel_handle=${handle}&autoplay=1`;
+    }
+
+    const channelHtmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body, html { width: 100%; height: 100%; background-color: #000; overflow: hidden; }
+            iframe { width: 100%; height: 100%; border: none; }
+          </style>
+        </head>
+        <body>
+          <iframe 
+            src="${embedSrc}" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+            allowfullscreen>
+          </iframe>
+        </body>
+      </html>
+    `;
+
     return (
       <WebView
-        source={{
-          uri: embedUrl,
-          headers: {
-            Referer: 'https://brahmand.app',
-            'X-Requested-With': 'com.android.chrome',
-          },
-        }}
+        source={{ html: channelHtmlContent, baseUrl: 'https://www.youtube.com' }}
         originWhitelist={['*']}
         userAgent="Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
         style={styles.youtubeFrame}

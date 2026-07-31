@@ -23,7 +23,7 @@ import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { FONTS } from '../../src/constants/theme';
-import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName } from '../../src/constants/templeImages';
+import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 const SafeFlashList = FlashList as any;
 
@@ -71,7 +71,7 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
       onPress={() => onPress(item)}
     >
       <Image 
-        source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} 
+        source={getTempleImageById(item.id) || getTempleImageByName(item.name) || (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('http') ? { uri: item.image_url } : null) || DEFAULT_TEMPLE_IMAGE} 
         style={styles.templeItemImage} 
       />
       <View style={styles.templeItemInfo}>

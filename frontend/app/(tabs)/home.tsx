@@ -635,7 +635,7 @@ export default function HomeScreen() {
     { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakal Aarti' },
     { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Aarti' },
     { id: 'other-shirdi-sai-baba-temple-maharashtra', name: 'Shirdi Sai Baba Aarti' },
-    { id: 'shri-mahalakshmi-mandir', name: 'Shri Mahalakshmi Mandir' },
+    { id: 'other-mahalaxmi-temple', name: 'Shri Mahalakshmi Mandir' },
     { id: 'other-iskcon-temple-bangalore-karnataka', name: 'ISKCON Bangalore' },
     { id: 'other-shri-dwarkadhish-temple-dwarka', name: 'Shri Dwarkadhish Temple' },
     { id: 'other-siddhivinayak-temple-mumbai', name: 'Shree Siddhivinayak Ganapati Temple' },
@@ -649,7 +649,7 @@ export default function HomeScreen() {
     'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
     'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/watch?v=kYJqO005yK0',
     'other-shirdi-sai-baba-temple-maharashtra': 'https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A',
-    'shri-mahalakshmi-mandir': 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
+    'other-mahalaxmi-temple': 'https://youtu.be/DHRoHpI_rcI',
     'other-iskcon-temple-bangalore-karnataka': 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
     'other-shri-dwarkadhish-temple-dwarka': 'https://www.youtube.com/@shridwarkadhishmandirofficial',
     'other-siddhivinayak-temple-mumbai': 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
@@ -3034,14 +3034,108 @@ export default function HomeScreen() {
                 }}
                 scrollEventThrottle={16}
               >
-                {/* Panditji Banner (First) */}
+                {/* Live Katha Banner (First) */}
                 <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
                   <TouchableOpacity
                     activeOpacity={0.9}
-                    style={{ flex: 1 }}
-                    onPress={() => router.push('/vendor/category/panditji')}
+                    style={{ flex: 1, borderRadius: 15, overflow: 'hidden' }}
+                    onPress={() => router.push('/library/katha')}
                   >
-                    <Image source={require('../../assets/images/panditji.png')} style={[styles.featuredLiveImage, { borderRadius: 15 }]} resizeMode="cover" />
+                    <ImageBackground source={require('../../assets/images/panditji.png')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
+                      <LinearGradient
+                        colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.85)']}
+                        style={styles.featuredLiveOverlay}
+                      >
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          {/* Top Left Content */}
+                          <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                              <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                              <Text style={[
+                                styles.featuredLiveTitle,
+                                {
+                                  color: '#FFF',
+                                  fontFamily: 'System',
+                                  fontSize: 15,
+                                  fontWeight: '700',
+                                  letterSpacing: 1,
+                                  textShadowColor: 'rgba(0,0,0,0.9)',
+                                  textShadowOffset: { width: 0, height: 1 },
+                                  textShadowRadius: 6,
+                                }
+                              ]}>LIVE KATHA</Text>
+                            </View>
+
+                            <Text style={[styles.featuredDevotees, {
+                              color: '#FFD700',
+                              fontWeight: '700',
+                              opacity: 0.95,
+                              textShadowColor: 'rgba(0,0,0,0.8)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 4,
+                              marginLeft: 14,
+                              marginTop: 0,
+                              marginBottom: 2,
+                              fontSize: 13
+                            }]}>
+                              13 Aug – 13 Sept
+                            </Text>
+
+                            <View style={{ marginLeft: 14 }}>
+                              <Text style={[styles.featuredTime, {
+                                marginTop: 0,
+                                color: '#FFF',
+                                fontWeight: '700',
+                                fontSize: 13,
+                                textShadowColor: 'rgba(0,0,0,0.8)',
+                                textShadowOffset: { width: 0, height: 1 },
+                                textShadowRadius: 4,
+                              }]}>
+                                With Shamik Pathak Ji
+                              </Text>
+                              <Text style={{
+                                color: '#E0E0E0',
+                                fontWeight: '500',
+                                fontSize: 11,
+                                marginTop: 1,
+                                textShadowColor: 'rgba(0,0,0,0.8)',
+                                textShadowOffset: { width: 0, height: 1 },
+                                textShadowRadius: 3,
+                              }}>
+                                Spiritual Guru • Astrologer • Pandit Ji
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Bottom Button Row */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                          <Pressable
+                            style={[
+                              styles.joinJaapButton,
+                              {
+                                backgroundColor: '#FF5100',
+                                display: 'flex',
+                                width: 148,
+                                height: 36,
+                                paddingHorizontal: 12,
+                                flexDirection: 'row',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: 6,
+                              }
+                            ]}
+                            android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                            onPress={() => router.push('/library/katha')}
+                          >
+                            <Ionicons name="play" size={14} color="#FFF" />
+                            <Text style={styles.joinJaapButtonText}>
+                              {t('language') === 'hi' ? 'लाइव कथा देखें' : 'Join Live Katha'}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </LinearGradient>
+                    </ImageBackground>
                   </TouchableOpacity>
                 </View>
 
@@ -3202,7 +3296,7 @@ export default function HomeScreen() {
                                 textShadowOffset: { width: 0, height: 1 },
                                 textShadowRadius: 6,
                               }
-                            ]}>Mahamrityunjaya Mantra</Text>
+                            ]}>Om Namah Shivay</Text>
                           </View>
 
                           <Text style={[styles.featuredDevotees, {
@@ -3275,7 +3369,7 @@ export default function HomeScreen() {
                             }
                           ]}
                           android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                          onPress={() => handleLiveJaapNavigation('shiva', 'Mahamrityunjaya Mantra')}
+                          onPress={() => handleLiveJaapNavigation('shiva', 'Om Namah Shivay')}
                         >
                           <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
                         </Pressable>
@@ -3545,9 +3639,7 @@ export default function HomeScreen() {
                       activeOpacity={0.9}
                       style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
                       onPress={() => {
-                        setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti1.id] || '');
-                        setSelectedAartiTitle(aarti1.name);
-                        setIsAartiModalVisible(true);
+                        router.push(`/temple/${encodeURIComponent(aarti1.id)}?autoplayAarti=true`);
                       }}
                     >
                       <HomeCardTextureBg texture="lavender">
@@ -3610,9 +3702,7 @@ export default function HomeScreen() {
                       activeOpacity={0.9}
                       style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
                       onPress={() => {
-                        setSelectedAartiUrl(AARTI_YOUTUBE_URLS[aarti2.id] || '');
-                        setSelectedAartiTitle(aarti2.name);
-                        setIsAartiModalVisible(true);
+                        router.push(`/temple/${encodeURIComponent(aarti2.id)}?autoplayAarti=true`);
                       }}
                     >
                       <HomeCardTextureBg texture="lavender">
@@ -4607,7 +4697,7 @@ const styles = StyleSheet.create({
   },
   featuredLiveCard: {
     width: Math.min(375, SCREEN_WIDTH - 2 * PAGE_PADDING),
-    height: 160,
+    height: Platform.OS === 'ios' ? 185 : 160,
     borderRadius: 15,
     overflow: 'hidden',
     marginBottom: 5,
@@ -4621,6 +4711,8 @@ const styles = StyleSheet.create({
   featuredLiveImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 15,
+    overflow: 'hidden',
   },
   featuredLiveOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -35,7 +35,8 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'other-iskcon-temple-mumbai': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
   'other-iskcon-juhu': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
   'other-iskcon-temple-mumbai-juhu': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
-  'other-mahalaxmi-temple': require('../../assets/images/laxmi_jaap_card.png'),
+  'other-mahalaxmi-temple': require('../../assets/images/mahalakshmitemple.jpg'),
+  'other-shri-dwarkadhish-temple-dwarka': require('../../assets/images/dwarakadhish.jpg'),
 };
 
 const DEFAULT_TEMPLE_IMAGE: ImageSourcePropType = require('../../assets/images/image temple/SomnathTemple.jpg');
@@ -63,7 +64,11 @@ const getTempleImageById = (id: string) => {
 const getTempleImageByName = (name: string) => {
   const lowerName = String(name || '').toLowerCase().trim();
   if (!lowerName) return DEFAULT_TEMPLE_IMAGE;
-  
+
+  if (TEMPLE_IMAGES[name]) return TEMPLE_IMAGES[name];
+  const byIdMatch = getTempleImageById(name);
+  if (byIdMatch && byIdMatch !== DEFAULT_TEMPLE_IMAGE) return byIdMatch;
+
   // Direct Keyword Matching for precision across all seed temples
   if (lowerName.includes('somnath')) return TEMPLE_IMAGES['jyotirling-somnath-temple-gujarat'];
   if (lowerName.includes('kedarnath')) return TEMPLE_IMAGES['jyotirling-kedarnath-temple-uttarakhand'];
@@ -74,6 +79,9 @@ const getTempleImageByName = (name: string) => {
   if (lowerName.includes('grishneshwar') || lowerName.includes('ghrushneshwar')) return TEMPLE_IMAGES['jyotirling-grishneshwar-temple-ellora'];
   if (lowerName.includes('omkareshwar') || lowerName.includes('amkareshwar')) return TEMPLE_IMAGES['jyotirling-omkareshwar-temple-madhya-pradesh'];
   if (lowerName.includes('trimbak')) return TEMPLE_IMAGES['jyotirling-trimbakeshwar-temple-nashik'];
+  if (lowerName.includes('dwarkadhish') || lowerName.includes('dwarakdhish') || lowerName.includes('dwarakadheesh')) {
+    return TEMPLE_IMAGES['other-shri-dwarkadhish-temple-dwarka'];
+  }
   if (lowerName.includes('nageshwar')) return TEMPLE_IMAGES['jyotirling-nageshwar-temple-dwarka'];
   if (lowerName.includes('mallikarjuna') || lowerName.includes('srisailam')) return TEMPLE_IMAGES['jyotirling-mallikarjuna-temple-srisailam'];
   if (lowerName.includes('baidyanath') || lowerName.includes('deoghar') || lowerName.includes('vaidyanath')) return TEMPLE_IMAGES['jyotirling-baidyanath-temple-deoghar'];
@@ -108,8 +116,8 @@ const getTempleImageByName = (name: string) => {
   if (lowerName.includes('iskcon') && (lowerName.includes('juhu') || lowerName.includes('mumbai'))) {
     return TEMPLE_IMAGES['other-iskcon-temple-mumbai'];
   }
-  if (lowerName.includes('dwarkadhish') || lowerName.includes('dwarakdhish') || lowerName.includes('dwarakadheesh') || lowerName.includes('dwarka')) {
-    return TEMPLE_IMAGES['jyotirling-nageshwar-temple-dwarka'];
+  if (lowerName.includes('mahalaxmi') || lowerName.includes('mahalakshmi')) {
+    return TEMPLE_IMAGES['other-mahalaxmi-temple'];
   }
 
   const jyotirlingId = getTempleIdFromName(name, 'jyotirling');

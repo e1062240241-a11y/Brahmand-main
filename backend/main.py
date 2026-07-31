@@ -244,6 +244,12 @@ async def lifespan(app: FastAPI):
                     doc['created_at'] = datetime.utcnow()
                     await db.create_document('temples', doc)
                     logger.info(f"Auto-seeded temple: {t_data['name']}")
+                else:
+                    # Update youtube_url to ensure correct live stream links
+                    doc_id = existing.get('id')
+                    if doc_id and existing.get('youtube_url') != t_data.get('youtube_url'):
+                        await db.update_document('temples', doc_id, {'youtube_url': t_data.get('youtube_url')})
+                        logger.info(f"Updated youtube_url for temple: {t_data['name']}")
         except Exception as e:
             logger.error(f"Failed auto-seeding temples: {e}")
     
