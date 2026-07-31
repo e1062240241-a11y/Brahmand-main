@@ -910,7 +910,7 @@ export default function AdminPanelScreen() {
           
           <View style={styles.bioContainer}>
             <Ionicons name="document-text-outline" size={14} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
-            <Text style={styles.bioText} numberOfLines={3}>"{item.bio || 'No bio provided'}"</Text>
+            <Text style={styles.bioText} numberOfLines={3}>{`"${item.bio || 'No bio provided'}"`}</Text>
           </View>
 
           <Text style={styles.sectionSub}>Submitted Documents ({item.doc_type})</Text>
@@ -1206,7 +1206,7 @@ export default function AdminPanelScreen() {
           
           <View style={styles.bioContainer}>
             <Ionicons name="document-text-outline" size={14} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
-            <Text style={styles.bioText} numberOfLines={3}>"{item.bio || 'No bio provided'}"</Text>
+            <Text style={styles.bioText} numberOfLines={3}>{`"${item.bio || 'No bio provided'}"`}</Text>
           </View>
         </View>
       </View>
@@ -1239,6 +1239,22 @@ export default function AdminPanelScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Prominent Direct Button: Upload Video to Bunny */}
+      <TouchableOpacity
+        style={styles.uploadBunnyBannerBtn}
+        onPress={() => router.push('/admin/katha-upload')}
+        activeOpacity={0.85}
+      >
+        <View style={styles.uploadBunnyIconCircle}>
+          <Ionicons name="cloud-upload" size={20} color="#FFF" />
+        </View>
+        <View style={{ flex: 1, marginLeft: 10 }}>
+          <Text style={styles.uploadBunnyTitle}>Upload Video to Bunny</Text>
+          <Text style={styles.uploadBunnySubtitle}>Saavan Katha Daily Video & Stream Manager</Text>
+        </View>
+        <Ionicons name="arrow-forward" size={18} color="#FFF" />
+      </TouchableOpacity>
 
       {/* Tab Switcher */}
       <View style={styles.tabContainer}>
@@ -1897,5 +1913,38 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.primary,
     fontWeight: '700',
+  },
+  uploadBunnyBannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF6B00',
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.sm,
+    padding: 12,
+    borderRadius: BORDER_RADIUS.md,
+    shadowColor: '#FF6B00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  uploadBunnyIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  uploadBunnyTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  uploadBunnySubtitle: {
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
   },
 });
