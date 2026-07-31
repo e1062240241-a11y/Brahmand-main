@@ -872,6 +872,40 @@ export default function JaapLandingScreen() {
               })}
             </ScrollView>
 
+            {/* Katha Section */}
+            <View style={styles.sectionHeaderParity}>
+              <Text style={styles.sectionTitleText}>
+                {t('language') === 'hi' ? 'कथा' : 'Katha'}
+              </Text>
+            </View>
+
+            <View style={{ paddingHorizontal: 16, marginBottom: 16 }}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.bookCardKatha,
+                  pressed && Platform.OS === 'ios' && { opacity: 0.9 }
+                ]}
+                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                onPress={() => router.push('/library/katha' as any)}
+              >
+                <View style={styles.coverBoxKatha}>
+                  <Image
+                    source={require('../../assets/images/shamik_pathak_ji.jpg')}
+                    style={styles.coverImgKatha}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.progressTrackKatha}>
+                    <View style={[styles.progressFillKatha, { width: '0%' }]} />
+                  </View>
+                </View>
+
+                <View style={styles.bookMetaKatha}>
+                  <Text style={styles.bookNameKatha} numberOfLines={1}>Shamik Pathak ji</Text>
+                  <Text style={styles.bookSubKatha} numberOfLines={1}>Spiritual Guru • Astrologer • Panditji</Text>
+                </View>
+              </Pressable>
+            </View>
+
             {/* More Upcoming Jaaps Section */}
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>
@@ -1660,5 +1694,58 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
     textTransform: 'uppercase',
+  },
+  bookCardKatha: {
+    width: 192,
+  },
+  coverBoxKatha: {
+    width: '100%',
+    height: 250,
+    position: 'relative',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  coverImgKatha: {
+    width: '100%',
+    height: '100%',
+  },
+  progressTrackKatha: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: 'rgba(160,65,0,0.20)',
+  },
+  progressFillKatha: {
+    height: '100%',
+    backgroundColor: '#FF6B00',
+    borderRadius: 2,
+  },
+  bookMetaKatha: {
+    paddingHorizontal: 4,
+    paddingTop: 10,
+    paddingBottom: 10,
+    alignItems: 'flex-start',
+  },
+  bookNameKatha: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1B1C1C',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    marginBottom: 2,
+    lineHeight: 20,
+  },
+  bookSubKatha: {
+    fontSize: 12,
+    color: '#5A4136',
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
+    letterSpacing: 0.2,
+    lineHeight: 16,
   },
 });

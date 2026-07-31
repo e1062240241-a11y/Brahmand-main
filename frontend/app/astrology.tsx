@@ -34,11 +34,11 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Cosmic Analysis tab config
 const COSMIC_TABS = [
-  { key: 'physical', label: 'Physical', icon: 'accessibility-outline' },
-  { key: 'character', label: 'Character', icon: 'sparkles-outline' },
-  { key: 'education', label: 'Education', icon: 'school-outline' },
-  { key: 'family', label: 'Family', icon: 'people-outline' },
-  { key: 'health', label: 'Health', icon: 'fitness-outline' },
+  { key: 'physical', label: 'Physical', img: require('../assets/images/cosmic/cos1.png') },
+  { key: 'character', label: 'Character', img: require('../assets/images/cosmic/cos2.png') },
+  { key: 'education', label: 'Education', img: require('../assets/images/cosmic/cos3.png') },
+  { key: 'family', label: 'Family', img: require('../assets/images/cosmic/cos4.png') },
+  { key: 'health', label: 'Health', img: require('../assets/images/cosmic/cos5.png') },
 ];
 
 const CITIES_DB = [
@@ -921,7 +921,7 @@ export default function AstrologyScreen() {
                 {attributes.map((attr, i) => (
                   <View key={i} style={styles.attrCard}>
                     <View style={styles.attrIconBg}>  
-                      <Image source={attr.img} style={{ width: 24, height: 24, tintColor: attr.color }} resizeMode="contain" />
+                      <Image source={attr.img} style={{ width: 24, height: 24 }} resizeMode="contain" />
                     </View>
                     <View style={styles.attrTextCol}>
                       <Text style={styles.attrLabel}>{attr.label}</Text>
@@ -950,11 +950,7 @@ export default function AstrologyScreen() {
                       activeOpacity={0.8}
                     >
                       <View style={[styles.cosmicTabIcon, isActive && styles.cosmicTabIconActive]}>
-                        <Ionicons
-                          name={tab.icon as any}
-                          size={24}
-                          color={isActive ? '#FFFFFF' : '#FF7B00'}
-                        />
+                        <Image source={tab.img} style={{ width: 36, height: 36, aspectRatio: 1, tintColor: '#FFF' }} resizeMode="contain" />
                       </View>
                       <Text style={[styles.cosmicTabLabel, isActive && styles.cosmicTabLabelActive]}>{tab.label}</Text>
                     </TouchableOpacity>
@@ -974,11 +970,7 @@ export default function AstrologyScreen() {
                     {activeTabObj ? (
                       <>
                         <View style={styles.modalIconWrap}>
-                          <Ionicons
-                            name={activeTabObj.icon as any}
-                            size={30}
-                            color="#FFFFFF"
-                          />
+                          <Image source={activeTabObj.img} style={{ width: 32, height: 32, tintColor: '#FFF' }} resizeMode="contain" />
                         </View>
                         <Text style={styles.modalTitle}>{activeTabObj.label} Summary</Text>
                         <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
@@ -1724,9 +1716,9 @@ const styles = StyleSheet.create({
   cosmicTabActive: {},
   cosmicTabIcon: {
     width: 56, height: 56, borderRadius: 40,
-    backgroundColor: '#FFF5F0',
+    backgroundColor: '#FF7B00',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#F0D5B8',
+    borderWidth: 1.5, borderColor: '#FF7B00',
   },
   cosmicTabIconActive: {
     backgroundColor: '#FF7B00',

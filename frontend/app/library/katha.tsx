@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const shamikPathakCover = require('../../assets/images/Shamik Pathak ji.jpg');
+const shamikPathakCover = require('../../assets/images/shamik_pathak_ji.jpg');
 
 export default function KathaPage() {
   const insets = useSafeAreaInsets();

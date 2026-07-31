@@ -338,17 +338,6 @@ function LibraryPage() {
             ))}
           </ScrollView>
 
-          {/* ── Katha Button ── */}
-          <View style={styles.jathaBtnWrapper}>
-            <TouchableOpacity
-              style={styles.jathaBtn}
-              onPress={() => router.push('/library/katha' as any)}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.jathaBtnText}>Katha</Text>
-              <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 6 }} />
-            </TouchableOpacity>
-          </View>
         </View>
 
 
