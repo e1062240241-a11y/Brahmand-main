@@ -1,51 +1,59 @@
-const defaultDiya = require('../../assets/images/traditional_diya_footer.png');
-const defaultFestival = require('../../assets/images/traditional_diya_footer.png');
+// Available image assets mapped to festivals for variety
+const imgDiya = require('../../assets/images/traditional_diya_footer.png');
+const imgShiva = require('../../assets/images/upcoming_shiva.jpg');
+const imgGanesh = require('../../assets/images/upcoming_ganesh.jpg');
+const imgDurga = require('../../assets/images/upcoming_durga.png');
+const imgGanga = require('../../assets/images/upcoming_ganga.jpg');
+const imgShani = require('../../assets/images/upcoming_shani.jpg');
+const imgRadha = require('../../assets/images/upcoming_radha_rani.png');
+const imgHanuman = require('../../assets/images/hanuman_banner_new.jpg');
+const imgKrishna = require('../../assets/images/krishna_arjuna_chariot.png');
+const imgGeeta = require('../../assets/images/Bhagvad-geeta.jpg');
 
-// Dedicated Festival Image Assets - Linking directly to dedicated high-res festival assets
-const akshayaTritiya = require('../../assets/images/festivals/akshaya_tritiya.jpg');
-const anantChaturdashi = require('../../assets/images/festivals/anant_chaturdashi.jpg');
-const ashadhiEkadashi = require('../../assets/images/festivals/ashadhi_ekadashi.jpg');
-const bhaiDooj = require('../../assets/images/festivals/bhai_dooj.jpg');
-const bohagBihu = require('../../assets/images/festivals/bohag_bihu.jpg');
-const chaitraSukhladi = require('../../assets/images/festivals/chaitra_sukhladi.jpg');
-const chhathPuja = require('../../assets/images/festivals/chhath_puja.jpg');
-const dhanteras = require('../../assets/images/festivals/dhanteras.jpg');
-const dhanuSankranti = require('../../assets/images/festivals/dhanu_sankranti.jpeg');
-const diwali = require('../../assets/images/festivals/diwali.jpeg');
-const durgaAshtami = require('../../assets/images/festivals/durga_ashtami.jpeg');
-const dussehra = require('../../assets/images/festivals/dussehra.jpg');
-const ganeshChaturthi = require('../../assets/images/festivals/ganesh_chaturthi.jpeg');
-const geetaJayanti = require('../../assets/images/festivals/geeta_jayanti.jpg');
-const govardhanPuja = require('../../assets/images/festivals/govardhan_puja.jpg');
-const guruPurnima = require('../../assets/images/festivals/guru_purnima.jpg');
-const hanumanJanmotsav = require('../../assets/images/festivals/hanuman_janmotsav.jpg');
-const happyHoli = require('../../assets/images/festivals/happy_holi.jpg');
-const hariyaliTeej = require('../../assets/images/festivals/hariyali_teej.jpeg');
-const hindiNewYear = require('../../assets/images/festivals/hindi_new_year.jpg');
-const holikaDahan = require('../../assets/images/festivals/holika_dahan.jpg');
-const jagannathRathYatra = require('../../assets/images/festivals/jagannath_rath_yatra.jpg');
-const janmashtami = require('../../assets/images/festivals/janmashtami.jpg');
-const kajariTeej = require('../../assets/images/festivals/kajari_teej.jpeg');
-const kartikPurnima = require('../../assets/images/festivals/kartik_purnima.jpeg');
-const karvaChauth = require('../../assets/images/festivals/karva_chauth.jpg');
-const maghBihu = require('../../assets/images/festivals/magh_bihu.jpg');
-const mahaNavami = require('../../assets/images/festivals/maha_navami.jpeg');
-const mahaSaptami = require('../../assets/images/festivals/maha_saptami.jpg');
-const mahaShivaratri = require('../../assets/images/festivals/maha_shivaratri.jpeg');
-const mahalayaAmavasya = require('../../assets/images/festivals/mahalaya_amavasya.jpg');
-const maharishiValmikiJayanti = require('../../assets/images/festivals/maharishi_valmiki_jayanti.jpg');
-const makarSankranti = require('../../assets/images/festivals/makar_sankranti.png');
-const nagPanchami = require('../../assets/images/festivals/nag_panchami.jpg');
-const onam = require('../../assets/images/festivals/onam.jpg');
-const rakshaBandhan = require('../../assets/images/festivals/raksha_bandhan.jpg');
-const ramNavami = require('../../assets/images/festivals/ram_navami.jpg');
-const savitriPooja = require('../../assets/images/festivals/savitri_pooja.jpg');
-const sharadNavratri = require('../../assets/images/festivals/sharad_navratri.jpg');
-const sharadPurnima = require('../../assets/images/festivals/sharad_purnima.jpg');
-const thaipusam = require('../../assets/images/festivals/thaipusam.jpg');
-const vaisakhi = require('../../assets/images/festivals/vaisakhi.jpg');
-const vasantPanchami = require('../../assets/images/festivals/vasant_panchami.jpg');
-const vishwakarmaPuja = require('../../assets/images/festivals/vishwakarma_puja.jpeg');
+const akshayaTritiya = imgRadha;
+const anantChaturdashi = imgGanesh;
+const ashadhiEkadashi = imgKrishna;
+const bhaiDooj = imgRadha;
+const bohagBihu = imgGanga;
+const chaitraSukhladi = imgRadha;
+const chhathPuja = imgGanga;
+const dhanteras = imgDiya;
+const dhanuSankranti = imgShani;
+const diwali = imgDiya;
+const durgaAshtami = imgDurga;
+const dussehra = imgDurga;
+const ganeshChaturthi = imgGanesh;
+const geetaJayanti = imgGeeta;
+const govardhanPuja = imgKrishna;
+const guruPurnima = imgGeeta;
+const hanumanJanmotsav = imgHanuman;
+const happyHoli = imgRadha;
+const hariyaliTeej = imgRadha;
+const hindiNewYear = imgShani;
+const holikaDahan = imgRadha;
+const jagannathRathYatra = imgKrishna;
+const janmashtami = imgKrishna;
+const kajariTeej = imgRadha;
+const kartikPurnima = imgGanga;
+const karvaChauth = imgRadha;
+const maghBihu = imgGanga;
+const mahaNavami = imgDurga;
+const mahaSaptami = imgDurga;
+const mahaShivaratri = imgShiva;
+const mahalayaAmavasya = imgDurga;
+const maharishiValmikiJayanti = imgGeeta;
+const makarSankranti = imgShani;
+const nagPanchami = imgShiva;
+const onam = imgGanga;
+const rakshaBandhan = imgRadha;
+const ramNavami = imgKrishna;
+const savitriPooja = imgRadha;
+const sharadNavratri = imgDurga;
+const sharadPurnima = imgRadha;
+const thaipusam = imgShiva;
+const vaisakhi = imgGanga;
+const vasantPanchami = imgRadha;
+const vishwakarmaPuja = imgShani;
 
 export const FESTIVAL_IMAGE_MAP: Record<string, any> = {
   'Makar Sankranti': makarSankranti,
@@ -118,7 +126,7 @@ export const FESTIVAL_IMAGE_MAP: Record<string, any> = {
 };
 
 export const getFestivalImage = (festivalInput: any) => {
-  const fallback = defaultFestival || defaultDiya;
+  const fallback = imgDiya;
   if (!festivalInput) return fallback;
 
   // 0. If festivalInput itself is a require module ID (number)

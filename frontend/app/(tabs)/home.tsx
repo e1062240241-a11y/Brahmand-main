@@ -28,6 +28,7 @@ import {
   AppState,
   InteractionManager
 } from 'react-native';
+import { InstagramSpinner, InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -3825,9 +3826,13 @@ export default function HomeScreen() {
                 if (!hasMoreFeed || loadingMoreFeed) return;
                 loadFeedPosts(feedOffset, true, activeTab);
               }}
-              onEndReachedThreshold={0.5}
-              refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#FFF" />}
-              ListHeaderComponent={memoizedHeader}
+              refreshControl={<InstagramRefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />}
+              ListHeaderComponent={
+                <>
+                  <InstagramSpinner refreshing={isRefreshing} color="#FFFFFF" />
+                  {memoizedHeader}
+                </>
+              }
             />
           </View>
 
