@@ -881,6 +881,9 @@ export const FloatingUtilityButton = () => {
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Animated.View
         {...panResponder.panHandlers}
+        accessibilityRole="button"
+        accessibilityLabel="Open Utility Menu"
+        accessibilityState={{ expanded: modalVisible }}
         style={[
           styles.floatingButtonContainer,
           { bottom: 90 + insets.bottom },
