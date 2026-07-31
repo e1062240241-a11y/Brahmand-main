@@ -354,7 +354,21 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
     youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC1vJ4RlWSHP6n0xL2G1tkYQ',
   },
   'Shri Dwarkadhish Temple – Dwarka': {
-    aliases: ['dwarkadhish', 'dwarakdhish', 'dwarakdhish tmple', 'dwarakadheesh', 'dwarka temple', 'dwaraka dhish', 'shri dwaraka dhish temple', 'shri dwarkadhish temple', 'dwarka'],
+    aliases: ['other-shri-dwarkadhish-temple-dwarka', 'dwarkadhish', 'dwarakdhish', 'dwarakdhish tmple', 'dwarakadheesh', 'dwarka temple', 'dwaraka dhish', 'shri dwaraka dhish temple', 'shri dwarkadhish temple', 'dwarka'],
+    locationLabel: 'Dwarka, Gujarat',
+    coords: { latitude: 22.2378, longitude: 68.9678 },
+    aartiSessions: [
+      { title: 'Mangla Aarti', time: '6:30 AM' },
+      { title: 'Shringar Aarti', time: '10:30 AM' },
+      { title: 'Sandhya Aarti', time: '7:30 PM' },
+      { title: 'Shayan Aarti', time: '8:30 PM' },
+    ],
+    description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat. It is one of the premier Char Dham pilgrimage sites.',
+    guidance: 'Guidance: Located in Dwarka city center. Easily accessible via Dwarka Railway Station. Early morning Mangla Aarti offers a sublime spiritual experience.',
+    youtubeUrl: 'https://www.youtube.com/@shridwarkadhishmandirofficial',
+  },
+  'other-shri-dwarkadhish-temple-dwarka': {
+    aliases: ['other-shri-dwarkadhish-temple-dwarka', 'dwarkadhish', 'dwarakdhish', 'dwarka'],
     locationLabel: 'Dwarka, Gujarat',
     coords: { latitude: 22.2378, longitude: 68.9678 },
     aartiSessions: [
@@ -641,6 +655,7 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
     description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat.',
     location: 'Dwarka, Gujarat',
     aarti_timings: { 'Mangla Aarti': '6:30 AM', 'Shringar Aarti': '10:30 AM', 'Sandhya Aarti': '7:30 PM', 'Shayan Aarti': '8:30 PM' },
+    youtube_url: 'https://www.youtube.com/@shridwarkadhishmandirofficial',
     timings: {},
     contact: '',
     is_following: false,
@@ -750,6 +765,10 @@ function getYoutubeEmbedUrl(url: string) {
   if (url.includes('embed/live_stream')) {
     return url + '&autoplay=1&enablejsapi=1';
   }
+  if (url.includes('@')) {
+    // YouTube handle channel URL -> convert to live stream/channel page webview or app target
+    return url;
+  }
   const videoId = getYoutubeVideoId(url);
   if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1`;
   return url;
@@ -775,8 +794,8 @@ export default function TempleDetailScreen() {
  const [isFollowing, setIsFollowing] = useState(false);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
 
-  const templeKey = getSpecialTempleKey(temple?.name || '');
-  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
+  const templeKey = getSpecialTempleKey(temple?.name || resolvedTempleId);
+  const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || SPECIAL_TEMPLE_DATA[resolvedTempleId] || null;
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
