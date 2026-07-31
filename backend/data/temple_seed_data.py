@@ -327,7 +327,7 @@ TEMPLE_SEED_DATA = [
         "deity": "Lord Krishna (Dwarkadhish)",
         "aarti_timings": {"Mangla Aarti": "6:30 AM", "Shringar Aarti": "10:30 AM", "Sandhya Aarti": "7:30 PM", "Shayan Aarti": "8:30 PM"},
         "guidance": "Located in Dwarka city center. Easily accessible via Dwarka Railway Station. Early morning Mangla Aarti offers a sublime spiritual experience.",
-        "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCcMSlXWOYWCPiFR3-sM-rEg",
+        "youtube_url": "https://www.youtube.com/@shridwarkadhishmandirofficial",
         "coords": {"latitude": 22.2378, "longitude": 68.9678},
         "timings": {"Darshan": "6:00 AM - 1:00 PM, 5:00 PM - 9:30 PM"},
         "contact": "+91 2892 234080",

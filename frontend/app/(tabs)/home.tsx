@@ -651,7 +651,7 @@ export default function HomeScreen() {
     'other-shirdi-sai-baba-temple-maharashtra': 'https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A',
     'shri-mahalakshmi-mandir': 'https://www.youtube.com/live/VLAFv37D1RI?si=N9iERmUgIRrhJZfE',
     'other-iskcon-temple-bangalore-karnataka': 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
-    'other-shri-dwarkadhish-temple-dwarka': 'https://www.youtube.com/embed/live_stream?channel=UCcMSlXWOYWCPiFR3-sM-rEg',
+    'other-shri-dwarkadhish-temple-dwarka': 'https://www.youtube.com/@shridwarkadhishmandirofficial',
     'other-siddhivinayak-temple-mumbai': 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
     'other-tirupati-balaji-temple-andhra-pradesh': 'https://www.youtube.com/live/dwsS3bxweBw?si=QsVpIa_kHuh0FPB6'
   };

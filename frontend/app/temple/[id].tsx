@@ -365,7 +365,7 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
     ],
     description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat. It is one of the premier Char Dham pilgrimage sites.',
     guidance: 'Guidance: Located in Dwarka city center. Easily accessible via Dwarka Railway Station. Early morning Mangla Aarti offers a sublime spiritual experience.',
-    youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCcMSlXWOYWCPiFR3-sM-rEg',
+    youtubeUrl: 'https://www.youtube.com/@shridwarkadhishmandirofficial',
   },
 };
 
