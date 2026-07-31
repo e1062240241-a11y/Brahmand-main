@@ -574,36 +574,38 @@ const PostScreen = () => {
   }, [router]);
 
   const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 45,
+    itemVisiblePercentThreshold: 50,
     minimumViewTime: 100,
   }).current;
   const activePostKeyRef = useRef<string | null>(null);
 
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
-    if (viewableItems && viewableItems.length > 0) {
-      let mostVisible = viewableItems[0];
-      for (const v of viewableItems) {
-        if (v && v.isViewable && (v.percentVisible ?? 0) > (mostVisible?.percentVisible ?? 0)) {
-          mostVisible = v;
-        }
+    if (!viewableItems || viewableItems.length === 0) return;
+
+    const validItems = viewableItems.filter((v: any) => v && v.isViewable && v.item?.id);
+    if (validItems.length === 0) return;
+
+    let mostVisible = validItems[0];
+    for (const v of validItems) {
+      const pCurrent = v.percentVisible !== undefined ? v.percentVisible : 100;
+      const pMost = mostVisible.percentVisible !== undefined ? mostVisible.percentVisible : 0;
+      if (pCurrent > pMost) {
+        mostVisible = v;
       }
-      if (mostVisible && mostVisible.item) {
-        const key = mostVisible.item.id !== undefined && mostVisible.item.id !== null
-          ? String(mostVisible.item.id)
-          : String(mostVisible.key || '');
-        if (key && key !== activePostKeyRef.current) {
-          activePostKeyRef.current = key;
-          setActivePostKey(key);
-          if (mostVisible.item.id) {
-            seenPostIdsRef.current.add(String(mostVisible.item.id));
-          }
-        }
+    }
+
+    if (mostVisible?.item?.id) {
+      const key = String(mostVisible.item.id);
+      if (key !== activePostKeyRef.current) {
+        activePostKeyRef.current = key;
+        setActivePostKey(key);
+        seenPostIdsRef.current.add(key);
       }
     }
   }).current;
 
   const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
-    const postKey = item && item.id ? String(item.id) : `post-idx-${index}`;
+    const postKey = String(item.id);
     return (
       <PostFeedCard
         post={item}
@@ -643,17 +645,17 @@ const PostScreen = () => {
       ) : (
         <SafeFlashList
           ref={listRef}
+          data={visibleFeedPosts}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
           extraData={activePostKey}
+          onViewableItemsChanged={onViewableItemsChanged}
+          viewabilityConfig={viewabilityConfig}
           removeClippedSubviews={true}
           initialNumToRender={2}
           maxToRenderPerBatch={2}
           windowSize={3}
           estimatedItemSize={550}
-          data={visibleFeedPosts}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           contentContainerStyle={styles.listContent}

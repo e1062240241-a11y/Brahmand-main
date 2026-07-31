@@ -25,7 +25,7 @@ const NativeVideoPlayer: React.FC<NativeVideoPlayerProps> = ({
   contentFit,
   fallback,
 }) => {
-  const player = useSafeVideoPlayer(shouldPlay ? mediaUrl : null, (p) => {
+  const player = useSafeVideoPlayer(mediaUrl, (p) => {
     if (p) {
       try {
         p.loop = true;

@@ -155,10 +155,9 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
   const durationRef = useRef(0);
   const timeIntervalRef = useRef<any>(null);
 
-useEffect(() => {
-    if (!player) return;
-    let rafId: number;
-    const tick = () => {
+  useEffect(() => {
+    if (!player || !isActive) return;
+    const interval = setInterval(() => {
       try {
         const ct = player.currentTime || 0;
         setCurrentTime(ct);
@@ -168,11 +167,9 @@ useEffect(() => {
           setDuration(pd);
         }
       } catch {}
-      rafId = requestAnimationFrame(tick);
-    };
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [player]);
+    }, 250);
+    return () => clearInterval(interval);
+  }, [player, isActive]);
 
   const seekPlayerRef = useRef<(pageX: number) => void>(() => { });
 
@@ -288,27 +285,51 @@ const ReelVideoItem = React.memo(({
   const seekIntervalRef = useRef<any>(null);
   const durationRef = useRef(0);
   const lastTapRef = useRef<number>(0);
-  const heartScale = useRef(new Animated.Value(0)).current;
-  const heartOpacity = useRef(new Animated.Value(0)).current;
+  const lastTapCoords = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const animateHeart = () => {
-    heartScale.setValue(0.3);
-    heartOpacity.setValue(0);
-    Animated.sequence([
-      Animated.parallel([
-        Animated.spring(heartScale, { toValue: 1.2, friction: 3, useNativeDriver: true }),
-        Animated.timing(heartOpacity, { toValue: 1, duration: 150, useNativeDriver: true }),
+  interface InstagramHeartItem {
+    id: string;
+    x: number;
+    y: number;
+    rotation: string;
+    scale: Animated.Value;
+    opacity: Animated.Value;
+    translateY: Animated.Value;
+  }
+
+  const [instagramHearts, setInstagramHearts] = useState<InstagramHeartItem[]>([]);
+
+  // ponytail: rapid instagram double-tap pink heart pop animation
+  const triggerInstagramHeart = (tapX?: number, tapY?: number) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    const x = tapX && tapX > 0 ? tapX : SCREEN_WIDTH / 2;
+    const y = tapY && tapY > 0 ? tapY : SCREEN_HEIGHT / 2;
+    const rotation = `${(Math.random() - 0.5) * 30}deg`;
+
+    const scale = new Animated.Value(0);
+    const opacity = new Animated.Value(0);
+    const translateY = new Animated.Value(0);
+
+    const newHeart: InstagramHeartItem = { id, x, y, rotation, scale, opacity, translateY };
+    setInstagramHearts(prev => [...prev, newHeart]);
+
+    Animated.parallel([
+      Animated.sequence([
+        Animated.spring(scale, { toValue: 1.2, friction: 3, tension: 260, useNativeDriver: true }),
+        Animated.timing(scale, { toValue: 1.35, duration: 180, useNativeDriver: true }),
       ]),
-      Animated.delay(400),
-      Animated.parallel([
-        Animated.timing(heartScale, { toValue: 1.5, duration: 150, useNativeDriver: true }),
-        Animated.timing(heartOpacity, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 50, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 200, delay: 50, useNativeDriver: true }),
       ]),
-    ]).start();
+      Animated.timing(translateY, { toValue: -95, duration: 300, useNativeDriver: true }),
+    ]).start(() => {
+      setInstagramHearts(prev => prev.filter(h => h.id !== id));
+    });
   };
 
-  const handleDoubleTapLike = () => {
-    animateHeart();
+  const handleDoubleTapLike = (tapX?: number, tapY?: number) => {
+    triggerInstagramHeart(tapX, tapY);
     if (!likedByMe) {
       handleLike();
     }
@@ -340,13 +361,11 @@ const ReelVideoItem = React.memo(({
 
   // OPT-10: guard logs with __DEV__
   const handleImageError = (e: any) => {
-    if (__DEV__) console.warn('[ReelViewer] Image Load Error:', e, 'URL:', imageUri);
     if (imageUri && imageUri.includes('b-cdn.net')) {
       const urlParts = imageUri.split('b-cdn.net/');
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        if (__DEV__) console.info('[ReelViewer] Falling back to proxy URL:', fallbackUrl);
         setImageUri(fallbackUrl);
       }
     }
@@ -358,7 +377,6 @@ const ReelVideoItem = React.memo(({
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        if (__DEV__) console.info('[ReelViewer] Poster falling back to proxy URL:', fallbackUrl);
         setVideoPosterUrl(fallbackUrl);
       }
     }
@@ -550,12 +568,18 @@ const ReelVideoItem = React.memo(({
     setIsPaused(false);
   };
 
-  const handleTapVideo = () => {
+  const handleTapVideo = (e?: any) => {
+    if (e?.nativeEvent?.locationX !== undefined && e?.nativeEvent?.locationY !== undefined) {
+      lastTapCoords.current = {
+        x: e.nativeEvent.locationX,
+        y: e.nativeEvent.locationY,
+      };
+    }
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
       lastTapRef.current = 0;
-      handleDoubleTapLike();
+      handleDoubleTapLike(lastTapCoords.current.x, lastTapCoords.current.y);
     } else {
       lastTapRef.current = now;
       setTimeout(() => {
@@ -739,33 +763,42 @@ const ReelVideoItem = React.memo(({
         </Animated.View>
       )}
 
-      {/* Animated Heart Overlay */}
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          marginTop: -50,
-          marginLeft: -50,
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 99999,
-          transform: [{ scale: heartScale }],
-          opacity: heartOpacity,
-        }}
-        pointerEvents="none"
-      >
-        <Ionicons 
-          name="heart" 
-          size={100} 
-          color="#FFF" 
+      {/* Instagram Double Tap Pink Hearts */}
+      {instagramHearts.map(heart => (
+        <Animated.View
+          key={heart.id}
           style={{
-            textShadowColor: 'rgba(0, 0, 0, 0.3)',
-            textShadowOffset: { width: 0, height: 4 },
-            textShadowRadius: 6,
-          }} 
-        />
-      </Animated.View>
+            position: 'absolute',
+            left: heart.x - 45,
+            top: heart.y - 45,
+            width: 90,
+            height: 90,
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 99999,
+            transform: [
+              { translateY: heart.translateY },
+              { scale: heart.scale },
+              { rotate: heart.rotation },
+            ],
+            opacity: heart.opacity,
+          }}
+          pointerEvents="none"
+        >
+          <View style={{
+            justifyContent: 'center',
+            alignItems: 'center',
+            shadowColor: '#FF2D55',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.8,
+            shadowRadius: 12,
+            elevation: 10,
+          }}>
+            <Ionicons name="heart" size={92} color="#FFFFFF" style={{ position: 'absolute' }} />
+            <Ionicons name="heart" size={82} color="#FF2D55" style={{ position: 'absolute' }} />
+          </View>
+        </Animated.View>
+      ))}
 
       {/* Speed badge */}
       {showSpeedBadge && isVideo && (

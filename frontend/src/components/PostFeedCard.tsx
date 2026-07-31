@@ -118,7 +118,7 @@ export const PostFeedCard = memo(({
     const tabBar = useTabBar();
     showTabBar = tabBar.showTabBar;
     hideTabBar = tabBar.hideTabBar;
-  } catch (e) {}
+  } catch (e) { }
 
   useEffect(() => {
     if (isFullscreen) {
@@ -137,18 +137,21 @@ export const PostFeedCard = memo(({
   const [dynamicRatio, setDynamicRatio] = useState(initialRawRatio || 4 / 5);
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [shouldLoadVideo, setShouldLoadVideo] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+  const hasLoadedOnceRef = useRef(false);
 
   useEffect(() => {
-    if (isActive && isFocused) {
+    if (isActive && isFocused && !hasLoadedOnceRef.current) {
+      hasLoadedOnceRef.current = true;
       setShouldLoadVideo(true);
-    } else {
-      setShouldLoadVideo(false);
     }
   }, [isActive, isFocused]);
 
-  // Reset video loading state when view is recycled by FlashList
   useEffect(() => {
+    hasLoadedOnceRef.current = false;
     setShouldLoadVideo(false);
+    setIsVideoReady(false);
+    setMediaLoading(true);
   }, [post?.id]);
 
   useEffect(() => {
@@ -203,13 +206,11 @@ export const PostFeedCard = memo(({
 
 
   const handleImageError = (e: any) => {
-    console.warn('[PostFeedCard] Image Load Error:', e, 'URL:', imageUri);
     if (imageUri && imageUri.includes('b-cdn.net')) {
       const urlParts = imageUri.split('b-cdn.net/');
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        console.info('[PostFeedCard] Falling back to proxy URL:', fallbackUrl);
         setImageUri(fallbackUrl);
         return;
       }
@@ -224,7 +225,6 @@ export const PostFeedCard = memo(({
       if (urlParts.length > 1) {
         const filePath = urlParts[1];
         const fallbackUrl = `${API_URL}/api/bunny-media/${filePath}`;
-        console.info('[PostFeedCard] Poster falling back to proxy URL:', fallbackUrl);
         setVideoPosterUrl(fallbackUrl);
       }
     }
@@ -245,7 +245,7 @@ export const PostFeedCard = memo(({
   const cropStyle = useMemo(() => {
     const cropX = post?.crop_offset_x ?? post?.metadata?.crop_offset_x;
     const cropY = post?.crop_offset_y ?? post?.metadata?.crop_offset_y;
-    
+
     if (cropX === undefined && cropY === undefined) {
       return null;
     }
@@ -275,9 +275,9 @@ export const PostFeedCard = memo(({
     const transformStyle = Platform.OS === 'web'
       ? `translateX(${translateX}px) translateY(${translateY}px)`
       : [
-          { translateX },
-          { translateY }
-        ];
+        { translateX },
+        { translateY }
+      ];
 
     return {
       position: 'absolute' as const,
@@ -336,7 +336,7 @@ export const PostFeedCard = memo(({
       if (Platform.OS === 'web' && videoRef.current) {
         try {
           videoRef.current.pause();
-        } catch (e) {}
+        } catch (e) { }
       }
     };
   }, []);
@@ -358,45 +358,73 @@ export const PostFeedCard = memo(({
   const touchStartY = useRef<number>(0);
   const swipeDetected = useRef<boolean>(false);
   const lastTapRef = useRef<number>(0);
+  const lastTapCoords = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const heartScale = useRef(new Animated.Value(0)).current;
-  const heartOpacity = useRef(new Animated.Value(0)).current;
+  interface InstagramHeartItem {
+    id: string;
+    x: number;
+    y: number;
+    rotation: string;
+    scale: Animated.Value;
+    opacity: Animated.Value;
+    translateY: Animated.Value;
+  }
 
-  const animateHeart = () => {
-    heartScale.setValue(0.3);
-    heartOpacity.setValue(0);
+  const [instagramHearts, setInstagramHearts] = useState<InstagramHeartItem[]>([]);
 
-    Animated.sequence([
-      Animated.parallel([
-        Animated.spring(heartScale, {
+  // ponytail: rapid instagram double-tap pink heart pop & float up animation
+  const triggerInstagramHeart = (tapX?: number, tapY?: number) => {
+    const id = `${Date.now()}-${Math.random()}`;
+    const x = tapX && tapX > 0 ? tapX : SCREEN_WIDTH / 2;
+    const y = tapY && tapY > 0 ? tapY : feedHeight / 2;
+    const rotation = `${(Math.random() - 0.5) * 30}deg`;
+
+    const scale = new Animated.Value(0);
+    const opacity = new Animated.Value(0);
+    const translateY = new Animated.Value(0);
+
+    const newHeart: InstagramHeartItem = { id, x, y, rotation, scale, opacity, translateY };
+    setInstagramHearts(prev => [...prev, newHeart]);
+
+    Animated.parallel([
+      Animated.sequence([
+        Animated.spring(scale, {
           toValue: 1.2,
           friction: 3,
+          tension: 260,
           useNativeDriver: true,
         }),
-        Animated.timing(heartOpacity, {
+        Animated.timing(scale, {
+          toValue: 1.35,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.sequence([
+        Animated.timing(opacity, {
           toValue: 1,
-          duration: 150,
+          duration: 50,
           useNativeDriver: true,
         }),
-      ]),
-      Animated.delay(400),
-      Animated.parallel([
-        Animated.timing(heartScale, {
-          toValue: 1.5,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(heartOpacity, {
+        Animated.timing(opacity, {
           toValue: 0,
-          duration: 150,
+          duration: 200,
+          delay: 50,
           useNativeDriver: true,
         }),
       ]),
-    ]).start();
+      Animated.timing(translateY, {
+        toValue: -95,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setInstagramHearts(prev => prev.filter(h => h.id !== id));
+    });
   };
 
-  const handleDoubleTapLike = () => {
-    animateHeart();
+  const handleDoubleTapLike = (tapX?: number, tapY?: number) => {
+    triggerInstagramHeart(tapX, tapY);
     if (!likedByMe) {
       onLike?.(post);
     }
@@ -405,6 +433,12 @@ export const PostFeedCard = memo(({
   const handleTouchStart = (e: any) => {
     touchStartX.current = e.nativeEvent.pageX;
     touchStartY.current = e.nativeEvent.pageY;
+    if (e.nativeEvent.locationX !== undefined && e.nativeEvent.locationY !== undefined) {
+      lastTapCoords.current = {
+        x: e.nativeEvent.locationX,
+        y: e.nativeEvent.locationY,
+      };
+    }
     swipeDetected.current = false;
   };
 
@@ -426,7 +460,7 @@ export const PostFeedCard = memo(({
     const DOUBLE_TAP_DELAY = 300;
     if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
       lastTapRef.current = 0;
-      handleDoubleTapLike();
+      handleDoubleTapLike(lastTapCoords.current.x, lastTapCoords.current.y);
     } else {
       lastTapRef.current = now;
       // Single tap: open full screen
@@ -521,17 +555,6 @@ export const PostFeedCard = memo(({
 
       {/* Media */}
       <View style={[styles.mediaWrap, { width: SCREEN_WIDTH, height: feedHeight, backgroundColor: theme === 'light' ? '#F5F5F5' : '#111' }]}>
-        {/* Blurred Poster Background for smooth transition */}
-        {mediaLoading && (videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url) ? (
-          <Image
-            source={{ uri: videoPosterUrl || post?.thumbnail_url || post?.metadata?.thumbnail_url }}
-            style={[StyleSheet.absoluteFill, { opacity: 0.6 }]}
-            contentFit="cover"
-            blurRadius={20}
-            onError={handlePosterError}
-          />
-        ) : null}
-
         {mediaUrl ? (
           isVideo ? (
             <View style={[styles.videoContainer, { overflow: 'hidden' }]}>
@@ -581,15 +604,15 @@ export const PostFeedCard = memo(({
                 </>
               ) : (
                 <>
-                  {/* Always mount poster underneath */}
-                  <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, backgroundColor: '#111' }]}>
+                  {/* Poster hamesha niche - memory-disk cache */}
+                  <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 2, opacity: isVideoReady ? 0 : 1, backgroundColor: '#111' }]}>
                     {videoPosterUrl ? (
                       <Image
                         source={{ uri: videoPosterUrl }}
                         style={[StyleSheet.absoluteFill, getFilterStyle(filterName)]}
                         contentFit="cover"
                         cachePolicy="memory-disk"
-                        priority={isActive || shouldLoadVideo ? "high" : "low"}
+                        priority={isActive ? "high" : "low"}
                         transition={0}
                         onLoad={() => {
                           if (!shouldLoadVideo) setMediaLoading(false);
@@ -599,13 +622,16 @@ export const PostFeedCard = memo(({
                     ) : null}
                   </View>
 
-                  {/* Mount video on top only when shouldLoadVideo is true */}
+                  {/* Video ek baar load hua to mounted rahega, sirf shouldPlay se pause/play */}
                   {shouldLoadVideo && (
                     <NativeVideoPlayer
                       mediaUrl={mediaUrl}
                       shouldPlay={shouldPlay}
                       isMuted={isMuted}
-                      onFirstFrameRender={() => setMediaLoading(false)}
+                      onFirstFrameRender={() => {
+                        setMediaLoading(false);
+                        setIsVideoReady(true);
+                      }}
                       style={[
                         StyleSheet.absoluteFill,
                         { zIndex: 3 },
@@ -700,19 +726,31 @@ export const PostFeedCard = memo(({
           </View>
         )}
 
-        {/* Animated Heart Overlay */}
-        <Animated.View
-          style={[
-            styles.heartOverlay,
-            {
-              transform: [{ scale: heartScale }],
-              opacity: heartOpacity,
-            },
-          ]}
-          pointerEvents="none"
-        >
-          <Ionicons name="heart" size={100} color="#FFF" style={styles.heartShadow} />
-        </Animated.View>
+        {/* Instagram Double Tap Pink Hearts */}
+        {instagramHearts.map(heart => (
+          <Animated.View
+            key={heart.id}
+            style={[
+              styles.instaHeartContainer,
+              {
+                left: heart.x - 45,
+                top: heart.y - 45,
+                transform: [
+                  { translateY: heart.translateY },
+                  { scale: heart.scale },
+                  { rotate: heart.rotation },
+                ],
+                opacity: heart.opacity,
+              },
+            ]}
+            pointerEvents="none"
+          >
+            <View style={styles.instaHeartInner}>
+              <Ionicons name="heart" size={92} color="#FFFFFF" style={styles.instaHeartBorder} />
+              <Ionicons name="heart" size={82} color="#FF2D55" style={styles.instaHeartMain} />
+            </View>
+          </Animated.View>
+        ))}
       </View>
 
       {/* Actions */}
@@ -747,8 +785,8 @@ export const PostFeedCard = memo(({
             fontSize: 14
           }}>
             {likesCount > 0 ? (
-              t('language') === 'hi' 
-                ? `${likesCount.toLocaleString()} पसंद` 
+              t('language') === 'hi'
+                ? `${likesCount.toLocaleString()} पसंद`
                 : `${likesCount.toLocaleString()} ${likesCount === 1 ? 'like' : 'likes'}`
             ) : (
               t('language') === 'hi' ? 'पसंद करने वाले पहले बनें' : 'Be the first to like'
@@ -775,7 +813,7 @@ export const PostFeedCard = memo(({
               <Text style={styles.charCountTextInline}>{editedCaption?.length || 0}/500</Text>
             </View>
           </View>
-          
+
           {/* Quick Emoji Helper */}
           <View style={styles.quickEmojisContainerInline}>
             {['✨', '🙏', '🕉️', '🌸', '🚩', '📿'].map((emoji) => (
@@ -816,7 +854,7 @@ export const PostFeedCard = memo(({
               <Text style={[styles.captionText, theme === 'light' ? styles.captionTextLight : { color: '#FFF' }]} numberOfLines={isCaptionExpanded ? undefined : 1} ellipsizeMode="tail">
                 <Text style={{ fontWeight: '900', color: theme === 'light' ? '#000' : '#FFFFFF' }}>
                   {post?.username || 'User'} {post?.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginRight: 4 }} />}
-                </Text> 
+                </Text>
                 {isCaptionExpanded ? captionSegments.map((seg, idx) =>
                   seg.isHashtag ? (
                     <Text key={idx} style={{ color: COLORS.primary, fontWeight: '800' }} onPress={() => onHashtagPress?.(seg.text.replace('#', ''))}>
@@ -846,7 +884,7 @@ export const PostFeedCard = memo(({
       {!isEditing && (
         <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
           <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
-            {commentsCount > 0 
+            {commentsCount > 0
               ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)
               : (t('language') === 'hi' ? 'एक टिप्पणी जोड़ें...' : 'Add a comment...')}
           </Text>
@@ -859,7 +897,7 @@ export const PostFeedCard = memo(({
             <Text key={comment.id ?? index} style={styles.topCommentText} numberOfLines={1}>
               <Text style={[styles.topCommentUser, theme === 'light' ? styles.topCommentUserLight : { color: '#FFF' }]}>
                 {comment?.username || 'User'} {comment?.is_verified && <MaterialCommunityIcons name="check-decagram" size={12} color="#FF6B00" style={{ marginRight: 2 }} />}
-              </Text> 
+              </Text>
               <Text style={{ color: theme === 'light' ? '#444' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>{comment?.text || ''}</Text>
             </Text>
           ))}
@@ -927,20 +965,28 @@ const styles = StyleSheet.create({
   actionTextLight: { color: '#333333' },
   actionTextActive: { color: COLORS.primary },
   viewsText: { color: 'rgba(255,255,255,0.95)', fontSize: 12, paddingHorizontal: SPACING.md, paddingBottom: 4, fontWeight: '800' },
-  heartOverlay: {
+  instaHeartContainer: {
     position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginTop: -50,
-    marginLeft: -50,
+    width: 90,
+    height: 90,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 99999,
   },
-  heartShadow: {
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 6,
+  instaHeartInner: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF2D55',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  instaHeartBorder: {
+    position: 'absolute',
+  },
+  instaHeartMain: {
+    position: 'absolute',
   },
   editHeaderRow: {
     flexDirection: 'row',

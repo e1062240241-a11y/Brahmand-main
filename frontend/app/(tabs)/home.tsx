@@ -1409,7 +1409,15 @@ export default function HomeScreen() {
     };
   }, [isFocused, token, isAuthenticated]);
 
+  const lastNotificationTapRef = useRef<number>(0);
+
   const handleNotificationPress = () => {
+    const now = Date.now();
+    if (now - lastNotificationTapRef.current < 1000) {
+      return;
+    }
+    lastNotificationTapRef.current = now;
+
     try {
       bellPlayer.play();
     } catch (err) {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder, Image, Dimensions, ImageBackground, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, PanResponder, Image, Dimensions, ImageBackground, useWindowDimensions, Platform, Keyboard } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -179,10 +179,12 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                             style={fabStyles.menuItemButton}
                             activeOpacity={0.8}
                             onPress={() => {
+                              Keyboard.dismiss();
                               toggleFab();
+                              const targetRoute = item.route;
                               setTimeout(() => {
-                                router.push(item.route as any);
-                              }, 200);
+                                router.push(targetRoute as any);
+                              }, 60);
                             }}
                           >
                             <ImageBackground 
