@@ -4,3 +4,6 @@
 ## 2026-07-31 - Adding accessibility attributes to FABs
 **Learning:** React Native's `TouchableOpacity` and `Animated.View` wrappers around icon-only buttons often lack essential ARIA roles like `accessibilityRole="button"` and descriptive `accessibilityLabel`s, which are crucial for screen readers. Using `accessibilityState={{ expanded: boolean }}` is very useful for floating action buttons that open menus.
 **Action:** Always verify if interactive icon-only components have explicit `accessibilityRole` and `accessibilityLabel` props to maintain a11y standards.
+## 2024-08-01 - Add Accessibility roles and states to custom form elements
+**Learning:** When using custom UI structures for standard HTML equivalents like Radio Buttons, they lack native accessibility traits. `TouchableOpacity` components used as Radio Buttons in `HelpRequestForm.tsx` required `accessibilityRole="radio"` alongside `accessibilityState={{ checked: ... }}` and the parent container to be `accessibilityRole="radiogroup"` to be properly understood by screen readers.
+**Action:** Always add `accessibilityRole="radio"` and the appropriate `accessibilityState` dynamically whenever recreating Radio Button style selections using custom Views/Touchables in React Native.
