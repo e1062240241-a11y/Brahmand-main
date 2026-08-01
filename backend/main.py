@@ -7399,13 +7399,8 @@ async def delete_comment(comment_id: str, token_data: dict = Depends(verify_toke
             new_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
             chat_id = comment.get('chat_id')
             if not chat_id:
-                # Deduce chat_id by scanning community chats
-                chats = await db.query_documents('chats')
-                for c in chats:
-                    msg = await db.get_chat_message(c['id'], post_id)
-                    if msg:
-                        chat_id = c['id']
-                        break
+                # Resolve chat_id via reverse index (falls back to a chat scan for legacy comments)
+                chat_id = await db.get_chat_id_for_message(post_id)
             
             if chat_id:
                 await db.update_chat_message(chat_id, post_id, {'comments_count': new_count})
@@ -7437,6 +7432,11 @@ async def delete_community_message(
         
     def _delete():
         db.client.collection('chats').document(chat_id).collection('messages').document(message_id).delete()
+        # Best-effort cleanup of the reverse index
+        try:
+            db.client.collection('chat_message_index').document(message_id).delete()
+        except Exception:
+            pass
         return True
         
     await db._run_sync(_delete)
@@ -9991,32 +9991,40 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
                     moderation_result['comment_deleted'] = True
 
             elif content_type == 'community':
-                chats = await db.query_documents('chats')
-                for chat in chats:
+                chat_id = await db.get_chat_id_for_message(content_id)
+                if chat_id:
                     try:
-                        msg = await db.get_chat_message(chat['id'], content_id)
+                        msg = await db.get_chat_message(chat_id, content_id)
                         if msg:
                             def _delete():
-                                db.client.collection('chats').document(chat['id']).collection('messages').document(content_id).delete()
+                                db.client.collection('chats').document(chat_id).collection('messages').document(content_id).delete()
+                                # Best-effort cleanup of the reverse index
+                                try:
+                                    db.client.collection('chat_message_index').document(content_id).delete()
+                                except Exception:
+                                    pass
                                 return True
                             await db._run_sync(_delete)
                             moderation_result['community_post_deleted'] = True
-                            break
                     except Exception:
                         pass
 
             elif content_type == 'message':
-                chats = await db.query_documents('chats')
-                for chat in chats:
+                chat_id = await db.get_chat_id_for_message(content_id)
+                if chat_id:
                     try:
-                        msg = await db.get_chat_message(chat['id'], content_id)
+                        msg = await db.get_chat_message(chat_id, content_id)
                         if msg:
                             def _delete():
-                                db.client.collection('chats').document(chat['id']).collection('messages').document(content_id).delete()
+                                db.client.collection('chats').document(chat_id).collection('messages').document(content_id).delete()
+                                # Best-effort cleanup of the reverse index
+                                try:
+                                    db.client.collection('chat_message_index').document(content_id).delete()
+                                except Exception:
+                                    pass
                                 return True
                             await db._run_sync(_delete)
                             moderation_result['message_deleted'] = True
-                            break
                     except Exception:
                         pass
 

@@ -854,6 +854,8 @@ class FirestoreDB:
             
             sub_key = f"chats:{chat_id}:messages"
             self._mock_collections.setdefault(sub_key, {})[msg_id] = data_copy
+            # Reverse index for O(1) message -> chat lookup
+            self._mock_collections.setdefault('chat_message_index', {})[msg_id] = {'chat_id': chat_id}
             return msg_id
 
         from google.cloud import firestore
@@ -862,6 +864,11 @@ class FirestoreDB:
         
         def _add():
             _, doc_ref = self.client.collection('chats').document(chat_id).collection('messages').add(message_data)
+            # Best-effort reverse index; never blocks message creation
+            try:
+                self.client.collection('chat_message_index').document(doc_ref.id).set({'chat_id': chat_id})
+            except Exception as e:
+                logger.warning(f"Failed to index chat message {doc_ref.id}: {e}")
             return doc_ref.id
         
         return await self._run_sync(_add)
@@ -938,6 +945,35 @@ class FirestoreDB:
         
         return await self._run_sync(_get)
     
+    async def get_chat_id_for_message(self, message_id: str) -> Optional[str]:
+        """Resolve which chat contains a message.
+
+        Uses the chat_message_index reverse lookup for O(1) resolution.
+        Falls back to scanning all chats (previous behavior) when the index
+        entry is missing (e.g. legacy messages created before the index).
+        """
+        if not message_id:
+            return None
+
+        # 1) Fast path: reverse index lookup
+        try:
+            idx = await self.get_document('chat_message_index', message_id)
+            if idx and idx.get('chat_id'):
+                return idx['chat_id']
+        except Exception as e:
+            logger.warning(f"chat_message_index lookup failed for {message_id}: {e}")
+
+        # 2) Fallback: scan all chats (preserves legacy behavior)
+        try:
+            chats = await self.query_documents('chats')
+            for c in chats:
+                msg = await self.get_chat_message(c['id'], message_id)
+                if msg:
+                    return c['id']
+        except Exception as e:
+            logger.warning(f"chat scan fallback failed for {message_id}: {e}")
+        return None
+
     async def update_chat_message(self, chat_id: str, message_id: str, update_data: Dict[str, Any]) -> None:
         """Update a specific message in a chat"""
         if self.use_mock:
