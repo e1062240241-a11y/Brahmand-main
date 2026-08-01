@@ -862,6 +862,12 @@ class FirestoreDB:
         
         def _add():
             _, doc_ref = self.client.collection('chats').document(chat_id).collection('messages').add(message_data)
+            # ⚡ Bolt Optimization: Write a best-effort reverse index for O(1) chat_id lookups
+            try:
+                self.client.collection('chat_message_index').document(doc_ref.id).set({'chat_id': chat_id})
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to write chat_message_index for {doc_ref.id}: {e}")
             return doc_ref.id
         
         return await self._run_sync(_add)
@@ -921,6 +927,34 @@ class FirestoreDB:
         
         return await self._run_sync(_get)
     
+    async def get_chat_id_for_message(self, message_id: str) -> Optional[str]:
+        """
+        Helper to find the chat_id for a given message_id.
+        Uses the chat_message_index for O(1) lookup, with an O(N) fallback for legacy messages.
+        """
+        if self.use_mock:
+            # Not fully supported in mock, fallback to scanning
+            pass
+        else:
+            def _get_index():
+                doc = self.client.collection('chat_message_index').document(message_id).get()
+                if doc.exists:
+                    return doc.to_dict().get('chat_id')
+                return None
+
+            chat_id = await self._run_sync(_get_index)
+            if chat_id:
+                return chat_id
+
+        # Fallback to O(N) scanning for legacy messages
+        chats = await self.query_documents('chats')
+        for c in chats:
+            msg = await self.get_chat_message(c['id'], message_id)
+            if msg:
+                return c['id']
+
+        return None
+
     async def get_chat_message(self, chat_id: str, message_id: str) -> Optional[Dict[str, Any]]:
         """Get a specific message from a chat"""
         if self.use_mock:
