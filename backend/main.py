@@ -1813,8 +1813,12 @@ async def admin_panel_login(data: dict = Body(...)):
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
 
-    raw_user = os.getenv('ADMIN_PANEL_USERNAME') or "Admin"
-    raw_pass = os.getenv('ADMIN_PANEL_PASSWORD') or "pummi9-mydwyj-cisfIw"
+    raw_user = os.getenv('ADMIN_PANEL_USERNAME')
+    raw_pass = os.getenv('ADMIN_PANEL_PASSWORD')
+
+    if not raw_user or not raw_pass:
+        logger.error("Admin login failed: ADMIN_PANEL_USERNAME or ADMIN_PANEL_PASSWORD environment variables are not set")
+        raise HTTPException(status_code=500, detail="Server configuration error")
 
     expected_username = raw_user.strip().strip('"').strip("'")
     expected_password = raw_pass.strip().strip('"').strip("'")

@@ -17,3 +17,8 @@
 **Vulnerability:** A fallback for a Bunny.net access key was hardcoded in `backend/scratch/backup_bunny.py`.
 **Learning:** Even 'scratch' or utility scripts are part of the codebase and can leak secrets if checked into source control or shared. Relying on hardcoded values bypasses security measures, especially since utility scripts might not be rigorously reviewed.
 **Prevention:** Treat utility and scratch scripts with the same security rigor as production code. Require environment variables for all secrets and fail securely with a clear error message (e.g., using `sys.exit(1)`) instead of defaulting to a hardcoded secret.
+
+## 2024-08-01 - Remove Hardcoded Admin Credentials Fallback
+**Vulnerability:** Found hardcoded fallback credentials (`ADMIN_PANEL_USERNAME`, `ADMIN_PANEL_PASSWORD`, and `KATHA_ADMIN_SECRET`) in `backend/main.py` and `backend/routes/katha_routes.py`. If environment variables were missing, the application would start up securely with these known, static values, allowing unauthorized admin access.
+**Learning:** Fallback values for sensitive environment variables (like API keys, secrets, or admin credentials) are a critical security risk because they create a backdoor if the deployment environment is misconfigured.
+**Prevention:** Never provide default values for sensitive configuration options in `os.getenv()`. Always check if they are set and fail-fast (e.g., raise an exception or exit) during startup or within the logic if they are missing.
