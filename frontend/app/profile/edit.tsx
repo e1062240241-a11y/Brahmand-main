@@ -34,7 +34,11 @@ export default function EditProfileScreen() {
   const { myVendor, fetchMyVendor } = useVendorStore();
   const [deleting, setDeleting] = useState(false);
   const handleBack = () => {
-    router.replace('/(tabs)/profile');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/profile');
+    }
   };
 
   const [loading, setLoading] = useState(true);

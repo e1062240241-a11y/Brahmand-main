@@ -108,8 +108,11 @@ export default function ChangeLocationScreen() {
 
   const handleBack = useCallback(() => {
     if (!hasValidLocation) return;
-    router.back?.();
-    router.replace("/profile");
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)/profile");
+    }
   }, [router, hasValidLocation]);
 
   useEffect(() => {

@@ -2667,7 +2667,18 @@ export const getGitaShloka = async (chapter: number, verse: number) => {
 
 export const getNextFestival = () => api.get("/spiritual/festival/next");
 
-export const getFestivalList = () => api.get("/spiritual/festivals/all");
+let festivalListCache: { data: any; timestamp: number } | null = null;
+const FESTIVAL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+
+export const getFestivalList = async (forceRefresh = false) => {
+  const now = Date.now();
+  if (!forceRefresh && festivalListCache && (now - festivalListCache.timestamp < FESTIVAL_CACHE_TTL)) {
+    return festivalListCache.data;
+  }
+  const res = await api.get("/spiritual/festivals/all");
+  festivalListCache = { data: res, timestamp: now };
+  return res;
+};
 
 // =================== REALTIME APIS ===================
 

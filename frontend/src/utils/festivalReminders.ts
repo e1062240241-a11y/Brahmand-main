@@ -13,12 +13,16 @@ interface ReminderState {
   notificationIds: string[];
 }
 
+let remindersCache: Record<string, ReminderState> | null = null;
+
 export async function getFestivalReminderState(festivalId: string): Promise<ReminderState | null> {
   try {
+    if (remindersCache !== null) {
+      return remindersCache[festivalId] || null;
+    }
     const data = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!data) return null;
-    const reminders = JSON.parse(data);
-    return reminders[festivalId] || null;
+    remindersCache = data ? JSON.parse(data) : {};
+    return remindersCache![festivalId] || null;
   } catch (e) {
     console.error('Error reading festival reminder state', e);
     return null;
@@ -27,9 +31,12 @@ export async function getFestivalReminderState(festivalId: string): Promise<Remi
 
 export async function getAllFestivalReminders(): Promise<Record<string, ReminderState>> {
   try {
+    if (remindersCache !== null) {
+      return remindersCache;
+    }
     const data = await AsyncStorage.getItem(STORAGE_KEY);
-    if (!data) return {};
-    return JSON.parse(data);
+    remindersCache = data ? JSON.parse(data) : {};
+    return remindersCache!;
   } catch (e) {
     console.error('Error reading all festival reminders', e);
     return {};
@@ -45,6 +52,7 @@ async function saveFestivalReminderState(festivalId: string, state: ReminderStat
     } else {
       delete reminders[festivalId];
     }
+    remindersCache = reminders;
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
   } catch (e) {
     console.error('Error saving festival reminder state', e);
