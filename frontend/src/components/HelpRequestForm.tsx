@@ -138,7 +138,11 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Create Help Request</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close help request form"
+            >
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -146,7 +150,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
           <KeyboardAwareScrollView style={styles.form} showsVerticalScrollIndicator={false}>
             {/* Help Type */}
             <Text style={styles.label}>Help Type *</Text>
-            <View style={styles.typeContainer}>
+            <View style={styles.typeContainer} accessibilityRole="radiogroup">
               {HELP_TYPES.map((type) => (
                 <TouchableOpacity
                   key={type.key}
@@ -155,6 +159,8 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
                     helpType === type.key && { backgroundColor: `${type.color}20`, borderColor: type.color },
                   ]}
                   onPress={() => setHelpType(type.key as any)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: helpType === type.key }}
                 >
                   <Ionicons name={type.icon as any} size={20} color={helpType === type.key ? type.color : COLORS.textSecondary} />
                   <Text style={[styles.typeText, helpType === type.key && { color: type.color }]}>
@@ -190,7 +196,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
 
             {/* Urgency */}
             <Text style={styles.label}>Urgency *</Text>
-            <View style={styles.urgencyContainer}>
+            <View style={styles.urgencyContainer} accessibilityRole="radiogroup">
               {URGENCY_LEVELS.map((level) => (
                 <TouchableOpacity
                   key={level.key}
@@ -199,6 +205,8 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
                     urgency === level.key && { backgroundColor: level.color, borderColor: level.color },
                   ]}
                   onPress={() => setUrgency(level.key as any)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: urgency === level.key }}
                 >
                   <Text style={[styles.urgencyText, urgency === level.key && { color: '#FFFFFF' }]}>
                     {level.label}
@@ -220,7 +228,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
 
             {/* Visibility */}
             <Text style={styles.label}>Post Visibility *</Text>
-            <View style={styles.visibilityContainer}>
+            <View style={styles.visibilityContainer} accessibilityRole="radiogroup">
               {VISIBILITY_OPTIONS.map((option) => (
                 <TouchableOpacity
                   key={option.key}
@@ -229,6 +237,8 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
                     visibility === option.key && styles.visibilityOptionSelected,
                   ]}
                   onPress={() => setVisibility(option.key as any)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: visibility === option.key }}
                 >
                   <View style={styles.radioOuter}>
                     {visibility === option.key && <View style={styles.radioInner} />}
@@ -253,6 +263,8 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
               style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: loading }}
             >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
