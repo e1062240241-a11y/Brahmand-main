@@ -12937,12 +12937,26 @@ async def get_vendor_review_queue(
             with open(log_path, 'a') as f:
                 f.write(f"Fallback query or sort failed: {fallback_exc}\n")
 
+    # Batch fetch users for vendor records missing contact info to fix N+1 query
+    owner_ids_to_fetch = set()
+    for r in records:
+        if not r.get('phone_number') and not r.get('contact_number') and r.get('owner_id'):
+            owner_ids_to_fetch.add(r.get('owner_id'))
+
+    users_map = {}
+    if owner_ids_to_fetch:
+        try:
+            user_docs = await db.get_documents_batch('users', list(owner_ids_to_fetch))
+            users_map = {u['id']: u for u in user_docs if u and 'id' in u}
+        except Exception as err:
+            logger.warning(f"Failed to batch resolve owner phones: {err}")
+
     for r in records:
         if not r.get('phone_number') and not r.get('contact_number'):
             owner_id = r.get('owner_id')
             if owner_id:
                 try:
-                    user_doc = await db.get_document('users', owner_id)
+                    user_doc = users_map.get(owner_id)
                     if user_doc:
                         phone = user_doc.get('kyc_verified_phone') or user_doc.get('phone') or user_doc.get('phone_number')
                         if phone:
