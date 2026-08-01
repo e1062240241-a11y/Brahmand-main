@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 
 from config.firebase_config import get_firestore
 from config.firestore_db import FirestoreDB
-from utils.helpers import generate_community_code, SUBGROUPS, normalize_location
+from utils.helpers import generate_community_code, SUBGROUPS, normalize_location, CITY_TO_STATE_MAP
 from utils.cache import cache_manager
 
 logger = logging.getLogger(__name__)
@@ -178,9 +178,23 @@ class FirebaseCommunityService:
         location = normalize_location(location) or location
         db = await FirebaseCommunityService.get_db()
         community_ids = []
+
+        # Auto-resolve state and country if missing from manual city input
+        city_name = location.get('city')
+        state_name = location.get('state')
+        country_name = location.get('country') or 'Bharat'
+
+        if city_name and str(city_name).strip():
+            city_clean_key = str(city_name).strip().lower()
+            if not state_name or not str(state_name).strip() or str(state_name).strip().lower() == 'unknown':
+                if city_clean_key in CITY_TO_STATE_MAP:
+                    resolved_state, resolved_country = CITY_TO_STATE_MAP[city_clean_key]
+                    state_name = resolved_state
+                    country_name = resolved_country
+                    location['state'] = state_name
+                    location['country'] = country_name
         
         # City Community (Always joined)
-        city_name = location.get('city')
         if city_name and str(city_name).strip():
             city_name_cleaned = " ".join(str(city_name).split())
             try:
@@ -188,8 +202,8 @@ class FirebaseCommunityService:
                     f"{city_name_cleaned.title()} Group",
                     "city",
                     {
-                        "country": str(location.get('country', '')).strip(),
-                        "state": str(location.get('state', '')).strip(),
+                        "country": str(country_name or location.get('country', '')).strip() or 'Bharat',
+                        "state": str(state_name or location.get('state', '')).strip(),
                         "city": city_name_cleaned
                     }
                 )
@@ -199,7 +213,6 @@ class FirebaseCommunityService:
                 logger.error(f"Error creating city community for city '{city_name}': {e}", exc_info=True)
         
         # State Community (Always joined)
-        state_name = location.get('state')
         if state_name and str(state_name).strip():
             state_name_cleaned = " ".join(str(state_name).split())
             try:
@@ -207,7 +220,7 @@ class FirebaseCommunityService:
                     f"{state_name_cleaned.title()} Group",
                     "state",
                     {
-                        "country": str(location.get('country', '')).strip(),
+                        "country": str(country_name or location.get('country', '')).strip() or 'Bharat',
                         "state": state_name_cleaned
                     }
                 )
@@ -217,21 +230,19 @@ class FirebaseCommunityService:
                 logger.error(f"Error creating state community for state '{state_name}': {e}", exc_info=True)
                 
         # Country Community (Always joined)
-        country_name = location.get('country')
-        if country_name and str(country_name).strip():
-            country_name_cleaned = " ".join(str(country_name).split())
-            try:
-                country_community = await FirebaseCommunityService.get_or_create_community(
-                    f"{country_name_cleaned.title()} Group",
-                    "country",
-                    {
-                        "country": country_name_cleaned
-                    }
-                )
-                if country_community and 'id' in country_community:
-                    community_ids.append(country_community['id'])
-            except Exception as e:
-                logger.error(f"Error creating country community for country '{country_name}': {e}", exc_info=True)
+        country_name_final = str(country_name or location.get('country', 'Bharat')).strip() or 'Bharat'
+        try:
+            country_community = await FirebaseCommunityService.get_or_create_community(
+                f"{country_name_final.title()} Group",
+                "country",
+                {
+                    "country": country_name_final
+                }
+            )
+            if country_community and 'id' in country_community:
+                community_ids.append(country_community['id'])
+        except Exception as e:
+            logger.error(f"Error creating country community for country '{country_name_final}': {e}", exc_info=True)
         
         # Add user to each community safely
         joined_ids = []
@@ -395,7 +406,7 @@ class FirebaseCommunityService:
         return {"message": "Rules agreed"}
     
     @staticmethod
-    async def discover_communities(user_id: str = None) -> List[Dict[str, Any]]:
+    async def discover_communities(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Discover popular communities"""
         db = await FirebaseCommunityService.get_db()
         try:
