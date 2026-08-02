@@ -14,8 +14,10 @@ type HomeFeedTabsProps = {
 const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange, onCreatePost }: HomeFeedTabsProps) {
   const { t } = useTranslation();
   return (
-    <View style={styles.feedTabs}>
+    <View style={styles.feedTabs} accessibilityRole="tablist">
       <Pressable
+        accessibilityRole="tab"
+        accessibilityState={{ selected: activeTab === 'for_you' }}
         style={({ pressed }) => [
           styles.tabBtn,
           activeTab === 'for_you' && styles.activeTabBtn,
@@ -30,6 +32,8 @@ const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange, 
       </Pressable>
       
       <Pressable
+        accessibilityRole="tab"
+        accessibilityState={{ selected: activeTab === 'following' }}
         style={({ pressed }) => [
           styles.tabBtn,
           activeTab === 'following' && styles.activeTabBtn,
@@ -44,6 +48,8 @@ const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange, 
       </Pressable>
 
       <Pressable
+        accessibilityRole="tab"
+        accessibilityState={{ selected: activeTab === 'trending' }}
         style={({ pressed }) => [
           styles.tabBtn,
           activeTab === 'trending' && styles.activeTabBtn,
@@ -58,6 +64,8 @@ const HomeFeedTabs = React.memo(function HomeFeedTabs({ activeTab, onTabChange, 
       </Pressable>
 
       <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Create new post"
         style={({ pressed }) => [
           styles.newPostButton,
           pressed && Platform.OS === 'ios' && { opacity: 0.7 }
