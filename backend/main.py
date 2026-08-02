@@ -7131,6 +7131,8 @@ async def send_community_message(
         logger.warning(f"Failed to send community message push notification: {notify_err}")
     
     # Emit via Socket.IO
+    response_data['community_id'] = community_id
+    response_data['subgroup_type'] = subgroup_type
     await sio.emit('new_message', response_data, room=chat_id)
     
     return response_data

@@ -7,6 +7,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../src/store/authStore';
+import { hydrateCommunityScreenCaches } from '../src/store/chatStore';
 import { startAuthStateListener } from '../src/services/firebase/authService';
 import { addNotificationResponseReceivedListener, addNotificationReceivedListener, getLastNotificationResponse } from '../src/services/pushNotifications';
 import { sendDirectMessage, getCommunities, getCircles, getConversations, discoverCommunities, getFestivalList } from '../src/services/api';
@@ -951,6 +952,11 @@ export default function RootLayout() {
         .then(() => console.log('[Sync] WatermelonDB sync complete on startup'))
         .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
     }
+  }, [isLoading, isAuthenticated, token]);
+
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || !token) return;
+    hydrateCommunityScreenCaches().catch(() => {});
   }, [isLoading, isAuthenticated, token]);
 
   // Preload community data after auth resolves — cache it so Community tab shows instantly

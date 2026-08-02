@@ -38,7 +38,8 @@ import { scheduleEventReminderNotification } from '../../src/services/pushNotifi
 import { originalAlert } from '../../src/utils/nativeAlert';
 import { useTranslation } from '../../src/utils/i18n';
 import { useAuthStore } from '../../src/store/authStore';
-import { useChatStore } from '../../src/store/chatStore';
+import { useChatStore, hydrateCommunityScreenCaches } from '../../src/store/chatStore';
+import { socketService } from '../../src/services/socket';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { COLORS, FONTS } from '../../src/constants/theme';
 
@@ -754,6 +755,8 @@ export default function CommunityDetailScreen() {
   const listRef = useRef<FlatList>(null);
   const stateCommunityIdRef = useRef<string | null>(null);
   const countryCommunityIdRef = useRef<string | null>(null);
+  const joinedSocketRoomsRef = useRef<Set<string>>(new Set());
+  const socketListenerIdRef = useRef<string | null>(null);
 
   const { t } = useTranslation();
 
@@ -884,6 +887,127 @@ export default function CommunityDetailScreen() {
       ensureCategoriesLoaded();
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    hydrateCommunityScreenCaches()
+      .then(() => {
+        if (cancelled) return;
+        const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
+        if (cachedData) {
+          setCommunity(cachedData.community || null);
+          setRequests(cachedData.requests || []);
+          setEvents(cachedData.events || []);
+          setAllFestivals(cachedData.allFestivals || []);
+          setCommunityPosts(cachedData.communityPosts || []);
+          setLoading(false);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheKey]);
+
+  const handleSocketMessage = useCallback((message: any) => {
+    if (!message || !message.id) return;
+    const msgCommunityId = message.community_id;
+    const subgroup = message.subgroup_type;
+    if (!msgCommunityId || (subgroup !== 'city' && subgroup !== 'state' && subgroup !== 'national')) return;
+    if (msgCommunityId !== id && msgCommunityId !== stateCommunityIdRef.current && msgCommunityId !== countryCommunityIdRef.current) return;
+
+    const currentUserId = useAuthStore.getState().user?.id;
+    if (message.sender_id && currentUserId && String(message.sender_id) === String(currentUserId)) return;
+
+    const currentCache = useChatStore.getState().communityScreenCaches[cacheKey];
+    const deletedIds = new Set(currentCache?.deletedPostIds || []);
+    if (deletedIds.has(String(message.id))) return;
+
+    const formattedPost = {
+      id: message.id,
+      user: {
+        name: message.sender_name || 'Anonymous',
+        photo: message.sender_photo,
+        isVerified: message.is_verified || false,
+        verificationLabel: message.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
+      },
+      content: message.content,
+      image: message.media_url || message.mediaUrl || message.image,
+      timestamp: message.created_at || 'Just now',
+      raw_timestamp: message.created_at,
+      likes: message.likes_count || 0,
+      comments: message.comments_count || 0,
+      shares: 0,
+      reposts: 0,
+      hideBadge: false,
+      liked: (message.liked_by || []).includes(currentUserId),
+      category: message.category || 'Feed',
+      sender_id: message.sender_id,
+      isCommunityMsg: true,
+      subgroupType: subgroup,
+      communityId: msgCommunityId,
+      isStateAnnouncement: subgroup === 'state',
+      isNationalAnnouncement: subgroup === 'national',
+      contact: message.contact,
+      sevaDetails: message.seva_details,
+      location: message.location,
+      start_time: message.start_time,
+    };
+
+    setCommunityPosts((prev) => {
+      if (prev.some((p) => String(p.id) === String(message.id))) return prev;
+      const next = [formattedPost, ...prev];
+      const cur = useChatStore.getState().communityScreenCaches[cacheKey];
+      if (cur) {
+        useChatStore.getState().setCommunityScreenCache(cacheKey, {
+          ...cur,
+          communityPosts: next,
+          lastFetched: Date.now(),
+        });
+      }
+      return next;
+    });
+  }, [id, cacheKey]);
+
+  const ensureSocketRooms = useCallback((primarySubgroup?: string) => {
+    if (Platform.OS === 'web') return;
+    const rooms: string[] = [];
+    if (primarySubgroup) rooms.push(`community_${id}_${primarySubgroup}`);
+    if (stateCommunityIdRef.current) rooms.push(`community_${stateCommunityIdRef.current}_state`);
+    if (countryCommunityIdRef.current) rooms.push(`community_${countryCommunityIdRef.current}_national`);
+    rooms.forEach((room) => {
+      if (!joinedSocketRoomsRef.current.has(room)) {
+        joinedSocketRoomsRef.current.add(room);
+        socketService.joinRoom(room).catch(() => {});
+      }
+    });
+  }, [id]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    let mounted = true;
+    socketService
+      .connect()
+      .then(() => {
+        if (!mounted) return;
+        const listenerId = `community_screen_${id}_${Date.now()}`;
+        socketListenerIdRef.current = listenerId;
+        socketService.onMessage(listenerId, handleSocketMessage);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+      if (socketListenerIdRef.current) {
+        socketService.offMessage(socketListenerIdRef.current);
+        socketListenerIdRef.current = null;
+      }
+      joinedSocketRoomsRef.current.forEach((room) => {
+        socketService.leaveRoom(room);
+      });
+      joinedSocketRoomsRef.current.clear();
+    };
+  }, [id]);
+
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
   const [newMessage, setNewMessage] = useState('');
@@ -1956,6 +2080,8 @@ export default function CommunityDetailScreen() {
           }
         }
       }
+
+      ensureSocketRooms(currentSubgroup);
 
       const promises: Promise<any>[] = [
         getCommunityRequests({ community_id: id as string }).catch(() => ({ data: [] })),
