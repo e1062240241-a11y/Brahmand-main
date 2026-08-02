@@ -12957,6 +12957,10 @@ async def get_vendor_review_queue(
             if owner_id:
                 try:
                     user_doc = users_map.get(owner_id)
+                    # Fallback to individual fetch if batch failed or missing
+                    if not user_doc:
+                        user_doc = await db.get_document('users', owner_id)
+
                     if user_doc:
                         phone = user_doc.get('kyc_verified_phone') or user_doc.get('phone') or user_doc.get('phone_number')
                         if phone:
