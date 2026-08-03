@@ -22,3 +22,8 @@
 **Vulnerability:** Found hardcoded fallback credentials (`ADMIN_PANEL_USERNAME`, `ADMIN_PANEL_PASSWORD`, and `KATHA_ADMIN_SECRET`) in `backend/main.py` and `backend/routes/katha_routes.py`. If environment variables were missing, the application would start up securely with these known, static values, allowing unauthorized admin access.
 **Learning:** Fallback values for sensitive environment variables (like API keys, secrets, or admin credentials) are a critical security risk because they create a backdoor if the deployment environment is misconfigured.
 **Prevention:** Never provide default values for sensitive configuration options in `os.getenv()`. Always check if they are set and fail-fast (e.g., raise an exception or exit) during startup or within the logic if they are missing.
+
+## 2026-08-05 - Mask Exception Details in Middleware Error Responses
+**Vulnerability:** The `verify_token` function in `backend/middleware/security.py` was catching general exceptions, extracting the stack trace with `traceback.format_exc()`, and appending it along with the raw exception message directly to the client's `HTTPException` detail field.
+**Learning:** Returning stack traces (`traceback.format_exc()`) in HTTP responses acts as an Information Exposure (CWE-209/CWE-200) vulnerability. It can leak sensitive system information—such as internal code paths, logic flows, and module names—directly to end-users or malicious actors probing the API.
+**Prevention:** Always return a generic error message (e.g., "User account verification failed") to the client. Securely log the actual exception details, including stack traces, internally on the server using `logger.exception()`.
