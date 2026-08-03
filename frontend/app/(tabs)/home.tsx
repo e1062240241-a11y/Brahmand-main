@@ -3119,7 +3119,7 @@ export default function HomeScreen() {
                         onPress={() => router.push('/shravan-paath')}
                       >
                         <Image
-                          source={require('../../assets/images/panditji.webp')}
+                          source={require('../../assets/images/panditji.png')}
                           style={{
                             width: '100%',
                             height: '135%',
