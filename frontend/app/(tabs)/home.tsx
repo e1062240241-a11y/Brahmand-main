@@ -63,6 +63,7 @@ import {
 } from '../../src/utils/feedRanker';
 
 import SharePostModal from '../../src/components/SharePostModal';
+import UiverseNotifyButton from '../../src/components/UiverseNotifyButton';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import { BlurView } from 'expo-blur';
 import { RequestFormModal } from '../../src/components/RequestFormModal';
@@ -1555,8 +1556,13 @@ export default function HomeScreen() {
       if (t('language') === 'hi') {
         if (mantraType === 'shiva') readableMantra = 'ॐ नमः शिवाय';
         else if (mantraType === 'hanuman') readableMantra = 'हनुमान चालीसा';
+        else if (mantraType === 'shravan_katha') readableMantra = 'श्रावण शिव कथा';
+        else readableMantra = sessionName || 'कथा सत्र';
       } else {
-        readableMantra = mantraType === 'shiva' ? 'Om Namah Shivaya' : 'Hanuman Chalisa';
+        if (mantraType === 'shiva') readableMantra = 'Om Namah Shivaya';
+        else if (mantraType === 'hanuman') readableMantra = 'Hanuman Chalisa';
+        else if (mantraType === 'shravan_katha') readableMantra = 'Shravan Shiv Katha';
+        else readableMantra = sessionName || 'Katha Session';
       }
 
       if (active) {
@@ -3113,11 +3119,7 @@ export default function HomeScreen() {
                 {(() => {
                   return (
                     <View style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}>
-                      <TouchableOpacity
-                        activeOpacity={0.9}
-                        style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}
-                        onPress={() => router.push('/shravan-paath')}
-                      >
+                      <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
                         <Image
                           source={require('../../assets/images/panditji.png')}
                           style={{
@@ -3128,11 +3130,11 @@ export default function HomeScreen() {
                           }}
                           resizeMode="cover"
                         />
-                        {/* Overlay Gradient for readability in left area without hiding panditji */}
+                        {/* Overlay Gradient for smooth image blend with banner background */}
                         <LinearGradient
-                          colors={['rgba(0,0,0,0.70)', 'rgba(0,0,0,0.35)', 'transparent']}
+                          colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.10)']}
                           start={{ x: 0, y: 0.5 }}
-                          end={{ x: 0.7, y: 0.5 }}
+                          end={{ x: 0.85, y: 0.5 }}
                           style={StyleSheet.absoluteFillObject}
                         />
 
@@ -3192,8 +3194,8 @@ export default function HomeScreen() {
                           width: '70%',
                           paddingLeft: 14,
                           paddingRight: 6,
-                          paddingTop: 6,
-                          paddingBottom: 4,
+                          paddingTop: Platform.OS === 'android' ? 1 : 2,
+                          paddingBottom: 2,
                           justifyContent: 'flex-start',
                           alignItems: 'flex-start',
                         }}>
@@ -3207,10 +3209,10 @@ export default function HomeScreen() {
                               numberOfLines={1}
                               style={{
                                 color: '#FFFBF0',
-                                fontSize: 34,
+                                fontSize: Platform.OS === 'android' ? 28 : 34,
                                 fontWeight: '900',
                                 fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                                lineHeight: 37,
+                                lineHeight: Platform.OS === 'android' ? 31 : 37,
                                 paddingTop: 1,
                                 letterSpacing: 0.3,
                                 textAlign: 'left',
@@ -3219,27 +3221,27 @@ export default function HomeScreen() {
                                 textShadowRadius: 0,
                               }}
                             >
-                              श्रावण मास <Text style={{ color: '#FFD700', fontSize: 18, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
+                              श्रावण मास <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 15 : 18, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
                             </Text>
 
                             {/* शिव कथा with leading horizontal royal flourish */}
-                            <View style={{ width: '100%', alignItems: 'center', marginTop: 1 }}>
+                            <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 18, marginTop: Platform.OS === 'android' ? 0 : 1 }}>
                               <Text
                                 numberOfLines={1}
                                 style={{
                                   color: '#FFD768',
-                                  fontSize: 29,
+                                  fontSize: Platform.OS === 'android' ? 24 : 29,
                                   fontWeight: '900',
                                   fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                                  lineHeight: 32,
+                                  lineHeight: Platform.OS === 'android' ? 27 : 32,
                                   letterSpacing: 0.3,
-                                  textAlign: 'center',
+                                  textAlign: 'left',
                                   textShadowColor: '#5B2A00',
                                   textShadowOffset: { width: 0, height: 2 },
                                   textShadowRadius: 0,
                                 }}
                               >
-                                <Text style={{ color: '#FFD700', fontSize: 17, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
+                                <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 14 : 17, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
                               </Text>
                             </View>
 
@@ -3248,13 +3250,13 @@ export default function HomeScreen() {
                               flexDirection: 'row',
                               alignItems: 'center',
                               justifyContent: 'flex-start',
-                              marginTop: 3,
+                              marginTop: Platform.OS === 'android' ? 1 : 3,
                               marginLeft: 2,
                             }}>
                               <Text style={{
                                 color: '#FFD700',
-                                fontSize: 13,
-                                marginRight: 6,
+                                fontSize: Platform.OS === 'android' ? 11 : 13,
+                                marginRight: 4,
                                 transform: [{ rotate: '90deg' }],
                                 textShadowColor: 'rgba(255,215,0,0.8)',
                                 textShadowOffset: { width: 0, height: 0 },
@@ -3264,9 +3266,9 @@ export default function HomeScreen() {
                               </Text>
                               <Text style={{
                                 color: '#FFFFFF',
-                                fontSize: 14.5,
+                                fontSize: Platform.OS === 'android' ? 12.5 : 14.5,
                                 fontWeight: '700',
-                                letterSpacing: 0.5,
+                                letterSpacing: 0.3,
                                 textShadowColor: 'rgba(0,0,0,0.9)',
                                 textShadowOffset: { width: 0, height: 1 },
                                 textShadowRadius: 3,
@@ -3275,8 +3277,8 @@ export default function HomeScreen() {
                               </Text>
                               <Text style={{
                                 color: '#FFD700',
-                                fontSize: 13,
-                                marginLeft: 6,
+                                fontSize: Platform.OS === 'android' ? 11 : 13,
+                                marginLeft: 4,
                                 transform: [{ rotate: '90deg' }],
                                 textShadowColor: 'rgba(255,215,0,0.8)',
                                 textShadowOffset: { width: 0, height: 0 },
@@ -3290,21 +3292,21 @@ export default function HomeScreen() {
                           {/* DATE SECTION & NOTIFY BUTTON */}
                           <View style={{
                             alignSelf: 'flex-start',
-                            marginTop: 3,
+                            marginTop: Platform.OS === 'android' ? 1 : 3,
                             marginLeft: 2,
                           }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text style={{ fontSize: 11, color: '#F4C55A', marginRight: 4 }}>📅</Text>
+                              <Text style={{ fontSize: Platform.OS === 'android' ? 10 : 11, color: '#F4C55A', marginRight: 4 }}>📅</Text>
                               <Text style={{
                                 color: '#F4C55A',
-                                fontSize: 12,
+                                fontSize: Platform.OS === 'android' ? 11 : 12,
                                 fontWeight: '800',
                                 letterSpacing: 0.2,
                                 textShadowColor: 'rgba(0,0,0,0.95)',
                                 textShadowOffset: { width: 0, height: 1 },
                                 textShadowRadius: 3,
                               }}>
-                                13 अगस्त – 13 सितंबर
+                                13 अगस्त – 11 सितंबर
                               </Text>
                             </View>
 
@@ -3313,62 +3315,33 @@ export default function HomeScreen() {
                               color: '#FFFFFF',
                               opacity: 0.95,
                               fontWeight: '600',
-                              fontSize: 11,
-                              marginTop: 3,
+                              fontSize: Platform.OS === 'android' ? 10 : 11,
+                              marginTop: Platform.OS === 'android' ? 1 : 3,
                               textShadowColor: 'rgba(0,0,0,0.95)',
                               textShadowOffset: { width: 0, height: 1 },
                               textShadowRadius: 3,
                             }}>
-                              हर दिन LIVE केवल श्रावण माह में
+                              हर दिन LIVE श्रावण माह में
                             </Text>
 
-                            {/* Premium Modernized Gold-Glow Pill Notify Button */}
-                            <TouchableOpacity
-                              activeOpacity={0.8}
-                              style={{
-                                marginTop: 5,
-                                alignSelf: 'flex-start',
-                                borderRadius: 18,
-                                overflow: 'hidden',
-                                borderWidth: 1.2,
-                                borderColor: '#FFE082',
-                                shadowColor: '#FF6600',
-                                shadowOffset: { width: 0, height: 3 },
-                                shadowOpacity: 0.5,
-                                shadowRadius: 5,
-                                elevation: 5,
+                            {/* Uiverse Notify Button with sliding hover fill & navigation to shravan-paath */}
+                            <UiverseNotifyButton
+                              isNotified={!!reminders['shravan_katha']}
+                              onPress={() => {
+                                handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                                router.push('/shravan-paath');
                               }}
-                            >
-                              <LinearGradient
-                                colors={['#FF6600', '#D84315']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 1 }}
-                                style={{
-                                  paddingHorizontal: 14,
-                                  paddingVertical: 5,
-                                  flexDirection: 'row',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Ionicons name="notifications" size={13} color="#FFFBF0" style={{ marginRight: 5 }} />
-                                <Text style={{
-                                  color: '#FFFBF0',
-                                  fontSize: 11,
-                                  fontWeight: '800',
-                                  letterSpacing: 0.6,
-                                  textTransform: 'uppercase',
-                                  textShadowColor: 'rgba(0,0,0,0.4)',
-                                  textShadowOffset: { width: 0, height: 1 },
-                                  textShadowRadius: 2,
-                                }}>
-                                  Notify Me
-                                </Text>
-                              </LinearGradient>
-                            </TouchableOpacity>
+                              label="Notify Me"
+                              notifiedLabel="Notified"
+                              size="small"
+                              style={{
+                                marginTop: Platform.OS === 'android' ? 3 : 5,
+                                alignSelf: 'flex-start',
+                              }}
+                            />
                           </View>
                         </View>
-                      </TouchableOpacity>
+                      </View>
                     </View>
                   );
                 })()}

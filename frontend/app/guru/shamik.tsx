@@ -13,12 +13,14 @@ import {
   Share,
   Alert,
   TextInput,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from '../../src/utils/i18n';
+import UiverseNotifyButton from '../../src/components/UiverseNotifyButton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -329,7 +331,7 @@ export default function AcharyaShamikHimalayanProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Platform.OS === 'android' ? 120 : 100 }}>
         {/* =========================================================================
             UNIFIED HERO SECTION (MERGED WITH SHIV KATHA & LIVE TIMER)
            ========================================================================= */}
@@ -377,15 +379,13 @@ export default function AcharyaShamikHimalayanProfileScreen() {
 
           {/* Merged Action Buttons: Notify Me, I Am Interested, Watch Katha */}
           <View style={styles.heroCtaRow}>
-            <TouchableOpacity
-              style={[styles.notifyCtaBtn, isNotified && styles.notifyCtaBtnActive]}
+            <UiverseNotifyButton
+              isNotified={isNotified}
               onPress={handleNotifyToggle}
-            >
-              <Ionicons name={isNotified ? 'notifications' : 'notifications-outline'} size={15} color={isNotified ? '#FFF' : LIGHT_THEME.primaryForest} />
-              <Text style={[styles.notifyCtaText, isNotified && styles.notifyCtaTextActive]}>
-                {isNotified ? (isHindi ? 'Notified' : 'Notified') : (isHindi ? 'Notify Me' : 'Notify Me')}
-              </Text>
-            </TouchableOpacity>
+              label={isHindi ? 'Notify Me' : 'Notify Me'}
+              notifiedLabel={isHindi ? 'Notified' : 'Notified'}
+              size="small"
+            />
 
             <TouchableOpacity
               style={[styles.primaryInterestedBtn, isInterested && styles.primaryInterestedBtnActive]}
@@ -694,14 +694,14 @@ export default function AcharyaShamikHimalayanProfileScreen() {
                 : 'Get instant alerts and express interest in upcoming Saavan Shiv Katha discourses.'}
             </Text>
 
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <TouchableOpacity style={styles.footerBtn} onPress={handleNotifyToggle}>
-                <Text style={styles.footerBtnText}>
-                  {isNotified
-                    ? (isHindi ? 'सूचना सेट है' : 'Notified')
-                    : (isHindi ? 'Notify Me' : 'Notify Me')}
-                </Text>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+              <UiverseNotifyButton
+                isNotified={isNotified}
+                onPress={handleNotifyToggle}
+                label={isHindi ? 'Notify Me' : 'Notify Me'}
+                notifiedLabel={isHindi ? 'Notified' : 'Notified'}
+                size="small"
+              />
 
               <TouchableOpacity style={[styles.footerBtn, { backgroundColor: '#FFFBF5' }]} onPress={handleInterestedToggle}>
                 <Text style={[styles.footerBtnText, { color: LIGHT_THEME.accentGold }]}>

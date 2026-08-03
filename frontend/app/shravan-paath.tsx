@@ -10,6 +10,7 @@ import {
   Dimensions,
   Share,
   Alert,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +21,7 @@ import Svg, { Path, Circle, Rect, G, Ellipse } from 'react-native-svg';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Local Image References matching the app assets
-const shamikJiPhoto = require('../assets/images/shamik_pathak_ji.jpg');
+const heroArtworkBg = require('../assets/images/shravan_hero_bg.png');
 
 // ================= CUSTOM SVG ICONS (0 DEPENDENCY & 0 QUESTION MARKS) =================
 
@@ -76,15 +77,13 @@ const NamasteIcon = ({ size = 16, color = '#8A5A2B' }) => (
 
 const shivlingImg = require('../assets/images/shivling_artwork.png');
 
-// High quality Shivling Artwork for Section 3
+// High quality sharp Shivling Artwork for Section 3
 const ShivlingArtwork = () => (
-  <View style={styles.shivlingArtWrapper}>
-    <Image
-      source={shivlingImg}
-      style={{ width: '100%', height: '100%', borderRadius: 16 }}
-      resizeMode="cover"
-    />
-  </View>
+  <Image
+    source={shivlingImg}
+    style={{ width: 130, height: 150, borderRadius: 16 }}
+    resizeMode="cover"
+  />
 );
 
 export default function ShravanPaathPage() {
@@ -116,11 +115,20 @@ export default function ShravanPaathPage() {
         contentContainerStyle={styles.scrollContainer}
         bounces={false}
       >
-        {/* ================= HERO SECTION WITH BACKDROP ================= */}
-        <View style={styles.heroSection}>
-          <LinearGradient
-            colors={['#E5C79E', '#F5E4CE', '#FAF4E8']}
-            style={StyleSheet.absoluteFillObject}
+        {/* ================= HERO SECTION (DEVOTIONAL ARTWORK BACKGROUND) ================= */}
+        <View style={styles.heroPosterCanvas}>
+          {/* Custom Devotional Artwork Background (Zoomed View) */}
+          <Image
+            source={heroArtworkBg}
+            style={{
+              position: 'absolute',
+              top: -15,
+              bottom: -15,
+              right: -40,
+              width: '128%',
+              height: '112%',
+            }}
+            resizeMode="cover"
           />
 
           {/* Top Bar Navigation Buttons */}
@@ -142,20 +150,14 @@ export default function ShravanPaathPage() {
             </TouchableOpacity>
           </SafeAreaView>
 
-          {/* Hero Content Grid (Left Copy + Right Pandit Ji Image) */}
-          <View style={styles.heroGrid}>
-            {/* Left Content Area */}
+          {/* Poster Composition Overlay (Text Content Overlay) */}
+          <View style={styles.posterCompositionRow}>
+            {/* Left Content Column */}
             <View style={styles.heroLeft}>
-              {/* Badge Row */}
               <View style={styles.liveBadgeRow}>
-                <View style={styles.livePill}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.livePillText}>LIVE</Text>
-                </View>
                 <Text style={styles.shravanVisheshText}>🔱 श्रावण विशेष 🔱</Text>
               </View>
 
-              {/* Main Headline */}
               <Text style={styles.heroTitleMain}>श्रावण मास</Text>
               <View style={styles.subTitleRow}>
                 <Text style={styles.ornamentArrow}>⤝</Text>
@@ -163,63 +165,28 @@ export default function ShravanPaathPage() {
                 <Text style={styles.ornamentArrow}>⤞</Text>
               </View>
 
-              {/* Date & Time Card */}
               <View style={styles.dateCard}>
                 <View style={styles.dateCardTop}>
                   <Ionicons name="calendar-outline" size={16} color="#B85C00" style={{ marginRight: 6 }} />
-                  <Text style={styles.dateCardTitle}>13 अगस्त – 13 सितंबर</Text>
+                  <Text style={styles.dateCardTitle}>13 अगस्त – 11 सितंबर</Text>
                 </View>
                 <Text style={styles.dateCardSubtitle}>
-                  हर दिन | <Text style={styles.liveHighlight}>LIVE</Text> केवल श्रावण माह में
+                  हर दिन | <Text style={styles.liveHighlight}>LIVE</Text> श्रावण माह में
                 </Text>
               </View>
 
-              {/* Acharya Name Badge */}
               <View style={styles.acharyaBadge}>
                 <Text style={styles.acharyaBadgeText}>⤝ Acharya Shamik Ji ⤞</Text>
               </View>
             </View>
 
-            {/* Right Pandit Ji Full Portrait */}
-            <View style={styles.heroRight}>
-              {/* Glowing Om Backdrop Overlay */}
-              <View style={styles.omHaloBackdrop}>
-                <OmIcon size={80} color="rgba(212, 175, 55, 0.45)" />
-              </View>
-
-              <Image
-                source={shamikJiPhoto}
-                style={styles.panditJiImage}
-                resizeMode="cover"
-              />
-            </View>
+            {/* Right side is open to display the background artwork portrait cleanly */}
+            <View style={{ width: SCREEN_WIDTH * 0.44, height: 245 }} />
           </View>
         </View>
 
         {/* ================= MAIN CARDS CONTAINER ================= */}
         <View style={styles.cardsWrapper}>
-
-          {/* SECTION 1: ABOUT ACHARYA SHAMIK JI */}
-          <View style={styles.sectionCard}>
-            <View style={styles.cardHeaderRow}>
-              <Text style={styles.cardHeaderTitle}>About Acharya Shamik Ji</Text>
-              <Text style={styles.cardOrnament}>⤝</Text>
-            </View>
-
-            <View style={styles.aboutContentRow}>
-              <View style={styles.guruAvatarCircle}>
-                <GuruAvatarIcon size={28} color="#8A5A2B" />
-              </View>
-              <View style={styles.aboutTextWrapper}>
-                <Text style={styles.aboutTextParagraph}>
-                  आचार्य शमिक जी एक आध्यात्मिक गुरु, ज्योतिषाचार्य एवं वेदों के गूढ़ ज्ञाता हैं।
-                </Text>
-                <Text style={[styles.aboutTextParagraph, { marginTop: 6 }]}>
-                  उनके श्रीमुख से शिव कथा सुनना जीवन में शांति, सकारात्मकता और आध्यात्मिक ऊर्जा का संचार करता है।
-                </Text>
-              </View>
-            </View>
-          </View>
 
           {/* SECTION 2: SHRAVAN MAH ME SHIV JAAP KE FAYDE */}
           <View style={styles.sectionCard}>
@@ -279,7 +246,7 @@ export default function ShravanPaathPage() {
           </View>
 
           {/* SECTION 3: WHAT TO EXPECT IN THIS SHIV PAATH */}
-          <View style={styles.sectionCard}>
+          <View style={[styles.sectionCard, Platform.OS === 'android' && { marginTop: -28 }]}>
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardHeaderTitle}>What to expect in this Shiv Paath</Text>
               <Text style={styles.cardOrnament}>⤝</Text>
@@ -410,72 +377,77 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF4E8',
   },
   scrollContainer: {
-    paddingBottom: 40,
+    paddingBottom: Platform.OS === 'android' ? 120 : 100,
   },
 
-  /* HERO SECTION STYLES */
-  heroSection: {
+  /* HERO SINGLE POSTER CANVAS STYLES */
+  heroPosterCanvas: {
     width: '100%',
-    paddingTop: 10,
-    paddingBottom: 24,
+    height: SCREEN_WIDTH * 0.76,
+    minHeight: 280,
+    backgroundColor: '#FAF4E8',
+    paddingTop: 4,
+    paddingBottom: 12,
     paddingHorizontal: 16,
     position: 'relative',
     overflow: 'hidden',
+    justifyContent: 'space-between',
+  },
+  templeArchOutline: {
+    position: 'absolute',
+    right: 5,
+    top: 25,
+    opacity: 0.85,
+    zIndex: 1,
+  },
+  posterOmLayer: {
+    position: 'absolute',
+    right: 15,
+    top: 15,
+    zIndex: 2,
+  },
+  goldenHaloHead: {
+    position: 'absolute',
+    right: 15,
+    top: 25,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 215, 0, 0.35)',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 30,
+    elevation: 8,
+    zIndex: 2,
   },
   topNavigation: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 0,
+    zIndex: 10,
   },
   navCircleBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  heroGrid: {
+  posterCompositionRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginTop: 4,
+    marginTop: Platform.OS === 'android' ? -95 : -55,
+    position: 'relative',
+    zIndex: 5,
   },
   heroLeft: {
     flex: 1,
     paddingRight: 10,
-  },
-  liveBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  livePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E53935',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-    marginRight: 6,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-    marginRight: 4,
-  },
-  livePillText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
+    zIndex: 6,
   },
   shravanVisheshText: {
     fontSize: 13,
@@ -492,7 +464,7 @@ const styles = StyleSheet.create({
   subTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   ornamentArrow: {
     fontSize: 18,
@@ -506,17 +478,9 @@ const styles = StyleSheet.create({
     color: '#D85A00',
   },
   dateCard: {
-    backgroundColor: 'rgba(255, 252, 247, 0.9)',
-    borderRadius: 14,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#E8D5C0',
-    marginBottom: 12,
-    shadowColor: '#3D2A1D',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    backgroundColor: 'transparent',
+    paddingVertical: 4,
+    marginBottom: 10,
   },
   dateCardTop: {
     flexDirection: 'row',
@@ -549,25 +513,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   heroRight: {
-    width: SCREEN_WIDTH * 0.42,
-    height: 230,
-    borderRadius: 20,
-    overflow: 'hidden',
+    width: SCREEN_WIDTH * 0.44,
+    height: 245,
     position: 'relative',
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-  },
-  omHaloBackdrop: {
-    position: 'absolute',
-    top: 10,
-    alignSelf: 'center',
-    zIndex: 1,
+    zIndex: 4,
   },
   panditJiImage: {
     width: '100%',
     height: '100%',
-    zIndex: 2,
-    borderRadius: 20,
+    zIndex: 4,
+  },
+  groundShadow: {
+    position: 'absolute',
+    bottom: 0,
+    left: 10,
+    right: 10,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(61, 42, 29, 0.16)',
+    zIndex: 3,
   },
 
   /* CARDS WRAPPER */
@@ -576,17 +542,10 @@ const styles = StyleSheet.create({
     marginTop: -8,
   },
   sectionCard: {
-    backgroundColor: '#FFFDF7',
-    borderRadius: 20,
-    padding: 16,
+    backgroundColor: 'transparent',
+    paddingVertical: 12,
+    paddingHorizontal: 0,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#F0E4D2',
-    shadowColor: '#3D2A1D',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -704,20 +663,19 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   shivlingArtWrapper: {
-    width: 100,
-    height: 120,
-    borderRadius: 16,
+    width: 125,
+    height: 145,
+    borderRadius: 20,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    borderWidth: 1,
-    borderColor: '#E8D5C0',
   },
 
   /* CTA BUTTON STYLES */
   ctaButtonWrapper: {
-    marginBottom: 16,
+    marginTop: Platform.OS === 'android' ? -6 : 0,
+    marginBottom: Platform.OS === 'android' ? 8 : 12,
     borderRadius: 16,
     shadowColor: '#F25C05',
     shadowOffset: { width: 0, height: 6 },
