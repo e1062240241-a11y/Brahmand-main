@@ -7,3 +7,6 @@
 ## 2026-08-02 - Added Semantic Tab Roles and Icon-Only Button Labels in HomeFeedTabs
 **Learning:** Custom tab bars using `Pressable` require explicit `accessibilityRole="tab"` and `accessibilityState={{ selected: boolean }}` to announce tab states correctly to screen readers. Icon-only buttons must also explicitly set `accessibilityRole="button"` and `accessibilityLabel`.
 **Action:** Always include ARIA roles and labels when constructing custom navigation elements or icon-only interactive components.
+## 2024-05-18 - Added Accessibility Traits to Custom Button Component
+**Learning:** Reusable button components built with React Native's `Pressable` (like `frontend/src/components/Button.tsx`) do not automatically inherit standard button accessibility traits like `TouchableOpacity` might on some platforms. The absence of `accessibilityRole="button"`, `accessibilityLabel`, and `accessibilityState` means screen readers won't announce the component correctly or convey its disabled/loading states.
+**Action:** Always manually define `accessibilityRole`, `accessibilityLabel`, and `accessibilityState` on generic interactive wrappers (like `Pressable`) to ensure they are interpreted as buttons by assistive technologies, specifically handling the `disabled` and `busy` states accurately.
