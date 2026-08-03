@@ -167,7 +167,7 @@ export default function ShravanPaathPage() {
               <View style={styles.dateCard}>
                 <View style={styles.dateCardTop}>
                   <Ionicons name="calendar-outline" size={16} color="#B85C00" style={{ marginRight: 6 }} />
-                  <Text style={styles.dateCardTitle}>13 अगस्त – 13 सितंबर</Text>
+                  <Text style={styles.dateCardTitle}>13 अगस्त – 11 सितंबर</Text>
                 </View>
                 <Text style={styles.dateCardSubtitle}>
                   हर दिन | <Text style={styles.liveHighlight}>LIVE</Text> केवल श्रावण माह में

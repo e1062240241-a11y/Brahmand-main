@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, Platform, useWindowDimensions } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Circle, Mask } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
 import { FONTS } from '../../src/constants/theme';
@@ -103,6 +103,12 @@ export default function EntryAnimationScreen() {
     }
   }, [params.accepted]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      containerOpacity.setValue(1);
+    }, [containerOpacity])
+  );
+
   useEffect(() => {
     if (token) {
       router.replace('/home');
@@ -121,10 +127,13 @@ export default function EntryAnimationScreen() {
 
     Animated.timing(containerOpacity, {
       toValue: 0,
-      duration: 500,
+      duration: 300,
       useNativeDriver: true,
     }).start(() => {
       router.push('/auth/phone');
+      setTimeout(() => {
+        containerOpacity.setValue(1);
+      }, 400);
     });
   };
 

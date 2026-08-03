@@ -12,6 +12,7 @@ import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { getTempleImageById } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
+import { CustomLoader } from '../../src/components/CustomLoader';
 
 const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
  'ISKCON Mira Road': 'Mira Road, Thane',
@@ -981,11 +982,11 @@ export default function TempleDetailScreen() {
  };
 
  if (loading) {
- return (
- <View style={styles.loadingContainer}>
- <ActivityIndicator size="large" color={COLORS.primary} />
- </View>
- );
+  return (
+    <View style={styles.loadingContainer}>
+      <CustomLoader size={70} message="Loading Sacred Temple..." />
+    </View>
+  );
  }
 
 if (!temple) {

@@ -3304,7 +3304,7 @@ export default function HomeScreen() {
                                 textShadowOffset: { width: 0, height: 1 },
                                 textShadowRadius: 3,
                               }}>
-                                13 अगस्त – 13 सितंबर
+                                13 अगस्त – 11 सितंबर
                               </Text>
                             </View>
 

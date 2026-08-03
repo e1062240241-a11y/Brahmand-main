@@ -10,6 +10,7 @@ import Animated, {
   cancelAnimation,
   Easing,
   runOnJS,
+  SharedValue,
 } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -18,6 +19,48 @@ interface SwipeButtonProps {
   onSwipeComplete: () => void;
   title: string;
 }
+
+const CHEVRONS = [0, 1, 2, 3, 4, 5];
+
+const ChevronItem = React.memo(({ index, waveProgress }: { index: number; waveProgress: SharedValue<number> }) => {
+  const animStyle = useAnimatedStyle(() => {
+    'worklet';
+    const phase = (waveProgress.value - index * 0.12 + 1) % 1;
+    const opacity = 0.25 + 0.75 * Math.sin(phase * Math.PI);
+    const translateX = Math.sin(phase * Math.PI) * 3.5;
+
+    return {
+      opacity,
+      transform: [{ translateX }],
+    };
+  });
+
+  return (
+    <Animated.Text style={[styles.chevronSign, animStyle]}>
+      ❯
+    </Animated.Text>
+  );
+});
+
+const ChevronWave = () => {
+  const waveProgress = useSharedValue(0);
+
+  useEffect(() => {
+    waveProgress.value = withRepeat(
+      withTiming(1, { duration: 1300, easing: Easing.linear }),
+      -1,
+      false
+    );
+  }, [waveProgress]);
+
+  return (
+    <View style={styles.chevronsRow}>
+      {CHEVRONS.map((i) => (
+        <ChevronItem key={i} index={i} waveProgress={waveProgress} />
+      ))}
+    </View>
+  );
+};
 
 export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps) {
   const circleWidth = 48;
@@ -194,9 +237,9 @@ export default function SwipeButton({ onSwipeComplete, title }: SwipeButtonProps
         {title}
       </Animated.Text>
 
-      {/* Small fading hint text */}
+      {/* 5-6 Right Chevron Arrow Wave Transition (replaces old "Swipe to Join →" text) */}
       <Animated.View style={[styles.hintOverlay, hintAnimatedStyle]} pointerEvents="none">
-        <Text style={styles.hintText}>Swipe to Join →</Text>
+        <ChevronWave />
       </Animated.View>
 
       {/* ॐ Handle */}
@@ -239,16 +282,20 @@ const styles = StyleSheet.create({
   },
   hintOverlay: {
     position: 'absolute',
-    right: 24,
+    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 5,
   },
-  hintText: {
+  chevronsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chevronSign: {
     color: '#FFE5D6',
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '900',
+    marginHorizontal: 1.5,
   },
   circle: {
     width: 48,

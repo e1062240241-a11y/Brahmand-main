@@ -51,12 +51,14 @@ import { blockUser, unblockUser } from '../../src/services/firebase/moderationSe
 import { useBlockStore } from '../../src/store/blockStore';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
 import * as ImagePicker from 'expo-image-picker';
+import { Image as ExpoImage } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Stop, G, Path } from 'react-native-svg';
 
 import { getFestivalImage } from '../../src/constants/festivalImages';
+import { CustomLoader } from '../../src/components/CustomLoader';
 
 import { useGlobalMute } from '../../src/contexts/MuteContext';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
@@ -3263,7 +3265,7 @@ export default function CommunityDetailScreen() {
       >
         <View style={styles.festivalIconCircle}>
           {festImg ? (
-            <Image
+            <ExpoImage
               source={festImg}
               style={{ width: '100%', height: '100%', borderRadius: 28 }}
               contentFit="cover"
@@ -4398,51 +4400,30 @@ export default function CommunityDetailScreen() {
 
 
   if (loading) {
-    if (Platform.OS === 'android') {
-      // ⚡ Android: Show skeleton UI with header so screen feels responsive immediately
-      return (
-        <View style={styles.container}>
-          <LinearGradient
-            colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']}
-            locations={[0, 0.25, 0.55, 0.8, 1]}
-            style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
-          >
-            <View style={styles.headerTopRow}>
-              <TouchableOpacity onPress={handleGoBack} style={styles.headerBackButton}>
-                <Ionicons name="chevron-back" size={26} color="#000" />
-              </TouchableOpacity>
-              <Text style={styles.headerTitleText} numberOfLines={1}>
-                {community?.name || 'Community'}
-              </Text>
-              <View style={[styles.headerCreateBtn, { opacity: 0.4 }]}>
-                <Ionicons name="add" size={16} color="#FFF" />
-              </View>
-            </View>
-            <Text style={styles.headerMembersText}> </Text>
-            <Text style={styles.headerTaglineText}> </Text>
-          </LinearGradient>
-          <View style={{ flex: 1, backgroundColor: '#FFF', padding: 16 }}>
-            {[1, 2, 3, 4].map(k => (
-              <View key={k} style={{ backgroundColor: '#F5F5F5', borderRadius: 12, padding: 16, marginBottom: 14 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-                  <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#E0E0E0' }} />
-                  <View style={{ marginLeft: 10, flex: 1 }}>
-                    <View style={{ width: '45%', height: 11, backgroundColor: '#E0E0E0', borderRadius: 6, marginBottom: 6 }} />
-                    <View style={{ width: '25%', height: 9, backgroundColor: '#EBEBEB', borderRadius: 5 }} />
-                  </View>
-                </View>
-                <View style={{ width: '90%', height: 10, backgroundColor: '#E8E8E8', borderRadius: 5, marginBottom: 6 }} />
-                <View style={{ width: '70%', height: 10, backgroundColor: '#EFEFEF', borderRadius: 5 }} />
-              </View>
-            ))}
-            <ActivityIndicator size="small" color="#FF8C3A" style={{ marginTop: 8 }} />
-          </View>
-        </View>
-      );
-    }
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF3B30" />
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#FF8C3A', '#FFAD7D', '#FFD4AA', '#FFF1E8', '#FFFFFF']}
+          locations={[0, 0.25, 0.55, 0.8, 1]}
+          style={[styles.headerGradientContainer, { paddingTop: insets.top }]}
+        >
+          <View style={styles.headerTopRow}>
+            <TouchableOpacity onPress={handleGoBack} style={styles.headerBackButton}>
+              <Ionicons name="chevron-back" size={26} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitleText} numberOfLines={1}>
+              {community?.name || 'Community'}
+            </Text>
+            <View style={[styles.headerCreateBtn, { opacity: 0.4 }]}>
+              <Ionicons name="add" size={16} color="#FFF" />
+            </View>
+          </View>
+          <Text style={styles.headerMembersText}> </Text>
+          <Text style={styles.headerTaglineText}> </Text>
+        </LinearGradient>
+        <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' }}>
+          <CustomLoader size={70} message="Loading Community Group..." />
+        </View>
       </View>
     );
   }
@@ -4658,7 +4639,7 @@ export default function CommunityDetailScreen() {
         }}
         onEndReached={activeTab === 'Feed' ? handleLoadMore : undefined}
         onEndReachedThreshold={0.5}
-        ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <ActivityIndicator size="small" color="#FF3B30" style={{ padding: 20 }} /> : null}
+        ListFooterComponent={() => (activeTab === 'Feed' && loadingMore) ? <CustomLoader size={40} fullScreen={false} /> : null}
         ListHeaderComponent={() => (
           <View>
             {(activeTab === 'Requests') && mostRecentRequest && (
@@ -5415,7 +5396,7 @@ export default function CommunityDetailScreen() {
             <Text style={{ fontSize: 18, fontWeight: '800', color: '#111', marginBottom: 20 }}>Event Attendees</Text>
 
             {attendeesLoading ? (
-              <ActivityIndicator size="large" color="#FF6B00" />
+              <CustomLoader size={50} fullScreen={false} />
             ) : (
               <FlatList
                 data={attendeesList}
