@@ -423,6 +423,82 @@ const AnimatedSkeleton = ({ children, style }: { children: React.ReactNode; styl
   return <Animated.View style={[{ opacity }, style]}>{children}</Animated.View>;
 };
 
+const MagneticKathaButton = ({
+  onPress,
+  children,
+  style,
+}: {
+  onPress: () => void;
+  children: React.ReactNode;
+  style?: any;
+}) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const translateY = useRef(new Animated.Value(0)).current;
+
+  const handlePressIn = () => {
+    // Magnetic approach & press compression: pull 4px upward and scale down to 0.97
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 0.97,
+        tension: 180,
+        friction: 12,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: -4,
+        tension: 180,
+        friction: 12,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    // Smooth release with spring overshoot (1.08 -> 1.00) and magnetic return
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(scale, {
+          toValue: 1.08,
+          tension: 200,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          tension: 180,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+      ]),
+      Animated.spring(scale, {
+        toValue: 1,
+        tension: 140,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View
+        style={[
+          style,
+          {
+            transform: [{ scale }, { translateY }],
+          },
+        ]}
+      >
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+};
+
 const formatFestivalDate = (dateStr: string) => {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -3034,114 +3110,245 @@ export default function HomeScreen() {
                 scrollEventThrottle={16}
               >
                 {/* Live Katha Banner (First) */}
-                <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    style={{ flex: 1, borderRadius: 15, overflow: 'hidden' }}
-                    onPress={() => router.push('/library/katha')}
-                  >
-                    <ImageBackground source={require('../../assets/images/panditji.webp')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
-                      <LinearGradient
-                        colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.85)']}
-                        style={styles.featuredLiveOverlay}
+                {(() => {
+                  return (
+                    <View style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}>
+                      <TouchableOpacity
+                        activeOpacity={0.9}
+                        style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}
+                        onPress={() => router.push('/library/katha')}
                       >
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          {/* Top Left Content */}
-                          <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                              <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                              <Text style={[
-                                styles.featuredLiveTitle,
-                                {
-                                  color: '#FFF',
-                                  fontFamily: 'System',
-                                  fontSize: 15,
-                                  fontWeight: '700',
-                                  letterSpacing: 1,
-                                  textShadowColor: 'rgba(0,0,0,0.9)',
-                                  textShadowOffset: { width: 0, height: 1 },
-                                  textShadowRadius: 6,
-                                }
-                              ]}>LIVE KATHA</Text>
-                            </View>
+                        <Image
+                          source={require('../../assets/images/panditji.webp')}
+                          style={{
+                            width: '100%',
+                            height: '135%',
+                            top: 0,
+                            borderRadius: 16,
+                          }}
+                          resizeMode="cover"
+                        />
+                        {/* Overlay Gradient for readability in left area without hiding panditji */}
+                        <LinearGradient
+                          colors={['rgba(0,0,0,0.70)', 'rgba(0,0,0,0.35)', 'transparent']}
+                          start={{ x: 0, y: 0.5 }}
+                          end={{ x: 0.7, y: 0.5 }}
+                          style={StyleSheet.absoluteFillObject}
+                        />
 
-                            <Text style={[styles.featuredDevotees, {
-                              color: '#FFD700',
-                              fontWeight: '700',
-                              opacity: 0.95,
-                              textShadowColor: 'rgba(0,0,0,0.8)',
-                              textShadowOffset: { width: 0, height: 1 },
-                              textShadowRadius: 4,
-                              marginLeft: 14,
-                              marginTop: 0,
-                              marginBottom: 2,
-                              fontSize: 13
-                            }]}>
-                              13 Aug – 13 Sept
+                        {/* TOP RIGHT CORNER: FREE REGISTRATION GOLDEN CIRCULAR SEAL BADGE */}
+                        <View style={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 10,
+                          width: 52,
+                          height: 52,
+                          borderRadius: 26,
+                          backgroundColor: '#F4C55A',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderWidth: 2,
+                          borderColor: '#FFF8DC',
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.4,
+                          shadowRadius: 3,
+                          elevation: 5,
+                          zIndex: 10,
+                        }}>
+                          {/* Inner Decorative Bezel Ring */}
+                          <View style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 22,
+                            borderWidth: 1.5,
+                            borderStyle: 'dashed',
+                            borderColor: '#6B4500',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            paddingHorizontal: 2,
+                          }}>
+                            <Text style={{
+                              color: '#6B4500',
+                              fontSize: 7.5,
+                              fontWeight: '800',
+                              fontFamily: Platform.OS === 'ios' ? 'Montserrat' : 'Montserrat-ExtraBold',
+                              textAlign: 'center',
+                              lineHeight: 9,
+                              letterSpacing: 0.2,
+                              textTransform: 'uppercase',
+                            }}>
+                              FREE{'\n'}REGIS-{'\n'}TRATION
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* LEFT CONTENT AREA */}
+                        <View style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          bottom: 0,
+                          width: '68%',
+                          paddingLeft: 12,
+                          paddingRight: 6,
+                          paddingTop: 8,
+                          paddingBottom: 8,
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                        }}>
+                          {/* TOP BADGE - LIVE | श्रावण विशेष */}
+                          <View style={{
+                            backgroundColor: 'rgba(255, 0, 0, 0.85)',
+                            alignSelf: 'flex-start',
+                            paddingHorizontal: 7,
+                            paddingVertical: 2,
+                            borderRadius: 12,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            borderWidth: 1,
+                            borderColor: '#FF7777',
+                          }}>
+                            <View style={{
+                              width: 5,
+                              height: 5,
+                              borderRadius: 2.5,
+                              backgroundColor: '#FFFFFF',
+                              marginRight: 4,
+                            }} />
+                            <Text style={{
+                              color: '#FFFFFF',
+                              fontSize: 9,
+                              fontWeight: '800',
+                            }}>
+                              LIVE | श्रावण विशेष
+                            </Text>
+                          </View>
+
+                          {/* MAIN HEADING - श्रावण मास & शिव कथा */}
+                          <View style={{
+                            width: '100%',
+                            marginTop: -2,
+                            marginBottom: 1,
+                            paddingLeft: 3,
+                            alignItems: 'flex-start',
+                            justifyContent: 'flex-start',
+                          }}>
+                            <Text
+                              numberOfLines={1}
+                              style={{
+                                color: '#FFF4D6',
+                                fontSize: 24,
+                                fontWeight: '900',
+                                fontFamily: Platform.OS === 'ios' ? 'Tiro Devanagari Hindi' : 'TiroDevanagariHindi-Regular',
+                                lineHeight: 28,
+                                letterSpacing: 0.3,
+                                textAlign: 'left',
+                                marginLeft: 8,
+                                textShadowColor: 'rgba(0, 0, 0, 0.95)',
+                                textShadowOffset: { width: 0, height: 2 },
+                                textShadowRadius: 4,
+                              }}
+                            >
+                              श्रावण मास
+                            </Text>
+                            <Text
+                              numberOfLines={1}
+                              style={{
+                                color: '#FFD97A',
+                                fontSize: 24,
+                                fontWeight: '900',
+                                fontFamily: Platform.OS === 'ios' ? 'Tiro Devanagari Hindi' : 'TiroDevanagariHindi-Regular',
+                                lineHeight: 28,
+                                letterSpacing: 0.3,
+                                textAlign: 'left',
+                                marginTop: 1,
+                                textShadowColor: 'rgba(0, 0, 0, 0.95)',
+                                textShadowOffset: { width: 1, height: 2 },
+                                textShadowRadius: 5,
+                              }}
+                            >
+                              शिव कथा
                             </Text>
 
-                            <View style={{ marginLeft: 14 }}>
-                              <Text style={[styles.featuredTime, {
-                                marginTop: 0,
-                                color: '#FFF',
-                                fontWeight: '700',
-                                fontSize: 13,
-                                textShadowColor: 'rgba(0,0,0,0.8)',
-                                textShadowOffset: { width: 0, height: 1 },
-                                textShadowRadius: 4,
-                              }]}>
-                                With Shamik Pathak Ji
-                              </Text>
+                            {/* SPEAKER NAME - Acharya Shamik Ji */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, alignSelf: 'flex-start' }}>
+                              <View style={{ width: 10, height: 1.5, backgroundColor: '#D4A23A', marginRight: 4 }} />
                               <Text style={{
-                                color: '#E0E0E0',
-                                fontWeight: '500',
-                                fontSize: 11,
-                                marginTop: 1,
-                                textShadowColor: 'rgba(0,0,0,0.8)',
+                                color: '#FFFFFF',
+                                fontSize: 10.5,
+                                fontWeight: '700',
+                                letterSpacing: 0.8,
+                                textShadowColor: 'rgba(0,0,0,0.9)',
                                 textShadowOffset: { width: 0, height: 1 },
                                 textShadowRadius: 3,
                               }}>
-                                Spiritual Guru • Astrologer • Pandit Ji
+                                Acharya Shamik Ji
                               </Text>
+                              <View style={{ width: 10, height: 1.5, backgroundColor: '#D4A23A', marginLeft: 4 }} />
                             </View>
                           </View>
 
-                          <View style={[styles.liveBadge, { alignSelf: 'flex-start', backgroundColor: '#FF0000', paddingHorizontal: 8 }]}>
-                            <View style={styles.liveDot} />
-                            <Text style={[styles.liveBadgeText, { marginLeft: 4 }]}>LIVE</Text>
+                          {/* INFO BOX - दैनिक शिव कथा एवं महादेव प्रवचन */}
+                          <View style={{
+                            backgroundColor: 'rgba(15, 15, 20, 0.65)',
+                            borderRadius: 6,
+                            paddingHorizontal: 6,
+                            paddingVertical: 2.5,
+                            borderWidth: 0.8,
+                            borderColor: 'rgba(212, 162, 58, 0.6)',
+                            alignSelf: 'flex-start',
+                            maxWidth: '100%',
+                            marginTop: -2,
+                          }}>
+                            <Text style={{
+                              color: '#FFFFFF',
+                              fontSize: 9.5,
+                              fontWeight: '600',
+                              lineHeight: 12,
+                            }}>
+                              दैनिक शिव कथा एवं महादेव प्रवचन
+                            </Text>
+                          </View>
+
+                          {/* DATE SECTION */}
+                          <View style={{
+                            paddingHorizontal: 0,
+                            paddingVertical: 0,
+                            alignSelf: 'flex-start',
+                            marginTop: -2,
+                          }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={{ fontSize: 11, color: '#F4C55A', marginRight: 4 }}>📅</Text>
+                              <Text style={{
+                                color: '#F4C55A',
+                                fontSize: 11,
+                                fontWeight: '800',
+                                textShadowColor: 'rgba(0,0,0,0.9)',
+                                textShadowOffset: { width: 0, height: 1 },
+                                textShadowRadius: 3,
+                              }}>
+                                13 अगस्त – 13 सितंबर
+                              </Text>
+                            </View>
+                            <Text style={{
+                              color: '#FFFFFF',
+                              opacity: 0.92,
+                              fontWeight: '500',
+                              fontSize: 9,
+                              marginTop: 1,
+                              textShadowColor: 'rgba(0,0,0,0.9)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 3,
+                            }}>
+                              हर दिन LIVE केवल श्रावण माह में
+                            </Text>
                           </View>
                         </View>
-
-                        {/* Bottom Button Row */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
-                          <Pressable
-                            style={[
-                              styles.joinJaapButton,
-                              {
-                                backgroundColor: '#FF5100',
-                                display: 'flex',
-                                width: 148,
-                                height: 36,
-                                paddingHorizontal: 12,
-                                flexDirection: 'row',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                gap: 6,
-                              }
-                            ]}
-                            android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                            onPress={() => router.push('/library/katha')}
-                          >
-                            <Ionicons name="play" size={14} color="#FFF" />
-                            <Text style={styles.joinJaapText}>
-                              {t('language') === 'hi' ? 'लाइव कथा देखें' : 'Join Live Katha'}
-                            </Text>
-                          </Pressable>
-                        </View>
-                      </LinearGradient>
-                    </ImageBackground>
-                  </TouchableOpacity>
-                </View>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })()}
 
                 <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
                   <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
@@ -3404,10 +3611,40 @@ export default function HomeScreen() {
                 </View>
               </ScrollView>
 
-              <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, zIndex: 10 }}>
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 0 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 1 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
-                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: activeBannerIndex === 2 ? '#FFF' : 'rgba(255,255,255,0.5)' }} />
+              <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, zIndex: 10 }}>
+                <View style={{
+                  width: activeBannerIndex === 0 ? 20 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: activeBannerIndex === 0 ? '#FAC775' : 'rgba(255,255,255,0.4)',
+                  shadowColor: activeBannerIndex === 0 ? '#FAC775' : 'transparent',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }} />
+                <View style={{
+                  width: activeBannerIndex === 1 ? 20 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: activeBannerIndex === 1 ? '#FAC775' : 'rgba(255,255,255,0.4)',
+                  shadowColor: activeBannerIndex === 1 ? '#FAC775' : 'transparent',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }} />
+                <View style={{
+                  width: activeBannerIndex === 2 ? 20 : 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: activeBannerIndex === 2 ? '#FAC775' : 'rgba(255,255,255,0.4)',
+                  shadowColor: activeBannerIndex === 2 ? '#FAC775' : 'transparent',
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }} />
               </View>
             </View>
           </View>

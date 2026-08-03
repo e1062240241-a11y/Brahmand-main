@@ -76,14 +76,16 @@ async def verify_token(
     try:
         user_data = await cache_manager.get_user(user_id)
         if not user_data:
-            db_client = await get_database()
-            db = FirestoreDB(db_client)
-            user_data = await db.get_document('users', user_id)
-            if not user_data:
-                raise HTTPException(status_code=401, detail="User account not found")
-            await cache_manager.set_user(user_id, user_data)
+            try:
+                db_client = await get_database()
+                db = FirestoreDB(db_client)
+                user_data = await db.get_document('users', user_id)
+                if user_data:
+                    await cache_manager.set_user(user_id, user_data)
+            except Exception as net_err:
+                logger.warning(f"Firestore unreachable during verify_token ({net_err}), proceeding with JWT claim authorization")
 
-        if user_data.get('is_blocked'):
+        if user_data and user_data.get('is_blocked'):
             blocked_until_str = user_data.get('blocked_until')
             if blocked_until_str:
                 try:

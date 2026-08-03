@@ -18,12 +18,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeVideoView, useSafeVideoPlayer, isPlayerValid } from '../../src/components/SafeVideoView';
 import { useIsFocused } from '@react-navigation/native';
 
+import { API_URL } from '../../src/services/api';
+
 let ExpoVideoModule: any = null;
 try {
   ExpoVideoModule = require('expo-video');
 } catch (_e) {}
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://brahmand.app';
+// API_URL from src/services/api automatically resolves 10.0.2.2 for Android Emulator, LAN IP for devices, and localhost for Web/iOS
+const API_BASE_URL = (API_URL || process.env.EXPO_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
 const shamikPathakCover = require('../../assets/images/shamik_pathak_ji.jpg');
 
 interface KathaEpisode {
@@ -34,9 +37,21 @@ interface KathaEpisode {
   duration: string;
   guru_name: string;
   video_url: string;
-  thumbnail_url: string;
+  thumbnail_url?: string;
   description?: string;
 }
+
+const DEFAULT_EPISODE: KathaEpisode = {
+  id: 'saavan_katha_ep1',
+  title: 'Saavan Katha Day 1 — Shiv Mahima & Mangalacharan',
+  episode_number: 1,
+  date: '2026-08-13',
+  duration: '01:30:00',
+  guru_name: 'Acharya Shamik Pathak Ji',
+  video_url: 'https://vjs.zencdn.net/v/oceans.mp4',
+  thumbnail_url: '',
+  description: 'The sacred beginning of Saavan Katha with Acharya Shamik Pathak Ji.',
+};
 
 interface KathaStatus {
   is_live: boolean;
@@ -48,24 +63,24 @@ interface KathaStatus {
 }
 
 export default function KathaPage() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const scrollViewRef = useRef<any>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [episodes, setEpisodes] = useState<KathaEpisode[]>([DEFAULT_EPISODE]);
+  const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(DEFAULT_EPISODE);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<KathaStatus>({
     is_live: false,
     mode: 'OFF_AIR',
     title: 'Acharya Shamik Pathak Ji — Saavan Katha',
     guru_name: 'Acharya Shamik Pathak Ji',
-    banner_message: 'Daily Live at 8:00 AM – 8:30 AM & Repeat Telecast at 8:00 PM – 8:30 PM IST',
+    banner_message: 'Saavan Katha Daily Uploaded Episodes',
     next_stream_at: '2026-08-13T08:00:00+05:30',
   });
-
-  const [episodes, setEpisodes] = useState<KathaEpisode[]>([]);
-  const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(null);
 
   // Custom Hotstar Minimalist Player States
   const [isPlaying, setIsPlaying] = useState(true);
@@ -73,7 +88,7 @@ export default function KathaPage() {
   const [showControls, setShowControls] = useState(true);
   const hideControlsTimer = useRef<any>(null);
 
-  const activeVideoUrl = activeEpisode?.video_url || 'https://brahmandfeed23.b-cdn.net/katha/acharya_shamik/saavan_katha/ep1.mp4';
+  const activeVideoUrl = activeEpisode?.video_url || 'https://vjs.zencdn.net/v/oceans.mp4';
 
   const player = useSafeVideoPlayer(activeVideoUrl, (p) => {
     try {
@@ -82,6 +97,17 @@ export default function KathaPage() {
       p.play();
     } catch (_e) {}
   });
+
+  useEffect(() => {
+    console.log("activeVideoUrl:", activeVideoUrl);
+    if (isPlayerValid(player)) {
+      console.log("player.status:", player?.status);
+      console.log("player.error:", player?.error);
+      console.log("player.duration:", player?.duration);
+    } else {
+      console.log("player instance: initializing or invalid");
+    }
+  }, [activeVideoUrl, player]);
 
   // Zero-Heat Thermal Management: Instantly pause video when screen loses focus
   useEffect(() => {
@@ -133,6 +159,8 @@ export default function KathaPage() {
   };
 
   const fetchKathaData = async () => {
+    console.log('[KathaPage] API_BASE_URL =', API_BASE_URL);
+    console.log('[KathaPage] Fetching:', `${API_BASE_URL}/api/katha/episodes`);
     try {
       // 1. Fetch status
       const statusRes = await fetch(`${API_BASE_URL}/api/katha/status`);
@@ -151,27 +179,63 @@ export default function KathaPage() {
       }
 
       // 2. Fetch episodes
+      console.log('[KathaPage] Fetching episodes from:', `${API_BASE_URL}/api/katha/episodes`);
       const epRes = await fetch(`${API_BASE_URL}/api/katha/episodes`);
+      console.log('[KathaPage] Episodes response status:', epRes.status);
       if (epRes.ok) {
         const epJson = await epRes.json();
-        if (epJson.status === 'success' && Array.isArray(epJson.episodes)) {
+        console.log('[KathaPage] Episodes received:', JSON.stringify(epJson.episodes?.map((e: any) => ({ id: e.id, title: e.title, video_url: e.video_url }))));
+        if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
           setEpisodes(epJson.episodes);
-          if (epJson.episodes.length > 0 && !activeEpisode) {
-            setActiveEpisode(epJson.episodes[0]);
-          }
+          setActiveEpisode(epJson.episodes[0]);
+          console.log('[KathaPage] setEpisodes called with', epJson.episodes.length, 'episodes');
+        } else {
+          console.warn('[KathaPage] API returned empty episodes, falling back to DEFAULT_EPISODE');
+          setEpisodes([DEFAULT_EPISODE]);
+          setActiveEpisode(DEFAULT_EPISODE);
         }
+      } else {
+        console.warn('[KathaPage] Episode fetch failed with status:', epRes.status);
+        setEpisodes([DEFAULT_EPISODE]);
+        setActiveEpisode(DEFAULT_EPISODE);
       }
     } catch (err) {
       console.warn('[KathaPage] Error fetching data:', err);
+      setEpisodes([DEFAULT_EPISODE]);
+      setActiveEpisode(DEFAULT_EPISODE);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchKathaData();
   }, []);
+
+  // When screen comes back into focus (e.g. after admin upload),
+  // silently refresh the episode list ONLY — do NOT reset active player
+  useEffect(() => {
+    if (!isFocused) return;
+    const refreshEpisodesOnly = async () => {
+      try {
+        const epRes = await fetch(`${API_BASE_URL}/api/katha/episodes`);
+        if (epRes.ok) {
+          const epJson = await epRes.json();
+          if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
+            setEpisodes(epJson.episodes);
+            // Only update active episode if none is set yet
+            setActiveEpisode(prev => prev ?? epJson.episodes[0]);
+            console.log('[KathaPage] isFocused refresh: episodes updated:', epJson.episodes.length);
+          }
+        }
+      } catch (_e) {}
+    };
+    // Delay slightly to avoid running on first mount (initial fetch handles that)
+    const t = setTimeout(refreshEpisodesOnly, 300);
+    return () => clearTimeout(t);
+  }, [isFocused]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -222,6 +286,8 @@ export default function KathaPage() {
               <SafeVideoView
                 player={player}
                 ExpoVideoModule={ExpoVideoModule}
+                source={activeVideoUrl}
+                posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
                 style={styles.videoPlayer}
                 nativeControls={false}
                 contentFit="cover"
@@ -295,11 +361,11 @@ export default function KathaPage() {
                     />
                   </TouchableOpacity>
 
-                  {/* Strictly Broadcast Live Stream Label - NO SEEKBAR / NO SCRUBBING */}
+                  {/* Katha Video Label */}
                   <View style={styles.liveStreamLabelWrap}>
-                    <View style={styles.smallRedDot} />
+                    <Ionicons name="play-circle-outline" size={12} color="#FFF" style={{ marginRight: 4 }} />
                     <Text style={styles.liveStreamLabelText}>
-                      LIVE STREAM • NATURAL BROADCAST SPEED
+                      {activeEpisode ? `DAY ${activeEpisode.episode_number} • KATHA VIDEO` : 'KATHA VIDEO'}
                     </Text>
                   </View>
                 </View>
@@ -332,6 +398,7 @@ export default function KathaPage() {
             <ActivityIndicator size="large" color="#FF6B00" style={{ marginTop: 30 }} />
           ) : episodes.length > 0 ? (
             episodes.map((ep) => {
+              console.log("[KathaPage Rendering Episode Card]:", ep.id, ep.title);
               const isSelected = activeEpisode?.id === ep.id;
               return (
                 <TouchableOpacity
@@ -342,9 +409,10 @@ export default function KathaPage() {
                 >
                   <View style={styles.thumbnailBox}>
                     <Image
-                      source={ep.thumbnail_url ? { uri: ep.thumbnail_url } : shamikPathakCover}
+                      source={ep.thumbnail_url && !imageErrors[ep.id] ? { uri: ep.thumbnail_url } : shamikPathakCover}
                       style={styles.thumbnailImg}
                       resizeMode="cover"
+                      onError={() => setImageErrors(prev => ({ ...prev, [ep.id]: true }))}
                     />
                     <View style={styles.playOverlay}>
                       <Ionicons
