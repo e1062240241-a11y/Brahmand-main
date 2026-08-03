@@ -584,11 +584,11 @@ class FirebaseNotificationService:
             filters=[('user_id', '==', user_id), ('is_read', '==', False)]
         )
         
-        for notif in notifications:
-            await db.update_document('notifications', notif['id'], {
-                'is_read': True,
-                'read_at': datetime.utcnow()
-            })
+        # ⚡ Bolt Optimization: Batch update to fix N+1 query issue
+        if notifications:
+            now = datetime.utcnow()
+            updates = [(notif['id'], {'is_read': True, 'read_at': now}) for notif in notifications if 'id' in notif]
+            await db.batch_update_documents('notifications', updates)
         
         return {"message": f"Marked {len(notifications)} as read"}
     
