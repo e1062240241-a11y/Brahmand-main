@@ -1,5 +1,5 @@
 import React, { Component, ReactNode, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform, Image } from 'react-native';
 
 let ExpoVideoModule: any = null;
 try {
@@ -26,28 +26,45 @@ export const isPlayerValid = (player: any): boolean => {
  * preventing native "Cannot use shared object that was already released" errors
  * during component unmounts and prop reconciliation.
  */
+const DEFERRED_RELEASE_MS = 500;
+
+const safeReleasePlayer = (p: any, delayMs = 0) => {
+  const doRelease = () => {
+    try {
+      if (isPlayerValid(p)) {
+        p.pause();
+        if (typeof p.release === 'function') {
+          p.release();
+        }
+      }
+    } catch (_e) {}
+  };
+  if (delayMs > 0) {
+    setTimeout(doRelease, delayMs);
+  } else {
+    doRelease();
+  }
+};
+
 export const useSafeVideoPlayer = (
   source: string | any | null,
   setup?: (player: any) => void
 ) => {
   const [player, setPlayer] = useState<any>(null);
   const playerRef = useRef<any>(null);
+  // Track pending release timers so we can cancel them if needed
+  const releaseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!ExpoVideoModule) return;
+
     if (!source) {
+      // Null source: pause + deferred release current player
       if (playerRef.current) {
-        const oldPlayer = playerRef.current;
+        const stale = playerRef.current;
         playerRef.current = null;
         setPlayer(null);
-        try {
-          if (isPlayerValid(oldPlayer)) {
-            oldPlayer.pause();
-            if (typeof oldPlayer.release === 'function') {
-              oldPlayer.release();
-            }
-          }
-        } catch (e) {}
+        safeReleasePlayer(stale, DEFERRED_RELEASE_MS);
       }
       return;
     }
@@ -63,42 +80,33 @@ export const useSafeVideoPlayer = (
       console.warn('[useSafeVideoPlayer] Error creating player:', e);
     }
 
-    if (newPlayer) {
-      if (setup) {
-        try {
-          setup(newPlayer);
-        } catch (e) {
-          console.warn('[useSafeVideoPlayer] Error running setup:', e);
-        }
-      }
+    if (!newPlayer) return;
 
-      if (playerRef.current && playerRef.current !== newPlayer) {
-        const oldPlayer = playerRef.current;
-        try {
-          if (isPlayerValid(oldPlayer)) {
-            oldPlayer.pause();
-            if (typeof oldPlayer.release === 'function') {
-              oldPlayer.release();
-            }
-          }
-        } catch (e) {}
+    // Run setup (mute/loop/play) on the new player
+    if (setup) {
+      try { setup(newPlayer); } catch (e) {
+        console.warn('[useSafeVideoPlayer] Error running setup:', e);
       }
-
-      playerRef.current = newPlayer;
-      setPlayer(newPlayer);
     }
 
+    // Swap ref: deferred-release the old player AFTER React commits new player
+    const stalePlayer = playerRef.current;
+    playerRef.current = newPlayer;
+    setPlayer(newPlayer);
+
+    if (stalePlayer && stalePlayer !== newPlayer) {
+      safeReleasePlayer(stalePlayer, DEFERRED_RELEASE_MS);
+    }
+
+    // Cleanup on unmount or source change: deferred release
     return () => {
+      if (releaseTimerRef.current) {
+        clearTimeout(releaseTimerRef.current);
+        releaseTimerRef.current = null;
+      }
       if (newPlayer) {
         playerRef.current = null;
-        try {
-          if (isPlayerValid(newPlayer)) {
-            newPlayer.pause();
-            if (typeof newPlayer.release === 'function') {
-              newPlayer.release();
-            }
-          }
-        } catch (e) {}
+        safeReleasePlayer(newPlayer, DEFERRED_RELEASE_MS);
       }
     };
   }, [typeof source === 'string' ? source : JSON.stringify(source)]);
@@ -109,6 +117,8 @@ export const useSafeVideoPlayer = (
 interface SafeVideoViewProps {
   player: any;
   ExpoVideoModule: any;
+  source?: string;
+  posterSource?: any;
   style?: any;
   contentFit?: any;
   nativeControls?: boolean;
@@ -142,10 +152,32 @@ export class SafeVideoView extends Component<SafeVideoViewProps, SafeVideoViewSt
   }
 
   render() {
-    const { player, ExpoVideoModule, fallback, ...restProps } = this.props;
+    const { player, ExpoVideoModule, source, posterSource, fallback, ...restProps } = this.props;
+
+    if (Platform.OS === 'web' && source) {
+      return (
+        <video
+          src={source}
+          controls
+          autoPlay
+          playsInline
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: 12,
+            backgroundColor: '#000',
+          }}
+        />
+      );
+    }
 
     if (this.state.hasError || !ExpoVideoModule?.VideoView || !isPlayerValid(player)) {
-      return fallback || <View style={[styles.defaultFallback, this.props.style]} />;
+      if (fallback) return fallback;
+      if (posterSource) {
+        return <Image source={typeof posterSource === 'string' ? { uri: posterSource } : posterSource} style={[styles.defaultFallback, this.props.style]} resizeMode="cover" />;
+      }
+      return <View style={[styles.defaultFallback, this.props.style]} />;
     }
 
     const VideoViewComponent = ExpoVideoModule.VideoView;

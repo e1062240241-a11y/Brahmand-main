@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -70,7 +71,12 @@ class FirebaseManager:
 firebase_manager = FirebaseManager()
 
 async def get_firestore():
-    if not firebase_manager._initialized: await firebase_manager.initialize()
+    if not firebase_manager._initialized:
+        try:
+            await asyncio.wait_for(firebase_manager.initialize(), timeout=0.5)
+        except Exception as e:
+            logger.warning(f"Firebase initialization bypassed/timed out: {e}")
+            return None
     return firebase_manager.get_firestore()
 
 def get_firebase_auth(): return firebase_manager.get_auth()

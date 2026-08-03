@@ -1250,10 +1250,12 @@ app.add_middleware(ProcessTimeAndCORSMiddleware)
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    import traceback
+    tb = traceback.format_exc()
+    logger.error(f"Unhandled exception: {exc}\n{tb}", exc_info=True)
     response = JSONResponse(
         status_code=500,
-        content={"detail": "An internal server error occurred."}
+        content={"detail": f"An internal server error occurred: {exc}", "traceback": tb}
     )
     origin = request.headers.get("origin") or ""
     if _is_origin_allowed(origin):
@@ -16280,7 +16282,7 @@ app.mount("/socket.io", socket_app)
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:socket_app", host="0.0.0.0", port=8002, reload=True)
+    uvicorn.run("main:socket_app", host="0.0.0.0", port=8000, reload=True)
 
 
 
