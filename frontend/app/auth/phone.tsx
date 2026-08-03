@@ -10,7 +10,8 @@ import {
   Dimensions,
   ActivityIndicator,
   Alert,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
+  BackHandler
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,24 +61,21 @@ export default function PhoneScreen() {
     initializeFirebase();
   }, []);
 
-  React.useEffect(() => {
-    if (Platform.OS !== 'android') {
-      return;
-    }
-
-    if (!router.canGoBack()) {
-      router.replace('/auth/entry-animation');
-    }
-  }, [router]);
-
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
       return;
     }
-
-    router.replace('/');
+    router.replace('/auth/entry-animation');
   };
+
+  React.useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      handleBack();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [router]);
 
   const handleSendOTP = async () => {
     if (phone.length !== 10) {

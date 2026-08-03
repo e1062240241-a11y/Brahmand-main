@@ -20,6 +20,7 @@ import { COLORS, SPACING, BORDER_RADIUS } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import { useAuthStore } from '../src/store/authStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
+import { CustomLoader } from '../src/components/CustomLoader';
 import { syncFestivalReminders, toggleAllFestivals, getAllFestivalReminders } from '../src/utils/festivalReminders';
 import { useNotificationStore } from '../src/store/notificationStore';
 
@@ -217,7 +218,9 @@ const FestivalPage = () => {
 
   if (loading) {
     return (
-      <BrandedLoading />
+      <View style={{ flex: 1, backgroundColor: '#0F172A', justifyContent: 'center', alignItems: 'center' }}>
+        <CustomLoader size={70} message="Loading Festivals..." />
+      </View>
     );
   }
 

@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalSectionDetailCard from '../src/components/FestivalSectionDetailCard';
+import { CustomLoader } from '../src/components/CustomLoader';
 
 const FestivalSectionDetailPage = () => {
   const params = useLocalSearchParams();
@@ -49,7 +50,7 @@ const FestivalSectionDetailPage = () => {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <CustomLoader size={70} message="Loading Festival Section..." />
       </View>
     );
   }

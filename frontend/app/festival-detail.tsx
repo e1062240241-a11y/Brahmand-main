@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications';
 import { COLORS, SPACING } from '../src/constants/theme';
 import { getFestivalList } from '../src/services/api';
 import FestivalDetailCard from '../src/components/FestivalDetailCard';
+import { CustomLoader } from '../src/components/CustomLoader';
 import { toggleFestivalReminder, getFestivalReminderState } from '../src/utils/festivalReminders';
 
 const FestivalDetailPage = () => {
@@ -77,7 +78,7 @@ const FestivalDetailPage = () => {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <CustomLoader size={70} message="Loading Festival..." />
       </View>
     );
   }

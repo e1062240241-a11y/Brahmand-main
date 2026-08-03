@@ -31,6 +31,7 @@ import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurre
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { Svg, Path, G, Defs, ClipPath, Rect } from 'react-native-svg';
+import { CustomLoader } from '../../src/components/CustomLoader';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BANNER_H_MARGIN = 16;
@@ -511,9 +512,11 @@ export default function JaapLandingScreen() {
   const switchSection = useCallback((section: 'jaap' | 'temple') => {
     if (section === activeSection) return;
     setActiveSection(section);
-    LayoutAnimation.configureNext(
-      LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
-    );
+    if (Platform.OS === 'ios') {
+      LayoutAnimation.configureNext(
+        LayoutAnimation.create(240, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity)
+      );
+    }
     Animated.spring(sectionAnim, {
       toValue: section === 'jaap' ? 0 : 1,
       useNativeDriver: true,
@@ -1144,7 +1147,7 @@ export default function JaapLandingScreen() {
           {/* Temple List */}
             <View style={styles.newTempleListPadding}>
               {loadingTemples ? (
-                <ActivityIndicator size="large" color="#FF6600" />
+                <CustomLoader size={60} fullScreen={false} message="Loading Sacred Temples..." />
               ) : filteredTemples.length > 0 ? (
                 filteredTemples.map((item, idx) => (
                   <Pressable
