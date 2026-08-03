@@ -3237,17 +3237,17 @@ export default function HomeScreen() {
                             <Text
                               numberOfLines={1}
                               style={{
-                                color: '#FFF4D6',
-                                fontSize: 24,
+                                color: '#FFFBF0',
+                                fontSize: 25,
                                 fontWeight: '900',
-                                fontFamily: Platform.OS === 'ios' ? 'Tiro Devanagari Hindi' : 'TiroDevanagariHindi-Regular',
-                                lineHeight: 28,
-                                letterSpacing: 0.3,
+                                fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
+                                lineHeight: 30,
+                                letterSpacing: 0.4,
                                 textAlign: 'left',
-                                marginLeft: 8,
-                                textShadowColor: 'rgba(0, 0, 0, 0.95)',
-                                textShadowOffset: { width: 0, height: 2 },
-                                textShadowRadius: 4,
+                                marginLeft: 4,
+                                textShadowColor: '#3A1E05',
+                                textShadowOffset: { width: 1.5, height: 2.5 },
+                                textShadowRadius: 3,
                               }}
                             >
                               श्रावण मास
@@ -3255,17 +3255,18 @@ export default function HomeScreen() {
                             <Text
                               numberOfLines={1}
                               style={{
-                                color: '#FFD97A',
-                                fontSize: 24,
+                                color: '#FFD768',
+                                fontSize: 25,
                                 fontWeight: '900',
-                                fontFamily: Platform.OS === 'ios' ? 'Tiro Devanagari Hindi' : 'TiroDevanagariHindi-Regular',
-                                lineHeight: 28,
-                                letterSpacing: 0.3,
+                                fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
+                                lineHeight: 30,
+                                letterSpacing: 0.4,
                                 textAlign: 'left',
-                                marginTop: 1,
-                                textShadowColor: 'rgba(0, 0, 0, 0.95)',
-                                textShadowOffset: { width: 1, height: 2 },
-                                textShadowRadius: 5,
+                                marginLeft: 4,
+                                marginTop: -1,
+                                textShadowColor: '#281200',
+                                textShadowOffset: { width: 2, height: 3 },
+                                textShadowRadius: 4,
                               }}
                             >
                               शिव कथा
