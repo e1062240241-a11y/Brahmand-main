@@ -104,10 +104,9 @@ async def verify_token(
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
-        logger.error(f"Error checking user block status in verify_token: {e}\n{tb}")
-        raise HTTPException(status_code=403, detail=f"User account verification failed: {e}\n{tb}")
+        # Do not expose exception details or stack traces to the client (CWE-209/CWE-200)
+        logger.exception(f"Error checking user block status in verify_token: {e}")
+        raise HTTPException(status_code=403, detail="User account verification failed")
         
     return payload
 

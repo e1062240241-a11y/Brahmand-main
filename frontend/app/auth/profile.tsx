@@ -381,14 +381,17 @@ export default function ProfileScreen() {
       // Join communities based on location
       try {
         const locData = geocodeAddress || { city: city.trim(), region: '', country: '' };
-        const locRes = await setupLocation({
-          country: locData.country || 'Bharat',
-          state: locData.region || '',
-          city: city.trim() || locData.city || 'Mumbai',
-          area: '',
-        });
-        if (locRes?.data?.user) {
-          updateUser(locRes.data.user);
+        const selectedCity = city.trim() || locData.city || '';
+        if (selectedCity) {
+          const locRes = await setupLocation({
+            country: locData.country || 'Bharat',
+            state: locData.region || '',
+            city: selectedCity,
+            area: '',
+          });
+          if (locRes?.data?.user) {
+            updateUser(locRes.data.user);
+          }
         }
       } catch (locErr) {
         console.warn('Community join failed during registration:', locErr);

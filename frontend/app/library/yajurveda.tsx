@@ -36,10 +36,10 @@ import { loadYajurvedaChapter } from '../../src/services/yajurveda-service';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Yajurveda image provided by the user
-const geeta3DImage = require('../../assets/images/tab-bar/books/Yujurveda.png');
+const geeta3DImage = require('../../assets/images/tab-bar/books/Yujurveda.webp');
 // Custom bookmark icons
-const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
-const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
+const bookmarkIconImage = require('../../assets/images/bookmark_icon.webp');
+const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.webp');
 
 const BOOK_ID = 'yajurveda';
 const TOTAL_CHAPTERS = 40;
@@ -277,7 +277,7 @@ export default function YajurvedaPage() {
         </LinearGradient>
       ) : (
         <View style={{ flex: 1 }}>
-          <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
+          <ImageBackground source={require('../../assets/images/clean_parchment_bg.webp')} style={styles.root}>
             {/* Sticky Top Header Container */}
             {/* Unified Sticky Header */}
             <View style={{

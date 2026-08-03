@@ -1815,8 +1815,12 @@ async def admin_panel_login(data: dict = Body(...)):
     username = str(data.get('username', '')).strip()
     password = str(data.get('password', '')).strip()
 
-    raw_user = os.getenv('ADMIN_PANEL_USERNAME') or "Admin"
-    raw_pass = os.getenv('ADMIN_PANEL_PASSWORD') or "pummi9-mydwyj-cisfIw"
+    raw_user = os.getenv('ADMIN_PANEL_USERNAME')
+    raw_pass = os.getenv('ADMIN_PANEL_PASSWORD')
+
+    if not raw_user or not raw_pass:
+        logger.error("Admin login failed: ADMIN_PANEL_USERNAME or ADMIN_PANEL_PASSWORD environment variables are not set")
+        raise HTTPException(status_code=500, detail="Server configuration error")
 
     expected_username = raw_user.strip().strip('"').strip("'")
     expected_password = raw_pass.strip().strip('"').strip("'")
@@ -7129,6 +7133,8 @@ async def send_community_message(
         logger.warning(f"Failed to send community message push notification: {notify_err}")
     
     # Emit via Socket.IO
+    response_data['community_id'] = community_id
+    response_data['subgroup_type'] = subgroup_type
     await sio.emit('new_message', response_data, room=chat_id)
     
     return response_data
@@ -7201,19 +7207,20 @@ async def get_community_messages(community_id: str, subgroup_type: str, limit: i
             
     messages = await db.get_chat_messages(chat_id, limit, before_timestamp=before_dt)
 
-    # Decorate messages with live verification data so old posts also show the badge
+    # ⚡ Bolt Optimization: Batch fetch instead of N+1 get_document calls
     sender_ids = list({m.get('sender_id') for m in messages if m.get('sender_id')})
     sender_map: dict = {}
-    for sid in sender_ids:
+    if sender_ids:
         try:
-            u = await db.get_document('users', sid)
-            if u:
-                sender_map[sid] = {
-                    'is_verified': u.get('is_verified', False),
-                    'verification_level': u.get('verification_level', 'state'),
-                }
-        except Exception:
-            pass
+            users_list = await db.get_documents_batch('users', sender_ids)
+            for u in users_list:
+                if u and u.get('id'):
+                    sender_map[u['id']] = {
+                        'is_verified': u.get('is_verified', False),
+                        'verification_level': u.get('verification_level', 'state'),
+                    }
+        except Exception as e:
+            logger.warning(f"Failed to batch fetch users for community messages: {e}")
 
     for msg in messages:
         sid = msg.get('sender_id')
@@ -7396,13 +7403,8 @@ async def delete_comment(comment_id: str, token_data: dict = Depends(verify_toke
             new_count = await db.count_documents('post_comments', filters=[('post_id', '==', post_id)])
             chat_id = comment.get('chat_id')
             if not chat_id:
-                # Deduce chat_id by scanning community chats
-                chats = await db.query_documents('chats')
-                for c in chats:
-                    msg = await db.get_chat_message(c['id'], post_id)
-                    if msg:
-                        chat_id = c['id']
-                        break
+                # Resolve chat_id via reverse index (falls back to a chat scan for legacy comments)
+                chat_id = await db.get_chat_id_for_message(post_id)
             
             if chat_id:
                 await db.update_chat_message(chat_id, post_id, {'comments_count': new_count})
@@ -7434,6 +7436,11 @@ async def delete_community_message(
         
     def _delete():
         db.client.collection('chats').document(chat_id).collection('messages').document(message_id).delete()
+        # Best-effort cleanup of the reverse index
+        try:
+            db.client.collection('chat_message_index').document(message_id).delete()
+        except Exception:
+            pass
         return True
         
     await db._run_sync(_delete)
@@ -9988,32 +9995,40 @@ async def review_report(report_id: str, data: dict = Body(default={}), token_dat
                     moderation_result['comment_deleted'] = True
 
             elif content_type == 'community':
-                chats = await db.query_documents('chats')
-                for chat in chats:
+                chat_id = await db.get_chat_id_for_message(content_id)
+                if chat_id:
                     try:
-                        msg = await db.get_chat_message(chat['id'], content_id)
+                        msg = await db.get_chat_message(chat_id, content_id)
                         if msg:
                             def _delete():
-                                db.client.collection('chats').document(chat['id']).collection('messages').document(content_id).delete()
+                                db.client.collection('chats').document(chat_id).collection('messages').document(content_id).delete()
+                                # Best-effort cleanup of the reverse index
+                                try:
+                                    db.client.collection('chat_message_index').document(content_id).delete()
+                                except Exception:
+                                    pass
                                 return True
                             await db._run_sync(_delete)
                             moderation_result['community_post_deleted'] = True
-                            break
                     except Exception:
                         pass
 
             elif content_type == 'message':
-                chats = await db.query_documents('chats')
-                for chat in chats:
+                chat_id = await db.get_chat_id_for_message(content_id)
+                if chat_id:
                     try:
-                        msg = await db.get_chat_message(chat['id'], content_id)
+                        msg = await db.get_chat_message(chat_id, content_id)
                         if msg:
                             def _delete():
-                                db.client.collection('chats').document(chat['id']).collection('messages').document(content_id).delete()
+                                db.client.collection('chats').document(chat_id).collection('messages').document(content_id).delete()
+                                # Best-effort cleanup of the reverse index
+                                try:
+                                    db.client.collection('chat_message_index').document(content_id).delete()
+                                except Exception:
+                                    pass
                                 return True
                             await db._run_sync(_delete)
                             moderation_result['message_deleted'] = True
-                            break
                     except Exception:
                         pass
 
@@ -12926,12 +12941,30 @@ async def get_vendor_review_queue(
             with open(log_path, 'a') as f:
                 f.write(f"Fallback query or sort failed: {fallback_exc}\n")
 
+    # Batch fetch users for vendor records missing contact info to fix N+1 query
+    owner_ids_to_fetch = set()
+    for r in records:
+        if not r.get('phone_number') and not r.get('contact_number') and r.get('owner_id'):
+            owner_ids_to_fetch.add(r.get('owner_id'))
+
+    users_map = {}
+    if owner_ids_to_fetch:
+        try:
+            user_docs = await db.get_documents_batch('users', list(owner_ids_to_fetch))
+            users_map = {u['id']: u for u in user_docs if u and 'id' in u}
+        except Exception as err:
+            logger.warning(f"Failed to batch resolve owner phones: {err}")
+
     for r in records:
         if not r.get('phone_number') and not r.get('contact_number'):
             owner_id = r.get('owner_id')
             if owner_id:
                 try:
-                    user_doc = await db.get_document('users', owner_id)
+                    user_doc = users_map.get(owner_id)
+                    # Fallback to individual fetch if batch failed or missing
+                    if not user_doc:
+                        user_doc = await db.get_document('users', owner_id)
+
                     if user_doc:
                         phone = user_doc.get('kyc_verified_phone') or user_doc.get('phone') or user_doc.get('phone_number')
                         if phone:

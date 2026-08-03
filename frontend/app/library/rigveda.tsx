@@ -36,10 +36,10 @@ import { loadRigvedaChapter } from '../../src/services/rigveda-service';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // We use the new 3D Rigveda image provided by the user
-const geeta3DImage = require('../../assets/images/tab-bar/books/Rigveda.png');
+const geeta3DImage = require('../../assets/images/tab-bar/books/Rigveda.webp');
 // Custom bookmark icons
-const bookmarkIconImage = require('../../assets/images/bookmark_icon.png');
-const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.png');
+const bookmarkIconImage = require('../../assets/images/bookmark_icon.webp');
+const bookmarkIconFilledImage = require('../../assets/images/bookmark_icon_filled.webp');
 
 const BOOK_ID = 'rigveda';
 const TOTAL_CHAPTERS = 10;
@@ -287,7 +287,7 @@ export default function RigvedaPage() {
         </LinearGradient>
       ) : (
         <View style={{ flex: 1 }}>
-          <ImageBackground source={require('../../assets/images/clean_parchment_bg.png')} style={styles.root}>
+          <ImageBackground source={require('../../assets/images/clean_parchment_bg.webp')} style={styles.root}>
             {nightMode && (
               <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(20, 10, 5, 0.85)' }]} />
             )}

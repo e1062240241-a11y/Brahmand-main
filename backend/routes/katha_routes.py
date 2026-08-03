@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/katha", tags=["Saavan Katha"])
 
-ADMIN_SECRET_KEY = os.getenv("KATHA_ADMIN_SECRET", "brahmand_saavan_katha_admin_2026")
+ADMIN_SECRET_KEY = os.getenv("KATHA_ADMIN_SECRET")
 BUNNY_ACCESS_KEY = os.getenv("BUNNY_ACCESS_KEY", "")
 BUNNY_STORAGE_ZONE = os.getenv("BUNNY_STORAGE_ZONE", "brahmand")
 BUNNY_PULL_ZONE_URL = os.getenv("BUNNY_PULL_ZONE_URL", "https://brahmandfeed23.b-cdn.net")

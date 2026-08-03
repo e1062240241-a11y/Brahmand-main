@@ -1,13 +1,13 @@
 // Available image assets mapped to festivals for variety
-const imgDiya = require('../../assets/images/traditional_diya_footer.png');
+const imgDiya = require('../../assets/images/traditional_diya_footer.webp');
 const imgShiva = require('../../assets/images/upcoming_shiva.jpg');
 const imgGanesh = require('../../assets/images/upcoming_ganesh.jpg');
-const imgDurga = require('../../assets/images/upcoming_durga.png');
+const imgDurga = require('../../assets/images/upcoming_durga.webp');
 const imgGanga = require('../../assets/images/upcoming_ganga.jpg');
 const imgShani = require('../../assets/images/upcoming_shani.jpg');
-const imgRadha = require('../../assets/images/upcoming_radha_rani.png');
+const imgRadha = require('../../assets/images/upcoming_radha_rani.webp');
 const imgHanuman = require('../../assets/images/hanuman_banner_new.jpg');
-const imgKrishna = require('../../assets/images/krishna_arjuna_chariot.png');
+const imgKrishna = require('../../assets/images/krishna_arjuna_chariot.webp');
 const imgGeeta = require('../../assets/images/Bhagvad-geeta.jpg');
 
 const akshayaTritiya = require('../../assets/images/festivals/akshaya_tritiya.jpg');
@@ -42,7 +42,7 @@ const mahaSaptami = require('../../assets/images/festivals/maha_saptami.jpg');
 const mahaShivaratri = require('../../assets/images/festivals/maha_shivaratri.jpeg');
 const mahalayaAmavasya = require('../../assets/images/festivals/mahalaya_amavasya.jpg');
 const maharishiValmikiJayanti = require('../../assets/images/festivals/maharishi_valmiki_jayanti.jpg');
-const makarSankranti = require('../../assets/images/festivals/makar_sankranti.png');
+const makarSankranti = require('../../assets/images/festivals/makar_sankranti.webp');
 const nagPanchami = require('../../assets/images/festivals/nag_panchami.jpg');
 const onam = require('../../assets/images/festivals/onam.jpg');
 const rakshaBandhan = require('../../assets/images/festivals/raksha_bandhan.jpg');

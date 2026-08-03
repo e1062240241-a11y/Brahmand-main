@@ -31,6 +31,9 @@ export const Button: React.FC<ButtonProps> = ({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
       style={({ pressed }) => StyleSheet.flatten([
         styles.button,
         variant === 'primary' && styles.primary,

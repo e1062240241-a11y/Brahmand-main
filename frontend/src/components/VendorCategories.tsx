@@ -16,27 +16,27 @@ import { useRouter } from 'expo-router';
 
 // Map of category names to their respective local assets
 const CATEGORY_IMAGES: Record<string, any> = {
-  gym: require('../../assets/images/tab-bar/rashi/vendor/gym.png'),
-  travel: require('../../assets/images/tab-bar/rashi/vendor/travel.png'),
-  catering: require('../../assets/images/tab-bar/rashi/vendor/halvai.png'),
-  beauty: require('../../assets/images/tab-bar/rashi/vendor/Beauty.png'),
-  decorator: require('../../assets/images/tab-bar/rashi/vendor/Decorator.png'),
+  gym: require('../../assets/images/tab-bar/rashi/vendor/gym.webp'),
+  travel: require('../../assets/images/tab-bar/rashi/vendor/travel.webp'),
+  catering: require('../../assets/images/tab-bar/rashi/vendor/halvai.webp'),
+  beauty: require('../../assets/images/tab-bar/rashi/vendor/Beauty.webp'),
+  decorator: require('../../assets/images/tab-bar/rashi/vendor/Decorator.webp'),
   astrologer: require('../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg'),
   electrician: require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg'),
   panditji: require('../../assets/images/tab-bar/rashi/vendor/panditji.jpg'),
-  carpenter: require('../../assets/images/tab-bar/rashi/vendor/carpener.png'),
-  plumber: require('../../assets/images/tab-bar/rashi/vendor/plumber.png'),
+  carpenter: require('../../assets/images/tab-bar/rashi/vendor/carpener.webp'),
+  plumber: require('../../assets/images/tab-bar/rashi/vendor/plumber.webp'),
   'general store': require('../../assets/images/tab-bar/rashi/vendor/generalstore.jpg'),
   dairy: require('../../assets/images/tab-bar/rashi/vendor/dairy.jpg'),
-  salon: require('../../assets/images/tab-bar/rashi/vendor/salon.png'),
-  cow: require('../../assets/images/tab-bar/rashi/vendor/cow.png'),
-  general_store_icon: require('../../assets/images/tab-bar/rashi/vendor/general_store.png'),
-  lightning: require('../../assets/images/tab-bar/rashi/vendor/lightning.png'),
-  panditji_icon: require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.png'),
-  plumber_icon: require('../../assets/images/tab-bar/rashi/vendor/plumber_icon.png'),
-  salon_icon: require('../../assets/images/tab-bar/rashi/vendor/salon_icon.png'),
-  siren: require('../../assets/images/tab-bar/rashi/vendor/siren.png'),
-  hammer: require('../../assets/images/tab-bar/rashi/vendor/hammer_custom.png'),
+  salon: require('../../assets/images/tab-bar/rashi/vendor/salon.webp'),
+  cow: require('../../assets/images/tab-bar/rashi/vendor/cow.webp'),
+  general_store_icon: require('../../assets/images/tab-bar/rashi/vendor/general_store.webp'),
+  lightning: require('../../assets/images/tab-bar/rashi/vendor/lightning.webp'),
+  panditji_icon: require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.webp'),
+  plumber_icon: require('../../assets/images/tab-bar/rashi/vendor/plumber_icon.webp'),
+  salon_icon: require('../../assets/images/tab-bar/rashi/vendor/salon_icon.webp'),
+  siren: require('../../assets/images/tab-bar/rashi/vendor/siren.webp'),
+  hammer: require('../../assets/images/tab-bar/rashi/vendor/hammer_custom.webp'),
 };
 
 const getCategoryIconSource = (category: string) => {
@@ -51,7 +51,7 @@ const getCategoryIconSource = (category: string) => {
     }
   }
   // Default fallback image
-  return require('../../assets/images/tab-bar/rashi/vendor/Decorator.png');
+  return require('../../assets/images/tab-bar/rashi/vendor/Decorator.webp');
 };
 
 export interface VendorCategoriesProps {

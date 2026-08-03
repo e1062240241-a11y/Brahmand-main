@@ -199,24 +199,24 @@ export default function CustomTabBar({ state, descriptors, navigation }: any) {
 
     switch (routeName) {
       case 'home':
-        activeSrc   = require('../../assets/images/tab-bar/hoe.png');
-        inactiveSrc = require('../../assets/images/tab-bar/home_outline.png');
+        activeSrc   = require('../../assets/images/tab-bar/hoe.webp');
+        inactiveSrc = require('../../assets/images/tab-bar/home_outline.webp');
         break;
       case 'messages':
-        activeSrc   = require('../../assets/images/tab-bar/comunity2.png');
-        inactiveSrc = require('../../assets/images/tab-bar/community.png');
+        activeSrc   = require('../../assets/images/tab-bar/comunity2.webp');
+        inactiveSrc = require('../../assets/images/tab-bar/community.webp');
         break;
       case 'vendor':
-        activeSrc   = require('../../assets/images/tab-bar/ser.png');
-        inactiveSrc = require('../../assets/images/tab-bar/service.png');
+        activeSrc   = require('../../assets/images/tab-bar/ser.webp');
+        inactiveSrc = require('../../assets/images/tab-bar/service.webp');
         break;
       case 'jaap':
-        activeSrc   = require('../../assets/images/tab-bar/temp.png');
-        inactiveSrc = require('../../assets/images/tab-bar/temple.png');
+        activeSrc   = require('../../assets/images/tab-bar/temp.webp');
+        inactiveSrc = require('../../assets/images/tab-bar/temple.webp');
         break;
       case 'profile':
-        activeSrc   = require('../../assets/images/tab-bar/profile2.png');
-        inactiveSrc = require('../../assets/images/tab-bar/profile.png');
+        activeSrc   = require('../../assets/images/tab-bar/profile2.webp');
+        inactiveSrc = require('../../assets/images/tab-bar/profile.webp');
         break;
       default:
         return (

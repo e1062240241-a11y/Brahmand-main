@@ -313,7 +313,7 @@ export default function AIJyotishScreen() {
 
             <View style={styles.navTitleContainer}>
               <View style={[styles.avatarImage, { backgroundColor: '#FF8A00', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }]}>
-                <Image source={require('../assets/images/jyotish/ai_avatar.png')} style={{ width: '100%', height: '100%' }} />
+                <Image source={require('../assets/images/jyotish/ai_avatar.webp')} style={{ width: '100%', height: '100%' }} />
               </View>
               <Text style={styles.navTitle}>AI Jyotish</Text>
             </View>
@@ -356,7 +356,7 @@ export default function AIJyotishScreen() {
                   ) : (
                     <View style={styles.aiMessageContainer}>
                       <View style={[styles.aiAvatar, { overflow: 'hidden' }]}>
-                        <Image source={require('../assets/images/jyotish/ai_avatar.png')} style={{ width: '100%', height: '100%' }} />
+                        <Image source={require('../assets/images/jyotish/ai_avatar.webp')} style={{ width: '100%', height: '100%' }} />
                       </View>
                       <View style={styles.aiBubbleContainer}>
                         <View style={styles.aiBubble}>

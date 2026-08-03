@@ -518,7 +518,7 @@ class VendorCreate(BaseModel):
     business_name: str = Field(..., min_length=2, max_length=200)
     owner_name: str = Field(default="Vendor Owner", min_length=2, max_length=100)
     years_in_business: int = Field(default=0, ge=0, le=100)
-    categories: List[str] = Field(default_factory=list, max_items=5)
+    categories: List[str] = Field(default_factory=list, max_length=5)
     full_address: str = Field(default="", max_length=500)
     location_link: Optional[str] = None
     phone_number: str = ""
@@ -529,8 +529,8 @@ class VendorCreate(BaseModel):
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
-    business_gallery_images: Optional[List[str]] = Field(default_factory=list, max_items=5)
-    menu_items: Optional[List[str]] = Field(default_factory=list, max_items=30)
+    business_gallery_images: Optional[List[str]] = Field(default_factory=list, max_length=5)
+    menu_items: Optional[List[str]] = Field(default_factory=list, max_length=30)
     offers_home_delivery: Optional[bool] = False
     business_media_key: Optional[str] = None
     kyc_status: Optional[KYCStatus] = None
@@ -544,7 +544,7 @@ class VendorUpdate(BaseModel):
     business_name: Optional[str] = Field(None, min_length=2, max_length=200)
     owner_name: Optional[str] = Field(None, min_length=2, max_length=100)
     years_in_business: Optional[int] = Field(None, ge=0, le=100)
-    categories: Optional[List[str]] = Field(None, min_items=1, max_items=5)
+    categories: Optional[List[str]] = Field(None, min_length=1, max_length=5)
     full_address: Optional[str] = Field(None, max_length=500)
     location_link: Optional[str] = None
     phone_number: Optional[str] = None
@@ -555,8 +555,8 @@ class VendorUpdate(BaseModel):
     aadhar_url: Optional[str] = None
     pan_url: Optional[str] = None
     face_scan_url: Optional[str] = None
-    business_gallery_images: Optional[List[str]] = Field(None, max_items=5)
-    menu_items: Optional[List[str]] = Field(None, max_items=30)
+    business_gallery_images: Optional[List[str]] = Field(None, max_length=5)
+    menu_items: Optional[List[str]] = Field(None, max_length=30)
     offers_home_delivery: Optional[bool] = None
     business_media_key: Optional[str] = None
     kyc_status: Optional[KYCStatus] = None
@@ -604,7 +604,7 @@ class JobProfileCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_link: Optional[str] = None
-    photos: Optional[List[str]] = Field(default_factory=list, max_items=5)
+    photos: Optional[List[str]] = Field(default_factory=list, max_length=5)
     cv_url: Optional[str] = None
 
 
@@ -617,7 +617,7 @@ class JobProfileUpdate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_link: Optional[str] = None
-    photos: Optional[List[str]] = Field(None, max_items=5)
+    photos: Optional[List[str]] = Field(None, max_length=5)
     cv_url: Optional[str] = None
 
 

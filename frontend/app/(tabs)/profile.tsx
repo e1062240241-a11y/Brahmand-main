@@ -2039,41 +2039,56 @@ export default function ProfileScreen() {
         {/* Language Selection Modal */}
         <Modal visible={showLanguageModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
-            <View style={styles.cgModalContent}>
-              <View style={styles.cgModalHeader}>
-                <Text style={styles.cgModalTitle}>{t('selectLanguage')}</Text>
-                <TouchableOpacity onPress={() => setShowLanguageModal(false)}>
-                  <Ionicons name="close" size={24} color={COLORS.text} />
+            <TouchableOpacity 
+              style={{ flex: 1 }} 
+              activeOpacity={1} 
+              onPress={() => setShowLanguageModal(false)} 
+            />
+            <View style={styles.langModalPillContent}>
+              <View style={styles.langModalHeader}>
+                <Text style={styles.langModalTitle}>{t('selectLanguage')}</Text>
+                <TouchableOpacity onPress={() => setShowLanguageModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close-circle" size={26} color="rgba(0,0,0,0.4)" />
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity
-                style={styles.cgItem}
+                style={[styles.langItem, language === 'en' && styles.langItemSelected]}
+                activeOpacity={0.7}
                 onPress={async () => {
                   await setLanguage('en');
                   setShowLanguageModal(false);
                 }}
               >
-                <Text style={[styles.cgItemText, language === 'en' && styles.cgItemTextSelected]}>
-                  {t('english')}
-                </Text>
+                <View style={styles.langItemLeft}>
+                  <Ionicons name="language-outline" size={20} color={language === 'en' ? '#FF6F00' : 'rgba(0,0,0,0.5)'} />
+                  <Text style={[styles.langItemText, language === 'en' && styles.langItemTextSelected]}>
+                    {t('english')}
+                  </Text>
+                </View>
                 {language === 'en' && (
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                  <Ionicons name="checkmark-circle" size={22} color="#FF6F00" />
                 )}
               </TouchableOpacity>
 
+              <View style={styles.langItemDivider} />
+
               <TouchableOpacity
-                style={styles.cgItem}
+                style={[styles.langItem, language === 'hi' && styles.langItemSelected]}
+                activeOpacity={0.7}
                 onPress={async () => {
                   await setLanguage('hi');
                   setShowLanguageModal(false);
                 }}
               >
-                <Text style={[styles.cgItemText, language === 'hi' && styles.cgItemTextSelected]}>
-                  {t('hindi')}
-                </Text>
+                <View style={styles.langItemLeft}>
+                  <Ionicons name="language-outline" size={20} color={language === 'hi' ? '#FF6F00' : 'rgba(0,0,0,0.5)'} />
+                  <Text style={[styles.langItemText, language === 'hi' && styles.langItemTextSelected]}>
+                    {t('hindi')}
+                  </Text>
+                </View>
                 {language === 'hi' && (
-                  <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+                  <Ionicons name="checkmark-circle" size={22} color="#FF6F00" />
                 )}
               </TouchableOpacity>
             </View>
@@ -2726,6 +2741,60 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontWeight: '700',
     fontSize: 14,
+  },
+  // Language Modal Pill Styles
+  langModalPillContent: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.md,
+    marginBottom: SPACING.xl * 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  langModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+  },
+  langModalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  langItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    borderRadius: 14,
+  },
+  langItemSelected: {
+    backgroundColor: 'rgba(255, 141, 87, 0.12)',
+  },
+  langItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  langItemText: {
+    fontSize: 16,
+    color: '#374151',
+    fontWeight: '500',
+  },
+  langItemTextSelected: {
+    color: '#FF6F00',
+    fontWeight: '700',
+  },
+  langItemDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    marginVertical: 4,
   },
   // CG Modal Styles
   cgModalContent: {

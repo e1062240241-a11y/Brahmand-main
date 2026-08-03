@@ -262,8 +262,6 @@ export default function TempleScreen() {
       setRefreshing(true);
       const response = await getTemples();
       if (response.data) {
-        setTemples(response.data);
-
         // Sync with WatermelonDB
         try {
           await database.write(async () => {
@@ -303,6 +301,16 @@ export default function TempleScreen() {
         } catch (dbError) {
           console.error('Error syncing temples to WatermelonDB:', dbError);
         }
+
+        // Release full raw API list from state to free RAM, keeping only light mapped list for filters
+        const lightList = response.data.map((t: any) => ({
+          id: t.temple_id || t.id,
+          name: t.name,
+          location: t.location,
+          deity: t.deity,
+          category: t.category,
+        }));
+        setTemples(lightList);
       }
     } catch (error) {
       console.error('Error fetching temples from API:', error);

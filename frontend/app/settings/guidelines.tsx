@@ -4,7 +4,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, BackHandler } fro
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { SPACING } from '../../src/constants/theme';
 import { useTranslation } from '../../src/utils/i18n';
 
 const GUIDELINES = [
@@ -55,7 +56,11 @@ export default function GuidelinesScreen() {
   const router = useRouter();
 
   const handleBack = useCallback(() => {
-    router.replace('/profile');
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)/profile');
+    }
   }, [router]);
 
   useEffect(() => {
@@ -110,126 +115,148 @@ export default function GuidelinesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {t('language') === 'hi' ? 'समुदाय के नियम' : 'Community Guidelines'}
-        </Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Introduction */}
-        <View style={styles.introCard}>
-          <Text style={styles.introTitle}>
-            {t('language') === 'hi' ? 'सनातन लोक में आपका स्वागत है' : 'Welcome to Sanatan Lok'}
-          </Text>
-          <Text style={styles.introText}>
-            {t('language') === 'hi' 
-              ? 'ये नियम हमें सभी भक्तों के लिए एक सम्मानजनक और सकारात्मक समुदाय बनाए रखने में मदद करते हैं। सनातन लोक का उपयोग करके, आप इन नियमों का पालन करने के लिए सहमत हैं।' 
-              : 'These guidelines help us maintain a respectful and positive community for all devotees. By using Sanatan Lok, you agree to follow these guidelines.'}
+    <LinearGradient
+      colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+      locations={[0, 0.0913, 0.25]}
+      style={{ flex: 1 }}
+    >
+      <SafeAreaView style={styles.container} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {t('language') === 'hi' ? 'समुदाय के नियम' : 'Community Guidelines'}
           </Text>
         </View>
 
-        {/* Guidelines List */}
-        <View style={styles.guidelinesContainer}>
-          {GUIDELINES.map((guideline, index) => {
-            const translated = getGuidelineTranslation(index);
-            return (
-              <View key={index} style={styles.guidelineCard}>
-                <View style={styles.guidelineIcon}>
-                  <Ionicons name={guideline.icon as any} size={24} color={COLORS.primary} />
-                </View>
-                <View style={styles.guidelineContent}>
-                  <Text style={styles.guidelineTitle}>{translated.title}</Text>
-                  <Text style={styles.guidelineDescription}>{translated.description}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Main Borderless Transparent Pill Container */}
+          <View style={styles.pillContainer}>
+            {/* Introduction */}
+            <View style={styles.introSection}>
+              <Text style={styles.introTitle}>
+                {t('language') === 'hi' ? 'ब्रह्मांड में आपका स्वागत है' : 'Welcome to Brahmand'}
+              </Text>
+              <Text style={styles.introText}>
+                {t('language') === 'hi' 
+                  ? 'ये नियम हमें सभी भक्तों के लिए एक सम्मानजनक और सकारात्मक समुदाय बनाए रखने में मदद करते हैं। ब्रह्मांड का उपयोग करके, आप इन नियमों का पालन करने के लिए सहमत हैं।' 
+                  : 'These guidelines help us maintain a respectful and positive community for all devotees. By using Brahmand, you agree to follow these guidelines.'}
+              </Text>
+            </View>
 
-        {/* Footer Note */}
-        <View style={styles.footerCard}>
-          <Ionicons name="information-circle" size={24} color={COLORS.warning} />
-          <Text style={styles.footerText}>
-            {t('language') === 'hi' 
-              ? 'इन नियमों के उल्लंघन के परिणामस्वरूप सामग्री को हटाया जा सकता है, खाता निलंबित किया जा सकता है, या स्थायी प्रतिबंध लगाया जा सकता है। यदि आप ऐसी सामग्री देखते हैं जो इन नियमों का उल्लंघन करती है, तो कृपया इसकी रिपोर्ट करें।' 
-              : 'Violation of these guidelines may result in content removal, account suspension, or permanent ban. If you see content that violates these guidelines, please report it.'}
-          </Text>
-        </View>
+            <View style={styles.divider} />
 
-        <View style={styles.bottomPadding} />
-      </ScrollView>
-    </SafeAreaView>
+            {/* Guidelines List */}
+            <View style={styles.guidelinesList}>
+              {GUIDELINES.map((guideline, index) => {
+                const translated = getGuidelineTranslation(index);
+                return (
+                  <React.Fragment key={index}>
+                    <View style={styles.guidelineItem}>
+                      <View style={styles.guidelineIcon}>
+                        <Ionicons name={guideline.icon as any} size={20} color="#FF6F00" />
+                      </View>
+                      <View style={styles.guidelineContent}>
+                        <Text style={styles.guidelineTitle}>{translated.title}</Text>
+                        <Text style={styles.guidelineDescription}>{translated.description}</Text>
+                      </View>
+                    </View>
+                    {index < GUIDELINES.length - 1 && <View style={styles.itemDivider} />}
+                  </React.Fragment>
+                );
+              })}
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Footer Note */}
+            <View style={styles.footerBox}>
+              <Ionicons name="information-circle" size={20} color="#EAB308" />
+              <Text style={styles.footerText}>
+                {t('language') === 'hi' 
+                  ? 'इन नियमों के उल्लंघन के परिणामस्वरूप सामग्री को हटाया जा सकता है, खाता निलंबित किया जा सकता है, या स्थायी प्रतिबंध लगाया जा सकता है। यदि आप ऐसी सामग्री देखते हैं जो इन नियमों का उल्लंघन करती है, तो कृपया इसकी रिपोर्ट करें।' 
+                  : 'Violation of these guidelines may result in content removal, account suspension, or permanent ban. If you see content that violates these guidelines, please report it.'}
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.md,
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.divider,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
   },
   backButton: {
+    marginRight: SPACING.md,
     padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.text,
+    flex: 1,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   scrollView: {
     flex: 1,
   },
-  introCard: {
-    backgroundColor: `${COLORS.primary}10`,
-    margin: SPACING.md,
+  content: {
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.xs,
+    paddingBottom: SPACING.xl * 2.5,
+  },
+  pillContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 24,
     padding: SPACING.lg,
-    borderRadius: BORDER_RADIUS.lg,
+  },
+  introSection: {
+    marginBottom: SPACING.xs,
   },
   introTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginBottom: SPACING.sm,
+    fontWeight: '700',
+    color: '#FF6F00',
+    marginBottom: SPACING.xs,
   },
   introText: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 22,
+    fontSize: 13,
+    color: 'rgba(0,0,0,0.65)',
+    lineHeight: 20,
+    fontWeight: '400',
   },
-  guidelinesContainer: {
-    padding: SPACING.md,
-    paddingTop: 0,
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
+    marginVertical: SPACING.md,
   },
-  guidelineCard: {
+  guidelinesList: {
+    marginVertical: SPACING.xs,
+  },
+  guidelineItem: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.sm,
+    alignItems: 'flex-start',
+    paddingVertical: SPACING.xs,
   },
   guidelineIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: `${COLORS.primary}15`,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 111, 0, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
+    marginTop: 2,
   },
   guidelineContent: {
     flex: 1,
@@ -237,30 +264,31 @@ const styles = StyleSheet.create({
   guidelineTitle: {
     fontSize: 15,
     fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
+    color: '#1F2937',
+    marginBottom: 2,
   },
   guidelineDescription: {
-    fontSize: 13,
-    color: COLORS.textSecondary,
-    lineHeight: 20,
+    fontSize: 12,
+    color: 'rgba(0,0,0,0.55)',
+    lineHeight: 18,
   },
-  footerCard: {
+  itemDivider: {
+    height: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    marginVertical: SPACING.sm,
+  },
+  footerBox: {
     flexDirection: 'row',
-    backgroundColor: `${COLORS.warning}15`,
-    margin: SPACING.md,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
     alignItems: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    borderRadius: 14,
+    padding: SPACING.md,
   },
   footerText: {
     flex: 1,
-    fontSize: 13,
-    color: COLORS.text,
+    fontSize: 12,
+    color: 'rgba(0,0,0,0.6)',
     marginLeft: SPACING.sm,
-    lineHeight: 20,
-  },
-  bottomPadding: {
-    height: SPACING.xl * 2,
+    lineHeight: 18,
   },
 });
