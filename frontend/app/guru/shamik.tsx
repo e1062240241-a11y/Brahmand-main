@@ -156,7 +156,7 @@ const FEATURED_VIDEOS = [
     category: 'Shiv Katha',
     duration: '1h 24m',
     views: '45K views',
-    image: require('../../assets/images/panditji.png'),
+    image: require('../../assets/images/panditji.webp'),
   },
   {
     id: 'v2',
