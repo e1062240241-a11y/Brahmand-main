@@ -804,6 +804,10 @@ export default function CommunityDetailScreen() {
     return cachedData?.community || null;
   });
   const [activeTab, setActiveTab] = useState('Feed');
+
+  useEffect(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [activeTab]);
   const [requests, setRequests] = useState<any[]>(() => {
     const cachedData = useChatStore.getState().communityScreenCaches[cacheKey];
     return cachedData?.requests || [];
