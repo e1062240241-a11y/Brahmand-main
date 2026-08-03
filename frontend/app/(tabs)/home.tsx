@@ -3116,7 +3116,7 @@ export default function HomeScreen() {
                       <TouchableOpacity
                         activeOpacity={0.9}
                         style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}
-                        onPress={() => router.push('/library/katha')}
+                        onPress={() => router.push('/shravan-paath')}
                       >
                         <Image
                           source={require('../../assets/images/panditji.webp')}
