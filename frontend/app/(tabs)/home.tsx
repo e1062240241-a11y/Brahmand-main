@@ -3170,15 +3170,15 @@ export default function HomeScreen() {
                           }}>
                             <Text style={{
                               color: '#6B4500',
-                              fontSize: 7.5,
+                              fontSize: 5.5,
                               fontWeight: '800',
                               fontFamily: Platform.OS === 'ios' ? 'Montserrat' : 'Montserrat-ExtraBold',
                               textAlign: 'center',
-                              lineHeight: 9,
-                              letterSpacing: 0.2,
+                              lineHeight: 7,
+                              letterSpacing: 0.1,
                               textTransform: 'uppercase',
                             }}>
-                              FREE{'\n'}REGIS-{'\n'}TRATION
+                              FREE REGISTRATION
                             </Text>
                           </View>
                         </View>
@@ -3189,161 +3189,183 @@ export default function HomeScreen() {
                           top: 0,
                           left: 0,
                           bottom: 0,
-                          width: '68%',
-                          paddingLeft: 12,
+                          width: '70%',
+                          paddingLeft: 14,
                           paddingRight: 6,
-                          paddingTop: 8,
-                          paddingBottom: 8,
-                          justifyContent: 'space-between',
+                          paddingTop: 6,
+                          paddingBottom: 4,
+                          justifyContent: 'flex-start',
                           alignItems: 'flex-start',
                         }}>
-                          {/* TOP BADGE - LIVE | श्रावण विशेष */}
-                          <View style={{
-                            backgroundColor: 'rgba(255, 0, 0, 0.85)',
-                            alignSelf: 'flex-start',
-                            paddingHorizontal: 7,
-                            paddingVertical: 2,
-                            borderRadius: 12,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            borderWidth: 1,
-                            borderColor: '#FF7777',
-                          }}>
-                            <View style={{
-                              width: 5,
-                              height: 5,
-                              borderRadius: 2.5,
-                              backgroundColor: '#FFFFFF',
-                              marginRight: 4,
-                            }} />
-                            <Text style={{
-                              color: '#FFFFFF',
-                              fontSize: 9,
-                              fontWeight: '800',
-                            }}>
-                              LIVE | श्रावण विशेष
-                            </Text>
-                          </View>
-
-                          {/* MAIN HEADING - श्रावण मास & शिव कथा */}
+                          {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा */}
                           <View style={{
                             width: '100%',
-                            marginTop: -2,
-                            marginBottom: 1,
-                            paddingLeft: 3,
                             alignItems: 'flex-start',
-                            justifyContent: 'flex-start',
                           }}>
+                            {/* श्रावण मास with horizontal royal flourish */}
                             <Text
                               numberOfLines={1}
                               style={{
                                 color: '#FFFBF0',
-                                fontSize: 25,
+                                fontSize: 34,
                                 fontWeight: '900',
                                 fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                                lineHeight: 30,
-                                letterSpacing: 0.4,
+                                lineHeight: 37,
+                                paddingTop: 1,
+                                letterSpacing: 0.3,
                                 textAlign: 'left',
-                                marginLeft: 4,
-                                textShadowColor: '#3A1E05',
-                                textShadowOffset: { width: 1.5, height: 2.5 },
-                                textShadowRadius: 3,
+                                textShadowColor: '#5B2A00',
+                                textShadowOffset: { width: 0, height: 2 },
+                                textShadowRadius: 0,
                               }}
                             >
-                              श्रावण मास
-                            </Text>
-                            <Text
-                              numberOfLines={1}
-                              style={{
-                                color: '#FFD768',
-                                fontSize: 25,
-                                fontWeight: '900',
-                                fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                                lineHeight: 30,
-                                letterSpacing: 0.4,
-                                textAlign: 'left',
-                                marginLeft: 4,
-                                marginTop: -1,
-                                textShadowColor: '#281200',
-                                textShadowOffset: { width: 2, height: 3 },
-                                textShadowRadius: 4,
-                              }}
-                            >
-                              शिव कथा
+                              श्रावण मास <Text style={{ color: '#FFD700', fontSize: 18, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
                             </Text>
 
-                            {/* SPEAKER NAME - Acharya Shamik Ji */}
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, alignSelf: 'flex-start' }}>
-                              <View style={{ width: 10, height: 1.5, backgroundColor: '#D4A23A', marginRight: 4 }} />
+                            {/* शिव कथा with leading horizontal royal flourish */}
+                            <View style={{ width: '100%', alignItems: 'center', marginTop: 1 }}>
+                              <Text
+                                numberOfLines={1}
+                                style={{
+                                  color: '#FFD768',
+                                  fontSize: 29,
+                                  fontWeight: '900',
+                                  fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
+                                  lineHeight: 32,
+                                  letterSpacing: 0.3,
+                                  textAlign: 'center',
+                                  textShadowColor: '#5B2A00',
+                                  textShadowOffset: { width: 0, height: 2 },
+                                  textShadowRadius: 0,
+                                }}
+                              >
+                                <Text style={{ color: '#FFD700', fontSize: 17, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
+                              </Text>
+                            </View>
+
+                            {/* SPEAKER NAME - Acharya Shamik Ji with horizontal flourishes */}
+                            <View style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'flex-start',
+                              marginTop: 3,
+                              marginLeft: 2,
+                            }}>
+                              <Text style={{
+                                color: '#FFD700',
+                                fontSize: 13,
+                                marginRight: 6,
+                                transform: [{ rotate: '90deg' }],
+                                textShadowColor: 'rgba(255,215,0,0.8)',
+                                textShadowOffset: { width: 0, height: 0 },
+                                textShadowRadius: 4,
+                              }}>
+                                ⚜
+                              </Text>
                               <Text style={{
                                 color: '#FFFFFF',
-                                fontSize: 10.5,
+                                fontSize: 14.5,
                                 fontWeight: '700',
-                                letterSpacing: 0.8,
+                                letterSpacing: 0.5,
                                 textShadowColor: 'rgba(0,0,0,0.9)',
                                 textShadowOffset: { width: 0, height: 1 },
                                 textShadowRadius: 3,
                               }}>
                                 Acharya Shamik Ji
                               </Text>
-                              <View style={{ width: 10, height: 1.5, backgroundColor: '#D4A23A', marginLeft: 4 }} />
+                              <Text style={{
+                                color: '#FFD700',
+                                fontSize: 13,
+                                marginLeft: 6,
+                                transform: [{ rotate: '90deg' }],
+                                textShadowColor: 'rgba(255,215,0,0.8)',
+                                textShadowOffset: { width: 0, height: 0 },
+                                textShadowRadius: 4,
+                              }}>
+                                ⚜
+                              </Text>
                             </View>
                           </View>
 
-                          {/* INFO BOX - दैनिक शिव कथा एवं महादेव प्रवचन */}
+                          {/* DATE SECTION & NOTIFY BUTTON */}
                           <View style={{
-                            backgroundColor: 'rgba(15, 15, 20, 0.65)',
-                            borderRadius: 6,
-                            paddingHorizontal: 6,
-                            paddingVertical: 2.5,
-                            borderWidth: 0.8,
-                            borderColor: 'rgba(212, 162, 58, 0.6)',
                             alignSelf: 'flex-start',
-                            maxWidth: '100%',
-                            marginTop: -2,
-                          }}>
-                            <Text style={{
-                              color: '#FFFFFF',
-                              fontSize: 9.5,
-                              fontWeight: '600',
-                              lineHeight: 12,
-                            }}>
-                              दैनिक शिव कथा एवं महादेव प्रवचन
-                            </Text>
-                          </View>
-
-                          {/* DATE SECTION */}
-                          <View style={{
-                            paddingHorizontal: 0,
-                            paddingVertical: 0,
-                            alignSelf: 'flex-start',
-                            marginTop: -2,
+                            marginTop: 3,
+                            marginLeft: 2,
                           }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                               <Text style={{ fontSize: 11, color: '#F4C55A', marginRight: 4 }}>📅</Text>
                               <Text style={{
                                 color: '#F4C55A',
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: '800',
-                                textShadowColor: 'rgba(0,0,0,0.9)',
+                                letterSpacing: 0.2,
+                                textShadowColor: 'rgba(0,0,0,0.95)',
                                 textShadowOffset: { width: 0, height: 1 },
                                 textShadowRadius: 3,
                               }}>
                                 13 अगस्त – 13 सितंबर
                               </Text>
                             </View>
+
+                            {/* Supporting text */}
                             <Text style={{
                               color: '#FFFFFF',
-                              opacity: 0.92,
-                              fontWeight: '500',
-                              fontSize: 9,
-                              marginTop: 1,
-                              textShadowColor: 'rgba(0,0,0,0.9)',
+                              opacity: 0.95,
+                              fontWeight: '600',
+                              fontSize: 11,
+                              marginTop: 3,
+                              textShadowColor: 'rgba(0,0,0,0.95)',
                               textShadowOffset: { width: 0, height: 1 },
                               textShadowRadius: 3,
                             }}>
                               हर दिन LIVE केवल श्रावण माह में
                             </Text>
+
+                            {/* Premium Modernized Gold-Glow Pill Notify Button */}
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              style={{
+                                marginTop: 5,
+                                alignSelf: 'flex-start',
+                                borderRadius: 18,
+                                overflow: 'hidden',
+                                borderWidth: 1.2,
+                                borderColor: '#FFE082',
+                                shadowColor: '#FF6600',
+                                shadowOffset: { width: 0, height: 3 },
+                                shadowOpacity: 0.5,
+                                shadowRadius: 5,
+                                elevation: 5,
+                              }}
+                            >
+                              <LinearGradient
+                                colors={['#FF6600', '#D84315']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                                style={{
+                                  paddingHorizontal: 14,
+                                  paddingVertical: 5,
+                                  flexDirection: 'row',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Ionicons name="notifications" size={13} color="#FFFBF0" style={{ marginRight: 5 }} />
+                                <Text style={{
+                                  color: '#FFFBF0',
+                                  fontSize: 11,
+                                  fontWeight: '800',
+                                  letterSpacing: 0.6,
+                                  textTransform: 'uppercase',
+                                  textShadowColor: 'rgba(0,0,0,0.4)',
+                                  textShadowOffset: { width: 0, height: 1 },
+                                  textShadowRadius: 2,
+                                }}>
+                                  Notify Me
+                                </Text>
+                              </LinearGradient>
+                            </TouchableOpacity>
                           </View>
                         </View>
                       </TouchableOpacity>

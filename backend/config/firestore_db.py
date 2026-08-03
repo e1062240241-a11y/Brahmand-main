@@ -386,11 +386,21 @@ class FirestoreDB:
             return doc_data
 
         def _get():
-            doc = self.client.collection(collection).document(doc_id).get()
-            if doc.exists:
-                data = doc.to_dict()
-                data['id'] = doc.id
-                return data
+            attempts = 2
+            for attempt in range(attempts):
+                try:
+                    doc = self.client.collection(collection).document(doc_id).get()
+                    if doc.exists:
+                        data = doc.to_dict()
+                        data['id'] = doc.id
+                        return data
+                    return None
+                except Exception as exc:
+                    logger.warning(f"Firestore get_document error for {collection}/{doc_id}, attempt {attempt + 1}/{attempts}: {exc}")
+                    if attempt + 1 == attempts:
+                        logger.error(f"Firestore get_document failed after retries for {collection}/{doc_id}: {exc}")
+                        return None
+                    time.sleep(0.5)
             return None
         
         doc_data = await self._run_sync(_get)
