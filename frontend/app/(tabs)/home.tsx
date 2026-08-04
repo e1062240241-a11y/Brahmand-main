@@ -1099,16 +1099,14 @@ export default function HomeScreen() {
             if (database) {
               const feedsCollection = database.get('feeds');
               const batchOperations: any[] = [];
-              const processedIds = new Set<string>();
-
               for (const item of incomingItems) {
                 const recordId = String(item.id || item.media_url);
-                if (!recordId || processedIds.has(recordId)) continue;
-                processedIds.add(recordId);
+                if (!recordId) continue;
 
                 let existingRecord = null;
                 try {
-                  existingRecord = await feedsCollection.find(recordId);
+                  const matchingRecords = await feedsCollection.query(Q.where('id', recordId)).fetch();
+                  existingRecord = matchingRecords && matchingRecords.length > 0 ? matchingRecords[0] : null;
                 } catch {
                   existingRecord = null;
                 }
@@ -1157,7 +1155,7 @@ export default function HomeScreen() {
               }
             }
           } catch (localWriteErr) {
-            // Silence duplicate constraint logs if local cache is already up-to-date
+            console.warn('[HomeFeed] Failed to cache posts to database:', localWriteErr);
           }
         });
       }
@@ -1562,12 +1560,7 @@ export default function HomeScreen() {
     }
   };
 
-  const reminderDebounceRef = useRef<Record<string, boolean>>({});
-
-  const handleSetReminder = async (mantraType: string, sessionName: string, silent: boolean = false) => {
-    if (reminderDebounceRef.current[mantraType]) return;
-    reminderDebounceRef.current[mantraType] = true;
-
+  const handleSetReminder = async (mantraType: string, sessionName: string) => {
     try {
       const response = await api.post('/jaap/reminder', {
         mantra_type: mantraType,
@@ -1576,8 +1569,6 @@ export default function HomeScreen() {
       const active = response.data.active;
 
       setReminders(prev => ({ ...prev, [mantraType]: active }));
-
-      if (silent) return active;
 
       let readableMantra = '';
       if (t('language') === 'hi') {
@@ -1607,16 +1598,10 @@ export default function HomeScreen() {
       }
     } catch (err: any) {
       console.error('Failed to toggle reminder on home:', err);
-      if (!silent) {
-        Alert.alert(
-          t('language') === 'hi' ? 'त्रुटि' : 'Error',
-          t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
-        );
-      }
-    } finally {
-      setTimeout(() => {
-        reminderDebounceRef.current[mantraType] = false;
-      }, 1000);
+      Alert.alert(
+        t('language') === 'hi' ? 'त्रुटि' : 'Error',
+        t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
+      );
     }
   };
 
@@ -1714,7 +1699,7 @@ export default function HomeScreen() {
         if (!store.vendors || store.vendors.length === 0) {
           store.fetchVendors().catch(() => { });
         }
-        fetchReminders(true);
+        fetchReminders();
       });
       return () => {
         task.cancel();
@@ -3151,15 +3136,7 @@ export default function HomeScreen() {
                 {/* Live Katha Banner (First) */}
                 {(() => {
                   return (
-                    <TouchableOpacity
-                      activeOpacity={0.95}
-                      onPress={() => {
-                        router.push({
-                          pathname: '/shravan-paath',
-                        });
-                      }}
-                      style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
-                    >
+                    <View style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}>
                       <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
                         <Image
                           source={require('../../assets/images/panditji.png')}
@@ -3240,22 +3217,22 @@ export default function HomeScreen() {
                           justifyContent: 'flex-start',
                           alignItems: 'flex-start',
                         }}>
-                          {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा (Curved Royal Devotional Poster Typography) */}
+                          {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा (Crisp Single-Node 3D Devotional Poster Typography) */}
                           <View style={{
                             width: '100%',
                             alignItems: 'flex-start',
                           }}>
-                            {/* श्रावण मास with unified curved arc & gold flourish */}
-                            <View style={{ paddingLeft: 8, transform: [{ rotate: '-1.5deg' }] }}>
+                            {/* श्रावण मास with single-node 3D depth effect */}
+                            <View style={{ paddingLeft: 10 }}>
                               <Text
                                 numberOfLines={1}
                                 style={{
                                   color: '#FFFFF2',
-                                  fontSize: Platform.OS === 'android' ? 28 : 34,
+                                  fontSize: Platform.OS === 'android' ? 27 : 33,
                                   fontWeight: '900',
                                   fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                                  lineHeight: Platform.OS === 'android' ? 31 : 37,
-                                  letterSpacing: 0.4,
+                                  lineHeight: Platform.OS === 'android' ? 30 : 36,
+                                  letterSpacing: 0.5,
                                   textAlign: 'left',
                                   textShadowColor: 'rgba(50, 18, 0, 0.98)',
                                   textShadowOffset: { width: 2, height: 3 },
@@ -3266,17 +3243,17 @@ export default function HomeScreen() {
                               </Text>
                             </View>
 
-                            {/* शिव कथा with gold bevel, subtle curved arc & leading flourish */}
-                            <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 22, marginTop: Platform.OS === 'android' ? 1 : 2, transform: [{ rotate: '-1.5deg' }] }}>
+                            {/* शिव कथा with gold bevel single-node 3D depth effect */}
+                            <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 24, marginTop: Platform.OS === 'android' ? 1 : 2 }}>
                               <Text
                                 numberOfLines={1}
                                 style={{
                                   color: '#FFE58F',
-                                  fontSize: Platform.OS === 'android' ? 24 : 29,
+                                  fontSize: Platform.OS === 'android' ? 23 : 28,
                                   fontWeight: '900',
                                   fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                                  lineHeight: Platform.OS === 'android' ? 27 : 32,
-                                  letterSpacing: 0.4,
+                                  lineHeight: Platform.OS === 'android' ? 26 : 31,
+                                  letterSpacing: 0.5,
                                   textAlign: 'left',
                                   textShadowColor: 'rgba(50, 18, 0, 0.98)',
                                   textShadowOffset: { width: 2, height: 3 },
@@ -3366,20 +3343,15 @@ export default function HomeScreen() {
                               हर दिन LIVE श्रावण माह में
                             </Text>
 
-                            {/* Uiverse Notify Button with sliding hover fill & delayed navigation to shravan-paath */}
+                            {/* Uiverse Notify Button with sliding hover fill & navigation to shravan-paath */}
                             <UiverseNotifyButton
                               isNotified={!!reminders['shravan_katha']}
                               onPress={() => {
-                                handleSetReminder('shravan_katha', 'Shravan Shiv Katha', true);
-                                setTimeout(() => {
-                                  router.push({
-                                    pathname: '/shravan-paath',
-                                    params: { showSetToast: '1' }
-                                  });
-                                }, 500);
+                                handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                                router.push('/shravan-paath');
                               }}
                               label="Notify Me"
-                              notifiedLabel="You're In"
+                              notifiedLabel="Notified"
                               size="small"
                               style={{
                                 marginTop: Platform.OS === 'android' ? 3 : 5,
@@ -3389,7 +3361,7 @@ export default function HomeScreen() {
                           </View>
                         </View>
                       </View>
-                    </TouchableOpacity>
+                    </View>
                   );
                 })()}
 
@@ -4056,7 +4028,7 @@ export default function HomeScreen() {
                 cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
               }
               const cityId = resolvedCityComm.id;
-              const cityMembers = (resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 48) * 11;
+              const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
               return (
                 <Pressable
                   style={({ pressed }) => [
@@ -4098,7 +4070,7 @@ export default function HomeScreen() {
               if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
                 realGroupName = 'पुणे भोजन साझाकरण समूह';
               }
-              const localMembers = (resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 21) * 11;
+              const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
               const localSubgroup = resolvedLocalComm.type || 'city';
               return (
                 <Pressable
