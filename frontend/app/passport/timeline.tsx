@@ -224,7 +224,7 @@ function PassportTimelineScreen({
               const { database } = require('../../src/database');
               const { useFeedStore } = require('../../src/store/feedStore');
               const { usePassportStore } = require('../../src/store/passportStore');
-              const { syncDatabase } = require('../../src/database/sync');
+              const { SyncManager } = require('../../src/database/syncManager');
               
               await database.write(async () => {
                 const journeysCollection = database.get('passport_journeys');
@@ -263,7 +263,7 @@ function PassportTimelineScreen({
                 });
                 
                 // Trigger sync to notify backend of deletion
-                syncDatabase().catch((err: any) => console.warn('[Timeline] Sync failed:', err));
+                SyncManager.requestSync();
               });
               
               Alert.alert("Success", "All journeys have been cleared.");

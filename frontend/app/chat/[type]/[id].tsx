@@ -513,10 +513,10 @@ const ChatScreen = ({
       }
       if (Platform.OS !== 'web') {
         try {
-          const { syncDatabase } = require('../../../src/database/sync');
-          syncDatabase().catch((err: any) => console.warn('[Chat] Background sync failed on mount:', err));
+          const { SyncManager } = require('../../../src/database/syncManager');
+          SyncManager.requestSync();
         } catch (e) {
-          console.warn('[Chat] Failed to require syncDatabase:', e);
+          console.warn('[Chat] Failed to require SyncManager:', e);
         }
       }
       await fetchMessages(false);

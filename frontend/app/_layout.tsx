@@ -23,7 +23,7 @@ import { ToastContainer } from '../src/components/ToastContainer';
 import { UploadProgressBanner } from '../src/components/UploadProgressBanner';
 import { toast } from '../src/store/toastStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
-import { syncDatabase } from '../src/database/sync';
+import { SyncManager } from '../src/database/syncManager';
 import { GlobalFAB } from '../src/components/GlobalFAB';
 import { initSyncQueueListener } from '../src/services/syncQueueService';
 import { socketService } from '../src/services/socket';
@@ -476,10 +476,10 @@ function useNotificationResponseHandler() {
         // Trigger background sync immediately when user taps on DM notification
         if (Platform.OS !== 'web') {
           try {
-            const { syncDatabase } = require('../src/database/sync');
-            syncDatabase().catch((err: any) => console.warn('[Push] Background sync failed:', err));
+            const { SyncManager } = require('../src/database/syncManager');
+            SyncManager.requestSync();
           } catch (e) {
-            console.warn('[Push] Failed to require syncDatabase:', e);
+            console.warn('[Push] Failed to require SyncManager:', e);
           }
         }
         navigateToDm(data.chat_id);
@@ -621,10 +621,10 @@ function useMutedNotificationFilter() {
         if (data?.type === 'dm' || data?.type === 'message' || data?.type === 'circle_message') {
           if (Platform.OS !== 'web') {
             try {
-              const { syncDatabase } = require('../src/database/sync');
-              syncDatabase().catch((err: any) => console.warn('[Push] Foreground sync on message failed:', err));
+              const { SyncManager } = require('../src/database/syncManager');
+              SyncManager.requestSync();
             } catch (e) {
-              console.warn('[Push] Failed to require syncDatabase:', e);
+              console.warn('[Push] Failed to require SyncManager:', e);
             }
           }
         }
@@ -882,9 +882,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     if (!isLoading && isAuthenticated && token) {
-      syncDatabase()
-        .then(() => console.log('[Sync] WatermelonDB sync complete on startup'))
-        .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
+      SyncManager.requestSync();
     }
   }, [isLoading, isAuthenticated, token]);
 
@@ -957,10 +955,10 @@ export default function RootLayout() {
         if (type === 'dm' && data.chat_id) {
           if (Platform.OS !== 'web') {
             try {
-              const { syncDatabase } = require('../src/database/sync');
-              syncDatabase().catch((err: any) => console.warn('[NotificationTap] Background sync failed:', err));
+              const { SyncManager } = require('../src/database/syncManager');
+              SyncManager.requestSync();
             } catch (e) {
-              console.warn('[NotificationTap] Failed to require syncDatabase:', e);
+              console.warn('[NotificationTap] Failed to require SyncManager:', e);
             }
           }
           navigateOrQueue(`/dm/${data.chat_id}`);

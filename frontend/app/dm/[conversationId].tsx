@@ -1104,10 +1104,10 @@ const DirectMessageScreen = () => {
     // Trigger WatermelonDB sync in background immediately on screen mount
     if (Platform.OS !== 'web') {
       try {
-        const { syncDatabase } = require('../../src/database/sync');
-        syncDatabase().catch((err: any) => console.warn('[DM] Background sync failed on mount:', err));
+        const { SyncManager } = require('../../src/database/syncManager');
+        SyncManager.requestSync();
       } catch (e) {
-        console.warn('[DM] Failed to require syncDatabase:', e);
+        console.warn('[DM] Failed to require SyncManager:', e);
       }
     }
 
