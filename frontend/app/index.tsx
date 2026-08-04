@@ -15,15 +15,6 @@ const LotusOrnament = () => (
 export default function IndexRoute() {
   const { token, isLoading } = useAuthStore();
   const router = useRouter();
-  const [timePassed, setTimePassed] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setTimePassed(true);
-    }, 1500); // 1.5 seconds minimum show time for splash screen
-
-    return () => clearTimeout(timer);
-  }, []);
 
   // Pre-screen invalid/corrupted token
   useEffect(() => {
@@ -34,141 +25,21 @@ export default function IndexRoute() {
   }, [token, isLoading]);
 
   useEffect(() => {
-    if (timePassed && !isLoading) {
+    if (!isLoading) {
       if (token && token !== '>' && token.length >= 10) {
         safeNavigate(() => router.replace('/home'));
-      } else if (!token || token === '>' || token.length < 10) {
+      } else {
         safeNavigate(() => router.replace('/auth/entry-animation'));
       }
     }
-  }, [timePassed, isLoading, token, router]);
+  }, [isLoading, token, router]);
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <View style={styles.imageContainer}>
-          <Image
-            source={require('../assets/images/icon.png')}
-            style={styles.lotusImage}
-            resizeMode="contain"
-          />
-        </View>
-        
-        <View style={styles.contentContainer}>
-          <Text style={styles.title}>BRAHMAND</Text>
-          
-          <View style={styles.dividerContainer}>
-            <View style={styles.line} />
-            <View style={styles.ornamentWrapper}>
-              <LotusOrnament />
-            </View>
-            <View style={styles.line} />
-          </View>
-          
-          <Text style={styles.subtitle}>The Daily Sanatan Community</Text>
-          
-          <View style={styles.dividerContainer}>
-            <View style={styles.line} />
-            <View style={styles.ornamentWrapper}>
-              <LotusOrnament />
-            </View>
-            <View style={styles.line} />
-          </View>
-          
-          <Text style={styles.tagline}>Dharma • Safety • Trusted help</Text>
-        </View>
-      </View>
-    </View>
-  );
+  return <View style={styles.container} />;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  card: {
-    width: 357,
-    height: 537,
-    backgroundColor: '#000000',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#322B20',
-    overflow: 'hidden',
-    alignItems: 'center',
-  },
-  imageContainer: {
-    width: 357,
-    height: 370,
-    borderRadius: 22,
-    overflow: 'hidden',
-  },
-  lotusImage: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.0 }],
-  },
-  contentContainer: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingBottom: 38,
-    paddingHorizontal: 20,
-    marginTop: 0,
-  },
-  title: {
-    fontSize: 24,
-    fontFamily: FONTS.brandTitle, // LOCKED: Brand typography identity
-    color: '#E6C87A',
-    letterSpacing: 14,
-    textAlign: 'center',
-    paddingLeft: 14,
-    fontStyle: 'normal',
-    lineHeight: 30,
-    marginTop: 2,
-    marginBottom: 5,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 248,
-    height: 12,
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  line: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#D4AF37',
-    opacity: 0.8,
-  },
-  ornamentWrapper: {
-    marginHorizontal: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  subtitle: {
-    fontSize: 13,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    color: '#F5EEDC',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-    lineHeight: 18,
-    includeFontPadding: false,
-    paddingHorizontal: 8,
-  },
-  tagline: {
-    fontSize: 14,
-    fontFamily: Platform.OS === 'ios' ? 'SF Pro Text' : 'System',
-    color: '#FFB065',
-    letterSpacing: -0.15,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginTop: 12,
-    includeFontPadding: false,
-    paddingHorizontal: 8,
   },
 });

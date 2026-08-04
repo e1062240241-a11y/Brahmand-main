@@ -22,6 +22,7 @@ import { Image } from "expo-image";
 import { getSafeImagePicker } from "../utils/safeImagePicker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { COLORS, SPACING } from "../constants/theme";
 import { uploadUserPost, getAllUsers } from "../services/api";
@@ -365,6 +366,24 @@ export const UploadPostModal = ({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isCompressing, setIsCompressing] = useState<boolean>(false);
   const [mutedAudio, setMutedAudio] = useState(false);
+
+  const btnScaleAnim = useRef(new Animated.Value(1)).current;
+  const handleBtnPressIn = () => {
+    Animated.spring(btnScaleAnim, {
+      toValue: 1.1,
+      useNativeDriver: true,
+      friction: 4,
+      tension: 300,
+    }).start();
+  };
+  const handleBtnPressOut = () => {
+    Animated.spring(btnScaleAnim, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 4,
+      tension: 300,
+    }).start();
+  };
 
   const videoPreviewStyle = useMemo(() => ({ width: "100%", height: "100%" }), []);
 
@@ -942,17 +961,7 @@ export const UploadPostModal = ({
             <Text style={styles.title}>
               {t("language") === "hi" ? "नई पोस्ट बनाएं" : "Create New Post"}
             </Text>
-            <TouchableOpacity
-              onPress={handleUpload}
-              disabled={!canUpload}
-              style={[styles.topPostBtn, !canUpload && styles.topPostBtnDisabled]}
-              accessibilityLabel="Create post"
-              accessibilityRole="button"
-            >
-              <Text style={[styles.topPostBtnText, !canUpload && styles.topPostBtnTextDisabled]}>
-                {t("createPost")}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ width: 40 }} />
           </View>
           <KeyboardAwareScrollView
             style={{ flex: 1 }}
@@ -1348,16 +1357,34 @@ export const UploadPostModal = ({
                     {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
                   </Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.submitBtn,
-                    !canUpload && styles.uploadBtnDisabled,
-                  ]}
-                  onPress={handleUpload}
-                  disabled={!canUpload}
-                >
-                  <Text style={styles.submitBtnText}>{t("createPost")}</Text>
-                </TouchableOpacity>
+                <Animated.View style={[{ flex: 2 }, { transform: [{ scale: btnScaleAnim }] }]}>
+                  <TouchableOpacity
+                    style={[
+                      styles.submitBtn,
+                      !canUpload && styles.uploadBtnDisabled,
+                    ]}
+                    onPress={handleUpload}
+                    onPressIn={canUpload ? handleBtnPressIn : undefined}
+                    onPressOut={canUpload ? handleBtnPressOut : undefined}
+                    disabled={!canUpload}
+                    activeOpacity={0.85}
+                  >
+                    {canUpload ? (
+                      <LinearGradient
+                        colors={["#FF4500", "#FF8C00", "#FFC700"]}
+                        start={{ x: 0, y: 0.5 }}
+                        end={{ x: 1, y: 0.5 }}
+                        style={styles.gradientSubmitBtn}
+                      >
+                        <Text style={styles.submitBtnText}>{t("createPost")}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <Text style={[styles.submitBtnText, { color: "#A0A0A0", textShadowRadius: 0 }]}>
+                        {t("createPost")}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </Animated.View>
               </View>
             )}
           </View>
@@ -1706,20 +1733,36 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   submitBtn: {
-    flex: 2,
-    backgroundColor: COLORS.primary,
+    width: "100%",
     borderRadius: 100,
+    overflow: "hidden",
     alignItems: "center",
     justifyContent: "center",
+    shadowColor: "rgb(255, 94, 0)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  gradientSubmitBtn: {
+    width: "100%",
     paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
   },
   submitBtnText: {
-    color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
+    color: "#F0F8FF",
+    fontSize: 16,
+    fontWeight: "900",
+    textShadowColor: "rgba(0, 0, 0, 0.8)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   uploadBtnDisabled: {
     backgroundColor: "#E0E0E0",
+    paddingVertical: 14,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   uploadingContainer: {
     alignItems: "center",
