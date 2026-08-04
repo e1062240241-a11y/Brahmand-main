@@ -406,20 +406,27 @@ const ChatScreen = ({
       return;
     }
 
-    if (!isInitialLoad) {
-      return;
-    }
-
     try {
       let response;
+      const pageSize = 50;
+      const fetchLimit = isInitialLoad ? pageSize : offset + pageSize;
+
       if (type === 'community') {
-        response = await getCommunityMessages(id!, subgroup || 'city');
+        response = await getCommunityMessages(id!, subgroup || 'city', fetchLimit);
         setIsVerified(true);
       } else {
-        response = await getCircleMessages(id!);
+        response = await getCircleMessages(id!, fetchLimit);
         setIsVerified(true);
       }
+
       const fetchedMsgs = response.data || [];
+
+      // Since we fetch total limits, we check if the new data returned is less than what we asked for
+      if (fetchedMsgs.length < fetchLimit) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
 
       if (Platform.OS !== 'web' && fetchedMsgs.length > 0) {
         await database.write(async () => {
