@@ -204,15 +204,21 @@ export default function EntryAnimationScreen() {
           <Text style={styles.continueButtonText}>Continue</Text>
         </TouchableOpacity>
 
-        {/* Admin Login Helper */}
+        {/* Admin Login Helper & Web Footer */}
         {Platform.OS === 'web' && (
-          <TouchableOpacity
-            style={styles.adminLoginButton}
-            onPress={() => router.push('/admin/login')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.adminLoginText}>Login as Admin</Text>
-          </TouchableOpacity>
+          <View style={styles.webFooterContainer}>
+            <Text style={styles.webFooterText}>
+              © 2026 Brahmand. Operated by SNV Overseas LLP.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.adminLoginButton}
+              onPress={() => router.push('/admin/login')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.adminLoginText}>Login as Admin</Text>
+            </TouchableOpacity>
+          </View>
         )}
 
       </View>
@@ -412,12 +418,23 @@ const styles = StyleSheet.create({
   },
   adminLoginButton: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   adminLoginText: {
     color: '#666666',
     fontSize: 14,
     textDecorationLine: 'underline',
     fontWeight: '600',
+  },
+  webFooterContainer: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  webFooterText: {
+    color: '#777777',
+    fontSize: 12,
+    marginTop: 8,
+    textAlign: 'center',
+    fontWeight: '400',
   },
 });
