@@ -1,0 +1,704 @@
+[
+  {
+    "temple_id": "jyotirling-somnath-temple-gujarat",
+    "name": "Somnath Temple – Gujarat",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Prabhas Patan",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Somnath Temple is the first among the twelve sacred Jyotirling shrines of Lord Shiva, located at Prabhas Patan on the Gujarat coast. Revered for its deep spiritual significance and long history of restoration, Somnath remains a premier pilgrimage destination where devotees gather for daily darshan, aarti, and traditional rituals.",
+    "aarti_timings": {
+      "Mangala Aarti": "7:00 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "To reach Somnath Temple, travel to Veraval railway station (7 km) or Diu airport (80 km), then continue by taxi or local transport. Visit during early morning or evening aarti for a smoother experience.",
+    "coords": {
+      "latitude": 20.888,
+      "longitude": 70.4012
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:00 PM"
+    },
+    "contact": "02876 231 200",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCXhail7h5FDRbHprlR56nIw",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-mallikarjuna-temple-srisailam",
+    "name": "Mallikarjuna Temple – Srisailam",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Srisailam",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Mallikarjuna Jyotirling at Srisailam in Andhra Pradesh is a sacred site revered both as a Jyotirlinga and a Shakti Peetha (Bhramaramba Devi). Set in the Nallamala hills along the Krishna River, it is one of the holiest shrines in South India.",
+    "aarti_timings": {
+      "Suprabhata Seva": "4:30 AM",
+      "Maha Mangala Aarti": "12:00 PM",
+      "Ratri Aarti": "8:30 PM"
+    },
+    "guidance": "Reach Hyderabad or Kurnool and take a scenic road journey to Srisailam through the forest reserve. Book accommodation in advance during Mahashivratri and Shravan month.",
+    "coords": {
+      "latitude": 16.0728,
+      "longitude": 78.8686
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 3:30 PM, 6:00 PM - 10:00 PM"
+    },
+    "contact": "+91-8524-288888",
+    "youtube_url": "https://www.youtube.com/watch?v=nIWRUyfS5PA",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-mahakaleshwar-temple-ujjain",
+    "name": "Mahakaleshwar Temple – Ujjain",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Ujjain",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Mahakaleshwar Jyotirling in Ujjain is famous for its Dakshinmukhi (south-facing) idol and the world-renowned daily morning Bhasma Aarti. Situated on the banks of the holy Kshipra River, Ujjain is a key Kumbh Mela host city.",
+    "aarti_timings": {
+      "Bhasma Aarti": "4:00 AM",
+      "Madhyahna Aarti": "10:30 AM",
+      "Sandhya Aarti": "6:00 PM"
+    },
+    "guidance": "Reach Ujjain Junction railway station or Indore Airport (55 km). Advance online booking is strictly required for inner-sanctum Bhasma Aarti attendance.",
+    "coords": {
+      "latitude": 23.1828,
+      "longitude": 75.7682
+    },
+    "timings": {
+      "Darshan": "4:00 AM - 11:00 PM"
+    },
+    "contact": "0734 255 0563",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCQE_hlxeDSuw4YpuAkDmrMg",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-omkareshwar-temple-madhya-pradesh",
+    "name": "Omkareshwar Temple – Madhya Pradesh",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Khandwa",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Omkareshwar Jyotirling is located on Mandhata Island in the Narmada River, naturally shaped like the sacred symbol 'OM'. Devotees cross the Narmada via bridges or boats to seek blessings of Lord Omkareshwar and Mamleshwar.",
+    "aarti_timings": {
+      "Mangala Aarti": "5:00 AM",
+      "Madhyan Bhog": "12:20 PM",
+      "Sandhya Aarti": "8:00 PM"
+    },
+    "guidance": "Reach Indore (80 km) or Khandwa (70 km) by rail/road. Complete both Omkareshwar and Mamleshwar temple visits to fulfill the traditional island pilgrimage.",
+    "coords": {
+      "latitude": 22.2456,
+      "longitude": 76.151
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 9:30 PM"
+    },
+    "contact": "+91-7323-271227",
+    "youtube_url": "https://shriomkareshwar.org/LiveDarshan.aspx",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-kedarnath-temple-uttarakhand",
+    "name": "Kedarnath Temple – Uttarakhand",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Rudraprayag",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Kedarnath Temple, situated near the Mandakini River at an altitude of 3,583 meters in the Garhwal Himalayas, is one of the holiest Shiva shrines and part of the Chota Char Dham yatra.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Shiv Sahasranama Puja": "6:00 PM",
+      "Evening Aarti": "7:30 PM"
+    },
+    "guidance": "Reach Gaurikund via Rishikesh/Haridwar, then complete the 16 km mountain trek to Kedarnath. Biometric Yatra registration is mandatory for all pilgrims.",
+    "coords": {
+      "latitude": 30.7352,
+      "longitude": 79.0669
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 3:00 PM, 5:00 PM - 8:00 PM"
+    },
+    "contact": "+91-135-2746847",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-bhimashankar-temple-maharashtra",
+    "name": "Bhimashankar Temple – Maharashtra",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Pune district",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Bhimashankar Jyotirling is located in the dense Sahyadri forest range near Pune. It is the origin of the Bhima River and is built in ancient Nagara-style architecture amidst lush wildlife sanctuary flora.",
+    "aarti_timings": {
+      "Kakada Aarti": "4:30 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "9:30 PM"
+    },
+    "guidance": "Accessible by direct MSRTC state buses or taxis from Pune (110 km) and Mumbai (210 km). Monsoon season brings heavy rain and breathtaking natural scenery.",
+    "coords": {
+      "latitude": 19.0714,
+      "longitude": 73.553
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 9:30 PM"
+    },
+    "contact": "+91-2135-243333",
+    "youtube_url": "https://www.youtube.com/live/O5ohAPCGsho",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-kashi-vishwanath-temple-varanasi",
+    "name": "Kashi Vishwanath Temple – Varanasi",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Kashi Vishwanath Jyotirling in Varanasi (Kashi) stands on the western bank of the sacred Ganges. Revered as the spiritual capital of India, the recently constructed Vishwanath Corridor directly connects the temple with Ganga Ghats.",
+    "aarti_timings": {
+      "Mangala Aarti": "3:00 AM",
+      "Bhog Aarti": "11:15 AM",
+      "Sapt Rishi Aarti": "7:00 PM"
+    },
+    "guidance": "Reach Varanasi Junction railway station or Babatpur Airport. Carry valid photo ID for quick entry through the Kashi Vishwanath Corridor security gates.",
+    "coords": {
+      "latitude": 25.3109,
+      "longitude": 83.0107
+    },
+    "timings": {
+      "Darshan": "4:00 AM - 11:00 PM"
+    },
+    "contact": "0542 239 2629",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCijUmzuXOxyLWv0APau_5xw",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-trimbakeshwar-temple-nashik",
+    "name": "Trimbakeshwar Temple – Nashik",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Nashik",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Trimbakeshwar Jyotirling near Nashik is unique because its lingam features three faces representing Brahma, Vishnu, and Mahesh. It marks the holy source of the Godavari River at Brahmagiri hill.",
+    "aarti_timings": {
+      "Mangala Aarti": "5:30 AM",
+      "Madhyan Aarti": "1:00 PM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Reach Nashik Road station (38 km) and take city buses or taxis to Trimbak town. Special pujas like Kalsarpa Shanti require pre-registration with registered temple pandits.",
+    "coords": {
+      "latitude": 19.9419,
+      "longitude": 73.5298
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 9:00 PM"
+    },
+    "contact": "02594 220 555",
+    "youtube_url": "https://www.trimbakeshwartrust.com",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-baidyanath-temple-deoghar",
+    "name": "Baidyanath Temple – Deoghar",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Deoghar",
+      "state": "Jharkhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Baidyanath Dham in Deoghar (Baba Dham) is revered as the divine healer Lord Shiva's home. Millions of Kanwariyas trek from Sultanganj carrying sacred Ganga water during the holy month of Shravan.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:00 AM",
+      "Bhog Aarti": "1:00 PM",
+      "Sandhya Aarti": "6:30 PM"
+    },
+    "guidance": "Deoghar is well connected by Jasidih Junction railway station (8 km) and Deoghar Airport. Ensure advance queue pass booking during Shravan Mela.",
+    "coords": {
+      "latitude": 24.4844,
+      "longitude": 86.6994
+    },
+    "timings": {
+      "Darshan": "4:00 AM - 3:30 PM, 6:00 PM - 9:00 PM"
+    },
+    "contact": "+91-6432-232295",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCXKgkQYWYVFM6HpCkmuOFFw",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-nageshwar-temple-dwarka",
+    "name": "Nageshwar Temple – Dwarka",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Dwarka",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Nageshwar Jyotirling is located between Dwarka city and Beyt Dwarka island. The shrine features a famous giant 85-foot statue of Lord Shiva sitting in majestic meditation posture.",
+    "aarti_timings": {
+      "Mangala Aarti": "5:00 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Located 16 km from Dwarka railway station along the highway to Beyt Dwarka. Combine your visit with Dwarkadhish Mandir and Beyt Dwarka for a full coastal pilgrimage.",
+    "coords": {
+      "latitude": 22.4707,
+      "longitude": 69.086
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 9:00 PM"
+    },
+    "contact": "+91-2892-234080",
+    "youtube_url": "https://livedarshanhub.com/temple/nageshwar-jyotirlinga-temple/",
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-ramanathaswamy-temple-rameswaram",
+    "name": "Ramanathaswamy Temple – Rameswaram",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Rameswaram",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Ramanathaswamy Temple on Rameswaram Island in Tamil Nadu is part of both the 12 Jyotirlingas and the Bada Char Dham. It boasts the longest corridor of any Hindu temple in the world with over 1,200 stone pillars.",
+    "aarti_timings": {
+      "Spatika Linga Darshan": "5:00 AM",
+      "Kala Santhi Puja": "10:00 AM",
+      "Ardha Jama Puja": "8:30 PM"
+    },
+    "guidance": "Reach Rameswaram station or Madurai Airport (170 km). Pilgrims traditionally bathe in the 22 holy wells (Teerthams) inside temple premises prior to main lingam darshan.",
+    "coords": {
+      "latitude": 9.2881,
+      "longitude": 79.3174
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 1:00 PM, 3:00 PM - 9:00 PM"
+    },
+    "contact": "04573 221 223",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "jyotirling-grishneshwar-temple-ellora",
+    "name": "Grishneshwar Temple – Ellora",
+    "category": "Jyotirlinga",
+    "location": {
+      "city": "Ellora",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Grishneshwar (Ghrushneshwar) Jyotirling near Chhatrapati Sambhaji Nagar (Aurangabad) is the 12th Jyotirlinga shrine. Rebuilt by Ahilyabai Holkar in red rock, it stands adjacent to the UNESCO World Heritage Ellora Caves.",
+    "aarti_timings": {
+      "Mangala Aarti": "5:30 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Sandhya Aarti": "7:30 PM"
+    },
+    "guidance": "Located 30 km from Chhatrapati Sambhaji Nagar railway station/airport. Traditional dress code is strictly observed for men entering the inner sanctum.",
+    "coords": {
+      "latitude": 20.0258,
+      "longitude": 75.178
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 9:30 PM"
+    },
+    "contact": "+91-2437-244222",
+    "youtube_url": "https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg",
+    "is_verified": true
+  },
+  {
+    "temple_id": "chardham-badrinath-temple-uttarakhand",
+    "name": "Badrinath Temple – Uttarakhand",
+    "category": "Char Dham",
+    "location": {
+      "city": "Badrinath",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Vishnu",
+    "description": "Badrinath Temple in Chamoli district sits along the Alaknanda River between Nar and Narayana mountain ranges. Dedicated to Lord Badrinarayana (Vishnu), it is the prime seat of Adi Shankaracharya's Char Dham circuit.",
+    "aarti_timings": {
+      "Maha Aarti": "6:00 AM",
+      "Kapoor Aarti": "6:30 PM",
+      "Shayan Aarti": "9:00 PM"
+    },
+    "guidance": "Travel by road from Haridwar/Rishikesh via Joshimath. The temple opens annually from April/May to November depending on astrological dates.",
+    "coords": {
+      "latitude": 30.7433,
+      "longitude": 79.4938
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 1:00 PM, 4:00 PM - 9:00 PM"
+    },
+    "contact": "+91-135-2746847",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "chardham-dwarkadhish-temple-dwarka",
+    "name": "Dwarkadhish Temple – Dwarka",
+    "category": "Char Dham",
+    "location": {
+      "city": "Dwarka",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Krishna",
+    "description": "Shri Dwarkadhish Temple (Jagat Mandir) in Dwarka, Gujarat, is dedicated to Lord Krishna as the King of Dwarka. Situated at the confluence of Gomti River and Arabian Sea, its 52-yard flag changes five times daily.",
+    "aarti_timings": {
+      "Mangla Aarti": "6:30 AM",
+      "Shringar Aarti": "10:30 AM",
+      "Sandhya Aarti": "7:30 PM",
+      "Shayan Aarti": "8:30 PM"
+    },
+    "guidance": "Easily accessible via Dwarka Railway Station. Early morning Mangla Aarti and evening Gomti Ghat aarti offer deep spiritual experiences.",
+    "coords": {
+      "latitude": 22.2378,
+      "longitude": 68.9678
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 1:00 PM, 5:00 PM - 9:30 PM"
+    },
+    "contact": "+91-2892-234080",
+    "youtube_url": "https://www.youtube.com/@shridwarkadhishmandirofficial",
+    "is_verified": true
+  },
+  {
+    "temple_id": "chardham-jagannath-temple-puri",
+    "name": "Jagannath Temple – Puri",
+    "category": "Char Dham",
+    "location": {
+      "city": "Puri",
+      "state": "Odisha",
+      "country": "India"
+    },
+    "deity": "Lord Jagannath",
+    "description": "Jagannath Temple in Puri is a 12th-century marvel dedicated to Lord Jagannath, Balabhadra, and Subhadra. Celebrated globally for its magnificent annual Rath Yatra (Chariot Festival) and Mahaprasad cooked in earthen pots.",
+    "aarti_timings": {
+      "Mangala Aarti": "5:30 AM",
+      "Madhyan Dhupa": "1:00 PM",
+      "Sandhya Dhupa": "7:00 PM"
+    },
+    "guidance": "Reach Puri railway station (2.5 km) or Bhubaneswar airport (60 km). Leather items, cameras, and mobile phones are prohibited inside the shrine complex.",
+    "coords": {
+      "latitude": 19.8049,
+      "longitude": 85.8189
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 10:00 PM"
+    },
+    "contact": "+91-6752-222002",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCxnh8tVFUMlhruMpa7Bycng",
+    "is_verified": true
+  },
+  {
+    "temple_id": "chardham-yamunotri-temple-uttarakhand",
+    "name": "Yamunotri Temple – Uttarakhand",
+    "category": "Char Dham",
+    "location": {
+      "city": "Uttarkashi",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Yamuna",
+    "description": "Yamunotri Temple in Uttarkashi district marks the origin of the sacred Yamuna River. Pilgrims cook rice in the boiling natural thermal springs of Surya Kund to offer as divine prasadam.",
+    "aarti_timings": {
+      "Mangal Aarti": "6:30 AM",
+      "Sandhya Aarti": "6:30 PM"
+    },
+    "guidance": "Reach Janki Chatti by vehicle from Dehradun/Barkot, then trek 6 km to Yamunotri shrine. Pony and palanquin services are readily available.",
+    "coords": {
+      "latitude": 31.0142,
+      "longitude": 78.4599
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "+91-1371-222226",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "chardham-gangotri-temple-uttarakhand",
+    "name": "Gangotri Temple – Uttarakhand",
+    "category": "Char Dham",
+    "location": {
+      "city": "Uttarkashi",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Ganga",
+    "description": "Gangotri Temple, located at an elevation of 3,100 meters on the banks of Bhagirathi River in Uttarkashi, celebrates the earthly descent of holy Goddess Ganga from Lord Shiva's locks.",
+    "aarti_timings": {
+      "Mangal Aarti": "6:00 AM",
+      "Sandhya Aarti": "6:30 PM"
+    },
+    "guidance": "Accessible directly by motorable road from Uttarkashi town (100 km). Pilgrims visit Bhagirath Shila near the temple where King Bhagirath meditated.",
+    "coords": {
+      "latitude": 30.9947,
+      "longitude": 78.9398
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:30 PM"
+    },
+    "contact": "+91-1374-222212",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "panchbhoota-ekambareswarar-temple-kanchipuram",
+    "name": "Ekambareswarar Temple – Kanchipuram",
+    "category": "Panch Bhoota Sthalam",
+    "location": {
+      "city": "Kanchipuram",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Ekambareswarar Temple in Kanchipuram represents the Earth element (Prithvi Stalam). Famous for its ancient 3,500-year-old mango tree whose four branches yield four different varieties of mangoes.",
+    "aarti_timings": {
+      "Ushathkalam": "6:00 AM",
+      "Uchikalam": "12:00 PM",
+      "Sayarakshai": "6:00 PM"
+    },
+    "guidance": "Located in central Kanchipuram silk town, 75 km from Chennai. Easily reachable by rail and national highway buses.",
+    "coords": {
+      "latitude": 12.8438,
+      "longitude": 79.7008
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 12:30 PM, 4:00 PM - 8:30 PM"
+    },
+    "contact": "044 2722 2084",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "panchbhoota-jambukeswarar-temple-thiruvanaikaval",
+    "name": "Jambukeswarar Temple – Thiruvanaikaval",
+    "category": "Panch Bhoota Sthalam",
+    "location": {
+      "city": "Tiruchirappalli",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Jambukeswarar Temple (Thiruvanaikaval) in Trichy represents the Water element (Appu Stalam). An underground natural spring continuously flows under the sanctum sanctorum lingam.",
+    "aarti_timings": {
+      "Kala Santhi": "8:00 AM",
+      "Uchikalam": "12:00 PM",
+      "Sayarakshai": "6:00 PM"
+    },
+    "guidance": "Located near Srirangam island in Trichy. Reach via Trichy Junction station (8 km) or Tiruchirappalli International Airport.",
+    "coords": {
+      "latitude": 10.8533,
+      "longitude": 78.7056
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 1:00 PM, 3:00 PM - 8:30 PM"
+    },
+    "contact": "0431 223 0257",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "panchbhoota-arunachaleswarar-temple-thiruvannamalai",
+    "name": "Arunachaleswarar Temple – Thiruvannamalai",
+    "category": "Panch Bhoota Sthalam",
+    "location": {
+      "city": "Thiruvannamalai",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Arunachaleswarar Temple at the foot of Arunachala hill represents the Fire element (Agni Stalam). Renowned for its huge Karthigai Deepam festival where a massive beacon fire is lit on top of Arunachala hill.",
+    "aarti_timings": {
+      "Ushathkalam": "5:30 AM",
+      "Uchikalam": "11:30 AM",
+      "Sayarakshai": "6:30 PM"
+    },
+    "guidance": "Located 185 km from Chennai. Millions of pilgrims perform the sacred 14 km Girivalam circumambulation around Arunachala hill on Full Moon nights.",
+    "coords": {
+      "latitude": 12.2319,
+      "longitude": 79.0677
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 12:30 PM, 3:30 PM - 9:30 PM"
+    },
+    "contact": "04175 222 408",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "panchbhoota-srikalahasteeswara-temple-srikalahasti",
+    "name": "Srikalahasteeswara Temple – Srikalahasti",
+    "category": "Panch Bhoota Sthalam",
+    "location": {
+      "city": "Srikalahasti",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Srikalahasteeswara Temple on the banks of Swarnamukhi River in Andhra Pradesh represents the Wind element (Vayu Stalam). Famous worldwide for performing Rahu-Ketu Sarpa Dosha Nivaran pujas.",
+    "aarti_timings": {
+      "Pabavathnam": "6:00 AM",
+      "Uchikalam": "11:00 AM",
+      "Nithya Sandhya": "5:00 PM"
+    },
+    "guidance": "Located 36 km from Tirupati Balaji Temple. Well connected by road and Srikalahasti railway station.",
+    "coords": {
+      "latitude": 13.7498,
+      "longitude": 79.6984
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:00 PM"
+    },
+    "contact": "08578 222 240",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "panchbhoota-thillai-nataraja-temple-chidambaram",
+    "name": "Thillai Nataraja Temple – Chidambaram",
+    "category": "Panch Bhoota Sthalam",
+    "location": {
+      "city": "Chidambaram",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Thillai Nataraja Temple in Chidambaram represents the Space element (Akasha Stalam) and the famous Chidambara Rahasyam. It depicts Lord Shiva performing the Cosmic Ananda Tandava dance as Nataraja.",
+    "aarti_timings": {
+      "Kala Santhi": "6:00 AM",
+      "Uchikalam": "12:00 PM",
+      "Sayarakshai": "6:00 PM"
+    },
+    "guidance": "Located 215 km south of Chennai. Reached via Chidambaram railway station or buses from Pondicherry and Cuddalore.",
+    "coords": {
+      "latitude": 11.3992,
+      "longitude": 79.6935
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 12:00 PM, 5:00 PM - 10:00 PM"
+    },
+    "contact": "04144 222 365",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "ashtavinayak-mayureshwar-temple-morgaon",
+    "name": "Mayureshwar Temple – Morgaon",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Morgaon",
+      "area": "Pune District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Mayureshwar (Moreshwar) Temple in Morgaon is traditional first and starting shrine of Ashtavinayak yatra. Ganesha here rides a peacock (Mayura) and features three eyes.",
+    "aarti_timings": {
+      "Kakad Aarti": "5:00 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "10:00 PM"
+    },
+    "guidance": "Located 65 km from Pune city in Baramati taluka. Regular buses and private cars ply from Swargate bus stand.",
+    "coords": {
+      "latitude": 18.2758,
+      "longitude": 74.3168
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:00 PM"
+    },
+    "contact": "+91-2112-278222",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "ashtavinayak-siddhivinayak-temple-siddhatek",
+    "name": "Siddhivinayak Temple – Siddhatek",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Siddhatek",
+      "area": "Ahmednagar District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Siddhivinayak Temple in Siddhatek is situated on the banks of Bhima River. It is unique as the only Ashtavinayak idol with trunk turned to the right side (Right-trunk Ganesha).",
+    "aarti_timings": {
+      "Kakad Aarti": "5:30 AM",
+      "Bhog Aarti": "12:30 PM",
+      "Shej Aarti": "9:30 PM"
+    },
+    "guidance": "Located 20 km from Daund Junction railway station. Reachable via Shirur-Chaufula road.",
+    "coords": {
+      "latitude": 18.5284,
+      "longitude": 74.6628
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 9:30 PM"
+    },
+    "contact": "+91-2487-236200",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "ashtavinayak-ballaleshwar-temple-pali",
+    "name": "Ballaleshwar Temple – Pali",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Pali",
+      "area": "Raigad District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Ballaleshwar Temple in Pali is named after Ganesha's devoted young child worshipper Ballal. The temple complex features beautiful stone carved architectural halls and two holy water tanks.",
+    "aarti_timings": {
+      "Kakad Aarti": "5:00 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "10:00 PM"
+    },
+    "guidance": "Located 110 km from Mumbai via Mumbai-Pune Expressway and Khopoli exit.",
+    "coords": {
+      "latitude": 18.5367,
+      "longitude": 73.2208
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:00 PM"
+    },
+    "contact": "+91-2194-242220",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]

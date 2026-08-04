@@ -1,0 +1,714 @@
+[
+  {
+    "temple_id": "ashtavinayak-varadhavinayak-temple-mahad",
+    "name": "Varadhavinayak Temple – Mahad",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Mahad",
+      "area": "Raigad District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Varadhavinayak Temple in Mahad village near Khopoli grants all boons and wishes (Varada). An oil lamp (Nanda Deep) inside the sanctum has been burning continuously since 1892.",
+    "aarti_timings": {
+      "Kakad Aarti": "5:00 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "9:00 PM"
+    },
+    "guidance": "Situated 80 km from Mumbai along the Mumbai-Pune highway near Karjat/Khopoli.",
+    "coords": {
+      "latitude": 18.8074,
+      "longitude": 73.2381
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 9:00 PM"
+    },
+    "contact": "+91-2192-269265",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "ashtavinayak-chintamani-temple-theur",
+    "name": "Chintamani Temple – Theur",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Theur",
+      "area": "Pune District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Chintamani Temple in Theur, located at the confluence of Mula and Mutha rivers near Pune, is revered for bringing peace of mind and removing worries (Chinta).",
+    "aarti_timings": {
+      "Kakad Aarti": "5:00 AM",
+      "Madhyan Aarti": "12:30 PM",
+      "Shej Aarti": "10:00 PM"
+    },
+    "guidance": "Located just 25 km from Pune city center. Easily accessible by local PMT city buses and auto-rickshaws.",
+    "coords": {
+      "latitude": 18.5262,
+      "longitude": 73.9877
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:00 PM"
+    },
+    "contact": "+91-20-26912300",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "ashtavinayak-girijatmak-temple-lenyadri",
+    "name": "Girijatmak Temple – Lenyadri",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Junnar",
+      "area": "Pune District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Girijatmak Temple in Lenyadri is carved out of a cave on a mountain cliff, making it the only Ashtavinayak shrine situated inside a Buddhist rock-cut cave complex.",
+    "aarti_timings": {
+      "Kakad Aarti": "6:00 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "8:30 PM"
+    },
+    "guidance": "Requires climbing 307 stone steps up Lenyadri hill near Junnar (95 km from Pune). Palanquin services available for elderly devotees.",
+    "coords": {
+      "latitude": 19.2415,
+      "longitude": 73.8864
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:30 PM"
+    },
+    "contact": "+91-2132-222380",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "ashtavinayak-vighnahar-temple-ozar",
+    "name": "Vighnahar Temple – Ozar",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Ozar",
+      "area": "Pune District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Vighnahar Temple in Ozar is situated on the banks of Kukadi River. Devotees worship Ganesha here as the destroyer of obstacles (Vighnaharta) who defeated demon Vighnasura.",
+    "aarti_timings": {
+      "Kakad Aarti": "5:00 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "10:30 PM"
+    },
+    "guidance": "Located 85 km from Pune and 15 km from Junnar. Features golden dome mandap and fortified stone walls.",
+    "coords": {
+      "latitude": 19.1868,
+      "longitude": 73.9482
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:30 PM"
+    },
+    "contact": "+91-2132-288440",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "ashtavinayak-mahaganapati-temple-ranjangaon",
+    "name": "Mahaganapati Temple – Ranjangaon",
+    "category": "Ashtavinayak",
+    "location": {
+      "city": "Ranjangaon",
+      "area": "Pune District",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Mahaganapati Temple in Ranjangaon depicts Ganesha with 10 trunks and 20 hands in his powerful divine form invoked by Lord Shiva before destroying Tripurasura.",
+    "aarti_timings": {
+      "Kakad Aarti": "5:30 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "10:00 PM"
+    },
+    "guidance": "Located 50 km from Pune along the Pune-Ahmednagar highway. Well serviced by Maharashtra state transit buses.",
+    "coords": {
+      "latitude": 18.8475,
+      "longitude": 74.2435
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 10:00 PM"
+    },
+    "contact": "+91-2138-243200",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-kamakhya-temple-guwahati",
+    "name": "Kamakhya Temple – Guwahati",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Guwahati",
+      "state": "Assam",
+      "country": "India"
+    },
+    "deity": "Goddess Kamakhya",
+    "description": "Kamakhya Temple on Nilachal Hill in Guwahati, Assam, is one of the oldest and most venerated Tantric Shakti Peethas (where Sati's Yoni fell). Host of the famed annual Ambubachi Mela festival.",
+    "aarti_timings": {
+      "Morning Aarti": "5:30 AM",
+      "Bhog Aarti": "1:00 PM",
+      "Sandhya Aarti": "6:30 PM"
+    },
+    "guidance": "Located 8 km from Guwahati Railway Station and 20 km from LGBI Airport. Special VIP line passes are available at temple counters.",
+    "coords": {
+      "latitude": 26.1664,
+      "longitude": 91.7067
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 1:00 PM, 2:30 PM - 5:30 PM"
+    },
+    "contact": "0361 273 2782",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-kalighat-kali-temple-kolkata",
+    "name": "Kalighat Kali Temple – Kolkata",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Kali",
+    "description": "Kalighat Kali Temple on the banks of Adi Ganga canal in Kolkata is a premier Shakti Peetha where Sati's right toe fell. The sacred idol features a unique long golden tongue.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:00 AM",
+      "Bhog Aarti": "2:00 PM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Accessible via Kalighat Metro Station in Kolkata. Expect large crowds on Tuesdays, Saturdays, and Kali Puja days.",
+    "coords": {
+      "latitude": 22.5186,
+      "longitude": 88.3426
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 2:00 PM, 5:00 PM - 10:30 PM"
+    },
+    "contact": "+91-33-24641200",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-tarapith-temple-birbhum",
+    "name": "Tarapith Temple – Birbhum",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Tarapith",
+      "area": "Birbhum",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Tara",
+    "description": "Tarapith Temple in Birbhum, West Bengal, is a major Tantric shrine dedicated to Goddess Tara. Associated with legendary saint Bamakhepa who meditated at the adjacent cremation ground.",
+    "aarti_timings": {
+      "Mangala Aarti": "6:00 AM",
+      "Bhog Aarti": "1:30 PM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Reach via Rampurhat railway station (9 km). Direct express trains connect Kolkata (Howrah/Sealdah) to Rampurhat.",
+    "coords": {
+      "latitude": 24.1147,
+      "longitude": 87.8003
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:00 PM"
+    },
+    "contact": "+91-3461-253222",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-ambaji-temple-gujarat",
+    "name": "Ambaji Temple – Gujarat",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Ambaji",
+      "area": "Banaskantha",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Goddess Amba",
+    "description": "Ambaji Temple in Banaskantha district near Aravalli hills marks where Sati's heart fell. The shrine contains no idol; devotees worship the holy sacred gold-plated Viso Yantra.",
+    "aarti_timings": {
+      "Morning Aarti": "7:00 AM",
+      "Rajbhog Aarti": "12:30 PM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located 45 km from Abu Road station and 180 km from Ahmedabad. Visit Gabbar Hill ropeway where the original shrine sits.",
+    "coords": {
+      "latitude": 24.3317,
+      "longitude": 72.8464
+    },
+    "timings": {
+      "Darshan": "7:00 AM - 11:30 AM, 12:30 PM - 4:30 PM, 7:00 PM - 9:00 PM"
+    },
+    "contact": "02749 262 129",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-vaishno-devi-temple-jammu-kashmir",
+    "name": "Vaishno Devi Temple – Jammu & Kashmir",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Katra",
+      "state": "Jammu & Kashmir",
+      "country": "India"
+    },
+    "deity": "Mata Vaishno Devi",
+    "description": "Mata Vaishno Devi Cave Shrine in the Trikuta Mountains is one of India's most visited pilgrimages. Devotees trek 12 km from Katra base town to seek darshan of Holy Pindis (Maha Kali, Maha Lakshmi, Maha Saraswati).",
+    "aarti_timings": {
+      "Morning Aarti": "6:20 AM",
+      "Bhog Aarti": "12:00 PM",
+      "Evening Aarti": "7:20 PM"
+    },
+    "guidance": "Reach Shri Mata Vaishno Devi Katra railway station. Mandatory RFID Yatra Registration Card must be collected before trekking or boarding battery cars/helicopters.",
+    "coords": {
+      "latitude": 33.0308,
+      "longitude": 74.9492
+    },
+    "timings": {
+      "Darshan": "24 Hours Open"
+    },
+    "contact": "+91-1991-232029",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UC5SVw4I1kK4xB0h60Tdk5lQ",
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-jwala-ji-temple-kangra",
+    "name": "Jwala Ji Temple – Kangra",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Kangra",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Jwala Ji",
+    "description": "Jwalamukhi Temple in Kangra Valley, Himachal Pradesh, features natural blue flames burning continuously out of rock fissures without any fuel, representing Sati's tongue.",
+    "aarti_timings": {
+      "Mangal Aarti": "5:00 AM",
+      "Bhog Aarti": "12:00 PM",
+      "Shayan Aarti": "9:00 PM"
+    },
+    "guidance": "Located 30 km from Kangra town and 55 km from Dharamshala. Nearest broad gauge railway station is Pathankot (100 km).",
+    "coords": {
+      "latitude": 31.8763,
+      "longitude": 76.3228
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:00 PM"
+    },
+    "contact": "+91-1892-246025",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-chinnamasta-temple-rajarappa",
+    "name": "Chinnamasta Temple – Rajrappa",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Ramgarh",
+      "state": "Jharkhand",
+      "country": "India"
+    },
+    "deity": "Goddess Chinnamastika",
+    "description": "Chinnamasta Temple at Rajrappa stands at the scenic confluence of Damodar and Bhairavi rivers in Jharkhand. Dedicated to headless Mahavidya deity Goddess Chinnamastika.",
+    "aarti_timings": {
+      "Morning Aarti": "5:30 AM",
+      "Evening Aarti": "6:00 PM"
+    },
+    "guidance": "Located 28 km from Ramgarh Cantt and 65 km from Ranchi city. Accessible by private taxis and local state transport.",
+    "coords": {
+      "latitude": 23.6306,
+      "longitude": 85.7139
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 8:00 PM"
+    },
+    "contact": "+91-6553-222111",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-mahalaxmi-temple-kolhapur",
+    "name": "Mahalaxmi Temple – Kolhapur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Kolhapur",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Goddess Mahalaxmi",
+    "description": "Shri Ambabai (Mahalaxmi) Temple in Kolhapur is a landmark Hemadpanthi stone temple where Kirnotsav (sun rays falling directly on deity's face) occurs biannually.",
+    "aarti_timings": {
+      "Kakad Aarti": "4:30 AM",
+      "Madhyan Aarti": "11:30 AM",
+      "Dhoop Aarti": "8:00 PM"
+    },
+    "guidance": "Situated in Kolhapur city center, 5 km from Kolhapur railway station. Pre-booked online e-pass reduces waiting time.",
+    "coords": {
+      "latitude": 16.6946,
+      "longitude": 74.2238
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 10:00 PM"
+    },
+    "contact": "+91-231-2541154",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-chamundeshwari-temple-mysore",
+    "name": "Chamundeshwari Temple – Mysore",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Mysuru",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Goddess Chamundeshwari",
+    "description": "Chamundeshwari Temple atop Chamundi Hills in Mysuru overlooks the Royal City. Celebrates Goddess Durga's victory over demon Mahishasura during grand Mysuru Dasara.",
+    "aarti_timings": {
+      "Morning Aarti": "7:30 AM",
+      "Noon Aarti": "12:30 PM",
+      "Evening Aarti": "7:30 PM"
+    },
+    "guidance": "Drive up Chamundi Hill road (13 km from Mysuru station) or climb 1,000 historic stone steps past the monolith Nandi statue.",
+    "coords": {
+      "latitude": 12.2753,
+      "longitude": 76.6704
+    },
+    "timings": {
+      "Darshan": "7:30 AM - 2:00 PM, 3:30 PM - 6:00 PM, 7:30 PM - 9:00 PM"
+    },
+    "contact": "0821 238 2401",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-vindhyavasini-temple-vindhyachal",
+    "name": "Vindhyavasini Temple – Vindhyachal",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Mirzapur",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Vindhyavasini",
+    "description": "Vindhyavasini Devi Temple in Vindhyachal near Mirzapur sits on the banks of Ganga. Devotees complete the sacred Trikon Yatra encompassing Vindhyavasini, Kali Khoh, and Ashtabhuja temples.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:00 AM",
+      "Bhog Aarti": "12:00 PM",
+      "Badi Aarti": "7:00 PM"
+    },
+    "guidance": "Located 8 km from Mirzapur and 70 km from Varanasi. Regular trains stop at Vindhyachal station.",
+    "coords": {
+      "latitude": 25.1663,
+      "longitude": 82.5054
+    },
+    "timings": {
+      "Darshan": "4:00 AM - 11:00 PM"
+    },
+    "contact": "+91-5442-245222",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-kamakhya-kanya-kumari-temple",
+    "name": "Kanyakumari Devi Temple – Kanyakumari",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Kanyakumari",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Goddess Devi Kanya Kumari",
+    "description": "Bhagavathy Amman Temple at Kanyakumari stands at the southernmost tip of mainland India, where Arabian Sea, Bay of Bengal, and Indian Ocean meet. Famous for the diamond nose-ring of Goddess Kanya Kumari.",
+    "aarti_timings": {
+      "Abhishekam": "5:00 AM",
+      "Uchikalam": "12:00 PM",
+      "Sayarakshai": "6:30 PM"
+    },
+    "guidance": "Located 1 km from Kanyakumari railway station. Men must remove upper garments before entering inner prakaram.",
+    "coords": {
+      "latitude": 8.078,
+      "longitude": 77.555
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 12:30 PM, 4:00 PM - 8:30 PM"
+    },
+    "contact": "04652 246 223",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-tirupati-balaji-temple-andhra-pradesh",
+    "name": "Tirupati Balaji Temple – Andhra Pradesh",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Tirupati",
+      "area": "Tirumala",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Venkateswara",
+    "description": "Tirumala Venkateswara Temple in Tirupati, Andhra Pradesh, is the world's most-visited Hindu pilgrimage site. Lord Srinivasa (Balaji) is worshipped here with elaborate daily sevas, Laddoo prasadam, and hair tonsuring vows.",
+    "aarti_timings": {
+      "Suprabhatam": "3:00 AM",
+      "Thomala Seva": "3:30 AM",
+      "Ekantha Seva": "1:30 AM"
+    },
+    "guidance": "Book TTD online special entry darshan tickets (300 Rs) months in advance. Reach Tirupati via Tirupati station or Renigunta Airport.",
+    "coords": {
+      "latitude": 13.6833,
+      "longitude": 79.3476
+    },
+    "timings": {
+      "Darshan": "3:00 AM - 12:00 AM"
+    },
+    "contact": "+91-877-2277777",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCS2Y83GD-fc7qqgNW5uj41g",
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-sri-ranganathaswamy-temple-srirangam",
+    "name": "Sri Ranganathaswamy Temple – Srirangam",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Tiruchirappalli",
+      "area": "Srirangam",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Ranganatha",
+    "description": "Sri Ranganathaswamy Temple in Srirangam is the foremost Divya Desam temple of Lord Vishnu and the largest functioning Hindu temple complex in the world, spanning 156 acres with 21 grand Gopurams.",
+    "aarti_timings": {
+      "Viswaroopa Seva": "6:00 AM",
+      "Uchikalam": "12:00 PM",
+      "Night Puja": "9:00 PM"
+    },
+    "guidance": "Located on Srirangam island in Trichy. Climb Rajagopuram viewing tower for panorama of the 7 concentric temple enclosures.",
+    "coords": {
+      "latitude": 10.8623,
+      "longitude": 78.6901
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 1:00 PM, 3:30 PM - 9:00 PM"
+    },
+    "contact": "0431 243 2246",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-guruvayur-temple-kerala",
+    "name": "Guruvayur Temple – Kerala",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Guruvayur",
+      "state": "Kerala",
+      "country": "India"
+    },
+    "deity": "Lord Guruvayurappan",
+    "description": "Guruvayur Sri Krishna Temple in Thrissur, Kerala, is known as Bhuloka Vaikunta. Devotees worship the four-armed standing form of Lord Vishnu holding Panchajanya conch, Sudarshana chakra, Kaumodaki mace, and lotus.",
+    "aarti_timings": {
+      "Nirmalyam": "3:00 AM",
+      "Ucha Pooja": "12:00 PM",
+      "Athazha Pooja": "8:00 PM"
+    },
+    "guidance": "Located 27 km from Thrissur railway station. Traditional Kerala dress code (Mundu for men, Saree/Kasavu for women) is mandatory.",
+    "coords": {
+      "latitude": 10.5946,
+      "longitude": 76.0387
+    },
+    "timings": {
+      "Darshan": "3:00 AM - 1:30 PM, 4:30 PM - 9:15 PM"
+    },
+    "contact": "+91-487-2556335",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-padmanabhaswamy-temple-thiruvananthapuram",
+    "name": "Padmanabhaswamy Temple – Thiruvananthapuram",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Thiruvananthapuram",
+      "state": "Kerala",
+      "country": "India"
+    },
+    "deity": "Lord Padmanabha",
+    "description": "Sree Padmanabhaswamy Temple in Trivandrum, Kerala, features Lord Vishnu reclining in Anantha Sayana posture on serpent Ananta. It combines Chera and Dravidian architectural styles.",
+    "aarti_timings": {
+      "Nirmalya Darshan": "3:30 AM",
+      "Ucha Pooja": "11:30 AM",
+      "Deeparadhana": "6:30 PM"
+    },
+    "guidance": "Located 1 km from Trivandrum Central station. Strict dress code is enforced; dhoti rental counters available outside temple main entrance.",
+    "coords": {
+      "latitude": 8.483,
+      "longitude": 76.9436
+    },
+    "timings": {
+      "Darshan": "3:30 AM - 12:00 PM, 5:00 PM - 8:30 PM"
+    },
+    "contact": "0471 245 0233",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-bankey-bihari-temple-vrindavan",
+    "name": "Bankey Bihari Temple – Vrindavan",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Krishna (Bankey Bihari)",
+    "description": "Shri Bankey Bihari Mandir in Vrindavan is dedicated to Lord Krishna in his tribhanga (bent in three places) posture. Established by Swami Haridas, the curtain before the idol is drawn open and closed frequently to break continuous eye contact.",
+    "aarti_timings": {
+      "Shringar Aarti": "7:45 AM",
+      "Rajbhog Aarti": "12:00 PM",
+      "Shayan Aarti": "9:30 PM"
+    },
+    "guidance": "Located 12 km from Mathura Junction. Keep spectacles and belongings safe from notorious local monkeys in narrow Vrindavan alleys.",
+    "coords": {
+      "latitude": 27.5813,
+      "longitude": 77.7003
+    },
+    "timings": {
+      "Darshan": "7:45 AM - 12:00 PM, 5:30 PM - 9:30 PM"
+    },
+    "contact": "+91-565-2442000",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-iskcon-temple-vrindavan",
+    "name": "ISKCON Temple – Vrindavan",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Krishna Balaram",
+    "description": "Sri Sri Krishna Balaram Mandir (ISKCON Vrindavan) is the first ISKCON temple built in India by Srila Prabhupada. Known for melodious continuous 24-hour Kirtan and exquisite marble architecture.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:30 AM",
+      "Tulsi Aarti": "5:00 AM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Located on Raman Reti Road in Vrindavan. Excellent Govinda's pure vegetarian restaurant and guest rooms inside complex.",
+    "coords": {
+      "latitude": 27.5728,
+      "longitude": 77.6844
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 12:45 PM, 4:30 PM - 8:45 PM"
+    },
+    "contact": "+91-565-2540021",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-prem-mandir-vrindavan",
+    "name": "Prem Mandir – Vrindavan",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Radha Krishna & Sita Ram",
+    "description": "Prem Mandir in Vrindavan is a grand white Italian marble temple complex established by Jagadguru Kripalu Maharaj. Features stunning illuminated fountains and detailed life-sized tableaux of Radha Krishna's leelas.",
+    "aarti_timings": {
+      "Aarti": "5:30 AM",
+      "Bhog": "12:00 PM",
+      "Evening Aarti": "8:00 PM"
+    },
+    "guidance": "Visit during evening hours (6:00 PM to 8:30 PM) to experience the dynamic multi-color LED lighting show and musical fountain.",
+    "coords": {
+      "latitude": 27.5714,
+      "longitude": 77.6744
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 12:00 PM, 4:30 PM - 8:30 PM"
+    },
+    "contact": "+91-565-2540100",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-iskcon-mira-road-thane",
+    "name": "ISKCON Mira Road – Thane",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Mira Road",
+      "area": "Elderao Nagar",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Radha Giridhari",
+    "description": "Shri Radhagiridhari Mandir (ISKCON Mira Road) is a serene spiritual sanctuary offering daily worship, soul-stirring Hare Krishna kirtans, Bhagavad Gita discourses, and Annadan prasadam.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:30 AM",
+      "Tulsi Puja": "5:00 AM",
+      "Sringar Darshan": "7:15 AM",
+      "Raj Bhoga Aarti": "12:30 PM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Reach Mira Road railway station (Western Line) and take auto-rickshaw to Elderao Nagar near Mira Bhayandar main road.",
+    "coords": {
+      "latitude": 19.2694,
+      "longitude": 72.8717
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 1:00 PM, 4:15 PM - 9:00 PM"
+    },
+    "contact": "+91-22-28125555",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCKsPhfStsvK9NKPjXj0DLvg",
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-iskcon-temple-mumbai",
+    "name": "ISKCON Temple Mumbai – Juhu",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Mumbai",
+      "area": "Juhu",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Radha Rasabihari",
+    "description": "Shri Shri Radha Rasabihari Ji Temple (ISKCON Juhu) is a major cultural landmark in Mumbai built by Srila Prabhupada. Features a marble temple, auditoriums, bakery, and Govinda's restaurant.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:30 AM",
+      "Darshan Aarti": "7:15 AM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Located on Juhu Church Road near Juhu Beach. Easily accessible via Vile Parle and Andheri railway stations.",
+    "coords": {
+      "latitude": 19.1128,
+      "longitude": 72.8274
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 1:00 PM, 4:15 PM - 9:00 PM"
+    },
+    "contact": "022 2620 6860",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UC1vJ4RlWSHP6n0xL2G1tkYQ",
+    "is_verified": true
+  }
+]

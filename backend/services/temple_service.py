@@ -82,7 +82,7 @@ class TempleService:
         cached = await cache_manager.get_temples()
         if not cached:
             db = await TempleService.get_db()
-            temples = await db.query_documents("temples", limit=100)
+            temples = await db.query_documents("temples")
             temples.sort(key=lambda t: t.get("follower_count", 0), reverse=True)
             
             cached = []

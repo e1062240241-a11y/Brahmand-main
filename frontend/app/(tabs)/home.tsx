@@ -3143,7 +3143,7 @@ export default function HomeScreen() {
                           style={{
                             width: '100%',
                             height: '135%',
-                            top: 0,
+                            top: -28,
                             borderRadius: 16,
                           }}
                           resizeMode="cover"
@@ -3217,49 +3217,50 @@ export default function HomeScreen() {
                           justifyContent: 'flex-start',
                           alignItems: 'flex-start',
                         }}>
-                          {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा */}
+                          {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा (Curved Royal Devotional Poster Typography) */}
                           <View style={{
                             width: '100%',
                             alignItems: 'flex-start',
                           }}>
-                            {/* श्रावण मास with horizontal royal flourish */}
-                            <Text
-                              numberOfLines={1}
-                              style={{
-                                color: '#FFFBF0',
-                                fontSize: Platform.OS === 'android' ? 28 : 34,
-                                fontWeight: '900',
-                                fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                                lineHeight: Platform.OS === 'android' ? 31 : 37,
-                                paddingTop: 1,
-                                letterSpacing: 0.3,
-                                textAlign: 'left',
-                                textShadowColor: '#5B2A00',
-                                textShadowOffset: { width: 0, height: 2 },
-                                textShadowRadius: 0,
-                              }}
-                            >
-                              श्रावण मास <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 15 : 18, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
-                            </Text>
-
-                            {/* शिव कथा with leading horizontal royal flourish */}
-                            <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 18, marginTop: Platform.OS === 'android' ? 0 : 1 }}>
+                            {/* श्रावण मास with unified curved arc & gold flourish */}
+                            <View style={{ paddingLeft: 8, transform: [{ rotate: '-1.5deg' }] }}>
                               <Text
                                 numberOfLines={1}
                                 style={{
-                                  color: '#FFD768',
+                                  color: '#FFFFF2',
+                                  fontSize: Platform.OS === 'android' ? 28 : 34,
+                                  fontWeight: '900',
+                                  fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
+                                  lineHeight: Platform.OS === 'android' ? 31 : 37,
+                                  letterSpacing: 0.4,
+                                  textAlign: 'left',
+                                  textShadowColor: 'rgba(50, 18, 0, 0.98)',
+                                  textShadowOffset: { width: 2, height: 3 },
+                                  textShadowRadius: 1,
+                                }}
+                              >
+                                श्रावण मास <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 14 : 17, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
+                              </Text>
+                            </View>
+
+                            {/* शिव कथा with gold bevel, subtle curved arc & leading flourish */}
+                            <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 22, marginTop: Platform.OS === 'android' ? 1 : 2, transform: [{ rotate: '-1.5deg' }] }}>
+                              <Text
+                                numberOfLines={1}
+                                style={{
+                                  color: '#FFE58F',
                                   fontSize: Platform.OS === 'android' ? 24 : 29,
                                   fontWeight: '900',
                                   fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
                                   lineHeight: Platform.OS === 'android' ? 27 : 32,
-                                  letterSpacing: 0.3,
+                                  letterSpacing: 0.4,
                                   textAlign: 'left',
-                                  textShadowColor: '#5B2A00',
-                                  textShadowOffset: { width: 0, height: 2 },
-                                  textShadowRadius: 0,
+                                  textShadowColor: 'rgba(50, 18, 0, 0.98)',
+                                  textShadowOffset: { width: 2, height: 3 },
+                                  textShadowRadius: 1,
                                 }}
                               >
-                                <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 14 : 17, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
+                                <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 13 : 16, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
                               </Text>
                             </View>
 

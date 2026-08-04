@@ -863,6 +863,13 @@ export default function TempleDetailScreen() {
   };
 
   useEffect(() => {
+    // Check local DB or static fallbacks immediately to show content instantly without full blocking screen loader
+    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    if (staticTemple) {
+      setTemple(staticTemple);
+      setIsFollowing(staticTemple.is_following || false);
+      setLoading(false);
+    }
     loadLocalTempleData();
     fetchTempleData();
   }, [id]);
@@ -943,14 +950,27 @@ export default function TempleDetailScreen() {
    console.error('Error syncing temple details to WatermelonDB:', dbError);
  }
  } catch (error) {
- const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
- if (staticTemple) {
- setTemple(staticTemple);
- setPosts([]);
- setIsFollowing(false);
- } else {
- console.error('Error fetching temple:', error);
- }
+    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    if (staticTemple) {
+      setTemple(staticTemple);
+      setPosts([]);
+      setIsFollowing(false);
+    } else {
+      console.error('Error fetching temple:', error);
+      // Fallback object so full screen error or loader never blocks the UI
+      setTemple((prev: any) => prev || {
+        id: resolvedTempleId,
+        name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+        location: '',
+        deity: '',
+        category: 'Sacred',
+        description: '',
+        guidance: '',
+        aarti_timings: {},
+        is_following: false,
+        is_verified: false,
+      });
+    }
  } finally {
  setLoading(false);
  }
@@ -981,13 +1001,13 @@ export default function TempleDetailScreen() {
  }
  };
 
- if (loading) {
-  return (
-    <View style={styles.loadingContainer}>
-      <CustomLoader size={70} message="Loading Sacred Temple..." />
-    </View>
-  );
- }
+  if (loading && !temple) {
+   return (
+     <View style={styles.loadingContainer}>
+       <CustomLoader size={70} message="Loading Sacred Temple..." />
+     </View>
+   );
+  }
 
 if (!temple) {
     return (

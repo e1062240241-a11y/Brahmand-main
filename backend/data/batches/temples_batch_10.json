@@ -1,0 +1,272 @@
+[
+  {
+    "temple_id": "sacred-vashisht-kund-temple-manali",
+    "name": "Vashisht Temple & Hot Springs – Manali",
+    "category": "Sacred",
+    "location": {
+      "city": "Kullu",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Sage Vashisht & Lord Ram",
+    "description": "Ancient wooden temple next to natural therapeutic sulfur hot springs.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kullu, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 32.2611,
+      "longitude": 77.1889
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-triloknath-temple-lahaul",
+    "name": "Triloknath Temple – Lahaul Valley",
+    "category": "Sacred",
+    "location": {
+      "city": "Lahaul and Spiti",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva & Avalokiteshvara",
+    "description": "Unique high-altitude shrine revered equally by Hindus (Shiva) and Buddhists (Avalokiteshvara).",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Lahaul and Spiti, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 32.6892,
+      "longitude": 76.6917
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-mahakali-temple-pavagadh",
+    "name": "Kalika Mata Temple – Pavagadh",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Panchmahal",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Goddess Mahakali",
+    "description": "Hilltop Shakti Peetha reached via Pavagadh ropeway or 2,000 stone steps.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Panchmahal, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.4642,
+      "longitude": 73.5222
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-bala-hanuman-temple-jamnagar",
+    "name": "Shri Bala Hanuman Temple – Jamnagar",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Jamnagar",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Guinness World Record holder for continuous non-stop 'Ram Dhun' chanting since 1964.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Jamnagar, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.4744,
+      "longitude": 70.0719
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-bhalkeeshwar-temple-veraval",
+    "name": "Bhalka Tirth – Veraval",
+    "category": "Sacred",
+    "location": {
+      "city": "Veraval",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Krishna",
+    "description": "Sacred spot under banyan tree where Lord Krishna ended his earthly avatar.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Veraval, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.9,
+      "longitude": 70.3667
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-gopnath-mahadev-temple-bhavnagar",
+    "name": "Gopnath Mahadev Temple – Bhavnagar",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Bhavnagar",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Seashore shrine where Saint Narsinh Mehta experienced divine Ras Leela vision.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Bhavnagar, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 21.2167,
+      "longitude": 72.1167
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-tarnetar-mahadev-temple-surendranagar",
+    "name": "Trinetreshwar Mahadev Temple – Tarnetar",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Surendranagar",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Historic site of annual Tarnetar traditional fair and matchmaking festival.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Surendranagar, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.4833,
+      "longitude": 71.2333
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-sun-temple-modhera",
+    "name": "Sun Temple – Modhera",
+    "category": "Sacred",
+    "location": {
+      "city": "Mehsana",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Surya Bhagavan",
+    "description": "1026 AD Solanki dynasty architectural wonder with 52 intricately carved pillars and Surya Kund.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mehsana, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.5836,
+      "longitude": 72.1331
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-somnath-mahadham-gujarat",
+    "name": "Somnath Maha Kshetra",
+    "category": "Sacred",
+    "location": {
+      "city": "Prabhas Patan",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Hallowed ground of Prabhas Teertha.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Prabhas Patan, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.888,
+      "longitude": 70.4012
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-somnath-jyotirling-gujarat-core",
+    "name": "Somnath Temple Complex",
+    "category": "Sacred",
+    "location": {
+      "city": "Prabhas Patan",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Core Somnath shrine area.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Prabhas Patan, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.888,
+      "longitude": 70.4012
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]

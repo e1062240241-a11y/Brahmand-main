@@ -1,0 +1,677 @@
+[
+  {
+    "temple_id": "sacred-somnath-temple-prabhas-patan",
+    "name": "Somnath Divine Shrine – Gujarat",
+    "category": "Sacred",
+    "location": {
+      "city": "Prabhas Patan",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Coastal sanctuary of Prabhas Patan overlooking the Triveni Sangam (Hiran, Kapila, Saraswati rivers confluence).",
+    "aarti_timings": {
+      "Mangala Aarti": "7:00 AM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Enjoy evening light and sound show (7:30 PM to 8:30 PM) narrated by megastar Amitabh Bachchan.",
+    "coords": {
+      "latitude": 20.888,
+      "longitude": 70.4012
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:30 PM"
+    },
+    "contact": "02876 231 200",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCXhail7h5FDRbHprlR56nIw",
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-sharda-peeth-kashmir",
+    "name": "Sharada Peeth – Kashmir",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Kupwara",
+      "state": "Jammu & Kashmir",
+      "country": "India"
+    },
+    "deity": "Goddess Sharada",
+    "description": "Ancient revered seat of learning and Goddess Saraswati Shakti Peetha.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kupwara, Jammu & Kashmir. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 34.7925,
+      "longitude": 73.8475
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-hinglaj-devi-rajasthan",
+    "name": "Hinglaj Mata Temple – Barmer",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Barmer",
+      "state": "Rajasthan",
+      "country": "India"
+    },
+    "deity": "Hinglaj Mata",
+    "description": "Revered Shakti Peetha shrine situated along Indo-Pak border in Barmer region.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Barmer, Rajasthan. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.75,
+      "longitude": 71.3833
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-tripora-sundari-temple-tripura",
+    "name": "Tripura Sundari Temple – Udaipur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Udaipur",
+      "state": "Tripura",
+      "country": "India"
+    },
+    "deity": "Goddess Tripura Sundari",
+    "description": "One of the 51 Shakti Peethas (Sati's right foot fell here), known locally as Matabari.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Udaipur, Tripura. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.5323,
+      "longitude": 91.49
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-attahas-temple-birbhum",
+    "name": "Fullara Attahas Temple – Birbhum",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Labhpur",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Fullara",
+    "description": "Famous Shakti Peetha where Sati's lower lip fell, near Labhpur in Birbhum.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Labhpur, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.8242,
+      "longitude": 87.8105
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-bakreshwar-temple-birbhum",
+    "name": "Bakreshwar Temple – Birbhum",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Suri",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Mahishamardini",
+    "description": "Shakti Peetha known for natural hot water sulfur springs and Lord Bakreshwar Shiva.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Suri, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.8825,
+      "longitude": 87.3708
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-nalateswari-temple-nalhati",
+    "name": "Nalateswari Temple – Nalhati",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Nalhati",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Nalateswari",
+    "description": "Shakti Peetha where Sati's throat (Nala) fell, surrounded by serene hillocks.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nalhati, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 24.2961,
+      "longitude": 87.8344
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-jogadya-temple-burdwan",
+    "name": "Jogadya Temple – Khirgram",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Burdwan",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Jogadya",
+    "description": "Sacred Shakti Peetha where Sati's right great toe fell, famous for Vaishakha fair.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Burdwan, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.5283,
+      "longitude": 88.0267
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-kankalitala-temple-bolpur",
+    "name": "Kankalitala Temple – Bolpur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Bolpur",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Devgarbha",
+    "description": "Situated on Kopai River bank near Shantiniketan where Sati's waist (Kankal) fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Bolpur, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.7056,
+      "longitude": 87.7128
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-bhavani-mandir-tuljapur",
+    "name": "Tulja Bhavani Temple – Tuljapur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Tuljapur",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Goddess Tulja Bhavani",
+    "description": "Kuldevi of Chhatrapati Shivaji Maharaj and one of Maharashtra's 3.5 Shakti Peethas.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Tuljapur, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.0114,
+      "longitude": 76.0792
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-renuka-devi-temple-mahur",
+    "name": "Renuka Devi Temple – Mahur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Mahur",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Goddess Renuka Devi",
+    "description": "Birthplace of Lord Parashurama and major Shakti Peetha in Nanded district.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mahur, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 19.8292,
+      "longitude": 77.9142
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-saptashrungi-temple-nashik",
+    "name": "Saptashrungi Nivasini Temple – Vani",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Vani",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Goddess Saptashrungi",
+    "description": "Situated atop seven mountain peaks near Nashik where Sati's right arm fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Vani, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.3925,
+      "longitude": 73.9056
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-danteshwari-temple-dantewada",
+    "name": "Danteshwari Temple – Dantewada",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Dantewada",
+      "state": "Chhattisgarh",
+      "country": "India"
+    },
+    "deity": "Goddess Danteshwari",
+    "description": "600-year-old historic Shakti Peetha shrine where Sati's tooth (Danta) fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Dantewada, Chhattisgarh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.9,
+      "longitude": 81.35
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-chamunda-devi-temple-kangra",
+    "name": "Chamunda Devi Temple – Kangra",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Kangra",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Chamunda",
+    "description": "Situated on Baner river bank in Kangra valley dedicated to fierce form of Chandi.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kangra, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 32.1622,
+      "longitude": 76.4253
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-naina-devi-temple-bilaspur",
+    "name": "Naina Devi Temple – Bilaspur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Bilaspur",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Naina Devi",
+    "description": "Overlooking Gobind Sagar lake where Sati's eyes (Naina) fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Bilaspur, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 31.3061,
+      "longitude": 76.5369
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-brareshwari-devi-temple-kangra",
+    "name": "Brajeshwari Devi Temple – Kangra",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Kangra",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Brajeshwari",
+    "description": "Ancient fortified Nagarkot Dham Shakti Peetha where Sati's left breast fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kangra, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 32.0967,
+      "longitude": 76.2689
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-chintpurni-devi-temple-una",
+    "name": "Chintpurni Devi Temple – Una",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Una",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Chintpurni",
+    "description": "Shakti Peetha where Sati's feet fell, renowned for removing all worries.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Una, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 31.8078,
+      "longitude": 76.1311
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-alopi-devi-temple-prayagraj",
+    "name": "Alopi Devi Temple – Prayagraj",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Prayagraj",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Alopi Devi",
+    "description": "Unique Shakti Peetha near Sangam where no idol exists, only a wooden doli.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Prayagraj, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.4358,
+      "longitude": 81.8622
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-devi-patan-temple-balrampur",
+    "name": "Devi Patan Temple – Tulsipur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Balrampur",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Pateshwari",
+    "description": "Associated with Maharshi Karna and Guru Gorakhnath where Sati's shoulder fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Balrampur, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 27.5517,
+      "longitude": 82.4175
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-harsiddhi-mata-temple-ujjain",
+    "name": "Harsiddhi Mata Temple – Ujjain",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Ujjain",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Harsiddhi",
+    "description": "Adjoining Mahakaleshwar temple where Sati's elbow fell, featuring giant lamp pillars.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Ujjain, Madhya Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.1814,
+      "longitude": 75.7664
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-sharada-devi-temple-maihar",
+    "name": "Sharada Devi Temple – Maihar",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Maihar",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Sharda",
+    "description": "Perched on Trikuta hill reached via 1,063 steps, associated with warrior Alha.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Maihar, Madhya Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 24.2675,
+      "longitude": 80.7583
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-biraja-temple-jajpur",
+    "name": "Biraja Temple – Jajpur",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Jajpur",
+      "state": "Odisha",
+      "country": "India"
+    },
+    "deity": "Goddess Biraja",
+    "description": "Ancient Shakti Peetha in Jajpur on Vaitarani river where Sati's navel fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Jajpur, Odisha. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.8503,
+      "longitude": 86.3333
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shaktipeeth-tara-tarini-temple-ganjam",
+    "name": "Tara Tarini Temple – Ganjam",
+    "category": "Shakti Peetha",
+    "location": {
+      "city": "Berhampur",
+      "state": "Odisha",
+      "country": "India"
+    },
+    "deity": "Goddess Tara Tarini",
+    "description": "Perched atop Kumari hill on Rushikulya river bank where Sati's breasts fell.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Berhampur, Odisha. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 19.49,
+      "longitude": 84.9
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-shri-ram-mandir-ayodhya",
+    "name": "Ayodhya Ram Mandir Complex",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Ayodhya",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Ram",
+    "description": "Grand central sanctum of Lord Ram in holy city Ayodhya.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Ayodhya, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 26.7922,
+      "longitude": 82.1998
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-dwarakadheesh-temple-mathura",
+    "name": "Dwarkadhish Temple – Mathura",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Mathura",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Krishna",
+    "description": "Famous 1814 temple on Yamuna banks celebrating vibrant Holi and Jhulan Yatra.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mathura, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 27.5036,
+      "longitude": 77.6728
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]

@@ -382,7 +382,7 @@ export default function JaapLandingScreen() {
   const [temples, setTemples] = useState<any[]>([]);
   const [loadingTemples, setLoadingTemples] = useState(false);
   const [templeSearch, setTempleSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Sacred'>('All');
+  const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Shakti Peetha' | 'Bada Char Dham' | 'Chota Char Dham' | 'Char Dham' | 'Healing Temples' | 'Sacred'>('Bada Char Dham');
 
   useEffect(() => {
     if (!isFocused) return;
@@ -420,6 +420,7 @@ export default function JaapLandingScreen() {
       const response = await getTemples();
       if (response.data) {
         setTemples(response.data);
+        console.log('[TEMPLE SOURCE]', response.data.length, 'localDbCount: N/A', response.data.length);
       }
     } catch (error) {
       console.error('Error fetching temples in Jaap:', error);
@@ -494,20 +495,139 @@ export default function JaapLandingScreen() {
     return finalLoc;
   };
 
+  const [charDhamSubFilter, setCharDhamSubFilter] = useState<'bada' | 'chota' | 'all'>('bada');
+  const [showCharDhamDropdown, setShowCharDhamDropdown] = useState(false);
+
+  // Case-insensitive category helpers
+  const BADA_CHAR_DHAM_IDS = [
+    'chardham-badrinath-temple-uttarakhand',
+    'chardham-dwarkadhish-temple-dwarka',
+    'chardham-jagannath-temple-puri',
+    'jyotirling-ramanathaswamy-temple-rameswaram',
+  ];
+
+  const CHOTA_CHAR_DHAM_IDS = [
+    'chardham-badrinath-temple-uttarakhand',
+    'jyotirling-kedarnath-temple-uttarakhand',
+    'chardham-gangotri-temple-uttarakhand',
+    'chardham-yamunotri-temple-uttarakhand',
+  ];
+
+  const isJyotirlinga = (t: any) => {
+    const category = (t.category || '').trim().toLowerCase();
+    const categoryIds = Array.isArray(t.category_ids)
+      ? t.category_ids.map((c: string) => String(c).toLowerCase())
+      : [];
+    return category === 'jyotirlinga' || categoryIds.includes('jyotirlinga');
+  };
+
+  const isShaktiPeetha = (t: any) => {
+    const category = (t.category || '').trim().toLowerCase();
+    const categoryIds = Array.isArray(t.category_ids)
+      ? t.category_ids.map((c: string) => String(c).toLowerCase())
+      : [];
+    return category.includes('shakti') || categoryIds.some((c: string) => c.includes('shakti'));
+  };
+
+  const isBadaCharDham = (t: any) => {
+    const tid = (t.temple_id || t.id || '').toLowerCase();
+    return BADA_CHAR_DHAM_IDS.includes(tid);
+  };
+
+  const isChotaCharDham = (t: any) => {
+    const tid = (t.temple_id || t.id || '').toLowerCase();
+    return CHOTA_CHAR_DHAM_IDS.includes(tid);
+  };
+
+  const isCharDham = (t: any) => {
+    return isBadaCharDham(t) || isChotaCharDham(t);
+  };
+
+  const HEALING_TEMPLE_IDS = [
+    // 1-15: Mental & Emotional Wellbeing Shrines
+    'healing-ramanasramam-tiruvannamalai',
+    'healing-dhyanalinga-isha-coimbatore',
+    'jyotirling-mahakaleshwar-temple-ujjain',
+    'healing-virupaksha-temple-hampi',
+    'healing-anandamayi-ma-ashram-haridwar',
+    'sacred-golden-temple-amritsar',
+    'hanuman-mehendipur-balaji-temple-dausa',
+    'shaktipeeth-kamakhya-temple-guwahati',
+    'healing-parmarth-niketan-rishikesh',
+    'healing-sri-aurobindo-ashram-puducherry',
+    'sacred-belur-math-ramakrishna-mission',
+    'healing-sarnath-buddhist-monastery',
+    'sacred-mahabodhi-temple-bodh-gaya',
+    'devi-kollur-mookambika-temple',
+    'devi-chottanikara-temple-kochi',
+
+    // 16-34: Physical Health & Recovery Shrines
+    'sacred-vaitheeswaran-koil-mayiladuthurai',
+    'jyotirling-baidyanath-temple-deoghar',
+    'healing-parli-vaijnath-temple',
+    'healing-dhanvantari-temple-kerala',
+    'sacred-suchindram-thanumalayan-temple',
+    'healing-ghati-subramanya-temple',
+    'panchbhoota-srikalahasteeswara-temple-srikalahasti',
+    'sacred-kukke-subramanya-temple',
+    'jyotirling-trimbakeshwar-temple-nashik',
+    'jyotirling-omkareshwar-temple-madhya-pradesh',
+    'jyotirling-ramanathaswamy-temple-rameswaram',
+    'jyotirling-kashi-vishwanath-temple-varanasi',
+    'jyotirling-somnath-temple-gujarat',
+    'jyotirling-nageshwar-temple-dwarka',
+    'jyotirling-grishneshwar-temple-ellora',
+    'jyotirling-mallikarjuna-temple-srisailam',
+    'jyotirling-kedarnath-temple-uttarakhand',
+    'jyotirling-bhimashankar-temple-maharashtra',
+    'healing-mangaladevi-temple-mangalore'
+  ];
+
+  const isHealingTemple = (t: any) => {
+    const tid = (t.temple_id || t.id || '').toLowerCase();
+    return HEALING_TEMPLE_IDS.includes(tid);
+  };
+
   const filteredTemples = (temples || []).filter(t => {
-    const loc = getTempleLocation(t);
-    const matchesSearch = (t.name?.toLowerCase().includes(templeSearch.toLowerCase()) || 
-                          loc.toLowerCase().includes(templeSearch.toLowerCase()));
+    const q = templeSearch.trim().toLowerCase();
+
+    let matchesSearch = true;
+    if (q.length > 0) {
+      matchesSearch = (t.name || '').toLowerCase().includes(q);
+    }
     
     let matchesCategory = true;
     if (selectedCategory === 'Jyotirlinga') {
-      matchesCategory = t.category === 'Jyotirlinga';
+      matchesCategory = isJyotirlinga(t);
+    } else if (selectedCategory === 'Shakti Peetha') {
+      matchesCategory = isShaktiPeetha(t);
+    } else if (selectedCategory === 'Char Dham') {
+      if (charDhamSubFilter === 'bada') {
+        matchesCategory = isBadaCharDham(t);
+      } else if (charDhamSubFilter === 'chota') {
+        matchesCategory = isChotaCharDham(t);
+      } else {
+        matchesCategory = isCharDham(t);
+      }
+    } else if (selectedCategory === 'Healing Temples') {
+      matchesCategory = isHealingTemple(t);
     } else if (selectedCategory === 'Sacred') {
-      matchesCategory = t.category !== 'Jyotirlinga';
+      matchesCategory = !isJyotirlinga(t) && !isShaktiPeetha(t) && !isCharDham(t) && !isHealingTemple(t);
     }
 
     return matchesSearch && matchesCategory;
   });
+
+  const jyotirlingaTemples = (temples || []).filter(isJyotirlinga);
+  console.log(
+    '[JYOTIRLINGA AUDIT]',
+    'count=',
+    jyotirlingaTemples.length,
+    'ids=',
+    jyotirlingaTemples.map(t => t.temple_id || t.id)
+  );
+
+  console.log(`[JAAP SCREEN DEBUG] selectedCategory=${selectedCategory} | totalTemples=${temples?.length || 0} | filteredTemples=${filteredTemples.length}`);
 
   const switchSection = useCallback((section: 'jaap' | 'temple') => {
     if (section === activeSection) return;
@@ -1115,16 +1235,59 @@ export default function JaapLandingScreen() {
               </Pressable>
             </View>
 
-            {/* Temple Category Pills (Restored) */}
+            {/* Temple Category Pills */}
             <View style={styles.templeCatPillsRow}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
-                {(['All', 'Jyotirlinga', 'Sacred'] as const).map((cat) => {
+                {(['All', 'Jyotirlinga', 'Shakti Peetha', 'Char Dham', 'Healing Temples', 'Sacred'] as const).map((cat) => {
                   let displayCat: string = cat;
                   if (t('language') === 'hi') {
                     if (cat === 'All') displayCat = 'सभी';
                     else if (cat === 'Jyotirlinga') displayCat = 'ज्योतिर्लिंग';
+                    else if (cat === 'Shakti Peetha') displayCat = 'शक्ति पीठ';
+                    else if (cat === 'Char Dham') displayCat = 'चार धाम';
+                    else if (cat === 'Healing Temples') displayCat = 'आरोग्य मंदिर';
                     else if (cat === 'Sacred') displayCat = 'पवित्र';
                   }
+
+                  const isSelected = selectedCategory === cat;
+
+                  if (cat === 'Char Dham') {
+                    let subLabel = 'Bada Char Dham';
+                    if (t('language') === 'hi') {
+                      subLabel = charDhamSubFilter === 'bada' ? 'बड़ा चार धाम' : charDhamSubFilter === 'chota' ? 'छोटा चार धाम' : 'सभी चार धाम';
+                    } else {
+                      subLabel = charDhamSubFilter === 'bada' ? 'Bada Char Dham' : charDhamSubFilter === 'chota' ? 'Chota Char Dham' : 'All Char Dham';
+                    }
+
+                    return (
+                      <Pressable
+                        key={cat} 
+                        style={({ pressed }) => [
+                          styles.templeCatPill,
+                          isSelected && styles.templeCatPillActive,
+                          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                        ]}
+                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                        onPress={() => {
+                          setSelectedCategory('Char Dham');
+                          setShowCharDhamDropdown(true);
+                        }}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={[styles.templeCatPillText, isSelected && styles.templeCatPillTextActive]}>
+                            {displayCat} ({subLabel})
+                          </Text>
+                          <MaterialCommunityIcons 
+                            name="chevron-down" 
+                            size={16} 
+                            color={isSelected ? "#FFFFFF" : "#8B4513"} 
+                            style={{ marginLeft: 4 }}
+                          />
+                        </View>
+                      </Pressable>
+                    );
+                  }
+
                   return (
                     <Pressable
                       key={cat} 
@@ -1196,6 +1359,94 @@ export default function JaapLandingScreen() {
                 </View>
               )}
             </View>
+
+          {/* Char Dham Sub-Circuit Selection Modal */}
+          <Modal
+            visible={showCharDhamDropdown}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setShowCharDhamDropdown(false)}
+          >
+            <Pressable 
+              style={styles.modalOverlay}
+              onPress={() => setShowCharDhamDropdown(false)}
+            >
+              <View style={styles.charDhamModalCard}>
+                <View style={styles.modalHeaderRow}>
+                  <Text style={styles.modalTitle}>
+                    {t('language') === 'hi' ? 'चार धाम परिपथ चुनें' : 'Select Pilgrimage Circuit'}
+                  </Text>
+                  <Pressable onPress={() => setShowCharDhamDropdown(false)} hitSlop={10}>
+                    <Ionicons name="close-circle" size={24} color="#9CA3AF" />
+                  </Pressable>
+                </View>
+
+                {[
+                  {
+                    id: 'all',
+                    titleEn: 'All Char Dham',
+                    titleHi: 'सभी चार धाम',
+                    subtitleEn: '7 Unique Sacred Shrines',
+                    subtitleHi: '7 मुख्य पवित्र तीर्थ',
+                    count: 7,
+                  },
+                  {
+                    id: 'bada',
+                    titleEn: 'Bada Char Dham',
+                    titleHi: 'बड़ा चार धाम',
+                    subtitleEn: 'National Pilgrimage Circuit (4 Shrines)',
+                    subtitleHi: 'राष्ट्रीय चार धाम यात्रा (4 दिशाएं)',
+                    count: 4,
+                  },
+                  {
+                    id: 'chota',
+                    titleEn: 'Chota Char Dham',
+                    titleHi: 'छोटा चार धाम',
+                    subtitleEn: 'Himalayan Shrine Circuit (4 Shrines)',
+                    subtitleHi: 'हिमालयी चार धाम यात्रा (उत्तराखंड)',
+                    count: 4,
+                  },
+                ].map((item) => {
+                  const isSelected = charDhamSubFilter === item.id;
+                  const title = t('language') === 'hi' ? item.titleHi : item.titleEn;
+                  const subtitle = t('language') === 'hi' ? item.subtitleHi : item.subtitleEn;
+
+                  return (
+                    <Pressable
+                      key={item.id}
+                      style={({ pressed }) => [
+                        styles.charDhamOptionRow,
+                        isSelected && styles.charDhamOptionRowSelected,
+                        pressed && { opacity: 0.85 }
+                      ]}
+                      onPress={() => {
+                        setCharDhamSubFilter(item.id as any);
+                        setShowCharDhamDropdown(false);
+                      }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={[styles.charDhamOptionTitle, isSelected && styles.charDhamOptionTitleSelected]}>
+                            {title}
+                          </Text>
+                          <View style={styles.charDhamBadge}>
+                            <Text style={styles.charDhamBadgeText}>{item.count}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.charDhamOptionSubtitle}>{subtitle}</Text>
+                      </View>
+
+                      <MaterialCommunityIcons
+                        name={isSelected ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"}
+                        size={22}
+                        color={isSelected ? "#F97316" : "#D1D5DB"}
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Pressable>
+          </Modal>
         </ScrollView>
       )}
       </View>
@@ -1750,5 +2001,125 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
     letterSpacing: 0.2,
     lineHeight: 16,
+  },
+
+  // Premium Char Dham Pill & Modal Styles
+  charDhamPillWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#FFF7ED',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    elevation: 2,
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  charDhamPillWrapperActive: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#F97316',
+    borderWidth: 1.5,
+  },
+  charDhamPillMainText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  charDhamPillMainTextActive: {
+    color: '#F97316',
+  },
+  charDhamPillDot: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginHorizontal: 4,
+  },
+  charDhamPillDotActive: {
+    color: '#F97316',
+  },
+  charDhamPillSubText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  charDhamPillSubTextActive: {
+    color: '#F97316',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  charDhamModalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  charDhamOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: '#F9FAFB',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  charDhamOptionRowSelected: {
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
+  },
+  charDhamOptionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  charDhamOptionTitleSelected: {
+    color: '#F97316',
+  },
+  charDhamOptionSubtitle: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  charDhamBadge: {
+    backgroundColor: '#FFEDD5',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 8,
+  },
+  charDhamBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#C2410C',
   },
 });

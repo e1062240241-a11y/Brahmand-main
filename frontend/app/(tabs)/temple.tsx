@@ -124,66 +124,178 @@ export default function TempleScreen() {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [temples, setTemples] = useState<any[]>([]); // Synced temples for uniqueLocations
   const [displayTemples, setDisplayTemples] = useState<any[]>([]); // Paginated display items
-  const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Sacred'>('All');
+  const [selectedCategory, setSelectedCategory] = useState<'All' | 'Jyotirlinga' | 'Shakti Peetha' | 'Char Dham' | 'Healing Temples' | 'Sacred'>('Char Dham');
+  const [charDhamSubFilter, setCharDhamSubFilter] = useState<'all' | 'bada' | 'chota'>('all');
   const [loading, setLoading] = useState(true);
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    console.log('[CATEGORY CHANGED]', selectedCategory, charDhamSubFilter);
+  }, [selectedCategory, charDhamSubFilter]);
+
   const PAGE_SIZE = 20;
+
+  const BADA_CHAR_DHAM_IDS = [
+    'chardham-badrinath-temple-uttarakhand',
+    'chardham-dwarkadhish-temple-dwarka',
+    'chardham-jagannath-temple-puri',
+    'jyotirling-ramanathaswamy-temple-rameswaram',
+  ];
+
+  const CHOTA_CHAR_DHAM_IDS = [
+    'chardham-badrinath-temple-uttarakhand',
+    'jyotirling-kedarnath-temple-uttarakhand',
+    'chardham-gangotri-temple-uttarakhand',
+    'chardham-yamunotri-temple-uttarakhand',
+  ];
 
   const loadMoreTemples = useCallback(async (pageNum: number, isReset: boolean = false) => {
     try {
       setLoading(true);
-      const queryClauses = [];
+      // Fetch records from database
+      const allLocalTemples = await database.get('temples').query().fetch();
+      
+      const isJyotirlinga = (t: any) => {
+        const category = (t.category || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        return category === 'jyotirlinga' || categoryIds.includes('jyotirlinga');
+      };
 
-      // Category filter
-      if (selectedCategory !== 'All') {
-        if (selectedCategory === 'Jyotirlinga') {
-          queryClauses.push(Q.where('category', 'Jyotirlinga'));
+      const isShaktiPeetha = (t: any) => {
+        const category = (t.category || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        return category.includes('shakti') || categoryIds.some((c: string) => c.includes('shakti'));
+      };
+
+      const isBadaCharDham = (t: any) => {
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        return BADA_CHAR_DHAM_IDS.includes(tid);
+      };
+
+      const isChotaCharDham = (t: any) => {
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        return CHOTA_CHAR_DHAM_IDS.includes(tid);
+      };
+
+      const isCharDham = (t: any) => {
+        return isBadaCharDham(t) || isChotaCharDham(t);
+      };
+
+      const HEALING_TEMPLE_IDS = [
+        // 1-15: Mental & Emotional Wellbeing Shrines
+        'healing-ramanasramam-tiruvannamalai',
+        'healing-dhyanalinga-isha-coimbatore',
+        'jyotirling-mahakaleshwar-temple-ujjain',
+        'healing-virupaksha-temple-hampi',
+        'healing-anandamayi-ma-ashram-haridwar',
+        'sacred-golden-temple-amritsar',
+        'hanuman-mehendipur-balaji-temple-dausa',
+        'shaktipeeth-kamakhya-temple-guwahati',
+        'healing-parmarth-niketan-rishikesh',
+        'healing-sri-aurobindo-ashram-puducherry',
+        'sacred-belur-math-ramakrishna-mission',
+        'healing-sarnath-buddhist-monastery',
+        'sacred-mahabodhi-temple-bodh-gaya',
+        'devi-kollur-mookambika-temple',
+        'devi-chottanikara-temple-kochi',
+
+        // 16-34: Physical Health & Recovery Shrines
+        'sacred-vaitheeswaran-koil-mayiladuthurai',
+        'jyotirling-baidyanath-temple-deoghar',
+        'healing-parli-vaijnath-temple',
+        'healing-dhanvantari-temple-kerala',
+        'sacred-suchindram-thanumalayan-temple',
+        'healing-ghati-subramanya-temple',
+        'panchbhoota-srikalahasteeswara-temple-srikalahasti',
+        'sacred-kukke-subramanya-temple',
+        'jyotirling-trimbakeshwar-temple-nashik',
+        'jyotirling-omkareshwar-temple-madhya-pradesh',
+        'jyotirling-ramanathaswamy-temple-rameswaram',
+        'jyotirling-kashi-vishwanath-temple-varanasi',
+        'jyotirling-somnath-temple-gujarat',
+        'jyotirling-nageshwar-temple-dwarka',
+        'jyotirling-grishneshwar-temple-ellora',
+        'jyotirling-mallikarjuna-temple-srisailam',
+        'jyotirling-kedarnath-temple-uttarakhand',
+        'jyotirling-bhimashankar-temple-maharashtra',
+        'healing-mangaladevi-temple-mangalore'
+      ];
+
+      const isHealingTemple = (t: any) => {
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        return HEALING_TEMPLE_IDS.includes(tid);
+      };
+
+      const jyotisByJs = allLocalTemples.filter(isJyotirlinga);
+
+      console.log(`[DEBUG] Selected: ${selectedCategory} | Total Local: ${allLocalTemples.length} | JS Filtered Jyotirlingas: ${jyotisByJs.length}`);
+
+      let filteredRecords = allLocalTemples;
+      if (selectedCategory === 'Jyotirlinga') {
+        filteredRecords = jyotisByJs;
+      } else if (selectedCategory === 'Shakti Peetha') {
+        filteredRecords = allLocalTemples.filter(isShaktiPeetha);
+      } else if (selectedCategory === 'Char Dham') {
+        if (charDhamSubFilter === 'bada') {
+          filteredRecords = allLocalTemples.filter(isBadaCharDham);
+        } else if (charDhamSubFilter === 'chota') {
+          filteredRecords = allLocalTemples.filter(isChotaCharDham);
         } else {
-          queryClauses.push(Q.where('category', Q.notEq('Jyotirlinga')));
+          filteredRecords = allLocalTemples.filter(isCharDham);
         }
+      } else if (selectedCategory === 'Healing Temples') {
+        filteredRecords = allLocalTemples.filter(isHealingTemple);
+      } else if (selectedCategory === 'Sacred') {
+        filteredRecords = allLocalTemples.filter((t: any) => !isJyotirlinga(t) && !isShaktiPeetha(t) && !isCharDham(t) && !isHealingTemple(t));
       }
 
-      // Search Query filter
       if (searchQuery.trim().length > 0) {
-        const pattern = `%${searchQuery.trim().toLowerCase()}%`;
-        queryClauses.push(
-          Q.or(
-            Q.where('name', Q.like(pattern)),
-            Q.where('location', Q.like(pattern)),
-            Q.where('deity', Q.like(pattern))
-          )
+        const q = searchQuery.trim().toLowerCase();
+        filteredRecords = filteredRecords.filter((t: any) => 
+          (t.name || '').toLowerCase().includes(q)
         );
       }
 
-      // Location filter
       if (selectedLocations.size > 0) {
-        const locClauses = Array.from(selectedLocations).map(loc => 
-          Q.where('location', Q.like(`%${loc}%`))
+        filteredRecords = filteredRecords.filter((t: any) => 
+          Array.from(selectedLocations).some(loc => (t.location || '').toLowerCase().includes(loc.toLowerCase()))
         );
-        queryClauses.push(Q.or(...locClauses));
       }
 
       const skipCount = (pageNum - 1) * PAGE_SIZE;
-      const dbQuery = database.get('temples').query(
-        ...queryClauses,
-        Q.skip(skipCount),
-        Q.take(PAGE_SIZE)
-      );
+      const paginatedSlice = filteredRecords.slice(skipCount, skipCount + PAGE_SIZE);
 
-      const results = await dbQuery.fetch();
-      const formatted = results.map((t: any) => ({
-        id: t.templeId,
+      let formatted = paginatedSlice.map((t: any) => ({
+        id: t.templeId || t.temple_id || t.id,
         name: t.name,
         location: t.location,
         deity: t.deity,
-        category: t.category,
-        image_url: t.imageUrl,
-        is_verified: t.isVerified,
+        category: t.category || 'Sacred',
+        image_url: t.imageUrl || t.image_url || '',
+        is_verified: t.isVerified ?? true,
       }));
+
+      // Fallback if local DB returned 0 records total
+      if (formatted.length === 0 && selectedCategory === 'Jyotirlinga') {
+        formatted = JYOTIRLING_TEMPLES.map(j => ({
+          id: j.id,
+          name: j.name,
+          location: j.location,
+          deity: j.deity,
+          category: 'Jyotirlinga',
+          image_url: '',
+          is_verified: true,
+        }));
+      }
+
+      console.log(`[CATEGORY DEBUG] Selected: ${selectedCategory} | Total Local: ${allLocalTemples.length} | JS Filtered Jyotirlingas: ${jyotisByJs.length} | Filtered Count: ${filteredRecords.length} | displayTemples Count: ${formatted.length}`);
 
       if (isReset) {
         setDisplayTemples(formatted);
@@ -191,24 +303,97 @@ export default function TempleScreen() {
         setDisplayTemples(prev => [...prev, ...formatted]);
       }
 
-      setHasMore(results.length === PAGE_SIZE);
+      setHasMore(skipCount + PAGE_SIZE < filteredRecords.length);
       setPage(pageNum);
     } catch (err) {
-      console.error('Error loading temples from DB:', err);
+      console.error('[TempleScreen] Error loading temples from DB:', err);
+      const baseline = JYOTIRLING_TEMPLES.map(j => ({
+        id: j.id,
+        name: j.name,
+        location: j.location,
+        deity: j.deity,
+        category: 'Jyotirlinga',
+        image_url: '',
+        is_verified: true,
+      }));
+      setDisplayTemples(selectedCategory === 'Jyotirlinga' ? baseline : []);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCategory, selectedLocations]);
+  }, [searchQuery, selectedCategory, selectedLocations, temples]);
 
   // Fallback to API data if WatermelonDB hasn't populated displayTemples
   useEffect(() => {
     if (displayTemples.length === 0 && temples.length > 0) {
+      const isJyotirlinga = (t: any) => {
+        const category = (t.category || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        return category === 'jyotirlinga' || categoryIds.includes('jyotirlinga');
+      };
+
+      const isShaktiPeetha = (t: any) => {
+        const category = (t.category || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        return category.includes('shakti') || categoryIds.some((c: string) => c.includes('shakti'));
+      };
+
+      const isBadaCharDham = (t: any) => {
+        const tid = (t.id || t.temple_id || '').toLowerCase();
+        return BADA_CHAR_DHAM_IDS.includes(tid);
+      };
+
+      const isChotaCharDham = (t: any) => {
+        const tid = (t.id || t.temple_id || '').toLowerCase();
+        return CHOTA_CHAR_DHAM_IDS.includes(tid);
+      };
+
+      const isCharDham = (t: any) => {
+        return isBadaCharDham(t) || isChotaCharDham(t);
+      };
+
+      const isHealingTemple = (t: any) => {
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        if (HEALING_TEMPLE_IDS.includes(tid)) return true;
+
+        const category = (t.category || '').trim().toLowerCase();
+        const name = (t.name || '').trim().toLowerCase();
+        const desc = (t.description || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        return (
+          category.includes('healing') ||
+          categoryIds.some((c: string) => c.includes('healing')) ||
+          name.includes('healing') ||
+          name.includes('baidyanath') ||
+          name.includes('baba dham') ||
+          desc.includes('healer') ||
+          desc.includes('healing')
+        );
+      };
+
       let filtered = [...temples];
       if (selectedCategory !== 'All') {
         if (selectedCategory === 'Jyotirlinga') {
-          filtered = filtered.filter((t: any) => t.category === 'Jyotirlinga');
+          filtered = filtered.filter(isJyotirlinga);
+        } else if (selectedCategory === 'Shakti Peetha') {
+          filtered = filtered.filter(isShaktiPeetha);
+        } else if (selectedCategory === 'Char Dham') {
+          if (charDhamSubFilter === 'bada') {
+            filtered = filtered.filter(isBadaCharDham);
+          } else if (charDhamSubFilter === 'chota') {
+            filtered = filtered.filter(isChotaCharDham);
+          } else {
+            filtered = filtered.filter(isCharDham);
+          }
+        } else if (selectedCategory === 'Healing Temples') {
+          filtered = filtered.filter(isHealingTemple);
         } else {
-          filtered = filtered.filter((t: any) => t.category !== 'Jyotirlinga');
+          filtered = filtered.filter((t: any) => !isJyotirlinga(t) && !isShaktiPeetha(t) && !isCharDham(t) && !isHealingTemple(t));
         }
       }
       if (searchQuery.trim().length > 0) {
@@ -239,9 +424,9 @@ export default function TempleScreen() {
   const loadLocalTemples = useCallback(async () => {
     try {
       const localTemples = await database.get('temples').query().fetch();
+      let formattedTemples: any[] = [];
       if (localTemples && localTemples.length > 0) {
-        // Map WatermelonDB models to plain objects that the UI expects
-        const formattedTemples = localTemples.map((t: any) => ({
+        formattedTemples = localTemples.map((t: any) => ({
           id: t.templeId,
           name: t.name,
           location: t.location,
@@ -250,10 +435,37 @@ export default function TempleScreen() {
           image_url: t.imageUrl,
           is_verified: t.isVerified,
         }));
-        setTemples(formattedTemples);
       }
+      
+      // Always merge baseline static JYOTIRLING_TEMPLES so category filter never shows empty list
+      const existingIds = new Set(formattedTemples.map(t => t.id));
+      const baselineTemples = JYOTIRLING_TEMPLES.map(j => ({
+        id: j.id,
+        name: j.name,
+        location: j.location,
+        deity: j.deity,
+        category: 'Jyotirlinga',
+        image_url: '',
+        is_verified: true,
+      }));
+      
+      for (const bt of baselineTemples) {
+        if (!existingIds.has(bt.id)) {
+          formattedTemples.push(bt);
+        }
+      }
+      
+      setTemples(formattedTemples);
     } catch (error) {
       console.error('Error loading local temples:', error);
+      // Fallback baseline
+      setTemples(JYOTIRLING_TEMPLES.map(j => ({
+        id: j.id,
+        name: j.name,
+        location: j.location,
+        deity: j.deity,
+        category: 'Jyotirlinga',
+      })));
     }
   }, []);
 
@@ -277,7 +489,7 @@ export default function TempleScreen() {
                   record.name = temple.name || '';
                   record.location = typeof temple.location === 'object' ? [temple.location.area, temple.location.city, temple.location.state].filter(Boolean).join(', ') : (temple.location || '');
                   record.deity = temple.deity || '';
-                  record.category = temple.category || 'Sacred';
+                  record.category = temple.category || (temple.temple_id && temple.temple_id.startsWith('jyotirling-') ? 'Jyotirlinga' : 'Sacred');
                   record.imageUrl = temple.image_url || '';
                   record.isVerified = temple.is_verified || false;
                 });
@@ -287,7 +499,7 @@ export default function TempleScreen() {
                   record.name = temple.name || '';
                   record.location = typeof temple.location === 'object' ? [temple.location.area, temple.location.city, temple.location.state].filter(Boolean).join(', ') : (temple.location || '');
                   record.deity = temple.deity || '';
-                  record.category = temple.category || 'Sacred';
+                  record.category = temple.category || (temple.temple_id && temple.temple_id.startsWith('jyotirling-') ? 'Jyotirlinga' : 'Sacred');
                   record.imageUrl = temple.image_url || '';
                   record.isVerified = temple.is_verified || false;
                 });
@@ -344,9 +556,18 @@ export default function TempleScreen() {
     });
   }, []);
 
-  const onPressAll = useCallback(() => setSelectedCategory('All'), []);
-  const onPressJyotirlinga = useCallback(() => setSelectedCategory('Jyotirlinga'), []);
-  const onPressSacred = useCallback(() => setSelectedCategory('Sacred'), []);
+  const onPressAll = useCallback(() => {
+    console.log('[CATEGORY TAB PRESSED] All');
+    setSelectedCategory('All');
+  }, []);
+  const onPressJyotirlinga = useCallback(() => {
+    console.log('[CATEGORY TAB PRESSED] Jyotirlinga');
+    setSelectedCategory('Jyotirlinga');
+  }, []);
+  const onPressSacred = useCallback(() => {
+    console.log('[CATEGORY TAB PRESSED] Sacred');
+    setSelectedCategory('Sacred');
+  }, []);
 
   const onPressCloseFilter = useCallback(() => setShowFilterModal(false), []);
   const onPressOpenFilter = useCallback(() => setShowFilterModal(true), []);

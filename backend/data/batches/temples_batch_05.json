@@ -1,0 +1,677 @@
+[
+  {
+    "temple_id": "vishnu-krishna-janmabhoomi-mathura",
+    "name": "Shri Krishna Janmasthan – Mathura",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Mathura",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Krishna",
+    "description": "Prison cell birthplace of Lord Krishna surrounded by Keshavdeva temple complex.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mathura, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 27.505,
+      "longitude": 77.6692
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-radha-raman-temple-vrindavan",
+    "name": "Radha Raman Temple – Vrindavan",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Radha Raman",
+    "description": "500-year-old self-manifested deity from Shaligram shila by Gopal Bhatta Goswami.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Vrindavan, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 27.5858,
+      "longitude": 77.7031
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-radha-damodar-temple-vrindavan",
+    "name": "Radha Damodar Temple – Vrindavan",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Radha Damodar",
+    "description": "Historic temple established by Jiva Goswami in 1542 housing Govardhan shila.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Vrindavan, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 27.5839,
+      "longitude": 77.7011
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-govind-dev-ji-temple-jaipur",
+    "name": "Govind Dev Ji Temple – Jaipur",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Jaipur",
+      "state": "Rajasthan",
+      "country": "India"
+    },
+    "deity": "Lord Krishna",
+    "description": "Royal shrine inside City Palace complex featuring world's widest flat RCC span roof.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Jaipur, Rajasthan. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 26.9261,
+      "longitude": 75.8242
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-nathdwara-shrinathji-temple",
+    "name": "Shrinathji Temple – Nathdwara",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Nathdwara",
+      "state": "Rajasthan",
+      "country": "India"
+    },
+    "deity": "Shrinathji (Krishna)",
+    "description": "Pushtimarg seat housing 7-year-old child form of Lord Krishna lifting Govardhan hill.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nathdwara, Rajasthan. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 24.9317,
+      "longitude": 73.8181
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-kalaram-temple-nashik",
+    "name": "Kalaram Temple – Nashik",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Nashik",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ram",
+    "description": "Historic black stone temple in Panchavati where Lord Ram resided during exile.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nashik, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 19.9989,
+      "longitude": 73.7942
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-vitthal-temple-pandharpur",
+    "name": "Vithoba Temple – Pandharpur",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Pandharpur",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Vitthal & Rukmini",
+    "description": "Epicenter of Warkari sect on Chandrabhaga river hosting massive Ashadhi Ekadashi Yatra.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Pandharpur, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 17.6775,
+      "longitude": 75.3283
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-venugopala-swamy-temple-mysore",
+    "name": "Venugopala Swamy Temple – KRS Mysore",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Mysuru",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Lord Venugopala",
+    "description": "Relocated historic Hoysala architecture temple submerged in KRS dam reservoir.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mysuru, Karnataka. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 12.4231,
+      "longitude": 76.5714
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-chennakesava-temple-belur",
+    "name": "Chennakesava Temple – Belur",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Belur",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Lord Chennakesava",
+    "description": "12th-century Hoysala masterpiece built by King Vishnuvardhana on Yagachi river.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Belur, Karnataka. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 13.1625,
+      "longitude": 75.86
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-simhachalam-temple-visakhapatnam",
+    "name": "Varaha Lakshmi Narasimha Temple – Simhachalam",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Visakhapatnam",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Narasimha",
+    "description": "Hilltop shrine where deity is covered continuously in sandalwood paste (Chandanotsavam).",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Visakhapatnam, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 17.7664,
+      "longitude": 83.2422
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-ahobilam-narasimha-temple",
+    "name": "Ahobilam Navanarasimha Temple",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Ahobilam",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Narasimha",
+    "description": "Sacred spot in Nallamala forest where Lord Narasimha emerged from iron pillar.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Ahobilam, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 15.1333,
+      "longitude": 78.7167
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-badrinath-dham-chamoli",
+    "name": "Badri Vishal Temple – Chamoli",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Badrinath",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Badri Narayan",
+    "description": "Holy seat of Lord Vishnu amidst snowcapped Himalayan peaks.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Badrinath, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 30.7433,
+      "longitude": 79.4938
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-ananta-vasudeva-temple-bhubaneswar",
+    "name": "Ananta Vasudeva Temple – Bhubaneswar",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Bhubaneswar",
+      "state": "Odisha",
+      "country": "India"
+    },
+    "deity": "Lord Krishna & Balaram",
+    "description": "13th-century Vaishnava temple serving traditional Abadha bhog Prasadam.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Bhubaneswar, Odisha. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.2422,
+      "longitude": 85.835
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-pashupatinath-temple-nepal-border",
+    "name": "Pashupatinath Shrine – Indo-Nepal Border",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Pithoragarh",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Pashupatinath",
+    "description": "Sacred Shiva shrine near Indo-Nepal frontier surrounded by deodar forests.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Pithoragarh, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 29.5833,
+      "longitude": 80.2167
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-trimbakeshwar-dham-nashik",
+    "name": "Trimbak Raja Temple – Nashik",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Nashik",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Holy source of Godavari river with triple lingam shrine.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nashik, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 19.9419,
+      "longitude": 73.5298
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-bhimashankar-jyotirling-pune",
+    "name": "Bhimashankar Forest Temple – Pune",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Pune",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Dense Sahyadri sanctuary shrine surrounded by giant Indian squirrels.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Pune, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 19.0714,
+      "longitude": 73.553
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-somnath-patan-gujarat",
+    "name": "Somnath Jyotirlinga Shrine – Veraval",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Veraval",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Eternal shrine on Arabian shore celebrating Lord Shiva as Lord of Moon.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Veraval, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.888,
+      "longitude": 70.4012
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-tarakeshwar-temple-hooghly",
+    "name": "Tarakeshwar Temple – Hooghly",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Tarakeswar",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Lord Taraknath",
+    "description": "Major Bengali Shiva pilgrimage site visited by lakhs of barefoot Gajan devotees.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Tarakeswar, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.8872,
+      "longitude": 88.0169
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-baba-dham-deoghar",
+    "name": "Baba Baidyanath Jyotirlinga – Deoghar",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Deoghar",
+      "state": "Jharkhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Famed healing shrine of Lord Shiva in Santhal Parganas.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Deoghar, Jharkhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 24.4844,
+      "longitude": 86.6994
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-kashi-vishwanath-corridor-varanasi",
+    "name": "Kashi Vishwanath Corridor Shrine",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Spiritual heart of Kashi directly connected to Manikarnika Ghat.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Varanasi, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.3109,
+      "longitude": 83.0107
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-mahakaleshwar-bhasma-temple",
+    "name": "Mahakal Jyotirlinga Shrine – Ujjain",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Ujjain",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Sole south-facing Jyotirlinga celebrated for daily Bhasma Aarti.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Ujjain, Madhya Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.1828,
+      "longitude": 75.7682
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-omkareshwar-island-khandwa",
+    "name": "Omkareshwar Island Mandir – Narmada",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Khandwa",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Narmada river island shrine naturally shaped like OM symbol.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Khandwa, Madhya Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.2456,
+      "longitude": 76.151
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-kedarnath-himalayan-shrine",
+    "name": "Kedarnath Himalayan Temple",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Rudraprayag",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "High altitude Himalayan shrine at origin of Mandakini river.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Rudraprayag, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 30.7352,
+      "longitude": 79.0669
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-grishneshwar-ellora-caves",
+    "name": "Grishneshwar Red Rock Temple – Ellora",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Ellora",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Ahilyabai Holkar rebuilt temple near UNESCO Ellora caves.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Ellora, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.0258,
+      "longitude": 75.178
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-nageshwar-darukavana-gujarat",
+    "name": "Nageshwar Darukavana Shrine – Dwarka",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Dwarka",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Coastal Gujarat shrine featuring 85-foot meditating Shiva statue.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Dwarka, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.4707,
+      "longitude": 69.086
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]

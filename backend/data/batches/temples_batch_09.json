@@ -1,0 +1,677 @@
+[
+  {
+    "temple_id": "sacred-thousand-pillar-temple-warangal",
+    "name": "Thousand Pillar Temple – Warangal",
+    "category": "Sacred",
+    "location": {
+      "city": "Hanumakonda",
+      "state": "Telangana",
+      "country": "India"
+    },
+    "deity": "Kakatiya Trimurti",
+    "description": "Historic 1163 AD Kakatiya architectural marvel featuring monolithic polished Nandi.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Hanumakonda, Telangana. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.0036,
+      "longitude": 79.5742
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-ramappa-temple-mulugu",
+    "name": "Ramappa Temple – Mulugu",
+    "category": "Sacred",
+    "location": {
+      "city": "Mulugu",
+      "state": "Telangana",
+      "country": "India"
+    },
+    "deity": "Lord Ramalingeswara",
+    "description": "UNESCO World Heritage Site engineered with floating bricks and carved sandbox foundations.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mulugu, Telangana. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.2583,
+      "longitude": 79.9406
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-gnana-saraswathi-temple-basar",
+    "name": "Gnana Saraswathi Temple – Basar",
+    "category": "Sacred",
+    "location": {
+      "city": "Nirmal",
+      "state": "Telangana",
+      "country": "India"
+    },
+    "deity": "Goddess Saraswati",
+    "description": "Rare Goddess Saraswati temple on Godavari banks famous for Akshara Abhyasam child initiation.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nirmal, Telangana. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.8783,
+      "longitude": 77.9542
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-kondagattu-anjaneya-swamy-temple",
+    "name": "Kondagattu Anjaneya Swamy Temple – Jagtial",
+    "category": "Sacred",
+    "location": {
+      "city": "Jagtial",
+      "state": "Telangana",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Hilltop Hanuman shrine surrounded by scenic forests in Karimnagar district.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Jagtial, Telangana. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.6667,
+      "longitude": 78.9333
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-veerabhadra-temple-lepakshi",
+    "name": "Veerabhadra Temple – Lepakshi",
+    "category": "Sacred",
+    "location": {
+      "city": "Anantapur",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Veerabhadra",
+    "description": "Vijayanagara masterwork famous for Hanging Pillar, giant monolithic Nandi, and footprint of Sita.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Anantapur, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 13.8017,
+      "longitude": 77.6094
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-mahabodhi-temple-bodh-gaya",
+    "name": "Mahabodhi Temple Complex – Bodh Gaya",
+    "category": "Sacred",
+    "location": {
+      "city": "Gaya",
+      "state": "Bihar",
+      "country": "India"
+    },
+    "deity": "Lord Buddha",
+    "description": "UNESCO World Heritage site marking exact location where Buddha attained Enlightenment.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Gaya, Bihar. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 24.696,
+      "longitude": 84.9914
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-vishnupad-temple-gaya",
+    "name": "Vishnupad Temple – Gaya",
+    "category": "Sacred",
+    "location": {
+      "city": "Gaya",
+      "state": "Bihar",
+      "country": "India"
+    },
+    "deity": "Lord Vishnu Footprint",
+    "description": "On Phalgu riverbank featuring 40 cm footprint of Lord Vishnu embedded in solid rock.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Gaya, Bihar. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 24.7775,
+      "longitude": 85.0078
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-patan-devi-temple-patna",
+    "name": "Badi Patan Devi Temple – Patna",
+    "category": "Sacred",
+    "location": {
+      "city": "Patna",
+      "state": "Bihar",
+      "country": "India"
+    },
+    "deity": "Goddess Patneshwari",
+    "description": "Oldest sacred temple of Patna city associated with Sati's right thigh.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Patna, Bihar. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.6167,
+      "longitude": 85.1833
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-mahavir-mandir-patna",
+    "name": "Mahavir Mandir – Patna",
+    "category": "Sacred",
+    "location": {
+      "city": "Patna",
+      "state": "Bihar",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "One of North India's wealthiest temple trusts located near Patna Junction.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Patna, Bihar. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.6119,
+      "longitude": 85.1314
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-janaki-mandir-sitamarhi",
+    "name": "Punaura Dham Janaki Temple – Sitamarhi",
+    "category": "Sacred",
+    "location": {
+      "city": "Sitamarhi",
+      "state": "Bihar",
+      "country": "India"
+    },
+    "deity": "Goddess Sita",
+    "description": "Birthplace of Mata Sita where King Janaka plowed the earth.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Sitamarhi, Bihar. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 26.5936,
+      "longitude": 85.4858
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-mundeshwari-devi-temple-kaimur",
+    "name": "Mundeshwari Devi Temple – Kaimur",
+    "category": "Sacred",
+    "location": {
+      "city": "Kaimur",
+      "state": "Bihar",
+      "country": "India"
+    },
+    "deity": "Mundeshwari (Durga) & Shiva",
+    "description": "Considered the oldest functional stone temple in India dating back to 108 AD.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kaimur, Bihar. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 24.9667,
+      "longitude": 83.5667
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-gorakhnath-temple-gorakhpur",
+    "name": "Gorakhnath Temple – Gorakhpur",
+    "category": "Sacred",
+    "location": {
+      "city": "Gorakhpur",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Guru Gorakhnath",
+    "description": "Seat of Nath monastic order celebrating grand Makar Sankranti Khichdi mela.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Gorakhpur, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 26.7725,
+      "longitude": 83.3644
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-tulsi-manas-temple-varanasi",
+    "name": "Tulsi Manas Mandir – Varanasi",
+    "category": "Sacred",
+    "location": {
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Ram",
+    "description": "Marble wall temple where Goswami Tulsidas composed Hindi epic Ramcharitmanas.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Varanasi, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.2858,
+      "longitude": 82.9997
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-vibhuti-narayan-fort-temple-ramnagar",
+    "name": "Ramnagar Fort Temple – Varanasi",
+    "category": "Sacred",
+    "location": {
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Ved Vyasa",
+    "description": "Historic fort across Ganga famous for 200-year-old traditional Ramlila.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Varanasi, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.2678,
+      "longitude": 83.0239
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-naini-devi-temple-nainital",
+    "name": "Naina Devi Temple – Nainital",
+    "category": "Sacred",
+    "location": {
+      "city": "Nainital",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Naina Devi",
+    "description": "Picturesque shrine located on northern shore of Naini Lake.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nainital, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 29.3956,
+      "longitude": 79.4589
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-triyuginarayan-temple-rudraprayag",
+    "name": "Triyuginarayan Temple – Rudraprayag",
+    "category": "Sacred",
+    "location": {
+      "city": "Rudraprayag",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Vishnu & Shiva-Parvati",
+    "description": "Celestial wedding venue of Lord Shiva and Goddess Parvati where eternal flame still burns.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Rudraprayag, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 30.6406,
+      "longitude": 78.9817
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-dhari-devi-temple-srinagar-garhwal",
+    "name": "Dhari Devi Temple – Srinagar Garhwal",
+    "category": "Sacred",
+    "location": {
+      "city": "Pauri Garhwal",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Dhari Devi",
+    "description": "Guardian deity of Uttarakhand Chardham sitting over Alaknanda river.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Pauri Garhwal, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 30.2525,
+      "longitude": 78.8475
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-neelkanth-mahadev-temple-rishikesh",
+    "name": "Neelkanth Mahadev Temple – Rishikesh",
+    "category": "Sacred",
+    "location": {
+      "city": "Pauri Garhwal",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Set amid Manikoot hills where Shiva consumed Halahala poison during Samudra Manthan.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Pauri Garhwal, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 30.0847,
+      "longitude": 78.3364
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-tapkeshwar-temple-dehradun",
+    "name": "Tapkeshwar Mahadev Temple – Dehradun",
+    "category": "Sacred",
+    "location": {
+      "city": "Dehradun",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Cave temple where water continuously drips naturally on shivalinga.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Dehradun, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 30.3475,
+      "longitude": 78.0125
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-kasar-devi-temple-almora",
+    "name": "Kasar Devi Temple – Almora",
+    "category": "Sacred",
+    "location": {
+      "city": "Almora",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Kasar Devi",
+    "description": "Set in geomagnetic Van Allen belt visited by Swami Vivekananda and Bob Dylan.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Almora, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 29.6342,
+      "longitude": 79.6739
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-jageshwar-dham-almora",
+    "name": "Jageshwar Dham Temple Complex – Almora",
+    "category": "Sacred",
+    "location": {
+      "city": "Almora",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Cluster of 124 ancient stone temples nestled in dense Deodar pine forest valley.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Almora, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 29.6417,
+      "longitude": 79.8517
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-baijnath-temple-bageshwar",
+    "name": "Baijnath Temple Complex – Bageshwar",
+    "category": "Sacred",
+    "location": {
+      "city": "Bageshwar",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva & Parvati",
+    "description": "12th-century Katyuri architecture temple complex on Gomti river bank.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Bageshwar, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 29.9078,
+      "longitude": 79.6178
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-purnagiri-devi-temple-champawat",
+    "name": "Purnagiri Devi Temple – Champawat",
+    "category": "Sacred",
+    "location": {
+      "city": "Champawat",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Purnagiri",
+    "description": "Perched at 3,000 meters on Kali river bank near Nepal border.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Champawat, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 29.1167,
+      "longitude": 80.2
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-hadimba-devi-temple-manali",
+    "name": "Hidimba Devi Temple – Manali",
+    "category": "Sacred",
+    "location": {
+      "city": "Kullu",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Hidimba",
+    "description": "Unique 1553 pagoda wooden temple surrounded by giant Dhungri van cedar trees.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kullu, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 32.2475,
+      "longitude": 77.1814
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-bijli-mahadev-temple-kullu",
+    "name": "Bijli Mahadev Temple – Kullu",
+    "category": "Sacred",
+    "location": {
+      "city": "Kullu",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "High hill shrine where lightning strikes 60-foot pole and shivalinga is restored with butter.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kullu, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 31.9478,
+      "longitude": 77.1478
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]

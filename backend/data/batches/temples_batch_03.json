@@ -1,0 +1,698 @@
+[
+  {
+    "temple_id": "vishnu-iskcon-temple-bangalore-karnataka",
+    "name": "ISKCON Temple Bengaluru – Karnataka",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Bengaluru",
+      "area": "Rajajinagar",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Sri Sri Radha Krishnachandra",
+    "description": "ISKCON Bangalore on Hare Krishna Hill, Rajajinagar, is one of the largest ISKCON complexes globally, featuring impressive neo-classical architecture, glass canopies, and extensive Akshaya Patra foundation operations.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:30 AM",
+      "Darshan Aarti": "7:15 AM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Reach via Mahalakshmi Metro Station on Green Line (500m walk). Excellent multi-story car parking facility available.",
+    "coords": {
+      "latitude": 13.0098,
+      "longitude": 77.5511
+    },
+    "timings": {
+      "Darshan": "4:15 AM - 5:00 AM, 7:15 AM - 1:00 PM, 4:00 PM - 8:30 PM"
+    },
+    "contact": "+91-80-23471956",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCPXnayBvF7ynbG_I3VOTgIg",
+    "is_verified": true
+  },
+  {
+    "temple_id": "vishnu-badrinath-temple-char-dham",
+    "name": "Badrinath Shrine – Uttarakhand",
+    "category": "Vishnu Temple",
+    "location": {
+      "city": "Badrinath",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Vishnu",
+    "description": "Sacred seat of Lord Badri Narayan in the High Himalayas, blessed by Tapt Kund hot thermal springs where devotees take holy dip before entering temple.",
+    "aarti_timings": {
+      "Maha Aarti": "6:00 AM",
+      "Evening Aarti": "6:30 PM"
+    },
+    "guidance": "Located in Chamoli district. Pilgrims usually halt at Joshimath before ascending to Badrinath valley.",
+    "coords": {
+      "latitude": 30.7433,
+      "longitude": 79.4938
+    },
+    "timings": {
+      "Darshan": "4:30 AM - 9:00 PM"
+    },
+    "contact": "+91-135-2746847",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-lingaraj-temple-bhubaneswar",
+    "name": "Lingaraj Temple – Bhubaneswar",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Bhubaneswar",
+      "state": "Odisha",
+      "country": "India"
+    },
+    "deity": "Lord Harihara (Shiva)",
+    "description": "Lingaraj Temple in Bhubaneswar is an 11th-century Kalinga architecture masterpiece. Lord Shiva is worshipped here as Harihara (combined form of Shiva and Vishnu).",
+    "aarti_timings": {
+      "Alati": "6:00 AM",
+      "Bhoga": "12:30 PM",
+      "Sahanamela": "7:00 PM"
+    },
+    "guidance": "Located 5 km from Bhubaneswar Railway Station. Non-Hindus can view the temple complex from an elevated viewing platform nearby.",
+    "coords": {
+      "latitude": 20.2382,
+      "longitude": 85.8337
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:00 PM"
+    },
+    "contact": "0674 243 0101",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-brihadisvara-temple-thanjavur",
+    "name": "Brihadisvara Temple – Thanjavur",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Thanjavur",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Brihadisvara Temple (Peruvudaiyar Kovil) in Thanjavur built by Chola Emperor Raja Raja I is a UNESCO World Heritage site. Features a 216-foot vimana tower carved entirely from granite.",
+    "aarti_timings": {
+      "Pal Abhishekam": "8:30 AM",
+      "Uchikalam": "12:00 PM",
+      "Sayarakshai": "6:00 PM"
+    },
+    "guidance": "Located 1 km from Thanjavur Old Bus Stand. Marvel at the monolithic Nandi statue carved out of a single stone block.",
+    "coords": {
+      "latitude": 10.7828,
+      "longitude": 79.1318
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 12:30 PM, 4:00 PM - 8:30 PM"
+    },
+    "contact": "04362 274 476",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-amarnath-cave-temple-kashmir",
+    "name": "Amarnath Temple – Jammu & Kashmir",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Anantnag",
+      "state": "Jammu & Kashmir",
+      "country": "India"
+    },
+    "deity": "Lord Shiva (Ice Lingam)",
+    "description": "Amarnath Cave Shrine located at 3,888 meters in Anantnag district houses the naturally formed Ice Lingam (Baba Barfani). Open for pilgrimage during July-August (Shravan month).",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "6:00 PM"
+    },
+    "guidance": "Reached via Pahalgam (46 km trek) or Baltal (14 km trek) routes. Mandatory medical fitness certificate and SASB registration are compulsory.",
+    "coords": {
+      "latitude": 34.2155,
+      "longitude": 75.5037
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 5:00 PM"
+    },
+    "contact": "+91-194-2501679",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-tungnath-temple-chopta",
+    "name": "Tungnath Temple – Chopta",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Rudraprayag",
+      "area": "Chopta",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Tungnath Temple in Chopta, Uttarakhand, situated at 3,680 meters, is the highest Shiva temple in the world and highest among the Panch Kedar shrines.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "6:30 PM"
+    },
+    "guidance": "Reach Chopta base camp by road from Ukhimath/Gopeshwar, then complete a scenic 3.5 km paved mountain trek through alpine meadows (Bugyals).",
+    "coords": {
+      "latitude": 30.4883,
+      "longitude": 79.2186
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 7:00 PM"
+    },
+    "contact": "+91-1372-252120",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-pashupatinath-temple-mandsaur",
+    "name": "Pashupatinath Temple – Mandsaur",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Mandsaur",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Pashupatinath",
+    "description": "Pashupatinath Temple in Mandsaur on the Shivna River houses a rare Ashtamukhi (eight-faced) Shiva Lingam, matching the famous shrine in Kathmandu, Nepal.",
+    "aarti_timings": {
+      "Mangala Aarti": "5:30 AM",
+      "Bhog Aarti": "12:30 PM",
+      "Sandhya Aarti": "7:30 PM"
+    },
+    "guidance": "Located 3 km from Mandsaur railway station on Ratlam-Chittorgarh railway line.",
+    "coords": {
+      "latitude": 24.0725,
+      "longitude": 75.0745
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 9:30 PM"
+    },
+    "contact": "+91-7422-242220",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-bhojeshwar-temple-bhojpur",
+    "name": "Bhojeshwar Temple – Bhojpur",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Bhojpur",
+      "area": "Bhopal",
+      "state": "Madhya Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Bhojeshwar Temple in Bhojpur near Bhopal was founded by Parmar King Raja Bhoj. It contains one of the largest monolithic Shiva Lingams in India, standing 18 feet tall.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located 28 km from Bhopal city center. Easily accessible by local taxis and tour buses.",
+    "coords": {
+      "latitude": 23.1003,
+      "longitude": 77.5858
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 7:00 PM"
+    },
+    "contact": "+91-755-2778383",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-murudeshwar-temple-karnataka",
+    "name": "Murudeshwar Temple – Karnataka",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Murudeshwar",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Murudeshwar Temple on Kanduka Hill along the Arabian Sea coast features the world's second-tallest Lord Shiva statue (123 feet) and a massive 20-story Raja Gopuram with lifts.",
+    "aarti_timings": {
+      "Maha Pooja": "6:30 AM",
+      "Maha Naivedya": "12:15 PM",
+      "Night Pooja": "8:15 PM"
+    },
+    "guidance": "Located right on Murudeshwar Railway Station line (Konkan Railway), 160 km north of Mangalore.",
+    "coords": {
+      "latitude": 14.0942,
+      "longitude": 74.4849
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 1:00 PM, 3:00 PM - 8:30 PM"
+    },
+    "contact": "08385 260 203",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-meenakshi-temple-madurai",
+    "name": "Meenakshi Temple – Madurai",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Madurai",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Goddess Meenakshi & Sundareswarar",
+    "description": "Meenakshi Sundareswarar Temple in Madurai is an ancient Dravidian architectural marvel spanning 14 acres with 14 colorful gopurams housing 33,000 stone sculptures.",
+    "aarti_timings": {
+      "Thiruvanandal Pooja": "5:00 AM",
+      "Uchikala Pooja": "10:30 AM",
+      "Ardhajama Pooja": "9:00 PM"
+    },
+    "guidance": "Located 1.5 km from Madurai Junction railway station. Electronic devices and bags are restricted; locker rooms available at outer gates.",
+    "coords": {
+      "latitude": 9.9195,
+      "longitude": 78.1193
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 12:30 PM, 4:00 PM - 9:30 PM"
+    },
+    "contact": "0452 234 4360",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-mahalaxmi-temple-mumbai",
+    "name": "Mahalaxmi Temple – Mumbai",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Mumbai",
+      "area": "Mahalaxmi",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Goddess Mahalaxmi",
+    "description": "Mahalaxmi Temple on Bhulabhai Desai Road overlooking the Arabian Sea is dedicated to Goddesses Mahalaxmi, Mahakali, and Mahasaraswati. Famous for heavy footfalls during Navratri.",
+    "aarti_timings": {
+      "Morning Aarti": "7:00 AM",
+      "Dhoop Aarti": "6:30 PM",
+      "Shej Aarti": "10:00 PM"
+    },
+    "guidance": "Reach Mahalaxmi railway station (Western Line) and take a short taxi ride to Breach Candy seaside.",
+    "coords": {
+      "latitude": 18.9774,
+      "longitude": 72.8066
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 10:00 PM"
+    },
+    "contact": "022 2351 4732",
+    "youtube_url": "https://youtu.be/DHRoHpI_rcI",
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-mumbadevi-temple-mumbai",
+    "name": "Mumbadevi Temple – Mumbai",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Mumbai",
+      "area": "Bhuleshwar",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Goddess Mumbadevi",
+    "description": "Historic Mumbadevi Temple in Zaveri Bazaar area is dedicated to Goddess Mumbadevi, patron deity of Mumbai city after whom Mumbai derives its official name.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Bhog Aarti": "12:00 PM",
+      "Sandhya Aarti": "7:00 PM"
+    },
+    "guidance": "Located near Chhatrapati Shivaji Maharaj Terminus (CSMT) and Marine Lines stations in South Mumbai.",
+    "coords": {
+      "latitude": 18.9515,
+      "longitude": 72.8306
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:00 PM"
+    },
+    "contact": "022 2242 4734",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-mansa-devi-temple-haridwar",
+    "name": "Mansa Devi Temple – Haridwar",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Haridwar",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Mansa Devi",
+    "description": "Mansa Devi Temple atop Bilwa Parvat in Haridwar grants all earnest wishes (Mansa). Pilgrims tie sacred threads on temple trees while making wishes.",
+    "aarti_timings": {
+      "Morning Aarti": "5:00 AM",
+      "Evening Aarti": "6:30 PM"
+    },
+    "guidance": "Reach the hill summit via Udaan Khatola ropeway cable car or walk up 2 km stone staircase path from Haridwar railway station.",
+    "coords": {
+      "latitude": 29.9566,
+      "longitude": 78.1633
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 9:00 PM"
+    },
+    "contact": "+91-1334-227031",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-chandi-devi-temple-haridwar",
+    "name": "Chandi Devi Temple – Haridwar",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Haridwar",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Goddess Chandi Devi",
+    "description": "Chandi Devi Temple atop Neel Parvat in Haridwar was established by Adi Shankaracharya in 8th century AD. Devotees visit alongside Mansa Devi to complete Siddh Peeth Yatra.",
+    "aarti_timings": {
+      "Morning Aarti": "5:30 AM",
+      "Evening Aarti": "6:00 PM"
+    },
+    "guidance": "Accessible via ropeway cable car from Chandighat or 3 km steep mountain trekking path.",
+    "coords": {
+      "latitude": 29.9431,
+      "longitude": 78.1806
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 8:00 PM"
+    },
+    "contact": "+91-1334-227032",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-sankat-mochan-temple-varanasi",
+    "name": "Sankat Mochan Hanuman Temple – Varanasi",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Sankat Mochan Hanuman Temple in Varanasi was founded by Saint Tulsidas who authored Ramcharitmanas. Devotees flock here on Tuesdays and Saturdays for relief from troubles.",
+    "aarti_timings": {
+      "Morning Aarti": "5:00 AM",
+      "Evening Aarti": "8:30 PM"
+    },
+    "guidance": "Located near Banaras Hindu University (BHU) campus. Strict electronic security screening at entrance.",
+    "coords": {
+      "latitude": 25.2818,
+      "longitude": 82.9976
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:00 PM"
+    },
+    "contact": "0542 231 0123",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-salasar-balaji-temple-churu",
+    "name": "Salasar Balaji Temple – Churu",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Salasar",
+      "area": "Churu",
+      "state": "Rajasthan",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman (Balaji)",
+    "description": "Salasar Balaji Temple in Churu, Rajasthan, features a miraculous swayambhu idol of Lord Hanuman possessing a beard and mustache.",
+    "aarti_timings": {
+      "Mangla Aarti": "5:00 AM",
+      "Bhog Aarti": "12:15 PM",
+      "Evening Aarti": "7:30 PM"
+    },
+    "guidance": "Located 170 km from Jaipur and 270 km from Delhi. Well connected by Shekhawati highway network.",
+    "coords": {
+      "latitude": 27.7218,
+      "longitude": 74.7088
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:00 PM"
+    },
+    "contact": "+91-1568-252202",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-mehendipur-balaji-temple-dausa",
+    "name": "Mehendipur Balaji Temple – Dausa",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Dausa",
+      "state": "Rajasthan",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Mehendipur Balaji Temple in Dausa, Rajasthan, is legendary across India for ritual divine healing, exorcism, and protection from evil spirits and black magic.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located 100 km from Jaipur along Jaipur-Agra National Highway 21.",
+    "coords": {
+      "latitude": 26.9936,
+      "longitude": 76.9634
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 9:00 PM"
+    },
+    "contact": "+91-1420-247010",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-hanumangarhi-temple-ayodhya",
+    "name": "Hanuman Garhi Temple – Ayodhya",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Ayodhya",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Hanuman Garhi in Ayodhya is a 10th-century cave temple situated on a high mound. Customarily, pilgrims visit Hanuman Garhi to seek permission before proceeding to Ram Janmabhoomi Mandir.",
+    "aarti_timings": {
+      "Morning Aarti": "5:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Climb 76 stone steps to reach the main square fortress complex in central Ayodhya.",
+    "coords": {
+      "latitude": 26.7956,
+      "longitude": 82.1994
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:00 PM"
+    },
+    "contact": "+91-5278-232011",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-jakhu-temple-shimla",
+    "name": "Jakhu Temple – Shimla",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Shimla",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Jakhu Temple at Jakhu Hill peak (2,455m altitude) in Shimla features a colossal 108-foot red statue of Lord Hanuman visible across Shimla valley.",
+    "aarti_timings": {
+      "Morning Aarti": "7:00 AM",
+      "Evening Aarti": "6:00 PM"
+    },
+    "guidance": "Reach via Jakhu Ropeway cable car from Ridge ground or trek 2 km through pine forests.",
+    "coords": {
+      "latitude": 31.1011,
+      "longitude": 77.1818
+    },
+    "timings": {
+      "Darshan": "7:00 AM - 8:00 PM"
+    },
+    "contact": "+91-177-2808020",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-shree-ram-janmabhoomi-mandir-ayodhya",
+    "name": "Shree Ram Janmabhoomi Mandir – Ayodhya",
+    "category": "Sacred",
+    "location": {
+      "city": "Ayodhya",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Ram (Ram Lalla)",
+    "description": "Shree Ram Janmabhoomi Mandir in Ayodhya marks the sacred birthplace of Lord Ram. The majestic nagara-style temple crafted from pink Bansi Paharpur sandstone was consecrated in 2024.",
+    "aarti_timings": {
+      "Mangala Aarti": "4:30 AM",
+      "Shringar Aarti": "6:30 AM",
+      "Sandhya Aarti": "7:30 PM"
+    },
+    "guidance": "Reach Ayodhya Dham Junction station or Maharishi Valmiki International Airport. Online advance pass booking is recommended for smooth entry.",
+    "coords": {
+      "latitude": 26.7922,
+      "longitude": 82.1998
+    },
+    "timings": {
+      "Darshan": "7:00 AM - 11:30 AM, 2:00 PM - 7:00 PM"
+    },
+    "contact": "+91-5278-297003",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-golden-temple-amritsar",
+    "name": "Golden Temple – Amritsar",
+    "category": "Sacred",
+    "location": {
+      "city": "Amritsar",
+      "state": "Punjab",
+      "country": "India"
+    },
+    "deity": "Sri Harmandir Sahib",
+    "description": "Sri Harmandir Sahib (Golden Temple) in Amritsar is the preeminent spiritual shrine of Sikhism. Surrounded by Amrit Sarovar lake, its golden dome welcomes all people regardless of background.",
+    "aarti_timings": {
+      "Prakash Ceremony": "4:00 AM",
+      "Asa Di Vaar Kirtan": "5:00 AM",
+      "Sukhasan Ceremony": "10:00 PM"
+    },
+    "guidance": "Cover head with scarf, remove shoes at footwear counters, and wash hands/feet at entrance streams before entering complex.",
+    "coords": {
+      "latitude": 31.62,
+      "longitude": 74.8765
+    },
+    "timings": {
+      "Darshan": "24 Hours Open"
+    },
+    "contact": "0183 255 3957",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCYn6UEtQ771a_OWSiNBoG8w",
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-siddhivinayak-temple-mumbai",
+    "name": "Siddhivinayak Temple – Mumbai",
+    "category": "Sacred",
+    "location": {
+      "city": "Mumbai",
+      "area": "Prabhadevi",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Ganesha",
+    "description": "Shree Siddhivinayak Ganapati Mandir in Prabhadevi, Mumbai, is a prominent 6-story Ganesha temple featuring a dome plated with 3.7 kg gold. Visited by millions including dignitaries and celebrities.",
+    "aarti_timings": {
+      "Kakad Aarti": "5:30 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Shej Aarti": "8:45 PM"
+    },
+    "guidance": "Accessible via Dadar and Prabhadevi local railway stations. Tuesday is the busiest day for devotional walking yatras.",
+    "coords": {
+      "latitude": 19.0166,
+      "longitude": 72.8302
+    },
+    "timings": {
+      "Darshan": "5:30 AM - 9:50 PM"
+    },
+    "contact": "022 2437 3626",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCmVh_JJg-jurl1G-8opW1zw",
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-shirdi-sai-baba-temple-maharashtra",
+    "name": "Shirdi Sai Baba Temple – Maharashtra",
+    "category": "Sacred",
+    "location": {
+      "city": "Shirdi",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Sai Baba",
+    "description": "Shri Sai Baba Samadhi Mandir in Shirdi houses the holy marble tomb and idol of revered saint Shirdi Sai Baba. Complex includes Dwarkamai, Chavadi, and Lendi Baug.",
+    "aarti_timings": {
+      "Kakad Aarti": "4:30 AM",
+      "Madhyan Aarti": "12:00 PM",
+      "Dhoop Aarti": "sunset",
+      "Shej Aarti": "10:30 PM"
+    },
+    "guidance": "Reach Sainagar Shirdi railway station or Shirdi Airport. Pre-booking Kakad Aarti or VIP pass via Sansthan website avoids multi-hour queues.",
+    "coords": {
+      "latitude": 19.7662,
+      "longitude": 74.477
+    },
+    "timings": {
+      "Darshan": "5:00 AM - 10:30 PM"
+    },
+    "contact": "+91-2423-258500",
+    "youtube_url": "https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A",
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-akshardham-temple-delhi",
+    "name": "Swaminarayan Akshardham – Delhi",
+    "category": "Sacred",
+    "location": {
+      "city": "New Delhi",
+      "state": "Delhi",
+      "country": "India"
+    },
+    "deity": "Swaminarayan",
+    "description": "Swaminarayan Akshardham in Delhi displays millennia of traditional Hindu culture, spirituality, and architecture. Features 20,000 carved statues, Sahaj Anand water show, and cultural boat ride.",
+    "aarti_timings": {
+      "Morning Aarti": "10:00 AM",
+      "Evening Aarti": "6:00 PM"
+    },
+    "guidance": "Take Delhi Metro Blue Line directly to Akshardham Metro Station. Electronic items, bags, and mobile phones are strictly forbidden inside premises.",
+    "coords": {
+      "latitude": 28.6127,
+      "longitude": 77.2773
+    },
+    "timings": {
+      "Darshan": "10:00 AM - 8:00 PM (Closed Mondays)"
+    },
+    "contact": "011 4344 2344",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-birla-mandir-jaipur",
+    "name": "Birla Mandir (Laxmi Narayan) – Jaipur",
+    "category": "Sacred",
+    "location": {
+      "city": "Jaipur",
+      "state": "Rajasthan",
+      "country": "India"
+    },
+    "deity": "Laxmi Narayan",
+    "description": "Laxmi Narayan Temple (Birla Mandir) at the foot of Moti Dungri hill in Jaipur is built entirely of white Rajasthani marble. Gloriously illuminated against night sky.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:30 PM"
+    },
+    "guidance": "Located 5 km from Jaipur Junction railway station. Combine with Moti Dungri Ganesha Temple visit next door.",
+    "coords": {
+      "latitude": 26.8921,
+      "longitude": 75.8153
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 12:00 PM, 4:00 PM - 9:00 PM"
+    },
+    "contact": "+91-141-2564100",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]

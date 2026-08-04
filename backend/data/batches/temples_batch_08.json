@@ -1,0 +1,677 @@
+[
+  {
+    "temple_id": "sacred-janardhana-swamy-temple-varkala",
+    "name": "Janardhana Swamy Temple – Varkala",
+    "category": "Sacred",
+    "location": {
+      "city": "Varkala",
+      "state": "Kerala",
+      "country": "India"
+    },
+    "deity": "Lord Vishnu",
+    "description": "2,000-year-old cliffside temple overlooking Arabian Sea and Papanasam beach.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Varkala, Kerala. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 8.7308,
+      "longitude": 76.7119
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-nagaraja-temple-nagercoil",
+    "name": "Nagaraja Temple – Nagercoil",
+    "category": "Sacred",
+    "location": {
+      "city": "Nagercoil",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "King of Serpents",
+    "description": "Unique temple where main deity is Nagaraja under thatched roof with sand floor.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nagercoil, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 8.1833,
+      "longitude": 77.4333
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-suchindram-thanumalayan-temple",
+    "name": "Thanumalayan Temple – Suchindram",
+    "category": "Sacred",
+    "location": {
+      "city": "Suchindram",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Trimurti (Shiva, Vishnu, Brahma)",
+    "description": "Features musical stone pillars and 22-foot monolithic Hanuman statue.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Suchindram, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 8.1567,
+      "longitude": 77.465
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-srivilliputhur-andal-temple",
+    "name": "Srivilliputhur Andal Temple – Virudhunagar",
+    "category": "Sacred",
+    "location": {
+      "city": "Srivilliputhur",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Goddess Andal & Lord Ranganatha",
+    "description": "Birthplace of Goddess Andal; its 192-foot Gopuram is official emblem of Tamil Nadu government.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Srivilliputhur, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 9.51,
+      "longitude": 77.6322
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-oppiliappan-temple-kumbakonam",
+    "name": "Uppiliappan Temple – Kumbakonam",
+    "category": "Sacred",
+    "location": {
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Uppiliappan",
+    "description": "Divya Desam shrine where salt is strictly excluded from all prasadam offerings.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kumbakonam, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.9389,
+      "longitude": 79.4267
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-sarangapani-temple-kumbakonam",
+    "name": "Sarangapani Temple – Kumbakonam",
+    "category": "Sacred",
+    "location": {
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Sarangapani",
+    "description": "Chariot-shaped Vishnu temple built by Cholas and Nayaks.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kumbakonam, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.9583,
+      "longitude": 79.375
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-kumbeshwarar-temple-kumbakonam",
+    "name": "Adi Kumbeswarar Temple – Kumbakonam",
+    "category": "Sacred",
+    "location": {
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Center of Mahamaham festival celebrated once every 12 years at holy tank.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kumbakonam, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.9589,
+      "longitude": 79.37
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-varadharaja-perumal-temple-kanchipuram",
+    "name": "Varadharaja Perumal Temple – Kanchipuram",
+    "category": "Sacred",
+    "location": {
+      "city": "Kanchipuram",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Varadharaja",
+    "description": "Sprawling 23-acre Divya Desam featuring 100-pillar hall and silver/gold lizard carvings.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kanchipuram, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 12.8183,
+      "longitude": 79.7247
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-kamakshi-amman-temple-kanchipuram",
+    "name": "Kamakshi Amman Temple – Kanchipuram",
+    "category": "Sacred",
+    "location": {
+      "city": "Kanchipuram",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Goddess Kamakshi",
+    "description": "Prime seat of Shakti in South India alongside Kanchi Kamakoti Peetham.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kanchipuram, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 12.84,
+      "longitude": 79.7028
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-vaitheeswaran-koil-mayiladuthurai",
+    "name": "Vaitheeswaran Koil – Mayiladuthurai",
+    "category": "Sacred",
+    "location": {
+      "city": "Mayiladuthurai",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Vaidyanathar (Shiva)",
+    "description": "Navagraha temple dedicated to Mars (Angaraka) revered for healing skin illnesses.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mayiladuthurai, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 11.2003,
+      "longitude": 79.7128
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-thirunageswaram-naganathar-temple",
+    "name": "Thirunageswaram Naganathar Temple",
+    "category": "Sacred",
+    "location": {
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Rahu Bhagavan",
+    "description": "Navagraha Rahu temple where milk poured over Rahu turns blue.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kumbakonam, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.9636,
+      "longitude": 79.4319
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-alangudi-guru-temple",
+    "name": "Apatsahayesvarar Temple – Alangudi",
+    "category": "Sacred",
+    "location": {
+      "city": "Valangaiman",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Guru Bhagavan (Jupiter)",
+    "description": "Navagraha temple dedicated to Lord Guru (Jupiter).",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Valangaiman, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.8933,
+      "longitude": 79.41
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-thingalur-chandran-temple",
+    "name": "Kailasanathar Temple – Thingalur",
+    "category": "Sacred",
+    "location": {
+      "city": "Thanjavur",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Chandran Bhagavan (Moon)",
+    "description": "Navagraha temple dedicated to Moon God Chandran.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Thanjavur, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.9,
+      "longitude": 79.0833
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-kanchanur-sukran-temple",
+    "name": "Agniswarar Temple – Kanchanur",
+    "category": "Sacred",
+    "location": {
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Sukran Bhagavan (Venus)",
+    "description": "Navagraha temple dedicated to Lord Sukra.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kumbakonam, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 11.0333,
+      "longitude": 79.4833
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-thirunallar-saneeswaran-temple",
+    "name": "Dharbaranyeswarar Temple – Thirunallar",
+    "category": "Sacred",
+    "location": {
+      "city": "Karaikal",
+      "state": "Puducherry",
+      "country": "India"
+    },
+    "deity": "Saneeswaran (Saturn)",
+    "description": "Navagraha temple dedicated to Lord Shani.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Karaikal, Puducherry. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.93,
+      "longitude": 79.79
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-kethu-temple-keelaperumpallam",
+    "name": "Naganathaswamy Temple – Keelaperumpallam",
+    "category": "Sacred",
+    "location": {
+      "city": "Mayiladuthurai",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Kethu Bhagavan",
+    "description": "Navagraha temple dedicated to Kethu.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mayiladuthurai, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 11.1333,
+      "longitude": 79.8333
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-suryanar-kovil-kumbakonam",
+    "name": "Suryanar Kovil – Kumbakonam",
+    "category": "Sacred",
+    "location": {
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Surya Bhagavan (Sun)",
+    "description": "Dedicated to Sun God Surya surrounded by shrines for all 8 other planetary deities.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kumbakonam, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 11.0308,
+      "longitude": 79.4756
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-ramatheertham-vizianagaram",
+    "name": "Ramatheertham Temple – Vizianagaram",
+    "category": "Sacred",
+    "location": {
+      "city": "Vizianagaram",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Ram",
+    "description": "3,000-year-old historic site with Lord Ram temple and ancient Buddhist ruins.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Vizianagaram, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.1667,
+      "longitude": 83.4833
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-draksharamam-bheemeswara-temple",
+    "name": "Draksharamam Bheemeswara Temple – Kakinada",
+    "category": "Sacred",
+    "location": {
+      "city": "Kakinada",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva & Manikyamba Devi",
+    "description": "Pancha Rama Kshetra and Shakti Peetha known as Dakshina Kashi.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kakinada, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 16.7936,
+      "longitude": 82.0628
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-amararamam-amaraswaraswamy-temple",
+    "name": "Amareswara Swamy Temple – Amaravati",
+    "category": "Sacred",
+    "location": {
+      "city": "Amaravati",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Pancha Rama Kshetra shrine along Krishna river in Amaravati.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Amaravati, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 16.5814,
+      "longitude": 80.3564
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-somaramam-someshwara-swamy-temple",
+    "name": "Someshwara Swamy Temple – Bhimavaram",
+    "category": "Sacred",
+    "location": {
+      "city": "Bhimavaram",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Pancha Rama Kshetra where lingam changes color according to lunar phase.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Bhimavaram, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 16.5414,
+      "longitude": 81.5233
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-ksheeraramam-ksheera-ramalingeswara",
+    "name": "Ksheera Ramalingeswara Temple – Palakollu",
+    "category": "Sacred",
+    "location": {
+      "city": "Palakollu",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Pancha Rama Kshetra with 120-foot tall white Rajagopuram.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Palakollu, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 16.5175,
+      "longitude": 81.7289
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-kumararamam-bhimeswara-swamy",
+    "name": "Kumara Bhimeswara Swamy Temple – Samalkota",
+    "category": "Sacred",
+    "location": {
+      "city": "Samalkota",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Pancha Rama Kshetra housing 14-foot limestone lingam.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Samalkota, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 17.05,
+      "longitude": 82.1833
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-yadadri-narasimha-swamy-temple",
+    "name": "Yadadri Sri Lakshmi Narasimha Temple",
+    "category": "Sacred",
+    "location": {
+      "city": "Yadadri Bhuvanagiri",
+      "state": "Telangana",
+      "country": "India"
+    },
+    "deity": "Lord Narasimha",
+    "description": "Magnificent newly reconstructed cave temple carved entirely in black granite.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Yadadri Bhuvanagiri, Telangana. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 17.5897,
+      "longitude": 78.9481
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-bhadrachalam-sita-ramachandra-swamy",
+    "name": "Sita Ramachandra Swamy Temple – Bhadrachalam",
+    "category": "Sacred",
+    "location": {
+      "city": "Bhadrachalam",
+      "state": "Telangana",
+      "country": "India"
+    },
+    "deity": "Lord Ram & Sita",
+    "description": "Famous Godavari riverbank shrine where Lord Ram crossed during search for Sita.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Bhadrachalam, Telangana. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 17.6689,
+      "longitude": 80.8872
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]

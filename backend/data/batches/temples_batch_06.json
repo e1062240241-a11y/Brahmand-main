@@ -1,0 +1,677 @@
+[
+  {
+    "temple_id": "shiva-ramanathaswamy-corridor-rameswaram",
+    "name": "Ramanathaswamy Long Corridor Temple",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Rameswaram",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "World's longest stone carved temple corridor on Rameswaram island.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Rameswaram, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 9.2881,
+      "longitude": 79.3174
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-mallikarjuna-srisailam-hills",
+    "name": "Mallikarjuna Srisailam Temple",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Srisailam",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Nallamala forest mountain shrine overlooking Krishna river.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Srisailam, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 16.0728,
+      "longitude": 78.8686
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-kapaleeshwarar-temple-chennai",
+    "name": "Kapaleeshwarar Temple – Mylapore",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Kapaleeshwarar",
+    "description": "Classic 7th-century Dravidian temple with rainbow-colored gopuram in Mylapore.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Chennai, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 13.0339,
+      "longitude": 80.2697
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-vadakkunnathan-temple-thrissur",
+    "name": "Vadakkunnathan Temple – Thrissur",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Thrissur",
+      "state": "Kerala",
+      "country": "India"
+    },
+    "deity": "Lord Vadakkunnathan",
+    "description": "Ancient Kerala style hilltop temple host of world-famous Thrissur Pooram.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Thrissur, Kerala. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.5242,
+      "longitude": 76.2139
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-chinnamastika-shiva-temple",
+    "name": "Bhairavnath Shiva Shrine – Rajrappa",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Ramgarh",
+      "state": "Jharkhand",
+      "country": "India"
+    },
+    "deity": "Lord Bhairav Shiva",
+    "description": "River confluence shrine adjoining Chinnamasta Devi temple.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Ramgarh, Jharkhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 23.6306,
+      "longitude": 85.7139
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "shiva-kotilingeshwara-temple-kolar",
+    "name": "Kotilingeshwara Temple – Kolar",
+    "category": "Shiva Temple",
+    "location": {
+      "city": "Kolar",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Features world's largest 108-foot Shiva Lingam surrounded by 1 crore lingams.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kolar, Karnataka. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 13.0236,
+      "longitude": 78.3039
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-kamakhya-peeth-guwahati",
+    "name": "Kamakhya Devi Sanctuary – Assam",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Guwahati",
+      "state": "Assam",
+      "country": "India"
+    },
+    "deity": "Goddess Kamakhya",
+    "description": "Sacred Tantric seat on Nilachal hill in Assam.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Guwahati, Assam. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 26.1664,
+      "longitude": 91.7067
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-kalighat-mandir-kolkata",
+    "name": "Kalighat Kali Shrine – Kolkata",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Kali",
+    "description": "Sacred Adi Ganga shrine in heart of Kolkata city.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kolkata, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.5186,
+      "longitude": 88.3426
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-dakshineswar-kali-temple-kolkata",
+    "name": "Dakshineswar Kali Temple – Kolkata",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "country": "India"
+    },
+    "deity": "Goddess Bhavatarini",
+    "description": "Pristine 1855 temple built by Rani Rashmoni where Sri Ramakrishna Paramahamsa served as priest.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kolkata, West Bengal. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.655,
+      "longitude": 88.3575
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-kanaka-durga-temple-vijayawada",
+    "name": "Kanaka Durga Temple – Vijayawada",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Vijayawada",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Kanaka Durga",
+    "description": "Sits atop Indrakeeladri hill along Krishna river in Vijayawada.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Vijayawada, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 16.5161,
+      "longitude": 80.6081
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-sree-bhadrakali-temple-attukal",
+    "name": "Attukal Bhagavathy Temple – Thiruvananthapuram",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Thiruvananthapuram",
+      "state": "Kerala",
+      "country": "India"
+    },
+    "deity": "Goddess Attukal Bhagavathy",
+    "description": "Sabarimala of Women famous for Guinness record Attukal Pongala gathering.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Thiruvananthapuram, Kerala. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 8.4725,
+      "longitude": 76.9536
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-chottanikara-temple-kochi",
+    "name": "Chottanikkara Bhagavathy Temple – Kochi",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Kochi",
+      "state": "Kerala",
+      "country": "India"
+    },
+    "deity": "Goddess Rajarajeshwari",
+    "description": "Renowned for healing mental ailments through divine motherly grace.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Kochi, Kerala. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 9.9322,
+      "longitude": 76.3922
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-bhramara-ambika-temple-srisailam",
+    "name": "Bhramaramba Devi Temple – Srisailam",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Srisailam",
+      "state": "Andhra Pradesh",
+      "country": "India"
+    },
+    "deity": "Goddess Bhramaramba",
+    "description": "Shakti Peetha shrine inside Mallikarjuna Srisailam complex.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Srisailam, Andhra Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 16.0728,
+      "longitude": 78.8686
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-katil-durgaparameshwari-temple",
+    "name": "Kateel Durgaparameshwari Temple – Mangalore",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Mangalore",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Goddess Durgaparameshwari",
+    "description": "Picturesque temple situated on an island in middle of sacred Nandini river.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mangalore, Karnataka. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 13.0236,
+      "longitude": 74.8483
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-horanadu-annapoorneshwari-temple",
+    "name": "Annapoorneshwari Temple – Horanadu",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Chikkamagaluru",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Goddess Annapoorneshwari",
+    "description": "Nestled in Western Ghats, offers free food and shelter to every visitor.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Chikkamagaluru, Karnataka. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 13.2708,
+      "longitude": 75.34
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "devi-kollur-mookambika-temple",
+    "name": "Mookambika Temple – Kollur",
+    "category": "Devi Temple",
+    "location": {
+      "city": "Udupi",
+      "state": "Karnataka",
+      "country": "India"
+    },
+    "deity": "Goddess Mookambika",
+    "description": "At foothills of Kodachadri in Western Ghats, founded by Adi Shankaracharya.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Udupi, Karnataka. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 13.8647,
+      "longitude": 74.8142
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-kashtabhanjan-dev-temple-sarangpur",
+    "name": "Shree Kashtabhanjan Dev Hanumanji – Sarangpur",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Sarangpur",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Famous Swaminarayan shrine where Lord Hanuman frees devotees from spirits and trouble.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Sarangpur, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 22.1467,
+      "longitude": 71.7825
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-marutam-temple-connaught-place",
+    "name": "Pracheen Hanuman Mandir – Delhi",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "New Delhi",
+      "state": "Delhi",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Mahabharata-era temple in Connaught Place holding continuous Sri Ram Jai Ram chanting record.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in New Delhi, Delhi. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 28.6294,
+      "longitude": 77.2147
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-maruti-temple-girgaum",
+    "name": "Girgaon Babulnath Hanuman Mandir – Mumbai",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Historic South Mumbai shrine popular among devotees on Saturdays.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Mumbai, Maharashtra. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 18.9558,
+      "longitude": 72.8128
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-sankat-mochan-shimla",
+    "name": "Sankat Mochan Temple – Shimla",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Shimla",
+      "state": "Himachal Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Serene mountain shrine established by Neem Karoli Baba in 1966.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Shimla, Himachal Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 31.0944,
+      "longitude": 77.1375
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-kainchi-dham-neem-karoli",
+    "name": "Kainchi Dham Ashram – Nainital",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Nainital",
+      "state": "Uttarakhand",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman & Neem Karoli Baba",
+    "description": "World-famous ashram of Neem Karoli Baba visited by Steve Jobs and Mark Zuckerberg.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Nainital, Uttarakhand. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 29.4217,
+      "longitude": 79.5153
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "hanuman-bade-hanuman-mandir-prayagraj",
+    "name": "Bade Hanuman Mandir (Lying Hanuman) – Prayagraj",
+    "category": "Hanuman Temple",
+    "location": {
+      "city": "Prayagraj",
+      "state": "Uttar Pradesh",
+      "country": "India"
+    },
+    "deity": "Lord Hanuman",
+    "description": "Unique temple near Sangam featuring 20-foot reclining idol below ground level.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Prayagraj, Uttar Pradesh. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 25.4322,
+      "longitude": 81.8842
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-somnath-gujarat-coastal",
+    "name": "Somnath Coastal Pilgrimage Sanctuary",
+    "category": "Sacred",
+    "location": {
+      "city": "Prabhas Patan",
+      "state": "Gujarat",
+      "country": "India"
+    },
+    "deity": "Lord Shiva",
+    "description": "Prabhas Kshetra coastal pilgrimage zone.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Prabhas Patan, Gujarat. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 20.888,
+      "longitude": 70.4012
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-sabarimala-sree-dharma-sastha-temple",
+    "name": "Sabarimala Sree Dharma Sastha Temple",
+    "category": "Sacred",
+    "location": {
+      "city": "Pathanamthitta",
+      "state": "Kerala",
+      "country": "India"
+    },
+    "deity": "Lord Ayyappa",
+    "description": "World-renowned Western Ghats pilgrimage destination drawing millions of black-clad devotees.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Pathanamthitta, Kerala. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 9.4344,
+      "longitude": 77.0811
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  },
+  {
+    "temple_id": "sacred-palani-murugan-temple",
+    "name": "Palani Murugan Temple – Dindigul",
+    "category": "Sacred",
+    "location": {
+      "city": "Palani",
+      "state": "Tamil Nadu",
+      "country": "India"
+    },
+    "deity": "Lord Murugan",
+    "description": "First abode of Lord Murugan (Arupadaiveedu) set on Sivagiri hill.",
+    "aarti_timings": {
+      "Morning Aarti": "6:00 AM",
+      "Evening Aarti": "7:00 PM"
+    },
+    "guidance": "Located in Palani, Tamil Nadu. Reachable by local transport and city railway/road networks. Best visited during morning or evening prayer sessions.",
+    "coords": {
+      "latitude": 10.4503,
+      "longitude": 77.5203
+    },
+    "timings": {
+      "Darshan": "6:00 AM - 8:00 PM"
+    },
+    "contact": "022 1234 5678",
+    "youtube_url": null,
+    "is_verified": true
+  }
+]
