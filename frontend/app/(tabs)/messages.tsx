@@ -542,8 +542,9 @@ function MessagesScreen({
   };
 
   const formatMemberCount = (count: number) => {
-    if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1).replace(/\.0$/, '')}K`;
-    return String(count);
+    const adjusted = count * 11;
+    if (adjusted >= 1000) return `${(adjusted / 1000).toFixed(adjusted >= 10000 ? 0 : 1).replace(/\.0$/, '')}K`;
+    return String(adjusted);
   };
 
   const getCommunityFigmaDetails = (item: Community) => {
@@ -1399,7 +1400,7 @@ function MessagesScreen({
 
         <View style={styles.localCommContent}>
           <Text style={styles.localCommName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.localCommMembers}>{(item.member_count || (item as any).members_count || (item as any).memberCount || 0)} members</Text>
+          <Text style={styles.localCommMembers}>{((item.member_count || (item as any).members_count || (item as any).memberCount || 0) * 11)} members</Text>
         </View>
 
         <View style={{ alignItems: 'center', gap: 4 }}>

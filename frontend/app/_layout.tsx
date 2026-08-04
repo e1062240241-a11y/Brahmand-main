@@ -70,7 +70,8 @@ LogBox.ignoreLogs([
   "Can't perform a React state update on a component that hasn't mounted yet",
   "Can't perform a React state update",
   "React state update on a component",
-  "The action 'GO_BACK' was not handled by any navigator"
+  "The action 'GO_BACK' was not handled by any navigator",
+  'InteractionManager has been deprecated',
 ]);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
@@ -205,6 +206,18 @@ function useAppBackHandler() {
         return true;
       }
 
+      // Specific fix for follow-connections screen
+      if (pathname === '/follow-connections') {
+        safeNavigate(() => {
+          if (safeCanGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/profile');
+          }
+        });
+        return true;
+      }
+
       // 3. Fallback: If we can go back, do it safely
       if (safeCanGoBack()) {
         safeNavigate(() => router.back());
@@ -253,7 +266,8 @@ function isValidAppPath(path: string): boolean {
     '/badges',
     '/ekant-jaap',
     '/live-mantra',
-    '/community-request'
+    '/community-request',
+    '/follow-connections'
   ];
 
   if (staticPaths.includes(cleanPath)) {

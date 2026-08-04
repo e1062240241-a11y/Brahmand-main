@@ -150,12 +150,6 @@ export default function PanchangScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   
-  // AI Chat States
-  const [aiModalVisible, setAiModalVisible] = useState(false);
-  const [question, setQuestion] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ question: string; answer: string }[]>([]);
-
   // Sub-tabs / Toggles
   const [choghadiyaMode, setChoghadiyaMode] = useState<'day' | 'night'>('day');
   const [activeHoraIdx, setActiveHoraIdx] = useState<number>(1);
@@ -247,33 +241,6 @@ export default function PanchangScreen() {
     next.setDate(next.getDate() + 1);
     setSelectedDate(next);
     fetchPanchang(activeCoords.lat, activeCoords.lng, false, next);
-  };
-
-  const submitQuestion = async () => {
-    if (!question.trim() || chatLoading) return;
-    const q = question.trim();
-    setChatLoading(true);
-    try {
-      const { dob, tob, pob } = useJyotishStore.getState();
-      let finalQuestion = q;
-      if (dob && tob && pob) {
-        const dStr = formatDateIST(dob);
-        finalQuestion = `My birth details are Date: ${dStr}, Time: ${tob}, Place: ${pob}. Please consider this context. Question: ${q}`;
-      }
-
-      const response = await askAstrologyAI({
-        question: finalQuestion,
-        astrology: { kind: 'panchang', payload },
-      });
-      if (isMountedRef.current) {
-        setChatMessages(prev => [{ question: q, answer: response.data?.answer || 'No guidance available.' }, ...prev]);
-        setQuestion('');
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      if (isMountedRef.current) setChatLoading(false);
-    }
   };
 
   const getAdvancedPanchang = () => payload?.sources?.advanced_panchang || payload?.sources?.panchang_advanced;
@@ -859,79 +826,6 @@ export default function PanchangScreen() {
           </>
         )}
       </KeyboardAwareScrollView>
-
-
-
-      {/* Full-Screen Premium AI Chat Modal */}
-      <Modal
-        visible={aiModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setAiModalVisible(false)}
-      >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderTitleRow}>
-                <Ionicons name="sparkles" size={20} color="#FF6B00" style={{ marginRight: 8 }} />
-                <Text style={styles.modalTitle}>Astrology AI Insights</Text>
-              </View>
-              <TouchableOpacity onPress={() => setAiModalVisible(false)}>
-                <Ionicons name="close-circle" size={28} color="#8C7263" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Chat List */}
-            <KeyboardAwareScrollView 
-              style={styles.chatScroll}
-              contentContainerStyle={{ paddingBottom: 20 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {chatMessages.length === 0 ? (
-                <View style={styles.emptyChatContainer}>
-                  <Ionicons name="chatbubbles-outline" size={48} color="#D2C3BB" />
-                  <Text style={styles.emptyChatText}>
-                    Ask questions about today's tithi, muhurta, planetary impact, or auspicious tasks!
-                  </Text>
-                </View>
-              ) : (
-                chatMessages.map((m, i) => (
-                  <View key={i} style={styles.chatBubbleContainer}>
-                    <View style={styles.userBubble}>
-                      <Text style={styles.userBubbleText}>{m.question}</Text>
-                    </View>
-                    <View style={styles.aiBubble}>
-                      <LinearGradient
-                        colors={['#FFF5F0', '#FFFBF9']}
-                        style={StyleSheet.absoluteFillObject}
-                      />
-                      <Text style={styles.aiBubbleText}>{m.answer}</Text>
-                    </View>
-                  </View>
-                ))
-              )}
-            </KeyboardAwareScrollView>
-
-            {/* Input Wrap */}
-            <View style={styles.modalInputWrap}>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="Ask AI about auspicious times today..."
-                placeholderTextColor="#A09090"
-                value={question}
-                onChangeText={setQuestion}
-              />
-              <TouchableOpacity style={styles.modalSendBtn} onPress={submitQuestion} disabled={chatLoading}>
-                {chatLoading ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="send" size={18} color="#FFF" />}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
     </View>
   );
 }
@@ -1818,129 +1712,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 15,
     marginLeft: 8,
-  },
-
-  // Modal styling
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(49, 19, 3, 0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFF5F0',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    height: '75%',
-    paddingHorizontal: 20,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: -10 },
-    elevation: 24,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: '#FFE2D5',
-  },
-  modalHeaderTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#311303',
-  },
-  chatScroll: {
-    flex: 1,
-    marginTop: 10,
-  },
-  emptyChatContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 60,
-    paddingHorizontal: 20,
-  },
-  emptyChatText: {
-    fontSize: 14,
-    color: '#8C7263',
-    textAlign: 'center',
-    marginTop: 12,
-    lineHeight: 20,
-  },
-  chatBubbleContainer: {
-    marginBottom: 16,
-  },
-  userBubble: {
-    backgroundColor: '#FF8E3C',
-    alignSelf: 'flex-end',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 16,
-    borderBottomRightRadius: 2,
-    maxWidth: '80%',
-    shadowColor: '#FF6B00',
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-  },
-  userBubbleText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  aiBubble: {
-    backgroundColor: '#FFFFFF',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    borderBottomLeftRadius: 2,
-    maxWidth: '85%',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#FFE2D5',
-    shadowColor: '#8C4200',
-    shadowOpacity: 0.04,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
-    overflow: 'hidden',
-  },
-  aiBubbleText: {
-    color: '#311303',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  modalInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 16,
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#FFE2D5',
-    marginTop: 10,
-  },
-  modalInput: {
-    flex: 1,
-    fontSize: 14,
-    color: '#311303',
-  },
-  modalSendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FF6B00',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

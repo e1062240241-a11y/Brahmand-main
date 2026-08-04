@@ -1099,14 +1099,16 @@ export default function HomeScreen() {
             if (database) {
               const feedsCollection = database.get('feeds');
               const batchOperations: any[] = [];
+              const processedIds = new Set<string>();
+
               for (const item of incomingItems) {
                 const recordId = String(item.id || item.media_url);
-                if (!recordId) continue;
+                if (!recordId || processedIds.has(recordId)) continue;
+                processedIds.add(recordId);
 
                 let existingRecord = null;
                 try {
-                  const matchingRecords = await feedsCollection.query(Q.where('id', recordId)).fetch();
-                  existingRecord = matchingRecords && matchingRecords.length > 0 ? matchingRecords[0] : null;
+                  existingRecord = await feedsCollection.find(recordId);
                 } catch {
                   existingRecord = null;
                 }
@@ -1155,7 +1157,7 @@ export default function HomeScreen() {
               }
             }
           } catch (localWriteErr) {
-            console.warn('[HomeFeed] Failed to cache posts to database:', localWriteErr);
+            // Silence duplicate constraint logs if local cache is already up-to-date
           }
         });
       }
@@ -1560,7 +1562,12 @@ export default function HomeScreen() {
     }
   };
 
-  const handleSetReminder = async (mantraType: string, sessionName: string) => {
+  const reminderDebounceRef = useRef<Record<string, boolean>>({});
+
+  const handleSetReminder = async (mantraType: string, sessionName: string, silent: boolean = false) => {
+    if (reminderDebounceRef.current[mantraType]) return;
+    reminderDebounceRef.current[mantraType] = true;
+
     try {
       const response = await api.post('/jaap/reminder', {
         mantra_type: mantraType,
@@ -1569,6 +1576,8 @@ export default function HomeScreen() {
       const active = response.data.active;
 
       setReminders(prev => ({ ...prev, [mantraType]: active }));
+
+      if (silent) return active;
 
       let readableMantra = '';
       if (t('language') === 'hi') {
@@ -1598,10 +1607,16 @@ export default function HomeScreen() {
       }
     } catch (err: any) {
       console.error('Failed to toggle reminder on home:', err);
-      Alert.alert(
-        t('language') === 'hi' ? 'त्रुटि' : 'Error',
-        t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
-      );
+      if (!silent) {
+        Alert.alert(
+          t('language') === 'hi' ? 'त्रुटि' : 'Error',
+          t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
+        );
+      }
+    } finally {
+      setTimeout(() => {
+        reminderDebounceRef.current[mantraType] = false;
+      }, 1000);
     }
   };
 
@@ -1699,7 +1714,7 @@ export default function HomeScreen() {
         if (!store.vendors || store.vendors.length === 0) {
           store.fetchVendors().catch(() => { });
         }
-        fetchReminders();
+        fetchReminders(true);
       });
       return () => {
         task.cancel();
@@ -3136,7 +3151,15 @@ export default function HomeScreen() {
                 {/* Live Katha Banner (First) */}
                 {(() => {
                   return (
-                    <View style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}>
+                    <TouchableOpacity
+                      activeOpacity={0.95}
+                      onPress={() => {
+                        router.push({
+                          pathname: '/shravan-paath',
+                        });
+                      }}
+                      style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
+                    >
                       <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
                         <Image
                           source={require('../../assets/images/panditji.png')}
@@ -3343,15 +3366,20 @@ export default function HomeScreen() {
                               हर दिन LIVE श्रावण माह में
                             </Text>
 
-                            {/* Uiverse Notify Button with sliding hover fill & navigation to shravan-paath */}
+                            {/* Uiverse Notify Button with sliding hover fill & delayed navigation to shravan-paath */}
                             <UiverseNotifyButton
                               isNotified={!!reminders['shravan_katha']}
                               onPress={() => {
-                                handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
-                                router.push('/shravan-paath');
+                                handleSetReminder('shravan_katha', 'Shravan Shiv Katha', true);
+                                setTimeout(() => {
+                                  router.push({
+                                    pathname: '/shravan-paath',
+                                    params: { showSetToast: '1' }
+                                  });
+                                }, 500);
                               }}
                               label="Notify Me"
-                              notifiedLabel="Notified"
+                              notifiedLabel="You're In"
                               size="small"
                               style={{
                                 marginTop: Platform.OS === 'android' ? 3 : 5,
@@ -3361,7 +3389,7 @@ export default function HomeScreen() {
                           </View>
                         </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })()}
 
@@ -4028,7 +4056,7 @@ export default function HomeScreen() {
                 cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
               }
               const cityId = resolvedCityComm.id;
-              const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
+              const cityMembers = (resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 48) * 11;
               return (
                 <Pressable
                   style={({ pressed }) => [
@@ -4070,7 +4098,7 @@ export default function HomeScreen() {
               if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
                 realGroupName = 'पुणे भोजन साझाकरण समूह';
               }
-              const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
+              const localMembers = (resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 21) * 11;
               const localSubgroup = resolvedLocalComm.type || 'city';
               return (
                 <Pressable

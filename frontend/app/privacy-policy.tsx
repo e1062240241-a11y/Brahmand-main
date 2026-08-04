@@ -93,6 +93,7 @@ export default function PrivacyPolicyScreen() {
         <Text style={styles.paragraph}>
           Welcome to Brahmand (“Platform”, “App”, “we”, “our”, or “us”).{'\n\n'}
           These Terms govern your access to and use of the Brahmand mobile application, website, communities, messaging services, vendor listings, AI features, digital services, and all related products available through brahmand.app.{'\n\n'}
+          Brahmand is developed and operated by SNV Overseas LLP.{'\n\n'}
           By creating an account, signing in, or using Brahmand, you agree to these Terms of Service. If you do not agree, you must not use the Platform.
         </Text>
 
@@ -392,6 +393,7 @@ export default function PrivacyPolicyScreen() {
         <Text style={styles.paragraph}>
           Welcome to Brahmand (“Platform”, “App”, “we”, “our”, or “us”).{'\n\n'}
           This Privacy Policy explains how Brahmand collects, uses, stores, processes, and protects your information when you access or use the Brahmand platform, website, mobile application, and related services.{'\n\n'}
+          Brahmand is developed and operated by SNV Overseas LLP.{'\n\n'}
           By using Brahmand, you agree to the collection and use of information as described in this Privacy Policy.
         </Text>
 

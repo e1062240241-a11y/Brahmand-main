@@ -120,7 +120,7 @@ export function GlobalFAB() {
             lastLocationFetchRef.current = now;
           }
         } catch (locErr) {
-          console.warn('Location fetch failed in SOS check:', locErr);
+          // Silent fallback when device location is unavailable or GPS toggled off
         }
       }
 
@@ -384,6 +384,8 @@ export function GlobalFAB() {
     pathname === '/index' ||
     pathname.startsWith('/auth') ||
     pathname === '/privacy-policy' ||
+    pathname === '/shravan-paath' ||
+    pathname.includes('shravan-paath') ||
     pathname.includes('privacy') ||
     pathname.includes('terms') ||
     pathname.includes('guidelines')

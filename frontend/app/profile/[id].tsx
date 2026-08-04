@@ -1483,112 +1483,55 @@ const UserProfileScreen = () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* Post Detail Modal / View */}
-      {(Platform.OS as string) === 'ios' ? (
-        <Modal
-          visible={postModalVisible}
-          animationType="slide"
-          presentationStyle="fullScreen"
-          onRequestClose={() => setPostModalVisible(false)}
-        >
-          <View style={styles.postDetailContainer}>
-            <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
-              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.postDetailTitle}>Posts</Text>
-            </View>
-            <FlatList
-              ref={detailFlatListRef}
-              data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
-              contentContainerStyle={{
-                paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
-              }}
-              renderItem={({ item }) => (
-                <PostFeedCard
-                  post={item}
-                  isActive={postModalVisible && viewablePostId === item.id}
-                  onLike={handleLikePost}
-                  onComment={handleOpenComment}
-                  onShare={handleSharePost}
-                  onRepost={handleRepost}
-                  openCommentsOnCaptionPress
-                  onUserPress={() => setPostModalVisible(false)}
-                  postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
-                  onPostMenuPress={handlePostMenuPress}
-                  theme="dark"
-                  isBlackBackground
-                />
-              )}
-              keyExtractor={(item, index) => item && item.id ? String(item.id) : `detail-idx-${index}`}
-              showsVerticalScrollIndicator={false}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
-              windowSize={3}
-              initialNumToRender={1}
-              maxToRenderPerBatch={2}
-              removeClippedSubviews={(Platform.OS as string) === 'android'}
-            />
-            <DeleteConfirmationModal
-              visible={deleteConfirmVisible}
-              onClose={() => {
-                setDeleteConfirmVisible(false);
-                setPostToDelete(null);
-              }}
-              onConfirm={onConfirmDelete}
-            />
+      {/* Post Detail View */}
+      {postModalVisible && (
+        <View style={[styles.postDetailContainer, styles.androidPostDetailContainer]}>
+          <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
+            <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.postDetailTitle}>Posts</Text>
           </View>
-        </Modal>
-      ) : (
-        postModalVisible && (
-          <View style={[styles.postDetailContainer, styles.androidPostDetailContainer]}>
-            <View style={[styles.postDetailHeader, { paddingTop: insets.top, height: 50 + insets.top }]}>
-              <TouchableOpacity onPress={() => setPostModalVisible(false)} style={styles.backButton}>
-                <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.postDetailTitle}>Posts</Text>
-            </View>
-            <FlatList
-              ref={detailFlatListRef}
-              data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
-              contentContainerStyle={{
-                paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
-              }}
-              renderItem={({ item }) => (
-                <PostFeedCard
-                  post={item}
-                  isActive={postModalVisible && viewablePostId === item.id}
-                  onLike={handleLikePost}
-                  onComment={handleOpenComment}
-                  onShare={handleSharePost}
-                  onRepost={handleRepost}
-                  openCommentsOnCaptionPress
-                  onUserPress={() => setPostModalVisible(false)}
-                  postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
-                  onPostMenuPress={handlePostMenuPress}
-                  theme="dark"
-                  isBlackBackground
-                />
-              )}
-              keyExtractor={(item, index) => item && item.id ? String(item.id) : `detail-idx-${index}`}
-              showsVerticalScrollIndicator={false}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
-              windowSize={3}
-              initialNumToRender={1}
-              maxToRenderPerBatch={2}
-              removeClippedSubviews={(Platform.OS as string) === 'android'}
-            />
-            <DeleteConfirmationModal
-              visible={deleteConfirmVisible}
-              onClose={() => {
-                setDeleteConfirmVisible(false);
-                setPostToDelete(null);
-              }}
-              onConfirm={onConfirmDelete}
-            />
-          </View>
-        )
+          <FlatList
+            ref={detailFlatListRef}
+            data={selectedPost ? posts.slice(Math.max(0, posts.findIndex(p => p.id === selectedPost.id))) : posts}
+            contentContainerStyle={{
+              paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
+            }}
+            renderItem={({ item }) => (
+              <PostFeedCard
+                post={item}
+                isActive={postModalVisible && viewablePostId === item.id}
+                onLike={handleLikePost}
+                onComment={handleOpenComment}
+                onShare={handleSharePost}
+                onRepost={handleRepost}
+                openCommentsOnCaptionPress
+                onUserPress={() => setPostModalVisible(false)}
+                postMenuType={profile?.id === currentUserId ? 'delete' : 'report'}
+                onPostMenuPress={handlePostMenuPress}
+                theme="dark"
+                isBlackBackground
+              />
+            )}
+            keyExtractor={(item, index) => item && item.id ? String(item.id) : `detail-idx-${index}`}
+            showsVerticalScrollIndicator={false}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            windowSize={3}
+            initialNumToRender={1}
+            maxToRenderPerBatch={2}
+            removeClippedSubviews={(Platform.OS as string) === 'android'}
+          />
+          <DeleteConfirmationModal
+            visible={deleteConfirmVisible}
+            onClose={() => {
+              setDeleteConfirmVisible(false);
+              setPostToDelete(null);
+            }}
+            onConfirm={onConfirmDelete}
+          />
+        </View>
       )}
 
       {/* Comments Modal (Rendered outside, as native Modal on both platforms) */}

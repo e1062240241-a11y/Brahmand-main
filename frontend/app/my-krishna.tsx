@@ -70,6 +70,7 @@ function TypingDots() {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
+  const animsRef = useRef<Animated.CompositeAnimation[]>([]);
 
   useEffect(() => {
     const anim1 = Animated.loop(
@@ -96,8 +97,15 @@ function TypingDots() {
         Animated.delay(600),
       ])
     );
-    anim1.start(); anim2.start(); anim3.start();
-    return () => { anim1.stop(); anim2.stop(); anim3.stop(); };
+
+    animsRef.current = [anim1, anim2, anim3];
+    anim1.start();
+    anim2.start();
+    anim3.start();
+
+    return () => {
+      animsRef.current.forEach((anim) => anim.stop());
+    };
   }, []);
 
   return (

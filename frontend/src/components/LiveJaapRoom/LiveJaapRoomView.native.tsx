@@ -687,13 +687,27 @@ export default function LiveJaapRoomView() {
     }
   }, [bgPlayer, isMuted, mantraType]);
 
-  // Drift check and synchronization for Native player
+  // Periodic drift check and synchronization for Native player
+  useEffect(() => {
+    if (!bgPlayer || mantraType === 'shani_chalisa') return;
+
+    const interval = setInterval(() => {
+      syncAudio();
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [bgPlayer, mantraType, isSessionActive]);
+
   const syncAudio = () => {
     if (!bgPlayer || mantraType === 'shani_chalisa') return;
     if (mantraType === 'hanuman') {
       const status = getCurrentHanumanStatus(new Date());
       if (status.isActive && !status.isCompleted && !status.isBreak) {
-        bgPlayer.seekTo(status.audioPositionSeconds);
+        const expected = status.audioPositionSeconds;
+        const current = bgPlayer.currentTime || 0;
+        if (Math.abs(current - expected) > 1.0) {
+          bgPlayer.seekTo(expected);
+        }
       }
     } else {
       const status = getCurrentOtherJaapStatus(new Date(), mantraType || 'gayatri');
@@ -936,15 +950,15 @@ export default function LiveJaapRoomView() {
     return () => clearTimeout(timer);
   }, [currentIndex, isHolding, WORDS, mantraType, isSessionActive]);
 
-  const setupAgora = async (shouldPublishMic = isMicEnabled) => {
+  const setupAgora = async (shouldPublishMic = false) => {
     try {
       if (agoraJoinedRef.current) {
         await engine.current.updateChannelMediaOptions({
-          publishMicrophoneTrack: shouldPublishMic,
+          publishMicrophoneTrack: false,
           autoSubscribeAudio: true,
         });
-        await engine.current.enableLocalAudio(shouldPublishMic);
-        await engine.current.muteLocalAudioStream(!shouldPublishMic);
+        await engine.current.enableLocalAudio(false);
+        await engine.current.muteLocalAudioStream(true);
         return;
       }
 
@@ -957,18 +971,11 @@ export default function LiveJaapRoomView() {
 
       if (!config.enabled || !config.token || !config.appId) {
         console.warn('[LiveJaapRoom.native] Agora not configured or token missing:', config);
-        setMicStatus(isMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+        setMicStatus(t('language') === 'hi' ? 'माइक बंद है' : 'Muted');
         setParticipantLabel(t('agoraNotConfigured'));
         return;
       }
 
-      // Request recording permission
-      try {
-        const perm = await requestRecordingPermissionsAsync();
-        console.log('[LiveJaapRoom.native] Microphone recording permission status:', perm);
-      } catch (pErr) {
-        console.warn('[LiveJaapRoom.native] Failed to request mic permission:', pErr);
-      }
       await engine.current.initialize({
         appId: config.appId,
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
@@ -979,7 +986,7 @@ export default function LiveJaapRoomView() {
         onJoinChannelSuccess: (connection: RtcConnection) => {
           agoraJoinedRef.current = true;
           setParticipantLabel(`${t('connectedTo')} ${roomTitle || 'Sangat'}`);
-          setMicStatus(shouldPublishMic ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+          setMicStatus(t('language') === 'hi' ? 'माइक बंद है' : 'Muted');
           
           // Create data stream for reactions
           try {
@@ -1025,23 +1032,21 @@ export default function LiveJaapRoomView() {
       await engine.current.setEnableSpeakerphone(true);
       await engine.current.muteAllRemoteAudioStreams(false);
       await engine.current.adjustPlaybackSignalVolume(100);
-      await engine.current.adjustRecordingSignalVolume(400);
-      await engine.current.setClientRole(
-        shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience
-      );
-      await engine.current.enableLocalAudio(shouldPublishMic);
-      await engine.current.muteLocalAudioStream(!shouldPublishMic);
+      await engine.current.adjustRecordingSignalVolume(0);
+      await engine.current.setClientRole(ClientRoleType.ClientRoleAudience);
+      await engine.current.enableLocalAudio(false);
+      await engine.current.muteLocalAudioStream(true);
 
-      console.log('[LiveJaapRoom.native] Joining channel:', ROOM_NAME, 'LiveBroadcasting Profile...');
+      console.log('[LiveJaapRoom.native] Joining channel as Audience:', ROOM_NAME);
       await engine.current.joinChannel(config.token, ROOM_NAME, config.uid || 0, {
         channelProfile: ChannelProfileType.ChannelProfileLiveBroadcasting,
-        clientRoleType: shouldPublishMic ? ClientRoleType.ClientRoleBroadcaster : ClientRoleType.ClientRoleAudience,
-        publishMicrophoneTrack: shouldPublishMic,
+        clientRoleType: ClientRoleType.ClientRoleAudience,
+        publishMicrophoneTrack: false,
         autoSubscribeAudio: true,
       });
     } catch (error) {
       console.warn('[Agora] setup error:', error);
-      setMicStatus(isMicEnabled ? (t('language') === 'hi' ? 'माइक चालू है' : 'Microphone Active') : (t('language') === 'hi' ? 'माइक बंद है' : 'Muted'));
+      setMicStatus(t('language') === 'hi' ? 'माइक बंद है' : 'Muted');
     }
   };
 
@@ -1113,7 +1118,7 @@ export default function LiveJaapRoomView() {
             publishMicrophoneTrack: true,
             autoSubscribeAudio: true,
           });
-          console.log('[LiveJaapRoom.native] Mic UNMUTED & voice stream published!');
+          console.log('[LiveJaapRoom.native] Mic UNMUTED & voice stream requested');
         } else {
           await engine.current.muteLocalAudioStream(true);
           await engine.current.enableLocalAudio(false);
@@ -1123,7 +1128,7 @@ export default function LiveJaapRoomView() {
             publishMicrophoneTrack: false,
             autoSubscribeAudio: true,
           });
-          console.log('[LiveJaapRoom.native] Mic MUTED (Role set to Audience) & remote audio active.');
+          console.log('[LiveJaapRoom.native] Mic MUTED & remote audio active.');
         }
       } catch (e) {
         console.warn('[Agora] toggleMic error:', e);

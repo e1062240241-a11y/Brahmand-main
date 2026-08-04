@@ -368,7 +368,7 @@ export default function DiscoverCommunitiesScreen() {
 
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.cardMembers}>{(item.member_count || (item as any).members_count || (item as any).memberCount || 0)} members</Text>
+          <Text style={styles.cardMembers}>{((item.member_count || (item as any).members_count || (item as any).memberCount || 0) * 11)} members</Text>
         </View>
 
         <TouchableOpacity

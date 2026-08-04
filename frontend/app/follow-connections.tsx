@@ -304,7 +304,15 @@ export default function FollowConnectionsScreen() {
   }, [activeTab, followersSearch, followingSearch, followerIds.length, profileFollowingIds.length, listOpacity, listTranslateY]);
 
   const handleBackPress = () => {
-    router.replace('/profile' as any);
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)/profile' as any);
+      }
+    } catch {
+      router.replace('/(tabs)/profile' as any);
+    }
   };
 
   const totalConnections = new Set([...followerIds, ...profileFollowingIds]).size;
