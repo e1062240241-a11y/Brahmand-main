@@ -1,6 +1,6 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert, Platform, InteractionManager } from 'react-native';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -244,9 +244,10 @@ function PassportTimelineScreen({
         { 
           text: "Clear", 
           style: "destructive", 
-          onPress: async () => {
-            try {
-              const { database } = require('../../src/database');
+          onPress: () => {
+            InteractionManager.runAfterInteractions(async () => {
+              try {
+                const { database } = require('../../src/database');
               const { useFeedStore } = require('../../src/store/feedStore');
               const { usePassportStore } = require('../../src/store/passportStore');
               const { SyncManager } = require('../../src/database/syncManager');
@@ -292,10 +293,11 @@ function PassportTimelineScreen({
               });
               
               Alert.alert("Success", "All journeys have been cleared.");
-            } catch (err) {
-              console.error("[Timeline] Failed to clear journeys:", err);
-              Alert.alert("Error", "Could not clear journeys.");
-            }
+              } catch (err) {
+                console.error("[Timeline] Failed to clear journeys:", err);
+                Alert.alert("Error", "Could not clear journeys.");
+              }
+            });
           }
         }
       ]

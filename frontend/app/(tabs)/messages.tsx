@@ -1323,7 +1323,7 @@ function MessagesScreen({
 
   // --- RENDERING COMPONENTS ---
 
-  const renderActiveRequestCard = (item: any, index: number) => {
+  const renderActiveRequestCard = useCallback((item: any, index: number) => {
     const theme = getRequestTheme(item);
 
     return (
@@ -1361,10 +1361,10 @@ function MessagesScreen({
         </LinearGradient>
       </Pressable>
     );
-  };
+  }, []);
 
 
-  const renderLocalCommunityCard = (item: Community, index: number) => {
+  const renderLocalCommunityCard = useCallback((item: Community, index: number) => {
     const borderColor = '#397339';
     const isJoined = joinedLocalIds.has(item.id) || (item as any).is_member || communities.some(c => c.id === item.id);
     const isJoining = joiningLocalId === item.id;
@@ -1430,7 +1430,7 @@ function MessagesScreen({
         </View>
       </Pressable>
     );
-  };
+  }, [joinedLocalIds, communities, joiningLocalId, router]);
 
 
   // ────────────────────────────────────────────────────────────────────────────
