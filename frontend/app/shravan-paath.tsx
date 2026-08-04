@@ -449,6 +449,9 @@ const styles = StyleSheet.create({
     paddingRight: 10,
     zIndex: 6,
   },
+  liveBadgeRow: {
+    marginBottom: 4,
+  },
   shravanVisheshText: {
     fontSize: 13,
     fontWeight: '700',
