@@ -407,8 +407,8 @@ export default function NewPassportJourneyScreen() {
 
       // Trigger background sync to immediately push the new journey (and public feed post if visibility is public) to the backend
       try {
-        const { syncDatabase } = require('../../../src/database/sync');
-        syncDatabase().catch((err: any) => console.warn('[Passport] Sync failed:', err));
+        const { SyncManager } = require('../../../src/database/syncManager');
+        SyncManager.requestSync();
       } catch (e) {
         console.warn('[Passport] Failed to trigger sync:', e);
       }

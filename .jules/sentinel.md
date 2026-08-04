@@ -27,3 +27,8 @@
 **Vulnerability:** The `verify_token` function in `backend/middleware/security.py` was catching general exceptions, extracting the stack trace with `traceback.format_exc()`, and appending it along with the raw exception message directly to the client's `HTTPException` detail field.
 **Learning:** Returning stack traces (`traceback.format_exc()`) in HTTP responses acts as an Information Exposure (CWE-209/CWE-200) vulnerability. It can leak sensitive system information—such as internal code paths, logic flows, and module names—directly to end-users or malicious actors probing the API.
 **Prevention:** Always return a generic error message (e.g., "User account verification failed") to the client. Securely log the actual exception details, including stack traces, internally on the server using `logger.exception()`.
+
+## 2026-08-07 - Remove Hardcoded Admin Credentials in Frontend Template
+**Vulnerability:** Found a hardcoded admin password (`pummi9-mydwyj-cisfIw`) set as the default `value` for an input field in the `backend/admin_portal/katha_upload.html` template.
+**Learning:** Hardcoding credentials in HTML templates or frontend source code is a critical vulnerability. Even if the portal is intended for internal use, checking these credentials into source control or exposing them via the browser allows trivial unauthorized access to administrative functions.
+**Prevention:** Never use hardcoded values for password inputs or sensitive configuration in client-side code or templates. Always require users to authenticate interactively or utilize secure, environment-specific configuration management.

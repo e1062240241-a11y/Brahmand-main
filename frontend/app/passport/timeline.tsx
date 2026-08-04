@@ -1,6 +1,6 @@
 import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert, Platform, InteractionManager } from 'react-native';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,6 +11,80 @@ import { database } from '../../src/database';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+
+const POPULAR_TEMPLES = [
+  'Akshardham Temple, Delhi',
+  'Amarnath Temple, Anantnag, Jammu & Kashmir',
+  'Ayodhya Ram Mandir, Ayodhya, Uttar Pradesh',
+  'Badrinath Temple, Uttarakhand',
+  'Bhimashankar Temple, Pune, Maharashtra',
+  'Brihadisvara Temple, Thanjavur, Tamil Nadu',
+  'Chamundeshwari Temple, Mysore, Karnataka',
+  'Chidambaram Temple, Tamil Nadu',
+  'Dakshineswar Kali Temple, Kolkata, West Bengal',
+  'Dwarkadhish Temple, Dwarka, Gujarat',
+  'Ekambareswarar Temple, Kanchipuram, Tamil Nadu',
+  'Ettumanoor Mahadeva Temple, Kottayam, Kerala',
+  'Gangotri Temple, Gangotri, Uttarakhand',
+  'Golden Temple, Amritsar, Punjab',
+  'Grishneshwar Temple, Aurangabad, Maharashtra',
+  'Halebidu Hoysaleswara Temple, Hassan, Karnataka',
+  'Har Ki Pauri Temple, Haridwar, Uttarakhand',
+  'Iskcon Temple, Bangalore, Karnataka',
+  'Jagannath Temple, Puri, Odisha',
+  'Jwalamukhi Temple, Kangra, Himachal Pradesh',
+  'Kalighat Kali Temple, Kolkata, West Bengal',
+  'Kamakhya Temple, Guwahati, Assam',
+  'Kanchipuram Temples, Kanchipuram, Tamil Nadu',
+  'Karni Mata Temple, Deshnoke, Rajasthan',
+  'Kedarnath Temple, Uttarakhand',
+  'Konark Sun Temple, Odisha',
+  'Kukke Subramanya Temple, Dakshina Kannada, Karnataka',
+  'Lepakshi Temple, Anantapur, Andhra Pradesh',
+  'Lingaraja Temple, Bhubaneswar, Odisha',
+  'Lotus Temple, Delhi',
+  'Madurai Meenakshi Amman Temple, Tamil Nadu',
+  'Mahabaleshwar Temple, Gokarna, Karnataka',
+  'Mahakaleshwar Jyotirlinga, Ujjain, Madhya Pradesh',
+  'Malliikarjuna Temple, Srisailam, Andhra Pradesh',
+  'Mangueshi Temple, Mangeshi, Goa',
+  'Mehandipur Balaji Temple, Dausa, Rajasthan',
+  'Mumba Devi Temple, Mumbai, Maharashtra',
+  'Nageshwar Jyotirlinga, Dwarka, Gujarat',
+  'Nainital Naina Devi Temple, Uttarakhand',
+  'Omkareshwar Temple, Khandwa, Madhya Pradesh',
+  'Padmanabhaswamy Temple, Thiruvananthapuram, Kerala',
+  'Pattadakal Temples, Bagalkot, Karnataka',
+  'Prem Mandir, Vrindavan, Uttar Pradesh',
+  'Ramanathaswamy Temple, Rameswaram, Tamil Nadu',
+  'Ranakpur Jain Temple, Pali, Rajasthan',
+  'Sabarimala Temple, Pathanamthitta, Kerala',
+  'Sanchi Stupa, Sanchi, Madhya Pradesh',
+  'Sarangpur Hanuman Temple, Gujarat',
+  'Shani Shingnapur, Ahmednagar, Maharashtra',
+  'Shirdi Sai Baba Temple, Shirdi, Maharashtra',
+  'Shiva Temple, Ambernath, Maharashtra',
+  'Siddhivinayak Temple, Mumbai, Maharashtra',
+  'Somnath Temple, Gujarat',
+  'Sree Krishna Temple, Guruvayur, Kerala',
+  'Sri Ranganathaswamy Temple, Srirangam, Tamil Nadu',
+  'Swaminarayan Akshardham, Gandhinagar, Gujarat',
+  'Tarakeswar Temple, Hooghly, West Bengal',
+  'Thousand Pillar Temple, Warangal, Telangana',
+  'Tirupati Balaji Temple, Tirumala, Andhra Pradesh',
+  'Trimbakeshwar Temple, Nashik, Maharashtra',
+  'Udupi Sri Krishna Matha, Udupi, Karnataka',
+  'Vaidyanath Jyotirlinga, Deoghar, Jharkhand',
+  'Vaishno Devi Temple, Katra, Jammu & Kashmir',
+  'Varanasi Kashi Vishwanath Temple, Uttar Pradesh',
+  'Venkateswara Temple, Tirupati, Andhra Pradesh',
+  'Vindhyachal Temple, Mirzapur, Uttar Pradesh',
+  'Vithoba Temple, Pandharpur, Maharashtra',
+  'Xuanzang Temple, Nalanda, Bihar',
+  'Yadadri Temple, Yadagirigutta, Telangana',
+  'Yamunotri Temple, Yamunotri, Uttarakhand',
+  'Zaskar Monastery, Zanskar, Ladakh'
+];
 
 const monthNames = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -58,57 +132,8 @@ function PassportTimelineScreen({
       }
     });
     
-    const popularTemples = [
-      'Akshardham Temple, Delhi',
-      'Amarnath Temple, Anantnag, Jammu & Kashmir',
-      'Ayodhya Ram Mandir, Ayodhya, Uttar Pradesh',
-      'Badrinath Temple, Uttarakhand',
-      'Bhimashankar Temple, Pune, Maharashtra',
-      'Brihadisvara Temple, Thanjavur, Tamil Nadu',
-      'Chamundeshwari Temple, Mysore, Karnataka',
-      'Chidambaram Temple, Tamil Nadu',
-      'Dakshineswar Kali Temple, Kolkata, West Bengal',
-      'Dwarkadhish Temple, Dwarka, Gujarat',
-      'Ekambareswarar Temple, Kanchipuram, Tamil Nadu',
-      'Ettumanoor Mahadeva Temple, Kottayam, Kerala',
-      'Gangotri Temple, Gangotri, Uttarakhand',
-      'Golden Temple, Amritsar, Punjab',
-      'Grishneshwar Temple, Aurangabad, Maharashtra',
-      'Halebidu Hoysaleswara Temple, Hassan, Karnataka',
-      'Har Ki Pauri Temple, Haridwar, Uttarakhand',
-      'Iskcon Temple, Bangalore, Karnataka',
-      'Jagannath Temple, Puri, Odisha',
-      'Jwalamukhi Temple, Kangra, Himachal Pradesh',
-      'Kamakhya Temple, Guwahati, Assam',
-      'Kashi Vishwanath Temple, Varanasi, Uttar Pradesh',
-      'Kedarnath Temple, Uttarakhand',
-      'Lingaraj Temple, Bhubaneswar, Odisha',
-      'Lotus Temple, New Delhi',
-      'Mahakaleshwar Jyotirlinga, Ujjain, Madhya Pradesh',
-      'Mallikarjuna Temple, Srisailam, Andhra Pradesh',
-      'Meenakshi Temple, Madurai, Tamil Nadu',
-      'Nageshwar Jyotirlinga, Dwarka, Gujarat',
-      'Neelkanth Mahadev Temple, Rishikesh, Uttarakhand',
-      'Omkareshwar Temple, Mandhata, Madhya Pradesh',
-      'Padmanabhaswamy Temple, Thiruvananthapuram, Kerala',
-      'Pashupatinath Temple, Kathmandu, Nepal',
-      'Ramanathaswamy Temple, Rameswaram, Tamil Nadu',
-      'Ranakpur Jain Temple, Pali, Rajasthan',
-      'Sabarimala Temple, Pathanamthitta, Kerala',
-      'Siddhivinayak Temple, Mumbai, Maharashtra',
-      'Somnath Temple, Prabhas Patan, Gujarat',
-      'Tirupati Balaji Temple, Tirumala, Andhra Pradesh',
-      'Trimbakeshwar Shiva Temple, Nashik, Maharashtra',
-      'Udupi Sri Krishna Matha, Udupi, Karnataka',
-      'Vaishno Devi Temple, Katra, Jammu & Kashmir',
-      'Varadaraja Perumal Temple, Kanchipuram, Tamil Nadu',
-      'Wanakbori Shiva Temple, Balasinor, Gujarat',
-      'Xuanzang Temple, Nalanda, Bihar',
-      'Yadadri Temple, Yadagirigutta, Telangana',
-      'Yamunotri Temple, Yamunotri, Uttarakhand',
-      'Zaskar Monastery, Zanskar, Ladakh'
-    ];
-    popularTemples.forEach(t => allLocations.add(t));
+
+    POPULAR_TEMPLES.forEach(t => allLocations.add(t));
 
     const lowercaseQuery = queryLocation.toLowerCase();
     const matches = Array.from(allLocations).filter(loc => 
@@ -219,12 +244,13 @@ function PassportTimelineScreen({
         { 
           text: "Clear", 
           style: "destructive", 
-          onPress: async () => {
-            try {
-              const { database } = require('../../src/database');
+          onPress: () => {
+            InteractionManager.runAfterInteractions(async () => {
+              try {
+                const { database } = require('../../src/database');
               const { useFeedStore } = require('../../src/store/feedStore');
               const { usePassportStore } = require('../../src/store/passportStore');
-              const { syncDatabase } = require('../../src/database/sync');
+              const { SyncManager } = require('../../src/database/syncManager');
               
               await database.write(async () => {
                 const journeysCollection = database.get('passport_journeys');
@@ -263,14 +289,15 @@ function PassportTimelineScreen({
                 });
                 
                 // Trigger sync to notify backend of deletion
-                syncDatabase().catch((err: any) => console.warn('[Timeline] Sync failed:', err));
+                SyncManager.requestSync();
               });
               
               Alert.alert("Success", "All journeys have been cleared.");
-            } catch (err) {
-              console.error("[Timeline] Failed to clear journeys:", err);
-              Alert.alert("Error", "Could not clear journeys.");
-            }
+              } catch (err) {
+                console.error("[Timeline] Failed to clear journeys:", err);
+                Alert.alert("Error", "Could not clear journeys.");
+              }
+            });
           }
         }
       ]

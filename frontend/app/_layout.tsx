@@ -23,7 +23,7 @@ import { ToastContainer } from '../src/components/ToastContainer';
 import { UploadProgressBanner } from '../src/components/UploadProgressBanner';
 import { toast } from '../src/store/toastStore';
 import { BrandedLoading } from '../src/components/BrandedLoading';
-import { syncDatabase } from '../src/database/sync';
+import { SyncManager } from '../src/database/syncManager';
 import { GlobalFAB } from '../src/components/GlobalFAB';
 import { initSyncQueueListener } from '../src/services/syncQueueService';
 import { socketService } from '../src/services/socket';
@@ -476,10 +476,10 @@ function useNotificationResponseHandler() {
         // Trigger background sync immediately when user taps on DM notification
         if (Platform.OS !== 'web') {
           try {
-            const { syncDatabase } = require('../src/database/sync');
-            syncDatabase().catch((err: any) => console.warn('[Push] Background sync failed:', err));
+            const { SyncManager } = require('../src/database/syncManager');
+            SyncManager.requestSync();
           } catch (e) {
-            console.warn('[Push] Failed to require syncDatabase:', e);
+            console.warn('[Push] Failed to require SyncManager:', e);
           }
         }
         navigateToDm(data.chat_id);
@@ -621,10 +621,10 @@ function useMutedNotificationFilter() {
         if (data?.type === 'dm' || data?.type === 'message' || data?.type === 'circle_message') {
           if (Platform.OS !== 'web') {
             try {
-              const { syncDatabase } = require('../src/database/sync');
-              syncDatabase().catch((err: any) => console.warn('[Push] Foreground sync on message failed:', err));
+              const { SyncManager } = require('../src/database/syncManager');
+              SyncManager.requestSync();
             } catch (e) {
-              console.warn('[Push] Failed to require syncDatabase:', e);
+              console.warn('[Push] Failed to require SyncManager:', e);
             }
           }
         }
@@ -684,72 +684,6 @@ export default function RootLayout() {
   const pushInitStartedRef = useRef(false);
   const [fontsReady, setFontsReady] = useState(false);
 
-  useEffect(() => {
-    const reportDiagnostics = async () => {
-      try {
-        const { Dimensions, PixelRatio } = require('react-native');
-        
-        const windowDim = Dimensions.get('window');
-        const screenDim = Dimensions.get('screen');
-        
-        const payload = {
-          deviceType: Platform.OS === 'android' ? (windowDim.width < 600 ? 'Android Phone' : 'Android Tablet') : 'iOS/Web',
-          os: Platform.OS,
-          osVersion: Platform.Version,
-          window: {
-            width: windowDim.width,
-            height: windowDim.height,
-            scale: windowDim.scale,
-            fontScale: windowDim.fontScale,
-          },
-          screen: {
-            width: screenDim.width,
-            height: screenDim.height,
-            scale: screenDim.scale,
-            fontScale: screenDim.fontScale,
-          },
-          pixelRatio: {
-            ratio: PixelRatio.get(),
-            fontScale: PixelRatio.getFontScale(),
-            pixelSizeForLayout1: PixelRatio.getPixelSizeForLayoutSize(1),
-          },
-          expoConfig: Platform.OS !== 'web' ? require('expo-constants').default.expoConfig : null,
-        };
-
-        const serverUrls = [
-          'http://10.0.2.2:8080/log', // Emulator special loopback
-          'http://192.168.29.118:8080/log', // Mac local IP
-        ];
-
-        for (const url of serverUrls) {
-          try {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), 2000);
-            
-            const res = await fetch(url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(payload),
-              signal: controller.signal,
-            });
-            clearTimeout(id);
-            if (res.ok) {
-              console.log(`[Diagnostics] Successfully sent metrics to ${url}`);
-              break;
-            }
-          } catch (e) {
-            // Silently try next url
-          }
-        }
-      } catch (err) {
-        console.warn('[Diagnostics] Failed to report metrics:', err);
-      }
-    };
-
-    reportDiagnostics();
-  }, []);
 
   useDeepLinkHandler();
   useAppBackHandler();
@@ -948,9 +882,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     if (!isLoading && isAuthenticated && token) {
-      syncDatabase()
-        .then(() => console.log('[Sync] WatermelonDB sync complete on startup'))
-        .catch((err) => console.warn('[Sync] WatermelonDB sync failed on startup:', err));
+      SyncManager.requestSync();
     }
   }, [isLoading, isAuthenticated, token]);
 
@@ -1023,10 +955,10 @@ export default function RootLayout() {
         if (type === 'dm' && data.chat_id) {
           if (Platform.OS !== 'web') {
             try {
-              const { syncDatabase } = require('../src/database/sync');
-              syncDatabase().catch((err: any) => console.warn('[NotificationTap] Background sync failed:', err));
+              const { SyncManager } = require('../src/database/syncManager');
+              SyncManager.requestSync();
             } catch (e) {
-              console.warn('[NotificationTap] Failed to require syncDatabase:', e);
+              console.warn('[NotificationTap] Failed to require SyncManager:', e);
             }
           }
           navigateOrQueue(`/dm/${data.chat_id}`);

@@ -49,7 +49,7 @@ import {
 } from '../../src/services/api';
 import { Avatar } from '../../src/components/Avatar';
 import { getAllMutedConversations } from '../../src/services/mutedChats';
-import { syncDatabase } from '../../src/database/sync';
+import { SyncManager } from '../../src/database/syncManager';
 import withObservables from '@nozbe/with-observables';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../../src/database';
@@ -962,7 +962,7 @@ function MessagesScreen({
         });
 
         // Trigger background sync for WatermelonDB
-        syncDatabase().catch(e => console.warn('[Messages] Background sync failed:', e));
+        SyncManager.requestSync();
 
         const [communityRes, requestRes, myPendingRes] = await Promise.all([
           getCommunities().catch((err) => { console.warn('getCommunities err', err); return { data: [] }; }),
@@ -1323,7 +1323,7 @@ function MessagesScreen({
 
   // --- RENDERING COMPONENTS ---
 
-  const renderActiveRequestCard = (item: any, index: number) => {
+  const renderActiveRequestCard = useCallback((item: any, index: number) => {
     const theme = getRequestTheme(item);
 
     return (
@@ -1361,10 +1361,10 @@ function MessagesScreen({
         </LinearGradient>
       </Pressable>
     );
-  };
+  }, []);
 
 
-  const renderLocalCommunityCard = (item: Community, index: number) => {
+  const renderLocalCommunityCard = useCallback((item: Community, index: number) => {
     const borderColor = '#397339';
     const isJoined = joinedLocalIds.has(item.id) || (item as any).is_member || communities.some(c => c.id === item.id);
     const isJoining = joiningLocalId === item.id;
@@ -1430,7 +1430,7 @@ function MessagesScreen({
         </View>
       </Pressable>
     );
-  };
+  }, [joinedLocalIds, communities, joiningLocalId, router]);
 
 
   // ────────────────────────────────────────────────────────────────────────────
