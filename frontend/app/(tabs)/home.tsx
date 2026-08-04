@@ -581,70 +581,88 @@ export default function HomeScreen() {
   const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
   const rawFeedPosts = currentFeed.posts;
   const [focusTrigger, setFocusTrigger] = useState(0);
-  const feedPosts = useMemo(() => {
-    const filtered = rawFeedPosts.filter((post: any) => {
-      const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
-      if (!uid) return true;
-      const uidStr = String(uid);
-      return !blockedUserIds.includes(uidStr) && !blockedByMeUserIds.includes(uidStr);
-    });
+  const [feedPosts, setFeedPosts] = useState<any[]>([]);
 
-    // Rearrange posts: 1 video, 2-3 images, 1 video, 2-3 images...
-    let videos: any[] = [];
-    let images: any[] = [];
+  useEffect(() => {
+    let isActive = true;
 
-    filtered.forEach((post: any) => {
-      const mediaUrl = post?.media_url || post?.mediaUrl || post?.image_url || post?.imageUrl || post?.image || '';
-      const mediaType = String(post?.media_type || post?.mediaType || post?.type || '').toLowerCase();
-      const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (!isActive) return;
 
-      if (isVideo) {
-        videos.push(post);
-      } else {
-        images.push(post);
-      }
-    });
+      let videos: any[] = [];
+      let images: any[] = [];
 
-    // Deterministically shuffle/rotate videos and images when the tab is refocused
-    if (focusTrigger > 0) {
-      const shuffle = (array: any[], seed: number) => {
-        const arr = [...array];
-        let m = arr.length;
-        while (m) {
-          const i = Math.floor(Math.abs(Math.sin(seed + m)) * m);
-          m--;
-          const t = arr[m];
-          arr[m] = arr[i];
-          arr[i] = t;
+      // Single pass for filtering and splitting (O(N))
+      for (let i = 0; i < rawFeedPosts.length; i++) {
+        const post = rawFeedPosts[i];
+        const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
+
+        if (uid) {
+          const uidStr = String(uid);
+          if (blockedUserIds.includes(uidStr) || blockedByMeUserIds.includes(uidStr)) {
+            continue;
+          }
         }
-        return arr;
-      };
-      videos = shuffle(videos, focusTrigger);
-      images = shuffle(images, focusTrigger + 13);
-    }
 
-    const arranged: any[] = [];
-    let videoIndex = 0;
-    let imageIndex = 0;
-    let alternate = 0;
+        const mediaUrl = post?.media_url || post?.mediaUrl || post?.image_url || post?.imageUrl || post?.image || '';
+        const mediaType = String(post?.media_type || post?.mediaType || post?.type || '').toLowerCase();
+        const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
 
-    while (videoIndex < videos.length || imageIndex < images.length) {
-      if (videoIndex < videos.length) {
-        arranged.push(videos[videoIndex++]);
-      }
-
-      // Alternate between 2 and 3 images below the video
-      const imgCount = alternate % 2 === 0 ? 3 : 2;
-      alternate++;
-
-      for (let i = 0; i < imgCount; i++) {
-        if (imageIndex < images.length) {
-          arranged.push(images[imageIndex++]);
+        if (isVideo) {
+          videos.push(post);
+        } else {
+          images.push(post);
         }
       }
-    }
 
-    return arranged;
+      // Deterministically shuffle/rotate videos and images when the tab is refocused
+      if (focusTrigger > 0) {
+        const shuffle = (array: any[], seed: number) => {
+          const arr = [...array];
+          let m = arr.length;
+          while (m) {
+            const i = Math.floor(Math.abs(Math.sin(seed + m)) * m);
+            m--;
+            const t = arr[m];
+            arr[m] = arr[i];
+            arr[i] = t;
+          }
+          return arr;
+        };
+        videos = shuffle(videos, focusTrigger);
+        images = shuffle(images, focusTrigger + 13);
+      }
+
+      const arranged: any[] = [];
+      let videoIndex = 0;
+      let imageIndex = 0;
+      let alternate = 0;
+
+      while (videoIndex < videos.length || imageIndex < images.length) {
+        if (videoIndex < videos.length) {
+          arranged.push(videos[videoIndex++]);
+        }
+
+        // Alternate between 2 and 3 images below the video
+        const imgCount = alternate % 2 === 0 ? 3 : 2;
+        alternate++;
+
+        for (let i = 0; i < imgCount; i++) {
+          if (imageIndex < images.length) {
+            arranged.push(images[imageIndex++]);
+          }
+        }
+      }
+
+      if (isActive) {
+        setFeedPosts(arranged);
+      }
+    });
+
+    return () => {
+      isActive = false;
+      task.cancel();
+    };
   }, [rawFeedPosts, blockedUserIds, blockedByMeUserIds, focusTrigger]);
   const feedOffset = currentFeed.offset;
   const hasMoreFeed = currentFeed.hasMore;

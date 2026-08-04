@@ -438,7 +438,6 @@ const DirectMessageScreen = () => {
     userPhoto?: string;
   }>();
 
-  const logLayout = (_name: string, _styleObj: any) => (_event: any) => {};
   const isFocused = useIsFocused();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -1104,10 +1103,10 @@ const DirectMessageScreen = () => {
     // Trigger WatermelonDB sync in background immediately on screen mount
     if (Platform.OS !== 'web') {
       try {
-        const { syncDatabase } = require('../../src/database/sync');
-        syncDatabase().catch((err: any) => console.warn('[DM] Background sync failed on mount:', err));
+        const { SyncManager } = require('../../src/database/syncManager');
+        SyncManager.requestSync();
       } catch (e) {
-        console.warn('[DM] Failed to require syncDatabase:', e);
+        console.warn('[DM] Failed to require SyncManager:', e);
       }
     }
 
@@ -1897,7 +1896,6 @@ const DirectMessageScreen = () => {
   const renderContent = () => (
     <View
       style={styles.chatScreen}
-      onLayout={logLayout('Chat container', styles.chatScreen)}
     >
       <View style={styles.chatBackground} pointerEvents="none">
         <LinearGradient
@@ -2054,7 +2052,6 @@ const DirectMessageScreen = () => {
 
         <View
           style={[styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }]}
-          onLayout={logLayout('Input wrapper', [styles.inputWrapperContainer, { paddingBottom: Platform.OS === 'android' ? (isKeyboardVisible ? 8 : Math.max(insets.bottom, 16)) : Math.max(insets.bottom, 12) }])}
         >
           {selectedMedia && (
             <View style={styles.mediaPreviewContainer}>
@@ -2071,7 +2068,6 @@ const DirectMessageScreen = () => {
 
           <View
             style={styles.inputContainer}
-            onLayout={logLayout('TextInput container', styles.inputContainer)}
           >
             <View style={styles.inputFieldContainer}>
               <TextInput
@@ -2458,13 +2454,11 @@ const DirectMessageScreen = () => {
       <SafeAreaView
         style={styles.container}
         edges={['left', 'right']}
-        onLayout={logLayout('Root container / SafeAreaView', styles.container)}
       >
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-          onLayout={logLayout('KeyboardAvoidingView', { flex: 1 })}
         >
           {renderContent()}
         </KeyboardAvoidingView>
