@@ -826,9 +826,6 @@ export default function PanchangScreen() {
           </>
         )}
       </KeyboardAwareScrollView>
-
-
-
     </View>
   );
 }

@@ -70,7 +70,8 @@ LogBox.ignoreLogs([
   "Can't perform a React state update on a component that hasn't mounted yet",
   "Can't perform a React state update",
   "React state update on a component",
-  "The action 'GO_BACK' was not handled by any navigator"
+  "The action 'GO_BACK' was not handled by any navigator",
+  'InteractionManager has been deprecated',
 ]);
 
 RNAlert.alert = (title: string, message?: string, buttons?: any[], options?: any) => {
