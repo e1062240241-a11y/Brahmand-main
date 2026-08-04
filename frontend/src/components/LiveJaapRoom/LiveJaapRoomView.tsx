@@ -736,7 +736,7 @@ export default function LiveJaapRoomView() {
           const current = audio.currentTime;
           const diff = Math.abs(current - expected);
           
-          if (!initialSynced || diff > 1.5) {
+          if (!initialSynced || diff > 0.8) {
             if (audio.readyState >= 1) {
               audio.currentTime = expected;
               initialSynced = true;

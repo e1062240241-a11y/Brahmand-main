@@ -951,8 +951,10 @@ export const logoutUser = (fcmToken?: string | null) =>
 // User APIs
 export const getProfile = () => api.get("/user/profile");
 
-export const getUserProfile = (userId?: string) =>
-  api.get(userId ? `/users/${userId}` : "/user/profile");
+export const getUserProfile = (userId?: string) => {
+  const validId = userId && userId !== 'undefined' && userId.trim().length > 0 ? userId : undefined;
+  return api.get(validId ? `/users/${validId}` : "/user/profile");
+};
 
 export const getUserPosts = (
   userId: string,
@@ -1831,17 +1833,11 @@ export const getNakshatraReport = (params?: {
   lon?: number;
   tz?: number;
 }) => {
-  if (
-    params &&
-    (params.dob ||
-      params.tob ||
-      params.lat !== undefined ||
-      params.lon !== undefined)
-  ) {
-    return api.get("/astrology/nakshatra", { params });
-  }
-  const cacheKey = `v2_nakshatra_default`;
-  return getWithCache(cacheKey, () => api.get("/astrology/nakshatra"));
+  const paramKey = params 
+    ? `${params.dob || ''}_${params.tob || ''}_${params.lat ?? ''}_${params.lon ?? ''}`
+    : 'default';
+  const cacheKey = `v2_nakshatra_${paramKey}`;
+  return getWithCache(cacheKey, () => api.get("/astrology/nakshatra", { params }), 15 * 60 * 1000);
 };
 
 export const searchBirthCity = (q: string) => {

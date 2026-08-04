@@ -1549,10 +1549,11 @@ async def get_realtime_sfu_token(room: str = 'mantra-jaap-live-room', token_data
 
 @api_router.get("/realtime/agora-token")
 async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: dict = Depends(verify_token)):
-    """Return an Agora RTC token for the specified channel."""
+    """Return an Agora RTC token for the specified channel with mic publishing disabled (subscriber only)."""
     if not settings.AGORA_APP_ID or not settings.AGORA_APP_CERTIFICATE:
         return {
             'enabled': False,
+            'mic_allowed': False,
             'reason': 'agora_not_configured',
         }
 
@@ -1560,14 +1561,14 @@ async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: di
     import time
 
     user_id = token_data.get('user_id', 'anonymous')
-    # Generate a random integer UID for Agora (it prefers integers)
-    # We can use a hash of the user_id or just 0 for testing, but let's use a hash-based int
+    # Generate a random integer UID for Agora
     try:
         uid = int(hashlib.md5(user_id.encode()).hexdigest(), 16) % 1000000
     except:
         uid = 0
 
-    role = 1  # Role_Publisher
+    # Force Role_Subscriber (2) so users cannot publish microphone audio even if requested
+    role = 2  # Role_Subscriber (Audio listener only, microphone publishing blocked)
     privilege_expiration_time = int(time.time()) + settings.AGORA_TOKEN_TTL_SECONDS
 
     token = RtcTokenBuilder.buildTokenWithUid(
@@ -1580,7 +1581,7 @@ async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: di
     )
 
     logger.info(
-        "Agora RTC token generated channel=%s uid=%s expiresAt=%s tokenPrefix=%s...",
+        "Agora RTC token generated (Subscriber/Mic Disabled) channel=%s uid=%s expiresAt=%s tokenPrefix=%s...",
         channel,
         uid,
         privilege_expiration_time,
@@ -1589,6 +1590,7 @@ async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: di
 
     return {
         'enabled': True,
+        'mic_allowed': False,
         'appId': settings.AGORA_APP_ID,
         'token': token,
         'channel': channel,
@@ -16032,6 +16034,37 @@ async def get_jaap_reminders(
         ]
     )
     return {"reminders": reminders}
+
+
+@api_router.get("/jaap/reminder-stats")
+async def get_jaap_reminder_stats(
+    mantra_type: str = "shravan_katha",
+    token_data: dict = Depends(verify_token)
+):
+    """
+    Get total registered user count and active status for a specific mantra_type.
+    """
+    db = await get_db()
+    user_id = token_data["user_id"]
+
+    all_reminders = await db.query_documents(
+        "jaap_reminders",
+        filters=[
+            ("mantra_type", "==", mantra_type),
+            ("active", "==", True)
+        ]
+    )
+
+    unique_user_ids = {r.get("user_id") for r in all_reminders if r.get("user_id")}
+    total_count = len(unique_user_ids)
+    is_user_interested = user_id in unique_user_ids
+
+    return {
+        "mantra_type": mantra_type,
+        "total_registered_users": total_count,
+        "is_interested": is_user_interested
+    }
+
 
 
 async def _jaap_reminder_worker():

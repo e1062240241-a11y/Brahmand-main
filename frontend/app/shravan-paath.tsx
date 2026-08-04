@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,15 @@ import {
   Share,
   Alert,
   Platform,
+  Animated,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect, G, Ellipse } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
+import { api } from '../src/services/api';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -88,7 +91,77 @@ const ShivlingArtwork = () => (
 
 export default function ShravanPaathPage() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const [interested, setInterested] = useState(false);
+  const [registeredCount, setRegisteredCount] = useState(0);
+
+  const rippleScale1 = useRef(new Animated.Value(0.2)).current;
+  const rippleOpacity1 = useRef(new Animated.Value(0.8)).current;
+  const rippleScale2 = useRef(new Animated.Value(0.2)).current;
+  const rippleOpacity2 = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    if (interested) return;
+
+    const createRippleLoop = (scaleAnim: Animated.Value, opacityAnim: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.parallel([
+            Animated.timing(scaleAnim, {
+              toValue: 4.5,
+              duration: 2200,
+              useNativeDriver: true,
+            }),
+            Animated.timing(opacityAnim, {
+              toValue: 0,
+              duration: 2200,
+              useNativeDriver: true,
+            }),
+          ]),
+          Animated.timing(scaleAnim, { toValue: 0.2, duration: 0, useNativeDriver: true }),
+          Animated.timing(opacityAnim, { toValue: 0.45, duration: 0, useNativeDriver: true }),
+        ])
+      );
+    };
+
+    const loop1 = createRippleLoop(rippleScale1, rippleOpacity1, 0);
+    const loop2 = createRippleLoop(rippleScale2, rippleOpacity2, 1100);
+
+    loop1.start();
+    loop2.start();
+
+    return () => {
+      loop1.stop();
+      loop2.stop();
+    };
+  }, [interested]);
+
+  const fetchReminderStats = useCallback(() => {
+    api.get('/jaap/reminder-stats?mantra_type=shravan_katha')
+      .then((res) => {
+        if (res.data) {
+          setInterested(!!res.data.is_interested);
+          setRegisteredCount(res.data.total_registered_users || 0);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    // Fetch initial reminder stats & count directly from DB
+    fetchReminderStats();
+
+    // If navigated from home page banner with notify action
+    if (params?.showSetToast === '1') {
+      setTimeout(() => {
+        Alert.alert(
+          "🙏 You're all set!",
+          "We'll remind you before 10 min as Shiv Katha begins."
+        );
+      }, 300);
+    }
+  }, [params?.showSetToast, fetchReminderStats]);
 
   const handleShare = async () => {
     try {
@@ -98,12 +171,49 @@ export default function ShravanPaathPage() {
     } catch (_error) {}
   };
 
-  const handleInterested = () => {
-    setInterested(true);
-    Alert.alert(
-      'रिमाइंडर सेट हो गया!',
-      'आपको LIVE शुरू होने से पहले WhatsApp और ऐप नोटिफिकेशन द्वारा सूचित कर दिया जाएगा।'
-    );
+  const isRequestingRef = useRef(false);
+
+  const handleInterested = async () => {
+    if (isRequestingRef.current) return;
+    isRequestingRef.current = true;
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (_e) {}
+
+    try {
+      const response = await api.post('/jaap/reminder', {
+        mantra_type: 'shravan_katha',
+        session_name: 'Shravan Shiv Katha',
+      });
+      const active = response.data?.active;
+      setInterested(!!active);
+
+      // Re-fetch exact DB stats to keep UI 100% in sync with real backend registered users count
+      fetchReminderStats();
+
+      if (active) {
+        Alert.alert(
+          '🔔 रिमाइंडर सक्रिय!',
+          'आपको LIVE शुरू होने से पहले WhatsApp और ऐप नोटिफिकेशन द्वारा सूचित कर दिया जाएगा।'
+        );
+      } else {
+        Alert.alert(
+          '🔔 रिमाइंडर हटाया गया',
+          'आपने श्रावण शिव कथा के रिमाइंडर को बंद कर दिया है।'
+        );
+      }
+    } catch (_err) {
+      setInterested(true);
+      Alert.alert(
+        'रिमाइंडर सेट हो गया!',
+        'आपको LIVE शुरू होने से पहले WhatsApp और ऐप नोटिफिकेशन द्वारा सूचित कर दिया जाएगा।'
+      );
+    } finally {
+      setTimeout(() => {
+        isRequestingRef.current = false;
+      }, 1000);
+    }
   };
 
   return (
@@ -313,21 +423,59 @@ export default function ShravanPaathPage() {
               end={{ x: 1, y: 0.5 }}
               style={styles.ctaButtonGradient}
             >
-              <View style={styles.ctaBellIconBox}>
-                <Ionicons name={interested ? "checkmark-sharp" : "notifications"} size={22} color="#FFFFFF" />
+              {/* Continuous Water Ripple Overlay (Covers entire button, subtle & lightweight) */}
+              {!interested && (
+                <View pointerEvents="none" style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderRadius: 14 }}>
+                  <Animated.View
+                    style={{
+                      position: 'absolute',
+                      width: 120,
+                      height: 120,
+                      borderRadius: 60,
+                      backgroundColor: 'rgba(255, 255, 255, 0.22)',
+                      transform: [{ scale: rippleScale1 }],
+                      opacity: rippleOpacity1,
+                    }}
+                  />
+                  <Animated.View
+                    style={{
+                      position: 'absolute',
+                      width: 120,
+                      height: 120,
+                      borderRadius: 60,
+                      backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                      transform: [{ scale: rippleScale2 }],
+                      opacity: rippleOpacity2,
+                    }}
+                  />
+                </View>
+              )}
+
+              <View style={{ justifyContent: 'center', alignItems: 'center', width: 30, height: 30, zIndex: 2, marginLeft: 6 }}>
+                {interested ? (
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M4.5 12.5L9.5 17.5L19.5 6.5"
+                      stroke="#000000"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                ) : (
+                  <Ionicons name="notifications" size={22} color="#FFFFFF" />
+                )}
               </View>
 
-              <View style={styles.ctaTextCol}>
+              <View style={[styles.ctaTextCol, { zIndex: 2, alignItems: interested ? 'flex-start' : 'center', paddingRight: interested ? 0 : 20 }]}>
                 <Text style={styles.ctaMainTitle}>
-                  {interested ? 'पंजीकरण सफल हुआ!' : 'मैं Interested हूँ'}
+                  {interested ? 'Registration Confirmed' : 'मैं Interested हूँ'}
                 </Text>
-                <Text style={styles.ctaSubTitle}>
-                  {interested ? 'आपको रिमाइंडर भेज दिया जाएगा' : 'LIVE शुरू होने से पहले मुझे रिमाइंडर भेजें'}
+                <Text style={interested ? styles.ctaSubTitle : { fontSize: 12, color: '#000000', marginTop: 2, fontWeight: '500' }}>
+                  {interested
+                    ? 'You are now one of the devotees joining this Shravan journey.'
+                    : 'Lets be a part of this journey.'}
                 </Text>
-              </View>
-
-              <View style={styles.ctaArrowCircle}>
-                <Ionicons name="arrow-forward" size={18} color="#F25C05" />
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -340,10 +488,13 @@ export default function ShravanPaathPage() {
               </View>
               <View style={styles.socialProofTextCol}>
                 <Text style={styles.socialProofCountText}>
-                  <Text style={{ fontWeight: '800' }}>10,245+</Text> लोग पहले ही जुड़ चुके हैं
-                </Text>
-                <Text style={styles.socialProofSubText}>
-                  आप भी जुड़ें और इस दिव्य अनुभव का हिस्सा बनें।
+                  {registeredCount === 0 ? (
+                    'Be the 1st one to register.'
+                  ) : (
+                    <>
+                      <Text style={{ fontWeight: '800' }}>{registeredCount} people</Text> have already registered.
+                    </>
+                  )}
                 </Text>
               </View>
             </View>
@@ -360,7 +511,7 @@ export default function ShravanPaathPage() {
                 <Ionicons name="person" size={12} color="#FFF" />
               </View>
               <View style={styles.avatarPlusBadge}>
-                <Text style={styles.avatarPlusText}>+9K</Text>
+                <Text style={styles.avatarPlusText}>{registeredCount > 0 ? `+${registeredCount}` : '+0'}</Text>
               </View>
             </View>
           </View>
@@ -687,40 +838,40 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   ctaButtonGradient: {
-    height: 64,
-    borderRadius: 16,
+    height: 52,
+    borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
     justifyContent: 'space-between',
   },
   ctaBellIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   ctaTextCol: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   ctaMainTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '900',
   },
   ctaSubTitle: {
     color: '#FFEFE5',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 1,
   },
   ctaArrowCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -755,7 +906,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   socialProofCountText: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '700',
     color: '#3D2A1D',
   },
   socialProofSubText: {

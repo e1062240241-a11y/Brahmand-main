@@ -384,6 +384,8 @@ export function GlobalFAB() {
     pathname === '/index' ||
     pathname.startsWith('/auth') ||
     pathname === '/privacy-policy' ||
+    pathname === '/shravan-paath' ||
+    pathname.includes('shravan-paath') ||
     pathname.includes('privacy') ||
     pathname.includes('terms') ||
     pathname.includes('guidelines')

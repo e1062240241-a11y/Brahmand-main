@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 
 interface UiverseNotifyButtonProps {
   isNotified?: boolean;
@@ -29,16 +31,35 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
   isNotified = false,
   onPress,
   label = 'Notify Me',
-  notifiedLabel = 'Notified',
+  notifiedLabel = "You're In",
   style,
   textStyle,
   size = 'medium',
   showIcon = true,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isAnimatingSuccess, setIsAnimatingSuccess] = useState(false);
+
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(0.75)).current;
   const starRotateAnim = useRef(new Animated.Value(0)).current;
+
+  // New Animations: Shake, Ripple, Green Color Transition & Tick Scale
+  const bellShakeAnim = useRef(new Animated.Value(0)).current;
+  const rippleScaleAnim = useRef(new Animated.Value(0)).current;
+  const rippleOpacityAnim = useRef(new Animated.Value(0)).current;
+  const greenTransitionAnim = useRef(new Animated.Value(isNotified ? 1 : 0)).current;
+  const checkmarkScaleAnim = useRef(new Animated.Value(isNotified ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (isNotified && !isAnimatingSuccess) {
+      greenTransitionAnim.setValue(1);
+      checkmarkScaleAnim.setValue(1);
+    } else if (!isNotified && !isAnimatingSuccess) {
+      greenTransitionAnim.setValue(0);
+      checkmarkScaleAnim.setValue(0);
+    }
+  }, [isNotified]);
 
   useEffect(() => {
     // Pulse animation for inner glowing circles
@@ -77,19 +98,106 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
     };
   }, []);
 
+  const triggerAnimationSequence = () => {
+    // 1. Medium Haptic Feedback
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (_e) {}
+
+    setIsAnimatingSuccess(true);
+    rippleScaleAnim.setValue(0.2);
+    rippleOpacityAnim.setValue(0.8);
+
+    // 2. Button Compress (scale 0.95 for 180ms) + Bell shake + Ripple expansion
+    Animated.parallel([
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          friction: 4,
+          tension: 50,
+          useNativeDriver: true,
+        }),
+      ]),
+      // Bell shake sequence (halka shake -15deg -> 15deg -> -10deg -> 10deg -> 0)
+      Animated.sequence([
+        Animated.timing(bellShakeAnim, { toValue: -1, duration: 40, useNativeDriver: true }),
+        Animated.timing(bellShakeAnim, { toValue: 1, duration: 50, useNativeDriver: true }),
+        Animated.timing(bellShakeAnim, { toValue: -0.6, duration: 40, useNativeDriver: true }),
+        Animated.timing(bellShakeAnim, { toValue: 0.6, duration: 40, useNativeDriver: true }),
+        Animated.timing(bellShakeAnim, { toValue: 0, duration: 30, useNativeDriver: true }),
+      ]),
+      // Orange Ripple expansion
+      Animated.parallel([
+        Animated.timing(rippleScaleAnim, {
+          toValue: 3.5,
+          duration: 350,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(rippleOpacityAnim, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start(() => {
+      // 3. Green color fill & Tick checkmark scale up
+      Animated.parallel([
+        Animated.timing(greenTransitionAnim, {
+          toValue: 1,
+          duration: 250,
+          easing: Easing.ease,
+          useNativeDriver: false,
+        }),
+        Animated.spring(checkmarkScaleAnim, {
+          toValue: 1,
+          friction: 4,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIsAnimatingSuccess(false);
+      });
+    });
+  };
+
+  const handlePress = () => {
+    if (!isNotified) {
+      triggerAnimationSequence();
+    } else {
+      // If toggling off, transition back
+      Animated.timing(greenTransitionAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
+      checkmarkScaleAnim.setValue(0);
+    }
+    onPress?.();
+  };
+
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.95,
-      useNativeDriver: true,
-    }).start();
+    if (!isAnimatingSuccess) {
+      Animated.spring(scaleAnim, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }).start();
+    }
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: isHovered ? 1.05 : 1,
-      friction: 4,
-      useNativeDriver: true,
-    }).start();
+    if (!isAnimatingSuccess) {
+      Animated.spring(scaleAnim, {
+        toValue: isHovered ? 1.05 : 1,
+        friction: 4,
+        useNativeDriver: true,
+      }).start();
+    }
   };
 
   const handleHoverIn = () => {
@@ -113,7 +221,13 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
     outputRange: ['0deg', '360deg'],
   });
 
-  const displayLabel = isNotified ? notifiedLabel : label;
+  const bellRotate = bellShakeAnim.interpolate({
+    inputRange: [-1, 1],
+    outputRange: ['-15deg', '15deg'],
+  });
+
+  const activeNotified = isNotified || isAnimatingSuccess;
+  const displayLabel = activeNotified ? notifiedLabel : label;
 
   const isSmall = size === 'small';
   const isLarge = size === 'large';
@@ -123,14 +237,14 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
   const fontSize = isSmall ? 10.5 : isLarge ? 15 : 12.5;
   const iconSize = isSmall ? 12 : isLarge ? 18 : 14;
 
-  const gradientColors: [string, string, ...string[]] = isNotified
-    ? ['#FF6D00', '#FF3D00', '#DD2C00', '#FFAB00']
+  const gradientColors: [string, string, ...string[]] = activeNotified
+    ? ['#AEEA00', '#4CAF50', '#2E7D32', '#1B5E20']
     : ['#FFE082', '#FF9800', '#FF5722', '#D84315'];
 
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
       <Pressable
-        onPress={onPress}
+        onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         {...({
@@ -146,38 +260,46 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
           end={{ x: 1, y: 0.5 }}
           style={[styles.gradientBorder, { borderRadius: 50 }]}
         >
-          {/* Inner Dark Backdrop Button Container */}
-          <View
+          {/* Inner Container: Solid Green when activeNotified */}
+          <Animated.View
             style={[
               styles.innerContainer,
               {
                 paddingVertical,
                 paddingHorizontal,
                 borderRadius: 48,
+                backgroundColor: greenTransitionAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ['#1E120A', '#2E7D32'],
+                }),
               },
             ]}
           >
+
+
             {/* Background Glow Circles Layer */}
-            <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-              <Animated.View
-                style={[
-                  styles.glowCircleOrange,
-                  {
-                    transform: [{ scale: pulseAnim }],
-                    opacity: isNotified ? 0.95 : 0.7,
-                  },
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.glowCircleAmber,
-                  {
-                    transform: [{ scale: pulseAnim }],
-                    opacity: isNotified ? 0.95 : 0.75,
-                  },
-                ]}
-              />
-            </View>
+            {!activeNotified && (
+              <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                <Animated.View
+                  style={[
+                    styles.glowCircleOrange,
+                    {
+                      transform: [{ scale: pulseAnim }],
+                      opacity: 0.7,
+                    },
+                  ]}
+                />
+                <Animated.View
+                  style={[
+                    styles.glowCircleAmber,
+                    {
+                      transform: [{ scale: pulseAnim }],
+                      opacity: 0.75,
+                    },
+                  ]}
+                />
+              </View>
+            )}
 
             {/* Rotating Starfield Background Overlay Layer */}
             <Animated.View
@@ -198,12 +320,27 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
             {/* Button Content Layer (Icon + Glowing Text) */}
             <View style={styles.contentRow}>
               {showIcon && (
-                <Ionicons
-                  name={isNotified ? 'notifications' : 'notifications-outline'}
-                  size={iconSize}
-                  color={isNotified ? '#FFE082' : '#ffffff'}
-                  style={{ marginRight: 5 }}
-                />
+                activeNotified ? (
+                  <Animated.View style={{ transform: [{ scale: checkmarkScaleAnim }], marginRight: 5 }}>
+                    <Svg width={iconSize + 6} height={iconSize + 6} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M4.5 12.5L9.5 17.5L19.5 6.5"
+                        stroke="#000000"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </Svg>
+                  </Animated.View>
+                ) : (
+                  <Animated.View style={{ transform: [{ rotate: bellRotate }], marginRight: 5 }}>
+                    <Ionicons
+                      name="notifications-outline"
+                      size={iconSize}
+                      color="#ffffff"
+                    />
+                  </Animated.View>
+                )
               )}
               <Text
                 style={[
@@ -211,13 +348,14 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
                   {
                     fontSize,
                   },
+                  activeNotified && { color: '#FFFFFF', textShadowColor: 'transparent' },
                   textStyle,
                 ]}
               >
                 {displayLabel}
               </Text>
             </View>
-          </View>
+          </Animated.View>
         </LinearGradient>
       </Pressable>
     </Animated.View>
@@ -264,6 +402,32 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 15,
     backgroundColor: 'rgba(255, 179, 0, 0.8)',
+  },
+  glowCircleGreenLeft: {
+    position: 'absolute',
+    left: -10,
+    top: -5,
+    width: 60,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(76, 175, 80, 0.8)',
+  },
+  glowCircleGreenRight: {
+    position: 'absolute',
+    right: -10,
+    bottom: -5,
+    width: 60,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(174, 234, 0, 0.85)',
+  },
+  rippleOverlay: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 109, 0, 0.7)',
+    zIndex: 1,
   },
   starsOverlayContainer: {
     ...StyleSheet.absoluteFillObject,
