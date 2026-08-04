@@ -528,7 +528,12 @@ export const PostFeedCard = memo(({
 
           {onPostMenuPress && postMenuType && (
             <View style={styles.menuWrap}>
-              <TouchableOpacity style={styles.menuBtn} onPress={() => setMenuVisible(!menuVisible)}>
+              <TouchableOpacity
+                style={styles.menuBtn}
+                onPress={() => setMenuVisible(!menuVisible)}
+                accessibilityRole="button"
+                accessibilityLabel={t('openMenu')}
+              >
                 <Ionicons name="ellipsis-horizontal" size={18} color={(theme === 'light' || isFirstReel) ? '#333' : '#FFFFFF'} />
               </TouchableOpacity>
               {menuVisible && (
@@ -652,6 +657,8 @@ export const PostFeedCard = memo(({
                 style={styles.muteToggle}
                 onPress={toggleMute}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={isMuted ? t('unmute') : t('mute')}
               >
                 <Ionicons
                   name={isMuted ? 'volume-mute' : 'volume-medium'}
@@ -756,10 +763,20 @@ export const PostFeedCard = memo(({
       {/* Actions */}
       {!isEditing && (
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => onLike?.(post)}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => onLike?.(post)}
+            accessibilityRole="button"
+            accessibilityLabel={likedByMe ? t('unlike') : t('like')}
+          >
             <Ionicons name={likedByMe ? 'heart' : 'heart-outline'} size={26} color={likedByMe ? COLORS.primary : (theme === 'light' ? '#000' : '#FFFFFF')} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => onComment?.(post)}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => onComment?.(post)}
+            accessibilityRole="button"
+            accessibilityLabel={t('commentAction')}
+          >
             <Ionicons name="chatbubble-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
             {commentsCount > 0 && (
               <Text style={[styles.actionText, theme === 'light' ? styles.actionTextLight : { color: '#FFF' }]}>
@@ -767,10 +784,20 @@ export const PostFeedCard = memo(({
               </Text>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => onShare?.(post)}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => onShare?.(post)}
+            accessibilityRole="button"
+            accessibilityLabel={t('share')}
+          >
             <Ionicons name="paper-plane-outline" size={24} color={theme === 'light' ? '#000' : '#FFFFFF'} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionBtn} onPress={() => onRepost?.(post)}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => onRepost?.(post)}
+            accessibilityRole="button"
+            accessibilityLabel={t('repost')}
+          >
             <Ionicons name="repeat-outline" size={26} color={theme === 'light' ? '#000' : '#FFFFFF'} />
           </TouchableOpacity>
         </View>
@@ -830,6 +857,8 @@ export const PostFeedCard = memo(({
               style={styles.clearCaptionBtnInline}
               onPress={() => onChangeEditedCaption?.('')}
               activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={t('clearCaption')}
             >
               <Ionicons name="trash-outline" size={11} color="#FF6B00" />
               <Text style={styles.clearCaptionTextInline}>
