@@ -42,8 +42,12 @@ export async function getCurrentPosition(options?: any): Promise<{ coords: { lat
     });
   }
 
-  const enabled = await Location.hasServicesEnabledAsync();
+  const enabled = await Location.hasServicesEnabledAsync().catch(() => false);
   if (!enabled) {
+    const lastKnown = await Location.getLastKnownPositionAsync().catch(() => null);
+    if (lastKnown) {
+      return { coords: { latitude: lastKnown.coords.latitude, longitude: lastKnown.coords.longitude } };
+    }
     throw new Error('Location services are disabled');
   }
 

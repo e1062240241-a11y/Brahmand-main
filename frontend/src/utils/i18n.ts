@@ -633,3 +633,12 @@ export const useTranslation = () => {
   
   return { t, language, setLanguage };
 };
+
+/**
+ * Multiplies real community/city/state member count by 11 for display across the app.
+ */
+export const getAdjustedCommunityMemberCount = (rawCount: number): number => {
+  const num = typeof rawCount === 'number' && !isNaN(rawCount) ? rawCount : 0;
+  return num * 11;
+};
+

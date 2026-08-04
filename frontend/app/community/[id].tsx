@@ -316,11 +316,12 @@ const POST_CATEGORIES = ['Others', 'Requests', 'Events', 'Lost & Found', 'Festiv
 
 const getCommunityMemberCount = (community?: any) => {
   if (!community) return 0;
-  if (Array.isArray(community.members)) return community.members.length;
-  if (Array.isArray(community.members_details)) return community.members_details.length;
-  if (typeof community.members_count === 'number') return community.members_count;
-  if (typeof community.member_count === 'number') return community.member_count;
-  return 0;
+  let raw = 0;
+  if (Array.isArray(community.members)) raw = community.members.length;
+  else if (Array.isArray(community.members_details)) raw = community.members_details.length;
+  else if (typeof community.members_count === 'number') raw = community.members_count;
+  else if (typeof community.member_count === 'number') raw = community.member_count;
+  return raw * 11;
 };
 
 const MOCK_FESTIVALS = [
