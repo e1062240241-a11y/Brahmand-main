@@ -5795,6 +5795,8 @@ export default function HomeScreen() {
     activeAartiIndex,
     hanumanChantCount,
     shivaChantCount,
+    hanumanStatus,
+    shivaStatus,
     reminders,
     unreadCount,
     activeTab,
