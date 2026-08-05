@@ -4,7 +4,6 @@ import { generateKeyPair, getKeys } from '../utils/cryptoUtil';
 
 import { User } from '../types';
 import { initializePushNotifications } from '../services/pushNotifications';
-import { getFirebaseAuth } from '../services/firebase/config';
 
 import { secureStorage } from '../utils/secureStorage';
 

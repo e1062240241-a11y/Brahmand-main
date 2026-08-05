@@ -19,11 +19,10 @@ import {View,
   StatusBar
 , DeviceEventEmitter , KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler } from 'react-native';
 import { useTabBar } from '../../src/contexts/TabBarContext';
-import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Svg, { Path } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
@@ -54,8 +53,7 @@ import PostFeedCard from '../../src/components/PostFeedCard';
 import { MentionInput } from '../../src/components/MentionInput';
 import { MentionText } from '../../src/components/MentionText';
 import { DeleteConfirmationModal } from '../../src/components/DeleteConfirmationModal';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { formatTimeAgo } from '../../src/utils/dateUtils';
+import { COLORS, SPACING } from '../../src/constants/theme';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 
 const { width } = Dimensions.get('window');

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
  View, 
  Text, 
@@ -15,15 +15,14 @@ import {
  Dimensions,
  ActivityIndicator,
 } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
 import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
-import { Q } from '@nozbe/watermelondb';
 import { FONTS } from '../../src/constants/theme';
-import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } from '../../src/constants/templeImages';
+import { DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 const SafeFlashList = FlashList as any;
 
@@ -235,8 +234,6 @@ export default function TempleScreen() {
 
       const jyotisByJs = allLocalTemples.filter(isJyotirlinga);
 
-      console.log(`[DEBUG] Selected: ${selectedCategory} | Total Local: ${allLocalTemples.length} | JS Filtered Jyotirlingas: ${jyotisByJs.length}`);
-
       let filteredRecords = allLocalTemples;
       if (selectedCategory === 'Jyotirlinga') {
         filteredRecords = jyotisByJs;
@@ -294,8 +291,6 @@ export default function TempleScreen() {
           is_verified: true,
         }));
       }
-
-      console.log(`[CATEGORY DEBUG] Selected: ${selectedCategory} | Total Local: ${allLocalTemples.length} | JS Filtered Jyotirlingas: ${jyotisByJs.length} | Filtered Count: ${filteredRecords.length} | displayTemples Count: ${formatted.length}`);
 
       if (isReset) {
         setDisplayTemples(formatted);

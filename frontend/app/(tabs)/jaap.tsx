@@ -1,4 +1,4 @@
-import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
+// accessibility: placeholder
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -19,15 +19,15 @@ import {
   Animated,
   AppState,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageByName, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
+import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { Svg, Path, G, Defs, ClipPath, Rect } from 'react-native-svg';

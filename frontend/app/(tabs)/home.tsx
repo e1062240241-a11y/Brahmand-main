@@ -28,7 +28,7 @@ import {
   AppState,
   InteractionManager
 } from 'react-native';
-import { InstagramSpinner, InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
+import { InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1110,7 +1110,7 @@ const JaapBanners = React.memo(function JaapBanners({
                 </View>
 
                 <Image
-                  source={require('../../assets/images/panditji.png')}
+                  source={require('../../assets/images/panditji.webp')}
                   style={{
                     width: '100%',
                     height: '135%',
@@ -4791,7 +4791,7 @@ export default function HomeScreen() {
                         </View>
 
                         <Image
-                          source={require('../../assets/images/panditji.png')}
+                          source={require('../../assets/images/panditji.webp')}
                           style={{
                             width: '100%',
                             height: '135%',
