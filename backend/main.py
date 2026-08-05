@@ -40,6 +40,7 @@ import jwt
 from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse, Response, HTMLResponse
 import socketio
 
@@ -482,6 +483,43 @@ async def _upload_post_media_file_to_bunny(user_id: str, file_path: str, content
         clean_base = _get_public_base_url(base_url)
         media_url = f"{clean_base}/api/bunny-media/{object_path}"
     return media_url, object_path
+
+
+def _generate_image_thumbnail(image_bytes: bytes, width: int = 400) -> bytes:
+    """Generate a feed-optimized thumbnail for images using PIL/Pillow."""
+    try:
+        from PIL import Image
+        import io
+        
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Calculate new height maintaining aspect ratio
+        original_width, original_height = img.size
+        if original_width <= width:
+            # Image is already smaller than target width
+            thumbnail_img = img.copy()
+        else:
+            # Resize maintaining aspect ratio
+            new_height = int((width / original_width) * original_height)
+            thumbnail_img = img.resize((width, new_height), Image.Resampling.LANCZOS)
+        
+        # Convert to RGB if necessary (for PNG with transparency, etc.)
+        if thumbnail_img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', thumbnail_img.size, (255, 255, 255))
+            if thumbnail_img.mode == 'P':
+                thumbnail_img = thumbnail_img.convert('RGBA')
+            background.paste(thumbnail_img, mask=thumbnail_img.split()[-1] if thumbnail_img.mode == 'RGBA' else None)
+            thumbnail_img = background
+        
+        # Save as JPEG with good quality
+        output = io.BytesIO()
+        thumbnail_img.save(output, format='JPEG', quality=85, optimize=True)
+        output.seek(0)
+        return output.read()
+    except Exception as e:
+        logger.warning(f"Failed to generate image thumbnail: {e}")
+        # Return original if thumbnail generation fails
+        return image_bytes
 
 
 async def _download_file_from_bunny(object_path: str, local_path: str) -> int:
@@ -1247,6 +1285,9 @@ class ProcessTimeAndCORSMiddleware:
 
 
 app.add_middleware(ProcessTimeAndCORSMiddleware)
+
+# Enable GZip compression for all responses (60-70% size reduction)
+app.add_middleware(GZipMiddleware, minimum_size=1000, compresslevel=6)
 
 
 @app.exception_handler(Exception)
@@ -3298,7 +3339,7 @@ async def _upload_post_impl(
 
                 temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
                 temp_thumb_file.close()
-                await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name)
+                await asyncio.to_thread(_generate_video_thumbnail, temp_output_file.name, temp_thumb_file.name, 400)
 
                 compressed_size_bytes = os.path.getsize(temp_output_file.name)
                 if compressed_size_bytes <= 0:
@@ -3358,6 +3399,20 @@ async def _upload_post_impl(
             max_image_bytes = 100 * 1024 * 1024
             if len(file_bytes) > max_image_bytes:
                 raise HTTPException(status_code=413, detail='Image file too large. Max allowed size is 100MB')
+
+            # Generate thumbnail for images (feed optimization)
+            temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
+            temp_thumb_file.close()
+            try:
+                thumb_bytes = await asyncio.to_thread(_generate_image_thumbnail, file_bytes, 400)
+                with open(temp_thumb_file.name, 'wb') as f:
+                    f.write(thumb_bytes)
+                logger.info("Generated image thumbnail for feed")
+            except Exception as thumb_err:
+                logger.warning(f"Failed to generate image thumbnail: {thumb_err}")
+                if os.path.exists(temp_thumb_file.name):
+                    os.unlink(temp_thumb_file.name)
+                temp_thumb_file = None
     except HTTPException:
         raise
     except Exception as e:
@@ -3380,6 +3435,23 @@ async def _upload_post_impl(
         except Exception as exc:
             logger.exception('Post media upload failed for user_id=%s', user_id)
             raise HTTPException(status_code=500, detail=f'Media upload failed: {str(exc)}')
+    
+    # Upload image thumbnail if generated
+    image_thumbnail_url = None
+    if temp_thumb_file and os.path.exists(temp_thumb_file.name) and os.path.getsize(temp_thumb_file.name) > 0:
+        try:
+            base_url = str(request.base_url)
+            image_thumbnail_url, _ = await _upload_post_media_file_to_bunny(
+                user_id,
+                temp_thumb_file.name,
+                'image/jpeg',
+                base_url
+            )
+            logger.info("Uploaded image thumbnail to Bunny.net successfully")
+        except Exception as thumb_exc:
+            logger.warning(f"Bunny.net image thumbnail upload failed ({thumb_exc})")
+            image_thumbnail_url = None
+    
     media_type = 'video' if content_type.startswith('video/') else 'image'
 
     video_metadata = {}
@@ -3393,11 +3465,13 @@ async def _upload_post_impl(
             'thumbnail_url': thumbnail_url,
         }
     else:
-        if passed_media_width and passed_media_height:
-            video_metadata = {
-                'width': passed_media_width,
-                'height': passed_media_height,
-            }
+        # For images, include thumbnail_url if generated
+        video_metadata = {
+            'width': passed_media_width if passed_media_width else 0,
+            'height': passed_media_height if passed_media_height else 0,
+        }
+        if image_thumbnail_url:
+            video_metadata['thumbnail_url'] = image_thumbnail_url
 
     if crop_offset_x is not None:
         video_metadata['crop_offset_x'] = crop_offset_x
@@ -3652,7 +3726,7 @@ async def _upload_post_from_storage_impl(
             temp_thumb_file = NamedTemporaryFile(delete=False, suffix='.jpg')
             temp_thumb_file.close()
             try:
-                await asyncio.to_thread(_generate_video_thumbnail, upload_source, temp_thumb_file.name)
+                await asyncio.to_thread(_generate_video_thumbnail, upload_source, temp_thumb_file.name, 400)
             except Exception as thumb_err:
                 logger.warning(f"Failed to generate thumbnail for storage post: {thumb_err}")
 
@@ -3815,15 +3889,27 @@ async def get_my_posts(
 async def get_posts_feed(
     request: Request,
     limit: int = 15,
-    offset: int = 0,
+    after: str = '',  # Cursor-based pagination: post_id to start after
     tab: str = 'for_you',
     seen_ids: str = '',
     token_data: dict = Depends(verify_token)
 ):
     """
-    Smart Weighted Discovery Feed.
+    Smart Weighted Discovery Feed with Cursor-based Pagination.
     Mix: 40% random, 30% high-engagement, 20% user-interest, 10% latest.
     Anti-repetition: no same creator within 5 reels, balanced categories.
+    
+    Query params:
+    - limit: Number of posts to fetch (default: 15, max: 50)
+    - after: Cursor (post_id) to fetch next page (optional)
+    - tab: 'for_you', 'following', 'trending', 'reels', 'festivals'
+    - seen_ids: Comma-separated list of already seen post IDs
+    
+    Response includes only essential fields for fast loading:
+    - id, caption, media_url, thumbnail_url, media_type
+    - user_id, username, user_photo
+    - likes_count, comments_count, views_count, liked_by_me
+    - created_at
     """
     import random as _random
 
@@ -4206,32 +4292,32 @@ async def get_posts_feed(
             if author:
                 post['user_photo'] = author.get('photo')
                 post['username'] = author.get('name') or author.get('sl_id') or post.get('username')
+            
+            # Feed optimization: Only include essential fields for feed display
+            # Get thumbnail_url from metadata if available (for both images and videos)
+            metadata = post.get('metadata', {}) or {}
+            thumbnail_url = metadata.get('thumbnail_url')
+            if thumbnail_url:
+                post['thumbnail_url'] = thumbnail_url
+            
+            # Keep only required fields for feed to reduce payload size
+            # Remove heavy fields that are not needed in feed view
+            full_media_url = post.get('media_url')
+            
             liked_by = post.get('liked_by', []) or []
             post['likes_count'] = post.get('likes_count', len(liked_by))
             post['comments_count'] = post.get('comments_count', 0)
             post['views_count'] = post.get('views_count', 0)
             post['liked_by_me'] = current_user_id in liked_by
-            # Remove internal scoring keys
+            
+            # Remove internal scoring keys and heavy fields not needed in feed
             for k in ('_random_val', '_engagement_val', '_interest_val', '_recency_val'):
                 post.pop(k, None)
-            try:
-                comments_cnt = post.get('comments_count', 0) or 0
-                if comments_cnt > 0:
-                    if comments_cnt <= 10:
-                        top_comments = comments_by_post.get(post.get('id'), [])
-                    else:
-                        top_comments = await db.query_documents(
-                            'post_comments',
-                            filters=[('post_id', '==', post.get('id'))],
-                            limit=10,
-                        )
-                    top_comments = [c for c in top_comments if c.get('user_id') not in blocked_user_ids]
-                    top_comments.sort(key=_comment_sort_key, reverse=True)
-                    post['top_comments'] = top_comments[:5]
-                else:
-                    post['top_comments'] = []
-            except Exception:
-                post['top_comments'] = []
+            
+            # Don't include full comments in feed - only counts
+            # Comments will be fetched on-demand when user opens the post
+            post.pop('top_comments', None)
+            
             return post
 
     tasks = [fetch_post_details(p) for p in paged_posts]
@@ -4240,8 +4326,8 @@ async def get_posts_feed(
     return {
         'items': normalized,
         'limit': safe_limit,
-        'offset': offset,
-        'has_more': len(unseen_pool) > safe_limit,
+        'next_cursor': normalized[-1]['id'] if normalized else '',  # Cursor for next page
+        'has_more': len(unseen_pool) > safe_limit or (len(normalized) == safe_limit),
     }
 
 
