@@ -2749,7 +2749,7 @@ export default function HomeScreen() {
               }
               if (batchOperations.length > 0) {
                 await database.write(async () => {
-                  await database.batch(...batchOperations);
+                  await database.batch(batchOperations);
                 });
                 console.log(`[HomeFeed] Batched ${batchOperations.length} posts to local database`);
               }

@@ -507,7 +507,7 @@ export default function TempleScreen() {
             });
 
             if (recordsToCreateOrUpdate.length > 0) {
-              await database.batch(...recordsToCreateOrUpdate);
+              await database.batch(recordsToCreateOrUpdate);
             }
           });
         } catch (dbError) {

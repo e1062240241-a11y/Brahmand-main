@@ -98,28 +98,6 @@ async def get_temple(
         raise HTTPException(status_code=404, detail=str(e))
 
 
-@router.post("/{temple_id}/follow")
-async def follow_temple(
-    temple_id: str,
-    token_data: dict = Depends(verify_token)
-):
-    """Follow a temple"""
-    try:
-        return await TempleService.follow_temple(token_data["user_id"], temple_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.post("/{temple_id}/unfollow")
-async def unfollow_temple(
-    temple_id: str,
-    token_data: dict = Depends(verify_token)
-):
-    """Unfollow a temple"""
-    try:
-        return await TempleService.unfollow_temple(token_data["user_id"], temple_id)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/{temple_id}/posts")

@@ -1016,7 +1016,7 @@ function MessagesScreen({
                   }
                 }
                 if (batchOps.length > 0) {
-                  await database.batch(...batchOps);
+                  await database.batch(batchOps);
                 }
               });
             } catch (dbErr) {
@@ -1181,7 +1181,7 @@ function MessagesScreen({
                 }
 
                 if (batchOps.length > 0) {
-                  await database.batch(...batchOps);
+                  await database.batch(batchOps);
                 }
               });
             } catch (dbErr) {

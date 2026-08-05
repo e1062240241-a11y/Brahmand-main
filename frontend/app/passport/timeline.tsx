@@ -274,7 +274,7 @@ function PassportTimelineScreen({
                 }
                 
                 if (ops.length > 0) {
-                  await database.batch(...ops);
+                  await database.batch(ops);
                 }
                 
                 // Clear from Zustand stores
