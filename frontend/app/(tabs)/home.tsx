@@ -3317,6 +3317,7 @@ export default function HomeScreen() {
   }, [activePostKey]);
 
   const [activePostId, setActivePostId] = useState<string | null>(null);
+  const [activePostIndex, setActivePostIndex] = useState(0);
 
   const onViewableItemsChangedRef = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
@@ -3326,6 +3327,9 @@ export default function HomeScreen() {
       } else {
         setActivePostId(null);
       }
+
+      const index = viewableItems[0]?.index;
+      if (typeof index === 'number') setActivePostIndex(index);
     } else {
       setActivePostId(null);
     }
@@ -4119,6 +4123,7 @@ export default function HomeScreen() {
   };
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
+    const distanceFromActive = Math.abs(index - activePostIndex);
     if (item.type === 'empty') {
       return (
         <View style={styles.emptyFeed}>
@@ -4131,6 +4136,7 @@ export default function HomeScreen() {
     return (
       <View style={{ marginBottom: 0 }}>
         <PostFeedCard
+          distanceFromActive={distanceFromActive}
           post={item}
           onLike={handleLikePost}
           onComment={handleOpenComment}
@@ -4294,14 +4300,15 @@ export default function HomeScreen() {
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
               keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
               renderItem={renderFeedPost}
-              {...{ estimatedItemSize: 600 } as any}
-              extraData={activePostId}
+              {...{ estimatedItemSize: ESTIMATED_ITEM_SIZE } as any}
+              extraData={{ activePostId, activePostIndex }}
               viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
               onViewableItemsChanged={onViewableItemsChangedRef.current}
               onScroll={handleHomeScroll}
               initialNumToRender={3}
               maxToRenderPerBatch={3}
               windowSize={Platform.OS === 'android' ? 3 : 5}
+              drawDistance={1000}
               removeClippedSubviews={true}
               onEndReached={() => {
                 if (!hasMoreFeed || loadingMoreFeed) return;
