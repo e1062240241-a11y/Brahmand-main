@@ -4745,7 +4745,7 @@ export default function HomeScreen() {
                       onPress={() => {
                         try {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        } catch (_e) {}
+                        } catch (_e) { }
                         router.push({
                           pathname: '/shravan-paath',
                           params: { is_interested: reminders['shravan_katha'] ? '1' : '0' }
@@ -5025,7 +5025,7 @@ export default function HomeScreen() {
                               onPress={async () => {
                                 try {
                                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                } catch (_e) {}
+                                } catch (_e) { }
                                 const isCurrentlyNotified = !!reminders['shravan_katha'];
                                 await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
                                 router.push({
