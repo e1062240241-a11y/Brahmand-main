@@ -48,6 +48,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { socketService } from '../../src/services/socket';
+
 // ── Smart Feed Optimization (ADD-ONLY, no existing features changed) ─────────
 import { useFeedOptimizationStore } from '../../src/store/feedOptimizationStore';
 import { useSmartFeed } from '../../src/hooks/useSmartFeed';
@@ -1127,24 +1128,24 @@ const JaapBanners = React.memo(function JaapBanners({
                 <View
                   pointerEvents="none"
                   style={{
-                  position: 'absolute',
-                  top: 8,
-                  right: 10,
-                  width: 52,
-                  height: 52,
-                  borderRadius: 26,
-                  backgroundColor: '#F4C55A',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  borderWidth: 2,
-                  borderColor: '#FFF8DC',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 3,
-                  elevation: 5,
-                  zIndex: 10,
-                }}>
+                    position: 'absolute',
+                    top: 8,
+                    right: 10,
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: '#F4C55A',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 2,
+                    borderColor: '#FFF8DC',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 3,
+                    elevation: 5,
+                    zIndex: 10,
+                  }}>
                   <View style={{
                     width: 44,
                     height: 44,
@@ -1174,18 +1175,18 @@ const JaapBanners = React.memo(function JaapBanners({
                 <View
                   pointerEvents="box-none"
                   style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  bottom: 0,
-                  width: '70%',
-                  paddingLeft: 14,
-                  paddingRight: 6,
-                  paddingTop: Platform.OS === 'android' ? 1 : 2,
-                  paddingBottom: 2,
-                  justifyContent: 'flex-start',
-                  alignItems: 'flex-start',
-                }}>
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: '70%',
+                    paddingLeft: 14,
+                    paddingRight: 6,
+                    paddingTop: Platform.OS === 'android' ? 1 : 2,
+                    paddingBottom: 2,
+                    justifyContent: 'flex-start',
+                    alignItems: 'flex-start',
+                  }}>
                   <View style={{
                     width: '100%',
                     alignItems: 'flex-start',
@@ -3279,7 +3280,7 @@ export default function HomeScreen() {
     }
   }, [activeTab]);
 
-    const feedPostKeys = useMemo(
+  const feedPostKeys = useMemo(
     () => feedPosts.map((post, index) => {
       const prefix = Platform.OS === 'android' ? 'feed-android' : 'feed';
       return `${prefix}-${index}-${post.id || post.media_url || index}`;
@@ -3317,19 +3318,22 @@ export default function HomeScreen() {
   }, [activePostKey]);
 
   const [activePostId, setActivePostId] = useState<string | null>(null);
-  const [activePostIndex, setActivePostIndex] = useState(0);
+  const activePostIndexRef = useRef(0);
 
   const onViewableItemsChangedRef = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
+      const index = viewableItems[0]?.index;
+      if (typeof index === 'number') {
+        activePostIndexRef.current = index;
+      }
+
       const valid = viewableItems.filter((v: any) => v.isViewable && v.item?.id && v.item.type !== 'empty');
       if (valid.length > 0) {
-        setActivePostId(String(valid[0].item.id));
+        const newId = String(valid[0].item.id);
+        setActivePostId(prev => prev === newId ? prev : newId);
       } else {
         setActivePostId(null);
       }
-
-      const index = viewableItems[0]?.index;
-      if (typeof index === 'number') setActivePostIndex(index);
     } else {
       setActivePostId(null);
     }
@@ -4123,7 +4127,7 @@ export default function HomeScreen() {
   };
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
-    const distanceFromActive = Math.abs(index - activePostIndex);
+    const distanceFromActive = Math.abs(index - activePostIndexRef.current);
     if (item.type === 'empty') {
       return (
         <View style={styles.emptyFeed}>
@@ -4298,16 +4302,12 @@ export default function HomeScreen() {
             <FlashList<any>
               ref={scrollViewRef}
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
-              keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
               renderItem={renderFeedPost}
-              {...{ estimatedItemSize: ESTIMATED_ITEM_SIZE } as any}
-              extraData={{ activePostId, activePostIndex }}
+              keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
+              extraData={activePostId}
               viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
               onViewableItemsChanged={onViewableItemsChangedRef.current}
               onScroll={handleHomeScroll}
-              initialNumToRender={3}
-              maxToRenderPerBatch={3}
-              windowSize={Platform.OS === 'android' ? 3 : 5}
               drawDistance={1000}
               removeClippedSubviews={true}
               onEndReached={() => {

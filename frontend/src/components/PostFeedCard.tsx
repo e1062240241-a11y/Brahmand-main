@@ -50,6 +50,7 @@ type PostFeedCardProps = {
   onPostMenuPress?: (post: any) => void;
   postMenuType?: 'delete' | 'report';
   isActive?: boolean;
+  isFocused?: boolean;
   onLayout?: (event: any) => void;
   theme?: 'light' | 'dark';
   openCommentsOnCaptionPress?: boolean;
@@ -81,6 +82,7 @@ const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMe
 
 const PostFeedCardComponent = ({
   post,
+  distanceFromActive = 0,
   onLike,
   onComment,
   onShare,
@@ -91,6 +93,7 @@ const PostFeedCardComponent = ({
   onPostMenuPress,
   postMenuType,
   isActive = false,
+  isFocused: isFocusedProp,
   onLayout,
   theme = 'light',
   openCommentsOnCaptionPress = false,
@@ -105,7 +108,8 @@ const PostFeedCardComponent = ({
 }: PostFeedCardProps) => {
   const { t, language } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
-  const isFocused = useIsFocused();
+  const isFocusedNav = useIsFocused();
+  const isFocused = isFocusedProp ?? isFocusedNav;
   const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
@@ -306,7 +310,7 @@ const PostFeedCardComponent = ({
     return () => subscription.remove();
   }, []);
 
-  const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active';
+  const shouldPlay = Boolean(isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active');
   const videoRef = useRef<any>(null);
 
   useEffect(() => {
@@ -965,7 +969,9 @@ const PostFeedCardComponent = ({
       )}
     </View>
   );
-};t styles = StyleSheet.create({
+};
+
+const styles = StyleSheet.create({
   card: {
     backgroundColor: 'transparent',
     marginBottom: 0,
@@ -1126,7 +1132,7 @@ const PostFeedCardComponent = ({
     fontSize: 10,
     fontWeight: '700',
   },
-};
+});
 
 export const PostFeedCard = memo(
   PostFeedCardComponent,

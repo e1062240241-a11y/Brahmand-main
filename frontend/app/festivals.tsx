@@ -269,7 +269,6 @@ const FestivalPage = () => {
           renderItem={renderItem}
           keyExtractor={(item: any, idx: number) => item.id || item.name || String(idx)}
           ListHeaderComponent={renderHeader}
-          estimatedItemSize={132}
           drawDistance={400}
           overrideItemLayout={(layout: any) => {
             layout.size = 132;
