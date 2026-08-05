@@ -5831,7 +5831,24 @@ export default function HomeScreen() {
     reminders,
     unreadCount,
     activeTab,
-    t, searchActive, searchTerm, hashtagResults, searchResults
+    t,
+    searchActive,
+    searchTerm,
+    hashtagResults,
+    loadingHashtags,
+    searchResults,
+    loadingUsers,
+    followingIds,
+    handleFollowUser,
+    recentSearches,
+    handleNotificationPress,
+    setShowProfileActions,
+    handleSetReminder,
+    handleLiveJaapNavigation,
+    safeCommunityRequests,
+    resolveHomeCommunityItem,
+    findCityCommunity,
+    findLocalCommunity
   ]);
 
   return (

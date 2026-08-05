@@ -1393,7 +1393,7 @@ function MessagesScreen({
         </LinearGradient>
       </Pressable>
     );
-  }, []);
+  }, [getRequestTheme, getTimeAgo, setSelectedRequest]);
 
 
   const renderLocalCommunityCard = useCallback((item: Community, index: number) => {
@@ -1462,7 +1462,7 @@ function MessagesScreen({
         </View>
       </Pressable>
     );
-  }, [joinedLocalIds, communities, joiningLocalId, router]);
+  }, [joinedLocalIds, joiningLocalId, communities, handleJoinLocal, router]);
 
 
   // ────────────────────────────────────────────────────────────────────────────

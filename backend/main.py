@@ -4318,6 +4318,21 @@ async def get_posts_feed(
             # Comments will be fetched on-demand when user opens the post
             post.pop('top_comments', None)
             
+            # Slim response: Remove heavy fields not needed in feed
+            # Remove full liked_by array (we already have likes_count and liked_by_me)
+            post.pop('liked_by', None)
+            # Remove metadata if not needed (we already extracted thumbnail_url)
+            post.pop('metadata', None)
+            # Remove engagement_score (internal field)
+            post.pop('engagement_score', None)
+            # Remove watch_time, completion_rate (internal analytics)
+            post.pop('watch_time', None)
+            post.pop('completion_rate', None)
+            # Remove random_score (internal sorting field)
+            post.pop('random_score', None)
+            # Remove community_level details if not needed in feed
+            # post.pop('community_level', None)  # Keep if needed for filtering
+            
             return post
 
     tasks = [fetch_post_details(p) for p in paged_posts]
