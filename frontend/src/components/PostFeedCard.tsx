@@ -965,7 +965,9 @@ const PostFeedCardComponent = ({
       )}
     </View>
   );
-};t styles = StyleSheet.create({
+};
+
+const styles = StyleSheet.create({
   card: {
     backgroundColor: 'transparent',
     marginBottom: 0,
