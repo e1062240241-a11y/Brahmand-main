@@ -92,18 +92,36 @@ const HEALING_TEMPLE_IDS = [
   'healing-mangaladevi-temple-mangalore'
 ];
 
-const getTempleDisplayName = (item: any) => item.name;
+const renderSafeText = (val: any): string => {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string' || typeof val === 'number') return String(val);
+  if (typeof val === 'object') {
+    if (val.name) return String(val.name);
+    if (val.name_hi) return String(val.name_hi);
+    if (val.title) return String(val.title);
+    if (val.label) return String(val.label);
+    if (val.value) return String(val.value);
+    return '';
+  }
+  return String(val);
+};
+
+const getTempleDisplayName = (item: any) => renderSafeText(item.name);
 
 const getTempleLocation = (item: any) => {
   if (typeof item.location === 'string') return item.location;
   if (typeof item.location === 'object' && item.location !== null) {
     const { area, city, state } = item.location;
-    return [area, city, state].filter(Boolean).join(', ');
+    const parts = [area, city, state]
+      .filter(Boolean)
+      .map(val => (typeof val === 'object' ? renderSafeText(val) : String(val)))
+      .filter(Boolean);
+    if (parts.length > 0) return parts.join(', ');
   }
-  return item.location || 'Unknown Location';
+  return renderSafeText(item.location) || 'Unknown Location';
 };
 
-const getTempleDeityLabel = (item: any) => item.deity;
+const getTempleDeityLabel = (item: any) => renderSafeText(item.deity);
 
 interface TempleCardProps {
   item: any;
@@ -115,7 +133,8 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
   const displayName = getTempleDisplayName(item);
   const location = getTempleLocation(item);
   const deityLabel = getTempleDeityLabel(item);
-  const categoryLabel = t('language') === 'hi' && item.category === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (item.category || 'Sacred');
+  const rawCat = renderSafeText(item.category);
+  const categoryLabel = t('language') === 'hi' && rawCat === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (rawCat || 'Sacred');
 
   return (
     <TouchableOpacity 

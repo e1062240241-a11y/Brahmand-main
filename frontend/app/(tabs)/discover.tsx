@@ -120,27 +120,33 @@ export default function DiscoverScreen() {
                 <Text style={styles.emptySubtext}>Be the first to add your local temple</Text>
               </View>
             ) : (
-              temples.map((temple) => (
-                <TouchableOpacity
-                  key={temple.id}
-                  style={styles.card}
-                  onPress={() => router.push(`/temple/${temple.temple_id}`)}
-                >
-                  <View style={[styles.cardIcon, { backgroundColor: `${COLORS.warning}20` }]}>
-                    <Ionicons name="home" size={24} color={COLORS.warning} />
-                  </View>
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardTitle}>{temple.name}</Text>
-                    <Text style={styles.cardSubtitle}>
-                      {temple.location?.city || temple.location?.area} • {temple.follower_count} followers
-                    </Text>
-                    {temple.deity && (
-                      <Text style={styles.deityText}>{temple.deity}</Text>
-                    )}
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
-                </TouchableOpacity>
-              ))
+              temples.map((temple) => {
+                const renderSafe = (val: any) => typeof val === 'object' && val !== null ? (val.name || val.name_hi || val.city || val.area || '') : String(val || '');
+                const templeName = renderSafe(temple.name);
+                const deityName = renderSafe(temple.deity);
+                const locStr = renderSafe(temple.location?.city || temple.location?.area || temple.location);
+                return (
+                  <TouchableOpacity
+                    key={temple.id}
+                    style={styles.card}
+                    onPress={() => router.push(`/temple/${encodeURIComponent(renderSafe(temple.temple_id || temple.id))}`)}
+                  >
+                    <View style={[styles.cardIcon, { backgroundColor: `${COLORS.warning}20` }]}>
+                      <Ionicons name="home" size={24} color={COLORS.warning} />
+                    </View>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.cardTitle}>{templeName}</Text>
+                      <Text style={styles.cardSubtitle}>
+                        {locStr ? `${locStr} • ` : ''}{temple.follower_count || 0} followers
+                      </Text>
+                      {deityName ? (
+                        <Text style={styles.deityText}>{deityName}</Text>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={COLORS.textLight} />
+                  </TouchableOpacity>
+                );
+              })
             )}
           </View>
         )}

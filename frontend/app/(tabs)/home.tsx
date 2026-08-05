@@ -2028,14 +2028,15 @@ const CommunityCardsRow = React.memo(function CommunityCardsRow({
           id: 'mumbai-fallback',
           name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
           type: 'city',
-          member_count: 1250,
+          member_count: 1,
         };
         let cityName = resolvedCityComm.name || 'City Community';
         if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
           cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
         }
         const cityId = resolvedCityComm.id;
-        const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
+        const rawCityCount = resolvedCityComm.member_count ?? resolvedCityComm.members_count ?? (resolvedCityComm as any).memberCount ?? (Array.isArray(resolvedCityComm.members) ? resolvedCityComm.members.length : 1);
+        const cityMembers = (rawCityCount || 1) * 11;
         return (
           <Pressable
             style={({ pressed }) => [
@@ -2070,14 +2071,15 @@ const CommunityCardsRow = React.memo(function CommunityCardsRow({
           id: 'food_pune',
           name: t('language') === 'hi' ? 'पुणे भोजन साझाकरण समूह' : 'Pune Food Sharing Group',
           type: 'user_group',
-          member_count: 235,
+          member_count: 1,
         };
         const localId = resolvedLocalComm.id;
         let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
         if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
           realGroupName = 'पुणे भोजन साझाकरण समूह';
         }
-        const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
+        const rawLocalCount = resolvedLocalComm.member_count ?? resolvedLocalComm.members_count ?? (resolvedLocalComm as any).memberCount ?? (Array.isArray(resolvedLocalComm.members) ? resolvedLocalComm.members.length : 1);
+        const localMembers = (rawLocalCount || 1) * 11;
         const localSubgroup = resolvedLocalComm.type || 'city';
         return (
           <Pressable
@@ -5704,14 +5706,15 @@ export default function HomeScreen() {
                 id: 'mumbai-fallback',
                 name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
                 type: 'city',
-                member_count: 1250,
+                member_count: 1,
               };
               let cityName = resolvedCityComm.name || 'City Community';
               if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
                 cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
               }
               const cityId = resolvedCityComm.id;
-              const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
+              const rawCityCount = resolvedCityComm.member_count ?? resolvedCityComm.members_count ?? (resolvedCityComm as any).memberCount ?? (Array.isArray(resolvedCityComm.members) ? resolvedCityComm.members.length : 1);
+              const cityMembers = (rawCityCount || 1) * 11;
               return (
                 <Pressable
                   style={({ pressed }) => [
@@ -5746,14 +5749,15 @@ export default function HomeScreen() {
                 id: 'food_pune',
                 name: t('language') === 'hi' ? 'पुणे भोजन साझाकरण समूह' : 'Pune Food Sharing Group',
                 type: 'user_group',
-                member_count: 235,
+                member_count: 1,
               };
               const localId = resolvedLocalComm.id;
               let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
               if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
                 realGroupName = 'पुणे भोजन साझाकरण समूह';
               }
-              const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
+              const rawLocalCount = resolvedLocalComm.member_count ?? resolvedLocalComm.members_count ?? (resolvedLocalComm as any).memberCount ?? (Array.isArray(resolvedLocalComm.members) ? resolvedLocalComm.members.length : 1);
+              const localMembers = (rawLocalCount || 1) * 11;
               const localSubgroup = resolvedLocalComm.type || 'city';
               return (
                 <Pressable

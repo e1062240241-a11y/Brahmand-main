@@ -660,13 +660,30 @@ const CATEGORY_BADGE_MAP: Record<string, { emoji: string; label: string }> = {
   'sikh': { emoji: '☬', label: 'Gurdwara' },
 };
 
-const getCategoryBadge = (category?: string) => {
+const renderSafeText = (val: any): string => {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string' || typeof val === 'number') return String(val);
+  if (typeof val === 'object') {
+    if (val.name) return String(val.name);
+    if (val.name_hi) return String(val.name_hi);
+    if (val.time) return String(val.time);
+    if (val.label) return String(val.label);
+    if (val.title) return String(val.title);
+    if (val.value) return String(val.value);
+    return '';
+  }
+  return String(val);
+};
+
+const getCategoryBadge = (category?: any) => {
   if (!category) return null;
-  const lower = category.toLowerCase().trim();
+  const categoryStr = renderSafeText(category);
+  if (!categoryStr) return null;
+  const lower = categoryStr.toLowerCase().trim();
   for (const [key, value] of Object.entries(CATEGORY_BADGE_MAP)) {
     if (lower.includes(key)) return value;
   }
-  return { emoji: '🛕', label: category };
+  return { emoji: '🛕', label: categoryStr };
 };
 
 const formatFollowerCount = (count: number): string => {
@@ -677,8 +694,8 @@ const formatFollowerCount = (count: number): string => {
   return count.toString();
 };
 
-const getSpecialTempleKey = (name: string) => {
- const normalizedName = String(name || '').toLowerCase();
+const getSpecialTempleKey = (name: any) => {
+ const normalizedName = renderSafeText(name).toLowerCase();
  const specialTemple = Object.entries(SPECIAL_TEMPLE_DATA).find(([, value]) =>
  value.aliases.some((alias) => normalizedName.includes(alias))
  );
@@ -690,40 +707,51 @@ const getSpecialTempleKey = (name: string) => {
 
 const formatTempleLocation = (temple: any) => {
  const location = temple?.location;
- const specialKey = getSpecialTempleKey(temple?.name);
+ const specialKey = getSpecialTempleKey(renderSafeText(temple?.name));
  if (!location || (typeof location === 'object' && Object.keys(location).length === 0)) {
  if (specialKey) {
  return DEFAULT_TEMPLE_LOCATIONS[specialKey];
  }
- return DEFAULT_TEMPLE_LOCATIONS[temple?.name] || 'Unknown location';
+ const tName = renderSafeText(temple?.name);
+ return DEFAULT_TEMPLE_LOCATIONS[tName] || 'Unknown location';
  }
  if (typeof location === 'string') return location;
+ if (typeof location === 'object') {
  const fallback = [location.area, location.city, location.state, location.country]
+ .filter(Boolean)
+ .map(val => (typeof val === 'object' ? renderSafeText(val) : String(val)))
  .filter(Boolean)
  .join(', ');
  if (fallback) return fallback;
- if (specialKey) {
- return DEFAULT_TEMPLE_LOCATIONS[specialKey];
  }
- return Object.values(location || {})
- .filter((value) => typeof value === 'string' && value.trim())
- .join(', ') || DEFAULT_TEMPLE_LOCATIONS[temple?.name] || 'Unknown location';
+ return 'Unknown location';
 };
 
-const getTempleAartiSessions = (timings: Record<string, string>, templeName: string) => {
-  const order = ['morning', 'afternoon', 'evening'];
-  const entries = Object.entries(timings || {}).filter(([, value]) => value);
+const getTempleAartiSessions = (timingsInput: any, templeNameInput: any) => {
+  let timings = timingsInput;
+  if (typeof timingsInput === 'string') {
+    try {
+      timings = JSON.parse(timingsInput);
+    } catch {
+      timings = {};
+    }
+  }
+  if (!timings || typeof timings !== 'object') timings = {};
+
+  const order = ['morning', 'afternoon', 'evening', 'night'];
+  const entries = Object.entries(timings).filter(([, value]) => value);
   const ordered = order
-  .map((key) => entries.find(([name]) => name.toLowerCase() === key))
-  .filter(Boolean) as [string, string][];
-  const rest = entries.filter(([name]) => !order.includes(name.toLowerCase()));
+    .map((key) => entries.find(([name]) => String(name).toLowerCase() === key))
+    .filter(Boolean) as [string, any][];
+  const rest = entries.filter(([name]) => !order.includes(String(name).toLowerCase()));
   const sessions = [...ordered, ...rest];
   if (sessions.length > 0) return sessions;
 
+  const templeName = renderSafeText(templeNameInput);
   const specialKey = getSpecialTempleKey(templeName);
   const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
   if (specialTemple?.aartiSessions?.length) {
-  return specialTemple.aartiSessions.map(({ title, time }) => [title, time] as [string, string]);
+    return specialTemple.aartiSessions.map(({ title, time }) => [title, time] as [string, any]);
   }
   return [];
 };
@@ -1130,13 +1158,13 @@ if (!temple) {
 
    {/* Temple Core Info */}
    <View style={styles.heroInfoContent}>
-     <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
-     {temple.deity && <Text style={styles.templeDeity} numberOfLines={1}>{temple.deity}</Text>}
+     <Text style={styles.templeName} numberOfLines={2}>{renderSafeText(displayName)}</Text>
+     {temple.deity && <Text style={styles.templeDeity} numberOfLines={1}>{renderSafeText(temple.deity)}</Text>}
 
      {/* Category Badge */}
      {categoryBadge && (
        <View style={styles.categoryBadge}>
-         <Text style={styles.categoryBadgeText}>{categoryBadge.emoji} {categoryBadge.label}</Text>
+         <Text style={styles.categoryBadgeText}>{categoryBadge.emoji} {renderSafeText(categoryBadge.label)}</Text>
        </View>
      )}
 
@@ -1189,22 +1217,25 @@ if (!temple) {
   {t('language') === 'hi' ? 'सुबह की आरती' : 'Morning Aarti'}
  </Text>
  )}
- <View style={styles.aartiGrid}>
- {aartiSessions.map(([key, value]) => {
-   let displayKey = key.charAt(0).toUpperCase() + key.slice(1);
-   if (t('language') === 'hi') {
-     if (key.toLowerCase() === 'morning') displayKey = 'सुबह की आरती';
-     else if (key.toLowerCase() === 'afternoon') displayKey = 'दोपहर की आरती';
-     else if (key.toLowerCase() === 'evening') displayKey = 'शाम की आरती';
-     else if (key.toLowerCase() === 'night') displayKey = 'रात की आरती';
-   }
-   return (
-     <View key={key} style={styles.aartiCard}>
-     <Text style={styles.aartiLabel}>{displayKey}</Text>
-     <Text style={styles.aartiTime}>{value}</Text>
-     </View>
-   );
- })}
+  <View style={styles.aartiGrid}>
+  {aartiSessions.map(([key, value]) => {
+    let rawKeyStr = renderSafeText(key);
+    let displayKey = rawKeyStr ? rawKeyStr.charAt(0).toUpperCase() + rawKeyStr.slice(1) : '';
+    if (t('language') === 'hi') {
+      const kLower = String(key).toLowerCase();
+      if (kLower === 'morning') displayKey = 'सुबह की आरती';
+      else if (kLower === 'afternoon') displayKey = 'दोपहर की आरती';
+      else if (kLower === 'evening') displayKey = 'शाम की आरती';
+      else if (kLower === 'night') displayKey = 'रात की आरती';
+    }
+    const timeText = renderSafeText(value);
+    return (
+      <View key={String(key)} style={styles.aartiCard}>
+        <Text style={styles.aartiLabel}>{displayKey}</Text>
+        <Text style={styles.aartiTime}>{timeText}</Text>
+      </View>
+    );
+  })}
  </View>
  {isMiraRoadTemple && (
  <>
@@ -1270,8 +1301,8 @@ if (!temple) {
      <View style={{ flex: 1 }}>
        {Object.entries(darshanTimings).map(([label, time]) => (
          <View key={label} style={styles.darshanTimingRow}>
-           <Text style={styles.darshanTimingLabel}>{label}</Text>
-           <Text style={styles.darshanTimingValue}>{String(time)}</Text>
+           <Text style={styles.darshanTimingLabel}>{renderSafeText(label)}</Text>
+           <Text style={styles.darshanTimingValue}>{renderSafeText(time)}</Text>
          </View>
        ))}
      </View>
@@ -1336,13 +1367,13 @@ if (!temple) {
  {temple.history && (
  <View style={styles.section}>
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'इतिहास' : 'History'}</Text>
-   <Text style={styles.descriptionText}>{temple.history}</Text>
+   <Text style={styles.descriptionText}>{renderSafeText(temple.history)}</Text>
  </View>
  )}
  {temple.significance && (
  <View style={styles.section}>
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'महत्व' : 'Significance'}</Text>
-   <Text style={styles.descriptionText}>{temple.significance}</Text>
+   <Text style={styles.descriptionText}>{renderSafeText(temple.significance)}</Text>
  </View>
  )}
  {temple.dress_code && (
@@ -1350,7 +1381,7 @@ if (!temple) {
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'ड्रेस कोड' : 'Dress Code'}</Text>
    <View style={styles.infoChip}>
      <Ionicons name="shirt-outline" size={16} color={COLORS.primary} />
-     <Text style={styles.infoChipText}>{temple.dress_code}</Text>
+     <Text style={styles.infoChipText}>{renderSafeText(temple.dress_code)}</Text>
    </View>
  </View>
  )}
@@ -1359,7 +1390,7 @@ if (!temple) {
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'प्रवेश शुल्क' : 'Entry Fee'}</Text>
    <View style={styles.infoChip}>
      <Ionicons name="ticket-outline" size={16} color={COLORS.primary} />
-     <Text style={styles.infoChipText}>{temple.entry_fee === 0 ? 'Free Entry' : `₹${temple.entry_fee}`}</Text>
+     <Text style={styles.infoChipText}>{temple.entry_fee === 0 ? 'Free Entry' : `₹${renderSafeText(temple.entry_fee)}`}</Text>
    </View>
  </View>
  )}
@@ -1368,7 +1399,7 @@ if (!temple) {
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'घूमने का सबसे अच्छा समय' : 'Best Time to Visit'}</Text>
    <View style={styles.infoChip}>
      <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
-     <Text style={styles.infoChipText}>{temple.best_time_to_visit}</Text>
+     <Text style={styles.infoChipText}>{renderSafeText(temple.best_time_to_visit)}</Text>
    </View>
  </View>
  )}
@@ -1377,23 +1408,23 @@ if (!temple) {
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'प्रसिद्ध प्रसाद' : 'Famous Prasad'}</Text>
    <View style={styles.infoChip}>
      <Ionicons name="leaf-outline" size={16} color={COLORS.primary} />
-     <Text style={styles.infoChipText}>{temple.famous_prasad}</Text>
+     <Text style={styles.infoChipText}>{renderSafeText(temple.famous_prasad)}</Text>
    </View>
  </View>
  )}
  {temple.special_rituals && (
  <View style={styles.section}>
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'विशेष अनुष्ठान' : 'Special Rituals'}</Text>
-   <Text style={styles.descriptionText}>{temple.special_rituals}</Text>
+   <Text style={styles.descriptionText}>{renderSafeText(temple.special_rituals)}</Text>
  </View>
  )}
  {temple.festivals && Array.isArray(temple.festivals) && temple.festivals.length > 0 && (
  <View style={styles.section}>
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'उत्सव' : 'Festivals'}</Text>
    <View style={styles.festivalsRow}>
-     {temple.festivals.map((fest: string, i: number) => (
+     {temple.festivals.map((fest: any, i: number) => (
        <View key={i} style={styles.festivalChip}>
-         <Text style={styles.festivalChipText}>🎪 {fest}</Text>
+         <Text style={styles.festivalChipText}>🎪 {renderSafeText(fest)}</Text>
        </View>
      ))}
    </View>
@@ -1404,7 +1435,7 @@ if (!temple) {
    <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'तीर्थ परिक्रमा' : 'Pilgrimage Circuit'}</Text>
    <View style={styles.infoChip}>
      <Ionicons name="map-outline" size={16} color={COLORS.primary} />
-     <Text style={styles.infoChipText}>{temple.circuit}</Text>
+     <Text style={styles.infoChipText}>{renderSafeText(temple.circuit)}</Text>
    </View>
  </View>
  )}

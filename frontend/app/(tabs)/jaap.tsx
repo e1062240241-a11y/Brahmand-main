@@ -435,16 +435,35 @@ export default function JaapLandingScreen() {
     }
   }, [activeSection]);
 
+  const renderSafeText = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    if (typeof val === 'string' || typeof val === 'number') return String(val);
+    if (typeof val === 'object') {
+      if (val.name) return String(val.name);
+      if (val.name_hi) return String(val.name_hi);
+      if (val.title) return String(val.title);
+      if (val.label) return String(val.label);
+      if (val.value) return String(val.value);
+      return '';
+    }
+    return String(val);
+  };
+
   const getTempleLocation = (item: any) => {
     if (typeof item.location === 'string') return item.location;
     if (typeof item.location === 'object' && item.location !== null) {
       const { area, city, state } = item.location;
-      return [area, city, state].filter(Boolean).join(', ');
+      const parts = [area, city, state]
+        .filter(Boolean)
+        .map(val => (typeof val === 'object' ? renderSafeText(val) : String(val)))
+        .filter(Boolean);
+      if (parts.length > 0) return parts.join(', ');
     }
-    return item.location || 'Unknown Location';
+    return renderSafeText(item.location) || 'Unknown Location';
   };
 
-  const getTranslatedTempleName = (name: string) => {
+  const getTranslatedTempleName = (nameInput: any) => {
+    const name = renderSafeText(nameInput);
     const lower = name.toLowerCase();
     if (lower.includes('mahalaxmi') || lower.includes('mahalakshmi')) {
       return t('language') === 'hi' ? 'श्री महालक्ष्मी मंदिर' : 'Shri Mahalakshmi Mandir';
@@ -475,9 +494,10 @@ export default function JaapLandingScreen() {
     return name.replace(/Borivali/ig, 'Mira Road');
   };
 
-  const getTranslatedTempleLocation = (loc: string, name?: string) => {
-    let finalLoc = loc;
-    if (finalLoc.includes('Mira Road') || finalLoc.includes('Thane') || finalLoc.toLowerCase().includes('borivali') || (name && name.toLowerCase().includes('iskcon') && (name.toLowerCase().includes('mira') || name.toLowerCase().includes('borivali')))) {
+  const getTranslatedTempleLocation = (locInput: any, nameInput?: any) => {
+    let finalLoc = renderSafeText(locInput);
+    const nameStr = renderSafeText(nameInput);
+    if (finalLoc.includes('Mira Road') || finalLoc.includes('Thane') || finalLoc.toLowerCase().includes('borivali') || (nameStr && nameStr.toLowerCase().includes('iskcon') && (nameStr.toLowerCase().includes('mira') || nameStr.toLowerCase().includes('borivali')))) {
       finalLoc = 'Mira Road, Mumbai, Maharashtra.';
     }
     if (t('language') === 'hi') {
@@ -1305,44 +1325,48 @@ export default function JaapLandingScreen() {
               {loadingTemples ? (
                 <CustomLoader size={60} fullScreen={false} message="Loading Sacred Temples..." />
               ) : filteredTemples.length > 0 ? (
-                filteredTemples.map((item, idx) => (
-                  <Pressable
-                    key={item.id} 
-                    style={({ pressed }) => [
-                      styles.newTempleCard,
-                      pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                    ]}
-                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                    onPress={() => router.push(`/temple/${encodeURIComponent(String(item.id))}`)}
-                  >
+                filteredTemples.map((item, idx) => {
+                  const safeItemId = renderSafeText(item.id || item.temple_id || item._id);
+                  const safeName = renderSafeText(item.name);
+                  return (
+                    <Pressable
+                      key={safeItemId || idx} 
+                      style={({ pressed }) => [
+                        styles.newTempleCard,
+                        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                      ]}
+                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                      onPress={() => router.push(`/temple/${encodeURIComponent(safeItemId)}`)}
+                    >
 
-                    <Image source={TEMPLE_IMAGES[item.id] || getTempleImageByName(item.name) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} style={styles.newTempleCardImg} resizeMode="cover" />
-                    <View style={styles.newTempleCardInfo}>
-                      <View>
-                        <Text style={styles.newTempleCardDeity} numberOfLines={1}>
-                          {(() => {
-                            let rawDeity = item.deity || 'LORD SHIVA';
-                            if (item.name?.toLowerCase().includes('iskcon') || item.name?.toLowerCase().includes('borivali')) {
-                              rawDeity = 'LORD KRISHNA';
-                            }
-                            if (t('language') === 'hi') {
-                              const upper = rawDeity.toUpperCase();
-                              if (upper.includes('SHIVA')) return 'भगवान शिव';
-                              if (upper.includes('KRISHNA')) return 'भगवान कृष्ण';
-                              if (upper.includes('GANESHA') || upper.includes('GANESH')) return 'भगवान गणेश';
-                              if (upper.includes('HANUMAN')) return 'हनुमान जी';
-                              if (upper.includes('LAXMI') || upper.includes('LAKSHMI')) return 'माता लक्ष्मी';
+                      <Image source={TEMPLE_IMAGES[safeItemId] || getTempleImageByName(safeName) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} style={styles.newTempleCardImg} resizeMode="cover" />
+                      <View style={styles.newTempleCardInfo}>
+                        <View>
+                          <Text style={styles.newTempleCardDeity} numberOfLines={1}>
+                            {(() => {
+                              let rawDeity = renderSafeText(item.deity) || 'LORD SHIVA';
+                              if (safeName.toLowerCase().includes('iskcon') || safeName.toLowerCase().includes('borivali')) {
+                                rawDeity = 'LORD KRISHNA';
+                              }
+                              if (t('language') === 'hi') {
+                                const upper = rawDeity.toUpperCase();
+                                if (upper.includes('SHIVA')) return 'भगवान शिव';
+                                if (upper.includes('KRISHNA')) return 'भगवान कृष्ण';
+                                if (upper.includes('GANESHA') || upper.includes('GANESH')) return 'भगवान गणेश';
+                                if (upper.includes('HANUMAN')) return 'हनुमान जी';
+                                if (upper.includes('LAXMI') || upper.includes('LAKSHMI')) return 'माता लक्ष्मी';
+                                return rawDeity;
+                              }
                               return rawDeity;
-                            }
-                            return rawDeity;
-                          })()}
-                        </Text>
-                        <Text style={styles.newTempleCardName} numberOfLines={2}>{getTranslatedTempleName(item.name || '')}</Text>
-                        <Text style={styles.newTempleCardLoc} numberOfLines={1}>{getTranslatedTempleLocation(getTempleLocation(item), item.name)}</Text>
+                            })()}
+                          </Text>
+                          <Text style={styles.newTempleCardName} numberOfLines={2}>{getTranslatedTempleName(safeName)}</Text>
+                          <Text style={styles.newTempleCardLoc} numberOfLines={1}>{getTranslatedTempleLocation(getTempleLocation(item), safeName)}</Text>
+                        </View>
                       </View>
-                    </View>
-                  </Pressable>
-                ))
+                    </Pressable>
+                  );
+                })
               ) : (
                 <View style={styles.noTemplesFound}>
                   <MaterialCommunityIcons name="temple-hindu-outline" size={60} color="#F5E0C3" />

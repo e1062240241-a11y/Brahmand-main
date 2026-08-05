@@ -319,8 +319,10 @@ const getCommunityMemberCount = (community?: any) => {
   let raw = 0;
   if (Array.isArray(community.members)) raw = community.members.length;
   else if (Array.isArray(community.members_details)) raw = community.members_details.length;
-  else if (typeof community.members_count === 'number') raw = community.members_count;
-  else if (typeof community.member_count === 'number') raw = community.member_count;
+  else if (typeof community.members_count === 'number' && community.members_count > 0) raw = community.members_count;
+  else if (typeof community.member_count === 'number' && community.member_count > 0) raw = community.member_count;
+  else if (typeof community.memberCount === 'number' && community.memberCount > 0) raw = community.memberCount;
+  if (raw <= 0) raw = 1;
   return raw * 11;
 };
 
