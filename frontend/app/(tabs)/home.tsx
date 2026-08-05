@@ -1064,8 +1064,48 @@ const JaapBanners = React.memo(function JaapBanners({
         {/* Live Katha Banner (First) */}
         {(() => {
           return (
-            <View style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}>
+            <TouchableOpacity
+              activeOpacity={0.95}
+              onPress={() => router.push('/shravan-paath')}
+              style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
+            >
               <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
+                {/* Divine Golden Aura Radial Glow behind Acharya's Portrait */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    right: '-12%',
+                    top: '-15%',
+                    width: '75%',
+                    height: '120%',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  {/* Outer Warm Amber Ambient Glow */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      width: 190,
+                      height: 190,
+                      borderRadius: 95,
+                      backgroundColor: 'rgba(255, 179, 0, 0.45)',
+                      transform: [{ scaleX: 1.2 }],
+                    }}
+                  />
+                  {/* Inner Concentric Golden Divine Halo Core */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      width: 130,
+                      height: 130,
+                      borderRadius: 65,
+                      backgroundColor: 'rgba(255, 223, 0, 0.65)',
+                    }}
+                  />
+                </View>
+
                 <Image
                   source={require('../../assets/images/panditji.png')}
                   style={{
@@ -1081,9 +1121,12 @@ const JaapBanners = React.memo(function JaapBanners({
                   start={{ x: 0, y: 0.5 }}
                   end={{ x: 0.85, y: 0.5 }}
                   style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
                 />
 
-                <View style={{
+                <View
+                  pointerEvents="none"
+                  style={{
                   position: 'absolute',
                   top: 8,
                   right: 10,
@@ -1128,7 +1171,9 @@ const JaapBanners = React.memo(function JaapBanners({
                   </View>
                 </View>
 
-                <View style={{
+                <View
+                  pointerEvents="box-none"
+                  style={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
@@ -1150,10 +1195,10 @@ const JaapBanners = React.memo(function JaapBanners({
                         numberOfLines={1}
                         style={{
                           color: '#FFFFF2',
-                          fontSize: Platform.OS === 'android' ? 27 : 33,
+                          fontSize: 27,
                           fontWeight: '900',
-                          fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                          lineHeight: Platform.OS === 'android' ? 30 : 36,
+                          lineHeight: Platform.OS === 'ios' ? 38 : 32,
+                          paddingVertical: Platform.OS === 'ios' ? 2 : 0,
                           letterSpacing: 0.5,
                           textAlign: 'left',
                           textShadowColor: 'rgba(50, 18, 0, 0.98)',
@@ -1161,19 +1206,19 @@ const JaapBanners = React.memo(function JaapBanners({
                           textShadowRadius: 1,
                         }}
                       >
-                        श्रावण मास <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 14 : 17, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
+                        श्रावण मास <Text style={{ color: '#FFD700', fontSize: 16, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
                       </Text>
                     </View>
 
-                    <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 24, marginTop: Platform.OS === 'android' ? 1 : 2 }}>
+                    <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 24, marginTop: Platform.OS === 'android' ? 1 : 0 }}>
                       <Text
                         numberOfLines={1}
                         style={{
                           color: '#FFE58F',
-                          fontSize: Platform.OS === 'android' ? 23 : 28,
+                          fontSize: 24,
                           fontWeight: '900',
-                          fontFamily: Platform.OS === 'ios' ? 'Rozha One' : 'RozhaOne',
-                          lineHeight: Platform.OS === 'android' ? 26 : 31,
+                          lineHeight: Platform.OS === 'ios' ? 35 : 32,
+                          paddingVertical: Platform.OS === 'ios' ? 3 : 0,
                           letterSpacing: 0.5,
                           textAlign: 'left',
                           textShadowColor: 'rgba(50, 18, 0, 0.98)',
@@ -1181,7 +1226,7 @@ const JaapBanners = React.memo(function JaapBanners({
                           textShadowRadius: 1,
                         }}
                       >
-                        <Text style={{ color: '#FFD700', fontSize: Platform.OS === 'android' ? 13 : 16, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
+                        <Text style={{ color: '#FFD700', fontSize: 14, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
                       </Text>
                     </View>
 
@@ -1278,7 +1323,7 @@ const JaapBanners = React.memo(function JaapBanners({
                   </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })()}
 

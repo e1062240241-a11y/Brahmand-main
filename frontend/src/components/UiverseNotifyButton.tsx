@@ -237,9 +237,7 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
   const fontSize = isSmall ? 10.5 : isLarge ? 15 : 12.5;
   const iconSize = isSmall ? 12 : isLarge ? 18 : 14;
 
-  const gradientColors: [string, string, ...string[]] = activeNotified
-    ? ['#AEEA00', '#4CAF50', '#2E7D32', '#1B5E20']
-    : ['#FFE082', '#FF9800', '#FF5722', '#D84315'];
+  const gradientColors: [string, string, ...string[]] = ['#FFE082', '#FF9800', '#FF5722', '#D84315'];
 
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
@@ -260,7 +258,7 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
           end={{ x: 1, y: 0.5 }}
           style={[styles.gradientBorder, { borderRadius: 50 }]}
         >
-          {/* Inner Container: Solid Green when activeNotified */}
+          {/* Inner Container */}
           <Animated.View
             style={[
               styles.innerContainer,
@@ -268,38 +266,33 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
                 paddingVertical,
                 paddingHorizontal,
                 borderRadius: 48,
-                backgroundColor: greenTransitionAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['#1E120A', '#2E7D32'],
-                }),
+                backgroundColor: '#1E120A',
               },
             ]}
           >
 
 
             {/* Background Glow Circles Layer */}
-            {!activeNotified && (
-              <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-                <Animated.View
-                  style={[
-                    styles.glowCircleOrange,
-                    {
-                      transform: [{ scale: pulseAnim }],
-                      opacity: 0.7,
-                    },
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.glowCircleAmber,
-                    {
-                      transform: [{ scale: pulseAnim }],
-                      opacity: 0.75,
-                    },
-                  ]}
-                />
-              </View>
-            )}
+            <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+              <Animated.View
+                style={[
+                  styles.glowCircleOrange,
+                  {
+                    transform: [{ scale: pulseAnim }],
+                    opacity: 0.7,
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.glowCircleAmber,
+                  {
+                    transform: [{ scale: pulseAnim }],
+                    opacity: 0.75,
+                  },
+                ]}
+              />
+            </View>
 
             {/* Rotating Starfield Background Overlay Layer */}
             <Animated.View
