@@ -3304,13 +3304,14 @@ export default function HomeScreen() {
 
       // ⚡ Instant Tab Switch: Render screen immediately, defer network/store syncs until animation finishes
       const task = InteractionManager.runAfterInteractions(() => {
-        const cached = useFeedStore.getState().tabFeeds[currentActiveTab];
+        const currentTab = useFeedStore.getState().activeTab || 'for_you';
+        const cached = useFeedStore.getState().tabFeeds[currentTab];
         const isStale = !cached || !cached.posts || cached.posts.length === 0 || 
                         !cached.lastFetched || 
                         (Date.now() - cached.lastFetched > 900000); // 15 min stale
 
         if (isStale) {
-          loadFeedPosts(0, false, currentActiveTab);
+          loadFeedPosts(0, false, currentTab);
         }
 
         const store = useVendorStore.getState();
