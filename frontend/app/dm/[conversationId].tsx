@@ -2123,20 +2123,20 @@ const DirectMessageScreen = () => {
           </View>
 
           {showAttachmentOptions && (
-            <Animated.View style={[styles.attachmentOverlay, { opacity: attachmentAnim, transform: [{ scale: attachmentAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }] }]}>
-              <TouchableOpacity style={styles.attachmentOption} onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked}>
-                <Ionicons name="image-outline" size={20} color={COLORS.primary} />
-                <Text style={styles.attachmentOptionText}>Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={() => handlePickMedia('video')} disabled={uploadingMedia || sending || isInputLocked}>
-                <Ionicons name="videocam-outline" size={20} color={COLORS.primary} />
-                <Text style={styles.attachmentOptionText}>Video</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.attachmentOption} onPress={handleOpenContactShare} disabled={uploadingMedia || sending || isInputLocked}>
-                <Ionicons name="person-add-outline" size={20} color={COLORS.primary} />
-                <Text style={styles.attachmentOptionText}>Contact</Text>
-              </TouchableOpacity>
-            </Animated.View>
+            <>
+              <TouchableOpacity style={styles.attachmentBackdrop} activeOpacity={1} onPress={closeAttachmentOptions} />
+              <Animated.View style={[styles.attachmentOverlay, { opacity: attachmentAnim, transform: [{ scale: attachmentAnim.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }] }]}>
+                <TouchableOpacity style={[styles.attachmentOption, { backgroundColor: '#2a2a2a' }]} onPress={() => handlePickMedia('image')} disabled={uploadingMedia || sending || isInputLocked}>
+                  <Ionicons name="image-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.attachmentOption, { backgroundColor: '#2a2a2a' }]} onPress={() => handlePickMedia('video')} disabled={uploadingMedia || sending || isInputLocked}>
+                  <Ionicons name="videocam-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.attachmentOption, { backgroundColor: '#2a2a2a' }]} onPress={handleOpenContactShare} disabled={uploadingMedia || sending || isInputLocked}>
+                  <Ionicons name="person-add-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+              </Animated.View>
+            </>
           )}
         </View>
 
@@ -2364,9 +2364,10 @@ const styles = StyleSheet.create({
   },
   inlineIcon: { paddingHorizontal: 4, paddingVertical: 0, marginLeft: 4, justifyContent: 'center', alignItems: 'center' },
   sendButtonDisabled: { opacity: 0.5 },
-  attachmentOverlay: { position: 'absolute', bottom: 60, left: SPACING.sm, width: 160, borderRadius: BORDER_RADIUS.lg, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.divider, shadowColor: '#000', shadowOpacity: 0.12, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 8, paddingVertical: SPACING.xs, zIndex: 20 },
-  attachmentOption: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm },
-  attachmentOptionText: { marginLeft: SPACING.sm, color: COLORS.text, fontSize: 14 },
+  attachmentOverlay: { position: 'absolute', bottom: 56, right: 12, flexDirection: 'row', borderRadius: 24, backgroundColor: '#1a1a1a', shadowColor: '#000', shadowOpacity: 0.25, shadowOffset: { width: 0, height: 4 }, shadowRadius: 12, elevation: 12, paddingVertical: 8, paddingHorizontal: 4, zIndex: 21 },
+  attachmentBackdrop: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, zIndex: 20 },
+  attachmentOption: { alignItems: 'center', justifyContent: 'center', width: 44, height: 44, borderRadius: 22, marginHorizontal: 2 },
+  attachmentOptionText: { display: 'none' },
   contactCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F4FAFF', padding: SPACING.sm, borderRadius: BORDER_RADIUS.md, borderWidth: 1, borderColor: COLORS.primary, marginTop: SPACING.xs },
   contactCardContent: { marginLeft: SPACING.sm },
   contactName: { fontSize: 14, fontWeight: '700', color: COLORS.text },
