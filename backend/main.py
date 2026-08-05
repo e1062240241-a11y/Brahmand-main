@@ -918,10 +918,11 @@ async def _delete_post_with_dependencies(db: FirestoreDB, post_id: str) -> dict:
     media_path = post.get('media_path')
 
     comments = await db.query_documents('post_comments', filters=[('post_id', '==', post_id)])
-    for comment in comments:
-        comment_id = comment.get('id')
-        if comment_id:
-            await db.delete_document('post_comments', comment_id)
+
+    # ⚡ Bolt Optimization: Batch delete instead of N+1 delete_document calls
+    comment_ids = [c.get('id') for c in comments if c.get('id')]
+    if comment_ids:
+        await db.batch_delete_documents('post_comments', comment_ids)
 
     await db.delete_document('posts', post_id)
     try:
@@ -7449,8 +7450,10 @@ async def delete_community_message(
     
     try:
         comments = await db.query_documents('post_comments', filters=[('post_id', '==', message_id)])
-        for c in comments:
-            await db.delete_document('post_comments', c['id'])
+        # ⚡ Bolt Optimization: Batch delete instead of N+1 delete_document calls
+        comment_ids = [c['id'] for c in comments if c.get('id')]
+        if comment_ids:
+            await db.batch_delete_documents('post_comments', comment_ids)
     except Exception:
         pass
         
@@ -13086,13 +13089,13 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
         pass
 
     reviews = await db.query_documents('vendor_admin_reviews', filters=[('vendor_id', '==', vendor_id)])
-    for review in reviews:
-        doc_id = review.get('id')
-        if doc_id:
-            try:
-                await db.delete_document('vendor_admin_reviews', doc_id)
-            except Exception:
-                pass
+    # ⚡ Bolt Optimization: Batch delete instead of N+1 delete_document calls
+    review_ids = [r.get('id') for r in reviews if r.get('id')]
+    if review_ids:
+        try:
+            await db.batch_delete_documents('vendor_admin_reviews', review_ids)
+        except Exception:
+            pass
 
     # Delete vendor
     if vendor:
@@ -13119,10 +13122,10 @@ async def admin_delete_vendor(vendor_id: str, token_data: dict = Depends(verify_
         for field in ['user_id', 'owner_id']:
             try:
                 kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', owner_id)])
-                for doc in kyc_docs:
-                    doc_id = doc.get('id')
-                    if doc_id:
-                        await db.delete_document('kyc_submissions', str(doc_id))
+                # ⚡ Bolt Optimization: Batch delete instead of N+1 delete_document calls
+                kyc_doc_ids = [str(doc.get('id')) for doc in (kyc_docs or []) if doc.get('id')]
+                if kyc_doc_ids:
+                    await db.batch_delete_documents('kyc_submissions', kyc_doc_ids)
             except Exception:
                 pass
 
@@ -16292,8 +16295,10 @@ async def delete_user_kyc(user_id: str, token_data: dict = Depends(verify_token)
     for field in ['user_id', 'owner_id']:
         try:
             kyc_docs = await db.query_documents('kyc_submissions', filters=[(field, '==', user_id)])
-            for doc in (kyc_docs or []):
-                await db.delete_document('kyc_submissions', doc.get('id'))
+            # ⚡ Bolt Optimization: Batch delete instead of N+1 delete_document calls
+            kyc_doc_ids = [str(doc.get('id')) for doc in (kyc_docs or []) if doc.get('id')]
+            if kyc_doc_ids:
+                await db.batch_delete_documents('kyc_submissions', kyc_doc_ids)
         except Exception as e:
             logger.warning(f"Error deleting kyc_submissions for user {user_id}: {e}")
 
