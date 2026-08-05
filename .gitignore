@@ -1,1 +1,86 @@
-(frontend/app/(tabs)/home.tsx is a source file, and there are no build artifacts, dependencies, or temporary files in the changes)
+# Dependencies & Package Managers
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json.bak
+
+# Expo, Metro & Build Caches
+.expo/
+.expo_home/
+.expo-home/
+frontend/.expo/
+frontend/.expo_home/
+frontend/.expo-home/
+tmp_home/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+.metro-cache/
+
+# Gradle, Local Properties & Build Artifacts
+.gradle/
+frontend/.gradle/
+android/.gradle/
+build/
+frontend/build/
+local.properties
+*.bin
+*.lock
+*.log
+debug_admin.log
+deploy-log.txt
+temp-check-*.sh
+backend/diagnose_output.txt
+backend/inspect_output.txt
+frontend/scratch_conflicts.txt
+
+# Generated Native Prebuild Folders (regeneration via npx expo prebuild)
+frontend/android/
+frontend/ios/
+android/
+ios/
+
+# Credentials & Keys
+frontend/credentials.json
+*.keystore
+*.jks
+*.p12
+*.p8
+*.pem
+*.key
+
+# Temporary Test Files, Backups & PDFs
+backend/test_*.py
+backend/scratch/
+frontend/assets/pdf/
+
+# Agent / Tooling / IDE
+.agent/
+.agents/
+.gemini/
+.vscode/
+.idea/
+.deploy/
+skills-lock.json
+
+# Python & Backend
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+ENV/
+
+# OS Junk
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
