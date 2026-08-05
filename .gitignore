@@ -68,3 +68,17 @@ deploy-log.txt
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Gradle, Local Properties & Build Artifacts
+.gradle/
+frontend/.gradle/
+android/.gradle/
+build/
+frontend/build/
+local.properties
+*.bin
+*.lock
+temp-check-*.sh
+backend/diagnose_output.txt
+backend/inspect_output.txt
+frontend/scratch_conflicts.txt

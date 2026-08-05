@@ -1,0 +1,46 @@
+diff --git a/node_modules/react-native-reanimated/lib/module/ReanimatedModule/NativeReanimated.js b/node_modules/react-native-reanimated/lib/module/ReanimatedModule/NativeReanimated.js
+index 85eb72c..c155941 100644
+--- a/node_modules/react-native-reanimated/lib/module/ReanimatedModule/NativeReanimated.js
++++ b/node_modules/react-native-reanimated/lib/module/ReanimatedModule/NativeReanimated.js
+@@ -34,7 +34,17 @@ class NativeReanimatedModule {
+     }
+     global._REANIMATED_VERSION_JS = jsVersion;
+     if (global.__reanimatedModuleProxy === undefined && ReanimatedTurboModule) {
+-      if (!ReanimatedTurboModule.installTurboModule()) {
++      let installed = false;
++      try {
++        installed = ReanimatedTurboModule.installTurboModule();
++      } catch (e) {
++        try {
++          installed = ReanimatedTurboModule.installTurboModule(true);
++        } catch (e2) {
++          installed = false;
++        }
++      }
++      if (!installed) {
+         // This path means that React Native has failed on reload.
+         // We don't want to throw any errors to not mislead the users
+         // that the problem is related to Reanimated.
+diff --git a/node_modules/react-native-reanimated/src/ReanimatedModule/NativeReanimated.ts b/node_modules/react-native-reanimated/src/ReanimatedModule/NativeReanimated.ts
+index fc2704c..f992df5 100644
+--- a/node_modules/react-native-reanimated/src/ReanimatedModule/NativeReanimated.ts
++++ b/node_modules/react-native-reanimated/src/ReanimatedModule/NativeReanimated.ts
+@@ -70,7 +70,17 @@ class NativeReanimatedModule implements IReanimatedModule {
+     }
+     global._REANIMATED_VERSION_JS = jsVersion;
+     if (global.__reanimatedModuleProxy === undefined && ReanimatedTurboModule) {
+-      if (!ReanimatedTurboModule.installTurboModule()) {
++      let installed = false;
++      try {
++        installed = ReanimatedTurboModule.installTurboModule();
++      } catch (e) {
++        try {
++          installed = (ReanimatedTurboModule as any).installTurboModule(true);
++        } catch (e2) {
++          installed = false;
++        }
++      }
++      if (!installed) {
+         // This path means that React Native has failed on reload.
+         // We don't want to throw any errors to not mislead the users
+         // that the problem is related to Reanimated.
