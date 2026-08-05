@@ -21,6 +21,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 
 import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
@@ -440,6 +441,10 @@ const PostFeedCardComponent = ({
     if (!likedByMe) {
       onLike?.(post);
     }
+    // Haptic feedback for double-tap like
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   const handleTouchStart = (e: any) => {
@@ -701,7 +706,8 @@ const PostFeedCardComponent = ({
                 source={{ uri: imageUri }}
                 style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
                 contentFit="cover"
-                transition={300}
+                transition={0}
+                recyclingKey={post.id}
                 onLoadStart={() => setMediaLoading(true)}
                 onLoad={(e) => {
                   setMediaLoading(false);

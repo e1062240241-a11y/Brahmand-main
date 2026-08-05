@@ -4304,7 +4304,7 @@ export default function HomeScreen() {
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
               renderItem={renderFeedPost}
               keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
-              extraData={activePostId}
+              extraData={{ activePostId, activePostIndex }}
               viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
               onViewableItemsChanged={onViewableItemsChangedRef.current}
               onScroll={handleHomeScroll}
