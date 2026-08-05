@@ -3197,51 +3197,70 @@ export default function HomeScreen() {
                           pointerEvents="none"
                         />
 
-                        {/* TOP RIGHT CORNER: FREE REGISTRATION GOLDEN CIRCULAR SEAL BADGE */}
+                        {/* TOP RIGHT CORNER: ELEGANT & READABLE FREE REGISTRATION GOLD BADGE */}
                         <View
                           pointerEvents="none"
                           style={{
-                          position: 'absolute',
-                          top: 8,
-                          right: 10,
-                          width: 52,
-                          height: 52,
-                          borderRadius: 26,
-                          backgroundColor: '#F4C55A',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          borderWidth: 2,
-                          borderColor: '#FFF8DC',
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.4,
-                          shadowRadius: 3,
-                          elevation: 5,
-                          zIndex: 10,
-                        }}>
-                          {/* Inner Decorative Bezel Ring */}
-                          <View style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
                             width: 44,
                             height: 44,
                             borderRadius: 22,
-                            borderWidth: 1.5,
-                            borderStyle: 'dashed',
-                            borderColor: '#6B4500',
+                            backgroundColor: '#F5B041',
                             justifyContent: 'center',
                             alignItems: 'center',
-                            paddingHorizontal: 2,
-                          }}>
-                            <Text style={{
-                              color: '#6B4500',
-                              fontSize: 5.5,
-                              fontWeight: '800',
-                              fontFamily: Platform.OS === 'ios' ? 'Montserrat' : 'Montserrat-ExtraBold',
-                              textAlign: 'center',
-                              lineHeight: 7,
-                              letterSpacing: 0.1,
-                              textTransform: 'uppercase',
-                            }}>
-                              FREE REGISTRATION
+                            borderWidth: 1.5,
+                            borderColor: '#FFF8DC',
+                            shadowColor: '#000',
+                            shadowOffset: { width: 0, height: 2 },
+                            shadowOpacity: 0.35,
+                            shadowRadius: 3,
+                            elevation: 5,
+                            zIndex: 10,
+                          }}
+                        >
+                          {/* Inner Dashed Bezel */}
+                          <View
+                            style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: 19,
+                              borderWidth: 1,
+                              borderStyle: 'dashed',
+                              borderColor: '#5B3A00',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                              paddingHorizontal: 2,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: '#5B3A00',
+                                fontSize: 8.5,
+                                fontWeight: '900',
+                                fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
+                                textAlign: 'center',
+                                letterSpacing: 0.4,
+                                lineHeight: 10,
+                                marginBottom: 1,
+                              }}
+                            >
+                              FREE
+                            </Text>
+                            <Text
+                              style={{
+                                color: '#5B3A00',
+                                fontSize: 4.8,
+                                fontWeight: '900',
+                                fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
+                                textAlign: 'center',
+                                letterSpacing: -0.1,
+                                lineHeight: 6,
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              REGISTRATION
                             </Text>
                           </View>
                         </View>
@@ -3272,16 +3291,16 @@ export default function HomeScreen() {
                               <Text
                                 numberOfLines={1}
                                 style={{
-                                  color: '#FFFFF2',
-                                  fontSize: 27,
+                                  color: '#FFF8E7',
+                                  fontSize: Platform.OS === 'ios' ? 31 : 28,
                                   fontWeight: '900',
-                                  lineHeight: Platform.OS === 'ios' ? 38 : 32,
+                                  lineHeight: Platform.OS === 'ios' ? 38 : 34,
                                   paddingVertical: Platform.OS === 'ios' ? 2 : 0,
-                                  letterSpacing: 0.5,
+                                  letterSpacing: 0,
                                   textAlign: 'left',
-                                  textShadowColor: 'rgba(50, 18, 0, 0.98)',
-                                  textShadowOffset: { width: 2, height: 3 },
-                                  textShadowRadius: 1,
+                                  textShadowColor: 'rgba(216, 90, 0, 0.95)',
+                                  textShadowOffset: { width: 1.5, height: 2.5 },
+                                  textShadowRadius: 2,
                                 }}
                               >
                                 श्रावण मास <Text style={{ color: '#FFD700', fontSize: 16, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
@@ -3289,7 +3308,7 @@ export default function HomeScreen() {
                             </View>
 
                             {/* शिव कथा with iOS matra height fix & 32 lineHeight on Android */}
-                            <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 24, marginTop: Platform.OS === 'android' ? 1 : 0 }}>
+                            <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 24, marginTop: Platform.OS === 'ios' ? -5 : 1 }}>
                               <Text
                                 numberOfLines={1}
                                 style={{
@@ -3314,7 +3333,7 @@ export default function HomeScreen() {
                               flexDirection: 'row',
                               alignItems: 'center',
                               justifyContent: 'flex-start',
-                              marginTop: Platform.OS === 'android' ? 1 : 3,
+                              marginTop: Platform.OS === 'ios' ? 0 : 1,
                               marginLeft: 2,
                             }}>
                               <Text style={{
