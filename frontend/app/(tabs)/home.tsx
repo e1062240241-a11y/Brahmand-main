@@ -4861,18 +4861,18 @@ export default function HomeScreen() {
                         <View
                           pointerEvents="box-none"
                           style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          bottom: 0,
-                          width: '70%',
-                          paddingLeft: 14,
-                          paddingRight: 6,
-                          paddingTop: Platform.OS === 'android' ? 1 : 2,
-                          paddingBottom: 2,
-                          justifyContent: 'flex-start',
-                          alignItems: 'flex-start',
-                        }}>
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            bottom: 0,
+                            width: '70%',
+                            paddingLeft: 14,
+                            paddingRight: 6,
+                            paddingTop: Platform.OS === 'android' ? 1 : 2,
+                            paddingBottom: 2,
+                            justifyContent: 'flex-start',
+                            alignItems: 'flex-start',
+                          }}>
                           {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा (Cross-Platform Unified Typography) */}
                           <View style={{
                             width: '100%',
