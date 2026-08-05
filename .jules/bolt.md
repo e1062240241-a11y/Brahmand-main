@@ -10,3 +10,6 @@
 ## 2024-08-03 - [Fix N+1 query in bulk notification updates]
 **Learning:** In the backend `FirebaseNotificationService.mark_all_as_read`, iterating through queried Firestore documents and updating them one-by-one inside a `for` loop caused severe N+1 query performance degradation on user accounts with numerous unread notifications.
 **Action:** Always prefer `batch_update_documents` via the `FirestoreDB` wrapper rather than individual `update_document` calls when applying identical or mapped structural changes to an array of Firestore documents retrieved from a query.
+## 2024-08-04 - [Fix N+1 query in document deletions]
+**Learning:** Found N+1 query loops when deleting comments associated with a post or chat message, as well as when cleaning up KYC submissions and vendor reviews. Calling `await db.delete_document` inside a loop degrades performance significantly when deleting objects with many dependencies.
+**Action:** Always prefer `batch_delete_documents` via the `FirestoreDB` wrapper rather than individual `delete_document` calls when cleaning up associated dependencies from Firestore.
