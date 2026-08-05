@@ -1128,7 +1128,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-};
+});
 
 export const PostFeedCard = memo(
   PostFeedCardComponent,
