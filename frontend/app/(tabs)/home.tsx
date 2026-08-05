@@ -4300,13 +4300,12 @@ export default function HomeScreen() {
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
               keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
               renderItem={renderFeedPost}
-              {...{ estimatedItemSize: ESTIMATED_ITEM_SIZE } as any}
               extraData={{ activePostId, activePostIndex }}
-              viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
+              viewabilityConfig={{ itemVisiblePercentThreshold: 50, minimumViewTime: 200 }}
               onViewableItemsChanged={onViewableItemsChangedRef.current}
               onScroll={handleHomeScroll}
-              initialNumToRender={3}
-              maxToRenderPerBatch={3}
+              initialNumToRender={Platform.OS === 'ios' ? 4 : 3}
+              maxToRenderPerBatch={Platform.OS === 'ios' ? 4 : 3}
               windowSize={Platform.OS === 'android' ? 3 : 5}
               drawDistance={1000}
               removeClippedSubviews={true}
