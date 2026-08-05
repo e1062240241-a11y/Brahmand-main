@@ -1,0 +1,355 @@
+
+=========================================
+FILE: src/components/PostFeedCard.tsx
+=========================================
+--- Conflict at lines 21 to 26 ---
+  19    } from 'react-native';
+  20    import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+  21>>> <<<<<<< HEAD
+  22    import { useRouter, useFocusEffect } from 'expo-router';
+  23>>> =======
+  24    import { useRouter } from 'expo-router';
+  25    import { useIsFocused } from 'expo-router';
+  26>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  27    
+  28    import { API_URL } from '../services/api';
+
+=========================================
+FILE: src/components/LiveJaapRoom/LiveJaapRoomView.native.tsx
+=========================================
+--- Conflict at lines 26 to 29 ---
+  24    import Svg, { Path, Rect } from 'react-native-svg';
+  25    import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
+  26>>> <<<<<<< HEAD
+  27>>> =======
+  28    import { useNavigation } from 'expo-router';
+  29>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  30    import { useAudioPlayer, useAudioPlayerStatus, requestRecordingPermissionsAsync, setAudioModeAsync } from 'expo-audio';
+  31    import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+=========================================
+FILE: src/components/LiveJaapRoom/LiveJaapRoomView.tsx
+=========================================
+--- Conflict at lines 23 to 26 ---
+  21    import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+  22    import { useRouter, useLocalSearchParams } from 'expo-router';
+  23>>> <<<<<<< HEAD
+  24>>> =======
+  25    import { useNavigation } from 'expo-router';
+  26>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  27    import AsyncStorage from '@react-native-async-storage/async-storage';
+  28    import { getCurrentHanumanStatus, getCurrentOtherJaapStatus, getSynchronizedIndex } from '../../features/live-mantra/schedule';
+
+=========================================
+FILE: app/dm/[conversationId].tsx
+=========================================
+--- Conflict at lines 25 to 29 ---
+  23    } from 'react-native';
+  24    import { StatusBar } from 'expo-status-bar';
+  25>>> <<<<<<< HEAD
+  26    import { useFocusEffect } from 'expo-router';
+  27>>> =======
+  28    import { useIsFocused } from 'expo-router';
+  29>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  30    import { useLocalSearchParams, useRouter } from 'expo-router';
+  31    import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+--- Conflict at lines 1916 to 1926 ---
+1914          onLayout={logLayout('Chat container', styles.chatScreen)}
+1915        >
+1916>>> <<<<<<< HEAD
+1917>>> =======
+1918          <View style={styles.chatBackground} pointerEvents="none">
+1919            <LinearGradient
+1920              colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+1921              locations={[0, 0.09, 0.25]}
+1922              style={StyleSheet.absoluteFill}
+1923            />
+1924          </View>
+1925    
+1926>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+1927          <View style={[
+1928            styles.header,
+--- Conflict at lines 2256 to 2264 ---
+2254    
+2255    const styles = StyleSheet.create({
+2256>>> <<<<<<< HEAD
+2257      container: { flex: 1, backgroundColor: 'transparent' },
+2258      chatScreen: { flex: 1, backgroundColor: 'transparent' },
+2259      chatBackground: { ...StyleSheet.absoluteFill, backgroundColor: 'transparent', pointerEvents: 'none' },
+2260>>> =======
+2261      container: { flex: 1, backgroundColor: COLORS.background },
+2262      chatScreen: { flex: 1, backgroundColor: '#FFFFFF' },
+2263      chatBackground: { ...StyleSheet.absoluteFill, backgroundColor: '#F2ECE8', pointerEvents: 'none' },
+2264>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+2265      header: {
+2266        flexDirection: 'row',
+
+=========================================
+FILE: app/live-jaap-welcome.tsx
+=========================================
+--- Conflict at lines 15 to 19 ---
+  13      AppState,
+  14    } from 'react-native';
+  15>>> <<<<<<< HEAD
+  16    import { useFocusEffect } from 'expo-router';
+  17>>> =======
+  18    import { useIsFocused } from 'expo-router';
+  19>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  20    import { LinearGradient } from 'expo-linear-gradient';
+  21    import { Ionicons } from '@expo/vector-icons';
+
+=========================================
+FILE: app/_layout.tsx
+=========================================
+--- Conflict at lines 730 to 760 ---
+ 728      useMutedNotificationFilter();
+ 729    
+ 730>>> <<<<<<< HEAD
+ 731      useEffect(() => {
+ 732        if (Platform.OS === 'android') {
+ 733          try {
+ 734            NavigationBar.setStyle('auto');
+ 735          } catch (e: any) {
+ 736            console.warn('[NavigationBar] Failed to set style:', e);
+ 737          }
+ 738        }
+ 739      }, []);
+ 740    
+ 741      const lastNavStyleRef = useRef<string>('');
+ 742      useEffect(() => {
+ 743        if (Platform.OS === 'android') {
+ 744          const isDark = isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '';
+ 745          const style = isDark ? 'light' : 'dark';
+ 746          if (lastNavStyleRef.current === style) return;
+ 747          lastNavStyleRef.current = style;
+ 748    
+ 749          try {
+ 750            NavigationBar.setStyle(style as any);
+ 751          } catch (e: any) {
+ 752            console.warn('[NavigationBar] Failed to set style:', e);
+ 753          }
+ 754        }
+ 755      }, [pathname, isDarkScreen]);
+ 756>>> =======
+ 757      const navStyle = Platform.OS === 'android'
+ 758        ? (isDarkScreen || pathname.includes('/auth') || pathname === '/' || pathname === '' ? 'light' : 'dark')
+ 759        : undefined;
+ 760>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+ 761    
+ 762    
+
+=========================================
+FILE: app/community/[id].tsx
+=========================================
+--- Conflict at lines 25 to 29 ---
+  23      UIManager} from 'react-native';
+  24    import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+  25>>> <<<<<<< HEAD
+  26    
+  27>>> =======
+  28    import { useIsFocused } from 'expo-router';
+  29>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  30    import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+  31    import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+
+=========================================
+FILE: app/festivals.tsx
+=========================================
+--- Conflict at lines 190 to 194 ---
+ 188                      <Image
+ 189                        source={festivalImg}
+ 190>>> <<<<<<< HEAD
+ 191                        style={StyleSheet.absoluteFill}
+ 192>>> =======
+ 193                        style={[StyleSheet.absoluteFill, { opacity: 0.85 }]}
+ 194>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+ 195                        resizeMode="cover"
+ 196                      />
+
+=========================================
+FILE: app/passport/index.tsx
+=========================================
+--- Conflict at lines 11 to 15 ---
+   9    import { LinearGradient } from 'expo-linear-gradient';
+  10    import { Ionicons } from '@expo/vector-icons';
+  11>>> <<<<<<< HEAD
+  12    import { useFocusEffect } from 'expo-router';
+  13>>> =======
+  14    import { useIsFocused } from 'expo-router';
+  15>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  16    
+  17    const { width: windowWidth } = Dimensions.get('window');
+
+=========================================
+FILE: app/community-request.tsx
+=========================================
+--- Conflict at lines 180 to 185 ---
+ 178    
+ 179    const styles = StyleSheet.create({
+ 180>>> <<<<<<< HEAD
+ 181      mainContainer: { flex: 1, backgroundColor: '#FFEEE5' },
+ 182>>> =======
+ 183      mainContainer: { flex: 1 },
+ 184      gradientBg: { ...StyleSheet.absoluteFill },
+ 185>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+ 186      safeArea: { flex: 1 },
+ 187      topHeader: {
+
+=========================================
+FILE: app/library/sacred-scriptures.tsx
+=========================================
+--- Conflict at lines 92 to 107 ---
+  90    
+  91      return (
+  92>>> <<<<<<< HEAD
+  93        <LinearGradient
+  94          colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
+  95          locations={[0, 0.0481, 0.2404]}
+  96          style={[styles.root, { paddingTop: insets.top }]}
+  97        >
+  98>>> =======
+  99        <View style={[styles.root, { paddingTop: insets.top }]}>
+ 100    
+ 101          {/* Community tab background */}
+ 102          <LinearGradient
+ 103            colors={['#FF8D57', '#EA9B76', '#FFFFFF']}
+ 104            locations={[0, 0.0481, 0.2404]}
+ 105            style={StyleSheet.absoluteFill}
+ 106          />
+ 107>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+ 108    
+ 109          {/* ── Header ── */}
+
+=========================================
+FILE: app/library/index.tsx
+=========================================
+--- Conflict at lines 118 to 127 ---
+ 116          <Stack.Screen options={{ animation: 'slide_from_right' }} />
+ 117    
+ 118>>> <<<<<<< HEAD
+ 119>>> =======
+ 120          {/* Community tab background */}
+ 121          <LinearGradient
+ 122            colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
+ 123            locations={[0, 0.09, 0.25]}
+ 124            style={StyleSheet.absoluteFill}
+ 125          />
+ 126    
+ 127>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+ 128          {/* ── Header ── */}
+ 129          <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+
+=========================================
+FILE: app/(tabs)/messages.tsx
+=========================================
+--- Conflict at lines 29 to 33 ---
+  27    import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+  28    import { useRouter, useLocalSearchParams } from 'expo-router';
+  29>>> <<<<<<< HEAD
+  30    
+  31>>> =======
+  32    import { useIsFocused } from 'expo-router';
+  33>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  34    import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+  35    import { LinearGradient } from 'expo-linear-gradient';
+
+=========================================
+FILE: app/(tabs)/jaap.tsx
+=========================================
+--- Conflict at lines 24 to 27 ---
+  22    import { useRouter, useFocusEffect } from 'expo-router';
+  23    import { useSafeAreaInsets } from 'react-native-safe-area-context';
+  24>>> <<<<<<< HEAD
+  25>>> =======
+  26    import { useIsFocused } from 'expo-router';
+  27>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  28    import { getTempleImageByName, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
+  29    import { getTemples } from '../../src/services/api';
+--- Conflict at lines 870 to 903 ---
+ 868                        onPress={() => handleUpcomingCardPress(jaap)}
+ 869                      >
+ 870>>> <<<<<<< HEAD
+ 871                        <Image 
+ 872                          source={jaap.image} 
+ 873                          style={{ position: 'absolute', top: 0, left: 0, width: UPCOMING_CARD_WIDTH, height: UPCOMING_CARD_HEIGHT }} 
+ 874                          resizeMode="cover" 
+ 875                        />
+ 876                        <LinearGradient
+ 877                          colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
+ 878                          locations={[0, 0.5, 1]}
+ 879                          style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
+ 880                        />
+ 881                        
+ 882                        <View style={[styles.upcomingCardContent, StyleSheet.absoluteFill]}>
+ 883                          <Text style={styles.upcomingCardTitle} numberOfLines={2}>
+ 884                            {displayName}
+ 885                          </Text>
+ 886>>> =======
+ 887                        <View style={[StyleSheet.absoluteFill, { borderRadius: 16, overflow: 'hidden' }]}>
+ 888                          <Image 
+ 889                            source={jaap.image} 
+ 890                            style={{ width: '100%', height: '100%', position: 'absolute' }} 
+ 891                            resizeMode="cover" 
+ 892                          />
+ 893                          <LinearGradient
+ 894                            colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
+ 895                            locations={[0, 0.5, 1]}
+ 896                            style={StyleSheet.absoluteFill}
+ 897                          />
+ 898                          
+ 899                          <View style={styles.upcomingCardContent}>
+ 900                            <Text style={styles.upcomingCardTitle} numberOfLines={2}>
+ 901                              {displayName}
+ 902                            </Text>
+ 903>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+ 904    
+ 905                          <View style={[
+
+=========================================
+FILE: app/(tabs)/vendor.tsx
+=========================================
+--- Conflict at lines 31 to 35 ---
+  29    import VendorCategories from '../../src/components/VendorCategories';
+  30    import { useTranslation } from '../../src/utils/i18n';
+  31>>> <<<<<<< HEAD
+  32    import { useFocusEffect } from 'expo-router';
+  33>>> =======
+  34    import { useIsFocused } from 'expo-router';
+  35>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  36    import Svg, { Path } from 'react-native-svg';
+  37    
+
+=========================================
+FILE: app/(tabs)/home.tsx
+=========================================
+--- Conflict at lines 33 to 37 ---
+  31    import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+  32    import { useRouter, useFocusEffect } from 'expo-router';
+  33>>> <<<<<<< HEAD
+  34>>> =======
+  35    import { useNavigation, useIsFocused } from 'expo-router';
+  36    import { useAudioPlayer } from 'expo-audio';
+  37>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+  38    import { useAuthStore } from '../../src/store/authStore';
+  39    import { useNotificationStore } from '../../src/store/notificationStore';
+--- Conflict at lines 355 to 359 ---
+ 353        <ImageBackground
+ 354          source={HOME_CARD_TEXTURES[texture]}
+ 355>>> <<<<<<< HEAD
+ 356          style={{ flex: 1, borderRadius, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.65)' }}
+ 357>>> =======
+ 358          style={[StyleSheet.absoluteFill, { borderRadius, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255, 255, 255, 0.65)' }]}
+ 359>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+ 360          imageStyle={{ borderRadius, resizeMode: 'cover' }}
+ 361          resizeMode="cover"
+--- Conflict at lines 4559 to 4564 ---
+4557      },
+4558      featuredLiveOverlay: {
+4559>>> <<<<<<< HEAD
+4560        width: '100%',
+4561        height: '100%',
+4562>>> =======
+4563        ...StyleSheet.absoluteFill,
+4564>>> >>>>>>> 5d7d707f0896271fa3b10eb282ecc4ef7a891276
+4565        padding: 15,
+4566        justifyContent: 'space-between',
