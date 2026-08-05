@@ -307,7 +307,12 @@ export default function AIJyotishScreen() {
         {/* Top Navigation */}
         <View style={styles.topNav}>
           <View style={styles.topLeftGroup}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
               <Ionicons name="chevron-back" size={24} color="#000" />
             </TouchableOpacity>
 
@@ -319,7 +324,12 @@ export default function AIJyotishScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.iconBtn} onPress={() => setAskNowModalVisible(true)}>
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => setAskNowModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Edit birth details"
+          >
             <Ionicons name="pencil-sharp" size={22} color="#000" />
           </TouchableOpacity>
         </View>
@@ -382,12 +392,21 @@ export default function AIJyotishScreen() {
               value={message}
               onChangeText={setMessage}
             />
-            <TouchableOpacity style={styles.micBtn}>
+            <TouchableOpacity
+              style={styles.micBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Voice input"
+            >
               <Ionicons name="mic-outline" size={24} color="rgba(0,0,0,0.50)" />
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
+          <TouchableOpacity
+            style={styles.sendBtn}
+            onPress={handleSend}
+            accessibilityRole="button"
+            accessibilityLabel="Send message"
+          >
             <Ionicons name="paper-plane" size={18} color="#FFF" style={{ marginLeft: -2 }} />
           </TouchableOpacity>
         </View>
