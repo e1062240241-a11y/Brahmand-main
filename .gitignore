@@ -1,1 +1,70 @@
-Nothing should be ignored since the changes only include source code files (.py) without any build artifacts, dependencies, or temporary files.
+# Dependencies & Package Managers
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Expo, Metro & Build Caches
+.expo/
+.expo_home/
+frontend/.expo/
+frontend/.expo_home/
+frontend/.expo-home/
+dist/
+web-build/
+expo-env.d.ts
+.metro-health-check*
+.metro-cache/
+tmp_home/
+
+# Generated Native Prebuild Folders (regeneration via npx expo prebuild)
+frontend/android/
+frontend/ios/
+android/
+ios/
+
+# Credentials & Credentials/Keys
+frontend/credentials.json
+*.keystore
+*.jks
+*.p12
+*.p8
+*.pem
+*.key
+
+# Temporary Test Files & PDFs
+backend/test_*.py
+frontend/assets/pdf/
+
+# Agent / Tooling / IDE
+.agent/
+.agents/
+.gemini/
+.vscode/
+.idea/
+.deploy/
+skills-lock.json
+
+# Python & Backend
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+ENV/
+backend/scratch/
+*.log
+debug_admin.log
+deploy-log.txt
+
+# OS Junk
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

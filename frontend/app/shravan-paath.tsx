@@ -92,7 +92,9 @@ const ShivlingArtwork = () => (
 export default function ShravanPaathPage() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [interested, setInterested] = useState(false);
+  const [interested, setInterested] = useState(() => {
+    return params?.is_interested === '1' || params?.is_interested === 'true';
+  });
   const [registeredCount, setRegisteredCount] = useState(0);
 
   const rippleScale1 = useRef(new Animated.Value(0.2)).current;
@@ -149,6 +151,9 @@ export default function ShravanPaathPage() {
   }, []);
 
   useEffect(() => {
+    if (params?.is_interested === '1' || params?.is_interested === 'true') {
+      setInterested(true);
+    }
     // Fetch initial reminder stats & count directly from DB
     fetchReminderStats();
 
@@ -161,7 +166,7 @@ export default function ShravanPaathPage() {
         );
       }, 300);
     }
-  }, [params?.showSetToast, fetchReminderStats]);
+  }, [params?.is_interested, params?.showSetToast, fetchReminderStats]);
 
   const handleShare = async () => {
     try {

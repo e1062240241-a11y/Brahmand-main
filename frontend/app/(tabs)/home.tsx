@@ -33,6 +33,7 @@ import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -3161,7 +3162,14 @@ export default function HomeScreen() {
     }
   };
 
+  const isSettingReminderRef = useRef<Record<string, boolean>>({});
+
   const handleSetReminder = async (mantraType: string, sessionName: string) => {
+    if (isSettingReminderRef.current[mantraType]) {
+      return;
+    }
+    isSettingReminderRef.current[mantraType] = true;
+
     try {
       const response = await api.post('/jaap/reminder', {
         mantra_type: mantraType,
@@ -3203,6 +3211,10 @@ export default function HomeScreen() {
         t('language') === 'hi' ? 'त्रुटि' : 'Error',
         t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
       );
+    } finally {
+      setTimeout(() => {
+        isSettingReminderRef.current[mantraType] = false;
+      }, 800);
     }
   };
 
@@ -3300,7 +3312,7 @@ export default function HomeScreen() {
         if (!store.vendors || store.vendors.length === 0) {
           store.fetchVendors().catch(() => { });
         }
-        fetchReminders();
+        fetchReminders(true);
       });
       return () => {
         task.cancel();
@@ -4730,7 +4742,15 @@ export default function HomeScreen() {
                   return (
                     <TouchableOpacity
                       activeOpacity={0.95}
-                      onPress={() => router.push('/shravan-paath')}
+                      onPress={() => {
+                        try {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        } catch (_e) {}
+                        router.push({
+                          pathname: '/shravan-paath',
+                          params: { is_interested: reminders['shravan_katha'] ? '1' : '0' }
+                        });
+                      }}
                       style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
                     >
                       <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
@@ -5002,9 +5022,16 @@ export default function HomeScreen() {
                             {/* Uiverse Notify Button with sliding hover fill & navigation to shravan-paath */}
                             <UiverseNotifyButton
                               isNotified={!!reminders['shravan_katha']}
-                              onPress={() => {
-                                handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
-                                router.push('/shravan-paath');
+                              onPress={async () => {
+                                try {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                } catch (_e) {}
+                                const isCurrentlyNotified = !!reminders['shravan_katha'];
+                                await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                                router.push({
+                                  pathname: '/shravan-paath',
+                                  params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
+                                });
                               }}
                               label="Notify Me"
                               notifiedLabel="Notified"

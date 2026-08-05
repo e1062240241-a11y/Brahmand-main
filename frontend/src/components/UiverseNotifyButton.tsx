@@ -166,7 +166,18 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
     });
   };
 
+  const lastPressTimeRef = useRef<number>(0);
+
   const handlePress = () => {
+    const now = Date.now();
+    if (now - lastPressTimeRef.current < 800) {
+      return;
+    }
+    lastPressTimeRef.current = now;
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } catch (_e) {}
     if (!isNotified) {
       triggerAnimationSequence();
     } else {
@@ -237,7 +248,9 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
   const fontSize = isSmall ? 10.5 : isLarge ? 15 : 12.5;
   const iconSize = isSmall ? 12 : isLarge ? 18 : 14;
 
-  const gradientColors: [string, string, ...string[]] = ['#FFE082', '#FF9800', '#FF5722', '#D84315'];
+  const gradientColors: [string, string, ...string[]] = activeNotified
+    ? ['#B7F0AD', '#4CAF50', '#2E7D32', '#1B5E20']
+    : ['#FFE082', '#FF9800', '#FF5722', '#D84315'];
 
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
@@ -249,7 +262,10 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
           onHoverIn: handleHoverIn,
           onHoverOut: handleHoverOut,
         } as any)}
-        style={styles.pressableWrapper}
+        style={[
+          styles.pressableWrapper,
+          activeNotified && { shadowColor: '#2E7D32' },
+        ]}
       >
         {/* Outer Multi-color Cosmic Gradient Border Wrapper */}
         <LinearGradient
@@ -266,49 +282,54 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
                 paddingVertical,
                 paddingHorizontal,
                 borderRadius: 48,
-                backgroundColor: '#1E120A',
+                backgroundColor: activeNotified ? '#2E7D32' : '#1E120A',
               },
             ]}
           >
 
 
-            {/* Background Glow Circles Layer */}
-            <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
-              <Animated.View
-                style={[
-                  styles.glowCircleOrange,
-                  {
-                    transform: [{ scale: pulseAnim }],
-                    opacity: 0.7,
-                  },
-                ]}
-              />
-              <Animated.View
-                style={[
-                  styles.glowCircleAmber,
-                  {
-                    transform: [{ scale: pulseAnim }],
-                    opacity: 0.75,
-                  },
-                ]}
-              />
-            </View>
+            {/* Visual Effects Layer (Disabled when activeNotified is true for a clean green style) */}
+            {!activeNotified && (
+              <>
+                {/* Background Glow Circles Layer */}
+                <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                  <Animated.View
+                    style={[
+                      styles.glowCircleOrange,
+                      {
+                        transform: [{ scale: pulseAnim }],
+                        opacity: 0.7,
+                      },
+                    ]}
+                  />
+                  <Animated.View
+                    style={[
+                      styles.glowCircleAmber,
+                      {
+                        transform: [{ scale: pulseAnim }],
+                        opacity: 0.75,
+                      },
+                    ]}
+                  />
+                </View>
 
-            {/* Rotating Starfield Background Overlay Layer */}
-            <Animated.View
-              pointerEvents="none"
-              style={[
-                styles.starsOverlayContainer,
-                { transform: [{ rotate: spin }] },
-              ]}
-            >
-              {/* Scattered Star Particles */}
-              <View style={[styles.starDot, { top: 3, left: 10, opacity: 0.8 }]} />
-              <View style={[styles.starDot, { top: 18, left: 45, opacity: 0.6, width: 2, height: 2 }]} />
-              <View style={[styles.starDot, { top: 8, right: 15, opacity: 0.9 }]} />
-              <View style={[styles.starDot, { bottom: 6, left: 25, opacity: 0.7 }]} />
-              <View style={[styles.starDot, { bottom: 12, right: 35, opacity: 0.85, width: 2, height: 2 }]} />
-            </Animated.View>
+                {/* Rotating Starfield Background Overlay Layer */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.starsOverlayContainer,
+                    { transform: [{ rotate: spin }] },
+                  ]}
+                >
+                  {/* Scattered Star Particles */}
+                  <View style={[styles.starDot, { top: 3, left: 10, opacity: 0.8 }]} />
+                  <View style={[styles.starDot, { top: 18, left: 45, opacity: 0.6, width: 2, height: 2 }]} />
+                  <View style={[styles.starDot, { top: 8, right: 15, opacity: 0.9 }]} />
+                  <View style={[styles.starDot, { bottom: 6, left: 25, opacity: 0.7 }]} />
+                  <View style={[styles.starDot, { bottom: 12, right: 35, opacity: 0.85, width: 2, height: 2 }]} />
+                </Animated.View>
+              </>
+            )}
 
             {/* Button Content Layer (Icon + Glowing Text) */}
             <View style={styles.contentRow}>
@@ -318,7 +339,7 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
                     <Svg width={iconSize + 6} height={iconSize + 6} viewBox="0 0 24 24" fill="none">
                       <Path
                         d="M4.5 12.5L9.5 17.5L19.5 6.5"
-                        stroke="#000000"
+                        stroke="#FFFFFF"
                         strokeWidth="4"
                         strokeLinecap="round"
                         strokeLinejoin="round"
