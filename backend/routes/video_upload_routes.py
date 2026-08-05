@@ -227,7 +227,7 @@ def _compress_video(input_path: str, output_path: str, target_width: int, target
         raise RuntimeError(f"Failed to execute ffmpeg binary: {exc}")
 
 
-def _generate_video_thumbnail(video_path: str, thumbnail_path: str) -> None:
+def _generate_video_thumbnail(video_path: str, thumbnail_path: str, width: int = 400) -> None:
     if not FFMPEG_BIN:
         return
     command = [
@@ -240,7 +240,7 @@ def _generate_video_thumbnail(video_path: str, thumbnail_path: str) -> None:
         "-vframes",
         "1",
         "-vf",
-        "scale=640:-2", # High quality thumbnail
+        f"scale={width}:-2", # Feed-optimized thumbnail (400px width default)
         thumbnail_path,
     ]
     try:

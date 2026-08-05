@@ -1860,11 +1860,6 @@ export const getNearbyTemples = (lat?: number, lng?: number) =>
 
 export const getTemple = (templeId: string) => api.get(`/temples/${templeId}`);
 
-export const followTemple = (templeId: string) =>
-  api.post(`/temples/${templeId}/follow`);
-
-export const unfollowTemple = (templeId: string) =>
-  api.post(`/temples/${templeId}/unfollow`);
 
 export const followUser = (userId: string) =>
   api.post(`/users/${userId}/follow`);

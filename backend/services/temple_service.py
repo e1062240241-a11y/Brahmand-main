@@ -74,7 +74,7 @@ class TempleService:
         await cache_manager.invalidate_temples()
         
         logger.info(f"Temple created: {name} ({temple_id})")
-        return serialize_doc(temple)
+        return serialize_doc(temple) or {}
     
     @staticmethod
     async def get_temples(user_id: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -87,7 +87,7 @@ class TempleService:
             
             cached = []
             for t in temples:
-                temple_data = serialize_doc(t)
+                temple_data = serialize_doc(t) or {}
                 temple_data["followers"] = t.get("followers", [])
                 temple_data["follower_count"] = t.get("follower_count", 0)
                 cached.append(temple_data)
@@ -137,96 +137,18 @@ class TempleService:
             if not temple:
                 raise ValueError("Temple not found")
             
-            cached = serialize_doc(temple)
+            cached = serialize_doc(temple) or {}
             cached["followers"] = temple.get("followers", [])
             cached["follower_count"] = temple.get("follower_count", 0)
             await cache_manager.set(cache_key, cached, ttl=300) # Cache for 5 minutes
 
-        temple_data = cached.copy()
-        temple_data["is_following"] = user_id in cached.get("followers", []) if user_id else False
-        temple_data["follower_count"] = cached.get("follower_count", 0)
+        temple_data = cached.copy() if cached else {}
+        temple_data["is_following"] = user_id in temple_data.get("followers", []) if user_id else False
+        temple_data["follower_count"] = temple_data.get("follower_count", 0)
         
         return temple_data
     
-    @staticmethod
-    async def follow_temple(user_id: str, temple_id: str) -> Dict[str, Any]:
-        """Follow a temple"""
-        db = await TempleService.get_db()
-        
-        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
-        if not temple:
-            temple = await db.get_document("temples", temple_id)
-        if not temple:
-            raise ValueError("Temple not found")
-        
-        # Add user to followers
-        followers = temple.get("followers", [])
-        if user_id not in followers:
-            new_followers = list(followers) + [user_id]
-            await db.update_document("temples", temple["id"], {
-                "followers": new_followers,
-                "follower_count": len(new_followers)
-            })
-        
-        # Add temple to user's followed temples
-        user = await db.get_document("users", user_id)
-        if user:
-            temple_passbook = user.get("temple_passbook", {})
-            temples_followed = temple_passbook.get("temples_followed", [])
-            if temple["id"] not in temples_followed:
-                temples_followed = list(temples_followed) + [temple["id"]]
-                temple_passbook["temples_followed"] = temples_followed
-                await db.update_document("users", user_id, {
-                    "temple_passbook": temple_passbook
-                })
-        
-        # Invalidate caches
-        await cache_manager.invalidate_temples()
-        await cache_manager.invalidate_user(user_id)
-        await cache_manager.delete(f"temple:detail:{temple_id}")
-        if temple.get("temple_id"):
-            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
-        
-        return {"message": f"Now following {temple['name']}"}
-    
-    @staticmethod
-    async def unfollow_temple(user_id: str, temple_id: str) -> Dict[str, Any]:
-        """Unfollow a temple"""
-        db = await TempleService.get_db()
-        
-        temple = await db.find_one("temples", [("temple_id", "==", temple_id)])
-        if not temple:
-            temple = await db.get_document("temples", temple_id)
-        if not temple:
-            raise ValueError("Temple not found")
-        
-        followers = temple.get("followers", [])
-        if user_id in followers:
-            new_followers = [f for f in followers if f != user_id]
-            await db.update_document("temples", temple["id"], {
-                "followers": new_followers,
-                "follower_count": len(new_followers)
-            })
-        
-        user = await db.get_document("users", user_id)
-        if user:
-            temple_passbook = user.get("temple_passbook", {})
-            temples_followed = temple_passbook.get("temples_followed", [])
-            if temple["id"] in temples_followed:
-                temples_followed = [t for t in temples_followed if t != temple["id"]]
-                temple_passbook["temples_followed"] = temples_followed
-                await db.update_document("users", user_id, {
-                    "temple_passbook": temple_passbook
-                })
-        
-        # Invalidate caches
-        await cache_manager.invalidate_temples()
-        await cache_manager.invalidate_user(user_id)
-        await cache_manager.delete(f"temple:detail:{temple_id}")
-        if temple.get("temple_id"):
-            await cache_manager.delete(f"temple:detail:{temple['temple_id']}")
-        
-        return {"message": f"Unfollowed {temple['name']}"}
+
     
     @staticmethod
     async def create_post(

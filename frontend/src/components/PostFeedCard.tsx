@@ -21,6 +21,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 
 import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
@@ -50,6 +51,7 @@ type PostFeedCardProps = {
   onPostMenuPress?: (post: any) => void;
   postMenuType?: 'delete' | 'report';
   isActive?: boolean;
+  isFocused?: boolean;
   onLayout?: (event: any) => void;
   theme?: 'light' | 'dark';
   openCommentsOnCaptionPress?: boolean;
@@ -61,7 +63,6 @@ type PostFeedCardProps = {
   onCancelEdit?: () => void;
   onSaveEdit?: () => void;
   isSavingEdit?: boolean;
-  distanceFromActive?: number;
 };
 
 const formatTime = (raw: any) => {
@@ -82,6 +83,7 @@ const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMe
 
 const PostFeedCardComponent = ({
   post,
+  distanceFromActive = 0,
   onLike,
   onComment,
   onShare,
@@ -92,6 +94,7 @@ const PostFeedCardComponent = ({
   onPostMenuPress,
   postMenuType,
   isActive = false,
+  isFocused: isFocusedProp,
   onLayout,
   theme = 'light',
   openCommentsOnCaptionPress = false,
@@ -103,11 +106,11 @@ const PostFeedCardComponent = ({
   onCancelEdit,
   onSaveEdit,
   isSavingEdit = false,
-  distanceFromActive = 0,
 }: PostFeedCardProps) => {
   const { t, language } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();
-  const isFocused = useIsFocused();
+  const isFocusedNav = useIsFocused();
+  const isFocused = isFocusedProp ?? isFocusedNav;
   const filterName = post?.filter_name || post?.metadata?.filter_name || 'Normal';
   const [isPausedByUser, setIsPausedByUser] = useState(false);
   const { isGloballyMuted: isMuted, toggleMute: toggleMute } = useGlobalMute();
@@ -308,7 +311,7 @@ const PostFeedCardComponent = ({
     return () => subscription.remove();
   }, []);
 
-  const shouldPlay = isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active';
+  const shouldPlay = Boolean(isFocused && isActive && !isPausedByUser && !isFullscreen && appState === 'active');
   const videoRef = useRef<any>(null);
 
   useEffect(() => {
@@ -437,6 +440,10 @@ const PostFeedCardComponent = ({
     triggerInstagramHeart(tapX, tapY);
     if (!likedByMe) {
       onLike?.(post);
+    }
+    // Haptic feedback for double-tap like
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
@@ -699,7 +706,8 @@ const PostFeedCardComponent = ({
                 source={{ uri: imageUri }}
                 style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
                 contentFit="cover"
-                transition={300}
+                transition={0}
+                recyclingKey={post.id}
                 onLoadStart={() => setMediaLoading(true)}
                 onLoad={(e) => {
                   setMediaLoading(false);

@@ -655,7 +655,6 @@ const PostScreen = () => {
           initialNumToRender={2}
           maxToRenderPerBatch={2}
           windowSize={3}
-          estimatedItemSize={550}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.5}
           contentContainerStyle={styles.listContent}

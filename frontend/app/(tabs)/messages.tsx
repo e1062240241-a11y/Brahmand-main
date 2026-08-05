@@ -1,5 +1,5 @@
 // accessibility: placeholder
-import { formatDateIST, formatTimeIST, formatDateTimeIST } from '../../src/utils/dateUtils';
+import { formatTimeIST } from '../../src/utils/dateUtils';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -24,13 +24,13 @@ import {
   InteractionManager,
   Keyboard,
 } from 'react-native';
-import { InstagramSpinner, InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
+import { InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SPACING, BORDER_RADIUS, FONTS } from '../../src/constants/theme';
+import { COLORS, FONTS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
@@ -1016,7 +1016,7 @@ function MessagesScreen({
                   }
                 }
                 if (batchOps.length > 0) {
-                  await database.batch(...batchOps);
+                  await database.batch(batchOps);
                 }
               });
             } catch (dbErr) {
@@ -1181,7 +1181,7 @@ function MessagesScreen({
                 }
 
                 if (batchOps.length > 0) {
-                  await database.batch(...batchOps);
+                  await database.batch(batchOps);
                 }
               });
             } catch (dbErr) {

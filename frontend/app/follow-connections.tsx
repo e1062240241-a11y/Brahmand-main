@@ -37,7 +37,7 @@ const loadUsersByIds = async (ids: string[]): Promise<ConnectionUser[]> => {
   try {
     const BATCH_SIZE = 100;
     const allUsers: ConnectionUser[] = [];
-    
+
     for (let i = 0; i < validIds.length; i += BATCH_SIZE) {
       const chunk = validIds.slice(i, i + BATCH_SIZE);
       const res = await getUsersBatch(chunk);
@@ -47,7 +47,7 @@ const loadUsersByIds = async (ids: string[]): Promise<ConnectionUser[]> => {
         console.warn('[Connections] getUsersBatch returned non-array:', typeof res.data);
       }
     }
-    
+
     console.log(`[Connections] loadUsersByIds: requested=${validIds.length}, loaded=${allUsers.length}`);
     return allUsers;
   } catch (error) {
@@ -74,7 +74,7 @@ export default function FollowConnectionsScreen() {
   const [followingSearch, setFollowingSearch] = useState('');
   const [pendingUserIds, setPendingUserIds] = useState<string[]>([]);
   const [suggestedUsers, setSuggestedUsers] = useState<ConnectionUser[]>([]);
-  
+
   const screenOpacity = useRef(new Animated.Value(0)).current;
   const screenTranslateY = useRef(new Animated.Value(18)).current;
   const listOpacity = useRef(new Animated.Value(1)).current;
@@ -158,7 +158,7 @@ export default function FollowConnectionsScreen() {
         }
 
         const allFetchedUsers = Array.isArray(usersResponse?.data?.users) ? usersResponse.data.users : Array.isArray(usersResponse?.data) ? usersResponse.data : [];
-        const suggestions = allFetchedUsers.filter((u: any) => 
+        const suggestions = allFetchedUsers.filter((u: any) =>
           u.id !== user?.id && !viewerFollowing.includes(u.id) && !followerIds.includes(u.id)
         ).slice(0, 10);
 

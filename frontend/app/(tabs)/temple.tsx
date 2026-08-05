@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
  View, 
  Text, 
@@ -15,15 +15,14 @@ import {
  Dimensions,
  ActivityIndicator,
 } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { FlashList } from '@shopify/flash-list';
 import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
-import { Q } from '@nozbe/watermelondb';
 import { FONTS } from '../../src/constants/theme';
-import { TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } from '../../src/constants/templeImages';
+import { DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 const SafeFlashList = FlashList as any;
 
@@ -37,6 +36,60 @@ const JYOTIRLING_TEMPLES = [
   { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Temple', location: 'Varanasi, Uttar Pradesh', deity: 'Lord Shiva' },
   { id: 'jyotirling-bhimashankar-temple-maharashtra', name: 'Bhimashankar Temple', location: 'Pune, Maharashtra', deity: 'Lord Shiva' },
   { id: 'jyotirling-ramanathaswamy-temple-rameswaram', name: 'Ramanathaswamy Temple', location: 'Tamil Nadu', deity: 'Lord Shiva' },
+];
+
+const BADA_CHAR_DHAM_IDS = [
+  'chardham-badrinath-temple-uttarakhand',
+  'chardham-dwarkadhish-temple-dwarka',
+  'chardham-jagannath-temple-puri',
+  'jyotirling-ramanathaswamy-temple-rameswaram',
+];
+
+const CHOTA_CHAR_DHAM_IDS = [
+  'chardham-badrinath-temple-uttarakhand',
+  'jyotirling-kedarnath-temple-uttarakhand',
+  'chardham-gangotri-temple-uttarakhand',
+  'chardham-yamunotri-temple-uttarakhand',
+];
+
+const HEALING_TEMPLE_IDS = [
+  // 1-15: Mental & Emotional Wellbeing Shrines
+  'healing-ramanasramam-tiruvannamalai',
+  'healing-dhyanalinga-isha-coimbatore',
+  'jyotirling-mahakaleshwar-temple-ujjain',
+  'healing-virupaksha-temple-hampi',
+  'healing-anandamayi-ma-ashram-haridwar',
+  'sacred-golden-temple-amritsar',
+  'hanuman-mehendipur-balaji-temple-dausa',
+  'shaktipeeth-kamakhya-temple-guwahati',
+  'healing-parmarth-niketan-rishikesh',
+  'healing-sri-aurobindo-ashram-puducherry',
+  'sacred-belur-math-ramakrishna-mission',
+  'healing-sarnath-buddhist-monastery',
+  'sacred-mahabodhi-temple-bodh-gaya',
+  'devi-kollur-mookambika-temple',
+  'devi-chottanikara-temple-kochi',
+
+  // 16-34: Physical Health & Recovery Shrines
+  'sacred-vaitheeswaran-koil-mayiladuthurai',
+  'jyotirling-baidyanath-temple-deoghar',
+  'healing-parli-vaijnath-temple',
+  'healing-dhanvantari-temple-kerala',
+  'sacred-suchindram-thanumalayan-temple',
+  'healing-ghati-subramanya-temple',
+  'panchbhoota-srikalahasteeswara-temple-srikalahasti',
+  'sacred-kukke-subramanya-temple',
+  'jyotirling-trimbakeshwar-temple-nashik',
+  'jyotirling-omkareshwar-temple-madhya-pradesh',
+  'jyotirling-ramanathaswamy-temple-rameswaram',
+  'jyotirling-kashi-vishwanath-temple-varanasi',
+  'jyotirling-somnath-temple-gujarat',
+  'jyotirling-nageshwar-temple-dwarka',
+  'jyotirling-grishneshwar-temple-ellora',
+  'jyotirling-mallikarjuna-temple-srisailam',
+  'jyotirling-kedarnath-temple-uttarakhand',
+  'jyotirling-bhimashankar-temple-maharashtra',
+  'healing-mangaladevi-temple-mangalore'
 ];
 
 const getTempleDisplayName = (item: any) => item.name;
@@ -138,20 +191,6 @@ export default function TempleScreen() {
 
   const PAGE_SIZE = 20;
 
-  const BADA_CHAR_DHAM_IDS = [
-    'chardham-badrinath-temple-uttarakhand',
-    'chardham-dwarkadhish-temple-dwarka',
-    'chardham-jagannath-temple-puri',
-    'jyotirling-ramanathaswamy-temple-rameswaram',
-  ];
-
-  const CHOTA_CHAR_DHAM_IDS = [
-    'chardham-badrinath-temple-uttarakhand',
-    'jyotirling-kedarnath-temple-uttarakhand',
-    'chardham-gangotri-temple-uttarakhand',
-    'chardham-yamunotri-temple-uttarakhand',
-  ];
-
   const loadMoreTemples = useCallback(async (pageNum: number, isReset: boolean = false) => {
     try {
       setLoading(true);
@@ -188,54 +227,12 @@ export default function TempleScreen() {
         return isBadaCharDham(t) || isChotaCharDham(t);
       };
 
-      const HEALING_TEMPLE_IDS = [
-        // 1-15: Mental & Emotional Wellbeing Shrines
-        'healing-ramanasramam-tiruvannamalai',
-        'healing-dhyanalinga-isha-coimbatore',
-        'jyotirling-mahakaleshwar-temple-ujjain',
-        'healing-virupaksha-temple-hampi',
-        'healing-anandamayi-ma-ashram-haridwar',
-        'sacred-golden-temple-amritsar',
-        'hanuman-mehendipur-balaji-temple-dausa',
-        'shaktipeeth-kamakhya-temple-guwahati',
-        'healing-parmarth-niketan-rishikesh',
-        'healing-sri-aurobindo-ashram-puducherry',
-        'sacred-belur-math-ramakrishna-mission',
-        'healing-sarnath-buddhist-monastery',
-        'sacred-mahabodhi-temple-bodh-gaya',
-        'devi-kollur-mookambika-temple',
-        'devi-chottanikara-temple-kochi',
-
-        // 16-34: Physical Health & Recovery Shrines
-        'sacred-vaitheeswaran-koil-mayiladuthurai',
-        'jyotirling-baidyanath-temple-deoghar',
-        'healing-parli-vaijnath-temple',
-        'healing-dhanvantari-temple-kerala',
-        'sacred-suchindram-thanumalayan-temple',
-        'healing-ghati-subramanya-temple',
-        'panchbhoota-srikalahasteeswara-temple-srikalahasti',
-        'sacred-kukke-subramanya-temple',
-        'jyotirling-trimbakeshwar-temple-nashik',
-        'jyotirling-omkareshwar-temple-madhya-pradesh',
-        'jyotirling-ramanathaswamy-temple-rameswaram',
-        'jyotirling-kashi-vishwanath-temple-varanasi',
-        'jyotirling-somnath-temple-gujarat',
-        'jyotirling-nageshwar-temple-dwarka',
-        'jyotirling-grishneshwar-temple-ellora',
-        'jyotirling-mallikarjuna-temple-srisailam',
-        'jyotirling-kedarnath-temple-uttarakhand',
-        'jyotirling-bhimashankar-temple-maharashtra',
-        'healing-mangaladevi-temple-mangalore'
-      ];
-
       const isHealingTemple = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
         return HEALING_TEMPLE_IDS.includes(tid);
       };
 
       const jyotisByJs = allLocalTemples.filter(isJyotirlinga);
-
-      console.log(`[DEBUG] Selected: ${selectedCategory} | Total Local: ${allLocalTemples.length} | JS Filtered Jyotirlingas: ${jyotisByJs.length}`);
 
       let filteredRecords = allLocalTemples;
       if (selectedCategory === 'Jyotirlinga') {
@@ -294,8 +291,6 @@ export default function TempleScreen() {
           is_verified: true,
         }));
       }
-
-      console.log(`[CATEGORY DEBUG] Selected: ${selectedCategory} | Total Local: ${allLocalTemples.length} | JS Filtered Jyotirlingas: ${jyotisByJs.length} | Filtered Count: ${filteredRecords.length} | displayTemples Count: ${formatted.length}`);
 
       if (isReset) {
         setDisplayTemples(formatted);
@@ -507,7 +502,7 @@ export default function TempleScreen() {
             });
 
             if (recordsToCreateOrUpdate.length > 0) {
-              await database.batch(...recordsToCreateOrUpdate);
+              await database.batch(recordsToCreateOrUpdate);
             }
           });
         } catch (dbError) {
@@ -734,7 +729,6 @@ export default function TempleScreen() {
       <SafeFlashList
         data={displayTemples}
         renderItem={renderItem}
-        estimatedItemSize={127}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
         refreshControl={

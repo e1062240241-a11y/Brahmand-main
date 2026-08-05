@@ -253,7 +253,7 @@ export const useVendorStore = create<VendorStore>((set, get) => ({
               });
               
               if (operations.length > 0) {
-                await database.batch(...operations);
+                await database.batch(operations);
               }
             });
           }

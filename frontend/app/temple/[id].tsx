@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { getTemple, getTemplePosts, followTemple, unfollowTemple } from '../../src/services/api';
+import { getTemple, getTemplePosts } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -1025,29 +1025,7 @@ export default function TempleDetailScreen() {
     }
   };
 
- const handleFollowToggle = async () => {
- if (followLoading) return;
- setFollowLoading(true);
- // Optimistic UI: update immediately
- const wasFollowing = isFollowing;
- const prevCount = followerCount;
- setIsFollowing(!wasFollowing);
- setFollowerCount(wasFollowing ? Math.max(0, prevCount - 1) : prevCount + 1);
- try {
- if (wasFollowing) {
- await unfollowTemple(resolvedTempleId);
- } else {
- await followTemple(resolvedTempleId);
- }
- } catch (error) {
- // Revert on failure
- setIsFollowing(wasFollowing);
- setFollowerCount(prevCount);
- console.error('Error toggling follow:', error);
- } finally {
- setFollowLoading(false);
- }
- };
+
 
  const handleShare = async () => {
  try {
@@ -2261,14 +2239,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   shareButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#FFF0E6',
     borderWidth: 1.5,
     borderColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    gap: 8,
+  },
+  shareButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
   },
   followerCountText: {
     fontSize: 12,

@@ -24,7 +24,7 @@ import { api } from '../src/services/api';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // Local Image References matching the app assets
-const heroArtworkBg = require('../assets/images/shravan_hero_bg.png');
+const heroArtworkBg = require('../assets/images/shravan_hero_bg.webp');
 
 // ================= CUSTOM SVG ICONS (0 DEPENDENCY & 0 QUESTION MARKS) =================
 
@@ -78,7 +78,7 @@ const NamasteIcon = ({ size = 16, color = '#8A5A2B' }) => (
   </Svg>
 );
 
-const shivlingImg = require('../assets/images/shivling_artwork.png');
+const shivlingImg = require('../assets/images/shivling_artwork.webp');
 
 // High quality sharp Shivling Artwork for Section 3
 const ShivlingArtwork = () => (
@@ -92,7 +92,9 @@ const ShivlingArtwork = () => (
 export default function ShravanPaathPage() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [interested, setInterested] = useState(false);
+  const [interested, setInterested] = useState(() => {
+    return params?.is_interested === '1' || params?.is_interested === 'true';
+  });
   const [registeredCount, setRegisteredCount] = useState(0);
 
   const rippleScale1 = useRef(new Animated.Value(0.2)).current;
@@ -149,6 +151,9 @@ export default function ShravanPaathPage() {
   }, []);
 
   useEffect(() => {
+    if (params?.is_interested === '1' || params?.is_interested === 'true') {
+      setInterested(true);
+    }
     // Fetch initial reminder stats & count directly from DB
     fetchReminderStats();
 
@@ -161,7 +166,7 @@ export default function ShravanPaathPage() {
         );
       }, 300);
     }
-  }, [params?.showSetToast, fetchReminderStats]);
+  }, [params?.is_interested, params?.showSetToast, fetchReminderStats]);
 
   const handleShare = async () => {
     try {

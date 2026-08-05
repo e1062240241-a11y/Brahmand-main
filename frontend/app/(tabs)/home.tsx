@@ -28,11 +28,12 @@ import {
   AppState,
   InteractionManager
 } from 'react-native';
-import { InstagramSpinner, InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
+import { InstagramRefreshControl } from '../../src/components/CustomRefreshControl';
 import { WebView } from 'react-native-webview';
 import { useSafeAreaInsets, SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
@@ -49,6 +50,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
 import PostFeedCard from '../../src/components/PostFeedCard';
 import { socketService } from '../../src/services/socket';
+
 // ── Smart Feed Optimization (ADD-ONLY, no existing features changed) ─────────
 import { useFeedOptimizationStore } from '../../src/store/feedOptimizationStore';
 import { useSmartFeed } from '../../src/hooks/useSmartFeed';
@@ -516,6 +518,1604 @@ const formatFestivalDate = (dateStr: string) => {
   }
   return dateStr;
 };
+
+const ROTATING_AARTIS = [
+  { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Aarti' },
+  { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Aarti' },
+  { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakal Aarti' },
+  { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Aarti' },
+  { id: 'other-shirdi-sai-baba-temple-maharashtra', name: 'Shirdi Sai Baba Aarti' },
+  { id: 'other-mahalaxmi-temple', name: 'Shri Mahalakshmi Mandir' },
+  { id: 'other-iskcon-temple-bangalore-karnataka', name: 'ISKCON Bangalore' },
+  { id: 'other-shri-dwarkadhish-temple-dwarka', name: 'Shri Dwarkadhish Temple' },
+  { id: 'other-siddhivinayak-temple-mumbai', name: 'Shree Siddhivinayak Ganapati Temple' },
+  { id: 'other-tirupati-balaji-temple-andhra-pradesh', name: 'Tirupati Balaji Temple' }
+];
+
+const HomeHeaderBar = React.memo(function HomeHeaderBar({
+  firstName,
+  avatarUri,
+  unreadCount,
+  nextFestival,
+  t,
+  searchActive,
+  onToggleSearch,
+  searchTerm,
+  onChangeSearchTerm,
+  hashtagResults,
+  loadingHashtags,
+  searchResults,
+  loadingUsers,
+  followingIds,
+  onFollowUser,
+  recentSearches,
+  onClearRecentSearches,
+  onSelectUser,
+  onSelectHashtag,
+  onNotificationPress,
+  onProfileLongPress,
+}: {
+  firstName: string;
+  avatarUri?: string;
+  unreadCount: number;
+  nextFestival: any;
+  t: (key: string) => string;
+  searchActive: boolean;
+  onToggleSearch: () => void;
+  searchTerm: string;
+  onChangeSearchTerm: (text: string) => void;
+  hashtagResults: any[];
+  loadingHashtags: boolean;
+  searchResults: any[];
+  loadingUsers: boolean;
+  followingIds: string[];
+  onFollowUser: (id: string) => void;
+  recentSearches: any[];
+  onClearRecentSearches: () => void;
+  onSelectUser: (item: any) => void;
+  onSelectHashtag: (hashtag: string) => void;
+  onNotificationPress: () => void;
+  onProfileLongPress: () => void;
+}) {
+  const router = useRouter();
+  return (
+    <>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            activeOpacity={0.86}
+            style={styles.profileButton}
+            onPress={() => router.push('/(tabs)/profile')}
+            onLongPress={onProfileLongPress}
+          >
+            <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          top: 0,
+          bottom: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: -1,
+        }} pointerEvents="none">
+          <Text style={{
+            color: '#000',
+            textAlign: 'center',
+            fontFamily: FONTS.brandTitle,
+            fontSize: Platform.OS === 'android' ? 26 : 28,
+            fontStyle: 'normal',
+            fontWeight: '400',
+            lineHeight: Platform.OS === 'android' ? 32 : 36,
+            letterSpacing: 0,
+          }}>BRAHMAND</Text>
+        </View>
+
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.headerIconButton}
+            onPress={onToggleSearch}
+          >
+            <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={styles.headerIconButton}
+            onPress={onNotificationPress}
+          >
+            <View>
+              <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
+              {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1) && (
+        <TouchableOpacity
+          style={styles.festivalAlertCard}
+          activeOpacity={0.9}
+          onPress={() => router.push('/festivals')}
+        >
+          <View style={styles.festivalAlertIcon}>
+            <Ionicons name="notifications-outline" size={18} color="#FFF" />
+          </View>
+          <View style={styles.festivalAlertTextWrapper}>
+            <Text style={styles.festivalAlertTitle}>{t('festivalReminder')}</Text>
+            <Text style={styles.festivalAlertSubtitle} numberOfLines={2}>
+              {nextFestival.days_until === 0
+                ? `${nextFestival.name} ${t('isTodayClick')}`
+                : `${nextFestival.name} ${t('isTomorrowClick')} (${formatFestivalDate(nextFestival.date)})`}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#FFF" />
+        </TouchableOpacity>
+      )}
+
+      {searchActive ? (
+        <View style={styles.searchPanel}>
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color="#6F5C70" />
+            <TextInput
+              style={styles.searchInput}
+              value={searchTerm}
+              onChangeText={onChangeSearchTerm}
+              placeholder={t('recentSearchPlaceholder')}
+              placeholderTextColor="#8E7D90"
+              autoFocus
+            />
+          </View>
+          {searchTerm.trim().length > 0 ? (
+            <View style={styles.searchResultsSection}>
+              {searchTerm.trim().startsWith('#') ? (
+                loadingHashtags ? (
+                  <Text style={styles.searchStatusText}>{t('loadingHashtags')}</Text>
+                ) : hashtagResults.length > 0 ? (
+                  <TouchableOpacity
+                    style={styles.userResultItem}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      const hashtag = searchTerm.trim().replace(/^#+/, '');
+                      onSelectHashtag(hashtag);
+                    }}
+                  >
+                    <View style={styles.hashtagIcon}>
+                      <Ionicons name="pricetag" size={22} color="#8C36DB" />
+                    </View>
+                    <View style={styles.userResultText}>
+                      <Text style={styles.userResultName}>#{searchTerm.trim().replace('#', '')}</Text>
+                      <Text style={styles.userResultMeta}>{hashtagResults.length} posts</Text>
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.searchStatusText}>{t('noPostsHashtag')}</Text>
+                )
+              ) : loadingUsers ? (
+                <Text style={styles.searchStatusText}>{t('loadingUsers')}</Text>
+              ) : searchResults.length > 0 ? (
+                searchResults.map((item) => {
+                  const isFollowing = followingIds.includes(item.id);
+                  return (
+                    <View key={item.id} style={styles.userResultItem}>
+                      <TouchableOpacity
+                        style={styles.userResultContent}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          onSelectUser(item);
+                        }}
+                      >
+                        <Avatar name={item.name || 'User'} photo={item.photo} size={42} />
+                        <View style={styles.userResultText}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.userResultName}>{item.name || 'Unknown'}</Text>
+                            {item.is_verified && <MaterialCommunityIcons name="check-decagram" size={14} color="#FF6B00" style={{ marginLeft: 4 }} />}
+                          </View>
+                          <Text style={styles.userResultMeta}>{item.sl_id || item.phone || ''}</Text>
+                        </View>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.followButton, isFollowing && styles.followingButton]}
+                        activeOpacity={0.8}
+                        onPress={() => onFollowUser(item.id)}
+                      >
+                        <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
+                          {isFollowing ? t('following') : t('follow')}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.searchStatusText}>{t('noUsersFound')}</Text>
+              )}
+            </View>
+          ) : recentSearches.length > 0 ? (
+            <View style={styles.recentSearchSection}>
+              <View style={styles.recentSearchHeader}>
+                <Text style={styles.recentSearchesTitle}>{t('recentSearchTitle')}</Text>
+                <TouchableOpacity onPress={onClearRecentSearches}>
+                  <Text style={styles.clearHistoryText}>{t('clearHistory')}</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.recentSearchList}
+              >
+                {recentSearches.map((item) => (
+                  <TouchableOpacity
+                    key={`recent-${item.id}`}
+                    style={styles.recentSearchItem}
+                    activeOpacity={0.7}
+                    onPress={() => router.push(`/profile/${item.id}`)}
+                  >
+                    <Avatar name={item.name || 'User'} photo={item.photo} size={60} />
+                    <Text style={styles.recentSearchName} numberOfLines={1}>
+                      {item.name?.split(' ')[0] || 'User'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+    </>
+  );
+});
+
+const QuickAccessCards = React.memo(function QuickAccessCards({
+  t,
+}: {
+  t: (key: string) => string;
+}) {
+  const router = useRouter();
+  const isFocused = useIsFocused();
+  const featureCardWidth = Platform.OS === 'android'
+    ? 175
+    : FEATURE_CARD_WIDTH;
+  const featureCardHeight = Platform.OS === 'android' ? 82 : FEATURE_CARD_HEIGHT;
+  const featureSnapInterval = Platform.OS === 'android' ? featureCardWidth + 10 : FEATURE_SNAP_INTERVAL;
+  const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
+  const topFeaturesScrollRef = useRef<ScrollView>(null);
+  const topFeaturesAutoScrollIndex = useRef(0);
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const CARD_WIDTH = 185; // 175 card + 10 gap
+    const TOTAL_CARDS = baseQuickAccess.length;
+    const interval = setInterval(() => {
+      if (AppState.currentState !== 'active') return;
+      topFeaturesAutoScrollIndex.current = (topFeaturesAutoScrollIndex.current + 1) % TOTAL_CARDS;
+      topFeaturesScrollRef.current?.scrollTo({
+        x: topFeaturesAutoScrollIndex.current * CARD_WIDTH,
+        animated: true,
+      });
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [isFocused]);
+
+  return (
+    <View
+      style={[styles.topFeatureRow, { flexDirection: 'column', alignItems: 'center', marginTop: 12, marginBottom: 8 }]}
+    >
+      <ScrollView
+        ref={topFeaturesScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={featureSnapInterval}
+        decelerationRate="fast"
+        contentContainerStyle={{ gap: 10, paddingHorizontal: PAGE_PADDING }}
+        style={{ width: '100%' }}
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const idx = Math.round(x / featureSnapInterval);
+          const clampedIdx = Math.max(0, Math.min(idx, baseQuickAccess.length - 1));
+          setActiveFeatureIndex(clampedIdx);
+          topFeaturesAutoScrollIndex.current = clampedIdx;
+        }}
+        scrollEventThrottle={16}
+      >
+        {baseQuickAccess.map((item, idx) => {
+          let cardBg = '#FFFFFF';
+          let iconBg = '#FF8A3D';
+          if (item.label === 'Panchang') {
+            cardBg = '#FFF9F0';
+            iconBg = '#FF9800';
+          } else if (item.label === 'My Krishn') {
+            cardBg = '#FFF8EB';
+            iconBg = '#FF6B00';
+          } else if (item.label === 'SOS') {
+            cardBg = '#FFF5F5';
+            iconBg = '#FF3B30';
+          }
+
+          let displayLabel = item.label;
+          let displaySubtitle = item.subtitle;
+
+          if (t('language') === 'hi') {
+            if (item.label === 'My Krishn') {
+              displayLabel = 'मेरे कृष्ण';
+              displaySubtitle = 'एआई धर्म मार्गदर्शन';
+            } else if (item.label === 'SOS') {
+              displayLabel = 'एसओएस (SOS)';
+              displaySubtitle = 'आपके आसपास के सनातनी लोग';
+            } else if (item.label === 'Panchang') {
+              displayLabel = 'पंचांग';
+              displaySubtitle = 'Plan with\nVedic wisdom';
+            } else if (item.label === 'Kundli') {
+              displayLabel = 'कुंडली';
+              displaySubtitle = 'Your birth chart insights';
+            } else if (item.label === 'Brahmand Passport') {
+              displayLabel = 'ब्रह्मांड पासपोर्ट';
+              displaySubtitle = 'आपकी मंदिर यात्रा का रिकॉर्ड';
+            } else if (item.label === 'Festival') {
+              displayLabel = 'त्योहार के दिन';
+              displaySubtitle = 'अगला त्योहार और अनुष्ठान';
+            } else if (item.label === 'Brahmand Library') {
+              displayLabel = 'ब्रह्मांड पुस्तकालय';
+              displaySubtitle = 'ज्ञान की खोज करें';
+            }
+          }
+
+          return (
+            <TouchableOpacity
+              key={idx}
+              style={[
+                styles.featureCard,
+                Platform.OS === 'android' && { width: featureCardWidth, height: featureCardHeight, paddingHorizontal: 12 }
+              ]}
+              activeOpacity={0.9}
+              onPress={() => {
+                if (item.label === 'Panchang') router.push('/panchang');
+                else if (item.label === 'My Krishn') router.push('/my-krishna');
+                else if (item.label === 'SOS') router.push('/sos');
+                else if (item.label === 'Kundli') router.push('/astrology' as any);
+                else if (item.label === 'Brahmand Passport') router.push('/passport');
+                else if (item.label === 'Festival') router.push('/festivals');
+                else if (item.label === 'Brahmand Library') router.push('/library');
+              }}
+            >
+              {item.label === 'SOS' ? (
+                <View style={Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255, 0, 0, 0.10)', justifyContent: 'center', alignItems: 'center' }}>
+                  <View style={Platform.OS === 'android' ? { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' } : { width: 42.2, height: 42.2, borderRadius: 21.1, backgroundColor: 'rgba(255, 0, 0, 0.50)', justifyContent: 'center', alignItems: 'center' }}>
+                    <View style={Platform.OS === 'android' ? { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' } : { width: 34.5, height: 34.5, borderRadius: 17.25, backgroundColor: 'rgba(255, 0, 0, 0.75)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Text style={Platform.OS === 'android' ? { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 10, fontWeight: '600' } : { color: '#FFF', textAlign: 'center', fontFamily: 'System', fontSize: 11, fontWeight: '600' }}>SOS</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : item.label === 'My Krishn' ? (
+                <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                  <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                    <ExpoImage source={require('../../assets/images/tab-bar/my_krishna.webp')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 42, height: 42 }} contentFit="contain" />
+                  </ImageBackground>
+                </View>
+              ) : item.label === 'Panchang' ? (
+                <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                  <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                    <Image source={require('../../assets/images/panchang_icon_3.webp')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
+                  </ImageBackground>
+                </View>
+              ) : item.label === 'Kundli' ? (
+                <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                  <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                    <Image source={require('../../assets/images/custom_kundli_icon.webp')} style={Platform.OS === 'android' ? { width: 38, height: 38 } : { width: 44, height: 44 }} resizeMode="contain" />
+                  </ImageBackground>
+                </View>
+              ) : item.label === 'Brahmand Passport' ? (
+                <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 58, overflow: 'visible' } : { overflow: 'visible', width: 52, height: 67 }]}>
+                  <Image source={require('../../assets/images/custom_passport_icon.webp')} style={Platform.OS === 'android' ? { width: 46, height: 58, flexShrink: 0, aspectRatio: 41 / 52 } : { width: 53, height: 67, flexShrink: 0, aspectRatio: 41 / 52 }} resizeMode="contain" />
+                </View>
+              ) : item.label === 'Festival' ? (
+                <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                  <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                    <Image source={require('../../assets/images/custom_festival_icon_2.webp')} style={Platform.OS === 'android' ? { width: 24, height: 24 } : { width: 26, height: 26 }} resizeMode="contain" />
+                  </ImageBackground>
+                </View>
+              ) : item.label === 'Brahmand Library' ? (
+                <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, overflow: 'hidden' } : { overflow: 'hidden' }]}>
+                  <ImageBackground source={require('../../assets/images/orange_circle_bg.webp')} style={Platform.OS === 'android' ? { width: 46, height: 46, justifyContent: 'center', alignItems: 'center' } : { width: 50, height: 50, justifyContent: 'center', alignItems: 'center' }}>
+                    <Image source={require('../../assets/images/library_icon_3.webp')} style={Platform.OS === 'android' ? { width: 22, height: 22 } : { width: 24, height: 24 }} resizeMode="contain" />
+                  </ImageBackground>
+                </View>
+              ) : (
+                <View style={[styles.featureIconWrap, Platform.OS === 'android' ? { width: 46, height: 46, borderRadius: 23, backgroundColor: iconBg } : { backgroundColor: iconBg }]}>
+                  <Ionicons name="calendar" size={Platform.OS === 'android' ? 22 : 24} color="#FFF" />
+                </View>
+              )}
+              <View style={[styles.featureTextContainer, Platform.OS === 'android' && { marginLeft: 8 }]}>
+                <Text style={[styles.featureTitle, Platform.OS === 'android' && { fontSize: 13, lineHeight: 15 }]} numberOfLines={undefined}>{displayLabel}</Text>
+                {displaySubtitle ? (
+                  <Text style={[styles.featureSubtitle, Platform.OS === 'android' && { fontSize: 9.5, lineHeight: 11.5 }]} numberOfLines={undefined}>{displaySubtitle}</Text>
+                ) : null}
+              </View>
+              <Ionicons name="chevron-forward" size={10} color="#999" style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 }}>
+        {baseQuickAccess.map((_, idx) => (
+          <View
+            key={idx}
+            style={{
+              width: activeFeatureIndex === idx ? 8 : 6,
+              height: activeFeatureIndex === idx ? 8 : 6,
+              borderRadius: 4,
+              backgroundColor: activeFeatureIndex === idx ? '#FFF' : 'rgba(255, 255, 255, 0.45)',
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  );
+});
+
+const JaapBanners = React.memo(function JaapBanners({
+  t,
+  reminders,
+  onSetReminder,
+  onLiveJaap,
+}: {
+  t: (key: string) => string;
+  reminders: Record<string, boolean>;
+  onSetReminder: (mantraType: string, sessionName: string) => void;
+  onLiveJaap: (mantraType: string, title: string) => void;
+}) {
+  const router = useRouter();
+  const isFocused = useIsFocused();
+  const { width: windowWidth } = useWindowDimensions();
+  const screenWidth = Platform.OS === 'android' ? windowWidth : SCREEN_WIDTH;
+  const bannerScrollRef = useRef<ScrollView>(null);
+  const [activeBannerIndex, setActiveBannerIndex] = useState(0);
+  const [hanumanChantCount, setHanumanChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
+  const [shivaChantCount, setShivaChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    if (!isFocused) return;
+    const clockInterval = setInterval(() => {
+      if (AppState.currentState === 'active') {
+        setNow(new Date());
+      }
+    }, 60_000);
+    return () => clearInterval(clockInterval);
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+
+    let active = true;
+    const fetchActiveCounts = async () => {
+      try {
+        const response = await api.get('/jaap/active-count', {
+          params: { rooms: 'jaap_hanuman,jaap_shiva' }
+        });
+        if (active && response && response.data) {
+          const hanuman = response.data.jaap_hanuman || 0;
+          const shiva = response.data.jaap_shiva || 0;
+          setHanumanChantCount(hanuman > 10 ? hanuman * 18 : Math.floor(Math.random() * 17) + 2);
+          setShivaChantCount(shiva > 10 ? shiva * 18 : Math.floor(Math.random() * 17) + 2);
+        }
+      } catch (error) {
+        console.warn('Error fetching active jaap counts:', error);
+      }
+    };
+
+    fetchActiveCounts();
+
+    socketService.connect().then(() => {
+      socketService.joinRoom('jaap_hanuman');
+      socketService.joinRoom('jaap_shiva');
+    }).catch(err => console.warn('Socket connect failed on Home:', err));
+
+    const handleNewSOS = () => {
+      fetchActiveCounts();
+    };
+
+    const handleActiveCount = (data: { room: string; count: number }) => {
+      if (data) {
+        const realCount = data.count || 0;
+        const mappedCount = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+        if (data.room === 'jaap_hanuman') {
+          setHanumanChantCount(mappedCount);
+        } else if (data.room === 'jaap_shiva') {
+          setShivaChantCount(mappedCount);
+        }
+      }
+    };
+
+    socketService.onEvent('new_sos_alert', handleNewSOS);
+    socketService.onEvent('sos_alert', handleNewSOS);
+    socketService.onEvent('room_active_count', handleActiveCount);
+
+    return () => {
+      active = false;
+      socketService.offEvent('new_sos_alert', handleNewSOS);
+      socketService.offEvent('sos_alert', handleNewSOS);
+      socketService.offEvent('room_active_count', handleActiveCount);
+      socketService.leaveRoom('jaap_hanuman');
+      socketService.leaveRoom('jaap_shiva');
+    };
+  }, [isFocused]);
+
+  const hanumanStatus = getCurrentHanumanStatus(now);
+  const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
+
+  return (
+    <View
+      style={{ position: 'relative' }}
+    >
+      <ScrollView
+        ref={bannerScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={screenWidth - 40 + 12}
+        contentContainerStyle={{ gap: 12, paddingRight: 20 }}
+        onScroll={(e) => {
+          const x = e.nativeEvent.contentOffset.x;
+          const idx = Math.round(x / (screenWidth - 40));
+          setActiveBannerIndex(idx);
+        }}
+        scrollEventThrottle={16}
+      >
+        {/* Live Katha Banner (First) */}
+        {(() => {
+          return (
+            <TouchableOpacity
+              activeOpacity={0.95}
+              onPress={() => router.push('/shravan-paath')}
+              style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
+            >
+              <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
+                {/* Divine Golden Aura Radial Glow behind Acharya's Portrait */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    right: '-12%',
+                    top: '-15%',
+                    width: '75%',
+                    height: '120%',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  {/* Outer Warm Amber Ambient Glow */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      width: 190,
+                      height: 190,
+                      borderRadius: 95,
+                      backgroundColor: 'rgba(255, 179, 0, 0.45)',
+                      transform: [{ scaleX: 1.2 }],
+                    }}
+                  />
+                  {/* Inner Concentric Golden Divine Halo Core */}
+                  <View
+                    style={{
+                      position: 'absolute',
+                      width: 130,
+                      height: 130,
+                      borderRadius: 65,
+                      backgroundColor: 'rgba(255, 223, 0, 0.65)',
+                    }}
+                  />
+                </View>
+
+                <Image
+                  source={require('../../assets/images/panditji.webp')}
+                  style={{
+                    width: '100%',
+                    height: '135%',
+                    top: -28,
+                    borderRadius: 16,
+                  }}
+                  resizeMode="cover"
+                />
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0.30)', 'rgba(0,0,0,0.10)']}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 0.85, y: 0.5 }}
+                  style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
+                />
+
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 10,
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: '#F4C55A',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 2,
+                    borderColor: '#FFF8DC',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 3,
+                    elevation: 5,
+                    zIndex: 10,
+                  }}>
+                  <View style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    borderWidth: 1.5,
+                    borderStyle: 'dashed',
+                    borderColor: '#6B4500',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    paddingHorizontal: 2,
+                  }}>
+                    <Text style={{
+                      color: '#6B4500',
+                      fontSize: 5.5,
+                      fontWeight: '800',
+                      fontFamily: Platform.OS === 'ios' ? 'Montserrat' : 'Montserrat-ExtraBold',
+                      textAlign: 'center',
+                      lineHeight: 7,
+                      letterSpacing: 0.1,
+                      textTransform: 'uppercase',
+                    }}>
+                      FREE REGISTRATION
+                    </Text>
+                  </View>
+                </View>
+
+                <View
+                  pointerEvents="box-none"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    bottom: 0,
+                    width: '70%',
+                    paddingLeft: 14,
+                    paddingRight: 6,
+                    paddingTop: Platform.OS === 'android' ? 1 : 2,
+                    paddingBottom: 2,
+                    justifyContent: 'flex-start',
+                    alignItems: 'flex-start',
+                  }}>
+                  <View style={{
+                    width: '100%',
+                    alignItems: 'flex-start',
+                  }}>
+                    <View style={{ paddingLeft: 10 }}>
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          color: '#FFFFF2',
+                          fontSize: 27,
+                          fontWeight: '900',
+                          lineHeight: Platform.OS === 'ios' ? 38 : 32,
+                          paddingVertical: Platform.OS === 'ios' ? 2 : 0,
+                          letterSpacing: 0.5,
+                          textAlign: 'left',
+                          textShadowColor: 'rgba(50, 18, 0, 0.98)',
+                          textShadowOffset: { width: 2, height: 3 },
+                          textShadowRadius: 1,
+                        }}
+                      >
+                        श्रावण मास <Text style={{ color: '#FFD700', fontSize: 16, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜</Text>
+                      </Text>
+                    </View>
+
+                    <View style={{ width: '100%', alignItems: 'flex-start', paddingLeft: 24, marginTop: Platform.OS === 'android' ? 1 : 0 }}>
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          color: '#FFE58F',
+                          fontSize: 24,
+                          fontWeight: '900',
+                          lineHeight: Platform.OS === 'ios' ? 35 : 32,
+                          paddingVertical: Platform.OS === 'ios' ? 3 : 0,
+                          letterSpacing: 0.5,
+                          textAlign: 'left',
+                          textShadowColor: 'rgba(50, 18, 0, 0.98)',
+                          textShadowOffset: { width: 2, height: 3 },
+                          textShadowRadius: 1,
+                        }}
+                      >
+                        <Text style={{ color: '#FFD700', fontSize: 14, fontWeight: '400', transform: [{ rotate: '90deg' }] }}>⚜ </Text>शिव कथा
+                      </Text>
+                    </View>
+
+                    <View style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'flex-start',
+                      marginTop: Platform.OS === 'android' ? 1 : 3,
+                      marginLeft: 2,
+                    }}>
+                      <Text style={{
+                        color: '#FFD700',
+                        fontSize: Platform.OS === 'android' ? 11 : 13,
+                        marginRight: 4,
+                        transform: [{ rotate: '90deg' }],
+                        textShadowColor: 'rgba(255,215,0,0.8)',
+                        textShadowOffset: { width: 0, height: 0 },
+                        textShadowRadius: 4,
+                      }}>
+                        ⚜
+                      </Text>
+                      <Text style={{
+                        color: '#FFFFFF',
+                        fontSize: Platform.OS === 'android' ? 12.5 : 14.5,
+                        fontWeight: '700',
+                        letterSpacing: 0.3,
+                        textShadowColor: 'rgba(0,0,0,0.9)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 3,
+                      }}>
+                        Acharya Shamik Ji
+                      </Text>
+                      <Text style={{
+                        color: '#FFD700',
+                        fontSize: Platform.OS === 'android' ? 11 : 13,
+                        marginLeft: 4,
+                        transform: [{ rotate: '90deg' }],
+                        textShadowColor: 'rgba(255,215,0,0.8)',
+                        textShadowOffset: { width: 0, height: 0 },
+                        textShadowRadius: 4,
+                      }}>
+                        ⚜
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={{
+                    alignSelf: 'flex-start',
+                    marginTop: Platform.OS === 'android' ? 1 : 3,
+                    marginLeft: 2,
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <Text style={{ fontSize: Platform.OS === 'android' ? 10 : 11, color: '#F4C55A', marginRight: 4 }}>📅</Text>
+                      <Text style={{
+                        color: '#F4C55A',
+                        fontSize: Platform.OS === 'android' ? 11 : 12,
+                        fontWeight: '800',
+                        letterSpacing: 0.2,
+                        textShadowColor: 'rgba(0,0,0,0.95)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 3,
+                      }}>
+                        13 अगस्त – 11 सितंबर
+                      </Text>
+                    </View>
+
+                    <Text style={{
+                      color: '#FFFFFF',
+                      opacity: 0.95,
+                      fontWeight: '600',
+                      fontSize: Platform.OS === 'android' ? 10 : 11,
+                      marginTop: Platform.OS === 'android' ? 1 : 3,
+                      textShadowColor: 'rgba(0,0,0,0.95)',
+                      textShadowOffset: { width: 0, height: 1 },
+                      textShadowRadius: 3,
+                    }}>
+                      हर दिन LIVE श्रावण माह में
+                    </Text>
+
+                    <UiverseNotifyButton
+                      isNotified={!!reminders['shravan_katha']}
+                      onPress={() => {
+                        onSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                        router.push('/shravan-paath');
+                      }}
+                      label="Notify Me"
+                      notifiedLabel="Notified"
+                      size="small"
+                      style={{
+                        marginTop: Platform.OS === 'android' ? 3 : 5,
+                        alignSelf: 'flex-start',
+                      }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </TouchableOpacity>
+          );
+        })()}
+
+        <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
+          <ImageBackground source={require('../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
+            <LinearGradient
+              colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+              style={styles.featuredLiveOverlay}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+                <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                    <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                    <Text style={[
+                      styles.featuredLiveTitle,
+                      {
+                        color: '#FFF',
+                        fontFamily: 'System',
+                        fontSize: 15,
+                        fontStyle: 'normal',
+                        fontWeight: '700',
+                        letterSpacing: 1,
+                        textShadowColor: 'rgba(0,0,0,0.9)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 6,
+                      }
+                    ]}>Hanuman Chalisa</Text>
+                  </View>
+
+                  <Text style={[styles.featuredDevotees, {
+                    color: '#FFF',
+                    fontWeight: '600',
+                    opacity: 0.9,
+                    textShadowColor: 'rgba(0,0,0,0.8)',
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 4,
+                    marginLeft: 14,
+                    marginTop: 0,
+                    marginBottom: 2,
+                    fontSize: 13
+                  }]}>
+                    {hanumanStatus.isActive
+                      ? `${hanumanChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                      : (t('language') === 'hi'
+                        ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                        : '2300+ devotees already completed jaap')}
+                  </Text>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                    <Ionicons name="time-outline" size={13} color="#FFF" />
+                    <Text style={[styles.featuredTime, {
+                      marginTop: 0,
+                      marginLeft: 4,
+                      color: '#FFF',
+                      fontWeight: '600',
+                      fontSize: 12
+                    }]}>
+                      {hanumanStatus.isActive
+                        ? (t('language') === 'hi'
+                          ? `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} जाप पूर्ण`
+                          : `${hanumanStatus.roundOfSession}/${hanumanStatus.totalRepsInSession} jaap done so far`)
+                        : (hanumanStatus.nextSessionStart
+                          ? (t('language') === 'hi'
+                            ? `जाप ${formatTime(hanumanStatus.nextSessionStart)} बजे शुरू होगा`
+                            : `Jaap starts at ${formatTime(hanumanStatus.nextSessionStart)}`)
+                          : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.liveBadge, {
+                  alignSelf: 'flex-start',
+                  backgroundColor: hanumanStatus.isActive ? '#FF0000' : '#FF7A00',
+                  paddingHorizontal: hanumanStatus.isActive ? 8 : 10,
+                }]}>
+                  {hanumanStatus.isActive && <View style={styles.liveDot} />}
+                  <Text style={[styles.liveBadgeText, { marginLeft: hanumanStatus.isActive ? 4 : 0 }]}>
+                    {hanumanStatus.isActive
+                      ? 'LIVE'
+                      : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                <Pressable
+                  style={[
+                    styles.joinJaapButton,
+                    {
+                      backgroundColor: '#FF5100',
+                      display: 'flex',
+                      width: 138,
+                      height: 36,
+                      paddingHorizontal: 12,
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 10,
+                    }
+                  ]}
+                  android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                  onPress={() => onLiveJaap('hanuman', 'Hanuman Chalisa')}
+                >
+                  <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                </Pressable>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: reminders['hanuman'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                  }}
+                  activeOpacity={0.8}
+                  onPress={() => onSetReminder('hanuman', 'Hanuman Chalisa')}
+                >
+                  <Ionicons
+                    name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
+                    size={18}
+                    color={reminders['hanuman'] ? '#FF5100' : '#FFF'}
+                  />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
+        </View>
+
+        <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
+          <ImageBackground source={shivaImage} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }}>
+            <LinearGradient
+              colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
+              style={styles.featuredLiveOverlay}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+
+                <View style={{ flex: 1, paddingTop: 0, paddingLeft: 0, marginRight: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                    <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                    <Text style={[
+                      styles.featuredLiveTitle,
+                      {
+                        color: '#FFF',
+                        fontFamily: 'System',
+                        fontSize: 15,
+                        fontStyle: 'normal',
+                        fontWeight: '700',
+                        letterSpacing: 1,
+                        textShadowColor: 'rgba(0,0,0,0.9)',
+                        textShadowOffset: { width: 0, height: 1 },
+                        textShadowRadius: 6,
+                      }
+                    ]}>Om Namah Shivay</Text>
+                  </View>
+
+                  <Text style={[styles.featuredDevotees, {
+                    color: '#FFF',
+                    fontWeight: '600',
+                    opacity: 0.9,
+                    textShadowColor: 'rgba(0,0,0,0.8)',
+                    textShadowOffset: { width: 0, height: 1 },
+                    textShadowRadius: 4,
+                    marginLeft: 14,
+                    marginTop: 0,
+                    marginBottom: 2,
+                    fontSize: 13
+                  }]}>
+                    {shivaStatus.isActive
+                      ? `${shivaChantCount.toLocaleString()} ${t('devoteesChanting') || 'devotees are chanting'}`
+                      : (t('language') === 'hi'
+                        ? '2300+ भक्त पहले ही जाप पूरा कर चुके हैं'
+                        : '2300+ devotees already completed jaap')}
+                  </Text>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                    <Ionicons name="time-outline" size={13} color="#FFF" />
+                    <Text style={[styles.featuredTime, {
+                      marginTop: 0,
+                      marginLeft: 4,
+                      color: '#FFF',
+                      fontWeight: '600',
+                      fontSize: 12
+                    }]}>
+                      {shivaStatus.isActive
+                        ? `${t('liveUntil')} ${shivaStatus.sessionEnd ? formatTime(shivaStatus.sessionEnd) : '5:00 PM'}`
+                        : (shivaStatus.nextSessionStart
+                          ? (t('language') === 'hi' ? `${formatTime(shivaStatus.nextSessionStart)} पर लाइव होगा` : `Live at ${formatTime(shivaStatus.nextSessionStart)}`)
+                          : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live soon'))}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={[styles.liveBadge, {
+                  alignSelf: 'flex-start',
+                  backgroundColor: shivaStatus.isActive ? '#FF0000' : '#FF7A00',
+                  paddingHorizontal: shivaStatus.isActive ? 8 : 10,
+                }]}>
+                  {shivaStatus.isActive && <View style={styles.liveDot} />}
+                  <Text style={[styles.liveBadgeText, { marginLeft: shivaStatus.isActive ? 4 : 0 }]}>
+                    {shivaStatus.isActive
+                      ? 'LIVE'
+                      : (t('language') === 'hi' ? 'जल्द ही लाइव' : 'Going to be live')}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingBottom: 0 }}>
+                <Pressable
+                  style={[
+                    styles.joinJaapButton,
+                    {
+                      backgroundColor: '#FF5100',
+                      display: 'flex',
+                      width: 138,
+                      height: 36,
+                      paddingHorizontal: 12,
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 10,
+                    }
+                  ]}
+                  android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                  onPress={() => onLiveJaap('shiva', 'Om Namah Shivay')}
+                >
+                  <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
+                </Pressable>
+
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: reminders['shiva'] ? '#FFF' : 'rgba(255, 255, 255, 0.2)',
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
+                  }}
+                  activeOpacity={0.8}
+                  onPress={() => onSetReminder('shiva', 'Mahamrityunjaya Mantra')}
+                >
+                  <Ionicons
+                    name={reminders['shiva'] ? "notifications" : "notifications-outline"}
+                    size={18}
+                    color={reminders['shiva'] ? '#FF5100' : '#FFF'}
+                  />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
+        </View>
+      </ScrollView>
+
+      <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, zIndex: 10 }}>
+        <View style={{
+          width: activeBannerIndex === 0 ? 20 : 6,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: activeBannerIndex === 0 ? '#FAC775' : 'rgba(255,255,255,0.4)',
+          shadowColor: activeBannerIndex === 0 ? '#FAC775' : 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 4,
+          elevation: 2,
+        }} />
+        <View style={{
+          width: activeBannerIndex === 1 ? 20 : 6,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: activeBannerIndex === 1 ? '#FAC775' : 'rgba(255,255,255,0.4)',
+          shadowColor: activeBannerIndex === 1 ? '#FAC775' : 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 4,
+          elevation: 2,
+        }} />
+        <View style={{
+          width: activeBannerIndex === 2 ? 20 : 6,
+          height: 6,
+          borderRadius: 3,
+          backgroundColor: activeBannerIndex === 2 ? '#FAC775' : 'rgba(255,255,255,0.4)',
+          shadowColor: activeBannerIndex === 2 ? '#FAC775' : 'transparent',
+          shadowOffset: { width: 0, height: 0 },
+          shadowOpacity: 0.8,
+          shadowRadius: 4,
+          elevation: 2,
+        }} />
+      </View>
+    </View>
+  );
+});
+
+const ActionCardsRow = React.memo(function ActionCardsRow({
+  t,
+  safeCommunityRequests,
+}: {
+  t: (key: string) => string;
+  safeCommunityRequests: any[];
+}) {
+  const router = useRouter();
+  const isFocused = useIsFocused();
+  const { myVendor, vendors } = useVendorStore();
+  const actionCardWidth = Platform.OS === 'android' ? 120 : ACTION_CARD_WIDTH;
+  const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
+  const actionCardSnapInterval = Platform.OS === 'android' ? 130 : ACTION_CARD_SNAP_INTERVAL;
+  const actionCardsScrollRef = useRef<ScrollView>(null);
+  const [activeAartiIndex, setActiveAartiIndex] = useState(0);
+  const [activeVendorIndex, setActiveVendorIndex] = useState(0);
+  const [activeRequestIndex, setActiveRequestIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isFocused) return;
+
+    const aartiInterval = setInterval(() => {
+      if (AppState.currentState !== 'active') return;
+      setActiveAartiIndex(prev => (prev + 1) % ROTATING_AARTIS.length);
+      setActiveRequestIndex(prev => prev + 1);
+    }, 5000);
+
+    const vendorInterval = setInterval(() => {
+      if (AppState.currentState !== 'active') return;
+      setActiveVendorIndex(prev => prev + 1);
+    }, 6000);
+
+    return () => {
+      clearInterval(aartiInterval);
+      clearInterval(vendorInterval);
+    };
+  }, [isFocused]);
+
+  return (
+    <View style={styles.postBannerSection}>
+      <ScrollView
+        ref={actionCardsScrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        snapToInterval={actionCardSnapInterval}
+        decelerationRate="fast"
+        contentContainerStyle={styles.actionCardsScroll}
+        style={[styles.actionCardsScrollView, { marginBottom: 10 }]}
+      >
+        {safeCommunityRequests.length > 0 ? (() => {
+          const req = safeCommunityRequests[activeRequestIndex % safeCommunityRequests.length];
+          const requestTitle = req.type === 'blood'
+            ? `${req.blood_group || 'Blood'} ${t('bloodRequired')}`
+            : (req.title || 'Community Help');
+          const requestDetails = req.type === 'blood'
+            ? `${req.hospital_name || t('emergency')}\n${req.location || t('nearby')}`
+            : (req.description || req.location || 'Nearby');
+          return (
+            <View key={req.id || 0} style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+              <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                <HomeCardTextureBg texture="rose">
+                  <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                    <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                      {req.type === 'blood' ? (
+                        <BloodDropIcon />
+                      ) : (
+                        <Ionicons name="people-outline" size={20} color="#FF0022" />
+                      )}
+                    </View>
+                    <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{requestTitle}</Text>
+                    <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{requestDetails}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      width: '85%',
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: '#FF0022',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      alignSelf: 'center',
+                      shadowColor: '#FF0022',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 3,
+                      elevation: 4,
+                      marginBottom: 6,
+                    }}
+                    onPress={() => {
+                      router.push({
+                        pathname: '/community-request/list',
+                        params: {
+                          requestId: req.id,
+                          community_id: req.community_id
+                        }
+                      });
+                    }}
+                  >
+                    <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                  </TouchableOpacity>
+                </HomeCardTextureBg>
+              </View>
+              <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                  <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })() : (
+          <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+            <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+              <HomeCardTextureBg texture="rose">
+                <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                  <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                    <BloodDropIcon />
+                  </View>
+                  <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2} adjustsFontSizeToFit>{t('needBlood')}</Text>
+                  <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 105, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={4}>{t('createUrgentRequest')}</Text>
+                </View>
+                <TouchableOpacity
+                  style={{
+                    width: '85%',
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: '#FF0022',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    alignSelf: 'center',
+                    shadowColor: '#FF0022',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.3,
+                    shadowRadius: 3,
+                    elevation: 4,
+                    marginBottom: 6,
+                  }}
+                  onPress={() => {
+                    router.push('/community-request/list');
+                  }}
+                >
+                  <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                </TouchableOpacity>
+              </HomeCardTextureBg>
+            </View>
+            <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+              <View style={{ width: 95, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF0000', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+                <Text style={{ color: '#FF0000', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{t('yourCommunity')}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Register Business */}
+        <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+          <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+            <HomeCardTextureBg texture="peach">
+              <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                  <ShopIcon />
+                </View>
+                <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 85, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{myVendor ? t('manageYour') : t('becomeVerified')}</Text>
+                <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 13, fontFamily: 'Inter_500Medium' }} numberOfLines={2}>{myVendor ? t('businessProfile') : t('sanatanVendor')}</Text>
+              </View>
+              <TouchableOpacity
+                style={{
+                  width: '85%',
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: '#FF9500',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  alignSelf: 'center',
+                  shadowColor: '#FF9500',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 3,
+                  elevation: 4,
+                  marginBottom: 6,
+                }}
+                onPress={() => {
+                  if (myVendor) {
+                    router.push(`/vendor/${myVendor.id}`);
+                  } else {
+                    router.push('/(tabs)/vendor');
+                  }
+                }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
+              </TouchableOpacity>
+            </HomeCardTextureBg>
+          </View>
+          <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+            <View style={{ width: 65, height: 18, borderRadius: 9, borderWidth: 1.2, borderColor: '#FF9500', backgroundColor: 'rgba(255, 255, 255, 0.85)', justifyContent: 'center', alignItems: 'center', alignSelf: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}>
+              <Text style={{ color: '#FF9500', fontSize: 10, textAlign: 'center', fontFamily: 'Inter_600SemiBold' }} numberOfLines={1}>{myVendor ? (myVendor.kyc_status === 'verified' ? t('approved') : t('pending')) : t('free')}</Text>
+            </View>
+          </View>
+        </View>
+
+        {(() => {
+          const verifiedVendors = vendors.filter(v => v.kyc_status === 'verified');
+          const targetList = verifiedVendors.length > 0 ? verifiedVendors : (vendors.length > 0 ? vendors : []);
+          const displayVendor = targetList.length > 0 ? targetList[activeVendorIndex % targetList.length] : null;
+          const businessName = displayVendor ? displayVendor.business_name : 'Sai Flower Decorator';
+          const categoryAndLoc = displayVendor
+            ? `${displayVendor.categories?.[0] || 'Decor'}\n${displayVendor.full_address || 'Nearby'}`
+            : 'Flower Decor\nAndheri West';
+
+          return (
+            <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+              <View style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}>
+                <HomeCardTextureBg texture="mint">
+                  <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4 }]}>
+                    <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                      <LotusIcon />
+                    </View>
+                    <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 95, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={2}>{businessName}</Text>
+                    <Text style={{ textAlign: 'center', fontSize: 11, color: '#222', width: Platform.OS === 'android' ? '100%' : 95, marginTop: 4, lineHeight: 14, fontFamily: 'Inter_600SemiBold' }} numberOfLines={2}>{categoryAndLoc}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={{
+                      width: '85%',
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: '#00C781',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      alignSelf: 'center',
+                      shadowColor: '#00C781',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 3,
+                      elevation: 4,
+                      marginBottom: 6,
+                    }}
+                    onPress={() => {
+                      if (displayVendor) {
+                        router.push(`/vendor/${displayVendor.id}`);
+                      } else {
+                        router.push('/(tabs)/vendor');
+                      }
+                    }}
+                  >
+                    <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
+                  </TouchableOpacity>
+                </HomeCardTextureBg>
+              </View>
+              <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={[styles.cardHeaderBadgeTeal, { borderColor: '#00C781', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                  <Text style={[styles.cardBadgeTextDark, { color: '#00C781', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('verifiedVendor')}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* Live Aarti Card 1 */}
+        {(() => {
+          const aarti1 = ROTATING_AARTIS[activeAartiIndex];
+          return (
+            <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
+                onPress={() => {
+                  router.push(`/temple/${encodeURIComponent(aarti1.id)}?autoplayAarti=true`);
+                }}
+              >
+                <HomeCardTextureBg texture="lavender">
+                  <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
+                    <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                      <TempleIcon />
+                    </View>
+                    <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti1.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                        {t('notify')} {t('me')}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          Alert.alert('Notification Set', `We'll notify you when ${aarti1.name} starts.`);
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="notifications-outline" size={15} color="#000" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <View
+                    style={{
+                      width: '85%',
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: '#8C36DB',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      alignSelf: 'center',
+                      shadowColor: '#8C36DB',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 3,
+                      elevation: 4,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                  </View>
+                </HomeCardTextureBg>
+              </TouchableOpacity>
+              <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                  <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* Live Aarti Card 2 */}
+        {(() => {
+          const aarti2 = ROTATING_AARTIS[(activeAartiIndex + 1) % ROTATING_AARTIS.length];
+          return (
+            <View style={{ width: actionCardWidth, height: actionCardHeight, position: 'relative', overflow: 'visible', marginHorizontal: 2 }}>
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
+                onPress={() => {
+                  router.push(`/temple/${encodeURIComponent(aarti2.id)}?autoplayAarti=true`);
+                }}
+              >
+                <HomeCardTextureBg texture="lavender">
+                  <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
+                    <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>
+                      <TempleIcon />
+                    </View>
+                    <Text style={{ textAlign: 'center', fontSize: 13, color: '#000', width: Platform.OS === 'android' ? '100%' : 100, lineHeight: 16, fontFamily: 'Inter_700Bold' }} numberOfLines={3}>{aarti2.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, width: '100%' }}>
+                      <Text style={{ textAlign: 'center', fontSize: 10, color: '#000', lineHeight: 13, fontFamily: 'Inter_500Medium', marginRight: 3 }}>
+                        {t('notify')} {t('me')}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          Alert.alert('Notification Set', `We'll notify you when ${aarti2.name} starts.`);
+                        }}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Ionicons name="notifications-outline" size={15} color="#000" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                  <View
+                    style={{
+                      width: '85%',
+                      height: 28,
+                      borderRadius: 14,
+                      backgroundColor: '#8C36DB',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      alignSelf: 'center',
+                      shadowColor: '#8C36DB',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 3,
+                      elevation: 4,
+                      marginBottom: 6,
+                    }}
+                  >
+                    <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('watch')}</Text>
+                  </View>
+                </HomeCardTextureBg>
+              </TouchableOpacity>
+              <View style={{ position: 'absolute', top: -12, left: 0, right: 0, alignItems: 'center', zIndex: 100 }}>
+                <View style={[{ borderColor: '#8C36DB', backgroundColor: 'rgba(255, 255, 255, 0.85)', paddingHorizontal: 11, paddingVertical: 3, alignSelf: 'center', borderRadius: 10, borderWidth: 1.2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }]}>
+                  <Text style={[styles.cardBadgeTextDark, { color: '#8C36DB', fontFamily: 'Inter_600SemiBold' }]} numberOfLines={1}>{t('templeLabel')}</Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
+      </ScrollView>
+    </View>
+  );
+});
+
+const CommunityCardsRow = React.memo(function CommunityCardsRow({
+  t,
+  resolveCityCommunity,
+  resolveLocalCommunity,
+}: {
+  t: (key: string) => string;
+  resolveCityCommunity: () => any;
+  resolveLocalCommunity: () => any;
+}) {
+  const router = useRouter();
+  return (
+    <View style={styles.twoButtonsRow}>
+      {/* Mumbai Community Card */}
+      {(() => {
+        const resolvedCityComm = resolveCityCommunity() || {
+          id: 'mumbai-fallback',
+          name: t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community',
+          type: 'city',
+          member_count: 1250,
+        };
+        let cityName = resolvedCityComm.name || 'City Community';
+        if (cityName === 'City Community' || cityName.toLowerCase().includes('mumbai')) {
+          cityName = t('language') === 'hi' ? 'मेरा समुदाय' : 'My Community';
+        }
+        const cityId = resolvedCityComm.id;
+        const cityMembers = resolvedCityComm.member_count || resolvedCityComm.members_count || (resolvedCityComm as any).memberCount || 1250;
+        return (
+          <Pressable
+            style={({ pressed }) => [
+              styles.communityCardMini,
+              Platform.OS === 'android' && { overflow: 'hidden' },
+              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+            ]}
+            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+            onPress={() => {
+              router.push({
+                pathname: '/community/[id]',
+                params: { id: cityId, subgroup: 'city', name: cityName }
+              });
+            }}
+          >
+            <Image source={require('../../assets/images/mumbai_pin.webp')} style={styles.communityCardIcon} />
+            <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+              <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('cityCommunity').toUpperCase()}</Text>
+              <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
+                {cityName}
+              </Text>
+              <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{cityMembers} {t('members')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
+          </Pressable>
+        );
+      })()}
+
+      {/* Local Community Card */}
+      {(() => {
+        const resolvedLocalComm = resolveLocalCommunity() || {
+          id: 'food_pune',
+          name: t('language') === 'hi' ? 'पुणे भोजन साझाकरण समूह' : 'Pune Food Sharing Group',
+          type: 'user_group',
+          member_count: 235,
+        };
+        const localId = resolvedLocalComm.id;
+        let realGroupName = resolvedLocalComm.name || 'Pune Food Sharing Group';
+        if (t('language') === 'hi' && realGroupName === 'Pune Food Sharing Group') {
+          realGroupName = 'पुणे भोजन साझाकरण समूह';
+        }
+        const localMembers = resolvedLocalComm.member_count || resolvedLocalComm.members_count || (resolvedLocalComm as any).memberCount || 235;
+        const localSubgroup = resolvedLocalComm.type || 'city';
+        return (
+          <Pressable
+            style={({ pressed }) => [
+              styles.communityCardMini,
+              Platform.OS === 'android' && { overflow: 'hidden' },
+              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+            ]}
+            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+            onPress={() => {
+              router.push({
+                pathname: '/community/[id]',
+                params: { id: localId, subgroup: localSubgroup, name: realGroupName }
+              });
+            }}
+          >
+            <View style={styles.communityCardIconBox}>
+              <Image source={require('../../assets/images/food_sharing.webp')} style={styles.communityCardIconRound} />
+            </View>
+            <View style={[styles.miniCardContent, styles.communityCardTextBlock]}>
+              <Text style={[styles.miniCardType, styles.communityCardLabel]}>{t('foodSharing').toUpperCase()}</Text>
+              <Text style={[styles.miniCardTitle, styles.communityCardTitle]} numberOfLines={2} adjustsFontSizeToFit>
+                {realGroupName}
+              </Text>
+              <View style={styles.miniCardBottomRow}>
+                <Text style={[styles.miniCardMembers, styles.communityCardMembers]}>{localMembers} {t('members')}</Text>
+                <View style={styles.sevaBadgeMini}>
+                  <Text style={styles.sevaBadgeTextMini}>Seva</Text>
+                </View>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={14} color="#D1D1D1" />
+          </Pressable>
+        );
+      })()}
+    </View>
+  );
+});
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -1149,7 +2749,7 @@ export default function HomeScreen() {
               }
               if (batchOperations.length > 0) {
                 await database.write(async () => {
-                  await database.batch(...batchOperations);
+                  await database.batch(batchOperations);
                 });
                 console.log(`[HomeFeed] Batched ${batchOperations.length} posts to local database`);
               }
@@ -1537,6 +3137,8 @@ export default function HomeScreen() {
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [nextFestival, setNextFestival] = useState<any | null>(null);
   const [now, setNow] = useState(new Date());
+  const hanumanStatus = getCurrentHanumanStatus(now);
+  const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
 
   const lastRemindersTimeRef = useRef<number>(0);
@@ -1560,7 +3162,14 @@ export default function HomeScreen() {
     }
   };
 
+  const isSettingReminderRef = useRef<Record<string, boolean>>({});
+
   const handleSetReminder = async (mantraType: string, sessionName: string) => {
+    if (isSettingReminderRef.current[mantraType]) {
+      return;
+    }
+    isSettingReminderRef.current[mantraType] = true;
+
     try {
       const response = await api.post('/jaap/reminder', {
         mantra_type: mantraType,
@@ -1602,6 +3211,10 @@ export default function HomeScreen() {
         t('language') === 'hi' ? 'त्रुटि' : 'Error',
         t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
       );
+    } finally {
+      setTimeout(() => {
+        isSettingReminderRef.current[mantraType] = false;
+      }, 800);
     }
   };
 
@@ -1699,7 +3312,7 @@ export default function HomeScreen() {
         if (!store.vendors || store.vendors.length === 0) {
           store.fetchVendors().catch(() => { });
         }
-        fetchReminders();
+        fetchReminders(true);
       });
       return () => {
         task.cancel();
@@ -1817,23 +3430,6 @@ export default function HomeScreen() {
       loadFeedPosts(0, false, activeTab);
     }
   }, [activeTab]);
-
-  useEffect(() => {
-    if (!isFocused) return;
-    clockIntervalRef.current = setInterval(() => {
-      if (AppState.currentState === 'active') {
-        setNow(new Date());
-      }
-    }, 60_000);
-    return () => {
-      if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
-    };
-  }, [isFocused]);
-
-  const liveActive = isWithinGayatriMantraWindow(now);
-  const liveEnd = getCurrentGayatriEnd(now);
-  const hanumanStatus = getCurrentHanumanStatus(now);
-  const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
   const feedPostKeys = useMemo(
     () => feedPosts.map((post, index) => {
       const prefix = Platform.OS === 'android' ? 'feed-android' : 'feed';
@@ -1872,12 +3468,19 @@ export default function HomeScreen() {
   }, [activePostKey]);
 
   const [activePostId, setActivePostId] = useState<string | null>(null);
+  const activePostIndexRef = useRef(0);
 
   const onViewableItemsChangedRef = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length > 0) {
+      const index = viewableItems[0]?.index;
+      if (typeof index === 'number') {
+        activePostIndexRef.current = index;
+      }
+
       const valid = viewableItems.filter((v: any) => v.isViewable && v.item?.id && v.item.type !== 'empty');
       if (valid.length > 0) {
-        setActivePostId(String(valid[0].item.id));
+        const newId = String(valid[0].item.id);
+        setActivePostId(prev => prev === newId ? prev : newId);
       } else {
         setActivePostId(null);
       }
@@ -2674,6 +4277,7 @@ export default function HomeScreen() {
   };
 
   const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
+    const distanceFromActive = Math.abs(index - activePostIndexRef.current);
     if (item.type === 'empty') {
       return (
         <View style={styles.emptyFeed}>
@@ -3138,7 +4742,15 @@ export default function HomeScreen() {
                   return (
                     <TouchableOpacity
                       activeOpacity={0.95}
-                      onPress={() => router.push('/shravan-paath')}
+                      onPress={() => {
+                        try {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        } catch (_e) { }
+                        router.push({
+                          pathname: '/shravan-paath',
+                          params: { is_interested: reminders['shravan_katha'] ? '1' : '0' }
+                        });
+                      }}
                       style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
                     >
                       <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
@@ -3179,7 +4791,7 @@ export default function HomeScreen() {
                         </View>
 
                         <Image
-                          source={require('../../assets/images/panditji.png')}
+                          source={require('../../assets/images/panditji.webp')}
                           style={{
                             width: '100%',
                             height: '135%',
@@ -3269,18 +4881,18 @@ export default function HomeScreen() {
                         <View
                           pointerEvents="box-none"
                           style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          bottom: 0,
-                          width: '70%',
-                          paddingLeft: 14,
-                          paddingRight: 6,
-                          paddingTop: Platform.OS === 'android' ? 1 : 2,
-                          paddingBottom: 2,
-                          justifyContent: 'flex-start',
-                          alignItems: 'flex-start',
-                        }}>
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            bottom: 0,
+                            width: '70%',
+                            paddingLeft: 14,
+                            paddingRight: 6,
+                            paddingTop: Platform.OS === 'android' ? 1 : 2,
+                            paddingBottom: 2,
+                            justifyContent: 'flex-start',
+                            alignItems: 'flex-start',
+                          }}>
                           {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा (Cross-Platform Unified Typography) */}
                           <View style={{
                             width: '100%',
@@ -3410,9 +5022,16 @@ export default function HomeScreen() {
                             {/* Uiverse Notify Button with sliding hover fill & navigation to shravan-paath */}
                             <UiverseNotifyButton
                               isNotified={!!reminders['shravan_katha']}
-                              onPress={() => {
-                                handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
-                                router.push('/shravan-paath');
+                              onPress={async () => {
+                                try {
+                                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                } catch (_e) { }
+                                const isCurrentlyNotified = !!reminders['shravan_katha'];
+                                await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                                router.push({
+                                  pathname: '/shravan-paath',
+                                  params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
+                                });
                               }}
                               label="Notify Me"
                               notifiedLabel="Notified"
@@ -4203,8 +5822,8 @@ export default function HomeScreen() {
     activeAartiIndex,
     hanumanChantCount,
     shivaChantCount,
-    hanumanStatus.isActive,
-    shivaStatus.isActive,
+    hanumanStatus,
+    shivaStatus,
     reminders,
     unreadCount,
     activeTab,
@@ -4220,16 +5839,13 @@ export default function HomeScreen() {
             <FlashList<any>
               ref={scrollViewRef}
               data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
-              keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
               renderItem={renderFeedPost}
-              {...{ estimatedItemSize: 600 } as any}
+              keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
               extraData={activePostId}
               viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
               onViewableItemsChanged={onViewableItemsChangedRef.current}
               onScroll={handleHomeScroll}
-              initialNumToRender={3}
-              maxToRenderPerBatch={3}
-              windowSize={Platform.OS === 'android' ? 3 : 5}
+              drawDistance={1000}
               removeClippedSubviews={true}
               onEndReached={() => {
                 if (!hasMoreFeed || loadingMoreFeed) return;

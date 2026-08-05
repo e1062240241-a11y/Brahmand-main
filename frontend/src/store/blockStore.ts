@@ -6,7 +6,6 @@
  * effect globally without requiring a navigation reload.
  */
 import { create } from 'zustand';
-import { Platform } from 'react-native';
 import { getBlockedUsers, getUsersWhoBlockedMe } from '../services/firebase/moderationService';
 import { getBlockedUsersApi } from '../services/api';
 

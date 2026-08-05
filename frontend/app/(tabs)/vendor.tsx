@@ -36,7 +36,7 @@ import { useIsFocused } from '@react-navigation/native';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAuthStore } from '../../src/store/authStore';
-import { useVendorStore, Vendor, DEFAULT_CATEGORIES } from '../../src/store/vendorStore';
+import { useVendorStore, Vendor } from '../../src/store/vendorStore';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
 import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, getKYCStatus, uploadJobProfileFile } from '../../src/services/api';
 import * as Location from 'expo-location';
