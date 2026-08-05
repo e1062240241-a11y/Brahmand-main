@@ -3136,6 +3136,8 @@ export default function HomeScreen() {
   const [requestType, setRequestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [nextFestival, setNextFestival] = useState<any | null>(null);
   const [now, setNow] = useState(new Date());
+  const hanumanStatus = getCurrentHanumanStatus(now);
+  const shivaStatus = getCurrentOtherJaapStatus(now, 'shiva');
   const [reminders, setReminders] = useState<Record<string, boolean>>({});
 
   const lastRemindersTimeRef = useRef<number>(0);
