@@ -619,15 +619,6 @@ export default function JaapLandingScreen() {
   });
 
   const jyotirlingaTemples = (temples || []).filter(isJyotirlinga);
-  console.log(
-    '[JYOTIRLINGA AUDIT]',
-    'count=',
-    jyotirlingaTemples.length,
-    'ids=',
-    jyotirlingaTemples.map(t => t.temple_id || t.id)
-  );
-
-  console.log(`[JAAP SCREEN DEBUG] selectedCategory=${selectedCategory} | totalTemples=${temples?.length || 0} | filteredTemples=${filteredTemples.length}`);
 
   const switchSection = useCallback((section: 'jaap' | 'temple') => {
     if (section === activeSection) return;

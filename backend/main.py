@@ -1602,7 +1602,7 @@ async def get_agora_token(channel: str = 'mantra-jaap-live-room', token_data: di
 # =================== AUTH ENDPOINTS ===================
 
 @api_router.post("/admin/reset-database")
-async def reset_database(confirm: str = ""):
+async def reset_database(confirm: str = "", token_data: dict = Depends(verify_token)):
     """
     Reset database for beta launch - removes all test data
     Requires confirmation parameter: confirm=DELETE_ALL_DATA
@@ -1613,7 +1613,7 @@ async def reset_database(confirm: str = ""):
             detail="Confirmation required. Pass confirm=DELETE_ALL_DATA"
         )
     
-    db = await get_db()
+    db, _ = await _ensure_admin_user(token_data)
     deleted = {"users": 0, "chats": 0, "messages": 0, "communities": 0, "otps": 0}
     
     try:
