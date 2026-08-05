@@ -2116,8 +2116,6 @@ const CommunityCardsRow = React.memo(function CommunityCardsRow({
   );
 });
 
-=======
->>>>>>> f23f09d43b85f69a239f8141a1ef927c668517ba
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
