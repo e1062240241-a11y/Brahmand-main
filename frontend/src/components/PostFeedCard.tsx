@@ -38,6 +38,7 @@ const { width: SCREEN_WIDTH_DEFAULT } = Dimensions.get('window');
 
 
 type PostFeedCardProps = {
+  distanceFromActive?: number;
   post: any;
   onLike?: (post: any) => void;
   onComment?: (post: any) => void;
@@ -78,7 +79,7 @@ const parseCaption = (caption: string): { text: string; isHashtag: boolean; isMe
   }));
 };
 
-export const PostFeedCard = memo(({
+const PostFeedCardComponent = ({
   post,
   onLike,
   onComment,
@@ -145,7 +146,14 @@ export const PostFeedCard = memo(({
       hasLoadedOnceRef.current = true;
       setShouldLoadVideo(true);
     }
-  }, [isActive, isFocused]);
+
+    // Unmount if scrolled far away
+    if (distanceFromActive > 3) {
+      setShouldLoadVideo(false);
+      setIsVideoReady(false);
+      hasLoadedOnceRef.current = false; // Reset so it reloads if scrolled back
+    }
+  }, [isActive, isFocused, distanceFromActive]);
 
   useEffect(() => {
     hasLoadedOnceRef.current = false;
@@ -478,10 +486,21 @@ export const PostFeedCard = memo(({
   const viewsCount = Number(post?.views_count || 0);
   const topComments = Array.isArray(post?.top_comments) ? post.top_comments.slice(0, 5) : [];
   const captionText = String(post?.caption || '').trim();
-  const captionWords = captionText.split(/\s+/).filter(Boolean);
-  const collapsedCaption = captionWords.slice(0, 4).join(' ') + (captionWords.length > 4 ? '...' : '');
-  const isLongCaption = captionWords.length > 4;
-  const captionSegments = captionText ? parseCaption(captionText) : [];
+
+  const { captionWords, collapsedCaption, isLongCaption } = useMemo(() => {
+    const words = captionText.split(/\s+/).filter(Boolean);
+    const collapsed = words.slice(0, 4).join(' ') + (words.length > 4 ? '...' : '');
+    return {
+      captionWords: words,
+      collapsedCaption: collapsed,
+      isLongCaption: words.length > 4
+    };
+  }, [captionText]);
+
+  const captionSegments = useMemo(() => {
+    if (!captionText) return [];
+    return parseCaption(captionText);
+  }, [captionText]);
   const router = useRouter();
   const postedAt = post?.created_at || post?.createdAt || post?.createdAtUtc || post?.created_at || null;
   const isReel = post?.category === 'reels' || isVideo;
@@ -946,9 +965,7 @@ export const PostFeedCard = memo(({
       )}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
+};t styles = StyleSheet.create({
   card: {
     backgroundColor: 'transparent',
     marginBottom: 0,
@@ -1109,7 +1126,24 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-});
+};
+
+export const PostFeedCard = memo(
+  PostFeedCardComponent,
+  (prevProps, nextProps) => {
+    return (
+      prevProps.post?.id === nextProps.post?.id &&
+      prevProps.post?.likes_count === nextProps.post?.likes_count &&
+      prevProps.post?.liked_by_me === nextProps.post?.liked_by_me &&
+      prevProps.post?.comments_count === nextProps.post?.comments_count &&
+      prevProps.post?.caption === nextProps.post?.caption &&
+      prevProps.post?.media_url === nextProps.post?.media_url &&
+      prevProps.isActive === nextProps.isActive &&
+      prevProps.isFocused === nextProps.isFocused &&
+      prevProps.distanceFromActive === nextProps.distanceFromActive
+    );
+  }
+);
 
 PostFeedCard.displayName = 'PostFeedCard';
 
