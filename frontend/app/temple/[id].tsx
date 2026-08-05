@@ -1,6 +1,6 @@
 // accessibility: placeholder
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated, Dimensions, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -648,6 +648,35 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   },
 };
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const CATEGORY_BADGE_MAP: Record<string, { emoji: string; label: string }> = {
+  'jyotirlinga': { emoji: '🔱', label: 'Jyotirlinga' },
+  'char dham': { emoji: '🕉', label: 'Char Dham' },
+  'shakti peeth': { emoji: '🌺', label: 'Shakti Peeth' },
+  'divya desam': { emoji: '🏛', label: 'Divya Desam' },
+  'sacred': { emoji: '🙏', label: 'Sacred Temple' },
+  'iskcon': { emoji: '🙏', label: 'ISKCON' },
+  'sikh': { emoji: '☬', label: 'Gurdwara' },
+};
+
+const getCategoryBadge = (category?: string) => {
+  if (!category) return null;
+  const lower = category.toLowerCase().trim();
+  for (const [key, value] of Object.entries(CATEGORY_BADGE_MAP)) {
+    if (lower.includes(key)) return value;
+  }
+  return { emoji: '🛕', label: category };
+};
+
+const formatFollowerCount = (count: number): string => {
+  if (!count || count <= 0) return '0';
+  if (count >= 10000000) return `${(count / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`;
+  if (count >= 100000) return `${(count / 100000).toFixed(1).replace(/\.0$/, '')}L`;
+  if (count >= 1000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}K`;
+  return count.toString();
+};
+
 const getSpecialTempleKey = (name: string) => {
  const normalizedName = String(name || '').toLowerCase();
  const specialTemple = Object.entries(SPECIAL_TEMPLE_DATA).find(([, value]) =>
@@ -788,7 +817,12 @@ export default function TempleDetailScreen() {
  const [posts, setPosts] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
  const [isFollowing, setIsFollowing] = useState(false);
+ const [followerCount, setFollowerCount] = useState(0);
+ const [followLoading, setFollowLoading] = useState(false);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
+  const [galleryModalVisible, setGalleryModalVisible] = useState(false);
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+  const galleryScrollRef = useRef<FlatList>(null);
 
   const templeKey = getSpecialTempleKey(temple?.name || '');
   const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
@@ -855,6 +889,7 @@ export default function TempleDetailScreen() {
           is_verified: t.isVerified,
         });
         setIsFollowing(t.isFollowing || false);
+        setFollowerCount(t.followerCount || 0);
         setLoading(false);
       }
     } catch (error) {
@@ -868,6 +903,7 @@ export default function TempleDetailScreen() {
     if (staticTemple) {
       setTemple(staticTemple);
       setIsFollowing(staticTemple.is_following || false);
+      setFollowerCount(staticTemple.follower_count || 0);
       setLoading(false);
     }
     loadLocalTempleData();
@@ -905,6 +941,7 @@ export default function TempleDetailScreen() {
  setTemple(templeRes.data);
  setPosts(postsRes.data || []);
  setIsFollowing(templeRes.data?.is_following || false);
+ setFollowerCount(templeRes.data?.follower_count || 0);
 
  // Sync fetched details into WatermelonDB
  try {
@@ -989,15 +1026,37 @@ export default function TempleDetailScreen() {
   };
 
  const handleFollowToggle = async () => {
+ if (followLoading) return;
+ setFollowLoading(true);
+ // Optimistic UI: update immediately
+ const wasFollowing = isFollowing;
+ const prevCount = followerCount;
+ setIsFollowing(!wasFollowing);
+ setFollowerCount(wasFollowing ? Math.max(0, prevCount - 1) : prevCount + 1);
  try {
- if (isFollowing) {
+ if (wasFollowing) {
  await unfollowTemple(resolvedTempleId);
  } else {
  await followTemple(resolvedTempleId);
  }
- setIsFollowing(!isFollowing);
  } catch (error) {
+ // Revert on failure
+ setIsFollowing(wasFollowing);
+ setFollowerCount(prevCount);
  console.error('Error toggling follow:', error);
+ } finally {
+ setFollowLoading(false);
+ }
+ };
+
+ const handleShare = async () => {
+ try {
+ await Share.share({
+ message: `🛕 ${displayName}\n📍 ${formatTempleLocation(temple)}\n\nDiscover this sacred temple on Brahmand - India's Spiritual Network`,
+ title: displayName,
+ });
+ } catch (error) {
+ console.error('Error sharing temple:', error);
  }
  };
 
@@ -1034,6 +1093,10 @@ if (!temple) {
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const hasSpecialMap = Boolean(resolvedCoords);
   const displayName = templeKey || temple.name || 'Temple';
+  const categoryBadge = getCategoryBadge(temple.category);
+  const templeImages: string[] = (temple.images && temple.images.length > 0) ? temple.images : [];
+  const darshanTimings = temple.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
+  const templeContact = temple.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
 
   const openTempleLocation = () => {
     const url = resolvedCoords
@@ -1076,33 +1139,82 @@ if (!temple) {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          {/* Temple Info Card */}
+          {/* Temple Info Card — Enhanced Hero */}
  <View style={styles.infoCard}>
- <View style={styles.templeIconLarge}>
- <Image source={templeImageSource} style={styles.templeIconLargeImage} resizeMode="cover" />
- </View>
-            <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
-            {temple.deity && <Text style={styles.templeDeity} numberOfLines={1}>{temple.deity}</Text>}
- <TouchableOpacity
- style={styles.locationCard}
- onPress={openTempleLocation}
- activeOpacity={0.8}
- >
- <View style={styles.locationRow}>
- <Ionicons name="location" size={16} color={COLORS.primary} />
- <Text style={styles.locationText}>
- {formatTempleLocation(temple)}
- </Text>
- </View>
- </TouchableOpacity>
- {temple.is_verified && (
- <View style={styles.verifiedBadge}>
- <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
- <Text style={styles.verifiedText}>
-  {t('language') === 'hi' ? 'सत्यापित मंदिर' : 'Verified Temple'}
- </Text>
- </View>
- )}
+   {/* Full-width Hero Image */}
+   <View style={styles.heroImageContainer}>
+     <Image source={templeImageSource} style={styles.heroImage} resizeMode="cover" />
+     <LinearGradient
+       colors={['transparent', 'rgba(0,0,0,0.55)']}
+       style={styles.heroImageOverlay}
+     />
+   </View>
+
+   {/* Temple Core Info */}
+   <View style={styles.heroInfoContent}>
+     <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
+     {temple.deity && <Text style={styles.templeDeity} numberOfLines={1}>{temple.deity}</Text>}
+
+     {/* Category Badge */}
+     {categoryBadge && (
+       <View style={styles.categoryBadge}>
+         <Text style={styles.categoryBadgeText}>{categoryBadge.emoji} {categoryBadge.label}</Text>
+       </View>
+     )}
+
+     <TouchableOpacity
+       style={styles.locationCard}
+       onPress={openTempleLocation}
+       activeOpacity={0.8}
+     >
+       <View style={styles.locationRow}>
+         <Ionicons name="location" size={16} color={COLORS.primary} />
+         <Text style={styles.locationText}>
+           {formatTempleLocation(temple)}
+         </Text>
+       </View>
+     </TouchableOpacity>
+
+     {/* Badges Row: Verified */}
+     {temple.is_verified && (
+       <View style={styles.verifiedBadge}>
+         <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
+         <Text style={styles.verifiedText}>
+           {t('language') === 'hi' ? 'सत्यापित मंदिर' : 'Verified Temple'}
+         </Text>
+       </View>
+     )}
+
+     {/* Follow + Share Action Row */}
+     <View style={styles.actionRow}>
+       <TouchableOpacity
+         style={[styles.followButton, isFollowing && styles.followButtonActive]}
+         onPress={handleFollowToggle}
+         activeOpacity={0.75}
+         disabled={followLoading}
+       >
+         <Ionicons
+           name={isFollowing ? 'heart' : 'heart-outline'}
+           size={18}
+           color={isFollowing ? '#FFF' : COLORS.primary}
+         />
+         <Text style={[styles.followButtonText, isFollowing && styles.followButtonTextActive]}>
+           {isFollowing
+             ? (t('language') === 'hi' ? 'अनुसरण कर रहे हैं' : 'Following')
+             : (t('language') === 'hi' ? 'अनुसरण करें' : 'Follow Temple')}
+         </Text>
+       </TouchableOpacity>
+
+       <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.75}>
+         <Ionicons name="share-social-outline" size={18} color={COLORS.primary} />
+       </TouchableOpacity>
+     </View>
+
+     {/* Follower Count */}
+     <Text style={styles.followerCountText}>
+       {formatFollowerCount(followerCount)} {t('language') === 'hi' ? 'अनुयायी' : 'Followers'}
+     </Text>
+   </View>
  </View>
 
  {/* Aarti */}                                     
@@ -1188,6 +1300,156 @@ if (!temple) {
  <Text style={styles.descriptionText}>{templeGuidance}</Text>
  </View>
  ) : null}
+
+ {/* Darshan Timings — PHASE 1 */}
+ {darshanTimings && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>
+     {t('language') === 'hi' ? 'दर्शन समय' : 'Darshan Timings'}
+   </Text>
+   <View style={styles.darshanTimingsCard}>
+     <Ionicons name="time-outline" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
+     <View style={{ flex: 1 }}>
+       {Object.entries(darshanTimings).map(([label, time]) => (
+         <View key={label} style={styles.darshanTimingRow}>
+           <Text style={styles.darshanTimingLabel}>{label}</Text>
+           <Text style={styles.darshanTimingValue}>{String(time)}</Text>
+         </View>
+       ))}
+     </View>
+   </View>
+ </View>
+ )}
+
+ {/* Contact Card — PHASE 1 */}
+ {templeContact && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>
+     {t('language') === 'hi' ? 'संपर्क' : 'Temple Contact'}
+   </Text>
+   <TouchableOpacity
+     style={styles.contactCard}
+     onPress={() => Linking.openURL(`tel:${templeContact.replace(/\s/g, '')}`)}
+     activeOpacity={0.7}
+   >
+     <View style={styles.contactIconCircle}>
+       <Ionicons name="call" size={20} color="#FFF" />
+     </View>
+     <View style={{ flex: 1 }}>
+       <Text style={styles.contactNumber}>📞 {templeContact}</Text>
+       <Text style={styles.contactHint}>
+         {t('language') === 'hi' ? 'कॉल करने के लिए टैप करें' : 'Tap to call'}
+       </Text>
+     </View>
+     <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+   </TouchableOpacity>
+ </View>
+ )}
+
+ {/* Temple Gallery — PHASE 2 */}
+ {templeImages.length > 0 && (
+ <View style={styles.gallerySection}>
+   <Text style={[styles.sectionTitle, { marginHorizontal: 16, marginBottom: 12 }]}>
+     {t('language') === 'hi' ? 'गैलरी' : 'Gallery'}
+   </Text>
+   <FlatList
+     ref={galleryScrollRef}
+     data={templeImages}
+     horizontal
+     showsHorizontalScrollIndicator={false}
+     snapToInterval={SCREEN_WIDTH * 0.82 + 12}
+     decelerationRate="fast"
+     contentContainerStyle={{ paddingHorizontal: 16 }}
+     keyExtractor={(item, index) => `gallery-${index}`}
+     renderItem={({ item, index }) => (
+       <TouchableOpacity
+         style={styles.galleryCard}
+         activeOpacity={0.85}
+         onPress={() => { setActiveGalleryIndex(index); setGalleryModalVisible(true); }}
+       >
+         <Image source={{ uri: item }} style={styles.galleryImage} resizeMode="cover" />
+       </TouchableOpacity>
+     )}
+   />
+ </View>
+ )}
+
+ {/* PHASE 4: Future Placeholders (auto-hide when no data) */}
+ {temple.history && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'इतिहास' : 'History'}</Text>
+   <Text style={styles.descriptionText}>{temple.history}</Text>
+ </View>
+ )}
+ {temple.significance && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'महत्व' : 'Significance'}</Text>
+   <Text style={styles.descriptionText}>{temple.significance}</Text>
+ </View>
+ )}
+ {temple.dress_code && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'ड्रेस कोड' : 'Dress Code'}</Text>
+   <View style={styles.infoChip}>
+     <Ionicons name="shirt-outline" size={16} color={COLORS.primary} />
+     <Text style={styles.infoChipText}>{temple.dress_code}</Text>
+   </View>
+ </View>
+ )}
+ {(temple.entry_fee !== undefined && temple.entry_fee !== null) && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'प्रवेश शुल्क' : 'Entry Fee'}</Text>
+   <View style={styles.infoChip}>
+     <Ionicons name="ticket-outline" size={16} color={COLORS.primary} />
+     <Text style={styles.infoChipText}>{temple.entry_fee === 0 ? 'Free Entry' : `₹${temple.entry_fee}`}</Text>
+   </View>
+ </View>
+ )}
+ {temple.best_time_to_visit && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'घूमने का सबसे अच्छा समय' : 'Best Time to Visit'}</Text>
+   <View style={styles.infoChip}>
+     <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
+     <Text style={styles.infoChipText}>{temple.best_time_to_visit}</Text>
+   </View>
+ </View>
+ )}
+ {temple.famous_prasad && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'प्रसिद्ध प्रसाद' : 'Famous Prasad'}</Text>
+   <View style={styles.infoChip}>
+     <Ionicons name="leaf-outline" size={16} color={COLORS.primary} />
+     <Text style={styles.infoChipText}>{temple.famous_prasad}</Text>
+   </View>
+ </View>
+ )}
+ {temple.special_rituals && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'विशेष अनुष्ठान' : 'Special Rituals'}</Text>
+   <Text style={styles.descriptionText}>{temple.special_rituals}</Text>
+ </View>
+ )}
+ {temple.festivals && Array.isArray(temple.festivals) && temple.festivals.length > 0 && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'उत्सव' : 'Festivals'}</Text>
+   <View style={styles.festivalsRow}>
+     {temple.festivals.map((fest: string, i: number) => (
+       <View key={i} style={styles.festivalChip}>
+         <Text style={styles.festivalChipText}>🎪 {fest}</Text>
+       </View>
+     ))}
+   </View>
+ </View>
+ )}
+ {temple.circuit && (
+ <View style={styles.section}>
+   <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'तीर्थ परिक्रमा' : 'Pilgrimage Circuit'}</Text>
+   <View style={styles.infoChip}>
+     <Ionicons name="map-outline" size={16} color={COLORS.primary} />
+     <Text style={styles.infoChipText}>{temple.circuit}</Text>
+   </View>
+ </View>
+ )}
 
   {resolvedYoutubeUrl ? (
   <View style={styles.section}>
@@ -1312,6 +1574,56 @@ if (!temple) {
   </View>
   </View>
   </Modal>
+
+  {/* Gallery Fullscreen Modal */}
+  <Modal
+    visible={galleryModalVisible}
+    transparent
+    animationType="fade"
+    onRequestClose={() => setGalleryModalVisible(false)}
+  >
+    <View style={styles.galleryModalBackdrop}>
+      <TouchableOpacity
+        style={styles.galleryModalClose}
+        onPress={() => setGalleryModalVisible(false)}
+        hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+      >
+        <Ionicons name="close" size={28} color="#FFF" />
+      </TouchableOpacity>
+      <FlatList
+        data={templeImages}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        initialScrollIndex={activeGalleryIndex}
+        getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+        keyExtractor={(_, index) => `fullscreen-${index}`}
+        onMomentumScrollEnd={(e) => {
+          const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          setActiveGalleryIndex(idx);
+        }}
+        renderItem={({ item }) => (
+          <View style={{ width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
+            <Image source={{ uri: item }} style={styles.galleryFullImage} resizeMode="contain" />
+          </View>
+        )}
+      />
+      {/* Pagination dots */}
+      {templeImages.length > 1 && (
+        <View style={styles.galleryPagination}>
+          {templeImages.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.galleryDot,
+                i === activeGalleryIndex && styles.galleryDotActive,
+              ]}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  </Modal>
   </View>
  );
 }
@@ -1357,16 +1669,246 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginTop: 10,
     marginBottom: 16,
-    padding: 20,
-    alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     overflow: 'hidden',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  heroImageContainer: {
+    width: '100%',
+    height: 200,
+    position: 'relative',
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
+  },
+  heroImageOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 80,
+  },
+  heroInfoContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  categoryBadge: {
+    backgroundColor: '#FFF3EB',
+    borderWidth: 1,
+    borderColor: '#FFD0B3',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  categoryBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D95200',
+    letterSpacing: 0.3,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 18,
+    width: '100%',
+  },
+  followButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF0E6',
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    borderRadius: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    gap: 8,
+    flex: 1,
+    maxWidth: 200,
+  },
+  followButtonActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  followButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  followButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  shareButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFF0E6',
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  followerCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginTop: 10,
+  },
+  darshanTimingsCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  darshanTimingRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  darshanTimingLabel: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  darshanTimingValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '700',
+  },
+  contactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    gap: 12,
+  },
+  contactIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contactNumber: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  contactHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  gallerySection: {
+    marginBottom: 20,
+  },
+  galleryCard: {
+    width: SCREEN_WIDTH * 0.82,
+    height: 200,
+    marginRight: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#E5E7EB',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 3,
+  },
+  galleryImage: {
+    width: '100%',
+    height: '100%',
+  },
+  galleryModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryModalClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  galleryFullImage: {
+    width: SCREEN_WIDTH,
+    height: '80%',
+  },
+  galleryPagination: {
+    position: 'absolute',
+    bottom: 40,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  galleryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  galleryDotActive: {
+    backgroundColor: '#FFFFFF',
+    width: 20,
+  },
+  infoChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  infoChipText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  festivalsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  festivalChip: {
+    backgroundColor: '#FFF3EB',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#FFD0B3',
+  },
+  festivalChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#D95200',
   },
   templeIconLarge: {
     width: 90,

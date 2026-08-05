@@ -63,6 +63,7 @@ type PostFeedCardProps = {
   onCancelEdit?: () => void;
   onSaveEdit?: () => void;
   isSavingEdit?: boolean;
+  distanceFromActive?: number;
 };
 
 const formatTime = (raw: any) => {
@@ -106,6 +107,7 @@ const PostFeedCardComponent = ({
   onCancelEdit,
   onSaveEdit,
   isSavingEdit = false,
+  distanceFromActive = 0,
 }: PostFeedCardProps) => {
   const { t, language } = useTranslation();
   const { width: SCREEN_WIDTH } = useWindowDimensions();

@@ -268,7 +268,7 @@ export default function ShravanPaathPage() {
                 <Text style={styles.shravanVisheshText}>🔱 श्रावण विशेष 🔱</Text>
               </View>
 
-              <Text style={styles.heroTitleMain}>श्रावण मास</Text>
+              <Text style={[styles.heroTitleMain, { letterSpacing: 0 }]}>श्रावण मास</Text>
               <View style={styles.subTitleRow}>
                 <Text style={styles.ornamentArrow}>⤝</Text>
                 <Text style={styles.heroTitleSub}>शिव कथा</Text>
