@@ -13,3 +13,6 @@
 ## 2024-08-04 - [Fix N+1 query in document deletions]
 **Learning:** Found N+1 query loops when deleting comments associated with a post or chat message, as well as when cleaning up KYC submissions and vendor reviews. Calling `await db.delete_document` inside a loop degrades performance significantly when deleting objects with many dependencies.
 **Action:** Always prefer `batch_delete_documents` via the `FirestoreDB` wrapper rather than individual `delete_document` calls when cleaning up associated dependencies from Firestore.
+## 2024-08-05 - [Optimize bulk notification creation]
+**Learning:** Found an N+1 query issue in `_save_bulk_notifications` where `db.create_document` was called in parallel for each user during bulk notifications (e.g., for SOS alerts). Even though it was done concurrently via `asyncio.gather`, it still resulted in N separate database creation calls.
+**Action:** Replaced concurrent `create_document` calls with a single `batch_create_documents` call to construct all notifications in one operation. Then iteratively appended the returned IDs to the dictionary before emitting the Socket events concurrently.

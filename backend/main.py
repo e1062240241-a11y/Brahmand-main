@@ -13904,31 +13904,39 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
     if not user_ids:
         return
 
-    async def _save_single_notification(uid):
-        try:
-            notification_data = {
-                'user_id': uid,
-                'title': title,
-                'body': body,
-                'notification_type': notification_type,
-                'data': data,
-                'is_read': False,
-                'created_at': datetime.now(timezone.utc).isoformat()
-            }
-            notification_id = await db.create_document('notifications', notification_data)
-            notification_data['id'] = notification_id
-            
-            # Emit Socket.IO event to user's private room
-            try:
-                await sio.emit('new_notification', notification_data, room=f"user_{uid}")
-                logger.info(f"Emitted real-time notification to user_{uid}")
-            except Exception as se:
-                logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
-        except Exception as e:
-            logger.error(f"Failed to save bulk notification for user {uid}: {e}")
+    # ⚡ Bolt Optimization: Batch create instead of N+1 create_document calls
+    now_iso = datetime.now(timezone.utc).isoformat()
+    notification_docs = [
+        {
+            'user_id': uid,
+            'title': title,
+            'body': body,
+            'notification_type': notification_type,
+            'data': data,
+            'is_read': False,
+            'created_at': now_iso
+        }
+        for uid in user_ids
+    ]
 
-    # Process all notifications in parallel to avoid sequential database write and socket emission delays
-    await asyncio.gather(*[_save_single_notification(uid) for uid in user_ids])
+    try:
+        created_ids = await db.batch_create_documents('notifications', notification_docs)
+        for i, doc in enumerate(notification_docs):
+            if i < len(created_ids):
+                doc['id'] = created_ids[i]
+    except Exception as e:
+        logger.error(f"Failed to batch save bulk notifications: {e}")
+        return
+
+    async def _emit_socket(uid, notif_data):
+        try:
+            await sio.emit('new_notification', notif_data, room=f"user_{uid}")
+            logger.info(f"Emitted real-time notification to user_{uid}")
+        except Exception as se:
+            logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
+
+    # Process all socket emissions in parallel
+    await asyncio.gather(*[_emit_socket(doc['user_id'], doc) for doc in notification_docs])
 
 
 @api_router.post("/sos")
