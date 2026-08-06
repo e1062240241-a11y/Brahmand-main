@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { InstagramRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
-import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from './HomeFeedTabs';
+import HomeFeedTabs, { HOME_FEED_TABS_HEIGHT } from '../HomeFeedTabs';
 import { useFeedStore } from '../../store/feedStore';
 import { useFeedOptimizationStore } from '../../store/feedOptimizationStore';
 import { getPostsFeed } from '../../services/api';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FEED_PAGE_SIZE = 10;
 
 type FeedSectionProps = {
@@ -21,7 +22,7 @@ type FeedSectionProps = {
   scrollRef: React.RefObject<any>;
   onScroll?: (event: any) => void;
   onCreatePost: () => void;
-  homeHeader: React.ReactNode;
+  homeHeader: React.ReactElement | null;
   onRefresh: () => Promise<void>;
   isRefreshing: boolean;
   blockedUserIds: string[];
@@ -267,31 +268,32 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     );
   }, [activePostId, activePostIndexRef, user, onLikePost, onOpenComment, onOpenProfile, onPostMenu, onRepost, onShare]);
 
+  const overrideItemLayout = useCallback((layout: { span?: number; size?: number }, item: any) => {
+    if (!item || item.type === 'empty') {
+      layout.size = 200;
+      return;
+    }
+    const availableWidth = SCREEN_WIDTH - 32;
+    if (item.media_width && item.media_height && item.media_width > 0) {
+      const aspectRatio = item.media_height / item.media_width;
+      const mediaHeight = Math.min(availableWidth * aspectRatio, 550);
+      layout.size = Math.round(mediaHeight + 160);
+    } else if (item.media_url || item.image_url || item.video_url || item.media_urls?.length) {
+      layout.size = 480;
+    } else {
+      layout.size = 220;
+    }
+  }, []);
+
   return (
     <View style={{ flex: 1 }}>
-      <View style={{ zIndex: 10, elevation: 10, backgroundColor: 'transparent' }}>
-        <HomeFeedTabs
-          activeTab={activeTab}
-          onTabChange={(tab: string) => {
-            setActivePostId(null);
-            postOffsetsRef.current = {};
-            postHeightsRef.current = {};
-            requestAnimationFrame(() => {
-              setActiveTab(tab);
-              setFocusTrigger(prev => prev + 1);
-            });
-          }}
-          onCreatePost={onCreatePost}
-        />
-      </View>
-
       <FlashList<any>
         ref={scrollRef}
         data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
         renderItem={renderFeedPost}
         keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
         extraData={activePostId}
-        estimatedItemSize={600}
+        overrideItemLayout={overrideItemLayout}
         viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
         onViewableItemsChanged={onViewableItemsChangedRef.current}
         onScroll={onScroll}
