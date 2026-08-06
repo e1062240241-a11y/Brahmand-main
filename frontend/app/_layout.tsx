@@ -1226,10 +1226,12 @@ export default function RootLayout() {
         <MuteProvider>
           <Stack screenOptions={{
             headerShown: false,
-            animation: 'ios_from_right',
+            animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
             gestureEnabled: true,
             gestureDirection: 'horizontal',
-            contentStyle: { backgroundColor: COLORS.background }
+            contentStyle: { backgroundColor: COLORS.background },
+            statusBarStyle: isDarkScreen ? 'light' : 'dark',
+            statusBarTranslucent: true,
           }}>
             {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
             <Stack.Screen
@@ -1254,6 +1256,60 @@ export default function RootLayout() {
               options={{
                 animation: 'fade',
                 gestureEnabled: false
+              }}
+            />
+            <Stack.Screen
+              key="community-request/list"
+              name="community-request/list"
+              options={{
+                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
+                statusBarStyle: 'dark',
+                statusBarTranslucent: true,
+              }}
+            />
+            <Stack.Screen
+              key="community-request/blood-request"
+              name="community-request/blood-request"
+              options={{
+                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
+                statusBarStyle: 'dark',
+                statusBarTranslucent: true,
+              }}
+            />
+            <Stack.Screen
+              key="vendor/[id]"
+              name="vendor/[id]"
+              options={{
+                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
+                statusBarStyle: 'dark',
+                statusBarTranslucent: true,
+              }}
+            />
+            <Stack.Screen
+              key="vendor/dashboard"
+              name="vendor/dashboard"
+              options={{
+                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
+                statusBarStyle: 'dark',
+                statusBarTranslucent: true,
+              }}
+            />
+            <Stack.Screen
+              key="vendor/business-details"
+              name="vendor/business-details"
+              options={{
+                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
+                statusBarStyle: 'dark',
+                statusBarTranslucent: true,
+              }}
+            />
+            <Stack.Screen
+              key="(tabs)/vendor"
+              name="(tabs)/vendor"
+              options={{
+                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
+                statusBarStyle: 'dark',
+                statusBarTranslucent: true,
               }}
             />
             {/* Modals and Creation Forms - Slide from Bottom */}

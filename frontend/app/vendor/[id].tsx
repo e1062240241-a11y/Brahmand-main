@@ -428,6 +428,7 @@ export default function VendorProfileScreen() {
       locations={[0, 0.0481, 0.2404, 0.6202, 1.0]}
       style={styles.container}
     >
+      <StatusBar style="dark" backgroundColor="transparent" translucent />
       {/* Solid Header Screen */}
       <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top, 10) }]}>
         <View style={styles.headerLeftCol}>

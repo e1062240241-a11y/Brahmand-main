@@ -14,6 +14,7 @@ import {View,
   ViewStyle,
   TextStyle} from 'react-native';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -970,6 +971,7 @@ export default function VendorDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <StatusBar style="dark" backgroundColor="transparent" translucent />
       {/* Background Gradient */}
       <LinearGradient 
         colors={['#FF8D57', '#EA9B76', '#FFEEE5']} 
