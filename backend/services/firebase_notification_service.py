@@ -684,3 +684,83 @@ class FirebaseNotificationService:
             body=body,
             data={"mantra_type": mantra_type, "session_name": session_name, "type": "jaap_reminder"}
         )
+
+    @staticmethod
+    async def notify_library_reminder(
+        user_id: str,
+        book_name: Optional[str] = None,
+        target_route: Optional[str] = None,
+        notification_id: Optional[str] = None,
+        force: bool = False
+    ) -> Dict[str, Any]:
+        """Send push notification for library reading sessions (max 1 per 4 days per user)"""
+        db = await FirebaseNotificationService.get_db()
+
+        # Enforce 1 notification per 4 days (345,600 seconds) per user
+        FOUR_DAYS_SECONDS = 4 * 86400
+        if not force:
+            try:
+                existing = await db.query_documents(
+                    'notifications',
+                    filters=[('user_id', '==', user_id), ('notification_type', '==', 'library_reminder')]
+                )
+                now_ts = datetime.utcnow()
+                for doc in (existing or []):
+                    created_str = doc.get('created_at', '')
+                    if created_str:
+                        try:
+                            if created_str.endswith('Z'):
+                                created_str = created_str[:-1]
+                            created_dt = datetime.fromisoformat(created_str)
+                            if (now_ts - created_dt).total_seconds() < FOUR_DAYS_SECONDS:
+                                logger.info(f"Skipping library reminder for user {user_id}: max 1 notification per 4 days allowed")
+                                return {"status": "skipped", "reason": "Already sent within last 4 days"}
+                        except Exception:
+                            pass
+            except Exception as err:
+                logger.warning(f"Error checking 4-day limit for library_reminder: {err}")
+
+
+        # Set title, body and navigation route
+        if book_name and str(book_name).strip():
+            clean_book_name = str(book_name).strip()
+            title = "🔖 Pick up your reading session"
+            body = f'"{clean_book_name}" is waiting for you in your library. Resume reading now and gain deeper insights!'
+            route = target_route or "/library"
+        else:
+            title = "✨ Unfold sacred wisdom today"
+            body = "Give some time to begin reading  Bhagvad Geeta!"
+            route = target_route or "/library"
+
+        notif_data = {
+            "type": "library_reminder",
+            "book_name": book_name or "",
+            "route": route
+        }
+
+        try:
+            await FirebaseNotificationService.create_notification(
+                user_id=user_id,
+                title=title,
+                body=body,
+                notification_type="library_reminder",
+                data=notif_data,
+                notification_id=notification_id,
+                overwrite=False
+            )
+        except Exception as e:
+            from google.api_core.exceptions import AlreadyExists
+            if isinstance(e, AlreadyExists) or "AlreadyExists" in type(e).__name__ or "409" in str(e):
+                logger.info(f"Skipping duplicate library reminder for user {user_id} (AlreadyExists in DB)")
+                return {"status": "skipped", "reason": "Already exists"}
+            logger.warning(f"Failed to create library reminder notification doc: {e}")
+
+        res = await FirebaseNotificationService.send_push_notification(
+            user_id=user_id,
+            title=title,
+            body=body,
+            data=notif_data
+        )
+        return {"status": "success", "result": res}
+
+

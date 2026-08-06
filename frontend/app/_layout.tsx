@@ -138,16 +138,29 @@ function useAppBackHandler() {
     const onBackPress = () => {
       console.log('[BackHandler] Pathname:', pathname);
 
-      // 1. If we are on a main tab screen, NEVER exit with a back gesture/button
-      const mainTabs = [
-        '/home', '/messages', '/jaap', '/jobs', '/profile', '/vendor', '/index',
-        '/(tabs)/home', '/(tabs)/messages', '/(tabs)/jaap', '/(tabs)/jobs', '/(tabs)/profile', '/(tabs)/vendor'
+      // 1. If we are on the Home tab (or root path), exit the app on back press (Instagram behavior)
+      const homeTabs = [
+        '/home', '/(tabs)/home', '/index', '/', ''
       ];
 
-      if (mainTabs.includes(pathname) || pathname === '/' || pathname === '') {
-        console.log('[BackHandler] Blocking exit at root-like path.');
-        return true; // Consume event, do nothing
+      if (homeTabs.includes(pathname)) {
+        console.log('[BackHandler] Home tab back pressed -> Exiting app');
+        BackHandler.exitApp();
+        return true;
       }
+
+      // 2. If we are on secondary main tabs, navigate back to Home tab
+      const secondaryTabs = [
+        '/messages', '/jaap', '/jobs', '/profile', '/vendor',
+        '/(tabs)/messages', '/(tabs)/jaap', '/(tabs)/jobs', '/(tabs)/profile', '/(tabs)/vendor'
+      ];
+
+      if (secondaryTabs.includes(pathname)) {
+        console.log('[BackHandler] Secondary tab back pressed -> Navigating to Home tab');
+        safeNavigate(() => router.replace('/(tabs)/home'));
+        return true;
+      }
+
 
       // Safe check for canGoBack
       const safeCanGoBack = () => {
@@ -590,7 +603,16 @@ function useNotificationResponseHandler() {
         navigateOrQueue(`/live-jaap-welcome?mantraType=${data.mantra_type}&title=${encodeURIComponent(titleVal)}`);
         return;
       }
+
+      // Handle Library reminder notification tap - navigate user directly to library screen
+      if (data.type === 'library_reminder') {
+        const targetRoute = data.route || '/library';
+        console.log(`[Push] Routing library_reminder tap to ${targetRoute}`);
+        navigateOrQueue(targetRoute);
+        return;
+      }
     };
+
 
     let subscription: any;
     const initListener = async () => {
@@ -1226,12 +1248,10 @@ export default function RootLayout() {
         <MuteProvider>
           <Stack screenOptions={{
             headerShown: false,
-            animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
+            animation: 'ios_from_right',
             gestureEnabled: true,
             gestureDirection: 'horizontal',
-            contentStyle: { backgroundColor: COLORS.background },
-            statusBarStyle: isDarkScreen ? 'light' : 'dark',
-            statusBarTranslucent: true,
+            contentStyle: { backgroundColor: COLORS.background }
           }}>
             {/* Disable swipe-back gesture on the main tabs to prevent exiting to splash/auth */}
             <Stack.Screen
@@ -1256,51 +1276,6 @@ export default function RootLayout() {
               options={{
                 animation: 'fade',
                 gestureEnabled: false
-              }}
-            />
-            <Stack.Screen
-              key="community-request/list"
-              name="community-request/list"
-              options={{
-                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
-                statusBarStyle: 'dark',
-                statusBarTranslucent: true,
-              }}
-            />
-            <Stack.Screen
-              key="community-request/blood-request"
-              name="community-request/blood-request"
-              options={{
-                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
-                statusBarStyle: 'dark',
-                statusBarTranslucent: true,
-              }}
-            />
-            <Stack.Screen
-              key="vendor/[id]"
-              name="vendor/[id]"
-              options={{
-                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
-                statusBarStyle: 'dark',
-                statusBarTranslucent: true,
-              }}
-            />
-            <Stack.Screen
-              key="vendor/dashboard"
-              name="vendor/dashboard"
-              options={{
-                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
-                statusBarStyle: 'dark',
-                statusBarTranslucent: true,
-              }}
-            />
-            <Stack.Screen
-              key="vendor/business-details"
-              name="vendor/business-details"
-              options={{
-                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
-                statusBarStyle: 'dark',
-                statusBarTranslucent: true,
               }}
             />
             {/* Modals and Creation Forms - Slide from Bottom */}

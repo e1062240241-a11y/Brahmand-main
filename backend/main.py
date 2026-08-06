@@ -41,7 +41,22 @@ from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+import gzip
+
+# 🛠 Patch gzip.GzipFile.close to prevent Python 3.14+ GC warning: "ValueError: I/O operation on closed file"
+_orig_gzip_close = gzip.GzipFile.close
+def _safe_gzip_close(self):
+    try:
+        fileobj = getattr(self, 'fileobj', None)
+        if fileobj is None or getattr(fileobj, 'closed', False):
+            return
+        _orig_gzip_close(self)
+    except (ValueError, AttributeError, OSError):
+        pass
+gzip.GzipFile.close = _safe_gzip_close
+
 from fastapi.responses import JSONResponse, StreamingResponse, Response, HTMLResponse
+
 import socketio
 
 # Add backend directory to path
@@ -3973,53 +3988,29 @@ async def get_posts_feed(
     # Populate location data
     user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
-    # Pre-fetch following IDs if tab is following
-    following_ids = set()
-    if current_user:
-        following_ids = set(current_user.get('following', []) or [])
+    # Assemble the posts pool
+    posts_dict = {}
+    for p in pool1:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in pool2:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in latest_pool:
+        if p.get('id'):
+            posts_dict[p['id']] = p
 
-    if tab == 'following':
-        if not following_ids:
-            return {"items": [], "has_more": False}
-        following_list = list(following_ids)
-        following_posts = []
-        for i in range(0, len(following_list), 10):
-            chunk = following_list[i:i+10]
-            try:
-                fp = await db.query_documents('posts', filters=[('user_id', 'in', chunk)], limit=50)
-                following_posts.extend(fp)
-            except Exception as e:
-                logger.error(f"Error querying following posts for chunk {chunk}: {e}")
-        
-        posts_dict = {}
-        for p in following_posts:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        posts = list(posts_dict.values())
-    else:
-        # Assemble the posts pool
-        posts_dict = {}
-        for p in pool1:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        for p in pool2:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        for p in latest_pool:
-            if p.get('id'):
-                posts_dict[p['id']] = p
+    # Fallback if empty
+    if not posts_dict:
+        try:
+            fallback = await db.query_documents('posts', limit=100)
+            for p in fallback:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Firestore query error in fallback get_posts_feed: %s", e)
 
-        # Fallback if empty
-        if not posts_dict:
-            try:
-                fallback = await db.query_documents('posts', limit=100)
-                for p in fallback:
-                    if p.get('id'):
-                        posts_dict[p['id']] = p
-            except Exception as e:
-                logger.error("Firestore query error in fallback get_posts_feed: %s", e)
-
-        posts = list(posts_dict.values())
+    posts = list(posts_dict.values())
 
     # Filter out already-seen posts and non-public posts
     public_posts = []
@@ -4041,19 +4032,23 @@ async def get_posts_feed(
             
         lvl = p.get('community_level', 'country') # Default to country/public
         
-        # Scope filtering (bypass for following tab so explicitly followed user posts are shown)
-        if tab != 'following':
-            if lvl == 'city':
-                p_city = str(p.get('city') or '').strip().lower()
-                if p_city and u_city and p_city != u_city: continue
-            elif lvl == 'state':
-                p_state = str(p.get('state') or '').strip().lower()
-                if p_state and u_state and p_state != u_state: continue
-            elif lvl == 'country':
-                p_country = str(p.get('country') or '').strip().lower()
-                if p_country and u_country and p_country != u_country: continue
+        # Scope filtering
+        if lvl == 'city':
+            p_city = str(p.get('city') or '').strip().lower()
+            if p_city and u_city and p_city != u_city: continue
+        elif lvl == 'state':
+            p_state = str(p.get('state') or '').strip().lower()
+            if p_state and u_state and p_state != u_state: continue
+        elif lvl == 'country':
+            p_country = str(p.get('country') or '').strip().lower()
+            if p_country and u_country and p_country != u_country: continue
             
         public_posts.append(p)
+
+    # Pre-fetch following IDs if tab is following
+    following_ids = set()
+    if tab == 'following' and current_user:
+        following_ids = set(current_user.get('following', []) or [])
 
     # Fetch user interest preferences
     user_interests: dict = {}
@@ -10479,6 +10474,27 @@ async def test_send_notification(
             data={"type": "message", "chat_id": "test_chat_123"}
         )
     return {"status": "success", "result": res}
+
+
+@api_router.post("/notifications/library-reminder")
+async def send_library_reminder_notification(
+    data: dict,
+    token_data: dict = Depends(verify_token)
+):
+    user_id = data.get("target_user_id") or token_data["user_id"]
+    book_name = data.get("book_name")
+    target_route = data.get("route") or data.get("target_route")
+    force = bool(data.get("force", False))
+    
+    result = await FirebaseNotificationService.notify_library_reminder(
+        user_id=user_id,
+        book_name=book_name,
+        target_route=target_route,
+        force=force
+    )
+    return {"status": "success", "result": result}
+
+
 
 
 @api_router.post("/ai/chat")

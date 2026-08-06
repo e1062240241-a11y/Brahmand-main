@@ -20,7 +20,6 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import { COLORS, FONTS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -542,7 +541,6 @@ export default function ActiveRequestsList() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" backgroundColor="transparent" translucent />
       <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={StyleSheet.absoluteFillObject} />
       
       <SafeAreaView style={styles.safeArea} edges={['top']}>
