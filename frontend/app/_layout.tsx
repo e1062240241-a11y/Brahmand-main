@@ -1303,15 +1303,6 @@ export default function RootLayout() {
                 statusBarTranslucent: true,
               }}
             />
-            <Stack.Screen
-              key="(tabs)/vendor"
-              name="(tabs)/vendor"
-              options={{
-                animation: Platform.OS === 'android' ? 'fade' : 'ios_from_right',
-                statusBarStyle: 'dark',
-                statusBarTranslucent: true,
-              }}
-            />
             {/* Modals and Creation Forms - Slide from Bottom */}
             <Stack.Screen
               key="community-request/blood"
