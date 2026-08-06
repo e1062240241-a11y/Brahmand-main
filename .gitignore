@@ -399,18 +399,6 @@ backend/test_*.py
 *.xcode.env
 *.xcode.env.local
 frontend/ios/.xcode.env
-frontend/android/app/src/debug/
-frontend/android/app/src/debugOptimized/
-frontend/android/app/src/main/res/drawable*
-frontend/android/app/src/main/res/mipmap*
-frontend/android/app/src/main/res/values/
-frontend/android/app/src/main/res/drawable/
-frontend/android/app/src/main/java/com/brahmand/app/MainActivity.kt
-frontend/android/app/proguard-rules.pro
-frontend/android/app/src/main/AndroidManifest.xml
-frontend/android/gradle/
-frontend/android/gradlew
-frontend/android/gradle.properties
 
 # iOS Pods & Native Caches
 ios/Pods/
