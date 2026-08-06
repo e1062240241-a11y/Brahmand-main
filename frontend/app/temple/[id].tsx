@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { getTemple, getTemplePosts } from '../../src/services/api';
+import { getTemple, getTemplePosts, followTemple, unfollowTemple } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -819,6 +819,28 @@ export default function TempleDetailScreen() {
  const [isFollowing, setIsFollowing] = useState(false);
  const [followerCount, setFollowerCount] = useState(0);
  const [followLoading, setFollowLoading] = useState(false);
+
+ const handleFollowToggle = async () => {
+   if (followLoading || !temple) return;
+   setFollowLoading(true);
+   const nextState = !isFollowing;
+   setIsFollowing(nextState);
+   setFollowerCount((prev) => (nextState ? prev + 1 : Math.max(0, prev - 1)));
+
+   try {
+     if (nextState) {
+       await followTemple(resolvedTempleId);
+     } else {
+       await unfollowTemple(resolvedTempleId);
+     }
+   } catch (error) {
+     console.error('Error toggling temple follow status:', error);
+     setIsFollowing(!nextState);
+     setFollowerCount((prev) => (nextState ? Math.max(0, prev - 1) : prev + 1));
+   } finally {
+     setFollowLoading(false);
+   }
+ };
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
