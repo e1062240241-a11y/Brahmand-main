@@ -238,7 +238,35 @@ export default function TempleScreen() {
       if (selectedCategory === 'Jyotirlinga') {
         filteredRecords = jyotisByJs;
       } else if (selectedCategory === 'Shakti Peetha') {
-        filteredRecords = allLocalTemples.filter(isShaktiPeetha);
+        const rawShaktiList = allLocalTemples.filter(isShaktiPeetha);
+        // Sort: Temples with verified website or helpline come first
+        filteredRecords = rawShaktiList.sort((a: any, b: any) => {
+          const aId = (a.templeId || a.temple_id || a.id || '').toLowerCase();
+          const aName = (a.name || '').toLowerCase();
+          const bId = (b.templeId || b.temple_id || b.id || '').toLowerCase();
+          const bName = (b.name || '').toLowerCase();
+
+          const hasInfo = (id: string, name: string) => {
+            return (
+              name.includes('chintpurni') || name.includes('kanyakumari') || name.includes('srisailam') ||
+              name.includes('kamakhya') || name.includes('naina') || name.includes('jwala') ||
+              name.includes('tripura') || name.includes('biraja') || name.includes('hinglaj') ||
+              name.includes('harsiddhi') || name.includes('sharda') || name.includes('amarnath') ||
+              name.includes('kamakshi') || name.includes('maihar') || name.includes('taratarini') ||
+              name.includes('vindhya') || name.includes('danteshwari') || name.includes('muktinath') ||
+              name.includes('kailash') || name.includes('baidyanath') || name.includes('bhabanipur') ||
+              name.includes('kiriteswari') || name.includes('manibandh') || name.includes('vishalakshi') ||
+              name.includes('katyayani') || name.includes('bhadrakali') || name.includes('devi talab') ||
+              name.includes('pashupati') || name.includes('sugandha') || name.includes('attahas') ||
+              name.includes('kankalitala') || name.includes('nalateswari') || name.includes('janaki') ||
+              name.includes('kolhapur') || id.includes('chintpurni') || id.includes('kamakhya')
+            );
+          };
+
+          const aHas = hasInfo(aId, aName) ? 1 : 0;
+          const bHas = hasInfo(bId, bName) ? 1 : 0;
+          return bHas - aHas;
+        });
       } else if (selectedCategory === 'Char Dham') {
         if (charDhamSubFilter === 'bada') {
           filteredRecords = allLocalTemples.filter(isBadaCharDham);

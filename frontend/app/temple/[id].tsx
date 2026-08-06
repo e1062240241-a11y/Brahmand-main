@@ -6,13 +6,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { getTemple, getTemplePosts, followTemple, unfollowTemple } from '../../src/services/api';
+import { getTemple, getTemplePosts } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { getTempleImageById } from '../../src/constants/templeImages';
+import { getTempleImageById, getTempleImageByName, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 import { CustomLoader } from '../../src/components/CustomLoader';
+import { PilgrimageTravelSection } from '../../src/components/PilgrimageTravelSection';
+import { TempleFacilitiesSection } from '../../src/components/TempleFacilitiesSection';
+import { DarshanAartiTimeline } from '../../src/components/DarshanAartiTimeline';
+import { AboutTempleStory } from '../../src/components/AboutTempleStory';
 
 const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
  'ISKCON Mira Road': 'Mira Road, Thane',
@@ -44,18 +48,24 @@ const DEFAULT_TEMPLE_LOCATIONS: Record<string, string> = {
 const isWeb = Platform.OS === 'web';
 
 const SPECIAL_TEMPLE_DATA: Record<string, {
- aliases: string[];
- locationLabel: string;
- coords: { latitude: number; longitude: number };
- aartiSessions: { title: string; time: string }[];
- description: string;
- guidance: string;
- youtubeUrl?: string;
+  aliases: string[];
+  locationLabel: string;
+  coords: { latitude: number; longitude: number };
+  aartiSessions: { title: string; time: string }[];
+  description: string;
+  guidance: string;
+  youtubeUrl?: string;
+  establishedYear?: string;
+  entryFee?: string;
+  bestTimeToVisit?: string;
 }> = {
  'ISKCON Mira Road': {
  aliases: ['mira road', 'iskcon mira', 'iskon borivali', 'iskcon borivali', 'radhagiridhari', 'borivali', 'brovali'],
  locationLabel: 'Mira Road, Thane',
  coords: { latitude: 19.2694199, longitude: 72.8716525 },
+ establishedYear: '2015 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
  aartiSessions: [
  { title: 'Mangala Aarti', time: '4:30 AM' },
  { title: 'Tulsi Puja', time: '5:00 AM - 5:15 AM' },
@@ -70,6 +80,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  aliases: ['shirdi', 'sai baba', 'saibaba', 'shirdi sai', 'sai baba samadhi mandir'],
  locationLabel: 'Shirdi, Maharashtra',
  coords: { latitude: 19.7661782, longitude: 74.4769973 },
+ establishedYear: '1922 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
  aartiSessions: [
  { title: 'Mangala Aarti', time: '5:00 AM' },
  { title: 'Dwarkamai Aarti', time: '6:30 AM' },
@@ -81,166 +94,205 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  guidance: 'Guidance: To reach Shirdi Sai Baba Temple, arrive at Shirdi railway station or Shirdi airport and take a short taxi or auto-rickshaw to the main temple complex. The Samadhi Mandir is located in central Shirdi near the main road, and marked local signs guide visitors to the temple, Dwarkamai, and Chavadi. During festivals, allow extra time for darshan and follow the designated queues and visitor lanes.',
  youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A',
  },
- 'Somnath Temple – Gujarat': {
- aliases: ['somnath', 'prabhas patan', 'jyotirling-somnath'],
- locationLabel: 'Prabhas Patan, Gujarat',
- coords: { latitude: 20.888, longitude: 70.4012 },
- aartiSessions: [
- { title: 'Mangala Aarti', time: '7:00 AM' },
- { title: 'Madhyan Aarti', time: '12:00 PM' },
- { title: 'Sandhya Aarti', time: '7:00 PM' },
- ],
- description: 'Somnath Temple is one of the twelve sacred Jyotirling shrines of Lord Shiva, located at Prabhas Patan on the Gujarat coast. Revered for its deep spiritual significance and long history of restoration, Somnath remains a major pilgrimage destination where devotees gather for daily darshan, aarti, and temple rituals.',
- guidance: 'Guidance: To reach Somnath Temple, travel to Veraval railway station (about 7 km) or Diu airport (about 80 km), then continue by taxi or local transport to Prabhas Patan. The temple complex is well signposted from Somnath town roads and has organized entry lanes for darshan. Visit during early morning or evening aarti for a smoother experience and less crowding.',
- youtubeUrl: 'https://www.youtube.com/live/wuDNumfi05g?si=zxOX4lB_2ZWoA8nS',
- },
- 'Kedarnath Temple – Uttarakhand': {
- aliases: ['kedarnath'],
- locationLabel: 'Rudraprayag, Uttarakhand',
- coords: { latitude: 30.7352, longitude: 79.0669 },
- aartiSessions: [
- { title: 'Morning Aarti', time: '6:00 AM' },
- { title: 'Shiv Sahasranama Puja', time: '6:00 PM' },
- { title: 'Evening Aarti', time: '7:30 PM' },
- ],
- description: 'Kedarnath Jyotirling in the Himalayas is among the holiest Shiva shrines and a core destination of Char Dham pilgrimage. The stone temple, set amid high mountain terrain, draws devotees seeking darshan and traditional worship during the open season.',
- guidance: 'Guidance: Reach Kedarnath via Haridwar/Rishikesh to Sonprayag-Gaurikund by road, then complete the trek or use approved pony/palanquin/helicopter services. Keep weather buffers, register yatra details in advance, and start early for smoother darshan.',
- youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
- },
- 'Mahakaleshwar Temple – Ujjain': {
- aliases: ['mahakaleshwar', 'ujjain jyotirling'],
- locationLabel: 'Ujjain, Madhya Pradesh',
- coords: { latitude: 23.1828, longitude: 75.7682 },
- aartiSessions: [
- { title: 'Bhasma Aarti', time: '4:00 AM' },
- { title: 'Madhyahna Aarti', time: '10:30 AM' },
- { title: 'Sandhya Aarti', time: '6:00 PM' },
- ],
- description: 'Mahakaleshwar Jyotirling in Ujjain is renowned for its ancient worship traditions and the iconic Bhasma Aarti. It is one of the most significant Shiva temples in central India.',
- guidance: 'Guidance: Reach Ujjain by rail or via Indore airport and continue by road to Mahakal area. Early-morning slots are preferred for Bhasma Aarti; follow queue instructions and dress-code guidance near the inner sanctum.',
- youtubeUrl: 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
- },
- 'Kashi Vishwanath Temple – Varanasi': {
- aliases: ['kashi vishwanath', 'vishwanath temple varanasi'],
- locationLabel: 'Varanasi, Uttar Pradesh',
- coords: { latitude: 25.3109, longitude: 83.0107 },
- aartiSessions: [
- { title: 'Mangala Aarti', time: '3:00 AM' },
- { title: 'Bhog Aarti', time: '11:15 AM' },
- { title: 'Sapt Rishi Aarti', time: '7:00 PM' },
- ],
- description: 'Kashi Vishwanath Jyotirling at Varanasi is one of India’s most sacred Shiva shrines, closely associated with the spiritual heart of Kashi and the Ganga ghats.',
- guidance: 'Guidance: Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area. Use designated entry gates, carry minimal belongings, and plan darshan outside peak festival windows when possible.',
- youtubeUrl: 'https://www.youtube.com/watch?v=kYJqO005yK0',
- },
- 'Bhimashankar Temple – Maharashtra': {
- aliases: ['bhimashankar'],
- locationLabel: 'Pune district, Maharashtra',
- coords: { latitude: 19.0714, longitude: 73.553 },
- aartiSessions: [
- { title: 'Kakada Aarti', time: '4:30 AM' },
- { title: 'Madhyan Aarti', time: '12:00 PM' },
- { title: 'Shej Aarti', time: '9:30 PM' },
- ],
- description: 'Bhimashankar Jyotirling is located in the Sahyadri hills and is revered for its spiritual aura and natural surroundings. Devotees visit year-round for darshan and temple rituals.',
- guidance: 'Guidance: Travel via Pune to Bhimashankar by road; the final stretch is hilly, so daytime travel is recommended. During monsoon, allow extra time and use designated parking and walking routes near the temple zone.',
- youtubeUrl: 'https://www.youtube.com/live/O5ohAPCGsho?si=mBlZWBRol0q79N-Z',
- },
- 'Ramanathaswamy Temple – Rameswaram': {
- aliases: ['ramanathaswamy', 'rameswaram jyotirling'],
- locationLabel: 'Rameswaram, Tamil Nadu',
- coords: { latitude: 9.2881, longitude: 79.3174 },
- aartiSessions: [
- { title: 'Spatika Linga Darshan', time: '5:00 AM' },
- { title: 'Kala Santhi Puja', time: '10:00 AM' },
- { title: 'Ardha Jama Puja', time: '8:30 PM' },
- ],
- description: 'Ramanathaswamy Temple in Rameswaram is one of the Jyotirling shrines and is famed for its grand corridors, sacred wells, and deep Ramayana associations.',
- guidance: 'Guidance: Reach Rameswaram by rail/road from Madurai and proceed to the main temple streets. For a smoother visit, complete tirtha rituals early and follow temple queue lanes for darshan.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
- },
- 'Grishneshwar Temple – Ellora': {
- aliases: ['grishneshwar', 'ghrishneshwar', 'ellora jyotirling'],
- locationLabel: 'Ellora, Maharashtra',
- coords: { latitude: 20.0258, longitude: 75.178 },
- aartiSessions: [
- { title: 'Mangala Aarti', time: '5:30 AM' },
- { title: 'Madhyan Aarti', time: '12:00 PM' },
- { title: 'Sandhya Aarti', time: '7:30 PM' },
- ],
- description: 'Grishneshwar Jyotirling near Ellora is the twelfth Jyotirling shrine in many traditions, known for its classic temple architecture and devotional worship.',
- guidance: 'Guidance: Reach Aurangabad and continue by road toward Ellora caves area; Grishneshwar temple is nearby with local signage. Combine darshan with off-peak timings to avoid heavy tourist congestion.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
- },
- 'Omkareshwar Temple – Madhya Pradesh': {
- aliases: ['omkareshwar'],
- locationLabel: 'Khandwa, Madhya Pradesh',
- coords: { latitude: 22.2456, longitude: 76.151 },
- aartiSessions: [
- { title: 'Mangala Aarti', time: '5:00 AM' },
- { title: 'Madhyan Bhog', time: '12:20 PM' },
- { title: 'Sandhya Aarti', time: '8:00 PM' },
- ],
- description: 'Omkareshwar Jyotirling is situated on an island in the Narmada river and is one of the most spiritually significant Shiva pilgrimage centers in Madhya Pradesh.',
- guidance: 'Guidance: Reach Indore/Khandwa, then travel by road to Omkareshwar. Local bridges and boats connect key temple points; follow marked pilgrim circuits for Omkareshwar and Mamleshwar darshan.',
- youtubeUrl: 'https://shriomkareshwar.org/LiveDarshan.aspx?utm_source=chatgpt.com',
- },
- 'Trimbakeshwar Temple – Nashik': {
- aliases: ['trimbakeshwar', 'tryambakeshwar'],
- locationLabel: 'Nashik, Maharashtra',
- coords: { latitude: 19.9419, longitude: 73.5298 },
- aartiSessions: [
- { title: 'Mangala Aarti', time: '5:30 AM' },
- { title: 'Madhyan Aarti', time: '1:00 PM' },
- { title: 'Sandhya Aarti', time: '7:00 PM' },
- ],
- description: 'Trimbakeshwar Jyotirling near Nashik is a prominent Shiva shrine associated with Vedic traditions and the origin region of the Godavari river.',
- guidance: 'Guidance: Reach Nashik city and continue by road to Trimbak town. The temple area is pedestrian-heavy near entry gates, so plan for short walks and keep darshan slots in mind during weekends.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
- },
- 'Nageshwar Temple – Dwarka': {
- aliases: ['nageshwar', 'nagnath', 'dwarka jyotirling'],
- locationLabel: 'Dwarka, Gujarat',
- coords: { latitude: 22.4707, longitude: 69.086 },
- aartiSessions: [
- { title: 'Mangala Aarti', time: '5:00 AM' },
- { title: 'Madhyan Aarti', time: '12:00 PM' },
- { title: 'Sandhya Aarti', time: '7:00 PM' },
- ],
- description: 'Nageshwar Jyotirling near Dwarka is a revered Shiva temple on the coastal pilgrimage route of Gujarat and an important stop for Shiva devotees.',
- guidance: 'Guidance: Reach Dwarka by rail/road, then proceed to Nageshwar temple via local transport on the Dwarka-Bet Dwarka route. Combine darshan planning with Dwarka city temple timings for convenience.',
- youtubeUrl: 'https://livedarshanhub.com/temple/nageshwar-jyotirlinga-temple/?utm_source=chatgpt.com',
- },
- 'Mallikarjuna Temple – Srisailam': {
- aliases: ['mallikarjuna', 'srisailam jyotirling'],
- locationLabel: 'Srisailam, Andhra Pradesh',
- coords: { latitude: 16.0728, longitude: 78.8686 },
- aartiSessions: [
- { title: 'Suprabhata Seva', time: '4:30 AM' },
- { title: 'Maha Mangala Aarti', time: '12:00 PM' },
- { title: 'Ratri Aarti', time: '8:30 PM' },
- ],
- description: 'Mallikarjuna Jyotirling at Srisailam is a major Shaiva pilgrimage center, also revered as a Shakti Peetha, attracting devotees from across southern India.',
- guidance: 'Guidance: Reach Hyderabad/Kurnool and continue to Srisailam by road through ghat sections. Arrive early for temple queue management, especially on Mondays and festival days.',
- youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
- },
- 'Baidyanath Temple – Deoghar': {
- aliases: ['baidyanath', 'vaidyanath', 'deoghar jyotirling'],
- locationLabel: 'Deoghar, Jharkhand',
- coords: { latitude: 24.4844, longitude: 86.6994 },
- aartiSessions: [
- { title: 'Mangala Aarti', time: '4:00 AM' },
- { title: 'Bhog Aarti', time: '1:00 PM' },
- { title: 'Sandhya Aarti', time: '6:30 PM' },
- ],
- description: 'Baidyanath Jyotirling in Deoghar is one of the most visited Shiva pilgrimage sites, especially during the Shravan month Kanwar yatra season.',
- guidance: 'Guidance: Reach Jasidih railway junction and take local transport to Deoghar temple complex. During Shravan and major festivals, use the designated darshan queues and buffer extra time for entry.',
- youtubeUrl: 'https://www.youtube.com/live/gMoEnxZtxzg?si=9mVi5xNLD9CmPuDH-',
- },
+  'Somnath Temple – Gujarat': {
+    aliases: ['somnath', 'prabhas patan', 'jyotirling-somnath', 'someshwar mahadev'],
+    locationLabel: 'Prabhas Patan, Gir Somnath, Gujarat',
+    coords: { latitude: 20.888, longitude: 70.4012 },
+    establishedYear: 'Ancient (Rebuilt 1951)',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to March',
+    aartiSessions: [
+      { title: 'Mangala Aarti', time: '7:00 AM' },
+      { title: 'Madhyan Aarti', time: '12:00 PM' },
+      { title: 'Sandhya Aarti', time: '7:00 PM' },
+    ],
+    description: 'Somnath Temple is the first among the twelve sacred Jyotirling shrines of Lord Shiva (Someshwar Mahadev), located at Prabhas Patan in Gir Somnath on the Gujarat coast.',
+    guidance: 'Guidance: To reach Somnath Temple, travel to Veraval railway station (about 7 km) or Diu airport (about 80 km), then continue by taxi or local transport to Prabhas Patan.',
+    youtubeUrl: 'https://www.youtube.com/live/wuDNumfi05g?si=zxOX4lB_2ZWoA8nS',
+  },
+  'Kedarnath Temple – Uttarakhand': {
+    aliases: ['kedarnath', 'kedar baba'],
+    locationLabel: 'Rudraprayag, Uttarakhand',
+    coords: { latitude: 30.7352, longitude: 79.0669 },
+    establishedYear: '8th Century CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'May to June & Sep to Oct',
+    aartiSessions: [
+      { title: 'Morning Aarti', time: '6:00 AM' },
+      { title: 'Shiv Sahasranama Puja', time: '6:00 PM' },
+      { title: 'Evening Aarti', time: '7:30 PM' },
+    ],
+    description: 'Kedarnath Jyotirling (Kedar Baba) in the Himalayas is among the holiest Shiva shrines and a core destination of Char Dham pilgrimage in Rudraprayag, Uttarakhand.',
+    guidance: 'Guidance: Reach Kedarnath via Haridwar/Rishikesh to Sonprayag-Gaurikund by road, then complete the trek or use approved pony/palanquin/helicopter services.',
+    youtubeUrl: 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
+  },
+  'Mahakaleshwar Temple – Ujjain': {
+    aliases: ['mahakaleshwar', 'ujjain jyotirling', 'mahakal mandir'],
+    locationLabel: 'Ujjain, Madhya Pradesh',
+    coords: { latitude: 23.1828, longitude: 75.7682 },
+    establishedYear: 'Ancient (Rebuilt 1734)',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to March',
+    aartiSessions: [
+      { title: 'Bhasma Aarti', time: '4:00 AM' },
+      { title: 'Madhyahna Aarti', time: '10:30 AM' },
+      { title: 'Sandhya Aarti', time: '6:00 PM' },
+    ],
+    description: 'Mahakaleshwar Jyotirling (Mahakal Mandir) in Ujjain is renowned for its ancient worship traditions and the iconic Bhasma Aarti.',
+    guidance: 'Guidance: Reach Ujjain by rail or via Indore airport and continue by road to Mahakal area. Early-morning slots are preferred for Bhasma Aarti.',
+    youtubeUrl: 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
+  },
+  'Kashi Vishwanath Temple – Varanasi': {
+    aliases: ['kashi vishwanath', 'vishwanath temple varanasi', 'golden temple of kashi'],
+    locationLabel: 'Varanasi, Uttar Pradesh',
+    coords: { latitude: 25.3109, longitude: 83.0107 },
+    establishedYear: 'Ancient (Rebuilt 1780)',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to March',
+    aartiSessions: [
+      { title: 'Mangala Aarti', time: '3:00 AM' },
+      { title: 'Bhog Aarti', time: '11:15 AM' },
+      { title: 'Sapt Rishi Aarti', time: '7:00 PM' },
+    ],
+    description: 'Kashi Vishwanath Jyotirling (Golden Temple of Kashi) at Varanasi is dedicated to Lord Vishwanath on the banks of holy river Ganga.',
+    guidance: 'Guidance: Reach Varanasi Junction or Lal Bahadur Shastri Airport, then proceed to the Vishwanath corridor area.',
+    youtubeUrl: 'https://www.youtube.com/watch?v=kYJqO005yK0',
+  },
+  'Bhimashankar Temple – Maharashtra': {
+    aliases: ['bhimashankar', 'bhimashankar mahadev'],
+    locationLabel: 'Khed Taluka, Pune, Maharashtra',
+    coords: { latitude: 19.0714, longitude: 73.553 },
+    establishedYear: '13th Century CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to February',
+    aartiSessions: [
+      { title: 'Kakada Aarti', time: '4:30 AM' },
+      { title: 'Madhyan Aarti', time: '12:00 PM' },
+      { title: 'Shej Aarti', time: '9:30 PM' },
+    ],
+    description: 'Bhimashankar Jyotirling (Bhimashankar Mahadev) is located in Khed Taluka, Pune district in the Sahyadri hills.',
+    guidance: 'Guidance: Travel via Pune to Bhimashankar by road; daytime travel is recommended due to hilly terrain.',
+    youtubeUrl: 'https://www.youtube.com/live/O5ohAPCGsho?si=mBlZWBRol0q79N-Z',
+  },
+  'Ramanathaswamy Temple – Rameswaram': {
+    aliases: ['ramanathaswamy', 'rameswaram jyotirling', 'rameshwaram jyotirlinga'],
+    locationLabel: 'Rameswaram, Tamil Nadu',
+    coords: { latitude: 9.2881, longitude: 79.3174 },
+    establishedYear: '12th Century CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to April',
+    aartiSessions: [
+      { title: 'Spatika Linga Darshan', time: '5:00 AM' },
+      { title: 'Kala Santhi Puja', time: '10:00 AM' },
+      { title: 'Ardha Jama Puja', time: '8:30 PM' },
+    ],
+    description: 'Ramanathaswamy Temple in Rameswaram is dedicated to Lord Ramanathaswamy, famous for its 22 holy teerthams and grand corridors.',
+    guidance: 'Guidance: Reach Rameswaram by rail/road from Madurai and proceed to the main temple streets.',
+    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+  },
+  'Grishneshwar Temple – Ellora': {
+    aliases: ['grishneshwar', 'ghrushneshwar', 'ellora jyotirling', 'ghushmeshwar'],
+    locationLabel: 'Near Ellora, Chhatrapati Sambhajinagar, Maharashtra',
+    coords: { latitude: 20.0258, longitude: 75.178 },
+    establishedYear: '1768 CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to March',
+    aartiSessions: [
+      { title: 'Mangala Aarti', time: '5:30 AM' },
+      { title: 'Madhyan Aarti', time: '12:00 PM' },
+      { title: 'Sandhya Aarti', time: '7:30 PM' },
+    ],
+    description: 'Grishneshwar Jyotirling (Ghushmeshwar) near Ellora in Chhatrapati Sambhajinagar is the twelfth sacred Jyotirling shrine.',
+    guidance: 'Guidance: Reach Chhatrapati Sambhajinagar (Aurangabad) and continue by road toward Ellora caves area.',
+    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+  },
+  'Omkareshwar Temple – Madhya Pradesh': {
+    aliases: ['omkareshwar', 'omkar mandhata'],
+    locationLabel: 'Khandwa District, Madhya Pradesh',
+    coords: { latitude: 22.2456, longitude: 76.151 },
+    establishedYear: '11th Century CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to March',
+    aartiSessions: [
+      { title: 'Mangala Aarti', time: '5:00 AM' },
+      { title: 'Madhyan Bhog', time: '12:20 PM' },
+      { title: 'Sandhya Aarti', time: '8:00 PM' },
+    ],
+    description: 'Omkareshwar Jyotirling (Omkar Mandhata) is situated on Mandhata island in the Narmada river, Khandwa district.',
+    guidance: 'Guidance: Reach Indore/Khandwa, then travel by road to Omkareshwar. Bridges and boats connect the island.',
+    youtubeUrl: 'https://shriomkareshwar.org/LiveDarshan.aspx?utm_source=chatgpt.com',
+  },
+  'Trimbakeshwar Temple – Nashik': {
+    aliases: ['trimbakeshwar', 'tryambakeshwar', 'trimbakeshwar mahadev'],
+    locationLabel: 'Nashik, Maharashtra',
+    coords: { latitude: 19.9419, longitude: 73.5298 },
+    establishedYear: '1755 CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'July to March',
+    aartiSessions: [
+      { title: 'Mangala Aarti', time: '5:30 AM' },
+      { title: 'Madhyan Aarti', time: '1:00 PM' },
+      { title: 'Sandhya Aarti', time: '7:00 PM' },
+    ],
+    description: 'Trimbakeshwar Shiva Temple (Trimbakeshwar Mahadev) near Nashik is a prominent Jyotirling shrine at the source of Godavari river.',
+    guidance: 'Guidance: Reach Nashik city and continue by road to Trimbak town.',
+    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+  },
+  'Nageshwar Temple – Dwarka': {
+    aliases: ['nageshwar', 'nagnath', 'dwarka jyotirling', 'nagnath mahadev'],
+    locationLabel: 'Dwarka, Gujarat',
+    coords: { latitude: 22.4707, longitude: 69.086 },
+    establishedYear: 'Ancient (Rebuilt 1996)',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to March',
+    aartiSessions: [
+      { title: 'Mangala Aarti', time: '5:00 AM' },
+      { title: 'Madhyan Aarti', time: '12:00 PM' },
+      { title: 'Sandhya Aarti', time: '7:00 PM' },
+    ],
+    description: 'Nageshwar Jyotirling (Nagnath Mahadev) near Dwarka is dedicated to Lord Nageshwar on the coastal route of Gujarat.',
+    guidance: 'Guidance: Reach Dwarka by rail/road, then proceed to Nageshwar temple via local transport on Dwarka route.',
+    youtubeUrl: 'https://livedarshanhub.com/temple/nageshwar-jyotirlinga-temple/?utm_source=chatgpt.com',
+  },
+  'Mallikarjuna Temple – Srisailam': {
+    aliases: ['mallikarjuna', 'srisailam jyotirling', 'sri bhramaramba mallikarjuna', 'mallikarjuna swamy'],
+    locationLabel: 'Srisailam, Andhra Pradesh',
+    coords: { latitude: 16.0728, longitude: 78.8686 },
+    establishedYear: '2nd Century CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to February',
+    aartiSessions: [
+      { title: 'Suprabhata Seva', time: '4:30 AM' },
+      { title: 'Maha Mangala Aarti', time: '12:00 PM' },
+      { title: 'Ratri Aarti', time: '8:30 PM' },
+    ],
+    description: 'Mallikarjuna Swamy Temple at Srisailam is dedicated to Lord Mallikarjuna and Sri Bhramaramba Devi in Andhra Pradesh.',
+    guidance: 'Guidance: Reach Hyderabad/Kurnool and continue to Srisailam by road through ghat sections.',
+    youtubeUrl: 'https://www.youtube.com/embed?listType=playlist&list=UUtiORDMKgWrRdmNnqreCEEg&autoplay=1',
+  },
+  'Baidyanath Temple – Deoghar': {
+    aliases: ['baidyanath', 'vaidyanath', 'deoghar jyotirling', 'baba dham'],
+    locationLabel: 'Deoghar, Jharkhand',
+    coords: { latitude: 24.4844, longitude: 86.6994 },
+    establishedYear: '1596 CE',
+    entryFee: 'Free Entry',
+    bestTimeToVisit: 'October to March',
+    aartiSessions: [
+      { title: 'Mangala Aarti', time: '4:00 AM' },
+      { title: 'Bhog Aarti', time: '1:00 PM' },
+      { title: 'Sandhya Aarti', time: '6:30 PM' },
+    ],
+    description: 'Baidyanath Temple (Baba Dham) in Deoghar, Jharkhand is dedicated to Lord Baidyanath.',
+    guidance: 'Guidance: Reach Jasidih railway junction and take local transport to Deoghar temple complex.',
+    youtubeUrl: 'https://www.youtube.com/live/gMoEnxZtxzg?si=9mVi5xNLD9CmPuDH-',
+  },
  'Tirupati Balaji Temple – Andhra Pradesh': {
  aliases: ['tirupati balaji', 'tirumala', 'venkateswara temple'],
  locationLabel: 'Tirupati, Andhra Pradesh',
  coords: { latitude: 13.6833, longitude: 79.3476 },
+ establishedYear: '300 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'September to March',
  aartiSessions: [
  { title: 'Suprabhatam', time: '3:00 AM' },
  { title: 'Thomala Seva', time: '3:30 AM' },
@@ -254,6 +306,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  aliases: ['vaishno devi', 'mata vaishno devi', 'katra shrine'],
  locationLabel: 'Katra, Jammu & Kashmir',
  coords: { latitude: 33.0308, longitude: 74.9492 },
+ establishedYear: 'Ancient',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'March to October',
  aartiSessions: [
  { title: 'Morning Aarti', time: '6:20 AM' },
  { title: 'Bhog Aarti', time: '12:00 PM' },
@@ -267,6 +322,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
   aliases: ['siddhivinayak', 'prabhadevi ganpati', 'siddhivinayak temple mumbai', 'shree siddhivinayak ganapati temple'],
   locationLabel: 'Prabhadevi, Mumbai',
   coords: { latitude: 19.0166, longitude: 72.8302 },
+ establishedYear: '1801 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
   aartiSessions: [
   { title: 'Kakad Aarti', time: '5:30 AM' },
   { title: 'Madhyan Aarti', time: '12:00 PM' },
@@ -280,6 +338,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  aliases: ['jagannath temple', 'puri jagannath', 'jagannath puri'],
  locationLabel: 'Puri, Odisha',
  coords: { latitude: 19.8049, longitude: 85.8189 },
+ establishedYear: '1161 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to February',
  aartiSessions: [
  { title: 'Mangala Aarti', time: '5:30 AM' },
  { title: 'Madhyan Dhupa', time: '1:00 PM' },
@@ -293,6 +354,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  aliases: ['golden temple', 'harmandir sahib', 'amritsar golden temple'],
  locationLabel: 'Amritsar, Punjab',
  coords: { latitude: 31.6200, longitude: 74.8765 },
+ establishedYear: '1589 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
  aartiSessions: [
  { title: 'Prakash Ceremony', time: '4:00 AM' },
  { title: 'Asa Di Vaar Kirtan', time: '5:00 AM' },
@@ -306,6 +370,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
  aliases: ['meenakshi temple', 'madurai meenakshi', 'meenakshi amman'],
  locationLabel: 'Madurai, Tamil Nadu',
  coords: { latitude: 9.9195, longitude: 78.1193 },
+ establishedYear: '6th Century CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
  aartiSessions: [
  { title: 'Thiruvanandal Pooja', time: '5:00 AM' },
  { title: 'Uchikala Pooja', time: '10:30 AM' },
@@ -319,6 +386,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
   aliases: ['iskcon bangalore', 'iskcon temple bangalore', 'rajajinagar iskcon', 'iskconharekrishnahill', 'hare krishna hill', 'harekrishnahill'],
   locationLabel: 'Rajajinagar, Bengaluru',
   coords: { latitude: 13.0098, longitude: 77.5511 },
+ establishedYear: '1997 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
   aartiSessions: [
   { title: 'Mangala Aarti', time: '4:30 AM' },
   { title: 'Darshan Aarti', time: '7:15 AM' },
@@ -332,6 +402,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
   aliases: ['mahalaxmi', 'mahalakshmi', 'mahalakshmi temple', 'mahalakshmi mumbai', 'mahalakshmi mandir', 'shri mahalakshmi mandir'],
   locationLabel: 'Mahalaxmi, Mumbai',
   coords: { latitude: 18.9774, longitude: 72.8066 },
+ establishedYear: '1831 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
   aartiSessions: [
   { title: 'Morning Aarti', time: '7:00 AM' },
   { title: 'Dhoop Aarti', time: '6:30 PM' },
@@ -345,6 +418,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
     aliases: ['iskcon juhu', 'iskcon mumbai', 'juhu temple', 'radha rasabihari', 'iskconjuhutemple', 'iskconjuhu', 'juhutemple'],
     locationLabel: 'Juhu, Mumbai',
     coords: { latitude: 19.1128, longitude: 72.8274 },
+ establishedYear: '1978 CE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'Year-round',
     aartiSessions: [
       { title: 'Mangala Aarti', time: '4:30 AM' },
       { title: 'Darshan Aarti', time: '7:15 AM' },
@@ -358,6 +434,9 @@ const SPECIAL_TEMPLE_DATA: Record<string, {
     aliases: ['dwarkadhish', 'dwarakdhish', 'dwarakdhish tmple', 'dwarakadheesh', 'dwarka temple', 'dwaraka dhish', 'shri dwaraka dhish temple', 'shri dwarkadhish temple', 'dwarka'],
     locationLabel: 'Dwarka, Gujarat',
     coords: { latitude: 22.2378, longitude: 68.9678 },
+ establishedYear: '200 BCE',
+ entryFee: 'Free Entry',
+ bestTimeToVisit: 'October to March',
     aartiSessions: [
       { title: 'Mangla Aarti', time: '6:30 AM' },
       { title: 'Shringar Aarti', time: '10:30 AM' },
@@ -409,6 +488,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-somnath-temple-gujarat': {
   name: 'Somnath Temple – Gujarat',
   deity: 'Lord Shiva',
+  established_year: '1951 CE (Ancient origin)',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'September to March',
   description: 'Somnath Jyotirling on the western coast of Gujarat is one of the most revered Shiva temples and a major pilgrimage site.',
   location: 'Prabhas Patan, Gujarat',
   aarti_timings: { 'Mangala Aarti': '7:00 AM', 'Madhyan Aarti': '12:00 PM', 'Sandhya Aarti': '7:00 PM' },
@@ -419,6 +501,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-kedarnath-temple-uttarakhand': {
   name: 'Kedarnath Temple – Uttarakhand',
   deity: 'Lord Shiva',
+  established_year: '8th Century CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'May to June & Sep to Oct',
   description: 'Kedarnath Jyotirling in the Himalayas is a sacred shrine visited during the Char Dham yatra season.',
   location: 'Rudraprayag, Uttarakhand',
   aarti_timings: { 'Morning Aarti': '6:00 AM', 'Shiv Sahasranama Puja': '6:00 PM', 'Evening Aarti': '7:30 PM' },
@@ -429,6 +514,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-mahakaleshwar-temple-ujjain': {
   name: 'Mahakaleshwar Temple – Ujjain',
   deity: 'Lord Shiva',
+  established_year: '1734 CE (Ancient origin)',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Mahakaleshwar Jyotirling in Ujjain is renowned for its unique Bhasma Aarti and deep spiritual significance.',
   location: 'Ujjain, Madhya Pradesh',
   aarti_timings: { 'Bhasma Aarti': '4:00 AM', 'Madhyahna Aarti': '10:30 AM', 'Sandhya Aarti': '6:00 PM' },
@@ -439,6 +527,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-kashi-vishwanath-temple-varanasi': {
   name: 'Kashi Vishwanath Temple – Varanasi',
   deity: 'Lord Shiva',
+  established_year: '1780 CE (Ancient origin)',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Kashi Vishwanath Jyotirling at Varanasi is one of India’s most sacred Shiva shrines on the banks of the Ganga.',
   location: 'Varanasi, Uttar Pradesh',
   aarti_timings: { 'Mangala Aarti': '3:00 AM', 'Bhog Aarti': '11:15 AM', 'Sapt Rishi Aarti': '7:00 PM' },
@@ -449,6 +540,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-bhimashankar-temple-maharashtra': {
   name: 'Bhimashankar Temple – Maharashtra',
   deity: 'Lord Shiva',
+  established_year: '13th Century CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to February',
   description: 'Bhimashankar Jyotirling is located in the Sahyadri hills and is revered for its natural and spiritual setting.',
   location: 'Pune district, Maharashtra',
   aarti_timings: { 'Kakada Aarti': '4:30 AM', 'Madhyan Aarti': '12:00 PM', 'Shej Aarti': '9:30 PM' },
@@ -459,6 +553,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-ramanathaswamy-temple-rameswaram': {
   name: 'Ramanathaswamy Temple – Rameswaram',
   deity: 'Lord Shiva',
+  established_year: '12th Century CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to April',
   description: 'Ramanathaswamy Temple in Rameswaram is a major Jyotirling pilgrimage destination known for its long temple corridors.',
   location: 'Rameswaram, Tamil Nadu',
   aarti_timings: { 'Spatika Linga Darshan': '5:00 AM', 'Kala Santhi Puja': '10:00 AM', 'Ardha Jama Puja': '8:30 PM' },
@@ -469,6 +566,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-grishneshwar-temple-ellora': {
   name: 'Grishneshwar Temple – Ellora',
   deity: 'Lord Shiva',
+  established_year: '1768 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Grishneshwar Jyotirling near Ellora is one of the twelve sacred Jyotirling shrines dedicated to Lord Shiva.',
   location: 'Ellora, Maharashtra',
   aarti_timings: { 'Mangala Aarti': '5:30 AM', 'Madhyan Aarti': '12:00 PM', 'Sandhya Aarti': '7:30 PM' },
@@ -479,6 +579,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'jyotirling-omkareshwar-temple-madhya-pradesh': {
   name: 'Omkareshwar Temple – Madhya Pradesh',
   deity: 'Lord Shiva',
+  established_year: '11th Century CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Omkareshwar Jyotirling is located on the Narmada river island and is an important center of Shiva worship.',
   location: 'Khandwa, Madhya Pradesh',
   aarti_timings: { 'Mangala Aarti': '5:00 AM', 'Madhyan Bhog': '12:20 PM', 'Sandhya Aarti': '8:00 PM' },
@@ -487,38 +590,50 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   is_following: false,
   },
   'jyotirling-trimbakeshwar-temple-nashik': {
-  name: 'Trimbakeshwar Temple – Nashik',
-  deity: 'Lord Shiva',
-  description: 'Trimbakeshwar Jyotirling near Nashik is famed for its historic architecture and its association with the Godavari origin.',
-  location: 'Nashik, Maharashtra',
-  aarti_timings: { 'Mangala Aarti': '5:30 AM', 'Madhyan Aarti': '1:00 PM', 'Sandhya Aarti': '7:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
+    name: 'Trimbakeshwar Temple – Nashik',
+    deity: 'Lord Shiva',
+    established_year: '1755 CE',
+    entry_fee: 'Free Entry',
+    best_time_to_visit: 'July to March',
+    description: 'Trimbakeshwar Jyotirling near Nashik is famed for its historic architecture and its association with the Godavari origin.',
+    location: 'Nashik, Maharashtra',
+    aarti_timings: { 'Mangala Aarti': '5:30 AM', 'Madhyan Aarti': '1:00 PM', 'Sandhya Aarti': '7:00 PM' },
+    timings: {},
+    contact: '',
+    is_following: false,
   },
   'jyotirling-nageshwar-temple-dwarka': {
-  name: 'Nageshwar Temple – Dwarka',
-  deity: 'Lord Shiva',
-  description: 'Nageshwar Jyotirling near Dwarka is a revered Shiva temple and an important stop for pilgrims in Gujarat.',
-  location: 'Dwarka, Gujarat',
-  aarti_timings: { 'Mangala Aarti': '5:00 AM', 'Madhyan Aarti': '12:00 PM', 'Sandhya Aarti': '7:00 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
+    name: 'Nageshwar Temple – Dwarka',
+    deity: 'Lord Shiva',
+    established_year: '1996 CE (Ancient origin)',
+    entry_fee: 'Free Entry',
+    best_time_to_visit: 'October to March',
+    description: 'Nageshwar Jyotirling near Dwarka is a revered Shiva temple and an important stop for pilgrims in Gujarat.',
+    location: 'Dwarka, Gujarat',
+    aarti_timings: { 'Mangala Aarti': '5:00 AM', 'Madhyan Aarti': '12:00 PM', 'Sandhya Aarti': '7:00 PM' },
+    timings: {},
+    contact: '',
+    is_following: false,
   },
   'jyotirling-mallikarjuna-temple-srisailam': {
-  name: 'Mallikarjuna Temple – Srisailam',
-  deity: 'Lord Shiva',
-  description: 'Mallikarjuna Jyotirling at Srisailam is a major pilgrimage center combining rich history and devotional traditions.',
-  location: 'Srisailam, Andhra Pradesh',
-  aarti_timings: { 'Suprabhata Seva': '4:30 AM', 'Maha Mangala Aarti': '12:00 PM', 'Ratri Aarti': '8:30 PM' },
-  timings: {},
-  contact: '',
-  is_following: false,
+    name: 'Mallikarjuna Temple – Srisailam',
+    deity: 'Lord Shiva',
+    established_year: '2nd Century CE',
+    entry_fee: 'Free Entry',
+    best_time_to_visit: 'October to February',
+    description: 'Mallikarjuna Jyotirling at Srisailam is a major pilgrimage center combining rich history and devotional traditions.',
+    location: 'Srisailam, Andhra Pradesh',
+    aarti_timings: { 'Suprabhata Seva': '4:30 AM', 'Maha Mangala Aarti': '12:00 PM', 'Ratri Aarti': '8:30 PM' },
+    timings: {},
+    contact: '',
+    is_following: false,
   },
   'jyotirling-baidyanath-temple-deoghar': {
   name: 'Baidyanath Temple – Deoghar',
   deity: 'Lord Shiva',
+  established_year: '1596 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Baidyanath Jyotirling in Deoghar is one of the most visited Shiva pilgrimage sites, especially during Shravan.',
   location: 'Deoghar, Jharkhand',
   aarti_timings: { 'Mangala Aarti': '4:00 AM', 'Bhog Aarti': '1:00 PM', 'Sandhya Aarti': '6:30 PM' },
@@ -529,6 +644,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-tirupati-balaji-temple-andhra-pradesh': {
   name: 'Tirupati Balaji Temple – Andhra Pradesh',
   deity: 'Lord Venkateswara',
+  established_year: '300 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'September to March',
   description: 'Tirupati Balaji Temple at Tirumala is among the most visited pilgrimage shrines in India and is dedicated to Lord Venkateswara.',
   location: 'Tirupati, Andhra Pradesh',
   aarti_timings: { 'Suprabhatam': '3:00 AM', 'Thomala Seva': '3:30 AM', 'Ekantha Seva': '1:30 AM' },
@@ -539,6 +657,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-vaishno-devi-temple-jammu-kashmir': {
   name: 'Vaishno Devi Temple – Jammu & Kashmir',
   deity: 'Maa Vaishno Devi',
+  established_year: 'Ancient',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'March to October',
   description: 'Vaishno Devi Temple in the Trikuta hills is a revered Shakti pilgrimage destination attracting devotees year-round.',
   location: 'Katra, Jammu & Kashmir',
   aarti_timings: { 'Morning Aarti': '6:20 AM', 'Bhog Aarti': '12:00 PM', 'Evening Aarti': '7:20 PM' },
@@ -549,6 +670,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-siddhivinayak-temple-mumbai': {
   name: 'Shree Siddhivinayak Ganapati Temple',
   deity: 'Lord Ganesha',
+  established_year: '1801 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Siddhivinayak Temple in Mumbai is one of the most prominent Ganesha temples, known for its devotional significance and regular darshan queues.',
   location: 'Prabhadevi, Mumbai',
   aarti_timings: { 'Kakad Aarti': '5:30 AM', 'Madhyan Aarti': '12:00 PM', 'Shej Aarti': '8:45 PM' },
@@ -559,6 +683,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-shirdi-sai-baba-temple-maharashtra': {
   name: 'Shirdi Sai Baba Temple – Maharashtra',
   deity: 'Sai Baba',
+  established_year: '1922 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Shirdi Sai Baba Temple is a major pilgrimage destination associated with the life and teachings of Sai Baba.',
   location: 'Shirdi, Maharashtra',
   aarti_timings: { 'Mangala Aarti': '5:00 AM', 'Dwarkamai Aarti': '6:30 AM', 'Rajbhog Aarti': '11:30 AM', 'Dhoop Aarti': '5:00 PM', 'Shej Aarti': '10:30 PM' },
@@ -569,6 +696,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-jagannath-temple-puri': {
   name: 'Jagannath Temple – Puri',
   deity: 'Lord Jagannath',
+  established_year: '1161 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to February',
   description: 'Jagannath Temple in Puri is one of the most sacred Vaishnav temples and is renowned worldwide for the annual Rath Yatra.',
   location: 'Puri, Odisha',
   aarti_timings: { 'Mangala Aarti': '5:30 AM', 'Madhyan Dhupa': '1:00 PM', 'Sandhya Dhupa': '7:00 PM' },
@@ -579,6 +709,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-golden-temple-amritsar': {
   name: 'Golden Temple – Amritsar',
   deity: 'Sri Harmandir Sahib',
+  established_year: '1589 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'The Golden Temple in Amritsar is the holiest Sikh shrine, celebrated for its serene sarovar, kirtan, and community langar.',
   location: 'Amritsar, Punjab',
   aarti_timings: { 'Prakash Ceremony': '4:00 AM', 'Asa Di Vaar Kirtan': '5:00 AM', 'Sukhasan Ceremony': '10:00 PM' },
@@ -589,6 +722,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-meenakshi-temple-madurai': {
   name: 'Meenakshi Temple – Madurai',
   deity: 'Meenakshi & Sundareswarar',
+  established_year: '6th Century CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Meenakshi Temple in Madurai is a historic South Indian temple complex known for its grand gopurams and daily puja traditions.',
   location: 'Madurai, Tamil Nadu',
   aarti_timings: { 'Thiruvanandal Pooja': '5:00 AM', 'Uchikala Pooja': '10:30 AM', 'Ardhajama Pooja': '9:00 PM' },
@@ -599,6 +735,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-iskcon-temple-bangalore-karnataka': {
   name: 'ISKCON Temple Bangalore – Karnataka',
   deity: 'Sri Radha Krishna',
+  established_year: '1997 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'ISKCON Temple Bangalore is a major devotional center offering darshan, kirtan, spiritual classes, and festive celebrations.',
   location: 'Rajajinagar, Bengaluru',
   aarti_timings: { 'Mangala Aarti': '4:30 AM', 'Darshan Aarti': '7:15 AM', 'Sandhya Aarti': '7:00 PM' },
@@ -609,6 +748,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-iskcon-mira-road-thane': {
   name: 'ISKCON Mira Road – Thane',
   deity: 'Radha Giridhari',
+  established_year: '2015 CE',
+  entry_fee: 'Free Entry',
+  best_time_to_visit: 'October to March',
   description: 'Shri Radhagiridhari Mandir, ISKCON Mira Road is a vibrant spiritual temple dedicated to Radha and Giridhari.',
   location: 'Mira Road, Thane',
   aarti_timings: { 'Mangala Aarti': '4:30 AM', 'Tulsi Puja': '5:00 AM', 'Sringar Darshan Aarti': '7:15 AM', 'Guru Puja': '7:25 AM' },
@@ -619,6 +761,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-iskcon-temple-mumbai': {
     name: 'ISKCON Juhu Mumbai',
     deity: 'Radha Rasabihari',
+    established_year: '1978 CE',
+    entry_fee: 'Free Entry',
+    best_time_to_visit: 'Year-round',
     description: 'Shri Shri Radha Rasabihari Ji Temple, ISKCON Mumbai, is a beautiful spiritual haven located near Juhu beach.',
     location: 'Juhu, Mumbai',
     aarti_timings: { 'Mangala Aarti': '4:30 AM', 'Darshan Aarti': '7:15 AM', 'Sandhya Aarti': '7:00 PM' },
@@ -629,6 +774,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-mahalaxmi-temple': {
     name: 'Shri Mahalakshmi Mandir',
     deity: 'Goddess Mahalaxmi',
+    established_year: '1831 CE',
+    entry_fee: 'Free Entry',
+    best_time_to_visit: 'October to March',
     description: 'Mahalaxmi Temple is one of the most famous temples of Mumbai situated on Bhulabhai Desai Road in Mahalaxmi area.',
     location: 'Mahalaxmi, Mumbai',
     aarti_timings: { 'Morning Aarti': '7:00 AM', 'Dhoop Aarti': '6:30 PM', 'Shej Aarti': '10:00 PM' },
@@ -639,6 +787,9 @@ const STATIC_TEMPLE_DETAILS: Record<string, any> = {
   'other-shri-dwarkadhish-temple-dwarka': {
     name: 'Shri Dwarkadhish Temple – Dwarka',
     deity: 'Lord Krishna (Dwarkadhish)',
+    established_year: '200 BCE',
+    entry_fee: 'Free Entry',
+    best_time_to_visit: 'October to March',
     description: 'Shri Dwarkadhish Temple, also known as Jagat Mandir, is a sacred Hindu temple dedicated to Lord Krishna in Dwarka, Gujarat.',
     location: 'Dwarka, Gujarat',
     aarti_timings: { 'Mangla Aarti': '6:30 AM', 'Shringar Aarti': '10:30 AM', 'Sandhya Aarti': '7:30 PM', 'Shayan Aarti': '8:30 PM' },
@@ -677,13 +828,17 @@ const formatFollowerCount = (count: number): string => {
   return count.toString();
 };
 
-const getSpecialTempleKey = (name: string) => {
- const normalizedName = String(name || '').toLowerCase();
- const specialTemple = Object.entries(SPECIAL_TEMPLE_DATA).find(([, value]) =>
- value.aliases.some((alias) => normalizedName.includes(alias))
- );
+const getSpecialTempleKey = (nameOrId: string) => {
+ const normalizedName = String(nameOrId || '').toLowerCase();
+ const specialTemple = Object.entries(SPECIAL_TEMPLE_DATA).find(([key, value]) => {
+   const keyLower = key.toLowerCase();
+   return keyLower === normalizedName ||
+     normalizedName.includes(keyLower) ||
+     keyLower.includes(normalizedName) ||
+     value.aliases.some((alias) => normalizedName.includes(alias) || alias.includes(normalizedName));
+ });
  if (specialTemple) {
- return specialTemple[0];
+   return specialTemple[0];
  }
  return '';
 };
@@ -820,26 +975,11 @@ export default function TempleDetailScreen() {
  const [followerCount, setFollowerCount] = useState(0);
  const [followLoading, setFollowLoading] = useState(false);
 
- const handleFollowToggle = async () => {
+ const handleFollowToggle = () => {
    if (followLoading || !temple) return;
-   setFollowLoading(true);
    const nextState = !isFollowing;
    setIsFollowing(nextState);
    setFollowerCount((prev) => (nextState ? prev + 1 : Math.max(0, prev - 1)));
-
-   try {
-     if (nextState) {
-       await followTemple(resolvedTempleId);
-     } else {
-       await unfollowTemple(resolvedTempleId);
-     }
-   } catch (error) {
-     console.error('Error toggling temple follow status:', error);
-     setIsFollowing(!nextState);
-     setFollowerCount((prev) => (nextState ? Math.max(0, prev - 1) : prev + 1));
-   } finally {
-     setFollowLoading(false);
-   }
  };
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
@@ -1015,8 +1155,7 @@ export default function TempleDetailScreen() {
       setPosts([]);
       setIsFollowing(false);
     } else {
-      console.error('Error fetching temple:', error);
-      // Fallback object so full screen error or loader never blocks the UI
+      // Offline/local fallback for temple details
       setTemple((prev: any) => prev || {
         id: resolvedTempleId,
         name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
@@ -1086,13 +1225,12 @@ if (!temple) {
 
 
 
-  const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
-  const templeImageSource = getTempleImageById(resolvedTempleId);
-  const isMiraRoadTemple = templeKey === 'ISKCON Mira Road';
-  const hasSpecialDetails = Boolean(specialTempleData);
-  const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
-  const hasSpecialMap = Boolean(resolvedCoords);
   const displayName = templeKey || temple.name || 'Temple';
+  const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
+  const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
+  const templeImageSource = getTempleImageById(resolvedTempleId) !== DEFAULT_TEMPLE_IMAGE
+    ? getTempleImageById(resolvedTempleId)
+    : (getTempleImageByName(temple.name || displayName) || getTempleImageById(resolvedTempleId));
   const categoryBadge = getCategoryBadge(temple.category);
   const templeImages: string[] = (temple.images && temple.images.length > 0) ? temple.images : [];
   const darshanTimings = temple.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
@@ -1100,8 +1238,9 @@ if (!temple) {
 
   // Helper to resolve official website with strict domain verification
   const getOfficialTempleWebsite = () => {
-    if (temple.website && typeof temple.website === 'string' && temple.website.trim()) {
-      return temple.website.trim();
+    const rawWebsite = temple.website || temple.official_website || temple.website_url;
+    if (rawWebsite && typeof rawWebsite === 'string' && rawWebsite.trim() && !rawWebsite.includes('google.com/search')) {
+      return rawWebsite.trim();
     }
     const nameLower = (temple.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
@@ -1122,6 +1261,48 @@ if (!temple) {
     if (match('rameshwar') || match('ramanathaswamy')) return 'https://rameswaramramanathar.hrce.tn.gov.in';
     if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) return 'https://www.shrigrishneshwar.org';
 
+    // Shakti Peethas & Major Shrines (Verified Official Trust Websites & Portals)
+    if (match('chintpurni')) return 'https://www.matashrichintpurni.com';
+    if (match('kanyakumari')) return 'https://kanniyakumari.nic.in/tspot_stst/';
+    if (match('srisailam') || match('mallikarjuna')) return 'https://www.srisailadevasthanam.org/en-in/home';
+    if (match('kamakhya')) return 'https://www.maakamakhya.org';
+    if (match('naina') || match('nainadevi')) return 'https://srinainadevi.com';
+    if (match('jwala') || match('jwalaji')) return 'https://jawalaji.in/';
+    if (match('tripura') || match('tripurasundari')) return 'https://tripurasundari.tripura.gov.in/';
+    if (match('biraja')) return 'https://maabiraja.com/';
+    if (match('hinglaj')) return 'https://www.matahinglaj.in/';
+    if (match('harsiddhi')) return 'https://www.mptourism.com/harsiddhi-temple-shakti-peetha-in-Ujjain.html';
+    if (match('amarnath') || match('sharda') || match('sharada')) return 'https://jksasb.nic.in/';
+    if (match('kamakshi') || match('kanchi')) return 'https://kanchikamakshi.org/';
+    if (match('maihar') || (match('sharada') && match('devi'))) return 'https://maihar.nic.in/en/tourist-place/maa-sharda-mata/';
+    if (match('taratarini') || match('tara tarini')) return 'https://taratarini.nic.in/';
+    if (match('vindhya') || match('vindhyachal') || match('vindhyavasini')) return 'https://vindhyachalmata.com/';
+    if (match('danteshwari')) return 'https://maadanteshwari.in/';
+    if (match('muktinath')) return 'https://muktinathdc.org.np/';
+    if (match('kailash') || match('manasarovar')) return 'https://kmy.gov.in/';
+    if (match('baidyanath') || match('babadham')) return 'https://babadham.org/';
+    if (match('bhabanipur')) return 'https://bhabanipur.org/english/index.htm';
+    if (match('kiriteswari')) return 'https://murshidabad.gov.in/tourist-place/shaktipeeth-shri-kiriteswari-temple/';
+    if (match('manibandh')) return 'https://manibandh.com/';
+    if (match('vishalakshi') || (match('kashi') && match('devi'))) return 'https://kashi.gov.in/listing-details/vishalakshi-devi-temple';
+    if (match('katyayani') || match('vrindavan')) return 'https://www.katyayanipeeth.org.in/';
+    if (match('bhadrakali') || match('kurukshetra')) return 'https://www.maabhadrakalishaktipeeth.com/';
+    if (match('devi talab') || match('jalandhar')) return 'https://shreedevitalabmandir.org/';
+    if (match('pashupatinath') || match('pashupati')) return 'https://www.pashupati.gov.np/';
+    if (match('sugandha')) return 'https://sugandhashaktipeeth.com/';
+    if (match('nalateswari') || match('nalhati')) return 'https://nalateswari.com/';
+    if (match('janaki') || match('janakpur')) return 'https://ntb.gov.np/janaki-mandir--janakpur--dhanusha';
+    if (match('kolhapur') && (match('mahalaxmi') || match('mahalakshmi'))) return 'https://www.mahalaxmikolhapur.com/home';
+    if (match('bakreshwar') || match('bakreswar')) return 'https://www.bkda.in';
+    if (match('renuka') || match('mahur') || match('mahurgad')) return 'https://mahurgad.org';
+    if (match('kalighat')) return 'https://kalighattemple.com';
+    if (match('ambaji')) return 'https://www.ambajitemple.in';
+    if (match('tarapith')) return 'https://tarapithtemple.org';
+    if (match('chamundeshwari') || match('chamundi')) return 'https://chamundeshwaritemple.in';
+    if (match('chhinnamasta') || match('rajrappa')) return 'https://ramgarh.nic.in';
+    if (match('mansa') || match('mansadevi')) return 'https://mansadevi.org.in';
+    if (match('chandi') || match('chandidevi')) return 'https://haridwar.nic.in';
+
     // Other Major Flagship Temples
     if (match('tirupati') || match('tirumala') || match('venkateswara')) return 'https://www.tirumala.org';
     if (match('vaishno') || match('katra')) return 'https://www.maavaishnodevi.org';
@@ -1132,10 +1313,9 @@ if (!temple) {
     if (match('shirdi') || match('sai')) return 'https://sai.org.in';
     if (match('iskcon')) return 'https://www.iskcon.org';
     if (match('ram mandir') || match('ayodhya') || match('janmabhoomi')) return 'https://srjbtkshetra.org';
-    if (match('kamakhya')) return 'https://www.kamakhyatemple.org';
-    
-    // Universal Fallback for all other temples
-    return `https://www.google.com/search?q=${encodeURIComponent(`${displayName} official website trust portal`)}`;
+
+    // Return null when no official website is available
+    return null;
   };
 
   // Helper to resolve official helpline number
@@ -1146,9 +1326,31 @@ if (!temple) {
     const keyLower = (templeKey || '').toLowerCase();
     const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
 
-    // 12 Jyotirlingas Helpline Map (Verified Trust Helpline Numbers)
+    // Shakti Peethas & Major Shrines Helplines
+    if (match('chintpurni')) return '+91 1976 255 818';
+    if (match('kanyakumari')) return '+91 4652 241 421 / +91 4652 246 223';
+    if (match('srisailam') || match('mallikarjuna')) return '+91 85242 88888';
+    if (match('kamakhya')) return '+91 361 273 4654';
+    if (match('naina') || match('nainadevi')) return '+91 1800 180 8069 (Toll Free)';
+    if (match('jwala') || match('jwalaji')) return '+91 1970 222 28';
+    if (match('tripura') || match('tripurasundari')) return '+91 3821 223 520';
+    if (match('biraja')) return '+91 6728 223 900';
+    if (match('amarnath') || match('sharda')) return '+91 194 231 3149';
+    if (match('kamakshi') || match('kanchi')) return '+91 44 2722 2609';
+    if (match('taratarini') || match('tara tarini')) return '+91 680 228 1456';
+    if (match('danteshwari')) return '+91 83606 01008';
+    if (match('baidyanath') || match('babadham')) return '+91 6432 232 295';
+    if (match('manibandh')) return '+91 94602 14919';
+    if (match('attahas') || match('fullara')) return '+91 94343 48482';
+    if (match('katyayani') || match('vrindavan')) return '+91 73009 28885';
+    if (match('bhadrakali') || match('kurukshetra')) return '+91 85709 91111';
+    if (match('devi talab') || match('jalandhar')) return '+91 181 229 1252';
+    if (match('kankalitala')) return '+91 98306 66215';
+    if (match('nalateswari') || match('nalhati')) return '+91 3465 255 333';
+    if (match('kolhapur') && (match('mahalaxmi') || match('mahalakshmi'))) return '+91 231 262 3011';
+
+    // 12 Jyotirlingas Helpline Map
     if (match('somnath')) return '02876-231212 / +91 94282 14914 / 94282 14993';
-    if (match('mallikarjuna') || match('srisailam')) return '08524-288888 / 08524-288883';
     if (match('mahakal')) return '1800 233 1008 / 0734-2550563';
     if (match('omkareshwar')) return '07280-271228 / +91-8989998686';
     if (match('kedarnath')) return '+91-8534001008 / +91-7302257116 (BKTC)';
@@ -1156,10 +1358,9 @@ if (!temple) {
     if (match('bhimashankar')) return '02135-222880 / 02133-284222';
     if (match('kashi') || match('vishwanath')) return '+91 70802 92930 / +91 6393 131 608';
     if (match('trimbakeshwar')) return '02594-233215 / 02594-234251';
-    if (match('baidyanath') || match('babadham') || match('vaidyanath') || match('vaidyanathdham')) return '06432-232295';
     if (match('nageshwar')) return '+91-2869-286234';
     if (match('rameshwar') || match('ramanathaswamy')) return '0453-221223 / 0453-221230';
-    if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) return '02437-243555';
+    if (match('grishneshwar') || match('ghrushneshwar')) return '02437-243555';
 
     // Other Major Flagship Temples
     if (match('tirupati') || match('tirumala') || match('venkateswara')) return '155257 (Toll-Free) / 0877-2233333';
@@ -1170,27 +1371,1233 @@ if (!temple) {
     if (match('siddhivinayak')) return '022-24222072 / 022-24373626';
     if (match('shirdi') || match('sai')) return '02423-265500';
     if (match('ram mandir') || match('ayodhya')) return '1800 180 5533';
-    if (match('kamakhya')) return '0361-2734619';
     return '+91 1800 111 363 (Tourist Helpline)';
+  };
+
+
+
+  // Helper to resolve accurate Darshan, Opening/Closing, & VIP Darshan for 12 Jyotirlingas & Major Shrines
+  const getAuthenticTempleDarshanDetails = () => {
+    const nameLower = (temple.name || '').toLowerCase();
+    const idLower = (resolvedTempleId || '').toLowerCase();
+    const keyLower = (templeKey || '').toLowerCase();
+    const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
+
+    if (match('somnath')) {
+      return {
+        opening: '6:00 AM',
+        closing: '10:00 PM',
+        generalDarshan: '6:00 AM – 10:00 PM',
+        vipDarshan: 'Available on selected occasions'
+      };
+    }
+    if (match('mallikarjuna') || match('srisailam')) {
+      return {
+        opening: '4:30 AM',
+        closing: '10:00 PM',
+        generalDarshan: '6:30 AM – 9:00 PM',
+        vipDarshan: 'Paid Sevas available'
+      };
+    }
+    if (match('mahakal')) {
+      return {
+        opening: '4:00 AM',
+        closing: '11:00 PM',
+        generalDarshan: '4:00 AM – 11:00 PM',
+        vipDarshan: 'VIP Darshan & Bhasma Aarti booking available'
+      };
+    }
+    if (match('omkareshwar')) {
+      return {
+        opening: '5:00 AM',
+        closing: '10:00 PM',
+        generalDarshan: '5:00 AM – 10:00 PM',
+        vipDarshan: 'Special Darshan available'
+      };
+    }
+    if (match('kedarnath')) {
+      return {
+        opening: '4:00 AM',
+        closing: '9:00 PM',
+        generalDarshan: '6:00 AM – 3:00 PM, 5:00 PM – 9:00 PM',
+        vipDarshan: 'Priority Darshan available during season'
+      };
+    }
+    if (match('bhimashankar')) {
+      return {
+        opening: '4:30 AM',
+        closing: '9:30 PM',
+        generalDarshan: '5:00 AM – 9:30 PM',
+        vipDarshan: 'Special Pooja booking available'
+      };
+    }
+    if (match('kashi') || match('vishwanath')) {
+      return {
+        opening: '3:00 AM',
+        closing: '11:00 PM',
+        generalDarshan: '4:00 AM – 11:00 PM',
+        vipDarshan: 'Sugam Darshan available'
+      };
+    }
+    if (match('trimbakeshwar')) {
+      return {
+        opening: '5:30 AM',
+        closing: '9:00 PM',
+        generalDarshan: '5:30 AM – 9:00 PM',
+        vipDarshan: 'Paid Sevas available'
+      };
+    }
+    if (match('baidyanath') || match('babadham') || match('vaidyanath')) {
+      return {
+        opening: '4:00 AM',
+        closing: '9:00 PM',
+        generalDarshan: '4:00 AM – 3:30 PM, 6:00 PM – 9:00 PM',
+        vipDarshan: 'Special Darshan available'
+      };
+    }
+    if (match('nageshwar')) {
+      return {
+        opening: '6:00 AM',
+        closing: '9:00 PM',
+        generalDarshan: '6:00 AM – 9:00 PM',
+        vipDarshan: 'Special Pooja available'
+      };
+    }
+    if (match('rameshwar') || match('ramanathaswamy')) {
+      return {
+        opening: '5:00 AM',
+        closing: '9:00 PM',
+        generalDarshan: '5:00 AM – 1:00 PM, 3:00 PM – 9:00 PM',
+        vipDarshan: 'Special Darshan & Sevas available'
+      };
+    }
+    if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) {
+      return {
+        opening: '5:00 AM',
+        closing: '9:30 PM',
+        generalDarshan: '5:00 AM – 9:30 PM',
+        vipDarshan: 'Special Poojas available'
+      };
+    }
+
+    return null;
+  };
+
+  // Helper to resolve verified 6-section temple knowledge (About, Mythological Significance, History, Architecture, Major Festivals, Pilgrimage Circuit)
+  const getAuthenticJyotirlingaDetails = () => {
+    const nameLower = (temple.name || '').toLowerCase();
+    const idLower = (resolvedTempleId || '').toLowerCase();
+    const keyLower = (templeKey || '').toLowerCase();
+    const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
+
+    if (match('somnath')) {
+      return {
+        about: 'Somnath Jyotirlinga is regarded as the first among the twelve sacred Jyotirlingas of Lord Shiva. Located on the western coast of Gujarat at Prabhas Patan near Verual, it stands at the confluence of three holy rivers (Triveni Sangam) — Kapila, Hiran, and Saraswati.',
+        mythologicalSignificance: 'According to the Shiva Purana and Skanda Purana, Chandra Dev (the Moon God) was cursed by King Daksha to lose his luster. He prayed to Lord Shiva here, who blessed him with waning and waxing phases. Lord Shiva manifested as Somnath, meaning "Lord of the Moon."',
+        history: "Somnath is known as the 'Shrine Eternal' having been destroyed and reconstructed seven times across Yugas. The modern grand temple was reconstructed after India's independence under the leadership of Sardar Vallabhbhai Patel and consecrated by India's first President Dr. Rajendra Prasad in 1951.",
+        architecture: 'Built in the grand Kailash Mahameru Prasad style of Chalukyan architecture. The temple spire (Shikhara) rises to 155 feet, topped by a 10-ton Kalash and a 27-foot flag pole. The Arrow Pillar (Bhanustambha) on the sea-wall indicates that an uninterrupted straight sea-line connects Somnath to the South Pole (Antarctica).',
+        sacredRituals: 'Somnath Mahapuja, Sandhya Aarti with Nagada drums, Dhvajarohan (Flag Hoisting ritual), and daily Triveni Sangam Snan.',
+        festivals: ['Mahashivaratri', 'Shravan Month Somvar', 'Kartik Purnima Fair', 'Somnath Sangeet Mahotsav'],
+        pilgrimageCircuit: '12 Jyotirlinga Circuit, Prabhas Kshetra Darshan, Krishna Nirvana Bhoomi (Bhalka Tirth)'
+      };
+    }
+    if (match('mallikarjuna') || match('srisailam')) {
+      return {
+        about: "Mallikarjuna Jyotirlinga is situated atop the dense Nallamala Hills along the Krishna River in Srisailam, Andhra Pradesh. It holds a unique spiritual status as it is one of the rare shrines that is simultaneously a Jyotirlinga for Lord Shiva and one of the 18 Maha Shakti Peethas (Bhramaramba Shakti Peeth) for Goddess Parvati.",
+        mythologicalSignificance: 'Legend states that Lord Shiva and Parvati assumed the forms of Mallikarjuna (Shiva as Jasmine flower) and Bhramaramba (Parvati as Bee) to reside here permanently after comforting their son Kartikeya.',
+        history: 'The temple site dates back to ancient Satavahana times (2nd century BCE) and received royal patronage from Kakatiya rulers, Cholas, Vijayanagara Emperor Sri Krishnadevaraya, and Chhatrapati Shivaji Maharaj.',
+        architecture: 'Dravidian style fortified stone complex with four massive Gopurams (towers), sculptured outer stone walls depicting stories from Ramayana and Mahabharata, and Mukha Mandapam built by Krishnadevaraya.',
+        sacredRituals: 'Sparsh Darshan (devotees touching the sacred Jyotirlinga), Rudrabhishekam, Chandi Homam, and Kumkumarchana.',
+        festivals: ['Mahashivaratri Brahmotsavam', 'Ugadi (Telugu New Year)', 'Karthika Masam Deepotsavam', 'Navratri'],
+        pilgrimageCircuit: '12 Jyotirlinga Circuit, 18 Maha Shakti Peethas, Srisailam Hill Circuit'
+      };
+    }
+    if (match('mahakal')) {
+      return {
+        about: 'Mahakaleshwar is the only south-facing (Dakshinamukhi) Jyotirlinga, symbolizing Lord Shiva as the Master of Time and Death (Mahakal). Situated in the historic city of Ujjain on the banks of the sacred Shipra River, it is revered as a Moksha-giving city (Sapta Puri).',
+        mythologicalSignificance: 'When the demon Dushan tormented the people of Avanti (Ujjain), Lord Shiva burst from the earth as Mahakal to destroy evil forces and chose to reside here eternally as the sovereign ruler of Ujjain.',
+        history: 'Mentioned in ancient texts by Kalidasa and Banabhatta. The ancient shrine was rebuilt in the 18th century under the patronage of the Maratha Scindia dynasty.',
+        architecture: 'A three-tiered temple structure consisting of Mahakaleshwar at the lowest level, Omkareshwar in the middle, and Nagchandreshwar (opened only on Nag Panchami) on the top floor.',
+        sacredRituals: 'World-famous 4:00 AM Bhasma Aarti (ritual using sacred ash), Shringar Aarti, and Jalabhishek with Panchamrit.',
+        festivals: ['Mahashivaratri (Shiv Navratri)', 'Shravan Mondays Sawari Procession', 'Nag Panchami', 'Kumbh Mela (Simhastha every 12 years)'],
+        pilgrimageCircuit: '12 Jyotirlinga Circuit, Sapta Puri Circuit, Ujjain Panchkroshi Yatra'
+      };
+    }
+    if (match('kashi') || match('vishwanath')) {
+      return {
+        about: "Located in Varanasi (Kashi), the spiritual capital of India and one of the oldest living cities in the world. Kashi Vishwanath is considered the epicenter of Hindu spirituality, where Lord Shiva grants Mukti (liberation) to souls.",
+        mythologicalSignificance: 'Scriptures state that Kashi rests on the tip of Lord Shiva’s Trishul (trident) and is untouched by cosmic dissolution (Pralaya).',
+        history: 'Rebuilt by Queen Ahilyabai Holkar of Indore in 1780. Maharaja Ranjit Singh donated 1,000 kg of pure gold to gild the temple spires in 1835. The monumental Kashi Vishwanath Corridor connecting the temple directly to the holy River Ganga was inaugurated in December 2021.',
+        architecture: 'Classic Nagara architectural style featuring three gold-plated domes and spires, integrated into the 5-lakh sq. ft. marble Ganga Corridor.',
+        sacredRituals: 'Mangla Aarti (3:00 AM), Bhog Aarti, Sapta Rishi Aarti, Sandhya Aarti, and Ganga Snan at Dashashwamedh/Lalita Ghat.',
+        festivals: ['Dev Deepawali', 'Mahashivaratri Shiv Baraat', 'Shravan Somvar', 'Rangbhari Ekadashi'],
+        pilgrimageCircuit: '12 Jyotirlinga Circuit, Moksha Puri Circuit, Kashi Antargrihi Yatra'
+      };
+    }
+    if (match('omkareshwar')) {
+      return {
+        about: 'Situated on Mandhata Island in the Narmada River, the island is believed to resemble the sacred symbol "ॐ" (Om), giving the temple its name.',
+        mythologicalSignificance: 'Lord Shiva manifested here to bless the Devas after their victory over evil forces.',
+        history: 'The temple has been an important pilgrimage center for centuries and is closely associated with Adi Shankaracharya.',
+        architecture: 'Traditional Nagara-style temple architecture overlooking the Narmada River.',
+        festivals: ['Mahashivaratri', 'Narmada Jayanti', 'Kartik Purnima'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Narmada Parikrama'
+      };
+    }
+    if (match('kedarnath')) {
+      return {
+        about: 'Kedarnath is the highest and most remote Jyotirlinga, located at an altitude of approximately 3,583 meters in the Himalayas.',
+        mythologicalSignificance: "After the Mahabharata war, the Pandavas sought Lord Shiva's forgiveness. Shiva appeared in the form of a bull, and his hump emerged at Kedarnath.",
+        history: 'Traditionally attributed to the Pandavas and later revived by Adi Shankaracharya in the 8th century.',
+        architecture: 'Massive stone construction designed to withstand harsh Himalayan weather.',
+        festivals: ['Opening Ceremony (Akshaya Tritiya period)', 'Badri-Kedar Festival', 'Mahashivaratri'],
+        pilgrimageCircuit: 'Char Dham, Panch Kedar, Jyotirlinga Circuit'
+      };
+    }
+    if (match('bhimashankar')) {
+      return {
+        about: 'Nestled in the Sahyadri Hills, Bhimashankar is both a Jyotirlinga and an important wildlife sanctuary region.',
+        mythologicalSignificance: 'Lord Shiva manifested here to destroy the demon Bhima and restore righteousness.',
+        history: 'The temple has strong associations with Maratha history and the Bhakti movement.',
+        architecture: 'Classic Nagara-style temple with Hemadpanti influences.',
+        festivals: ['Mahashivaratri', 'Shravan Month', 'Kartik Festivals'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Sahyadri Shiva Circuit'
+      };
+    }
+    if (match('kashi') || match('vishwanath')) {
+      return {
+        about: "Located in Varanasi, one of the world's oldest continuously inhabited cities, Kashi Vishwanath is considered the spiritual capital of India.",
+        mythologicalSignificance: 'It is believed that Lord Shiva personally resides in Kashi and grants liberation (moksha) to devotees.',
+        history: 'The temple has undergone several reconstructions. The current structure was built by Queen Ahilyabai Holkar in 1780.',
+        architecture: 'North Indian temple architecture with a gold-plated spire and dome.',
+        festivals: ['Dev Deepawali', 'Mahashivaratri', 'Shravan Month'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Moksha Puri, Kashi Kshetra'
+      };
+    }
+    if (match('trimbakeshwar')) {
+      return {
+        about: 'Trimbakeshwar is located near the origin of the sacred Godavari River and is one of the most important Shiva shrines in western India.',
+        mythologicalSignificance: 'Lord Shiva appeared here in response to the penance of Sage Gautama.',
+        history: 'The current temple was built by Peshwa Balaji Baji Rao in the 18th century.',
+        architecture: 'Constructed from black basalt stone in traditional Hemadpanti style.',
+        festivals: ['Kumbh Mela', 'Mahashivaratri', 'Shravan Month'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Godavari Origin Circuit'
+      };
+    }
+    if (match('baidyanath') || match('babadham') || match('vaidyanath')) {
+      return {
+        about: 'Baidyanath Dham is one of the most visited Shiva temples in eastern India and is a major destination during the Shravani Mela.',
+        mythologicalSignificance: 'Ravana worshipped Lord Shiva here and offered intense penance. Shiva manifested as Vaidyanath, the Divine Healer.',
+        history: 'The temple complex consists of the main shrine and multiple subsidiary temples.',
+        architecture: 'Traditional North Indian temple architecture.',
+        festivals: ['Shravani Mela', 'Mahashivaratri'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Kanwar Yatra Circuit'
+      };
+    }
+    if (match('nageshwar')) {
+      return {
+        about: 'Located near Dwarka, Nageshwar is associated with protection from fear, poison, and negative forces.',
+        mythologicalSignificance: 'Lord Shiva appeared to rescue his devotee Supriya from the demon Daruka.',
+        history: 'The temple has long been a part of the Dwarka pilgrimage route.',
+        architecture: 'Modern temple complex with a towering Shiva statue nearby.',
+        festivals: ['Mahashivaratri', 'Shravan Month'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Dwarka Circuit'
+      };
+    }
+    if (match('rameshwar') || match('ramanathaswamy')) {
+      return {
+        about: 'Ramanathaswamy Temple is one of the holiest pilgrimage sites in India and forms an important part of the Char Dham pilgrimage.',
+        mythologicalSignificance: 'Lord Rama worshipped Shiva here before crossing to Lanka and established the Jyotirlinga.',
+        history: 'The temple expanded under the Pandya and Sethupathi rulers.',
+        architecture: 'Famous for having one of the longest temple corridors in the world.',
+        festivals: ['Mahashivaratri', 'Arudra Darshan', 'Thirukalyanam'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Char Dham'
+      };
+    }
+    if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) {
+      return {
+        about: 'Grishneshwar, near the Ellora Caves, is traditionally regarded as the twelfth and final Jyotirlinga.',
+        mythologicalSignificance: 'Lord Shiva appeared before the devoted woman Ghushma, whose unwavering faith became legendary.',
+        history: 'The temple was rebuilt by Queen Ahilyabai Holkar in the 18th century.',
+        architecture: 'Constructed in red stone with beautifully carved pillars and sculptures.',
+        festivals: ['Mahashivaratri', 'Shravan Month', 'Pradosh Vrat'],
+        pilgrimageCircuit: 'Jyotirlinga Circuit, Sahyadri Heritage Circuit'
+      };
+    }
+    if (match('dwarka') || match('dwarkadhish')) {
+      return {
+        about: 'Dwarkadhish Temple, also known as Jagat Mandir, is dedicated to Lord Krishna as the King of Dwarka. It is one of the premier Char Dham and Sapta Puri pilgrimage sites.',
+        mythologicalSignificance: 'Believed to have been originally built by Vajranabha, Lord Krishna’s great-grandson, over the original residence of Lord Krishna in Dwarka.',
+        history: 'The present five-storied structure was enlarged in the 15th-16th century in Chalukya architecture style.',
+        architecture: 'Supported by 60 pillars with intricately carved sandstone spires and the famous 52-yard flag (Dhvaja).',
+        festivals: ['Janmashtami', 'Rath Yatra', 'Holi (Phool Dol)', 'Annakut (Diwali)'],
+        pilgrimageCircuit: 'Char Dham, Sapta Puri, Krishna Circuit'
+      };
+    }
+    if (match('tirupati') || match('tirumala') || match('venkateswara')) {
+      return {
+        about: 'Tirumala Venkateswara Temple is a historic Vaishnavite temple located on the Seshachalam Hills at Tirupati, Andhra Pradesh. It is one of the wealthiest and most visited religious sites in the world.',
+        mythologicalSignificance: 'Lord Venkateswara manifested on Earth to save mankind from the trials of Kali Yuga.',
+        history: 'Patronized by major dynasties including the Pallavas, Cholas, Pandyas, Vijayanagara Emperors, and Maratha rulers.',
+        architecture: 'Dravidian architecture featuring the gold-gilded Ananda Nilayam vimanam.',
+        festivals: ['Srivari Brahmotsavam', 'Vaikunta Ekadashi', 'Rathasaptami', 'Ugadi'],
+        pilgrimageCircuit: 'Divya Desam, Tirupati Sacred Hills'
+      };
+    }
+    if (match('golden temple') || match('harmandir')) {
+      return {
+        about: 'Sri Harmandir Sahib (Golden Temple) in Amritsar is the central spiritual shrine of Sikhism, open to people of all faiths.',
+        mythologicalSignificance: 'Built around the holy Amrit Sarovar (Pool of Nectar), symbolizing spiritual equality and universal brotherhood.',
+        history: 'Founded by Guru Ram Das Ji in 1577; the gold foil gilding was added under Maharaja Ranjit Singh in 1830.',
+        architecture: 'Indo-Islamic and Mughal-Sikh architecture plated with 750 kg of pure gold leaf.',
+        festivals: ['Guru Nanak Gurpurab', 'Vaisakhi', 'Bandi Chhor Divas (Diwali)', 'Guru Gobind Singh Gurpurab'],
+        pilgrimageCircuit: 'Panj Takht Circuit, Sacred Sikh Shrines'
+      };
+    }
+    if (match('vaishno') || match('katra')) {
+      return {
+        about: 'Shree Mata Vaishno Devi Shrine in Trikuta Hills, Jammu & Kashmir, is one of the most revered Shakti Peeths in India.',
+        mythologicalSignificance: 'Mata Vaishno Devi manifested in a holy cave in the form of three natural rock formations (Pindies) representing Maha Kali, Maha Lakshmi, and Maha Saraswati.',
+        history: 'Venerated for centuries with millions of pilgrims undertaking the 13 km trek from Katra.',
+        architecture: 'Natural cave shrine integrated with modern marble queue complexes and mountain pathways.',
+        festivals: ['Chaitra Navratri', 'Sharad Navratri', 'Diwali', 'New Year Yatra'],
+        pilgrimageCircuit: 'Shakti Peetha Circuit, Jammu Holy Shrines'
+      };
+    }
+    if (match('jagannath') || match('puri')) {
+      return {
+        about: 'Shree Jagannath Temple in Puri, Odisha, is dedicated to Lord Jagannath (Krishna), along with Balabhadra and Subhadra.',
+        mythologicalSignificance: 'One of the Char Dham pilgrimage sites, famous for its unique wooden deities renewed periodically during Nabakalebara.',
+        history: 'Built in the 12th century by King Anantavarman Chodaganga Deva of the Eastern Ganga dynasty.',
+        architecture: 'Kalinga architecture style with the grand 214-foot main temple tower.',
+        festivals: ['Rath Yatra (Chariot Festival)', 'Chandan Yatra', 'Snana Yatra', 'Bahuda Yatra'],
+        pilgrimageCircuit: 'Char Dham, Kalinga Sacred Circuit'
+      };
+    }
+    if (match('shirdi') || match('sai')) {
+      return {
+        about: 'Shirdi Sai Baba Temple in Maharashtra is the sacred resting place of revered saint Shree Sai Baba.',
+        mythologicalSignificance: 'Sai Baba preached universal love, unity of all religions ("Sabka Malik Ek"), and selfless service.',
+        history: 'Maintained by the Shree Saibaba Sansthan Trust since 1922.',
+        architecture: 'Spacious marble shrine complex featuring the Samadhi Mandir and Dwarkamai.',
+        festivals: ['Ram Navami', 'Guru Purnima', 'Vijayadashami (Sai Punyatithi)'],
+        pilgrimageCircuit: 'Maharashtra Saint Circuit'
+      };
+    }
+    if (match('siddhivinayak')) {
+      return {
+        about: 'Shree Siddhivinayak Ganapati Mandir in Prabhadevi, Mumbai, is a world-renowned shrine dedicated to Lord Ganesha.',
+        mythologicalSignificance: 'The Ganesha idol features a trunk turned to the right (Siddhi Vinayak), symbolizing quick fulfillment of boons.',
+        history: 'Originally constructed in 1801 by Lakshman Vithu and Deubai Patil.',
+        architecture: 'Modern multi-story grand dome structure with gold-plated sanctum roof.',
+        festivals: ['Ganesh Chaturthi', 'Angaraki Chaturthi', 'Maghi Ganeshotsav'],
+        pilgrimageCircuit: 'Ashtavinayak & Mumbai Holy Shrines'
+      };
+    }
+    if (match('kamakhya')) {
+      return {
+        about: 'Kamakhya Temple on Nilachal Hill in Guwahati, Assam, is one of the oldest and most important Shakti Peethas in Tantric tradition.',
+        mythologicalSignificance: 'Sati’s Yoni (womb) fell here when Lord Vishnu used his Sudarshana Chakra on her body.',
+        history: 'Rebuilt in 1565 by King Naranarayana of the Koch dynasty.',
+        architecture: 'Unique Nilachal architectural style combining a beehive dome with a cruciform base.',
+        festivals: ['Ambubachi Mela', 'Durga Puja', 'Manasa Puja'],
+        pilgrimageCircuit: '51 Shakti Peethas, Assam Sacred Circuit'
+      };
+    }
+
+    return null;
+  };
+
+  // Helper to resolve verified travel connectivity (By Air, By Rail, By Bus / Road) for the 12 Jyotirlingas
+  const getAuthenticJyotirlingaTransport = () => {
+    const nameLower = (temple.name || '').toLowerCase();
+    const idLower = (resolvedTempleId || '').toLowerCase();
+    const keyLower = (templeKey || '').toLowerCase();
+    const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
+
+    if (match('somnath')) {
+      return {
+        air: 'Diu Airport (~85 km), Rajkot Airport (~195 km)',
+        rail: 'Veraval Railway Station (~7 km)',
+        bus: 'Regular GSRTC and private buses from Rajkot, Ahmedabad, Junagadh, Dwarka, and Diu. Taxis are readily available from Veraval.'
+      };
+    }
+    if (match('mallikarjuna') || match('srisailam')) {
+      return {
+        air: 'Hyderabad Airport (~215 km)',
+        rail: 'Markapur Road Railway Station (~85 km)',
+        bus: 'APSRTC buses operate from Hyderabad, Vijayawada, Guntur, Kurnool, and Nandyal. Hill-road taxi services are also available.'
+      };
+    }
+    if (match('mahakal')) {
+      return {
+        air: 'Devi Ahilyabai Holkar Airport, Indore (~55 km)',
+        rail: 'Ujjain Junction (~2 km)',
+        bus: 'Frequent buses from Indore, Bhopal, Ratlam, Kota, and nearby cities. Auto-rickshaws and taxis are available from the station.'
+      };
+    }
+    if (match('omkareshwar')) {
+      return {
+        air: 'Indore Airport (~80 km)',
+        rail: 'Omkareshwar Road Railway Station (Mortakka) (~12 km)',
+        bus: 'Regular buses from Indore, Khandwa, Ujjain, and Khargone. Local taxis and shared vehicles are available.'
+      };
+    }
+    if (match('kedarnath')) {
+      return {
+        air: 'Jolly Grant Airport, Dehradun (~238 km to Gaurikund)',
+        rail: 'Rishikesh Railway Station (~216 km to Gaurikund)',
+        bus: 'Buses and taxis connect Dehradun, Haridwar, and Rishikesh to Gaurikund. From Gaurikund, devotees undertake a 16 km trek or use helicopter, pony, or palanquin services during the pilgrimage season.'
+      };
+    }
+    if (match('bhimashankar')) {
+      return {
+        air: 'Pune Airport (~125 km)',
+        rail: 'Pune Junction (~110 km)',
+        bus: 'MSRTC buses run from Pune, Nashik, and Mumbai. Private taxis are also available.'
+      };
+    }
+    if (match('kashi') || match('vishwanath')) {
+      return {
+        air: 'Lal Bahadur Shastri International Airport (~26 km)',
+        rail: 'Varanasi Junction (~5 km), Banaras Station (~6 km)',
+        bus: 'Excellent UPSRTC and private bus connectivity from Prayagraj, Lucknow, Gorakhpur, and nearby cities. E-rickshaws and autos are available to the temple area.'
+      };
+    }
+    if (match('trimbakeshwar')) {
+      return {
+        air: 'Nashik Airport (~40 km), Mumbai Airport (~180 km)',
+        rail: 'Nashik Road Railway Station (~39 km)',
+        bus: 'Frequent buses from Nashik CBS. Taxis and shared cabs are easily available.'
+      };
+    }
+    if (match('baidyanath') || match('babadham') || match('vaidyanath')) {
+      return {
+        air: 'Deoghar Airport (~12 km)',
+        rail: 'Jasidih Junction (~8 km)',
+        bus: 'Regular buses and taxis from Jasidih, Dumka, Bhagalpur, Ranchi, and Patna.'
+      };
+    }
+    if (match('nageshwar')) {
+      return {
+        air: 'Jamnagar Airport (~137 km)',
+        rail: 'Dwarka Railway Station (~17 km)',
+        bus: 'GSRTC buses connect Dwarka with Jamnagar, Rajkot, Ahmedabad, and Porbandar. Taxis are available from Dwarka.'
+      };
+    }
+    if (match('rameshwar') || match('ramanathaswamy')) {
+      return {
+        air: 'Madurai Airport (~170 km)',
+        rail: 'Rameswaram Railway Station (~2 km)',
+        bus: 'TNSTC buses connect Madurai, Chennai, Tiruchirappalli, and other cities. Auto-rickshaws and taxis are available from the station.'
+      };
+    }
+    if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) {
+      return {
+        air: 'Chhatrapati Sambhajinagar Airport (~35 km)',
+        rail: 'Chhatrapati Sambhajinagar Railway Station (~30 km)',
+        bus: 'MSRTC buses operate from Chhatrapati Sambhajinagar to Verul (Ellora). Taxis and local buses are available.'
+      };
+    }
+
+    return null;
+  };
+
+  // Helper to map raw facility names/keys into clean, user-friendly labels with emojis
+  const formatAmenityLabel = (amenity: string): string => {
+    const lower = amenity.toLowerCase();
+    if (lower.includes('parking')) return '🅿 Parking';
+    if (lower.includes('locker') || lower.includes('cloakroom') || lower.includes('bag')) return '🔒 Lockers';
+    if (lower.includes('prasad') || lower.includes('laddu') || lower.includes('mahaprasad') || lower.includes('modak')) return '🍛 Prasad Counter';
+    if (lower.includes('restroom') || lower.includes('washroom') || lower.includes('toilet')) return '🚻 Restrooms';
+    if (lower.includes('water') || lower.includes('drinking')) return '🚰 Drinking Water';
+    if (lower.includes('shoe') || lower.includes('paduka')) return '👞 Shoe Stand';
+    if (lower.includes('wheelchair') || lower.includes('ramp') || lower.includes('senior') || lower.includes('golf cart') || lower.includes('battery car')) return '♿ Wheelchair Access';
+    if (lower.includes('dharamshala') || lower.includes('ashram') || lower.includes('accommodation') || lower.includes('guest house') || lower.includes('gmvn')) return '🏨 Dharamshala';
+    if (lower.includes('bhojanalaya') || lower.includes('annadanam') || lower.includes('langar') || lower.includes('restaurant') || lower.includes('anna prasadam') || lower.includes('annakshetra')) return '🍽 Bhojanalaya';
+    if (lower.includes('pooja') || lower.includes('puja') || lower.includes('bhasma') || lower.includes('seva') || lower.includes('booking')) return '📿 Puja Booking';
+    if (lower.includes('medical') || lower.includes('first aid') || lower.includes('health')) return '🚑 Medical Aid';
+    if (lower.includes('mobile') || lower.includes('camera') || lower.includes('deposit')) return '📱 Mobile Deposit';
+    if (lower.includes('vip') || lower.includes('priority') || lower.includes('sugam') || lower.includes('queue')) return '⚡ VIP Queue Access';
+    if (lower.includes('souvenir') || lower.includes('gift') || lower.includes('book')) return '🛍️ Souvenir Shops';
+    if (lower.includes('ropeway') || lower.includes('pony') || lower.includes('helicopter')) return '🚁 Transport Assistance';
+    if (lower.includes('kund') || lower.includes('spring') || lower.includes('sarovar')) return '🌊 Holy Kund / Sarovar';
+    if (lower.includes('tonsuring') || lower.includes('kalyanakatta')) return '💈 Hair Tonsuring';
+    if (lower.includes('atm')) return '🏪 ATM Counter';
+    return `✨ ${amenity}`;
+  };
+
+  // Helper to resolve accurate, temple-specific authentic facilities
+  const getAuthenticTempleFacilities = (): string[] => {
+    if (temple.facilities && Array.isArray(temple.facilities) && temple.facilities.length > 0) {
+      return temple.facilities;
+    }
+    const nameLower = (temple.name || '').toLowerCase();
+    const idLower = (resolvedTempleId || '').toLowerCase();
+    const keyLower = (templeKey || '').toLowerCase();
+    const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
+
+    if (match('somnath')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'dharamshala', 'bhojanalaya', 'puja_booking', 'medical_aid'];
+    }
+    if (match('mallikarjuna') || match('srisailam')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'dharamshala', 'bhojanalaya', 'puja_booking', 'medical_aid'];
+    }
+    if (match('mahakal')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'dharamshala', 'mobile_deposit', 'puja_booking', 'medical_aid'];
+    }
+    if (match('omkareshwar')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'dharamshala', 'bhojanalaya', 'puja_booking'];
+    }
+    if (match('dwarka') || match('dwarkadhish')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'mobile_deposit', 'puja_booking'];
+    }
+    if (match('kedarnath')) {
+      return ['locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'dharamshala', 'bhojanalaya', 'medical_aid', 'transport_assistance'];
+    }
+    if (match('bhimashankar')) {
+      return ['parking', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'puja_booking'];
+    }
+    if (match('kashi') || match('vishwanath')) {
+      return ['locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'mobile_deposit', 'puja_booking', 'medical_aid'];
+    }
+    if (match('trimbakeshwar')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'dharamshala', 'puja_booking'];
+    }
+    if (match('baidyanath') || match('babadham') || match('vaidyanath')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'dharamshala', 'bhojanalaya', 'medical_aid'];
+    }
+    if (match('nageshwar')) {
+      return ['parking', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair'];
+    }
+    if (match('rameshwar') || match('ramanathaswamy')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'dharamshala', 'bhojanalaya', 'medical_aid'];
+    }
+    if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) {
+      return ['parking', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'puja_booking'];
+    }
+    if (match('tirupati') || match('tirumala') || match('venkateswara')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'dharamshala', 'bhojanalaya', 'medical_aid', 'hair_tonsuring'];
+    }
+    if (match('golden temple') || match('harmandir')) {
+      return ['locker', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'bhojanalaya', 'holy_kund'];
+    }
+    if (match('vaishno') || match('katra')) {
+      return ['locker', 'drinking_water', 'restrooms', 'bhojanalaya', 'medical_aid', 'transport_assistance'];
+    }
+    if (match('jagannath') || match('puri')) {
+      return ['locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'bhojanalaya'];
+    }
+    if (match('iskcon')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'bhojanalaya', 'dharamshala'];
+    }
+    if (match('shirdi') || match('sai')) {
+      return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'dharamshala', 'bhojanalaya', 'medical_aid'];
+    }
+    if (match('siddhivinayak')) {
+      return ['locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand', 'wheelchair', 'mobile_deposit'];
+    }
+
+    return ['parking', 'locker', 'prasad', 'drinking_water', 'restrooms', 'shoe_stand'];
+  };
+
+  // Structured Information Model for Visitor Guidelines
+  interface VisitorGuideline {
+    icon: string;
+    title: string;
+    points: string[];
+  }
+
+  const getAuthenticVisitorGuidelines = (): VisitorGuideline[] => {
+    const nameLower = (temple.name || '').toLowerCase();
+    const idLower = (resolvedTempleId || '').toLowerCase();
+    const keyLower = (templeKey || '').toLowerCase();
+    const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
+
+    if (match('dwarka') || match('dwarkadhish')) {
+      return [
+        {
+          icon: '👞',
+          title: 'Shoe Stand & Lockers',
+          points: [
+            'Lockers available outside Gate No. 56 & Gate No. 13',
+            'Keep electronics and footwear secured before entering queue',
+            'Token system enforced for quick retrieval'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Mobile & Camera Policy',
+          points: [
+            'Mobile phones prohibited inside main mandir premises',
+            'Photography permitted outside at Gomti Ghat & riverfront',
+            'Deposit devices in official trust lockers before entering'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Dress Code & Traditions',
+          points: [
+            'Modest Indian traditional attire strongly recommended',
+            'Shorts, skirts, and sleeveless tops are strictly restricted',
+            'Follow temple queue discipline during daily Shringar Darshan'
+          ]
+        }
+      ];
+    }
+
+    if (match('somnath')) {
+      return [
+        {
+          icon: '👞',
+          title: 'Shoe Stand & Cloak Room',
+          points: [
+            'Free shoe counters managed by Somnath Trust',
+            'Paid cloak room available for heavy baggage near main gate',
+            'High-security screening before entry checkpoint'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Mobile & Security Rules',
+          points: [
+            'Mobiles permitted only in outer courtyard & designated zone',
+            'Strict ban inside main sanctum (Garbhagriha)',
+            'Sea-facing photography allowed outside complex perimeter'
+          ]
+        },
+        {
+          icon: '🎆',
+          title: 'Laser Show & Special Entry',
+          points: [
+            'Light & Sound show daily at 8:00 PM near sea front',
+            'Senior citizen golf cart service available from parking',
+            'Special VIP queue desk inside administrative complex'
+          ]
+        }
+      ];
+    }
+
+    if (match('dwarka') || match('dwarkadhish')) {
+      return [
+        {
+          icon: '🎟️',
+          title: 'Entry & Darshan',
+          points: [
+            'General Entry: Free for all pilgrims',
+            'VIP / Priority Darshan: Official trust passes available at Gate 56 counter',
+            'Online Booking: E-pass booking available via official Dwarkadhish Trust portal'
+          ]
+        },
+        {
+          icon: '⏳',
+          title: 'Queue & Darshan Duration',
+          points: [
+            'Wait Time: 30–60 mins (Weekdays), 2–3 hours (Weekends / Janmashtami)',
+            'Darshan Time: 15–20 seconds in front of main sanctum',
+            'Total Visit Duration: 1.5 to 2 hours including queue and parikrama'
+          ]
+        },
+        {
+          icon: '👥',
+          title: 'Crowd Level & Best Time',
+          points: [
+            'Crowd Level: Moderate on weekdays, Heavy on Ekadashi & festival days',
+            'Best Visit Window: Early morning (6:30 AM Mangla Aarti) or evening Shringar Aarti',
+            'Pilgrim Tip: Visit Gomti Ghat in early morning for peaceful holy dip before darshan'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Dress Code & Ethics',
+          points: [
+            'Modest Indian traditional attire mandatory for all devotees',
+            'Men: Dhoti-Kurta or Pyjama-Kurta recommended',
+            'Women: Saree, Salwar Kameez, or Dupatta (Shorts, skirts & sleeveless forbidden)'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Mobile & Photography Policy',
+          points: [
+            'Strict Prohibition: Mobile phones & electronic devices banned inside mandir premises',
+            'Photography permitted outside complex along Gomti Ghat & riverfront',
+            'Deposit devices in official trust barcode lockers near Gate 56 before entry'
+          ]
+        },
+        {
+          icon: '👞',
+          title: 'Shoe Stand & Lockers',
+          points: [
+            'Free footwear counter managed by temple trust at Gate 56 & Gate 13',
+            'Paid cloakroom counters available for luggage and handbags',
+            'Token system enforced for safe and fast retrieval'
+          ]
+        },
+        {
+          icon: '♿',
+          title: 'Accessibility & Assistance',
+          points: [
+            'Wheelchair ramp access available at Gate 56 entry route',
+            'Senior citizen priority lane provided during general queue hours',
+            'Divyang assistance desk near main administration office'
+          ]
+        },
+        {
+          icon: '🚻',
+          title: 'Visitor Facilities',
+          points: [
+            'RO Drinking water stations & clean washrooms inside complex grounds',
+            'Mahaprasad & dry prasad counter near exit gate',
+            'Emergency first aid desk and ATM available outside complex perimeter'
+          ]
+        }
+      ];
+    }
+
+    if (match('somnath')) {
+      return [
+        {
+          icon: '🎟️',
+          title: 'Entry & Darshan',
+          points: [
+            'General Entry: Free entry for all devotees',
+            'VIP Darshan: Special pass booking available at Somnath Trust office desk',
+            'Online Services: Advance Pooja & Aarti booking available on official trust website'
+          ]
+        },
+        {
+          icon: '⏳',
+          title: 'Queue & Visit Duration',
+          points: [
+            'Wait Time: 20–45 mins (Weekdays), 1.5–3 hours (Shravan / Shivratri)',
+            'Average Darshan Duration: 30–45 seconds in inner hall',
+            'Total Visit Time: 1.5 to 2.5 hours including Light & Sound show'
+          ]
+        },
+        {
+          icon: '👥',
+          title: 'Crowd Level & Best Time',
+          points: [
+            'Crowd Level: Moderate on general weekdays, Peak during Shravan month',
+            'Best Time to Visit: 6:00 AM morning darshan or 7:00 PM Sandhya Aarti',
+            'Pilgrim Tip: Attend the 8:00 PM daily Light & Sound show on the sea-facing lawns'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Dress Code & Customs',
+          points: [
+            'Traditional decent attire expected for all visitors',
+            'Men: Dhoti, Kurta, or trousers (Shorts strictly disallowed)',
+            'Women: Saree, Salwar Kameez, or traditional suits'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Mobile & Security Rules',
+          points: [
+            'Mobile phones allowed in outer complex, strictly banned in inner sanctum',
+            'Multi-layer security screening with scanner checkpoints',
+            'Sea-facing photography permitted in outer promenade'
+          ]
+        },
+        {
+          icon: '👞',
+          title: 'Shoe Stand & Cloakroom',
+          points: [
+            'Free footwear counters run by Somnath Trust outside main gate',
+            'Safe cloakroom facility for heavy bags & electronic items',
+            'Systematic digital token ticketing for luggage security'
+          ]
+        },
+        {
+          icon: '♿',
+          title: 'Accessibility & Support',
+          points: [
+            'Electric golf cart service available from vehicle parking to temple gate',
+            'Wheelchair ramp facility and priority queue for elderly and Divyangjan',
+            'Resting benches installed along sea promenade walk'
+          ]
+        },
+        {
+          icon: '🚻',
+          title: 'Visitor Facilities',
+          points: [
+            'Clean RO drinking water taps & modern restroom complexes',
+            'Prasad Counter: Fresh Chikki & Ladoo prasad boxes available',
+            'Somnath Bhojanalaya: Pure vegetarian thali at nominal charges'
+          ]
+        }
+      ];
+    }
+
+    if (match('kashi') || match('vishwanath')) {
+      return [
+        {
+          icon: '🎟️',
+          title: 'Entry & Sugam Darshan',
+          points: [
+            'General Entry: Free entry through Ganga Corridor gates',
+            'Sugam Darshan (VIP): ₹300 per person (Bookable online or at Corridor counter)',
+            'Special Aarti Tickets: Mangla Aarti (₹500), Sapta Rishi & Bhog Aarti (₹300)'
+          ]
+        },
+        {
+          icon: '⏳',
+          title: 'Queue & Duration',
+          points: [
+            'Queue Waiting Time: 45–90 mins (Weekdays), 3–5 hours (Mondays & Shravan)',
+            'Darshan Time: 10–15 seconds near sacred Jyotirlinga',
+            'Total Visit Duration: 2 to 3 hours across Ganga Corridor complex'
+          ]
+        },
+        {
+          icon: '👥',
+          title: 'Crowd Level & Best Time',
+          points: [
+            'Crowd Level: Very high year-round, peak crowd on Mondays & Shivratri',
+            'Best Visit Window: 4:00 AM early morning or 9:00 PM late evening',
+            'Pilgrim Tip: Enter via Ganga Ghat Corridor entry for a smoother queue flow'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Dress Code & Rituals',
+          points: [
+            'Modest clothing mandatory; traditional attire preferred for Abhishek',
+            'Men doing Sparsh Darshan / Jalabhishek must wear Dhoti-Kurta',
+            'Women: Saree or Salwar suit with Dupatta'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Mobile & Electronics Prohibition',
+          points: [
+            'Complete Ban: Mobiles, smartwatches, leather belts & electronic keys banned',
+            'Multiple security scanning gates with metal detectors',
+            'Deposit electronics in trust lockers along Ganga Corridor before queue'
+          ]
+        },
+        {
+          icon: '👞',
+          title: 'Shoe Counters & Lockers',
+          points: [
+            'Free and paid locker complexes available near Godowlia & Ganga Gate',
+            'Safe electronic barcode lockers for personal items and shoes',
+            'Helpline desk at Gate 4 for lost tokens or guidance'
+          ]
+        },
+        {
+          icon: '♿',
+          title: 'Senior Citizen & Wheelchair Support',
+          points: [
+            'E-rickshaw & battery car service available inside Corridor for seniors',
+            'Wheelchair ramp channels available up to Garbhagriha outer area',
+            'Dedicated queue route for senior citizens and differently-abled'
+          ]
+        },
+        {
+          icon: '🚻',
+          title: 'Facilities & Prasadam',
+          points: [
+            'Filtered cold drinking water stalls & air-conditioned waiting halls',
+            'Official Kashi Vishwanath Prasad Counter (Pedha & Belpatra)',
+            'Annakshetra: Free meal facility available at designated hours'
+          ]
+        }
+      ];
+    }
+
+    if (match('mahakal')) {
+      return [
+        {
+          icon: '🎟️',
+          title: 'Entry & Bhasma Aarti',
+          points: [
+            'General Entry: Free entry via Mahakal Lok corridor',
+            'Bhasma Aarti Booking: Free online booking (advance) / offline counter desk',
+            'VIP / Sheghra Darshan: ₹250 pass ticket counter available at entry gate'
+          ]
+        },
+        {
+          icon: '⏳',
+          title: 'Queue & Visit Duration',
+          points: [
+            'Wait Time: 45–90 mins (General Queue), 20–40 mins (₹250 Sheghra Pass)',
+            'Bhasma Aarti Duration: 4:00 AM to 6:00 AM (Entry starts 3:00 AM)',
+            'Total Visit Duration: 2 to 3.5 hours including Mahakal Lok walk'
+          ]
+        },
+        {
+          icon: '👥',
+          title: 'Crowd Level & Timing',
+          points: [
+            'Crowd Level: High daily, extremely crowded on Shravan Mondays & Nag Panchami',
+            'Best Visit Window: 6:00 AM post Bhasma Aarti or 8:00 PM Sandhya Aarti',
+            'Pilgrim Tip: Book Bhasma Aarti online 30 days in advance on official trust portal'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Bhasma Aarti Dress Code',
+          points: [
+            'Bhasma Aarti Sanctum Entry: Men MUST wear unstitched traditional Dhoti-Sola',
+            'Women MUST wear Saree during Garbhagriha Bhasma Aarti worship',
+            'General Queue: Normal modest traditional clothing permitted'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Mobile & Photography Rules',
+          points: [
+            'Mobile phones allowed in Mahakal Lok corridor, banned in inner mandir',
+            'No photography permitted during Bhasma Aarti ritual inside sanctum',
+            'Deposit mobiles in smart barcode counters inside Mahakal Lok'
+          ]
+        },
+        {
+          icon: '👞',
+          title: 'Shoe & Luggage Deposit',
+          points: [
+            'Large automated shoe and luggage deposit complex at Mahakal Lok',
+            'Computerized token receipt issued for safe retrieval at exit',
+            'Free footwear counters available at all entry gates'
+          ]
+        },
+        {
+          icon: '♿',
+          title: 'Accessibility & Support',
+          points: [
+            'Battery operated vehicles inside Mahakal Lok for senior citizens & Divyang',
+            'Ramp facility available right up to outer sanctum queue lines',
+            'Dedicated medical desks stationed along main queue path'
+          ]
+        },
+        {
+          icon: '🚻',
+          title: 'Facilities & Bhojanalaya',
+          points: [
+            'RO water dispensers & hygienic restroom blocks at regular intervals',
+            'Mahakal Besan Ladoo Prasad Counter operated by Temple Management',
+            'Shree Mahakal Bhojanalaya: Pure thali meal available at nominal rates'
+          ]
+        }
+      ];
+    }
+
+    if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) {
+      return [
+        {
+          icon: '🎟️',
+          title: 'Entry & Darshan',
+          points: [
+            'General Entry: Free entry for all devotees',
+            'VIP / Priority Darshan: Official information desk for special Pooja booking',
+            'Sparsh Darshan: Direct touch of Jyotirlinga permitted during designated hours'
+          ]
+        },
+        {
+          icon: '⏳',
+          title: 'Queue & Visit Duration',
+          points: [
+            'Queue Waiting Time: 15–35 mins (Weekdays), 1–2 hours (Mondays & Shravan)',
+            'Darshan Duration: 30–60 seconds near Garbhagriha',
+            'Total Visit Duration: 45 mins to 1.5 hours'
+          ]
+        },
+        {
+          icon: '👥',
+          title: 'Crowd Level & Best Time',
+          points: [
+            'Crowd Level: Light to moderate on weekdays, heavy on Mondays & Pradosh',
+            'Best Time to Visit: Early morning 5:30 AM opening or 2:00 PM afternoon',
+            'Pilgrim Tip: Combine visit with nearby Ellora Caves (just 1 km away)'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Garbhagriha Dress Code',
+          points: [
+            'Men entering Garbhagriha for Jalabhishek MUST remove upper garments (bare chest)',
+            'Traditional Dhoti mandatory for touching sacred Jyotirlinga',
+            'Women: Traditional Saree or Salwar Kameez expected'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Sanctum Rules',
+          points: [
+            'Mobile phones prohibited inside inner stone sanctum',
+            'Photography restricted in Garbhagriha, allowed in outer temple yard',
+            'Basic storage counters available outside main temple entry gate'
+          ]
+        },
+        {
+          icon: '👞',
+          title: 'Shoe Stand & Lockers',
+          points: [
+            'Free shoe keeping stand right outside temple boundary wall',
+            'Small luggage lockers available with local trusted vendor stalls',
+            'Keep valuables in vehicle/hotel as temple premise is compact'
+          ]
+        },
+        {
+          icon: '♿',
+          title: 'Accessibility Notice',
+          points: [
+            'Ramp facility available till outer courtyard entrance',
+            'Garbhagriha entrance involves few heritage stone steps',
+            'Volunteers assist senior citizens during peak morning queue'
+          ]
+        },
+        {
+          icon: '🚻',
+          title: 'Facilities & Prasad',
+          points: [
+            'Drinking water tap and public washrooms near outer parking lot',
+            'Local prasad stalls selling Belpatra, Flowers & Pedha',
+            'Multiple vegetarian restaurants available outside temple street'
+          ]
+        }
+      ];
+    }
+
+    if (match('kedarnath')) {
+      return [
+        {
+          icon: '🎟️',
+          title: 'Entry & Yatra Pass',
+          points: [
+            'Yatra Registration: Free Mandatory Char Dham / Kedarnath Yatra Registration',
+            'Biometric / QR Verification at Gaurikund & Sonprayag entry points',
+            'Special Pooja Booking: Online booking via Uttarakhand Char Dham Devasthanam Board'
+          ]
+        },
+        {
+          icon: '⏳',
+          title: 'Trek & Darshan Duration',
+          points: [
+            'Trek Duration: 16 km trek from Gaurikund (6–8 hours trek / pony / helicopter)',
+            'Queue Waiting Time: 1–3 hours during peak May-June season',
+            'Total Visit Duration: Overnight stay recommended at Kedarnath top'
+          ]
+        },
+        {
+          icon: '👥',
+          title: 'Crowd & Weather Advisory',
+          points: [
+            'Crowd Level: Extreme peak in May, June, Sept, Oct; Closed in Winter',
+            'Best Visit Time: Early morning 6:00 AM before weather becomes cloudy',
+            'Pilgrim Tip: Carry heavy woolens, rain poncho, oxygen cylinder & sturdy shoes'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Dress Code & Preparation',
+          points: [
+            'Warm thermals, heavy jacket, waterproof gloves & rain gear mandatory',
+            'Modest traditional clothing beneath winter gear',
+            'Comfortable grip trekking shoes essential for 16 km climb'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Mobile & Photography',
+          points: [
+            'Mobile photography banned inside main stone sanctum',
+            'Photography permitted in outer temple plaza & snow peaks background',
+            'Network connectivity: BSNL, Jio & Airtel active near temple base'
+          ]
+        },
+        {
+          icon: '👞',
+          title: 'Shoe Stand & Storage',
+          points: [
+            'Shoe counter located in paved courtyard outside main stone mandir',
+            'GMVN & Tent accommodation provides luggage storage',
+            'Keep electronics safe in waterproof pouches'
+          ]
+        },
+        {
+          icon: '♿',
+          title: 'Accessibility & Transport',
+          points: [
+            'Helicopter services from Phata, Sirsi & Guptkashi (Advance IRCTC booking)',
+            'Pony / Kandi (Palanquin) / Pithu services available at Sonprayag & Gaurikund',
+            'Government fixed rates for all pony and palanquin operators'
+          ]
+        },
+        {
+          icon: '🚻',
+          title: 'Facilities & Stay',
+          points: [
+            'GMVN huts, tent colonies & private dharamshalas available at top',
+            'Medical camps & oxygen relief booths along trek path & temple top',
+            'GMVN Bhojanalaya providing hot vegetarian meals'
+          ]
+        }
+      ];
+    }
+
+    if (match('tirupati') || match('tirumala') || match('venkateswara')) {
+      return [
+        {
+          icon: '🎟️',
+          title: 'Entry & Darshan Tickets',
+          points: [
+            'Special Entry Darshan (SED): ₹300 per ticket (Online advance quota release)',
+            'Slotted Sarva Darshan (Free): Tokens issued at offline counters in Tirupati',
+            'Senior Citizen / Divyang Special Quota: Specific slotted online entry'
+          ]
+        },
+        {
+          icon: '⏳',
+          title: 'Queue & Visit Duration',
+          points: [
+            'Wait Time (SED ₹300): 2 to 4 hours in Vaikuntam Queue Complex',
+            'Wait Time (Free Queue): 8 to 16 hours depending on day',
+            'Total Visit Time: 4 to 8 hours for complete pilgrimage process'
+          ]
+        },
+        {
+          icon: '👥',
+          title: 'Crowd & Timing',
+          points: [
+            'Crowd Level: Heavy 365 days a year; Peak during Brahmotsavam & weekends',
+            'Best Visit Window: Report strictly at allotted SED ticket slot hour',
+            'Pilgrim Tip: Book tickets 2–3 months in advance on official TTD website'
+          ]
+        },
+        {
+          icon: '👕',
+          title: 'Strict Traditional Dress Code',
+          points: [
+            'Men MUST wear Dhoti with Uttariye / Kurta (Jeans, shorts, t-shirts BANNED)',
+            'Women MUST wear Saree, Half-Saree, or Churidar with Dupatta',
+            'Strict dress code screening at Vaikuntam entrance gates'
+          ]
+        },
+        {
+          icon: '📵',
+          title: 'Electronics & Luggage Policy',
+          points: [
+            'Strict Ban: Mobile phones, cameras & electronic items banned inside mandir',
+            'Free TTD luggage counter: Deposit bags/mobiles at queue complex entry',
+            'Belongings automatically safely transported to Laddu counter exit desk'
+          ]
+        },
+        {
+          icon: '👞',
+          title: 'Shoe Counter & Tonsuring',
+          points: [
+            'Free footwear deposit counters at all queue entry points',
+            'Kalyanakatta: Hair tonsuring facility available 24/7 free of cost',
+            'Token receipt provided for safe footwear retrieval'
+          ]
+        },
+        {
+          icon: '♿',
+          title: 'Accessibility & Free Transit',
+          points: [
+            'Free TTD battery cars & free yellow buses operating across Tirumala',
+            'Wheelchair support & dedicated queue lanes for senior citizens',
+            'Elevators and ramps throughout Vaikuntam Queue Complex'
+          ]
+        },
+        {
+          icon: '🚻',
+          title: 'Facilities & Annadanam',
+          points: [
+            'Matrusri Tarigonda Vengamamba Annaprasadam: Free 24/7 unlimited meals',
+            'Free milk, buttermilk & food served inside queue compartments',
+            'World famous TTD Laddu Prasadam counters (Tokens attached to tickets)'
+          ]
+        }
+      ];
+    }
+
+    // Default authentic guidelines for all other temples
+    return [
+      {
+        icon: '🎟️',
+        title: 'Entry & Darshan',
+        points: [
+          'General Entry: Free entry for all devotees',
+          'VIP / Special Seva: Available at official temple administration office desk',
+          'Online Services: Verify official trust portal for advance pooja booking'
+        ]
+      },
+      {
+        icon: '⏳',
+        title: 'Queue & Visit Information',
+        points: [
+          'Average Wait Time: 20–45 mins (Weekdays), 1–2 hours (Festivals)',
+          'Average Darshan Duration: 30–60 seconds near main sanctum',
+          'Best Time to Visit: Early morning during opening Aarti hours'
+        ]
+      },
+      {
+        icon: '👕',
+        title: 'Dress Code & Customs',
+        points: [
+          'Traditional and modest attire strongly recommended for all devotees',
+          'Shorts, sleeveless tops, or casual beachwear disallowed in inner mandir',
+          'Maintain silence and follow temple queue discipline'
+        ]
+      },
+      {
+        icon: '📵',
+        title: 'Mobile & Photography Policy',
+        points: [
+          'Mobile photography prohibited inside main Garbhagriha inner sanctum',
+          'Photography rules in outer courtyard vary by temple trust policy',
+          'Use designated trust lockers for safe storage of electronic devices'
+        ]
+      },
+      {
+        icon: '👞',
+        title: 'Shoe Stand & Facilities',
+        points: [
+          'Free footwear counter available near main temple gate',
+          'RO drinking water taps and clean restroom facilities on premises',
+          'Prasad counter selling authentic temple sweet offerings'
+        ]
+      }
+    ];
   };
 
   const officialWebsiteUrl = getOfficialTempleWebsite();
   const officialHelplineNo = getOfficialTempleHelpline();
+  const authenticFacilities = getAuthenticTempleFacilities();
+  const authenticVisitorGuidelines = getAuthenticVisitorGuidelines();
+  const authenticDarshanDetails = getAuthenticTempleDarshanDetails();
 
   const openTempleLocation = () => {
-    const url = resolvedCoords
-      ? getMapSearchUrl(resolvedCoords)
-      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${temple.name} ${formatTempleLocation(temple)}`)}`;
+    // Clean name: e.g. "Baidyanath Temple – Deoghar" -> "Baidyanath Temple" or "Shree Baba Baidyanath Jyotirlinga Mandir Deoghar"
+    let cleanName = displayName.split('–')[0].split('-')[0].trim();
+    const lowerName = cleanName.toLowerCase();
+    if (!lowerName.includes('temple') && !lowerName.includes('mandir') && !lowerName.includes('dham') && !lowerName.includes('peeth') && !lowerName.includes('jyotirlinga')) {
+      cleanName = `${cleanName} Temple`;
+    }
+
+    const locStr = formatTempleLocation(temple);
+    // If locStr contains city/state not already in cleanName, append it cleanly
+    const finalQuery = locStr && !cleanName.toLowerCase().includes(locStr.toLowerCase()) 
+      ? `${cleanName}, ${locStr}` 
+      : cleanName;
+
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(finalQuery)}`;
+    
     Linking.openURL(url).catch((error) => {
       console.warn('Unable to open map URL', error);
     });
   };
 
+  const authenticJyotirlingaDetails = getAuthenticJyotirlingaDetails();
+
   const getTempleDescription = () => {
-    if (temple.description) {
-      return temple.description;
-    }
-    return specialTempleData?.description || '';
+    return authenticJyotirlingaDetails?.about || temple.description || specialTempleData?.description || '';
   };
 
   const getTempleGuidance = () => {
@@ -1200,8 +2607,14 @@ if (!temple) {
     return specialTempleData?.guidance || '';
   };
 
- const templeDescription = getTempleDescription();
- const templeGuidance = getTempleGuidance();
+  const templeDescription = getTempleDescription();
+  const templeGuidance = getTempleGuidance();
+  const templeHistory = authenticJyotirlingaDetails?.history || temple.history;
+  const templeArchitecture = authenticJyotirlingaDetails?.architecture || temple.architecture;
+  const templeSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || temple.significance;
+  const templeRituals = authenticJyotirlingaDetails?.sacredRituals || temple.rituals || temple.sacred_rituals;
+  const templeFestivals = authenticJyotirlingaDetails?.festivals || temple.festivals || temple.major_festivals;
+  const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple.pilgrimage_circuit || temple.circuit;
   return (
   <View style={styles.container}>
     <LinearGradient 
@@ -1212,7 +2625,7 @@ if (!temple) {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         {/* Floating Back Button */}
         <View style={styles.floatingBackButtonContainer}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.floatingBackButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.floatingBackButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
             <Ionicons name="arrow-back" size={24} color="#111" />
           </TouchableOpacity>
         </View>
@@ -1265,664 +2678,118 @@ if (!temple) {
                 </View>
               </TouchableOpacity>
 
-              {/* Badges Row: Verified */}
-              {temple.is_verified && (
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
-                  <Text style={styles.verifiedText}>
-                    {t('language') === 'hi' ? 'सत्यापित मंदिर' : 'Verified Temple'}
-                  </Text>
-                </View>
-              )}
+              {/* Open in Maps Action Button */}
+              <TouchableOpacity
+                style={styles.openInMapsButton}
+                onPress={openTempleLocation}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="map-outline" size={16} color="#059669" />
+                <Text style={styles.openInMapsText}>
+                  {t('language') === 'hi' ? 'मैप्स में खोलें' : 'Open in Maps'}
+                </Text>
+                <Ionicons name="open-outline" size={14} color="#059669" />
+              </TouchableOpacity>
 
-              {/* Follow + Share Action Row */}
+              {/* Share Action Row */}
               <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.followButton, isFollowing && styles.followButtonActive]}
-                  onPress={handleFollowToggle}
-                  activeOpacity={0.75}
-                  disabled={followLoading}
-                >
-                  <Ionicons
-                    name={isFollowing ? 'heart' : 'heart-outline'}
-                    size={18}
-                    color={isFollowing ? '#FFF' : COLORS.primary}
-                  />
-                  <Text style={[styles.followButtonText, isFollowing && styles.followButtonTextActive]}>
-                    {isFollowing
-                      ? (t('language') === 'hi' ? 'अनुसरण कर रहे हैं' : 'Following')
-                      : (t('language') === 'hi' ? 'अनुसरण करें' : 'Follow Temple')}
-                  </Text>
-                </TouchableOpacity>
-
                 <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.75}>
                   <Ionicons name="share-social-outline" size={18} color={COLORS.primary} />
+                  <Text style={styles.shareButtonText}>
+                    {t('language') === 'hi' ? 'शेयर करें' : 'Share'}
+                  </Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Follower Count */}
-              <Text style={styles.followerCountText}>
-                {formatFollowerCount(followerCount)} {t('language') === 'hi' ? 'अनुयायी' : 'Followers'}
-              </Text>
             </View>
           </View>
 
           {/* 2. QUICK FACTS */}
-          {(temple.dress_code || (temple.entry_fee !== undefined && temple.entry_fee !== null) || temple.best_time_to_visit || temple.circuit) && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'त्वरित जानकारी' : 'Quick Facts'}</Text>
-              <View style={styles.quickFactsGrid}>
-                {temple.dress_code && (
+          {(() => {
+            const specialKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
+            const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
+            const estYear = temple?.established_year || temple?.year_built || temple?.establishedYear || specialTemple?.establishedYear || 'Ancient';
+            const entryFee = (temple?.entry_fee !== undefined && temple?.entry_fee !== null)
+              ? (temple.entry_fee === 0 || temple.entry_fee === 'Free' ? (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry') : typeof temple.entry_fee === 'number' ? `₹${temple.entry_fee}` : temple.entry_fee)
+              : (specialTemple?.entryFee || (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry'));
+            const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || (t('language') === 'hi' ? 'अक्टूबर से मार्च' : 'October to March');
+
+            return (
+              <View style={styles.section}>
+                <View style={styles.quickFactsGrid}>
+                  {/* Established Year */}
                   <View style={styles.infoChip}>
-                    <Ionicons name="shirt-outline" size={16} color={COLORS.primary} />
-                    <Text style={styles.infoChipText}>{temple.dress_code}</Text>
+                    <Ionicons name="time-outline" size={16} color={COLORS.primary} />
+                    <Text style={styles.infoChipText}>
+                      {t('language') === 'hi' ? 'स्थापना:' : 'Est:'} {estYear}
+                    </Text>
                   </View>
-                )}
-                {(temple.entry_fee !== undefined && temple.entry_fee !== null) && (
+
+                  {/* Entry Fee / Free */}
                   <View style={styles.infoChip}>
                     <Ionicons name="ticket-outline" size={16} color={COLORS.primary} />
-                    <Text style={styles.infoChipText}>{temple.entry_fee === 0 ? 'Free Entry' : `₹${temple.entry_fee}`}</Text>
+                    <Text style={styles.infoChipText}>
+                      {t('language') === 'hi' ? 'प्रवेश:' : 'Entry:'} {entryFee}
+                    </Text>
                   </View>
-                )}
-                {temple.best_time_to_visit && (
+
+                  {/* Best Time to Visit */}
                   <View style={styles.infoChip}>
                     <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
-                    <Text style={styles.infoChipText}>{temple.best_time_to_visit}</Text>
-                  </View>
-                )}
-                {temple.circuit && (
-                  <View style={styles.infoChip}>
-                    <Ionicons name="map-outline" size={16} color={COLORS.primary} />
                     <Text style={styles.infoChipText}>
-                      {typeof temple.circuit === 'string'
-                        ? temple.circuit
-                        : `${temple.circuit.icon || '🛕'} ${temple.circuit.name || ''}`}
+                      {t('language') === 'hi' ? 'उत्कृष्ट समय:' : 'Best Time:'} {bestTime}
                     </Text>
                   </View>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* 3. DARSHAN & AARTI */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'दर्शन एवं आरती' : 'Darshan & Aarti'}</Text>
-
-            {/* Darshan Timings */}
-            {darshanTimings && (
-              <View style={styles.darshanTimingsCard}>
-                <Ionicons name="time-outline" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
-                <View style={{ flex: 1 }}>
-                  {Object.entries(darshanTimings).map(([label, time]) => (
-                    <View key={label} style={styles.darshanTimingRow}>
-                      <Text style={styles.darshanTimingLabel}>{label}</Text>
-                      <Text style={styles.darshanTimingValue}>{String(time)}</Text>
-                    </View>
-                  ))}
                 </View>
               </View>
-            )}
+            );
+          })()}
 
-            {/* Aarti Sessions */}
-            {aartiSessions.length > 0 && (
-              <View style={{ marginTop: darshanTimings ? 14 : 0 }}>
-                {isMiraRoadTemple && (
-                  <Text style={styles.morningAartiText}>
-                    {t('language') === 'hi' ? 'सुबह की आरती' : 'Morning Aarti'}
-                  </Text>
-                )}
-                <View style={styles.aartiGrid}>
-                  {aartiSessions.map(([key, value]) => {
-                    let displayKey = key.charAt(0).toUpperCase() + key.slice(1);
-                    if (t('language') === 'hi') {
-                      if (key.toLowerCase() === 'morning') displayKey = 'सुबह की आरती';
-                      else if (key.toLowerCase() === 'afternoon') displayKey = 'दोपहर की आरती';
-                      else if (key.toLowerCase() === 'evening') displayKey = 'शाम की आरती';
-                      else if (key.toLowerCase() === 'night') displayKey = 'रात की आरती';
-                    }
-                    return (
-                      <View key={key} style={styles.aartiCard}>
-                        <Text style={styles.aartiLabel}>{displayKey}</Text>
-                        <Text style={styles.aartiTime}>{value}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-                {isMiraRoadTemple && (
-                  <>
-                    <Text style={styles.afternoonAartiText}>
-                      {t('language') === 'hi' ? 'दोपहर की आरती' : 'Afternoon Aarti'}
-                    </Text>
-                    <View style={styles.aartiCard}>
-                      <Text style={styles.aartiLabel}>Raj Bhoga Aarti</Text>
-                      <Text style={styles.aartiTime}>12:30 PM</Text>
-                    </View>
-                    <Text style={styles.eveningAartiText}>
-                      {t('language') === 'hi' ? 'शाम की आरती' : 'Evening Aarti'}
-                    </Text>
-                    <View style={styles.aartiGrid}>
-                      <View style={styles.aartiCard}>
-                        <Text style={styles.aartiLabel}>Usthapana Aarti</Text>
-                        <Text style={styles.aartiTime}>4:15 PM - 4:30 PM</Text>
-                      </View>
-                      <View style={styles.aartiCard}>
-                        <Text style={styles.aartiLabel}>Sandhya Aarti</Text>
-                        <Text style={styles.aartiTime}>7:00 PM</Text>
-                      </View>
-                      <View style={styles.aartiCard}>
-                        <Text style={styles.aartiLabel}>Shayana Aarti</Text>
-                        <Text style={styles.aartiTime}>8:30 PM - 9:00 PM</Text>
-                      </View>
-                    </View>
-                  </>
-                )}
-              </View>
-            )}
-          </View>
+          {/* 3. DARSHAN & AARTI (Day Timeline Visualization) */}
+          <DarshanAartiTimeline
+            openingTime={authenticDarshanDetails?.opening || '4:00 AM'}
+            closingTime={authenticDarshanDetails?.closing || '9:00 PM'}
+            vipInfoText={authenticDarshanDetails?.vipDarshan || 'VIP / special darshan available'}
+          />
 
-          {/* 4. PILGRIMAGE PROTOCOL */}
-          {((temple.pilgrimage_protocol && Array.isArray(temple.pilgrimage_protocol) && temple.pilgrimage_protocol.length > 0) || templeGuidance) && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="footsteps" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'तीर्थयात्रा नियम व चरण' : 'Pilgrimage Protocol & Journey'}</Text>
-              </View>
+          {/* FACILITIES, AMENITIES & GOOD TO KNOW */}
+          <TempleFacilitiesSection />
+          {/* ABOUT TEMPLE STORY & TRAVEL ROUTE VISUALIZATION */}
+          {(() => {
+            const authenticTransport = getAuthenticJyotirlingaTransport();
+            const airInfo = authenticTransport?.air || temple?.nearest_airport;
+            const railInfo = authenticTransport?.rail || temple?.nearest_railway;
+            const busInfo = authenticTransport?.bus || temple?.nearest_bus_stand;
 
-              {/* Visual Pilgrim Checklist Badges */}
-              <View style={styles.checklistRow}>
-                <View style={styles.checkChip}>
-                  <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                  <Text style={styles.checkChipText}>{t('language') === 'hi' ? 'स्नान एवं शुद्धि' : 'Holy Dip & Purity'}</Text>
-                </View>
-                <View style={styles.checkChip}>
-                  <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                  <Text style={styles.checkChipText}>{t('language') === 'hi' ? 'मौन / मंत्र जप' : 'Japa & Silent Prayer'}</Text>
-                </View>
-                <View style={styles.checkChip}>
-                  <Ionicons name="checkmark-circle" size={14} color="#059669" />
-                  <Text style={styles.checkChipText}>{t('language') === 'hi' ? 'परिक्रमा' : 'Pradakshina Flow'}</Text>
-                </View>
-              </View>
+            const festList = Array.isArray(templeFestivals)
+              ? templeFestivals.map((f: any) => (typeof f === 'object' ? f.name || f.name_hi : String(f)))
+              : templeFestivals
+              ? [String(templeFestivals)]
+              : ['Maha Shivratri', 'Shravan Somvar', 'Annakutotsav'];
 
-              {temple.pilgrimage_protocol && Array.isArray(temple.pilgrimage_protocol) && temple.pilgrimage_protocol.length > 0 ? (
-                <View style={styles.protocolCard}>
-                  {temple.pilgrimage_protocol.map((step: string | { step?: number; title?: string; text?: string }, index: number) => {
-                    const stepText = typeof step === 'string' ? step : (step.text || step.title || JSON.stringify(step));
-                    const isLast = index === temple.pilgrimage_protocol.length - 1;
-                    return (
-                      <View key={`protocol-${index}`} style={styles.protocolStepContainer}>
-                        <View style={styles.protocolLeftCol}>
-                          <View style={styles.protocolBadge}>
-                            <Text style={styles.protocolBadgeText}>{index + 1}</Text>
-                          </View>
-                          {!isLast && <View style={styles.protocolTimelineConnector} />}
-                        </View>
-                        <View style={styles.protocolContentBox}>
-                          <Text style={styles.protocolStepTitle}>
-                            {t('language') === 'hi' ? `चरण ${index + 1}` : `Step ${index + 1}`}
-                          </Text>
-                          <Text style={styles.protocolStepText}>{stepText}</Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : templeGuidance ? (
-                <View style={styles.protocolCard}>
-                  <View style={styles.protocolStepContainer}>
-                    <View style={styles.protocolLeftCol}>
-                      <View style={styles.protocolBadge}>
-                        <Ionicons name="compass-outline" size={16} color="#FFF" />
-                      </View>
-                    </View>
-                    <View style={styles.protocolContentBox}>
-                      <Text style={styles.protocolStepTitle}>{t('language') === 'hi' ? 'दर्शन मार्गदर्शिका' : 'Darshan Guidance & Flow'}</Text>
-                      <Text style={styles.protocolStepText}>{templeGuidance}</Text>
-                    </View>
-                  </View>
-                </View>
-              ) : null}
-            </View>
-          )}
-
-          {/* 5. SPIRITUAL SIGNIFICANCE & ABOUT */}
-          {(templeDescription || temple.significance) && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="sparkles" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'आध्यात्मिक महत्व' : 'Spiritual Significance'}</Text>
-              </View>
-              <View style={styles.significanceCard}>
-                {templeDescription ? (
-                  <View style={styles.richTextChunk}>
-                    <Text style={styles.descriptionText}>{templeDescription}</Text>
-                  </View>
-                ) : null}
-                {temple.significance ? (
-                  <View style={styles.highlightCalloutBox}>
-                    <Ionicons name="bookmark" size={18} color="#D97706" style={{ marginTop: 2 }} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.calloutTitle}>{t('language') === 'hi' ? 'मुख्य महिमा' : 'Key Glory & Legacy'}</Text>
-                      <Text style={styles.calloutText}>{temple.significance}</Text>
-                    </View>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          )}
-
-          {/* 6. HISTORY */}
-          {temple.history && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="time" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'इतिहास एवं पौराणिक कथाएँ' : 'History & Sacred Timeline'}</Text>
-              </View>
-              
-              <View style={styles.historyCardContainer}>
-                {/* Timeline Header Badge */}
-                <View style={styles.historyTimelineHeader}>
-                  <Ionicons name="calendar-sharp" size={16} color="#B45309" />
-                  <Text style={styles.historyTimelineHeaderText}>
-                    {t('language') === 'hi' ? 'ऐतिहासिक घटनाक्रम एवं पुनर्निर्माण' : 'Historical Events & Reconstruction Milestones'}
-                  </Text>
-                </View>
-
-                {/* History Split Chunks / Bullet Highlights */}
-                {typeof temple.history === 'string' ? (
-                  temple.history.split(/(?<=[.!?])\s+/).reduce((acc: string[][], sentence: string, idx: number) => {
-                    const groupIndex = Math.floor(idx / 2);
-                    if (!acc[groupIndex]) acc[groupIndex] = [];
-                    acc[groupIndex].push(sentence);
-                    return acc;
-                  }, []).map((chunkSentences: string[], chunkIdx: number) => {
-                    const chunkText = chunkSentences.join(' ');
-                    if (!chunkText.trim()) return null;
-                    return (
-                      <View key={`hist-chunk-${chunkIdx}`} style={styles.historyTimelineCard}>
-                        <View style={styles.timelinePoint}>
-                          <View style={styles.timelineDot} />
-                          {chunkIdx > 0 && <View style={styles.timelineLine} />}
-                        </View>
-                        <View style={styles.historyCardBody}>
-                          <Text style={styles.historyMilestoneTag}>
-                            {chunkIdx === 0 
-                              ? (t('language') === 'hi' ? '🚩 प्राचीन उत्पत्ति व स्थापना' : '🚩 Ancient Era & Foundation')
-                              : chunkIdx === 1
-                              ? (t('language') === 'hi' ? '🔱 युगों-युगों का महत्व' : '🔱 Royal Patronage & Saints')
-                              : (t('language') === 'hi' ? '🏛️ पुनर्निर्माण व वर्तमान स्वरूप' : '🏛️ Modern Reconstruction & Legacy')}
-                          </Text>
-                          <Text style={styles.historyCardText}>{chunkText}</Text>
-                        </View>
-                      </View>
-                    );
-                  })
-                ) : (
-                  <Text style={styles.descriptionText}>{String(temple.history)}</Text>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* 7. ARCHITECTURE & HERITAGE */}
-          {temple.architecture && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="business" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'वास्तुकला एवं मंदिर निर्माण' : 'Architecture & Temple Design'}</Text>
-              </View>
-              
-              <View style={styles.architectureContainerCard}>
-                <View style={styles.archStyleRow}>
-                  <View style={styles.archStyleBadge}>
-                    <Ionicons name="color-palette" size={14} color="#7C3AED" />
-                    <Text style={styles.archStyleBadgeText}>
-                      {temple.architecture.toLowerCase().includes('dravid') ? 'Dravidian Style Architecture' : temple.architecture.toLowerCase().includes('nagara') ? 'Nagara Style Architecture' : 'Vedic Temple Architecture'}
-                    </Text>
-                  </View>
-                  {temple.heritage_status && (
-                    <View style={styles.heritageBadge}>
-                      <Text style={styles.heritageBadgeText}>🏛️ {temple.heritage_status}</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Main Design Callout */}
-                <View style={styles.archCalloutBox}>
-                  <Ionicons name="construct" size={20} color={COLORS.primary} style={{ marginTop: 2 }} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.archCalloutTitle}>{t('language') === 'hi' ? 'शिल्प शास्त्र व धरोहर वैशिष्ट्य' : 'Shilpa Shastra & Architectural Craft'}</Text>
-                    <Text style={styles.archCalloutBody}>{temple.architecture}</Text>
-                  </View>
-                </View>
-
-                {/* Feature Bullet List */}
-                <View style={styles.archFeaturesGrid}>
-                  <View style={styles.archFeatureItem}>
-                    <Ionicons name="prism" size={14} color={COLORS.primary} />
-                    <Text style={styles.archFeatureText}>{t('language') === 'hi' ? 'गर्भ गृह व शिखर' : 'Garbhagriha & Shikhara'}</Text>
-                  </View>
-                  <View style={styles.archFeatureItem}>
-                    <Ionicons name="cube" size={14} color={COLORS.primary} />
-                    <Text style={styles.archFeatureText}>{t('language') === 'hi' ? 'मंडप व नक्काशी' : 'Pillared Mandapa'}</Text>
-                  </View>
-                  <View style={styles.archFeatureItem}>
-                    <Ionicons name="compass" size={14} color={COLORS.primary} />
-                    <Text style={styles.archFeatureText}>{t('language') === 'hi' ? 'वास्तु दिशा चक्र' : 'Vastu Alignment'}</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* 8. SACRED SCRIPTURES */}
-          {((temple.associated_scriptures && Array.isArray(temple.associated_scriptures) && temple.associated_scriptures.length > 0) || temple.name.includes('Somnath') || temple.name.includes('Kedarnath') || temple.name.includes('Kashi')) && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="book" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'शास्त्र एवं स्थल महात्म्य' : 'Sacred Scriptures & References'}</Text>
-              </View>
-
-              {/* Purana & Sthala Mahatmya Highlight Banner */}
-              <View style={styles.sthalaMahatmyaCard}>
-                <View style={styles.sthalaHeaderRow}>
-                  <Text style={styles.sthalaIcon}>📜</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.sthalaTitle}>{t('language') === 'hi' ? 'स्थल महात्म्य एवं पुराण उल्लेख' : 'Sthala Mahatmya & Purana References'}</Text>
-                    <Text style={styles.sthalaSubtext}>{t('language') === 'hi' ? 'स्कंद पुराण, शिव पुराण एवं महाभारत में वर्णित पवित्र धाम' : 'Glorified in Shiva Purana, Skanda Purana & Mahabharata'}</Text>
-                  </View>
-                </View>
-
-                {/* Individual Scripture Source Chips */}
-                <View style={styles.scripturesWrapRow}>
-                  {temple.associated_scriptures && Array.isArray(temple.associated_scriptures) && temple.associated_scriptures.length > 0 ? (
-                    temple.associated_scriptures.map((scripture: string, idx: number) => (
-                      <View key={`scripture-${idx}`} style={styles.scriptureCardChip}>
-                        <Ionicons name="bookmark-sharp" size={14} color="#EA580C" />
-                        <Text style={styles.scriptureCardChipText}>{scripture}</Text>
-                      </View>
-                    ))
-                  ) : (
-                    <>
-                      <View style={styles.scriptureCardChip}>
-                        <Ionicons name="bookmark-sharp" size={14} color="#EA580C" />
-                        <Text style={styles.scriptureCardChipText}>Shiva Purana</Text>
-                      </View>
-                      <View style={styles.scriptureCardChip}>
-                        <Ionicons name="bookmark-sharp" size={14} color="#EA580C" />
-                        <Text style={styles.scriptureCardChipText}>Skanda Purana (Kshetra Khanda)</Text>
-                      </View>
-                      <View style={styles.scriptureCardChip}>
-                        <Ionicons name="bookmark-sharp" size={14} color="#EA580C" />
-                        <Text style={styles.scriptureCardChipText}>Srimad Bhagavatam</Text>
-                      </View>
-                    </>
-                  )}
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* 9. SPECIAL RITUALS & PRASAD */}
-          {(temple.special_rituals || temple.famous_prasad) && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="flame" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'विशेष अनुष्ठान एवं महाप्रसाद' : 'Sacred Prasad & Seva Rituals'}</Text>
-              </View>
-              
-              <View style={styles.prasadRitualsContainer}>
-                {/* Featured Prasad Card */}
-                {temple.famous_prasad && (
-                  <View style={styles.featuredPrasadCard}>
-                    <View style={styles.prasadBadgeRow}>
-                      <Text style={styles.prasadIcon}>🍯</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.prasadHeaderLabel}>{t('language') === 'hi' ? 'प्रसिद्ध महाप्रसाद' : 'Featured Holy Prasad'}</Text>
-                        <Text style={styles.prasadValueText}>{temple.famous_prasad}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.prasadSubInfo}>
-                      {t('language') === 'hi' ? 'भगवान को भोग लगाने के पश्चात भक्तों में वितरित किया जाता है।' : 'Blessed and offered daily during Rajbhog for divine bliss.'}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Popular Seva Indicators / Ritual Highlight Cards */}
-                {temple.special_rituals && (
-                  <View style={styles.ritualsHighlightCard}>
-                    <View style={styles.ritualHeaderRow}>
-                      <Ionicons name="ribbon" size={18} color="#9A3412" />
-                      <Text style={styles.ritualHeaderTitle}>{t('language') === 'hi' ? 'लोकप्रिय सेवा एवं पूजा संकल्प' : 'Popular Seva & Abhishek Rituals'}</Text>
-                    </View>
-
-                    {Array.isArray(temple.special_rituals) ? (
-                      temple.special_rituals.map((ritual: string, rIdx: number) => (
-                        <View key={`rit-${rIdx}`} style={styles.ritualRowItem}>
-                          <Ionicons name="sparkles" size={14} color={COLORS.primary} />
-                          <Text style={styles.ritualRowText}>{ritual}</Text>
-                        </View>
-                      ))
-                    ) : (
-                      <View style={styles.ritualRowItem}>
-                        <Ionicons name="sparkles" size={14} color={COLORS.primary} />
-                        <Text style={styles.ritualRowText}>{String(temple.special_rituals)}</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* 10. FESTIVALS */}
-          {temple.festivals && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="sparkles-sharp" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'प्रमुख उत्सव एवं पर्व' : 'Major Festivals & Celebrations'}</Text>
-              </View>
-              <View style={styles.festivalsRow}>
-                {(Array.isArray(temple.festivals) ? temple.festivals : [temple.festivals]).map((fest: any, i: number) => {
-                  const festName = typeof fest === 'object' ? fest.name || fest.name_hi || JSON.stringify(fest) : String(fest);
-                  return (
-                    <View key={i} style={styles.festivalChip}>
-                      <Text style={styles.festivalChipText}>🎪 {festName}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-
-          {/* 11. TRAVEL & FACILITIES */}
-          {(temple.nearest_airport || temple.nearest_railway || temple.nearest_bus_stand || temple.travel_tips || (temple.facilities && temple.facilities.length > 0) || templeGuidance) && (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Ionicons name="navigate" size={20} color={COLORS.primary} />
-                <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'यात्रा, पहुँच एवं सुविधाएँ' : 'Pilgrimage Transport & Access'}</Text>
-              </View>
-
-              {/* Transport Cards (Airport, Railway, Bus, Distances) */}
-              {(temple.nearest_airport || temple.nearest_railway || temple.nearest_bus_stand) && (
-                <View style={styles.transportGridContainer}>
-                  {temple.nearest_airport && (
-                    <View style={styles.transportDetailCard}>
-                      <View style={styles.transportIconBadge}>
-                        <Text style={{ fontSize: 18 }}>✈️</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.transportTypeLabel}>{t('language') === 'hi' ? 'निकटतम हवाई अड्डा' : 'Nearest Airport'}</Text>
-                        <Text style={styles.transportValueText}>{temple.nearest_airport}</Text>
-                      </View>
-                    </View>
-                  )}
-                  {temple.nearest_railway && (
-                    <View style={styles.transportDetailCard}>
-                      <View style={styles.transportIconBadge}>
-                        <Text style={{ fontSize: 18 }}>🚆</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.transportTypeLabel}>{t('language') === 'hi' ? 'निकटतम रेलवे स्टेशन' : 'Nearest Railway'}</Text>
-                        <Text style={styles.transportValueText}>{temple.nearest_railway}</Text>
-                      </View>
-                    </View>
-                  )}
-                  {temple.nearest_bus_stand && (
-                    <View style={styles.transportDetailCard}>
-                      <View style={styles.transportIconBadge}>
-                        <Text style={{ fontSize: 18 }}>🚌</Text>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.transportTypeLabel}>{t('language') === 'hi' ? 'बस स्टैंड / मार्ग' : 'Bus Stand / Highway'}</Text>
-                        <Text style={styles.transportValueText}>{temple.nearest_bus_stand}</Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Travel Tips & Warnings Cards */}
-              {(temple.travel_tips || templeGuidance) && (
-                <View style={styles.travelTipsUpgradedCard}>
-                  <View style={styles.travelTipsHeaderRow}>
-                    <Ionicons name="warning" size={18} color="#B45309" />
-                    <Text style={styles.travelTipsHeaderTitle}>{t('language') === 'hi' ? 'यात्रा सावधानियाँ व परामर्श' : 'Pilgrim Travel Tips & Festival Warnings'}</Text>
-                  </View>
-                  {temple.travel_tips ? (
-                    Array.isArray(temple.travel_tips) ? (
-                      temple.travel_tips.map((tip: string, tIdx: number) => (
-                        <View key={`tip-${tIdx}`} style={styles.tipItemRow}>
-                          <Ionicons name="chevron-forward-circle" size={14} color="#D97706" />
-                          <Text style={styles.travelTipUpgradedText}>{tip}</Text>
-                        </View>
-                      ))
-                    ) : (
-                      <View style={styles.tipItemRow}>
-                        <Ionicons name="chevron-forward-circle" size={14} color="#D97706" />
-                        <Text style={styles.travelTipUpgradedText}>{temple.travel_tips}</Text>
-                      </View>
-                    )
-                  ) : (
-                    <View style={styles.tipItemRow}>
-                      <Ionicons name="chevron-forward-circle" size={14} color="#D97706" />
-                      <Text style={styles.travelTipUpgradedText}>{templeGuidance}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {/* Facilities Grid */}
-              {temple.facilities && Array.isArray(temple.facilities) && temple.facilities.length > 0 && (
-                <View style={styles.facilitiesGrid}>
-                  {temple.facilities.map((fac: string, fIdx: number) => (
-                    <View key={`fac-${fIdx}`} style={styles.facilityChip}>
-                      <Text style={styles.facilityText}>✔ {fac}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* 12. NEARBY TEERTH */}
-          {temple.nearby_teerth && Array.isArray(temple.nearby_teerth) && temple.nearby_teerth.length > 0 && (
-            <View style={styles.gallerySection}>
-              <Text style={[styles.sectionTitle, { marginHorizontal: 16, marginBottom: 12 }]}>
-                {t('language') === 'hi' ? 'समीपस्थ तीर्थ' : 'Nearby Teerth'}
-              </Text>
-              <FlatList
-                data={temple.nearby_teerth}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingHorizontal: 16 }}
-                keyExtractor={(item, index) => `teerth-${index}`}
-                renderItem={({ item }) => {
-                  const name = typeof item === 'string' ? item : item.name || item.title || 'Teerth';
-                  const distance = typeof item === 'object' ? item.distance : null;
-                  const relevance = typeof item === 'object' ? item.relevance || item.description : null;
-                  return (
-                    <View style={styles.teerthCard}>
-                      <View style={styles.teerthHeader}>
-                        <Ionicons name="location-sharp" size={16} color={COLORS.primary} />
-                        <Text style={styles.teerthName} numberOfLines={1}>{name}</Text>
-                      </View>
-                      {distance && <Text style={styles.teerthDistance}>📍 {distance}</Text>}
-                      {relevance && <Text style={styles.teerthRelevance} numberOfLines={2}>{relevance}</Text>}
-                    </View>
-                  );
-                }}
+            return (
+              <AboutTempleStory
+                templeName={temple?.name || 'Temple Shrine'}
+                subtitle={temple?.location || 'Sacred Pilgrimage Landmark'}
+                introDescription={templeDescription || 'A profound center of devotion, revered for centuries by millions of pilgrims seeking spiritual liberation.'}
+                significance={templeSignificance || 'Believed to be one of the sacred pilgrimage shrines where divine energies reside.'}
+                history={typeof templeHistory === 'string' ? templeHistory : 'Tracing ancient origins, rebuilt across eras by royal patrons and devotees.'}
+                architecture={templeArchitecture || 'Built in traditional sacred Indian temple architectural style with carved stone pillars and sanctum.'}
+                festivals={festList}
+                airRoute={airInfo || 'Nearest Major Airport'}
+                railRoute={railInfo || 'Nearest Railway Station'}
+                busRoute={busInfo ? `Direct connectivity: ${busInfo}` : 'Regular buses & taxis available from neighboring cities'}
               />
-            </View>
-          )}
+            );
+          })()}
 
-          {/* 13. LIVE DARSHAN */}
-          {resolvedYoutubeUrl ? (
-            <View style={styles.section}>
-              <TouchableOpacity
-                style={styles.youtubeLinkButton}
-                onPress={() => setIsYoutubeModalVisible(true)}
-                activeOpacity={0.75}
-              >
-                {isCurrentlyLive ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Animated.View style={{ opacity: pulseAnim, width: 10, height: 10, borderRadius: 5, backgroundColor: '#FFF', marginRight: 8 }} />
-                    <Text style={styles.youtubeLinkText}>
-                      {isYoutubeUrl 
-                        ? (t('language') === 'hi' ? '🔴 लाइव: यूट्यूब पर आरती देखें' : '🔴 LIVE: Watch Aarti on YouTube')
-                        : (t('language') === 'hi' ? '🔴 लाइव दर्शन: वेबसाइट पर देखें' : '🔴 LIVE: Watch Darshan on Website')}
-                    </Text>
-                  </View>
-                ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Ionicons name="play-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.youtubeLinkText}>
-                      {isYoutubeUrl
-                        ? (t('language') === 'hi' ? 'यूट्यूब पर आरती देखें' : 'Watch Aarti on YouTube')
-                        : (t('language') === 'hi' ? 'लाइव दर्शन देखें' : 'Watch Live Darshan')}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-          ) : null}
 
-          {/* 14. MAP & LOCATION */}
-          {hasSpecialMap && (
-            <View style={styles.mapSection}>
-              <Text style={styles.sectionTitle}>{t('language') === 'hi' ? 'स्थान एवं मानचित्र' : 'Map & Location'}</Text>
-              <TouchableOpacity style={styles.mapWrapper} onPress={openTempleLocation} activeOpacity={0.9}>
-                {isWeb ? (
-                  <iframe
-                    title={displayName}
-                    src={getMapEmbedUrl(resolvedCoords!)}
-                    style={styles.mapBox}
-                    frameBorder="0"
-                    allowFullScreen
-                  />
-                ) : (
-                  <WebView
-                    source={{ html: getMapHtml(resolvedCoords!) }}
-                    style={styles.mapBox}
-                    scrollEnabled={false}
-                    originWhitelist={["*"]}
-                    pointerEvents="none"
-                  />
-                )}
-                <View style={styles.mapOverlay}>
-                  <Text style={styles.mapOverlayText}>
-                    {t('language') === 'hi' ? 'मैप देखने के लिए टैप करें' : 'Tap to view map'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          )}
+
+
 
           {/* 15. OFFICIAL LINKS & VERIFIED HELPLINES */}
           {(officialWebsiteUrl || officialHelplineNo) && (
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
-                <Ionicons name="globe-outline" size={20} color={COLORS.primary} />
                 <Text style={styles.sectionTitle}>
                   {t('language') === 'hi' ? 'आधिकारिक पोर्टल एवं हेल्पलाइन' : 'Official Portal & Helpline'}
                 </Text>
@@ -1985,43 +2852,13 @@ if (!temple) {
             </View>
           )}
 
-          {/* Temple Gallery */}
-          {templeImages.length > 0 && (
-            <View style={styles.gallerySection}>
-              <Text style={[styles.sectionTitle, { marginHorizontal: 16, marginBottom: 12 }]}>
-                {t('language') === 'hi' ? 'चित्र दीर्घा' : 'Gallery'}
-              </Text>
-              <FlatList
-                ref={galleryScrollRef}
-                data={templeImages}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                snapToInterval={SCREEN_WIDTH * 0.82 + 12}
-                decelerationRate="fast"
-                contentContainerStyle={{ paddingHorizontal: 16 }}
-                keyExtractor={(item, index) => `gallery-${index}`}
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity
-                    style={styles.galleryCard}
-                    activeOpacity={0.85}
-                    onPress={() => { setActiveGalleryIndex(index); setGalleryModalVisible(true); }}
-                  >
-                    <Image source={{ uri: item }} style={styles.galleryImage} resizeMode="cover" />
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          )}
-
-          {/* Temple Data Disclaimer Note */}
-          <View style={styles.disclaimerContainer}>
-            <Ionicons name="information-circle-outline" size={14} color="#6B7280" />
-            <Text style={styles.disclaimerText}>
-              {t('language') === 'hi'
-                ? 'समय, शुल्क एवं यात्रा विवरण में परिवर्तन हो सकता है — कृपया दर्शन यात्रा से पूर्व मंदिर प्रशासन से पुष्टि करें।'
-                : 'Timings, fees and travel details can change — please verify with the temple before visiting.'}
-            </Text>
-          </View>
+          {/* 16. BRAND-NEW PREMIUM PILGRIMAGE TRAVEL EXPERIENCE */}
+          <PilgrimageTravelSection
+            templeId={typeof id === 'string' ? id : Array.isArray(id) ? id[0] : ''}
+            templeName={temple?.name || ''}
+            location={temple?.location || ''}
+            category={temple?.category || ''}
+          />
 
         </ScrollView>
     </SafeAreaView>
@@ -2226,6 +3063,24 @@ const styles = StyleSheet.create({
     color: '#D95200',
     letterSpacing: 0.3,
   },
+  openInMapsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginTop: 12,
+    gap: 6,
+  },
+  openInMapsText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#059669',
+  },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2297,8 +3152,12 @@ const styles = StyleSheet.create({
   },
   darshanTimingRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
   },
   darshanTimingLabel: {
     fontSize: 14,
@@ -2494,16 +3353,14 @@ const styles = StyleSheet.create({
  marginLeft: SPACING.xs,
  },
   section: {
-    marginHorizontal: 16,
-    marginBottom: 16,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    marginBottom: 8,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#111827',
-    marginBottom: 16,
+    color: '#0F172A',
+    marginBottom: 10,
     letterSpacing: -0.3,
   },
  timingRow: {
@@ -3424,12 +4281,99 @@ const styles = StyleSheet.create({
    borderWidth: 1,
    borderColor: '#E5E7EB',
  },
- disclaimerText: {
-   fontSize: 11,
-   fontWeight: '500',
-   color: '#6B7280',
-   textAlign: 'center',
-   lineHeight: 16,
-   flex: 1,
- },
+  disclaimerText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 16,
+    flex: 1,
+  },
+  amenitiesSubTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  facilityChipUpgraded: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  facilityTextUpgraded: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#166534',
+    letterSpacing: 0.1,
+  },
+  goodToKnowSection: {
+    paddingTop: 16,
+    marginTop: 12,
+  },
+  goodToKnowGrid: {
+    gap: 12,
+  },
+  goodToKnowCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  goodToKnowIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  goodToKnowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 6,
+    letterSpacing: 0.1,
+  },
+  bulletPointRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  bulletDot: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D97706',
+    marginRight: 6,
+    lineHeight: 18,
+  },
+  goodToKnowDesc: {
+    flex: 1,
+    fontSize: 12.5,
+    fontWeight: '500',
+    color: '#4B5563',
+    lineHeight: 18,
+  },
 });
