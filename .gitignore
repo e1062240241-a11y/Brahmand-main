@@ -367,11 +367,47 @@ Gemfile.lock
 *.sln.docstates
 *.userprefs
 *.cache
-*.da.cache
-*.VC.db
-*.VC.VC.opendb
-*.vc.db
-*.vc.opendb
 *.VC.opendb
-*.......
-```
+
+# Local Scratch & Backups
+backend/scratch/
+scratch/
+*.json.backup
+
+# Expo, Gradle & Build Caches
+.expo/
+.gradle/
+.deploy/
+.agents/
+tmp_home/
+frontend/.expo_home/
+frontend/.gradle/
+local.properties
+
+# Diagnostic Logs & Temp Outputs
+deploy-log.txt
+backend/diagnose_output.txt
+backend/inspect_output.txt
+frontend/scratch_conflicts.txt
+credentials.json
+frontend/credentials.json
+
+# Local Test Scripts
+backend/test_*.py
+
+# Local Prebuild & Native Build Artifacts
+.xcode.env
+*.xcode.env
+frontend/ios/.xcode.env
+frontend/android/app/src/debug/
+frontend/android/app/src/debugOptimized/
+frontend/android/app/src/main/res/drawable*
+frontend/android/app/src/main/res/mipmap*
+frontend/android/app/src/main/res/values/
+frontend/android/app/src/main/res/drawable/
+frontend/android/app/src/main/java/com/brahmand/app/MainActivity.kt
+frontend/android/app/proguard-rules.pro
+frontend/android/app/src/main/AndroidManifest.xml
+frontend/android/gradle/
+frontend/android/gradlew
+frontend/android/gradle.properties
