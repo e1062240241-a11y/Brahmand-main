@@ -1,13 +1,11 @@
 // accessibility: placeholder
 // Trigger watch rebuild
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlashList } from '@shopify/flash-list';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  FlatList,
   TouchableOpacity,
   Pressable,
   Image,
@@ -48,21 +46,14 @@ import { useBlockStore } from '../../src/store/blockStore';
 import { formatNativeGeocodedAddress } from '../../src/utils/locationHelper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Avatar } from '../../src/components/Avatar';
-import PostFeedCard from '../../src/components/PostFeedCard';
+import FeedSection from '../../src/components/home/FeedSection';
 import { socketService } from '../../src/services/socket';
 
 // ── Smart Feed Optimization (ADD-ONLY, no existing features changed) ─────────
-import { useFeedOptimizationStore } from '../../src/store/feedOptimizationStore';
-import { useSmartFeed } from '../../src/hooks/useSmartFeed';
-import HomeJyotishSection from '../../src/components/HomeJyotishSection';
-import Svg, { Path, Circle, Rect, G, Text as SvgText } from 'react-native-svg';
 import { useTranslation } from '../../src/utils/i18n';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
-import {
-  rankPosts,
-  saveLastTopPostId,
-  getLastTopPostId,
-} from '../../src/utils/feedRanker';
+import HomeJyotishSection from '../../src/components/HomeJyotishSection';
+import Svg, { Path, Circle, Rect, G, Text as SvgText } from 'react-native-svg';
 
 import SharePostModal from '../../src/components/SharePostModal';
 import UiverseNotifyButton from '../../src/components/UiverseNotifyButton';
@@ -2180,98 +2171,7 @@ export default function HomeScreen() {
   const tabFeeds = useFeedStore(state => state.tabFeeds);
   const setTabFeed = useFeedStore(state => state.setTabFeed);
   const loadHistory = useFeedStore(state => state.loadHistory);
-  const currentFeed = tabFeeds[activeTab] || { posts: [], offset: 0, hasMore: true, lastFetched: 0 };
-  const rawFeedPosts = currentFeed.posts;
-  const [focusTrigger, setFocusTrigger] = useState(0);
-  const [feedPosts, setFeedPosts] = useState<any[]>([]);
-
-  useEffect(() => {
-    let isActive = true;
-
-    const task = InteractionManager.runAfterInteractions(() => {
-      if (!isActive) return;
-
-      let videos: any[] = [];
-      let images: any[] = [];
-
-      // Single pass for filtering and splitting (O(N))
-      for (let i = 0; i < rawFeedPosts.length; i++) {
-        const post = rawFeedPosts[i];
-        const uid = post?.user_id || post?.creator_id || post?.creator?.id || post?.sender_id;
-
-        if (uid) {
-          const uidStr = String(uid);
-          if (blockedUserIds.includes(uidStr) || blockedByMeUserIds.includes(uidStr)) {
-            continue;
-          }
-        }
-
-        const mediaUrl = post?.media_url || post?.mediaUrl || post?.image_url || post?.imageUrl || post?.image || '';
-        const mediaType = String(post?.media_type || post?.mediaType || post?.type || '').toLowerCase();
-        const isVideo = mediaType.startsWith('video') || /\.(mp4|mov|m4v|webm)(\?|$)/i.test(mediaUrl);
-
-        if (isVideo) {
-          videos.push(post);
-        } else {
-          images.push(post);
-        }
-      }
-
-      // Deterministically shuffle/rotate videos and images when the tab is refocused
-      if (focusTrigger > 0) {
-        const shuffle = (array: any[], seed: number) => {
-          const arr = [...array];
-          let m = arr.length;
-          while (m) {
-            const i = Math.floor(Math.abs(Math.sin(seed + m)) * m);
-            m--;
-            const t = arr[m];
-            arr[m] = arr[i];
-            arr[i] = t;
-          }
-          return arr;
-        };
-        videos = shuffle(videos, focusTrigger);
-        images = shuffle(images, focusTrigger + 13);
-      }
-
-      const arranged: any[] = [];
-      let videoIndex = 0;
-      let imageIndex = 0;
-      let alternate = 0;
-
-      while (videoIndex < videos.length || imageIndex < images.length) {
-        if (videoIndex < videos.length) {
-          arranged.push(videos[videoIndex++]);
-        }
-
-        // Alternate between 2 and 3 images below the video
-        const imgCount = alternate % 2 === 0 ? 3 : 2;
-        alternate++;
-
-        for (let i = 0; i < imgCount; i++) {
-          if (imageIndex < images.length) {
-            arranged.push(images[imageIndex++]);
-          }
-        }
-      }
-
-      if (isActive) {
-        setFeedPosts(arranged);
-      }
-    });
-
-    return () => {
-      isActive = false;
-      task.cancel();
-    };
-  }, [rawFeedPosts, blockedUserIds, blockedByMeUserIds, focusTrigger]);
-  const feedOffset = currentFeed.offset;
-  const hasMoreFeed = currentFeed.hasMore;
-  const [loadingFeed, setLoadingFeed] = useState(false);
-  const [loadingMoreFeed, setLoadingMoreFeed] = useState(false);
   // ── Smart Feed Quality Store ─────────────────────────────────────────────
-  const { resetQuality, ensureQuality } = useFeedOptimizationStore();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [commentModalVisible, setCommentModalVisible] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
@@ -2488,12 +2388,8 @@ export default function HomeScreen() {
     }
     setLocationPickerVisible(false);
   };
-  const postOffsetsRef = useRef<Record<string, number>>({});
-  const postHeightsRef = useRef<Record<string, number>>({});
   const scrollViewRef = useRef<any>(null);
   const currentScrollY = useRef(0);
-  const feedTabsYRef = useRef(0);
-  const [feedTabsY, setFeedTabsY] = useState(0);
   const lastScrollTimeRef = useRef(0);
   const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
@@ -2560,311 +2456,6 @@ export default function HomeScreen() {
       console.warn('Failed to save recent search:', e);
     }
   };
-
-  const loadFeedPosts = useCallback(async (offset: number = 0, append: boolean = false, tabOverride?: string) => {
-    const tabToLoad = tabOverride || useFeedStore.getState().activeTab;
-
-    if (tabToLoad === 'jyotish') {
-      // Handled entirely by its own component, no need to touch posts feed
-      return;
-    }
-
-    const cached = useFeedStore.getState().tabFeeds[tabToLoad];
-    const hasCache = cached && cached.posts && cached.posts.length > 0;
-
-    if (append) {
-      setLoadingMoreFeed(true);
-    } else {
-      if (!hasCache || isRefreshing) {
-        setLoadingFeed(true);
-      }
-    }
-
-    try {
-      if (!append && !hasCache && tabToLoad === 'for_you') {
-        try {
-          const { Q } = require('@nozbe/watermelondb');
-          const { database } = require('../../src/database');
-          if (database) {
-            const localFeeds = await database.get('feeds')
-              .query(Q.sortBy('created_at', Q.desc), Q.take(FEED_PAGE_SIZE))
-              .fetch();
-
-            if (localFeeds && localFeeds.length > 0) {
-              console.log(`[HomeFeed] Loaded ${localFeeds.length} local posts from WatermelonDB`);
-              const mappedFeeds = localFeeds.map((post: any) => ({
-                id: post.id,
-                user_id: post.userId,
-                username: post.username,
-                user_photo: post.userPhoto,
-                media_url: post.mediaUrl,
-                media_type: post.mediaType,
-                caption: post.caption,
-                likes_count: post.likesCount,
-                comments_count: post.commentsCount,
-                liked_by_me: post.likedByMe,
-                created_at: post.createdAt,
-                updated_at: post.updatedAt,
-              }));
-
-              setTabFeed(tabToLoad, {
-                posts: mappedFeeds,
-                offset: mappedFeeds.length,
-                hasMore: true,
-                lastFetched: Date.now(),
-              });
-              setLoadingFeed(false);
-            }
-          }
-        } catch (localErr) {
-          console.warn('[HomeFeed] Failed to load local feeds:', localErr);
-        }
-      }
-
-      console.log(`[HomeFeed] Fetching from API: /posts/feed?tab=${tabToLoad}&offset=${offset}`);
-      const response = await getPostsFeed(FEED_PAGE_SIZE, offset, tabToLoad);
-      console.log(`[HomeFeed] API response received for ${tabToLoad}`);
-      const payload = response.data;
-      let incomingItems = Array.isArray(payload)
-        ? payload
-        : (Array.isArray(payload?.items) ? payload.items : []);
-
-      // Fetch local optimistic posts from WatermelonDB to keep them visible before/during sync
-      if (Platform.OS !== 'web') {
-        try {
-          const { Q } = require('@nozbe/watermelondb');
-          const { database } = require('../../src/database');
-          if (database) {
-            const userId = String((useAuthStore.getState().user as any)?.id || '');
-            const localFeeds = await database.get('feeds')
-              .query(
-                Q.where('user_id', userId),
-                Q.sortBy('created_at', Q.desc)
-              )
-              .fetch();
-            if (localFeeds && localFeeds.length > 0) {
-              const journeyFeeds = localFeeds.filter((post: any) => String(post.id).startsWith('post_journey_'));
-              const localOptimisticPosts = journeyFeeds.map((post: any) => ({
-                id: post.id,
-                user_id: post.userId,
-                username: post.username,
-                user_photo: post.userPhoto,
-                media_url: post.mediaUrl,
-                media_type: post.mediaType,
-                caption: post.caption,
-                likes_count: post.likesCount,
-                comments_count: post.commentsCount,
-                liked_by_me: post.likedByMe,
-                created_at: post.createdAt ? new Date(post.createdAt).toISOString() : new Date().toISOString(),
-                updated_at: post.updatedAt ? new Date(post.updatedAt).toISOString() : new Date().toISOString(),
-              }));
-
-              const incomingIds = new Set(incomingItems.map((item: any) => item?.id));
-              const missingLocalPosts = localOptimisticPosts.filter((lp: any) => !incomingIds.has(lp.id));
-              if (missingLocalPosts.length > 0) {
-                console.log(`[HomeFeed] Merged ${missingLocalPosts.length} local optimistic journey posts into feed`);
-                incomingItems = [...missingLocalPosts, ...incomingItems];
-              }
-            }
-          }
-        } catch (dbErr) {
-          console.warn('[HomeFeed] Failed to load local optimistic posts:', dbErr);
-        }
-      }
-
-      // Filter out invalid posts (missing/null id) and deduplicate incomingItems
-      const filteredIncoming: any[] = [];
-      const incomingSeen = new Set<string>();
-      for (const item of incomingItems) {
-        if (!item || item.id === undefined || item.id === null || String(item.id).trim() === '') {
-          console.warn('[Feed Validation] Post missing valid ID:', item);
-          continue;
-        }
-        const idStr = String(item.id);
-        if (!incomingSeen.has(idStr)) {
-          incomingSeen.add(idStr);
-          filteredIncoming.push(item);
-        } else {
-          console.warn('[Feed Validation] Duplicate post ID in incoming feed:', idStr);
-        }
-      }
-      incomingItems = filteredIncoming;
-
-      console.log(`[HomeFeed] Loaded ${incomingItems.length} items for ${tabToLoad}`);
-
-      // Save fetched items to local WatermelonDB asynchronously (native only) without blocking JS thread
-      if (Platform.OS !== 'web' && incomingItems.length > 0) {
-        InteractionManager.runAfterInteractions(async () => {
-          try {
-            const { database } = require('../../src/database');
-            const { Q } = require('@nozbe/watermelondb');
-            if (database) {
-              const feedsCollection = database.get('feeds');
-              const batchOperations: any[] = [];
-              for (const item of incomingItems) {
-                const recordId = String(item.id || item.media_url);
-                if (!recordId) continue;
-
-                let existingRecord = null;
-                try {
-                  const matchingRecords = await feedsCollection.query(Q.where('id', recordId)).fetch();
-                  existingRecord = matchingRecords && matchingRecords.length > 0 ? matchingRecords[0] : null;
-                } catch {
-                  existingRecord = null;
-                }
-
-                if (existingRecord) {
-                  // Only prepare update if record is not currently dirty / modified in another uncommitted transaction
-                  if (existingRecord._status === 'synced' || existingRecord._status === 'created') {
-                    batchOperations.push(
-                      existingRecord.prepareUpdate((record: any) => {
-                        record.username = item.username || '';
-                        record.userPhoto = item.user_photo || null;
-                        record.mediaUrl = item.media_url || null;
-                        record.mediaType = item.media_type || 'image';
-                        record.caption = item.caption || null;
-                        record.likesCount = item.likes_count || 0;
-                        record.commentsCount = item.comments_count || 0;
-                        record.likedByMe = !!item.liked_by_me;
-                        record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                      })
-                    );
-                  }
-                } else {
-                  batchOperations.push(
-                    feedsCollection.prepareCreate((record: any) => {
-                      record._raw.id = recordId;
-                      record.userId = item.user_id || '';
-                      record.username = item.username || '';
-                      record.userPhoto = item.user_photo || null;
-                      record.mediaUrl = item.media_url || null;
-                      record.mediaType = item.media_type || 'image';
-                      record.caption = item.caption || null;
-                      record.likesCount = item.likes_count || 0;
-                      record.commentsCount = item.comments_count || 0;
-                      record.likedByMe = !!item.liked_by_me;
-                      record._raw.created_at = item.created_at ? new Date(item.created_at).getTime() : Date.now();
-                      record._raw.updated_at = item.updated_at ? new Date(item.updated_at).getTime() : Date.now();
-                    })
-                  );
-                }
-              }
-              if (batchOperations.length > 0) {
-                await database.write(async () => {
-                  await database.batch(batchOperations);
-                });
-                console.log(`[HomeFeed] Batched ${batchOperations.length} posts to local database`);
-              }
-            }
-          } catch (localWriteErr) {
-            console.warn('[HomeFeed] Failed to cache posts to database:', localWriteErr);
-          }
-        });
-      }
-
-      const nextHasMore = typeof payload?.has_more === 'boolean'
-        ? payload.has_more
-        : incomingItems.length === FEED_PAGE_SIZE;
-
-      if (append) {
-        const currentPosts = useFeedStore.getState().tabFeeds[tabToLoad]?.posts || [];
-        const existingIds = new Set(currentPosts.map((item) => item?.id));
-        const newItems = incomingItems.filter((item: any) => !existingIds.has(item?.id));
-
-        if (newItems.length > 0) {
-          // New unseen posts available – append normally
-          setTabFeed(tabToLoad, {
-            posts: [...currentPosts, ...newItems],
-            offset: offset + incomingItems.length,
-            hasMore: true, // always keep open so scroll never stops
-            lastFetched: Date.now(),
-          });
-        } else {
-          // Unseen posts exhausted – shuffle and recycle existing posts (replace, not append, to avoid duplicate keys)
-          console.log(`[HomeFeed] No new unique posts for ${tabToLoad} – recycling ${currentPosts.length} posts`);
-          const recycled = [...currentPosts].sort(() => Math.random() - 0.5);
-          setTabFeed(tabToLoad, {
-            posts: recycled,
-            offset: 0, // reset offset so next fetch starts from beginning
-            hasMore: true, // never stop scrolling
-            lastFetched: Date.now(),
-          });
-        }
-      } else {
-        // ── Smart rotation: rank posts before setting feed ──
-        const userId = String((useAuthStore.getState().user as any)?.id || '');
-        const lastTopId = await getLastTopPostId(userId).catch(() => null);
-        const ranked = rankPosts(incomingItems, {
-          history: useFeedStore.getState().viewHistory,
-          lastTopPostId: lastTopId,
-          recentSessionIds: useFeedStore.getState().sessionShownIds,
-        });
-        if (ranked.length > 0 && ranked[0]?.id) {
-          saveLastTopPostId(userId, String(ranked[0].id)).catch(() => { });
-        }
-        setTabFeed(tabToLoad, {
-          posts: ranked,
-          offset: incomingItems.length,
-          hasMore: true, // always keep scrolling possible
-          lastFetched: Date.now(),
-        });
-        // ── Smart Quality: first 5 high, rest thumbnail ─────────────────
-        resetQuality(ranked);
-      }
-    } catch (error: any) {
-      console.warn('Failed to load posts feed on home:', error);
-      // Fallback: if we fail to fetch from API (e.g. offline), try to load from local WatermelonDB
-      if (!append && tabToLoad === 'for_you' && Platform.OS !== 'web') {
-        try {
-          const { Q } = require('@nozbe/watermelondb');
-          const { database } = require('../../src/database');
-          if (database) {
-            const localFeeds = await database.get('feeds')
-              .query(Q.sortBy('created_at', Q.desc), Q.take(FEED_PAGE_SIZE))
-              .fetch();
-            if (localFeeds && localFeeds.length > 0) {
-              console.log(`[HomeFeed Fallback] Loaded ${localFeeds.length} local posts from WatermelonDB after API failure`);
-              const mappedFeeds = localFeeds.map((post: any) => ({
-                id: post.id,
-                user_id: post.userId,
-                username: post.username,
-                user_photo: post.userPhoto,
-                media_url: post.mediaUrl,
-                media_type: post.mediaType,
-                caption: post.caption,
-                likes_count: post.likesCount,
-                comments_count: post.commentsCount,
-                liked_by_me: post.likedByMe,
-                created_at: post.createdAt,
-                updated_at: post.updatedAt,
-              }));
-              setTabFeed(tabToLoad, {
-                posts: mappedFeeds,
-                offset: mappedFeeds.length,
-                hasMore: true,
-                lastFetched: Date.now(),
-              });
-              return; // Successfully loaded fallback
-            }
-          }
-        } catch (localErr) {
-          console.warn('[HomeFeed Fallback] Local database query failed:', localErr);
-        }
-      }
-      if (!append) {
-        setTabFeed(tabToLoad, {
-          posts: [],
-          offset: 0,
-          hasMore: false,
-        });
-      }
-    } finally {
-      console.log(`[HomeFeed] loadFeedPosts finished for ${tabToLoad}`);
-      setLoadingFeed(false);
-      setLoadingMoreFeed(false);
-    }
-  }, [setTabFeed, isRefreshing]);
-
 
   useEffect(() => {
     const fetchLiveLocation = async () => {
@@ -2975,10 +2566,8 @@ export default function HomeScreen() {
 
           if (res.data.feed?.items && res.data.feed.items.length > 0) {
             const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
-            const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
-            const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
 
-            if (!hasPosts || isRefreshing) {
+            if (isRefreshing) {
               setTabFeed(tabToLoad, {
                 posts: res.data.feed.items,
                 offset: res.data.feed.items.length,
@@ -3006,10 +2595,8 @@ export default function HomeScreen() {
 
         if (res.data.feed?.items && res.data.feed.items.length > 0) {
           const tabToLoad = useFeedStore.getState().activeTab || 'for_you';
-          const currentFeed = useFeedStore.getState().tabFeeds[tabToLoad];
-          const hasPosts = currentFeed && currentFeed.posts && currentFeed.posts.length > 0;
 
-          if (!hasPosts || isRefreshing) {
+          if (isRefreshing) {
             setTabFeed(tabToLoad, {
               posts: res.data.feed.items,
               offset: res.data.feed.items.length,
@@ -3304,16 +2891,6 @@ export default function HomeScreen() {
 
       // ⚡ Instant Tab Switch: Render screen immediately, defer network/store syncs until animation finishes
       const task = InteractionManager.runAfterInteractions(() => {
-        const currentTab = useFeedStore.getState().activeTab || 'for_you';
-        const cached = useFeedStore.getState().tabFeeds[currentTab];
-        const isStale = !cached || !cached.posts || cached.posts.length === 0 || 
-                        !cached.lastFetched || 
-                        (Date.now() - cached.lastFetched > 900000); // 15 min stale
-
-        if (isStale) {
-          loadFeedPosts(0, false, currentTab);
-        }
-
         const store = useVendorStore.getState();
         if (!store.hasCheckedMyVendor) {
           store.fetchMyVendor().catch(() => { });
@@ -3330,17 +2907,10 @@ export default function HomeScreen() {
         if (vendorIntervalRef.current) clearInterval(vendorIntervalRef.current);
         if (topFeaturesIntervalRef.current) clearInterval(topFeaturesIntervalRef.current);
         if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
-
-        // Step 1: Memory cleanup when unfocused (navigating away to profile/messages/etc)
-        setActivePostId(null);
-        setActivePostKey(null);
-        postOffsetsRef.current = {};
-        postHeightsRef.current = {};
       };
-    }, [loadFeedPosts])
+    }, [])
   );
 
-  const [activePostKey, setActivePostKey] = useState<string | null>(null);
   const handleUploadStart = async (
     media: any,
     caption: string,
@@ -3433,70 +3003,8 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const cached = tabFeeds[activeTab];
-    const nowTime = Date.now();
-    const isStale = !cached || cached.lastFetched === 0 || (nowTime - cached.lastFetched > 900000); // 15 minutes stale
-    if (isStale) {
-      loadFeedPosts(0, false, activeTab);
-    }
+    // Feed loading is now handled by FeedSection component
   }, [activeTab]);
-  const feedPostKeys = useMemo(
-    () => feedPosts.map((post, index) => {
-      const prefix = Platform.OS === 'android' ? 'feed-android' : 'feed';
-      return `${prefix}-${index}-${post.id || post.media_url || index}`;
-    }),
-    [feedPosts],
-  );
-
-  const snapOffsets = useMemo(() => {
-    const offsets = [0, feedTabsY];
-    feedPostKeys.forEach((key) => {
-      const offset = postOffsetsRef.current[key];
-      if (typeof offset === 'number') {
-        // Snap so the post starts exactly below the sticky header tabs
-        offsets.push(Math.round(feedTabsY + offset));
-      }
-    });
-    return Array.from(new Set(offsets)).sort((a, b) => a - b);
-  }, [feedTabsY, feedPostKeys]);
-
-  useEffect(() => {
-    if (activePostKey && activePostKey.length > 10) {
-      markPostAsSeen(activePostKey);
-      // ── Rule 1 & 5: Record view in rotation engine ──
-      // activePostKey format: "feed-{index}-{postId}" — extract postId
-      const parts = activePostKey.split('-');
-      const postId = parts.slice(2).join('-'); // handle UUIDs with hyphens
-      if (postId) {
-        const userId = String((useAuthStore.getState().user as any)?.id || '');
-        if (userId) {
-          useFeedStore.getState().markViewed(postId, userId);
-          useFeedStore.getState().addSessionShown(postId);
-        }
-      }
-    }
-  }, [activePostKey]);
-
-  const [activePostId, setActivePostId] = useState<string | null>(null);
-  const activePostIndexRef = useRef(0);
-
-  const onViewableItemsChangedRef = useRef(({ viewableItems }: any) => {
-    if (viewableItems && viewableItems.length > 0) {
-      const index = viewableItems[0]?.index;
-      if (typeof index === 'number') {
-        activePostIndexRef.current = index;
-      }
-
-      const valid = viewableItems.filter((v: any) => v.isViewable && v.item?.id && v.item.type !== 'empty');
-      if (valid.length > 0) {
-        const newId = String(valid[0].item.id);
-        setActivePostId(prev => prev === newId ? prev : newId);
-      } else {
-        setActivePostId(null);
-      }
-    } else {
-      setActivePostId(null);
-    }
-  });
 
   const handleHomeScroll = useCallback((event: any) => {
     const yOffset = event?.nativeEvent?.contentOffset?.y || 0;
@@ -3517,18 +3025,9 @@ export default function HomeScreen() {
     } finally {
       setTimeout(() => setIsRefreshing(false), 500);
     }
-  }, [initializeHome]);
+  }, [initializeHome, fetchReminders]);
 
-  // (feedPostIds + useSmartFeed moved above handleHomeScroll)
-
-  // Ensure quality map is initialized for any newly appended posts
-  useEffect(() => {
-    feedPosts.forEach((post, index) => {
-      const postId = String(post?.id || post?.media_url || index);
-      ensureQuality(postId, index);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feedPosts]);
+  // Feed quality management is now handled by FeedSection component
 
   useEffect(() => {
     // Handled by main initializeHome now
@@ -3925,14 +3424,14 @@ export default function HomeScreen() {
           posts: [repostedPost, ...currentPosts]
         });
       } else {
-        await loadFeedPosts();
+        // FeedSection handles feed refresh
       }
       alert('Reposted to your feed.');
     } catch (error) {
       console.warn('Failed to repost:', error);
       alert('Could not repost. Please try again.');
     }
-  }, [loadFeedPosts, activeTab, setTabFeed]);
+  }, [activeTab, setTabFeed]);
 
   const handleDeletePost = useCallback(async (post: any) => {
     const postId = post?.id;
@@ -4285,103 +3784,12 @@ export default function HomeScreen() {
     }
   };
 
-  const renderFeedPost = useCallback(({ item, index }: { item: any; index: number }) => {
-    const distanceFromActive = Math.abs(index - activePostIndexRef.current);
-    if (item.type === 'empty') {
-      return (
-        <View style={styles.emptyFeed}>
-          <Text style={styles.emptyFeedText}>No posts yet</Text>
-        </View>
-      );
-    }
-    const isActive = String(item.id) === activePostId;
-    const currentUserId = (user as any)?.id || user?.id;
-    return (
-      <View style={{ marginBottom: 0 }}>
-        <PostFeedCard
-          post={item}
-          onLike={handleLikePost}
-          onComment={handleOpenComment}
-          onShare={handleSharePost}
-          onRepost={handleRepost}
-          onUserPress={handleOpenPostUserProfile}
-          onPostMenuPress={handlePostMenuPress}
-          postMenuType={item?.user_id === currentUserId ? 'delete' : 'report'}
-          isActive={isActive}
-          theme="dark"
-          isBlackBackground={true}
-          isFirstReel={index === 0}
-        />
-      </View>
-    );
-  }, [activePostId, user, handleLikePost, handleOpenComment, handleOpenPostUserProfile, handlePostMenuPress, handleRepost, handleSharePost]);
 
   const memoizedHeader = useMemo(() => (
     <View style={{ paddingTop: 4 }}>
 
-      {loadingFeed && feedPosts.length === 0 && (
-        <View style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 50 }}>
-          {/* Avatar + Lines */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-            <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
-            <View style={{ marginLeft: 12 }}>
-              <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
-              <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
-            </View>
-          </View>
-
-          {/* 3 Horizontal Boxes */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-            <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-            <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-            <View style={{ width: '31%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-          </View>
-
-          {/* 1 Large Box */}
-          <View style={{ width: '100%', height: 220, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 16, marginBottom: 20, padding: 15, justifyContent: 'space-between' }}>
-            <View style={{ alignSelf: 'flex-end', width: 40, height: 20, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 10 }} />
-            <View style={{ width: '40%', height: 35, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 20 }} />
-          </View>
-
-          {/* 4 Vertical Boxes */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
-            <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-            <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-            <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-            <View style={{ width: '23%', height: 140, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-          </View>
-
-          {/* 2 Horizontal Boxes */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 }}>
-            <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-            <View style={{ width: '48%', height: 70, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 12 }} />
-          </View>
-
-          {/* 3 Thin Lines */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25, paddingHorizontal: 20 }}>
-            <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
-            <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
-            <View style={{ width: '25%', height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2 }} />
-          </View>
-
-          {/* Bottom Avatar + Lines */}
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.6)' }} />
-            <View style={{ marginLeft: 12 }}>
-              <View style={{ width: 150, height: 12, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 6, marginBottom: 8 }} />
-              <View style={{ width: 100, height: 10, backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: 5 }} />
-            </View>
-          </View>
-        </View>
-      )}
-      {!(loadingFeed && feedPosts.length === 0) && (
-        <View
-          onLayout={(event) => {
-            const h = event.nativeEvent.layout.height;
-            feedTabsYRef.current = h;
-            setFeedTabsY(h);
-          }}
-        >
+      {/* Feed loading state is now handled inside FeedSection */}
+      <View>
           <View style={styles.upperContentWrapper}>
             <View style={styles.header}>
               <View style={styles.headerLeft}>
@@ -5808,10 +5216,6 @@ export default function HomeScreen() {
         <HomeFeedTabs
           activeTab={activeTab}
           onTabChange={(tab: string) => {
-            setActivePostId(null);
-            setActivePostKey(null);
-            postOffsetsRef.current = {};
-            postHeightsRef.current = {};
             requestAnimationFrame(() => {
               setActiveTab(tab);
             });
@@ -5822,8 +5226,6 @@ export default function HomeScreen() {
     </View>
   ), [
     insets.top,
-    loadingFeed,
-    feedPosts.length,
     user,
     firstName,
     avatarUri,
@@ -5863,24 +5265,22 @@ export default function HomeScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'left', 'right']}>
         <LinearGradient colors={['#FF8D57', '#EA9B76', '#FFEEE5']} locations={[0, 0.0913, 0.25]} style={styles.screen}>
           <View style={{ flex: 1 }}>
-            {/* @ts-ignore */}
-            <FlashList<any>
-              ref={scrollViewRef}
-              data={feedPosts.length > 0 ? feedPosts : [{ type: 'empty' }]}
-              renderItem={renderFeedPost}
-              keyExtractor={(item: any, index: number) => item.type === 'empty' ? 'empty' : String(item.id || index)}
-              extraData={activePostId}
-              viewabilityConfig={{ itemVisiblePercentThreshold: 60, minimumViewTime: 250 }}
-              onViewableItemsChanged={onViewableItemsChangedRef.current}
+            <FeedSection
+              user={user}
+              onLikePost={handleLikePost}
+              onOpenComment={handleOpenComment}
+              onOpenProfile={handleOpenPostUserProfile}
+              onPostMenu={handlePostMenuPress}
+              onRepost={handleRepost}
+              onShare={handleSharePost}
+              scrollRef={scrollViewRef}
               onScroll={handleHomeScroll}
-              drawDistance={1000}
-              removeClippedSubviews={true}
-              onEndReached={() => {
-                if (!hasMoreFeed || loadingMoreFeed) return;
-                loadFeedPosts(feedOffset, true, activeTab);
-              }}
-              refreshControl={<InstagramRefreshControl refreshing={isRefreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />}
-              ListHeaderComponent={memoizedHeader}
+              onCreatePost={() => setShowUploadPostModal(true)}
+              homeHeader={memoizedHeader}
+              onRefresh={onRefresh}
+              isRefreshing={isRefreshing}
+              blockedUserIds={blockedUserIds}
+              blockedByMeUserIds={blockedByMeUserIds}
             />
           </View>
 
