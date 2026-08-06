@@ -11782,6 +11782,11 @@ async def get_vendors(
             ]
 
     import math
+
+    # Batch geocoding and updates for vendors missing valid coordinates to fix N+1 queries
+    vendors_to_geocode = []
+    geocoding_tasks = []
+
     for vendor in vendors:
         v_lat = vendor.get('latitude')
         v_lng = vendor.get('longitude')
@@ -11792,17 +11797,37 @@ async def get_vendors(
             abs(v_lat) > 0.001 and abs(v_lng) > 0.001
         )
         
-        if not valid_c and vendor.get('full_address'):
-            geo_lat, geo_lng = await _geocode_address(vendor.get('full_address'))
-            if geo_lat is not None and geo_lng is not None:
-                vendor['latitude'] = geo_lat
-                vendor['longitude'] = geo_lng
-                v_lat, v_lng = geo_lat, geo_lng
-                valid_c = True
-                try:
-                    await db.update_document('vendors', vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng})
-                except Exception:
-                    pass
+        full_addr = vendor.get('full_address')
+        if not valid_c and full_addr and isinstance(full_addr, str):
+            vendors_to_geocode.append(vendor)
+            geocoding_tasks.append(_geocode_address(full_addr))
+
+    if geocoding_tasks:
+        geocoded_results = await asyncio.gather(*geocoding_tasks, return_exceptions=True)
+        vendor_updates = []
+        for vendor, result in zip(vendors_to_geocode, geocoded_results):
+            if not isinstance(result, BaseException):
+                geo_lat, geo_lng = result
+                if geo_lat is not None and geo_lng is not None:
+                    vendor['latitude'] = geo_lat
+                    vendor['longitude'] = geo_lng
+                    vendor_updates.append((vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng}))
+
+        if vendor_updates:
+            try:
+                await db.batch_update_documents('vendors', vendor_updates)
+            except Exception as e:
+                logger.warning(f"Failed to batch update vendor coordinates: {e}")
+
+    for vendor in vendors:
+        v_lat = vendor.get('latitude')
+        v_lng = vendor.get('longitude')
+
+        valid_c = (
+            v_lat is not None and v_lng is not None and
+            isinstance(v_lat, (int, float)) and isinstance(v_lng, (int, float)) and
+            abs(v_lat) > 0.001 and abs(v_lng) > 0.001
+        )
                     
         if lat and lng and valid_c and v_lat is not None and v_lng is not None:
             # Haversine formula
