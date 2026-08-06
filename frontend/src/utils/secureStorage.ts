@@ -35,11 +35,8 @@ const getEncryptionKey = async (): Promise<string> => {
     cachedKey = key;
     return key;
   } catch (error) {
-    console.warn('[SecureStorage] SecureStore failed, falling back to local fallback key:', error);
-    // Safe fallback key for environments where SecureStore isn't available (e.g. web, simulator errors)
-    const fallbackKey = 'brahmand_fallback_encryption_key_hash_583920';
-    cachedKey = fallbackKey;
-    return fallbackKey;
+    console.warn('[SecureStorage] SecureStore failed:', error);
+    throw new Error('Failed to retrieve or generate encryption key. SecureStore is required.');
   }
 };
 
@@ -58,8 +55,7 @@ export const secureStorage = {
       await AsyncStorage.setItem(key, encryptedValue);
     } catch (error) {
       console.error(`[SecureStorage] Failed to set encrypted item for key "${key}":`, error);
-      // Fallback: save unencrypted if encryption fails (to ensure app doesn't crash)
-      await AsyncStorage.setItem(key, value);
+      throw error;
     }
   },
 
