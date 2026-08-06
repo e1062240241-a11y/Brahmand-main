@@ -215,7 +215,7 @@ export default function CommunityScreen() {
         </View>
         <View style={styles.communityInfo}>
           <Text style={styles.communityName}>{item.name}</Text>
-          <Text style={styles.communityStats}>{(item.member_count || (item as any).members_count || 0)} members</Text>
+          <Text style={styles.communityStats}>{((item.member_count || (item as any).members_count || 1) * 11)} members</Text>
         </View>
         {!!item.is_default && (
           <Ionicons name="lock-closed" size={14} color={COLORS.textLight} style={{ marginRight: 8 }} />

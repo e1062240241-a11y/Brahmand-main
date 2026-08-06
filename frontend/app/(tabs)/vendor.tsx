@@ -20,6 +20,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -1034,6 +1035,7 @@ export default function VendorScreen() {
       locations={[0, 0.09, 0.25]}
       style={styles.container}
     >
+      <StatusBar style="dark" backgroundColor="transparent" translucent />
       {/* Top Search Bar (Figma Design) */}
       <View
         style={[styles.figmaSearchContainer, { marginTop: insets.top > 0 ? insets.top + 16 : 28 }]}

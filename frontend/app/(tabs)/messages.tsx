@@ -234,6 +234,32 @@ function MessagesScreen({
   const [apiDMs, setApiDMs] = useState<any[]>([]);
   const [dmMetadataMap, setDmMetadataMap] = useState<Record<string, { senderId?: string; status?: string }>>({});
 
+  // C) Debounce Socket / DB Updates (500ms debounce to prevent high-frequency re-renders)
+  const [debouncedConversations, setDebouncedConversations] = useState(observedConversations);
+  const socketDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (socketDebounceRef.current) {
+      clearTimeout(socketDebounceRef.current);
+    }
+    socketDebounceRef.current = setTimeout(() => {
+      setDebouncedConversations(observedConversations);
+    }, 500);
+
+    return () => {
+      if (socketDebounceRef.current) {
+        clearTimeout(socketDebounceRef.current);
+      }
+    };
+  }, [observedConversations]);
+
+  // A) Conversations Lazy Loading (Initial load: 20 conversations, paginate on scroll)
+  const [visibleConversationCount, setVisibleConversationCount] = useState(20);
+
+  useEffect(() => {
+    setVisibleConversationCount(20);
+  }, [searchQuery, activeTopTab]);
+
   const communities = useMemo(() => {
     const source = Platform.OS === 'web' ? apiCommunities : observedCommunities;
     return source.filter((c: any) => c.type !== 'user_group');
@@ -250,7 +276,7 @@ function MessagesScreen({
         last_message_time: c.last_message_time || c.updated_at ? formatTimeIST(c.last_message_time || c.updated_at) : '',
       }));
     }
-    const dbCircles = observedConversations
+    const dbCircles = debouncedConversations
       .filter(c => c.type === 'circle')
       .map(c => ({
         id: c.id,
@@ -271,7 +297,7 @@ function MessagesScreen({
       }));
     }
     return dbCircles;
-  }, [observedConversations, apiCircles]);
+  }, [debouncedConversations, apiCircles]);
 
   const conversations = useMemo(() => {
     if (Platform.OS === 'web') {
@@ -294,7 +320,7 @@ function MessagesScreen({
         };
       });
     }
-    const dbDMs = observedConversations
+    const dbDMs = debouncedConversations
       .filter(c => c.type === 'dm')
       .map(c => {
         const lastMsgMeta = dmMetadataMap[c.id];
@@ -335,7 +361,7 @@ function MessagesScreen({
       });
     }
     return dbDMs;
-  }, [observedConversations, apiDMs, dmMetadataMap]);
+  }, [debouncedConversations, apiDMs, dmMetadataMap]);
 
   const filteredGroups = useMemo(() => {
     if (!searchQuery) return circles;
@@ -352,6 +378,10 @@ function MessagesScreen({
       (chat.last_message || '').toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [searchQuery, conversations]);
+
+  const paginatedConversations = useMemo(() => {
+    return filteredAll.slice(0, visibleConversationCount);
+  }, [filteredAll, visibleConversationCount]);
 
   const [userGroups, setUserGroups] = useState<Community[]>([]);
   const [requests, setRequests] = useState<CommunityRequest[]>([]);
@@ -549,7 +579,8 @@ function MessagesScreen({
 
   const getCommunityFigmaDetails = (item: Community) => {
     const nameLower = (item.name || '').toLowerCase();
-    const count = item.member_count || (item as any).members_count || (item as any).memberCount || 0;
+    const rawCount = item.member_count ?? (item as any).members_count ?? (item as any).memberCount ?? (Array.isArray((item as any).members) ? (item as any).members.length : 1);
+    const count = rawCount || 1;
 
     if (nameLower.includes('mumbai') || item.type === 'city') {
       return {
@@ -1362,7 +1393,7 @@ function MessagesScreen({
         </LinearGradient>
       </Pressable>
     );
-  }, []);
+  }, [getRequestTheme, getTimeAgo, setSelectedRequest]);
 
 
   const renderLocalCommunityCard = useCallback((item: Community, index: number) => {
@@ -1400,7 +1431,7 @@ function MessagesScreen({
 
         <View style={styles.localCommContent}>
           <Text style={styles.localCommName} numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.localCommMembers}>{((item.member_count || (item as any).members_count || (item as any).memberCount || 0) * 11)} members</Text>
+          <Text style={styles.localCommMembers}>{((item.member_count || (item as any).members_count || (item as any).memberCount || 1) * 11)} members</Text>
         </View>
 
         <View style={{ alignItems: 'center', gap: 4 }}>
@@ -1431,7 +1462,7 @@ function MessagesScreen({
         </View>
       </Pressable>
     );
-  }, [joinedLocalIds, communities, joiningLocalId, router]);
+  }, [joinedLocalIds, joiningLocalId, communities, handleJoinLocal, router]);
 
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -1506,7 +1537,16 @@ function MessagesScreen({
         showsVerticalScrollIndicator={false}
         overScrollMode="never"
         refreshControl={<InstagramRefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
-        onScroll={onMessagesScrollTabBar}
+        onScroll={(event) => {
+          onMessagesScrollTabBar(event);
+          const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+          const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 350;
+          if (isCloseToBottom && activeTopTab === 'Private Chat') {
+            if (visibleConversationCount < filteredAll.length) {
+              setVisibleConversationCount(prev => Math.min(prev + 20, filteredAll.length));
+            }
+          }
+        }}
         scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
       >
         {activeTopTab === 'Community' ? (
@@ -1718,7 +1758,7 @@ function MessagesScreen({
             {filteredAll.length > 0 ? (
               <View style={styles.chatSection}>
                 <Text style={styles.privateChatSectionTitle}>{t('allChats')}</Text>
-                {filteredAll.map((item, index) => {
+                {paginatedConversations.map((item, index) => {
                   const conversationId = item.conversation_id || item.id;
                   const itemKey = conversationId ? `${conversationId}-${index}` : `dm-${index}`;
                   return (
@@ -1786,10 +1826,24 @@ function MessagesScreen({
                           })()}
                         </View>
                       </Pressable>
-                      {index < filteredAll.length - 1 && <View style={styles.chatSeparator} />}
+                      {index < paginatedConversations.length - 1 && <View style={styles.chatSeparator} />}
                     </View>
                   );
                 })}
+
+                {visibleConversationCount < filteredAll.length && (
+                  <TouchableOpacity
+                    style={styles.loadMoreConversationsBtn}
+                    onPress={() => setVisibleConversationCount(prev => Math.min(prev + 20, filteredAll.length))}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.loadMoreConversationsText}>
+                      {t('language') === 'hi'
+                        ? `और ${Math.min(20, filteredAll.length - visibleConversationCount)} संदेश लोड करें (${filteredAll.length - visibleConversationCount} बाकी)`
+                        : `Load ${Math.min(20, filteredAll.length - visibleConversationCount)} More Conversations (${filteredAll.length - visibleConversationCount} remaining)`}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             ) : !searchQuery && (
               <View style={styles.emptyChat}>
@@ -2736,6 +2790,23 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#FFDDCC',
+  },
+  loadMoreConversationsBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 12,
+    marginHorizontal: 16,
+    backgroundColor: 'rgba(255, 107, 0, 0.08)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 0, 0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadMoreConversationsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF6600',
   },
 });
 

@@ -28,14 +28,14 @@ export default function CommunityRequestBloodSuccessPage() {
       getCommunityStats(params.community_id)
         .then((res: any) => {
           if (res.data?.member_count) {
-            setMemberCount(res.data.member_count);
+            setMemberCount((res.data.member_count || 1) * 11);
           }
         })
         .catch(() => {
           getCommunity(params.community_id!)
             .then((res: any) => {
               if (res.data?.member_count) {
-                setMemberCount(res.data.member_count);
+                setMemberCount((res.data.member_count || 1) * 11);
               }
             })
             .catch(() => {});

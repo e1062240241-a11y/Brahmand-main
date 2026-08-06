@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   LayoutAnimation,
   Platform,
   UIManager,
@@ -72,13 +71,16 @@ const DEFAULT_CHECKLIST: ChecklistItem[] = [
 const TABS = ['Rituals', 'Quiz', 'Checklist'] as const;
 
 const TabBar = ({ active, onSelect }: { active: string; onSelect: (tab: string) => void }) => (
-  <View style={styles.tabBar}>
+  <View style={styles.tabBar} accessibilityRole="tablist">
     {TABS.map((tab) => (
       <TouchableOpacity
         key={tab}
         style={[styles.tab, active === tab && styles.tabActive]}
         onPress={() => onSelect(tab)}
         activeOpacity={0.7}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: active === tab }}
+        accessibilityLabel={`${tab} tab`}
       >
         <Text style={[styles.tabText, active === tab && styles.tabTextActive]}>{tab}</Text>
       </TouchableOpacity>
@@ -100,7 +102,14 @@ const RitualsTab = ({ rituals }: { rituals: Ritual[] }) => {
         const isOpen = expanded === ritual.id;
         return (
           <View key={ritual.id} style={[styles.ritualCard, i === 0 && styles.ritualCardFirst]}>
-            <TouchableOpacity style={styles.ritualHeader} onPress={() => toggle(ritual.id)} activeOpacity={0.7}>
+            <TouchableOpacity
+              style={styles.ritualHeader}
+              onPress={() => toggle(ritual.id)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isOpen }}
+              accessibilityLabel={`Toggle ${ritual.title} details`}
+            >
               <View style={styles.ritualBadge}>
                 <Text style={styles.ritualBadgeText}>{i + 1}</Text>
               </View>
@@ -154,6 +163,9 @@ const QuizTab = ({ question, options, festivalName }: { question: string; option
           style={[styles.quizOption, selected && styles.quizOptionDisabled]}
           onPress={() => !selected && handleSelect(opt.id)}
           activeOpacity={selected ? 1 : 0.7}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: selected === opt.id, disabled: !!selected }}
+          accessibilityLabel={opt.label}
         >
           <View style={[styles.radio, selected === opt.id && styles.radioSelected]}>
             {selected === opt.id && <View style={styles.radioDot} />}
@@ -188,7 +200,11 @@ const ChecklistTab = ({ items }: { items: ChecklistItem[] }) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setChecked((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
@@ -207,7 +223,15 @@ const ChecklistTab = ({ items }: { items: ChecklistItem[] }) => {
       {items.map((item) => {
         const done = checked.has(item.id);
         return (
-          <TouchableOpacity key={item.id} style={styles.checkItem} onPress={() => toggle(item.id)} activeOpacity={0.7}>
+          <TouchableOpacity
+            key={item.id}
+            style={styles.checkItem}
+            onPress={() => toggle(item.id)}
+            activeOpacity={0.7}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: done }}
+            accessibilityLabel={`${item.title}, ${item.description}`}
+          >
             <View style={[styles.checkbox, done && styles.checkboxChecked]}>
               {done && <Ionicons name="checkmark" size={14} color="#fff" />}
             </View>

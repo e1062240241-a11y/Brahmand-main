@@ -1297,7 +1297,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Unhandled exception: {exc}\n{tb}", exc_info=True)
     response = JSONResponse(
         status_code=500,
-        content={"detail": f"An internal server error occurred: {exc}", "traceback": tb}
+        content={"detail": "An internal server error occurred."}
     )
     origin = request.headers.get("origin") or ""
     if _is_origin_allowed(origin):
@@ -3973,29 +3973,53 @@ async def get_posts_feed(
     # Populate location data
     user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
-    # Assemble the posts pool
-    posts_dict = {}
-    for p in pool1:
-        if p.get('id'):
-            posts_dict[p['id']] = p
-    for p in pool2:
-        if p.get('id'):
-            posts_dict[p['id']] = p
-    for p in latest_pool:
-        if p.get('id'):
-            posts_dict[p['id']] = p
+    # Pre-fetch following IDs if tab is following
+    following_ids = set()
+    if current_user:
+        following_ids = set(current_user.get('following', []) or [])
 
-    # Fallback if empty
-    if not posts_dict:
-        try:
-            fallback = await db.query_documents('posts', limit=100)
-            for p in fallback:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Firestore query error in fallback get_posts_feed: %s", e)
+    if tab == 'following':
+        if not following_ids:
+            return {"items": [], "has_more": False}
+        following_list = list(following_ids)
+        following_posts = []
+        for i in range(0, len(following_list), 10):
+            chunk = following_list[i:i+10]
+            try:
+                fp = await db.query_documents('posts', filters=[('user_id', 'in', chunk)], limit=50)
+                following_posts.extend(fp)
+            except Exception as e:
+                logger.error(f"Error querying following posts for chunk {chunk}: {e}")
+        
+        posts_dict = {}
+        for p in following_posts:
+            if p.get('id'):
+                posts_dict[p['id']] = p
+        posts = list(posts_dict.values())
+    else:
+        # Assemble the posts pool
+        posts_dict = {}
+        for p in pool1:
+            if p.get('id'):
+                posts_dict[p['id']] = p
+        for p in pool2:
+            if p.get('id'):
+                posts_dict[p['id']] = p
+        for p in latest_pool:
+            if p.get('id'):
+                posts_dict[p['id']] = p
 
-    posts = list(posts_dict.values())
+        # Fallback if empty
+        if not posts_dict:
+            try:
+                fallback = await db.query_documents('posts', limit=100)
+                for p in fallback:
+                    if p.get('id'):
+                        posts_dict[p['id']] = p
+            except Exception as e:
+                logger.error("Firestore query error in fallback get_posts_feed: %s", e)
+
+        posts = list(posts_dict.values())
 
     # Filter out already-seen posts and non-public posts
     public_posts = []
@@ -4017,23 +4041,19 @@ async def get_posts_feed(
             
         lvl = p.get('community_level', 'country') # Default to country/public
         
-        # Scope filtering
-        if lvl == 'city':
-            p_city = str(p.get('city') or '').strip().lower()
-            if p_city and u_city and p_city != u_city: continue
-        elif lvl == 'state':
-            p_state = str(p.get('state') or '').strip().lower()
-            if p_state and u_state and p_state != u_state: continue
-        elif lvl == 'country':
-            p_country = str(p.get('country') or '').strip().lower()
-            if p_country and u_country and p_country != u_country: continue
+        # Scope filtering (bypass for following tab so explicitly followed user posts are shown)
+        if tab != 'following':
+            if lvl == 'city':
+                p_city = str(p.get('city') or '').strip().lower()
+                if p_city and u_city and p_city != u_city: continue
+            elif lvl == 'state':
+                p_state = str(p.get('state') or '').strip().lower()
+                if p_state and u_state and p_state != u_state: continue
+            elif lvl == 'country':
+                p_country = str(p.get('country') or '').strip().lower()
+                if p_country and u_country and p_country != u_country: continue
             
         public_posts.append(p)
-
-    # Pre-fetch following IDs if tab is following
-    following_ids = set()
-    if tab == 'following' and current_user:
-        following_ids = set(current_user.get('following', []) or [])
 
     # Fetch user interest preferences
     user_interests: dict = {}
@@ -4317,6 +4337,21 @@ async def get_posts_feed(
             # Don't include full comments in feed - only counts
             # Comments will be fetched on-demand when user opens the post
             post.pop('top_comments', None)
+            
+            # Slim response: Remove heavy fields not needed in feed
+            # Remove full liked_by array (we already have likes_count and liked_by_me)
+            post.pop('liked_by', None)
+            # Remove metadata if not needed (we already extracted thumbnail_url)
+            post.pop('metadata', None)
+            # Remove engagement_score (internal field)
+            post.pop('engagement_score', None)
+            # Remove watch_time, completion_rate (internal analytics)
+            post.pop('watch_time', None)
+            post.pop('completion_rate', None)
+            # Remove random_score (internal sorting field)
+            post.pop('random_score', None)
+            # Remove community_level details if not needed in feed
+            # post.pop('community_level', None)  # Keep if needed for filtering
             
             return post
 
@@ -13889,31 +13924,39 @@ async def _save_bulk_notifications(db, user_ids: list, title: str, body: str, no
     if not user_ids:
         return
 
-    async def _save_single_notification(uid):
-        try:
-            notification_data = {
-                'user_id': uid,
-                'title': title,
-                'body': body,
-                'notification_type': notification_type,
-                'data': data,
-                'is_read': False,
-                'created_at': datetime.now(timezone.utc).isoformat()
-            }
-            notification_id = await db.create_document('notifications', notification_data)
-            notification_data['id'] = notification_id
-            
-            # Emit Socket.IO event to user's private room
-            try:
-                await sio.emit('new_notification', notification_data, room=f"user_{uid}")
-                logger.info(f"Emitted real-time notification to user_{uid}")
-            except Exception as se:
-                logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
-        except Exception as e:
-            logger.error(f"Failed to save bulk notification for user {uid}: {e}")
+    # ⚡ Bolt Optimization: Batch create instead of N+1 create_document calls
+    now_iso = datetime.now(timezone.utc).isoformat()
+    notification_docs = [
+        {
+            'user_id': uid,
+            'title': title,
+            'body': body,
+            'notification_type': notification_type,
+            'data': data,
+            'is_read': False,
+            'created_at': now_iso
+        }
+        for uid in user_ids
+    ]
 
-    # Process all notifications in parallel to avoid sequential database write and socket emission delays
-    await asyncio.gather(*[_save_single_notification(uid) for uid in user_ids])
+    try:
+        created_ids = await db.batch_create_documents('notifications', notification_docs)
+        for i, doc in enumerate(notification_docs):
+            if i < len(created_ids):
+                doc['id'] = created_ids[i]
+    except Exception as e:
+        logger.error(f"Failed to batch save bulk notifications: {e}")
+        return
+
+    async def _emit_socket(uid, notif_data):
+        try:
+            await sio.emit('new_notification', notif_data, room=f"user_{uid}")
+            logger.info(f"Emitted real-time notification to user_{uid}")
+        except Exception as se:
+            logger.warning(f"Failed to emit socket notification for user {uid}: {se}")
+
+    # Process all socket emissions in parallel
+    await asyncio.gather(*[_emit_socket(doc['user_id'], doc) for doc in notification_docs])
 
 
 @api_router.post("/sos")
