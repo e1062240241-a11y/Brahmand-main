@@ -69,7 +69,7 @@ export const LiveMantraRoom = () => {
     if (bgPlayer && playerStatus?.playing && playerStatus.duration && playerStatus.duration > 0) {
       const positionMs = playerStatus.currentTime * 1000;
       const positionInLoop = positionMs % TOTAL_MANTRA_DURATION;
-      
+
       let newIndex = 0;
       for (let i = WORD_TIMING_MS.length - 1; i >= 0; i--) {
         if (positionInLoop >= WORD_TIMING_MS[i]) {
@@ -77,7 +77,7 @@ export const LiveMantraRoom = () => {
           break;
         }
       }
-      
+
       if (newIndex !== currentIndex && !isHolding) {
         setCurrentIndex(newIndex);
       }
@@ -175,7 +175,7 @@ export const LiveMantraRoom = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
-      <View style={styles.background}> 
+      <View style={styles.background}>
         <LinearGradient
           colors={['#050505', '#120800', '#2f1200']}
           style={StyleSheet.absoluteFill}
@@ -233,7 +233,7 @@ export const LiveMantraRoom = () => {
             })}
           </View>
 
-          <Animated.View style={[styles.upcomingContainer, { opacity: upcomingFade }]}> 
+          <Animated.View style={[styles.upcomingContainer, { opacity: upcomingFade }]}>
             <Text style={styles.upcomingLabel}>Upcoming Mantra</Text>
             <Text style={styles.upcomingText}>ॐ भूर्भुवः स्वः</Text>
           </Animated.View>

@@ -456,7 +456,9 @@ export function GlobalFAB() {
                       <TouchableOpacity
                         style={fabStyles.menuItemButton}
                         activeOpacity={0.8}
-                        disabled={!!(activeSOS || nearbySOSAlerts.length  accessibilityRole="button" accessibilityLabel="Button"> 0)}
+                        accessibilityRole="button"
+                        accessibilityLabel="Button"
+                        disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
                         onPress={() => {
                           toggleFab();
                           router.push(item.route as any);

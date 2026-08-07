@@ -123,9 +123,11 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
             {actions.map((action, index) => (
               <TouchableOpacity
                 key={index}
+                accessibilityRole="button"
+                accessibilityLabel="Button"
                 style={[
                   styles.actionBtn,
-                  actions.length  accessibilityRole="button" accessibilityLabel="Button"> 2 && {
+                  actions.length > 2 && {
                     width: '100%',
                     paddingVertical: 10,
                   },

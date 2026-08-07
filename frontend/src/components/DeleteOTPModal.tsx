@@ -156,7 +156,9 @@ export const DeleteOTPModal: React.FC<DeleteOTPModalProps> = ({
               <TouchableOpacity
                 style={styles.resendButton}
                 onPress={handleResend}
-                disabled={timer  accessibilityRole="button" accessibilityLabel="Button"> 0 || sendingOTP || loading}
+                accessibilityRole="button"
+                accessibilityLabel="Button"
+                disabled={timer > 0 || sendingOTP || loading}
               >
                 {sendingOTP ? (
                   <ActivityIndicator size="small" color={COLORS.primary} />
