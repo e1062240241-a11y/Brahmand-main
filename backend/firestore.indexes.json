@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "communities",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "type",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "location_code",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "vendor_admin_reviews",
       "queryScope": "COLLECTION",
       "fields": [
