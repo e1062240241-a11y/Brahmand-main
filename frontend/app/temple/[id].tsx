@@ -1228,7 +1228,7 @@ if (!temple) {
   const displayName = templeKey || temple.name || 'Temple';
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
-  const templeImageSource = useMemo(() => {
+  const templeImageSource = (() => {
     const byId = getTempleImageById(resolvedTempleId);
     if (byId && byId !== DEFAULT_TEMPLE_IMAGE) return byId;
 
@@ -1241,19 +1241,14 @@ if (!temple) {
     }
 
     return byId || byName || DEFAULT_TEMPLE_IMAGE;
-  }, [resolvedTempleId, temple.name, displayName, temple.image_url, temple.imageUrl, temple.image, temple.photo]);
+  })();
 
   const categoryBadge = getCategoryBadge(temple.category);
-  const templeImages: any[] = useMemo(() => {
-    if (Array.isArray(temple.images) && temple.images.length > 0) {
-      return temple.images;
-    }
-    const remoteUrl = temple.image_url || temple.imageUrl || temple.image || temple.photo;
-    if (remoteUrl && typeof remoteUrl === 'string' && (remoteUrl.startsWith('http://') || remoteUrl.startsWith('https://'))) {
-      return [remoteUrl];
-    }
-    return [];
-  }, [temple.images, temple.image_url, temple.imageUrl, temple.image, temple.photo]);
+  const templeImages: any[] = (Array.isArray(temple.images) && temple.images.length > 0)
+    ? temple.images
+    : (temple.image_url || temple.imageUrl || temple.image || temple.photo) && typeof (temple.image_url || temple.imageUrl || temple.image || temple.photo) === 'string' && (temple.image_url || temple.imageUrl || temple.image || temple.photo).startsWith('http')
+      ? [temple.image_url || temple.imageUrl || temple.image || temple.photo]
+      : [];
   const darshanTimings = temple.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
   const templeContact = temple.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
 
