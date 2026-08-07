@@ -161,7 +161,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
       statusBarTranslucent={Platform.OS === 'android'}
       onRequestClose={onClose}
     >
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
         <View style={styles.container} onStartShouldSetResponder={() => true}>
           <View style={styles.handle} />
           <Text style={styles.title}>{t('share')}</Text>
@@ -198,21 +198,21 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
 
           {/* Action Buttons */}
           <View style={styles.actionsSection}>
-            <TouchableOpacity style={styles.actionBtn} onPress={handleShareWhatsApp} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={styles.actionBtn} onPress={handleShareWhatsApp}>
               <View style={[styles.actionIconBg, { backgroundColor: '#25D366' }]}>
                 <Ionicons name="logo-whatsapp" size={26} color="#FFF" />
               </View>
               <Text style={styles.actionLabel}>{t('language') === 'hi' ? 'व्हाट्सएप' : 'WhatsApp'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={onCopyLink} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={styles.actionBtn} onPress={onCopyLink}>
               <View style={styles.actionIconBg}>
                 <Ionicons name="link-outline" size={24} color={COLORS.text} />
               </View>
               <Text style={styles.actionLabel}>{t('language') === 'hi' ? 'लिंक कॉपी करें' : 'Copy link'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal}>
               <View style={styles.actionIconBg}>
                 <Ionicons name="share-social-outline" size={24} color={COLORS.text} />
               </View>

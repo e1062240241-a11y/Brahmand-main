@@ -171,7 +171,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 activeOpacity={0.7}
                                 style={styles.headerIconButton}
                                 onPress={handleNotificationPress}
-                             accessibilityRole="button" accessibilityLabel="Button">
+                            >
                                 <View>
                                     <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                                     {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}

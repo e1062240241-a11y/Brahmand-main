@@ -328,7 +328,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         <Text style={styles.mainButtonText}>CONTINUE</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={onClose} style={styles.cancelLink} accessibilityRole="button" accessibilityLabel="Button">
+      <TouchableOpacity onPress={onClose} style={styles.cancelLink}>
         <Text style={styles.cancelLinkText}>Cancel SOS</Text>
       </TouchableOpacity>
     </View>
@@ -446,7 +446,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         <View style={styles.overlay}>
           <View style={[styles.modalContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             <View style={styles.sheetHandle} />
-            <TouchableOpacity style={styles.closeButton} onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Ionicons name="close" size={24} color="#666" />
             </TouchableOpacity>
 

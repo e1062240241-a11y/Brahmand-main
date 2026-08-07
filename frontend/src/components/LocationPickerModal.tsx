@@ -195,7 +195,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
     >
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.backButton} accessibilityRole="button" accessibilityLabel="Button">
+          <TouchableOpacity onPress={onClose} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.title} numberOfLines={1}>{title}</Text>
@@ -284,7 +284,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
             style={[styles.confirmButton, loading && styles.disabledButton]}
             onPress={handleConfirm}
             disabled={loading || !mapRegion}
-           accessibilityRole="button" accessibilityLabel="Button">
+          >
             {loading ? (
               <ActivityIndicator size="small" color="#FFF" />
             ) : (

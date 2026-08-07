@@ -456,7 +456,7 @@ export function GlobalFAB() {
                       <TouchableOpacity
                         style={fabStyles.menuItemButton}
                         activeOpacity={0.8}
-                        disabled={!!(activeSOS || nearbySOSAlerts.length  accessibilityRole="button" accessibilityLabel="Button"> 0)}
+                        disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
                         onPress={() => {
                           toggleFab();
                           router.push(item.route as any);
@@ -577,7 +577,7 @@ export function GlobalFAB() {
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#388E3C' }]}
                           disabled={true}
-                         accessibilityRole="button" accessibilityLabel="Button">
+                        >
                           <Ionicons name="checkmark-circle" size={22} color="#FFF" />
                           <Text style={fabStyles.responderBtnText}>{"ON THE WAY"}</Text>
                         </TouchableOpacity>
@@ -636,7 +636,7 @@ export function GlobalFAB() {
                       )}
                     </View>
 
-                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={toggleFab} accessibilityRole="button" accessibilityLabel="Button">
+                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={toggleFab}>
                       <Text style={fabStyles.cancelSOSText}>Close Alert</Text>
                     </TouchableOpacity>
                   </View>

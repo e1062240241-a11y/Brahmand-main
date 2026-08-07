@@ -1352,7 +1352,7 @@ export const UploadPostModal = ({
                 <TouchableOpacity
                   style={styles.draftBtn}
                   onPress={handleSaveDraft}
-                 accessibilityRole="button" accessibilityLabel="Button">
+                >
                   <Text style={styles.draftBtnText}>
                     {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
                   </Text>
@@ -1368,7 +1368,7 @@ export const UploadPostModal = ({
                     onPressOut={canUpload ? handleBtnPressOut : undefined}
                     disabled={!canUpload}
                     activeOpacity={0.85}
-                   accessibilityRole="button" accessibilityLabel="Button">
+                  >
                     {canUpload ? (
                       <LinearGradient
                         colors={["#FF4500", "#FF8C00", "#FFC700"]}
