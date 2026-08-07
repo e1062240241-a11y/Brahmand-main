@@ -280,9 +280,9 @@ export default function OTPScreen() {
         {/* Action Button at the bottom */}
         <View style={[
           styles.bottomContainer,
-          Platform.OS === 'android' && {
+          Platform.OS === 'android' ? {
             paddingBottom: Math.max(insets.bottom + 16, 24)
-          }
+          } : null
         ]}>
           <TouchableOpacity
             style={[
