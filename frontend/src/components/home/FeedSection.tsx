@@ -103,8 +103,9 @@ const FeedSection: React.FC<FeedSectionProps> = ({
 
         if (uid) {
           const uidStr = String(uid);
-          // Note: blockedUserIds and blockedByMeUserIds should be passed as props if needed
-          // For now, we skip this filter as it's handled at a higher level
+          if (blockedUserIds.includes(uidStr) || blockedByMeUserIds.includes(uidStr)) {
+            continue;
+          }
         }
 
         const mediaUrl = post?.media_url || post?.mediaUrl || post?.image_url || post?.imageUrl || post?.image || '';
@@ -266,7 +267,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         />
       </View>
     );
-  }, [activePostId, activePostIndexRef, user, onLikePost, onOpenComment, onOpenProfile, onPostMenu, onRepost, onShare]);
+  }, [activePostId, user, onLikePost, onOpenComment, onOpenProfile, onPostMenu, onRepost, onShare]);
 
   const overrideItemLayout = useCallback((layout: { span?: number; size?: number }, item: any) => {
     if (!item || item.type === 'empty') {
