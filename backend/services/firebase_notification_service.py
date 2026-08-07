@@ -239,112 +239,115 @@ class FirebaseNotificationService:
             
         # 2. Send to FCM native tokens if any
         if fcm_native_tokens:
-            try:
-                messaging = get_firebase_messaging()
-                from firebase_admin import messaging as fcm
-                
-                notification = fcm.Notification(
-                    title=title,
-                    body=body
-                )
-                
-                # Configure custom sound for all except SOS
-                android_config = None
-                apns_config = None
-                notification_type = data.get('type') if data else None
-                
-                is_sos = bool(notification_type and (notification_type == 'sos_alert' or notification_type.startswith('sos_')))
-                is_msg = bool(notification_type and notification_type in ('message', 'dm'))
-                is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
-                
-                if is_sos:
-                    android_config = fcm.AndroidConfig(
-                        priority='high',
-                        notification=fcm.AndroidNotification(
-                            channel_id='sos_alerts_v3',
-                            sound='soundreality_mayday_166011',
-                            priority='max',
-                            vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000]
-                        )
+            messaging = get_firebase_messaging()
+            if not messaging:
+                logger.warning(f"Firebase Messaging service unavailable. Skipping FCM native tokens for user {user_id}")
+            else:
+                try:
+                    from firebase_admin import messaging as fcm
+                    
+                    notification = fcm.Notification(
+                        title=title,
+                        body=body
                     )
-                    apns_config = fcm.APNSConfig(
-                        # apns-push-type required by Apple on iOS 13+ for display
-                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
-                        payload=fcm.APNSPayload(
-                            aps=fcm.Aps(
-                                sound='soundreality_mayday_166011_ios.caf',
-                                badge=1,
-                                content_available=True,
-                                mutable_content=True,
-                                category='SOS_ALERT'
+                    
+                    # Configure custom sound for all except SOS
+                    android_config = None
+                    apns_config = None
+                    notification_type = data.get('type') if data else None
+                    
+                    is_sos = bool(notification_type and (notification_type == 'sos_alert' or notification_type.startswith('sos_')))
+                    is_msg = bool(notification_type and notification_type in ('message', 'dm'))
+                    is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
+                    
+                    if is_sos:
+                        android_config = fcm.AndroidConfig(
+                            priority='high',
+                            notification=fcm.AndroidNotification(
+                                channel_id='sos_alerts_v3',
+                                sound='soundreality_mayday_166011',
+                                priority='max',
+                                vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000]
                             )
                         )
-                    )
-                elif is_community:
-                    android_config = fcm.AndroidConfig(
-                        priority='high',
-                        notification=fcm.AndroidNotification(
-                            channel_id='community_v1',
-                            sound='bell',
-                            priority='high'
-                        )
-                    )
-                    apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
-                        payload=fcm.APNSPayload(
-                            aps=fcm.Aps(
-                                sound='bell_ios.caf',
-                                content_available=True,
-                                mutable_content=True
+                        apns_config = fcm.APNSConfig(
+                            # apns-push-type required by Apple on iOS 13+ for display
+                            headers={'apns-priority': '10', 'apns-push-type': 'alert'},
+                            payload=fcm.APNSPayload(
+                                aps=fcm.Aps(
+                                    sound='soundreality_mayday_166011_ios.caf',
+                                    badge=1,
+                                    content_available=True,
+                                    mutable_content=True,
+                                    category='SOS_ALERT'
+                                )
                             )
                         )
-                    )
-                else:
-                    channel_id = 'messages_v4' if is_msg else 'default_v4'
-                    android_config = fcm.AndroidConfig(
-                        priority='high',
-                        notification=fcm.AndroidNotification(
-                            channel_id=channel_id,
-                            sound='bell',
-                            priority='high'
-                        )
-                    )
-                    apns_config = fcm.APNSConfig(
-                        headers={'apns-priority': '10', 'apns-push-type': 'alert'},
-                        payload=fcm.APNSPayload(
-                            aps=fcm.Aps(
-                                sound='bell_ios.caf',
-                                content_available=True,
-                                mutable_content=True
+                    elif is_community:
+                        android_config = fcm.AndroidConfig(
+                            priority='high',
+                            notification=fcm.AndroidNotification(
+                                channel_id='community_v1',
+                                sound='bell',
+                                priority='high'
                             )
                         )
-                    )
-                
-                failed_tokens = []
-                for token in fcm_native_tokens:
-                    try:
-                        message_kwargs: dict[str, Any] = {
-                            'notification': notification,
-                            'data': data or {},
-                            'token': token
-                        }
-                        if android_config:
-                            message_kwargs['android'] = android_config
-                        if apns_config:
-                            message_kwargs['apns'] = apns_config
-                            
-                        message = fcm.Message(**message_kwargs)
-                        messaging.send(message)
-                        success_count += 1
-                    except Exception as e:
-                        logger.warning(f"Failed to send to token: {e}")
-                        failed_tokens.append(token)
-                
-                # Remove failed native tokens
-                if failed_tokens:
-                    await db.array_remove_update('users', user_id, 'fcm_tokens', failed_tokens)
-            except Exception as e:
-                logger.error(f"FCM send error: {e}")
+                        apns_config = fcm.APNSConfig(
+                            headers={'apns-priority': '10', 'apns-push-type': 'alert'},
+                            payload=fcm.APNSPayload(
+                                aps=fcm.Aps(
+                                    sound='bell_ios.caf',
+                                    content_available=True,
+                                    mutable_content=True
+                                )
+                            )
+                        )
+                    else:
+                        channel_id = 'messages_v4' if is_msg else 'default_v4'
+                        android_config = fcm.AndroidConfig(
+                            priority='high',
+                            notification=fcm.AndroidNotification(
+                                channel_id=channel_id,
+                                sound='bell',
+                                priority='high'
+                            )
+                        )
+                        apns_config = fcm.APNSConfig(
+                            headers={'apns-priority': '10', 'apns-push-type': 'alert'},
+                            payload=fcm.APNSPayload(
+                                aps=fcm.Aps(
+                                    sound='bell_ios.caf',
+                                    content_available=True,
+                                    mutable_content=True
+                                )
+                            )
+                        )
+                    
+                    failed_tokens = []
+                    for token in fcm_native_tokens:
+                        try:
+                            message_kwargs: dict[str, Any] = {
+                                'notification': notification,
+                                'data': data or {},
+                                'token': token
+                            }
+                            if android_config:
+                                message_kwargs['android'] = android_config
+                            if apns_config:
+                                message_kwargs['apns'] = apns_config
+                                
+                            message = fcm.Message(**message_kwargs)
+                            messaging.send(message)
+                            success_count += 1
+                        except Exception as e:
+                            logger.warning(f"Failed to send to token: {e}")
+                            failed_tokens.append(token)
+                    
+                    # Remove failed native tokens
+                    if failed_tokens:
+                        await db.array_remove_update('users', user_id, 'fcm_tokens', failed_tokens)
+                except Exception as e:
+                    logger.error(f"FCM send error: {e}")
                 
         return {
             "message": "Notifications sent",
@@ -430,108 +433,113 @@ class FirebaseNotificationService:
             # 2. Send via FCM if there are native FCM tokens
             if all_fcm_tokens:
                 logger.info(f"SOS: Sending via FCM to {len(all_fcm_tokens)} tokens")
-                try:
-                    from firebase_admin import messaging as fcm
-                    
-                    # FCM allows max 500 tokens per multicast
-                    chunks = [all_fcm_tokens[i:i+500] for i in range(0, len(all_fcm_tokens), 500)]
-                    
-                    for i, chunk in enumerate(chunks):
-                        android_config = None
-                        apns_config = None
-                        
-                        notification_type = data.get('type') if data else None
-                        is_sos = bool(notification_type and (notification_type == 'sos_alert' or notification_type.startswith('sos_')))
-                        is_msg = bool(notification_type and notification_type in ('message', 'dm'))
-                        is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
-                        
-                        # High-priority for SOS
-                        if is_sos:
-                            android_config = fcm.AndroidConfig(
-                                priority='high',
-                                notification=fcm.AndroidNotification(
-                                    channel_id='sos_alerts_v3',
-                                    sound='soundreality_mayday_166011',
-                                    priority='max',
-                                    vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000]
-                                )
-                            )
-                            apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
-                                payload=fcm.APNSPayload(
-                                    aps=fcm.Aps(
-                                        sound='soundreality_mayday_166011_ios.caf',
-                                        badge=1,
-                                        content_available=True,
-                                        mutable_content=True,
-                                        category='SOS_ALERT'
-                                    )
-                                )
-                            )
-                        elif is_community:
-                            android_config = fcm.AndroidConfig(
-                                priority='high',
-                                notification=fcm.AndroidNotification(
-                                    channel_id='community_v1',
-                                    sound='bell',
-                                    priority='high'
-                                )
-                            )
-                            apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
-                                payload=fcm.APNSPayload(
-                                    aps=fcm.Aps(
-                                        sound='bell_ios.caf',
-                                        content_available=True,
-                                        mutable_content=True
-                                    )
-                                )
-                            )
-                        else:
-                            channel_id = 'messages_v4' if is_msg else 'default_v4'
-                            android_config = fcm.AndroidConfig(
-                                priority='high',
-                                notification=fcm.AndroidNotification(
-                                    channel_id=channel_id,
-                                    sound='bell',
-                                    priority='high'
-                                )
-                            )
-                            apns_config = fcm.APNSConfig(
-                                headers={'apns-priority': '10', 'apns-push-type': 'alert'},
-                                payload=fcm.APNSPayload(
-                                    aps=fcm.Aps(
-                                        sound='bell_ios.caf',
-                                        content_available=True,
-                                        mutable_content=True
-                                    )
-                                )
-                            )
-                        
-                        message_kwargs: dict[str, Any] = {
-                            'notification': fcm.Notification(title=title, body=body),
-                            'data': data or {},
-                            'tokens': chunk
-                        }
-                        if android_config:
-                            message_kwargs['android'] = android_config
-                        if apns_config:
-                            message_kwargs['apns'] = apns_config
-                        
-                        message = fcm.MulticastMessage(**message_kwargs)
-                        response = fcm.send_each_for_multicast(message)
-                        total_success += response.success_count
-                        total_failure += response.failure_count
-                        
-                        if response.failure_count > 0:
-                            logger.warning(f"SOS chunk {i}: {response.success_count} success, {response.failure_count} failed")
-                            for idx, resp in enumerate(response.responses):
-                                if not resp.success:
-                                    logger.warning(f"  Token index {idx} error: {resp.exception}")
-                                
-                except Exception as e:
-                    logger.error(f"Multicast FCM error: {e}")
+                messaging = get_firebase_messaging()
+                if not messaging:
+                    logger.warning("Firebase Messaging service unavailable. Skipping multicast FCM.")
                     total_failure += len(all_fcm_tokens)
+                else:
+                    try:
+                        from firebase_admin import messaging as fcm
+                        
+                        # FCM allows max 500 tokens per multicast
+                        chunks = [all_fcm_tokens[i:i+500] for i in range(0, len(all_fcm_tokens), 500)]
+                        
+                        for i, chunk in enumerate(chunks):
+                            android_config = None
+                            apns_config = None
+                            
+                            notification_type = data.get('type') if data else None
+                            is_sos = bool(notification_type and (notification_type == 'sos_alert' or notification_type.startswith('sos_')))
+                            is_msg = bool(notification_type and notification_type in ('message', 'dm'))
+                            is_community = bool(notification_type and notification_type in ('community_interest', 'event_rsvp', 'community_request'))
+                            
+                            # High-priority for SOS
+                            if is_sos:
+                                android_config = fcm.AndroidConfig(
+                                    priority='high',
+                                    notification=fcm.AndroidNotification(
+                                        channel_id='sos_alerts_v3',
+                                        sound='soundreality_mayday_166011',
+                                        priority='max',
+                                        vibrate_timings_millis=[0, 1000, 300, 1000, 300, 1000, 300, 1000]
+                                    )
+                                )
+                                apns_config = fcm.APNSConfig(
+                                    headers={'apns-priority': '10', 'apns-push-type': 'alert'},
+                                    payload=fcm.APNSPayload(
+                                        aps=fcm.Aps(
+                                            sound='soundreality_mayday_166011_ios.caf',
+                                            badge=1,
+                                            content_available=True,
+                                            mutable_content=True,
+                                            category='SOS_ALERT'
+                                        )
+                                    )
+                                )
+                            elif is_community:
+                                android_config = fcm.AndroidConfig(
+                                    priority='high',
+                                    notification=fcm.AndroidNotification(
+                                        channel_id='community_v1',
+                                        sound='bell',
+                                        priority='high'
+                                    )
+                                )
+                                apns_config = fcm.APNSConfig(
+                                    headers={'apns-priority': '10', 'apns-push-type': 'alert'},
+                                    payload=fcm.APNSPayload(
+                                        aps=fcm.Aps(
+                                            sound='bell_ios.caf',
+                                            content_available=True,
+                                            mutable_content=True
+                                        )
+                                    )
+                                )
+                            else:
+                                channel_id = 'messages_v4' if is_msg else 'default_v4'
+                                android_config = fcm.AndroidConfig(
+                                    priority='high',
+                                    notification=fcm.AndroidNotification(
+                                        channel_id=channel_id,
+                                        sound='bell',
+                                        priority='high'
+                                    )
+                                )
+                                apns_config = fcm.APNSConfig(
+                                    headers={'apns-priority': '10', 'apns-push-type': 'alert'},
+                                    payload=fcm.APNSPayload(
+                                        aps=fcm.Aps(
+                                            sound='bell_ios.caf',
+                                            content_available=True,
+                                            mutable_content=True
+                                        )
+                                    )
+                                )
+                            
+                            message_kwargs: dict[str, Any] = {
+                                'notification': fcm.Notification(title=title, body=body),
+                                'data': data or {},
+                                'tokens': chunk
+                            }
+                            if android_config:
+                                message_kwargs['android'] = android_config
+                            if apns_config:
+                                message_kwargs['apns'] = apns_config
+                            
+                            message = fcm.MulticastMessage(**message_kwargs)
+                            response = fcm.send_each_for_multicast(message)
+                            total_success += response.success_count
+                            total_failure += response.failure_count
+                            
+                            if response.failure_count > 0:
+                                logger.warning(f"SOS chunk {i}: {response.success_count} success, {response.failure_count} failed")
+                                for idx, resp in enumerate(response.responses):
+                                    if not resp.success:
+                                        logger.warning(f"  Token index {idx} error: {resp.exception}")
+                                    
+                    except Exception as e:
+                        logger.error(f"Multicast FCM error: {e}")
+                        total_failure += len(all_fcm_tokens)
                     
             return {"message": "Sent", "sent": total_success, "failed": total_failure}
             
@@ -696,6 +704,26 @@ class FirebaseNotificationService:
         """Send push notification for library reading sessions (max 1 per 4 days per user)"""
         db = await FirebaseNotificationService.get_db()
 
+        # If book_name is not specified, check if user has ALREADY opened/viewed books in library
+        if not book_name or not str(book_name).strip():
+            try:
+                progress_records = await db.query_documents(
+                    'library_progress',
+                    filters=[('user_id', '==', user_id)]
+                )
+                if progress_records and len(progress_records) > 0:
+                    # User has already opened/viewed library books!
+                    # Check if there is an unfinished book
+                    unfinished = [p for p in progress_records if float(p.get('progressPercent', 0)) < 100]
+                    if unfinished:
+                        unfinished.sort(key=lambda x: float(x.get('lastOpenedTime', 0)), reverse=True)
+                        book_name = unfinished[0].get('chapterName') or unfinished[0].get('bookId') or "Bhagavad Gita"
+                    else:
+                        logger.info(f"Skipping unopened library reminder for user {user_id}: user has already viewed/opened books in library")
+                        return {"status": "skipped", "reason": "User has already viewed books in library"}
+            except Exception as err:
+                logger.warning(f"Error checking library_progress for unopened reminder: {err}")
+
         # Enforce 1 notification per 4 days (345,600 seconds) per user
         FOUR_DAYS_SECONDS = 4 * 86400
         if not force:
@@ -719,7 +747,6 @@ class FirebaseNotificationService:
                             pass
             except Exception as err:
                 logger.warning(f"Error checking 4-day limit for library_reminder: {err}")
-
 
         # Set title, body and navigation route
         if book_name and str(book_name).strip():
@@ -762,5 +789,92 @@ class FirebaseNotificationService:
             data=notif_data
         )
         return {"status": "success", "result": res}
+
+    @staticmethod
+    async def notify_shiv_katha_reminder(
+        user_id: str,
+        notification_id: Optional[str] = None,
+        force: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Send push notification for LIVE Shiv Katha (starts on 13 August).
+        - Sent 2 times a day (Morning & Afternoon; max 1 per 12 hours).
+        - SKIPS users who have already pre-registered in jaap_reminders (mantra_type == 'shravan_katha').
+        """
+        db = await FirebaseNotificationService.get_db()
+
+        # 1. Check if user has ALREADY pre-registered for Shiv Katha
+        if not force:
+            try:
+                registered = await db.query_documents(
+                    'jaap_reminders',
+                    filters=[
+                        ('user_id', '==', user_id),
+                        ('mantra_type', '==', 'shravan_katha'),
+                        ('active', '==', True)
+                    ]
+                )
+                if registered and len(registered) > 0:
+                    logger.info(f"Skipping Shiv Katha reminder for user {user_id}: user already pre-registered")
+                    return {"status": "skipped", "reason": "User already pre-registered for Shiv Katha"}
+            except Exception as err:
+                logger.warning(f"Error checking pre-registration for shiv_katha_reminder: {err}")
+
+        # 2. Check 12h cooldown (morning & afternoon limit: 2 times per day)
+        TWELVE_HOURS_SECONDS = 12 * 3600
+        if not force:
+            try:
+                existing = await db.query_documents(
+                    'notifications',
+                    filters=[('user_id', '==', user_id), ('notification_type', '==', 'shiv_katha_reminder')]
+                )
+                now_ts = datetime.utcnow()
+                for doc in (existing or []):
+                    created_str = doc.get('created_at', '')
+                    if created_str:
+                        try:
+                            if created_str.endswith('Z'):
+                                created_str = created_str[:-1]
+                            created_dt = datetime.fromisoformat(created_str)
+                            if (now_ts - created_dt).total_seconds() < TWELVE_HOURS_SECONDS:
+                                logger.info(f"Skipping Shiv Katha reminder for user {user_id}: max 2 per day allowed")
+                                return {"status": "skipped", "reason": "Already sent within last 12 hours"}
+                        except Exception:
+                            pass
+            except Exception as err:
+                logger.warning(f"Error checking 12h limit for shiv_katha_reminder: {err}")
+
+        title = "🕉️ LIVE Shiv Katha starts on 13 August"
+        body = "Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji."
+        notif_data = {
+            "type": "shiv_katha_reminder",
+            "route": "/shravan-paath"
+        }
+
+        try:
+            await FirebaseNotificationService.create_notification(
+                user_id=user_id,
+                title=title,
+                body=body,
+                notification_type="shiv_katha_reminder",
+                data=notif_data,
+                notification_id=notification_id,
+                overwrite=False
+            )
+        except Exception as e:
+            from google.api_core.exceptions import AlreadyExists
+            if isinstance(e, AlreadyExists) or "AlreadyExists" in type(e).__name__ or "409" in str(e):
+                logger.info(f"Skipping duplicate shiv_katha_reminder for user {user_id}")
+                return {"status": "skipped", "reason": "Already exists"}
+            logger.warning(f"Failed to create shiv_katha_reminder notification doc: {e}")
+
+        res = await FirebaseNotificationService.send_push_notification(
+            user_id=user_id,
+            title=title,
+            body=body,
+            data=notif_data
+        )
+        return {"status": "success", "result": res}
+
 
 

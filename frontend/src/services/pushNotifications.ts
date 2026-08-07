@@ -488,4 +488,72 @@ export async function scheduleLibraryReadingNotification(
   }
 }
 
+/**
+ * Schedules or sends push notification for LIVE Shiv Katha (starts on 13 August):
+ * Title: 🕉️ LIVE Shiv Katha starts on 13 August
+ * Body: Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji.
+ * Route: /shravan-paath
+ * 
+ * Sent 2 times a day (Morning & Afternoon; max 1 per 12 hours).
+ */
+export async function scheduleShivKathaNotification(
+  triggerSeconds?: number,
+  force: boolean = false
+) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
+  // Enforce max 2 per day locally (12 hours = 43,200,000 ms)
+  const TWELVE_HOURS_MS = 12 * 60 * 60 * 1000;
+  if (!force) {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const lastSentStr = await AsyncStorage.getItem('LAST_SHIV_KATHA_REMINDER_TIMESTAMP');
+      if (lastSentStr) {
+        const lastSentTime = parseInt(lastSentStr, 10);
+        if (Date.now() - lastSentTime < TWELVE_HOURS_MS) {
+          console.log('[Push] Shiv Katha notification skipped: max 2 per day allowed');
+          return null;
+        }
+      }
+    } catch (e) {
+      console.warn('[Push] Error checking last Shiv Katha reminder timestamp:', e);
+    }
+  }
+
+  const title = '🕉️ LIVE Shiv Katha starts on 13 August';
+  const body = 'Pre-register now to receive reminders and LIVE updates from Acharya Shamik Ji.';
+  const channelId = 'default_v4';
+  const delay = triggerSeconds && triggerSeconds > 0 ? triggerSeconds : 1;
+
+  try {
+    const notifId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data: {
+          type: 'shiv_katha_reminder',
+          route: '/shravan-paath',
+        },
+        sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
+      },
+      trigger: (Platform.OS === 'android'
+        ? { seconds: delay, channelId }
+        : { seconds: delay }) as any,
+    });
+
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.setItem('LAST_SHIV_KATHA_REMINDER_TIMESTAMP', Date.now().toString());
+    } catch (_) {}
+
+    console.log(`[Push] Shiv Katha notification scheduled in ${delay}s (id: ${notifId})`);
+    return notifId;
+  } catch (e) {
+    console.warn('[Push] Failed to schedule Shiv Katha notification:', e);
+    return null;
+  }
+}
+
+
 

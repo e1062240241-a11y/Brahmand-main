@@ -611,7 +611,16 @@ function useNotificationResponseHandler() {
         navigateOrQueue(targetRoute);
         return;
       }
+
+      // Handle LIVE Shiv Katha notification tap - navigate user directly to Shravan Path screen
+      if (data.type === 'shiv_katha_reminder') {
+        const targetRoute = data.route || '/shravan-paath';
+        console.log(`[Push] Routing shiv_katha_reminder tap to ${targetRoute}`);
+        navigateOrQueue(targetRoute);
+        return;
+      }
     };
+
 
 
     let subscription: any;

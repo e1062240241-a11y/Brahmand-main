@@ -10495,6 +10495,22 @@ async def send_library_reminder_notification(
     return {"status": "success", "result": result}
 
 
+@api_router.post("/notifications/shiv-katha-reminder")
+async def send_shiv_katha_reminder_notification(
+    data: dict = Body({}),
+    token_data: dict = Depends(verify_token)
+):
+    user_id = data.get("target_user_id") or token_data["user_id"]
+    force = bool(data.get("force", False))
+    
+    result = await FirebaseNotificationService.notify_shiv_katha_reminder(
+        user_id=user_id,
+        force=force
+    )
+    return {"status": "success", "result": result}
+
+
+
 
 
 @api_router.post("/ai/chat")
