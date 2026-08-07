@@ -70,7 +70,7 @@ export const BlockConfirmationModal: React.FC<BlockConfirmationModalProps> = ({
       <View style={styles.modalOverlay}>
         {/* Backdrop */}
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} / accessibilityRole="button" accessibilityLabel="Button">
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
 
         {/* Dialog Box */}
@@ -93,7 +93,7 @@ export const BlockConfirmationModal: React.FC<BlockConfirmationModalProps> = ({
 
             <TouchableOpacity
               style={[styles.confirmButton, { backgroundColor: confirmColor }]}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+              onPress={() => {
                 onClose();
                 onConfirm();
               }}

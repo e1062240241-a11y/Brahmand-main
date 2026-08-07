@@ -318,7 +318,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           
           {!loading && showChevron && (
             <TouchableOpacity 
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+              onPress={() => {
                 if (suggestions.length > 0) {
                   setSuggestions([]);
                 } else {
@@ -357,7 +357,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
                       index === suggestions.length - 1 && styles.lastItem,
                       itemStyle
                     ]}
-                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSelect(item)}
+                    onPress={() => handleSelect(item)}
                   >
                     <Ionicons
                       name={item.isCustom ? "add-circle-outline" : "location-outline"}

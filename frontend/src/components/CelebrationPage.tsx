@@ -76,7 +76,7 @@ const TabBar = ({ active, onSelect }: { active: string; onSelect: (tab: string) 
       <TouchableOpacity
         key={tab}
         style={[styles.tab, active === tab && styles.tabActive]}
-        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onSelect(tab)}
+        onPress={() => onSelect(tab)}
         activeOpacity={0.7}
         accessibilityRole="tab"
         accessibilityState={{ selected: active === tab }}
@@ -104,7 +104,7 @@ const RitualsTab = ({ rituals }: { rituals: Ritual[] }) => {
           <View key={ritual.id} style={[styles.ritualCard, i === 0 && styles.ritualCardFirst]}>
             <TouchableOpacity
               style={styles.ritualHeader}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> toggle(ritual.id)}
+              onPress={() => toggle(ritual.id)}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityState={{ expanded: isOpen }}
@@ -161,7 +161,7 @@ const QuizTab = ({ question, options, festivalName }: { question: string; option
         <TouchableOpacity
           key={opt.id}
           style={[styles.quizOption, selected && styles.quizOptionDisabled]}
-          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> !selected && handleSelect(opt.id)}
+          onPress={() => !selected && handleSelect(opt.id)}
           activeOpacity={selected ? 1 : 0.7}
           accessibilityRole="radio"
           accessibilityState={{ checked: selected === opt.id, disabled: !!selected }}
@@ -226,7 +226,7 @@ const ChecklistTab = ({ items }: { items: ChecklistItem[] }) => {
           <TouchableOpacity
             key={item.id}
             style={styles.checkItem}
-            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> toggle(item.id)}
+            onPress={() => toggle(item.id)}
             activeOpacity={0.7}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: done }}

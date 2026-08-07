@@ -293,9 +293,9 @@ class FirestoreDB:
     
     # =================== GENERIC OPERATIONS ===================
     
-    async def create_document(self, collection: str, data: Dict[str, Any], doc_id: str = None, overwrite: bool = True) -> str:
+    async def create_document(self, collection: str, data: Dict[str, Any], doc_id: Optional[str] = None, overwrite: bool = True) -> str:
         """Create a document in a collection"""
-        now_iso = datetime.utcnow().isoformat() + 'Z'
+        now_iso = datetime.now(timezone.utc).isoformat()
         if 'created_at' not in data:
             data['created_at'] = now_iso
         if 'updated_at' not in data:
@@ -410,14 +410,14 @@ class FirestoreDB:
     
     async def update_document(self, collection: str, doc_id: str, data: Dict[str, Any]) -> bool:
         """Update a document and invalidate cache"""
-        data['updated_at'] = datetime.utcnow()
+        data['updated_at'] = datetime.now(timezone.utc)
         
         if self.use_mock:
             coll = self._mock_collections.setdefault(collection, {})
             if doc_id in coll:
                 data_copy = fast_copy(data)
                 if isinstance(data_copy.get('updated_at'), datetime):
-                    data_copy['updated_at'] = data_copy['updated_at'].isoformat() + 'Z'
+                    data_copy['updated_at'] = data_copy['updated_at'].isoformat()
                 coll[doc_id].update(data_copy)
                 await self._cache.delete(f"{collection}:{doc_id}")
                 return True
@@ -437,7 +437,7 @@ class FirestoreDB:
         if not updates:
             return
             
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if self.use_mock:
             coll = self._mock_collections.setdefault(collection, {})
             for doc_id, data in updates:
@@ -475,7 +475,7 @@ class FirestoreDB:
                 if doc_id in coll:
                     del coll[doc_id]
                     deleted_count += 1
-                self._cache.delete(f"{collection}:{doc_id}")
+                await self._cache.delete(f"{collection}:{doc_id}")
             return deleted_count
 
         def _batch():
@@ -554,10 +554,10 @@ class FirestoreDB:
     async def query_documents(
         self, 
         collection: str, 
-        filters: List[tuple] = None,
-        order_by: str = None,
+        filters: Optional[List[tuple]] = None,
+        order_by: Optional[str] = None,
         order_direction: str = 'ASCENDING',
-        limit: int = None
+        limit: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Query documents with filters"""
         if self.use_mock:
@@ -617,7 +617,7 @@ class FirestoreDB:
         results = await self.query_documents(collection, filters, limit=1)
         return results[0] if results else None
     
-    async def count_documents(self, collection: str, filters: List[tuple] = None) -> int:
+    async def count_documents(self, collection: str, filters: Optional[List[tuple]] = None) -> int:
         """Count documents matching filters"""
         if self.use_mock:
             return len(self._mock_query(collection, filters, None, None, None))
@@ -675,7 +675,7 @@ class FirestoreDB:
         except Exception:
             norm_phone = phone.strip()
 
-        digits = ''.join(ch for ch in str(phone) if ch.isdigit())
+        digits = ''.join(ch for ch in phone if ch.isdigit())
         last10 = digits[-10:] if len(digits) >= 10 else digits
 
         candidates = list(dict.fromkeys([
@@ -730,7 +730,7 @@ class FirestoreDB:
                     logger.info(f"Integrity Sweep: Auto-removing duplicate unpopulated shell user doc: {u['id']}")
                     await self.delete_document('users', u['id'])
                 except Exception as err:
-                    logger.warn(f"Integrity Sweep: Could not delete duplicate user doc {u['id']}: {err}")
+                    logger.warning(f"Integrity Sweep: Could not delete duplicate user doc {u['id']}: {err}")
 
         return target_user
     
@@ -798,7 +798,7 @@ class FirestoreDB:
                     if val not in current:
                         current.append(val)
                 doc[field] = current
-                doc['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+                doc['updated_at'] = datetime.now(timezone.utc).isoformat()
             await self._cache.delete(f"{collection}:{doc_id}")
             return
 
@@ -813,7 +813,7 @@ class FirestoreDB:
     
     async def set_document(self, collection: str, doc_id: str, data: Dict[str, Any]):
         """Set a document with specific ID"""
-        now_iso = datetime.utcnow().isoformat() + 'Z'
+        now_iso = datetime.now(timezone.utc).isoformat()
         if 'created_at' not in data:
             data['created_at'] = now_iso
         if 'updated_at' not in data:
@@ -833,7 +833,7 @@ class FirestoreDB:
     
     # =================== CHAT OPERATIONS ===================
     
-    async def create_chat(self, chat_data: Dict[str, Any], chat_id: str = None) -> str:
+    async def create_chat(self, chat_data: Dict[str, Any], chat_id: Optional[str] = None) -> str:
         """Create a new chat"""
         if self.use_mock:
             import uuid
@@ -854,13 +854,14 @@ class FirestoreDB:
     
     async def add_message_to_chat(self, chat_id: str, message_data: Dict[str, Any]) -> str:
         """Add a message to chat's messages subcollection"""
+        now_iso = datetime.now(timezone.utc).isoformat()
         if self.use_mock:
             import uuid
             msg_id = str(uuid.uuid4())
             data_copy = fast_copy(message_data)
             data_copy['id'] = msg_id
-            data_copy['created_at'] = datetime.utcnow().isoformat() + 'Z'
-            data_copy['timestamp'] = datetime.utcnow().isoformat() + 'Z'
+            data_copy['created_at'] = now_iso
+            data_copy['timestamp'] = now_iso
             
             sub_key = f"chats:{chat_id}:messages"
             self._mock_collections.setdefault(sub_key, {})[msg_id] = data_copy
@@ -869,7 +870,7 @@ class FirestoreDB:
             return msg_id
 
         from google.cloud import firestore
-        message_data['created_at'] = datetime.utcnow().isoformat() + 'Z'
+        message_data['created_at'] = now_iso
         message_data['timestamp'] = firestore.SERVER_TIMESTAMP
         
         def _add():
@@ -1088,7 +1089,7 @@ class FirestoreDB:
                     current = []
                 current = [x for x in current if x not in values]
                 doc[field] = current
-                doc['updated_at'] = datetime.utcnow().isoformat() + 'Z'
+                doc['updated_at'] = datetime.now(timezone.utc).isoformat()
             await self._cache.delete(f"{collection}:{doc_id}")
             return
 

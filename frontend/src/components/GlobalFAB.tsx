@@ -522,7 +522,7 @@ export function GlobalFAB() {
                       </View>
                       <TouchableOpacity
                         style={fabStyles.receivedHelpBtn}
-                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleResolveActiveSOS('resolved')}
+                        onPress={() => handleResolveActiveSOS('resolved')}
                       >
                         <View style={fabStyles.receivedHelpCheck}>
                           <Ionicons name="checkmark" size={18} color="#D32F2F" />
@@ -530,7 +530,7 @@ export function GlobalFAB() {
                         <Text style={fabStyles.receivedHelpText}>{t('receivedHelp') || 'I HAVE RECEIVED HELP'}</Text>
                       </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleResolveActiveSOS('cancelled')}>
+                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={() => handleResolveActiveSOS('cancelled')}>
                       <Text style={fabStyles.cancelSOSText}>{t('cancelSOS') || 'Cancel SOS'}</Text>
                     </TouchableOpacity>
                   </View>
@@ -584,7 +584,7 @@ export function GlobalFAB() {
                       ) : (
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
-                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleRespondToSOS(nearbySOSAlerts[0].id)}
+                          onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
                           disabled={isResponding}
                         >
                           {isResponding ? (
@@ -599,7 +599,7 @@ export function GlobalFAB() {
                       )}
                       <TouchableOpacity
                         style={[fabStyles.responderBtn, { backgroundColor: '#FF9800' }]}
-                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                        onPress={() => {
                           const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || nearbySOSAlerts[0].phone_number || '';
                           if (!phone) { Alert.alert('Not Available', 'Phone number not provided.'); return; }
                           Linking.openURL(`tel:${phone}`);
@@ -611,7 +611,7 @@ export function GlobalFAB() {
                       {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#D32F2F' }]}
-                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleReportMisuse(nearbySOSAlerts[0].id)}
+                          onPress={() => handleReportMisuse(nearbySOSAlerts[0].id)}
                         >
                           <MaterialCommunityIcons name="alert-octagon" size={22} color="#FFF" />
                           <Text style={fabStyles.responderBtnText}>{t('language') === 'hi' ? 'दुरुपयोग की रिपोर्ट' : 'REPORT MISUSE'}</Text>
@@ -619,7 +619,7 @@ export function GlobalFAB() {
                       ) : (
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#2196F3' }]}
-                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                          onPress={() => {
                             const s = nearbySOSAlerts[0];
                             if (s?.latitude && s?.longitude) {
                               Linking.openURL(`https://maps.google.com/?q=${s.latitude},${s.longitude}`);
@@ -653,7 +653,7 @@ export function GlobalFAB() {
                     <TouchableOpacity
                       style={fabStyles.centerButtonOuterRing}
                       activeOpacity={0.85}
-                      onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                      onPress={() => {
                         toggleFab();
                         router.push('/sos');
                       }}

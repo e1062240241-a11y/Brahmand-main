@@ -69,7 +69,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
       <View style={styles.modalOverlay}>
         {/* Backdrop */}
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} / accessibilityRole="button" accessibilityLabel="Button">
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
 
         {/* Dialog Box */}
@@ -92,7 +92,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
 
             <TouchableOpacity
               style={styles.confirmButton}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+              onPress={() => {
                 onClose();
                 onConfirm();
               }}

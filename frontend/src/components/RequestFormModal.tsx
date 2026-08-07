@@ -405,7 +405,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         {VISIBILITY_OPTIONS.map((option) => (
           <Pressable
             key={option.key}
-            style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+            accessibilityRole="button"
+            accessibilityLabel="Button"
+            style={({ pressed }) => [
               styles.visibilityOption,
               visibility === option.key && styles.visibilityOptionSelected,
               pressed && { opacity: 0.8 }
@@ -439,7 +441,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             {BLOOD_GROUPS.map((bg) => (
               <Pressable
                 key={bg}
-                style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+                accessibilityRole="button"
+                accessibilityLabel="Button"
+                style={({ pressed }) => [
                   styles.bloodGroupBtn,
                   bloodGroup === bg && styles.bloodGroupBtnSelected,
                   pressed && { opacity: 0.8 }
@@ -532,7 +536,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             {communities.map((community) => (
               <Pressable
                 key={community?.id}
-                style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+                accessibilityRole="button"
+                accessibilityLabel="Button"
+                style={({ pressed }) => [
                   styles.communityOption,
                   selectedCommunityId === community?.id && styles.communityOptionActive,
                   pressed && { opacity: 0.8 }
@@ -560,7 +566,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         {URGENCY_OPTIONS.map((option) => (
           <Pressable
             key={option.key}
-            style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+            accessibilityRole="button"
+            accessibilityLabel="Button"
+            style={({ pressed }) => [
               styles.urgencyBtn,
               urgency === option.key && { backgroundColor: `${option.color}15`, borderColor: option.color },
               pressed && { opacity: 0.8 }
@@ -648,7 +656,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
           <View style={styles.otpButtonRow}>
             <Pressable
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+              accessibilityRole="button"
+              accessibilityLabel="Button"
+              style={({ pressed }) => [
                 styles.otpButton,
                 (phoneSending || phoneVerifying) && styles.otpButtonDisabled,
                 pressed && !(phoneSending || phoneVerifying) && { opacity: 0.8 }
@@ -679,7 +689,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 maxLength={6}
               />
               <Pressable
-                style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+                accessibilityRole="button"
+                accessibilityLabel="Button"
+                style={({ pressed }) => [
                   styles.otpButton,
                   (phoneVerifying || !phoneOtp.trim()) && styles.otpButtonDisabled,
                   pressed && !(phoneVerifying || !phoneOtp.trim()) && { opacity: 0.8 }
@@ -719,7 +731,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
           <View style={styles.header}>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [{ marginRight: 15 }, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Button"
+              style={({ pressed }) => [{ marginRight: 15 }, pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
             >
               <Ionicons name="chevron-back" size={28} color={COLORS.text} />
@@ -737,7 +751,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             </View>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Button"
+              style={({ pressed }) => [pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
             >
               <Ionicons name="close" size={24} color={COLORS.text} />
@@ -753,7 +769,9 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
             {/* Submit Button */}
             <Pressable
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+              accessibilityRole="button"
+              accessibilityLabel="Button"
+              style={({ pressed }) => [
                 styles.submitBtn,
                 loading && styles.submitBtnDisabled,
                 pressed && !loading && { opacity: 0.85 }

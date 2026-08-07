@@ -179,7 +179,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
                 renderItem={({ item, index }) => {
                   const itemKey = getConversationKey(item, index);
                   return (
-                    <TouchableOpacity style={styles.userCard} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSendToUser(item, index)}>
+                    <TouchableOpacity style={styles.userCard} onPress={() => handleSendToUser(item, index)}>
                       <Avatar photo={item.user?.photo} size={60} name={item.user?.name} />
                       <Text style={styles.userName} numberOfLines={1}>{item.user?.name}</Text>
                       {sharingTo === itemKey && (

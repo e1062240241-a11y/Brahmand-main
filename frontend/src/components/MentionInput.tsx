@@ -116,7 +116,7 @@ export const MentionInput = ({
             <TouchableOpacity
               key={item.id}
               style={styles.mentionItem}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSelectMention(item)}
+              onPress={() => handleSelectMention(item)}
             >
               <Avatar name={item.name || 'U'} photo={item.photo} size={28} />
               <View style={styles.mentionItemText}>

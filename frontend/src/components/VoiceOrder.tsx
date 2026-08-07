@@ -195,7 +195,7 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
       <View style={styles.toggleRow}>
         <TouchableOpacity 
           style={styles.toggleButton}
-          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setIsExpanded(!isExpanded)}
+          onPress={() => setIsExpanded(!isExpanded)}
           accessibilityRole="button"
           accessibilityState={{ expanded: isExpanded }}
           accessibilityLabel={isExpanded ? "Collapse voice order" : "Expand voice order"}
@@ -245,7 +245,7 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
           {parsedItems.length > 0 && (
             <TouchableOpacity 
               style={styles.clearButton}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+              onPress={() => {
                 setTranscribedText('');
                 setParsedItems([]);
               }}

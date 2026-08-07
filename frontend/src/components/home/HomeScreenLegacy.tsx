@@ -326,7 +326,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                     <TouchableOpacity
                         activeOpacity={0.86}
                         style={styles.profileButton}
-                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> router.push('/(tabs)/profile')}
+                        onPress={() => router.push('/(tabs)/profile')}
                         onLongPress={onProfileLongPress}
                     >
                         <Avatar name={firstName} photo={avatarUri} size={Platform.OS === 'android' ? 42 : 55} />
@@ -380,7 +380,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                 <TouchableOpacity
                     style={styles.festivalAlertCard}
                     activeOpacity={0.9}
-                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> router.push('/festivals')}
+                    onPress={() => router.push('/festivals')}
                 >
                     <View style={styles.festivalAlertIcon}>
                         <Ionicons name="notifications-outline" size={18} color="#FFF" />
@@ -419,7 +419,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                                     <TouchableOpacity
                                         style={styles.userResultItem}
                                         activeOpacity={0.8}
-                                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                                        onPress={() => {
                                             const hashtag = searchTerm.trim().replace(/^#+/, '');
                                             onSelectHashtag(hashtag);
                                         }}
@@ -445,7 +445,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                                             <TouchableOpacity
                                                 style={styles.userResultContent}
                                                 activeOpacity={0.8}
-                                                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                                                onPress={() => {
                                                     onSelectUser(item);
                                                 }}
                                             >
@@ -461,7 +461,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                                             <TouchableOpacity
                                                 style={[styles.followButton, isFollowing && styles.followingButton]}
                                                 activeOpacity={0.8}
-                                                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onFollowUser(item.id)}
+                                                onPress={() => onFollowUser(item.id)}
                                             >
                                                 <Text style={[styles.followButtonText, isFollowing && styles.followingButtonText]}>
                                                     {isFollowing ? t('following') : t('follow')}
@@ -492,7 +492,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                                         key={`recent-${item.id}`}
                                         style={styles.recentSearchItem}
                                         activeOpacity={0.7}
-                                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> router.push(`/profile/${item.id}`)}
+                                        onPress={() => router.push(`/profile/${item.id}`)}
                                     >
                                         <Avatar name={item.name || 'User'} photo={item.photo} size={60} />
                                         <Text style={styles.recentSearchName} numberOfLines={1}>
@@ -611,7 +611,7 @@ const QuickAccessCards = React.memo(function QuickAccessCards({
                                 Platform.OS === 'android' && { width: featureCardWidth, height: featureCardHeight, paddingHorizontal: 12 }
                             ]}
                             activeOpacity={0.9}
-                            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                            onPress={() => {
                                 if (item.label === 'Panchang') router.push('/panchang');
                                 else if (item.label === 'My Krishn') router.push('/my-krishna');
                                 else if (item.label === 'SOS') router.push('/sos');
@@ -810,7 +810,7 @@ const JaapBanners = React.memo(function JaapBanners({
                     return (
                         <TouchableOpacity
                             activeOpacity={0.95}
-                            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> router.push('/shravan-paath')}
+                            onPress={() => router.push('/shravan-paath')}
                             style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
                         >
                             <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
@@ -1170,7 +1170,7 @@ const JaapBanners = React.memo(function JaapBanners({
                                         }
                                     ]}
                                     android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onLiveJaap('hanuman', 'Hanuman Chalisa')}
+                                    onPress={() => onLiveJaap('hanuman', 'Hanuman Chalisa')}
                                 >
                                     <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
                                 </Pressable>
@@ -1187,7 +1187,7 @@ const JaapBanners = React.memo(function JaapBanners({
                                         borderColor: reminders['hanuman'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
                                     }}
                                     activeOpacity={0.8}
-                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onSetReminder('hanuman', 'Hanuman Chalisa')}
+                                    onPress={() => onSetReminder('hanuman', 'Hanuman Chalisa')}
                                 >
                                     <Ionicons
                                         name={reminders['hanuman'] ? "notifications" : "notifications-outline"}
@@ -1295,7 +1295,7 @@ const JaapBanners = React.memo(function JaapBanners({
                                         }
                                     ]}
                                     android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
-                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onLiveJaap('shiva', 'Om Namah Shivay')}
+                                    onPress={() => onLiveJaap('shiva', 'Om Namah Shivay')}
                                 >
                                     <Text style={styles.joinJaapText}>{t('joinLiveJaap')}</Text>
                                 </Pressable>
@@ -1312,7 +1312,7 @@ const JaapBanners = React.memo(function JaapBanners({
                                         borderColor: reminders['shiva'] ? '#FF5100' : 'rgba(255, 255, 255, 0.4)',
                                     }}
                                     activeOpacity={0.8}
-                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onSetReminder('shiva', 'Mahamrityunjaya Mantra')}
+                                    onPress={() => onSetReminder('shiva', 'Mahamrityunjaya Mantra')}
                                 >
                                     <Ionicons
                                         name={reminders['shiva'] ? "notifications" : "notifications-outline"}
@@ -1389,7 +1389,7 @@ const CityCommunityCard = React.memo(function CityCommunityCard({
     const cityMembers = (rawCityCount || 1) * 11;
     return (
         <Pressable
-            style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+            style={({ pressed }) => [
                 styles.communityCardMini,
                 Platform.OS === 'android' && { overflow: 'hidden' },
                 pressed && Platform.OS === 'ios' && { opacity: 0.7 }
@@ -1437,7 +1437,7 @@ const LocalCommunityCard = React.memo(function LocalCommunityCard({
     const localSubgroup = resolvedLocalComm.type || 'city';
     return (
         <Pressable
-            style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+            style={({ pressed }) => [
                 styles.communityCardMini,
                 Platform.OS === 'android' && { overflow: 'hidden' },
                 pressed && Platform.OS === 'ios' && { opacity: 0.7 }

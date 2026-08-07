@@ -48,7 +48,7 @@ export default function HomeJyotishSection() {
                   borderRadius: 16
                 }
               ]}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> router.push('/horoscope')}
+              onPress={() => router.push('/horoscope')}
               activeOpacity={0.8}
             >
               <View style={[styles.iconContainer, Platform.OS === 'android' && { width: 50, height: 50, borderRadius: 25, marginBottom: 8 }]}>

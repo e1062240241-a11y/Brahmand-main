@@ -87,7 +87,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
             </View>
             <Pressable
               onPress={onClose}
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [styles.closeBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 15 }}
             >
               <Ionicons name="close" size={24} color="#666" />
@@ -119,7 +119,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
             </View>
 
             <Pressable
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [styles.reportMisuseBtn, (pressed || reporting) && { opacity: 0.8 }]}
+              style={({ pressed }) => [styles.reportMisuseBtn, (pressed || reporting) && { opacity: 0.8 }]}
               onPress={handleReportMisuse}
               disabled={reporting}
               android_ripple={{ color: 'rgba(255,59,48,0.2)', borderless: false }}
@@ -131,7 +131,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
 
           <View style={styles.footer}>
             <Pressable
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [styles.cancelBtn, pressed && { opacity: 0.7 }]}
+              style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
               onPress={onClose}
               android_ripple={{ color: 'rgba(0,0,0,0.05)', borderless: false }}
             >
@@ -139,7 +139,7 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
             </Pressable>
             
             <Pressable 
-              style={({ pressed }) = accessibilityRole="button" accessibilityLabel="Button"> [
+              style={({ pressed }) => [
                 styles.respondBtn,
                 loading && styles.respondBtnDisabled,
                 pressed && !loading && { opacity: 0.85 }

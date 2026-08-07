@@ -264,7 +264,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         </View>
       </View>
 
-      <TouchableOpacity style={styles.mainButton} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(2)}>
+      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(2)}>
         <View style={styles.buttonIconContainer}>
           <Text style={styles.exclamationMark}>!</Text>
         </View>
@@ -280,7 +280,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const renderStep2 = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(1)} style={styles.headerIconButton}>
+        <TouchableOpacity onPress={() => setStep(1)} style={styles.headerIconButton}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
@@ -302,7 +302,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
           <TouchableOpacity
             key={t.id}
             style={[styles.typeButton, emergencyType === t.id && styles.typeButtonActive]}
-            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+            onPress={() => {
               setEmergencyType(t.id);
               // Auto-continue to next step after selection
               setTimeout(() => {
@@ -324,7 +324,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         ))}
       </View>
 
-      <TouchableOpacity style={styles.mainButton} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(3)}>
+      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(3)}>
         <Text style={styles.mainButtonText}>CONTINUE</Text>
       </TouchableOpacity>
 
@@ -337,7 +337,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const renderStep3 = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(2)} style={styles.headerIconButton}>
+        <TouchableOpacity onPress={() => setStep(2)} style={styles.headerIconButton}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
@@ -353,7 +353,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
 
       <TouchableOpacity 
         style={styles.locationCard} 
-        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setPickerVisible(true)}
+        onPress={() => setPickerVisible(true)}
         activeOpacity={0.8}
       >
         <View style={styles.locationIconBg}>
@@ -370,7 +370,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
 
       <TouchableOpacity 
         style={[styles.locationCard, { backgroundColor: '#FFF5EB', borderColor: '#FFD7C2', borderWidth: 1, marginTop: -20, marginBottom: 20 }]} 
-        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setPickerVisible(true)}
+        onPress={() => setPickerVisible(true)}
         activeOpacity={0.8}
       >
         <Ionicons name="map-outline" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
@@ -391,11 +391,11 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
         <Ionicons name="lock-closed" size={18} color="#999" />
       </View>
 
-      <TouchableOpacity style={styles.mainButton} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(4)}>
+      <TouchableOpacity style={styles.mainButton} onPress={() => setStep(4)}>
         <Text style={styles.mainButtonText}>CREATE SOS</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(2)} style={styles.cancelLink}>
+      <TouchableOpacity onPress={() => setStep(2)} style={styles.cancelLink}>
         <Text style={styles.cancelLinkText}>Back</Text>
       </TouchableOpacity>
     </View>
@@ -404,7 +404,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
   const renderStep4 = () => (
     <View style={styles.stepContent}>
       <View style={styles.stepHeader}>
-        <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(3)} style={styles.headerIconButton}>
+        <TouchableOpacity onPress={() => setStep(3)} style={styles.headerIconButton}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Emergency SOS</Text>
@@ -427,7 +427,7 @@ export const SOSFlowModal: React.FC<SOSFlowModalProps> = ({ visible, onClose, on
 
       <TouchableOpacity 
         style={[styles.mainButton, styles.cancelButton]} 
-        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setStep(3)}
+        onPress={() => setStep(3)}
       >
         <Text style={styles.cancelButtonText}>CANCEL SOS</Text>
       </TouchableOpacity>

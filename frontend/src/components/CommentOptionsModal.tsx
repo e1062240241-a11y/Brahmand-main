@@ -56,11 +56,11 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
   return (
     <View style={[StyleSheet.absoluteFillObject, { zIndex: 99999 }]}>
       <Animated.View style={[styles.overlay, { opacity: backdropOpacity }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} / accessibilityRole="button" accessibilityLabel="Button">
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
       
       <View style={styles.keyboardAvoidingContainer} pointerEvents="box-none">
-        <Pressable style={{ flex: 1 }} onPress={onClose} / accessibilityRole="button" accessibilityLabel="Button">
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
         
         <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslateY }], paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom + 16, 28) : Math.max(insets.bottom, 16) }]}>
           {/* Grab Handle */}
@@ -87,7 +87,7 @@ export const CommentOptionsModal: React.FC<CommentOptionsModalProps> = ({
                 <TouchableOpacity
                   key={idx}
                   style={styles.optionRow}
-                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                  onPress={() => {
                     onClose();
                     // Small delay to let close animation start
                     setTimeout(() => {

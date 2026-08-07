@@ -698,14 +698,14 @@ const ReelVideoItem = React.memo(({
           <Pressable
             onPress={handleTapVideo}
             style={StyleSheet.absoluteFill}
-          / accessibilityRole="button" accessibilityLabel="Button">
+          />
         )}
 
         {/* Left side - hold to rewind */}
         {isVideo && (
           <Pressable
             onPress={handleTapVideo}
-            onLongPress={() = accessibilityRole="button" accessibilityLabel="Button"> startSeek('left')}
+            onLongPress={() => startSeek('left')}
             onPressOut={stopSeek}
             style={{ position: 'absolute', top: 0, left: 0, width: '35%', bottom: 0, zIndex: 2 }}
           />
@@ -714,7 +714,7 @@ const ReelVideoItem = React.memo(({
         {isVideo && (
           <Pressable
             onPress={handleTapVideo}
-            onLongPress={() = accessibilityRole="button" accessibilityLabel="Button"> startSeek('right')}
+            onLongPress={() => startSeek('right')}
             onPressOut={stopSeek}
             style={{ position: 'absolute', top: 0, right: 0, width: '35%', bottom: 0, zIndex: 2 }}
           />
@@ -724,7 +724,7 @@ const ReelVideoItem = React.memo(({
           <Pressable
             onPress={handleTapVideo}
             style={{ position: 'absolute', top: 0, left: '35%', width: '30%', bottom: 0, zIndex: 2 }}
-          / accessibilityRole="button" accessibilityLabel="Button">
+          />
         )}
       </View>
 
@@ -916,7 +916,7 @@ const ReelVideoItem = React.memo(({
         {post?.caption ? (
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+            onPress={() => {
               const nextExpanded = !isCaptionExpanded;
               setIsCaptionExpanded(nextExpanded);
               if (nextExpanded) {
@@ -1895,7 +1895,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             <TouchableOpacity
               style={{ ...StyleSheet.absoluteFillObject }}
               activeOpacity={1}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+              onPress={() => {
                 setIsCommentVisible(false);
                 setActiveCommentMenuId(null);
                 setReplyingToComment(null);
@@ -1952,14 +1952,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 {canDelete ? (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleDeleteComment(item)}
+                                    onPress={() => handleDeleteComment(item)}
                                   >
                                     <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                                   </TouchableOpacity>
                                 ) : (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleCommentMenuPress(item)}
+                                    onPress={() => handleCommentMenuPress(item)}
                                   >
                                     <Ionicons name="ellipsis-horizontal" size={16} color="#A88876" />
                                   </TouchableOpacity>
@@ -1973,7 +1973,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 <Text style={{ fontSize: 11, color: '#A88876' }}>{formatTimeAgo(item?.created_at)}</Text>
                                 <TouchableOpacity
                                   style={{ marginLeft: 16 }}
-                                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                                  onPress={() => {
                                     setReplyingToComment(item);
                                   }}
                                 >
@@ -2027,14 +2027,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                     {canDeleteReply ? (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4 }}
-                                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleDeleteComment(reply)}
+                                        onPress={() => handleDeleteComment(reply)}
                                       >
                                         <Ionicons name="trash-outline" size={14} color="#FF3B30" />
                                       </TouchableOpacity>
                                     ) : (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4 }}
-                                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleCommentMenuPress(reply)}
+                                        onPress={() => handleCommentMenuPress(reply)}
                                       >
                                         <Ionicons name="ellipsis-horizontal" size={14} color="#A88876" />
                                       </TouchableOpacity>
@@ -2046,7 +2046,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                   />
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                                     <TouchableOpacity
-                                      onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                                      onPress={() => {
                                         setReplyingToComment(item);
                                         setNewCommentText(`@${reply.username} `);
                                       }}
@@ -2089,7 +2089,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                     {t('language') === 'hi' ? 'को जवाब दिया जा रहा है' : 'Replying to'}{' '}
                     <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
                   </Text>
-                  <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setReplyingToComment(null)}>
+                  <TouchableOpacity onPress={() => setReplyingToComment(null)}>
                     <Ionicons name="close-circle" size={18} color="#999" />
                   </TouchableOpacity>
                 </View>
@@ -2162,7 +2162,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             <TouchableOpacity
               style={{ ...StyleSheet.absoluteFillObject }}
               activeOpacity={1}
-              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setIsOptionsVisible(false)}
+              onPress={() => setIsOptionsVisible(false)}
             />
             <View style={styles.sheetContainer}>
               <View style={styles.sheetHandle} />
@@ -2170,7 +2170,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
               <TouchableOpacity
                 style={styles.sheetRow}
-                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                onPress={() => {
                   toggleAutoScroll();
                   setIsOptionsVisible(false);
                 }}
@@ -2191,7 +2191,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
               <TouchableOpacity
                 style={[styles.sheetCancelBtn, { marginTop: 16 }]}
-                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setIsOptionsVisible(false)}
+                onPress={() => setIsOptionsVisible(false)}
               >
                 <Text style={styles.sheetCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>

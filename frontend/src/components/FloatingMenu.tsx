@@ -178,7 +178,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                           <TouchableOpacity
                             style={fabStyles.menuItemButton}
                             activeOpacity={0.8}
-                            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                            onPress={() => {
                               Keyboard.dismiss();
                               toggleFab();
                               const targetRoute = item.route;
@@ -229,7 +229,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                       <TouchableOpacity
                         style={fabStyles.centerButtonOuterRing}
                         activeOpacity={0.85}
-                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                        onPress={() => {
                           toggleFab();
                           setTimeout(() => {
                             router.push('/sos');

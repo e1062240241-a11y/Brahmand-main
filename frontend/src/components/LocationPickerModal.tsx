@@ -214,7 +214,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
               onChangeText={handleSearch}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSearch('')}>
+              <TouchableOpacity onPress={() => handleSearch('')}>
                 <Ionicons name="close-circle" size={18} color={COLORS.textSecondary} />
               </TouchableOpacity>
             )}
@@ -228,7 +228,7 @@ export const LocationPickerModal: React.FC<LocationPickerModalProps> = ({
                 <TouchableOpacity
                   key={index}
                   style={styles.suggestionItem}
-                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSelectSearchResult(item)}
+                  onPress={() => handleSelectSearchResult(item)}
                 >
                   <Ionicons name="location-outline" size={18} color={COLORS.primary} style={{ marginRight: SPACING.sm }} />
                   <Text style={styles.suggestionText} numberOfLines={2}>

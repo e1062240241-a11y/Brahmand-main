@@ -157,7 +157,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                     styles.reasonRow,
                     selectedReason === r.key && styles.reasonRowSelected,
                   ]}
-                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setSelectedReason(r.key)}
+                  onPress={() => setSelectedReason(r.key)}
                   accessibilityLabel={r.label}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: selectedReason === r.key }}

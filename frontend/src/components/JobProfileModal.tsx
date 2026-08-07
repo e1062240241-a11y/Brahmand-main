@@ -538,7 +538,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                     <TouchableOpacity
                       key={role}
                       style={styles.dropdownItem}
-                      onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                      onPress={() => {
                         setProfession(role);
                         setProfessionSearch(getRoleTranslation(role));
                         setShowProfessionDropdown(false);
@@ -570,7 +570,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
                     <TouchableOpacity
                       key={city}
                       style={styles.dropdownItem}
-                      onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
+                      onPress={() => {
                         setPreferredWorkCity(city);
                         setCitySearch(getCityTranslation(city));
                         setShowCityDropdown(false);
@@ -619,7 +619,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             {cvFile && (
               <View style={styles.fileRow}>
                 <Text style={styles.fileText} numberOfLines={1}>{cvFile.name}</Text>
-                <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setCvFile(undefined)}>
+                <TouchableOpacity onPress={() => setCvFile(undefined)}>
                   <Ionicons name="close-circle" size={20} color={COLORS.error} />
                 </TouchableOpacity>
               </View>

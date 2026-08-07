@@ -302,7 +302,7 @@ const AartiCard = React.memo(function AartiCard({
                                 {t('notify')} {t('me')}
                             </Text>
                             <TouchableOpacity
-                                onPress={(e) = accessibilityRole="button" accessibilityLabel="Button"> {
+                                onPress={(e) => {
                                     e.stopPropagation();
                                     onNotify();
                                 }}
