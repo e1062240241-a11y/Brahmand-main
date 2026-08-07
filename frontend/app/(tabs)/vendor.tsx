@@ -1150,7 +1150,7 @@ export default function VendorScreen() {
               >
                 {/* Manual crop offset for landscape Astrologer image */}
                 <Image 
-                  source={require('../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg')} 
+                  source={require('../../assets/images/tab-bar/rashi/vendor/Astrologer.webp')} 
                   style={{ position: 'absolute', width: cardWidth * 3.01, height: 210, left: -cardWidth, top: -1, borderRadius: 11 }} 
                   resizeMode="cover" 
                 />
@@ -1174,7 +1174,7 @@ export default function VendorScreen() {
               <View style={{ width: rightColWidth, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {/* Electrician */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Electrician' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/Electrician.jpg')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/Electrician.webp')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/lightning.webp')} 
@@ -1192,7 +1192,7 @@ export default function VendorScreen() {
                 </TouchableOpacity>
                 {/* Panditji */}
                 <TouchableOpacity style={[styles.figmaServiceCard, { width: cardWidth, height: 100 }]} onPress={() => router.push('/vendor/category/Panditji' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/panditji.jpg')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/panditji.webp')} style={{ position: 'absolute', width: cardWidth * 1.36, height: 102, left: -cardWidth * 0.18, top: -1, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/panditji_icon.webp')} 
@@ -1286,7 +1286,7 @@ export default function VendorScreen() {
             <View style={styles.figmaBusinessGrid}>
               <View style={[styles.figmaBusinessLeftCol, { width: businessLeftColWidth }]}>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92, marginBottom: 11 }]} onPress={() => router.push('/vendor/category/General Store' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/generalstore.jpg')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/generalstore.webp')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/general_store.webp')} 
@@ -1303,7 +1303,7 @@ export default function VendorScreen() {
                   </View>
                 </TouchableOpacity>
                 <TouchableOpacity style={[styles.figmaBusinessCard, { height: 92 }]} onPress={() => router.push('/vendor/category/Dairy' as any)}>
-                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/dairy.jpg')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
+                  <Image source={require('../../assets/images/tab-bar/rashi/vendor/dairy.webp')} style={{ position: 'absolute', width: businessLeftColWidth, height: 128, top: -18, borderRadius: 11 }} resizeMode="cover" />
                   <View style={styles.figmaServiceBadge}>
                     <Image 
                       source={require('../../assets/images/tab-bar/rashi/vendor/cow.webp')} 

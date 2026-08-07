@@ -7,9 +7,9 @@ export const CARD_RADIUS = 18;
 export const HOME_CARD_TEXTURES = {
     rose: require('../../../assets/images/home_card_bg_rose.webp'),
     peach: require('../../../assets/images/home_card_bg_peach.webp'),
-    mint: require('../../../assets/images/home_card_bg_mint.jpg'),
-    cyan: require('../../../assets/images/home_card_bg_mint.jpg'),
-    lavender: require('../../../assets/images/home_card_bg_lavender.jpg'),
+    mint: require('../../../assets/images/home_card_bg_mint.webp'),
+    cyan: require('../../../assets/images/home_card_bg_mint.webp'),
+    lavender: require('../../../assets/images/home_card_bg_lavender.webp'),
 } as const;
 
 export type HomeCardTextureKey = keyof typeof HOME_CARD_TEXTURES;
@@ -24,10 +24,10 @@ export const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, 
 
 export const shivaImage = require('../../../assets/images/image temple/SomnathTemple.webp');
 export const communityPhoneImage = require('../../../assets/images/community_phone.webp');
-export const kundliChartImage = require('../../../assets/images/kundli_chart.jpg');
-export const astrologerMockImg = require('../../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg');
+export const kundliChartImage = require('../../../assets/images/kundli_chart.webp');
+export const astrologerMockImg = require('../../../assets/images/tab-bar/rashi/vendor/Astrologer.webp');
 export const salonMockImg = require('../../../assets/images/tab-bar/rashi/vendor/salon.webp');
-export const electricianMockImg = require('../../../assets/images/tab-bar/rashi/vendor/Electrician.jpg');
+export const electricianMockImg = require('../../../assets/images/tab-bar/rashi/vendor/Electrician.webp');
 
 export const ACTION_CARD_WIDTH = 120;
 export const ACTION_CARD_HEIGHT = 180;

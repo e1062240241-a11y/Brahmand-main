@@ -1248,7 +1248,7 @@ const ChatScreen = ({
       const result = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: 1280 } }],
-        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        { compress: 0.7, format: ImageManipulator.SaveFormat.webp }
       );
       return result.uri;
     } catch (error) {

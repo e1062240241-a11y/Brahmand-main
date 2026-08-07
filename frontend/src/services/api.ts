@@ -136,7 +136,7 @@ const normalizeNativeUploadFile = async (file: {
   name: string;
   type: string;
 }) => {
-  const fileName = file.name || "upload.jpg";
+  const fileName = file.name || "upload.webp";
   const fileType = normalizeMimeType(file.type, fileName);
   let fileUri = file.uri || "";
   if (Platform.OS === "android" && fileUri.startsWith("/")) {
@@ -2205,7 +2205,7 @@ const appendMultipartFile = async (
   if (Platform.OS === "web") {
     const response = await fetch(file.uri);
     const blob = await response.blob();
-    const webFile = new File([blob], file.name || "upload.jpg", {
+    const webFile = new File([blob], file.name || "upload.webp", {
       type: file.type || blob.type || "image/jpeg",
     });
     formData.append(fieldName, webFile);
@@ -2226,7 +2226,7 @@ const appendMultipartFile = async (
     );
     const response = await fetch(preparedFile.uri);
     const blob = await response.blob();
-    formData.append(fieldName, blob as any, preparedFile.name || "upload.jpg");
+    formData.append(fieldName, blob as any, preparedFile.name || "upload.webp");
   }
 };
 

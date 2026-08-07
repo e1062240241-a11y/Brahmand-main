@@ -146,9 +146,9 @@ function PassportBadgeScreen({ observedBadges = [] }: { observedBadges?: any[] }
     if (cleanTitle.includes('gita')) {
       return require('../../../assets/images/bhagavad_gita_3d_new.webp');
     } else if (cleanTitle.includes('mahabharat')) {
-      return require('../../../assets/images/mahabharata.jpg');
+      return require('../../../assets/images/mahabharata.webp');
     } else if (cleanTitle.includes('ramayan') || cleanTitle.includes('ramcharit')) {
-      return require('../../../assets/images/Ramcharitmanas.jpg');
+      return require('../../../assets/images/Ramcharitmanas.webp');
     }
     return require('../../../assets/images/community_medal_icon.webp');
   };

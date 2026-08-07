@@ -107,7 +107,7 @@ export default function PersonalityFinalScreen() {
           {/* Illustration - Slightly smaller and cleaner */}
           <View style={styles.illustrationContainer}>
             <Image 
-              source={require('../../assets/images/verification_submit_illustration.jpg')} 
+              source={require('../../assets/images/verification_submit_illustration.webp')} 
               style={styles.illustration}
               resizeMode="contain"
             />

@@ -932,7 +932,7 @@ function MessagesScreen({
 
           {/* Centered Background Illustration */}
           <Image
-            source={require('../../assets/images/community_banner_heart.jpg')}
+            source={require('../../assets/images/community_banner_heart.webp')}
             style={styles.heroImageDeco}
             resizeMode="contain"
           />

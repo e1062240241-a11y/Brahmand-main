@@ -176,7 +176,7 @@ const FEATURED_VIDEOS = [
     category: 'Spiritual Guide',
     duration: '28m',
     views: '62K views',
-    image: require('../../assets/images/upcoming_shiva.jpg'),
+    image: require('../../assets/images/upcoming_shiva.webp'),
   },
 ];
 

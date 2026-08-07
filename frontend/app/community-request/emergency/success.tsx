@@ -76,7 +76,7 @@ export default function CommunityRequestEmergencySuccessPage() {
             {/* Illustration */}
             <View style={styles.illustrationContainer}>
               <Image 
-                source={require('../../../assets/images/verification_thank_you_illustration.jpg')} 
+                source={require('../../../assets/images/verification_thank_you_illustration.webp')} 
                 style={styles.illustration}
                 resizeMode="cover"
               />
