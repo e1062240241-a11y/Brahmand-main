@@ -103,6 +103,31 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'panchbhoota-srikalahasteeswara-temple-srikalahasti': require('../../assets/images/healingtemple/Srikalahasteeswara.jpeg'),
   'sacred-kukke-subramanya-temple': require('../../assets/images/healingtemple/KukkeSubramanya .jpeg'),
   'healing-mangaladevi-temple-mangalore': require('../../assets/images/healingtemple/Mangaladevi .jpeg'),
+
+  // Sacred Places (from assets/images/sacred)
+  'sacred-assi-ghat': require('../../assets/images/sacred/Assi_Ghat.webp'),
+  'sacred-bhalka-tirth-shrine': require('../../assets/images/sacred/BhalkaTirthShrine.webp'),
+  'sacred-bhartrihari-caves': require('../../assets/images/sacred/Bhartrihari.webp'),
+  'sacred-daulatabad-fort': require('../../assets/images/sacred/Daulatabad.webp'),
+  'sacred-ellora-kailasa-temple': require('../../assets/images/sacred/ElloraKailasa.webp'),
+  'sacred-gautam-rishi-ashram': require('../../assets/images/sacred/GautamRishiAshram.webp'),
+  'sacred-gyanvapi-kund': require('../../assets/images/sacred/Gyanvapi.webp'),
+  'sacred-manikarnika-ghat': require('../../assets/images/sacred/Manikarnika_Ghat.webp'),
+  'sacred-naulakha-mandir': require('../../assets/images/sacred/Naulakha.webp'),
+  'sacred-sandipani-ashram': require('../../assets/images/sacred/SandipaniAshram.webp'),
+  'sacred-shiva-trats-kund': require('../../assets/images/sacred/ShivaTrats.webp'),
+  'sacred-sonprayag-sangam': require('../../assets/images/sacred/SonprayagSangam.webp'),
+  'sacred-tapovan-caves': require('../../assets/images/sacred/Tapovancaves.webp'),
+  'sacred-triveni-sangam-ghat': require('../../assets/images/sacred/Triveni-Ghat.webp'),
+  'sacred-baan-stambh': require('../../assets/images/sacred/baan.webp'),
+  'sacred-bhairavnath-mandir': require('../../assets/images/sacred/bhairavnath.webp'),
+  'sacred-dashashwamedh-ghat': require('../../assets/images/sacred/dashashwamedh-ghat.webp'),
+  'sacred-gandhi-sarovar': require('../../assets/images/sacred/gandhisarvor.webp'),
+  'sacred-gita-mandir': require('../../assets/images/sacred/gitamandir.webp'),
+  'sacred-ram-ghat': require('../../assets/images/sacred/ramghat.webp'),
+  'sacred-shivganga-kund': require('../../assets/images/sacred/shivganga.webp'),
+  'sacred-trikuta-parvat': require('../../assets/images/sacred/trikuta.webp'),
+  'sacred-vasuki-tal': require('../../assets/images/sacred/vasukital.webp'),
 };
 
 const DEFAULT_TEMPLE_IMAGE: ImageSourcePropType = require('../../assets/images/image temple/SomnathTemple.jpg');
@@ -240,6 +265,31 @@ const getTempleImageByName = (name: string) => {
   if (lowerName.includes('srikalahast') || lowerName.includes('kalahasti')) return TEMPLE_IMAGES['panchbhoota-srikalahasteeswara-temple-srikalahasti'];
   if (lowerName.includes('kukke')) return TEMPLE_IMAGES['sacred-kukke-subramanya-temple'];
   if (lowerName.includes('mangaladevi')) return TEMPLE_IMAGES['healing-mangaladevi-temple-mangalore'];
+
+  // Sacred Places Keyword Matching
+  if (lowerName.includes('assi ghat')) return TEMPLE_IMAGES['sacred-assi-ghat'];
+  if (lowerName.includes('bhalka')) return TEMPLE_IMAGES['sacred-bhalka-tirth-shrine'];
+  if (lowerName.includes('bhartrihari')) return TEMPLE_IMAGES['sacred-bhartrihari-caves'];
+  if (lowerName.includes('daulatabad')) return TEMPLE_IMAGES['sacred-daulatabad-fort'];
+  if (lowerName.includes('ellora') || lowerName.includes('kailasa')) return TEMPLE_IMAGES['sacred-ellora-kailasa-temple'];
+  if (lowerName.includes('gautam rishi')) return TEMPLE_IMAGES['sacred-gautam-rishi-ashram'];
+  if (lowerName.includes('gyanvapi')) return TEMPLE_IMAGES['sacred-gyanvapi-kund'];
+  if (lowerName.includes('manikarnika')) return TEMPLE_IMAGES['sacred-manikarnika-ghat'];
+  if (lowerName.includes('naulakha')) return TEMPLE_IMAGES['sacred-naulakha-mandir'];
+  if (lowerName.includes('sandipani')) return TEMPLE_IMAGES['sacred-sandipani-ashram'];
+  if (lowerName.includes('shiva trats')) return TEMPLE_IMAGES['sacred-shiva-trats-kund'];
+  if (lowerName.includes('sonprayag')) return TEMPLE_IMAGES['sacred-sonprayag-sangam'];
+  if (lowerName.includes('tapovan')) return TEMPLE_IMAGES['sacred-tapovan-caves'];
+  if (lowerName.includes('triveni')) return TEMPLE_IMAGES['sacred-triveni-sangam-ghat'];
+  if (lowerName.includes('baan stambh')) return TEMPLE_IMAGES['sacred-baan-stambh'];
+  if (lowerName.includes('bhairavnath')) return TEMPLE_IMAGES['sacred-bhairavnath-mandir'];
+  if (lowerName.includes('dashashwamedh')) return TEMPLE_IMAGES['sacred-dashashwamedh-ghat'];
+  if (lowerName.includes('gandhi sarovar')) return TEMPLE_IMAGES['sacred-gandhi-sarovar'];
+  if (lowerName.includes('gita mandir')) return TEMPLE_IMAGES['sacred-gita-mandir'];
+  if (lowerName.includes('ram ghat')) return TEMPLE_IMAGES['sacred-ram-ghat'];
+  if (lowerName.includes('shivganga')) return TEMPLE_IMAGES['sacred-shivganga-kund'];
+  if (lowerName.includes('trikuta') || lowerName.includes('trikut')) return TEMPLE_IMAGES['sacred-trikuta-parvat'];
+  if (lowerName.includes('vasuki tal')) return TEMPLE_IMAGES['sacred-vasuki-tal'];
 
   const jyotirlingId = getTempleIdFromName(name, 'jyotirling');
   if (TEMPLE_IMAGES[jyotirlingId]) return TEMPLE_IMAGES[jyotirlingId];
