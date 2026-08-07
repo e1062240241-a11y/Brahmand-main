@@ -22,7 +22,7 @@ export const CARD_TEXTURE_OVERLAY: Record<HomeCardTextureKey, readonly [string, 
     lavender: ['rgba(245, 235, 255, 0.74)', 'rgba(220, 205, 250, 0.48)'],
 };
 
-export const shivaImage = require('../../../assets/images/image temple/SomnathTemple.jpg');
+export const shivaImage = require('../../../assets/images/image temple/SomnathTemple.webp');
 export const communityPhoneImage = require('../../../assets/images/community_phone.webp');
 export const kundliChartImage = require('../../../assets/images/kundli_chart.jpg');
 export const astrologerMockImg = require('../../../assets/images/tab-bar/rashi/vendor/Astrologer.jpg');

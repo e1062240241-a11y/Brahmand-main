@@ -679,7 +679,7 @@ export default function TempleScreen() {
 
         <View style={styles.heroRightImageContainer}>
           <Image 
-            source={require('../../assets/images/image temple/SomnathTemple.jpg')} 
+            source={require('../../assets/images/image temple/SomnathTemple.webp')} 
             style={styles.heroSideImage} 
             resizeMode="cover"
           />

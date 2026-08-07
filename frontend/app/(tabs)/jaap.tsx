@@ -1132,7 +1132,7 @@ export default function JaapLandingScreen() {
               {/* Hero Banner (Same structure as Jaap tab banner) */}
               <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
-                source={require('../../assets/images/image temple/SomnathTemple.jpg')}
+                source={require('../../assets/images/image temple/SomnathTemple.webp')}
                 style={styles.heroBannerFill}
                 imageStyle={styles.heroBannerImageStyle}
                 resizeMode="cover"
