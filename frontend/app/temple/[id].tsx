@@ -1228,11 +1228,32 @@ if (!temple) {
   const displayName = templeKey || temple.name || 'Temple';
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
-  const templeImageSource = getTempleImageById(resolvedTempleId) !== DEFAULT_TEMPLE_IMAGE
-    ? getTempleImageById(resolvedTempleId)
-    : (getTempleImageByName(temple.name || displayName) || getTempleImageById(resolvedTempleId));
+  const templeImageSource = useMemo(() => {
+    const byId = getTempleImageById(resolvedTempleId);
+    if (byId && byId !== DEFAULT_TEMPLE_IMAGE) return byId;
+
+    const byName = getTempleImageByName(temple.name || displayName) || getTempleImageByName(displayName);
+    if (byName && byName !== DEFAULT_TEMPLE_IMAGE) return byName;
+
+    const remoteUrl = temple.image_url || temple.imageUrl || temple.image || temple.photo;
+    if (remoteUrl && typeof remoteUrl === 'string' && (remoteUrl.startsWith('http://') || remoteUrl.startsWith('https://'))) {
+      return { uri: remoteUrl };
+    }
+
+    return byId || byName || DEFAULT_TEMPLE_IMAGE;
+  }, [resolvedTempleId, temple.name, displayName, temple.image_url, temple.imageUrl, temple.image, temple.photo]);
+
   const categoryBadge = getCategoryBadge(temple.category);
-  const templeImages: string[] = (temple.images && temple.images.length > 0) ? temple.images : [];
+  const templeImages: any[] = useMemo(() => {
+    if (Array.isArray(temple.images) && temple.images.length > 0) {
+      return temple.images;
+    }
+    const remoteUrl = temple.image_url || temple.imageUrl || temple.image || temple.photo;
+    if (remoteUrl && typeof remoteUrl === 'string' && (remoteUrl.startsWith('http://') || remoteUrl.startsWith('https://'))) {
+      return [remoteUrl];
+    }
+    return [];
+  }, [temple.images, temple.image_url, temple.imageUrl, temple.image, temple.photo]);
   const darshanTimings = temple.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
   const templeContact = temple.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
 
