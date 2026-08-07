@@ -122,7 +122,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
   return (
     <>
       {fabExpanded && (
-        <TouchableOpacity style={fabStyles.overlay} activeOpacity={1} onPress={toggleFab}>
+        <TouchableOpacity style={fabStyles.overlay} activeOpacity={1} onPress={toggleFab} accessibilityRole="button" accessibilityLabel="Button">
           <BlurView intensity={20} tint={Platform.OS === 'android' ? 'light' : 'dark'} style={StyleSheet.absoluteFill}>
             <View style={StyleSheet.absoluteFill}>
               <Animated.View
@@ -178,7 +178,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                           <TouchableOpacity
                             style={fabStyles.menuItemButton}
                             activeOpacity={0.8}
-                            onPress={() => {
+                            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                               Keyboard.dismiss();
                               toggleFab();
                               const targetRoute = item.route;
@@ -229,7 +229,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
                       <TouchableOpacity
                         style={fabStyles.centerButtonOuterRing}
                         activeOpacity={0.85}
-                        onPress={() => {
+                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                           toggleFab();
                           setTimeout(() => {
                             router.push('/sos');
@@ -267,7 +267,7 @@ export default function FloatingMenu({ bottomOffset = 90 }) {
           style={StyleSheet.absoluteFill}
           activeOpacity={0.85}
           onPress={toggleFab}
-        >
+         accessibilityRole="button" accessibilityLabel="Button">
           <ExpoImage
             source={require('../../assets/images/tab-bar/my_krishna.webp')}
             style={fabStyles.fabIcon}

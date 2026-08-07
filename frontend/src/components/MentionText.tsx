@@ -30,7 +30,7 @@ export const MentionText = ({ text, style, mentionStyle, numberOfLines }: Mentio
     if (part.startsWith('@') && part.length > 1) {
       const username = part.slice(1);
       return (
-        <TouchableOpacity key={i} onPress={() => handleMentionPress(username)}>
+        <TouchableOpacity key={i} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleMentionPress(username)}>
           <Text style={[mentionStyle, { color: '#8C36DB', fontWeight: '600' }]}>{part}</Text>
         </TouchableOpacity>
       );

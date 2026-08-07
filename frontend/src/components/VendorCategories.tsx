@@ -110,7 +110,7 @@ export const VendorCategories: React.FC<VendorCategoriesProps> = ({
           isActive && styles.activeItem,
           itemStyle
         ]}
-        onPress={() => handlePress(category)}
+        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handlePress(category)}
       >
         <View style={[styles.iconCircle, isActive && styles.activeIconCircle]}>
           {Platform.OS === 'android' ? (

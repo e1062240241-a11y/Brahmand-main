@@ -318,7 +318,7 @@ const M3OutlinedInput = ({
             <TouchableOpacity
               key={user.id}
               style={styles.mentionItem}
-              onPress={() => handleSelectMention(user)}
+              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSelectMention(user)}
             >
               <Text style={styles.mentionName}>{user.name || "Unknown"}</Text>
               <Text style={styles.mentionSL}>
@@ -1133,7 +1133,7 @@ export const UploadPostModal = ({
               {selectedMedia && (
                 <View style={styles.aspectRatioContainer}>
                   <TouchableOpacity
-                    onPress={() => setAspectRatioMode("1:1")}
+                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setAspectRatioMode("1:1")}
                     accessibilityLabel="Select 1:1 aspect ratio"
                     accessibilityRole="button"
                     style={[
@@ -1147,7 +1147,7 @@ export const UploadPostModal = ({
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => setAspectRatioMode("4:5")}
+                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setAspectRatioMode("4:5")}
                     accessibilityLabel="Select 4:5 aspect ratio"
                     accessibilityRole="button"
                     style={[
@@ -1161,7 +1161,7 @@ export const UploadPostModal = ({
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => setAspectRatioMode("1.91:1")}
+                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setAspectRatioMode("1.91:1")}
                     accessibilityLabel="Select 1.91:1 aspect ratio"
                     accessibilityRole="button"
                     style={[
@@ -1180,7 +1180,7 @@ export const UploadPostModal = ({
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onPress={() => setAspectRatioMode("9:16")}
+                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setAspectRatioMode("9:16")}
                     accessibilityLabel="Select 9:16 aspect ratio"
                     accessibilityRole="button"
                     style={[
@@ -1258,7 +1258,7 @@ export const UploadPostModal = ({
                         styles.filterChip,
                         selectedFilter === filter && styles.filterChipActive,
                       ]}
-                      onPress={() => setSelectedFilter(filter)}
+                      onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setSelectedFilter(filter)}
                     >
                       <Text
                         style={[
@@ -1352,7 +1352,7 @@ export const UploadPostModal = ({
                 <TouchableOpacity
                   style={styles.draftBtn}
                   onPress={handleSaveDraft}
-                >
+                 accessibilityRole="button" accessibilityLabel="Button">
                   <Text style={styles.draftBtnText}>
                     {t("language") === "hi" ? "ड्राफ्ट सहेजें" : "Save Draft"}
                   </Text>
@@ -1368,7 +1368,7 @@ export const UploadPostModal = ({
                     onPressOut={canUpload ? handleBtnPressOut : undefined}
                     disabled={!canUpload}
                     activeOpacity={0.85}
-                  >
+                   accessibilityRole="button" accessibilityLabel="Button">
                     {canUpload ? (
                       <LinearGradient
                         colors={["#FF4500", "#FF8C00", "#FFC700"]}

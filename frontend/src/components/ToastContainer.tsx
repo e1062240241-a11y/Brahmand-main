@@ -125,7 +125,7 @@ const ToastItem = ({ toast }: { toast: ToastMessage }) => {
                 key={index}
                 style={[
                   styles.actionBtn,
-                  actions.length > 2 && {
+                  actions.length  accessibilityRole="button" accessibilityLabel="Button"> 2 && {
                     width: '100%',
                     paddingVertical: 10,
                   },

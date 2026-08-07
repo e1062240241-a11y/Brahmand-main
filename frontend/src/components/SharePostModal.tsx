@@ -161,7 +161,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
       statusBarTranslucent={Platform.OS === 'android'}
       onRequestClose={onClose}
     >
-      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose}>
+      <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
         <View style={styles.container} onStartShouldSetResponder={() => true}>
           <View style={styles.handle} />
           <Text style={styles.title}>{t('share')}</Text>
@@ -179,7 +179,7 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
                 renderItem={({ item, index }) => {
                   const itemKey = getConversationKey(item, index);
                   return (
-                    <TouchableOpacity style={styles.userCard} onPress={() => handleSendToUser(item, index)}>
+                    <TouchableOpacity style={styles.userCard} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSendToUser(item, index)}>
                       <Avatar photo={item.user?.photo} size={60} name={item.user?.name} />
                       <Text style={styles.userName} numberOfLines={1}>{item.user?.name}</Text>
                       {sharingTo === itemKey && (
@@ -198,21 +198,21 @@ export default function SharePostModal({ visible, onClose, post, onShareExternal
 
           {/* Action Buttons */}
           <View style={styles.actionsSection}>
-            <TouchableOpacity style={styles.actionBtn} onPress={handleShareWhatsApp}>
+            <TouchableOpacity style={styles.actionBtn} onPress={handleShareWhatsApp} accessibilityRole="button" accessibilityLabel="Button">
               <View style={[styles.actionIconBg, { backgroundColor: '#25D366' }]}>
                 <Ionicons name="logo-whatsapp" size={26} color="#FFF" />
               </View>
               <Text style={styles.actionLabel}>{t('language') === 'hi' ? 'व्हाट्सएप' : 'WhatsApp'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={onCopyLink}>
+            <TouchableOpacity style={styles.actionBtn} onPress={onCopyLink} accessibilityRole="button" accessibilityLabel="Button">
               <View style={styles.actionIconBg}>
                 <Ionicons name="link-outline" size={24} color={COLORS.text} />
               </View>
               <Text style={styles.actionLabel}>{t('language') === 'hi' ? 'लिंक कॉपी करें' : 'Copy link'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal}>
+            <TouchableOpacity style={styles.actionBtn} onPress={onShareExternal} accessibilityRole="button" accessibilityLabel="Button">
               <View style={styles.actionIconBg}>
                 <Ionicons name="share-social-outline" size={24} color={COLORS.text} />
               </View>

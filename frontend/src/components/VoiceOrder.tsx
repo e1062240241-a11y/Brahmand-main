@@ -195,7 +195,7 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
       <View style={styles.toggleRow}>
         <TouchableOpacity 
           style={styles.toggleButton}
-          onPress={() => setIsExpanded(!isExpanded)}
+          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setIsExpanded(!isExpanded)}
           accessibilityRole="button"
           accessibilityState={{ expanded: isExpanded }}
           accessibilityLabel={isExpanded ? "Collapse voice order" : "Expand voice order"}
@@ -245,7 +245,7 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
           {parsedItems.length > 0 && (
             <TouchableOpacity 
               style={styles.clearButton}
-              onPress={() => {
+              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                 setTranscribedText('');
                 setParsedItems([]);
               }}
@@ -258,7 +258,7 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
             style={[styles.orderButton, !transcribedText.trim() && styles.orderButtonDisabled]}
             onPress={handleOrder}
             disabled={!transcribedText.trim()}
-          >
+           accessibilityRole="button" accessibilityLabel="Button">
             <Ionicons name="cart-outline" size={20} color={COLORS.surface} />
             <Text style={styles.orderButtonText}>Order via WhatsApp</Text>
           </TouchableOpacity>
