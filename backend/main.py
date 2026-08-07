@@ -3988,31 +3988,56 @@ async def get_posts_feed(
     # Populate location data
     user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
-    # Assemble the posts pool
-    posts_dict = {}
-    for p in pool1:
-        if p.get('id'):
-            posts_dict[p['id']] = p
-    for p in pool2:
-        if p.get('id'):
-            posts_dict[p['id']] = p
-    for p in latest_pool:
-        if p.get('id'):
-            posts_dict[p['id']] = p
+    # Pre-fetch following IDs if tab is following
+    following_ids = set()
+    if current_user:
+        following_ids = set(current_user.get('following', []) or [])
 
-    # Fallback if empty
-    if not posts_dict:
-        try:
-            fallback = await db.query_documents('posts', limit=100)
-            for p in fallback:
-                if p.get('id'):
-                    posts_dict[p['id']] = p
-        except Exception as e:
-            logger.error("Firestore query error in fallback get_posts_feed: %s", e)
+    # If following tab, fetch posts specifically for followed users
+    if tab == 'following':
+        if not following_ids:
+            return []
+        following_posts_dict = {}
+        # Fetch posts specifically for each followed user ID (up to 20 per followed user)
+        for fid in list(following_ids)[:30]:
+            try:
+                f_user_posts = await db.query_documents('posts', filters=[('user_id', '==', fid)], limit=20)
+                for fp in f_user_posts:
+                    if fp.get('id'):
+                        following_posts_dict[fp['id']] = fp
+            except Exception as fe:
+                logger.warning("Error fetching posts for followed user %s: %s", fid, fe)
+        # Also merge with any from general pool that match following_ids
+        for p in pool1 + pool2 + latest_pool:
+            if p.get('id') and p.get('user_id') in following_ids:
+                following_posts_dict[p['id']] = p
+        posts = list(following_posts_dict.values())
+    else:
+        # Assemble the general posts pool
+        posts_dict = {}
+        for p in pool1:
+            if p.get('id'):
+                posts_dict[p['id']] = p
+        for p in pool2:
+            if p.get('id'):
+                posts_dict[p['id']] = p
+        for p in latest_pool:
+            if p.get('id'):
+                posts_dict[p['id']] = p
 
-    posts = list(posts_dict.values())
+        # Fallback if empty
+        if not posts_dict:
+            try:
+                fallback = await db.query_documents('posts', limit=100)
+                for p in fallback:
+                    if p.get('id'):
+                        posts_dict[p['id']] = p
+            except Exception as e:
+                logger.error("Firestore query error in fallback get_posts_feed: %s", e)
 
-    # Filter out already-seen posts and non-public posts
+        posts = list(posts_dict.values())
+
+    # Filter out blocked, reported, and non-public posts
     public_posts = []
     
     # Pre-calculate user location for performance
@@ -4030,25 +4055,20 @@ async def get_posts_feed(
         if tab == 'reels' and p.get('category') != 'reels':
             continue
             
-        lvl = p.get('community_level', 'country') # Default to country/public
-        
-        # Scope filtering
-        if lvl == 'city':
-            p_city = str(p.get('city') or '').strip().lower()
-            if p_city and u_city and p_city != u_city: continue
-        elif lvl == 'state':
-            p_state = str(p.get('state') or '').strip().lower()
-            if p_state and u_state and p_state != u_state: continue
-        elif lvl == 'country':
-            p_country = str(p.get('country') or '').strip().lower()
-            if p_country and u_country and p_country != u_country: continue
+        # Scope filtering (bypass for following tab so posts from followed users are always shown)
+        if tab != 'following':
+            lvl = p.get('community_level', 'country') # Default to country/public
+            if lvl == 'city':
+                p_city = str(p.get('city') or '').strip().lower()
+                if p_city and u_city and p_city != u_city: continue
+            elif lvl == 'state':
+                p_state = str(p.get('state') or '').strip().lower()
+                if p_state and u_state and p_state != u_state: continue
+            elif lvl == 'country':
+                p_country = str(p.get('country') or '').strip().lower()
+                if p_country and u_country and p_country != u_country: continue
             
         public_posts.append(p)
-
-    # Pre-fetch following IDs if tab is following
-    following_ids = set()
-    if tab == 'following' and current_user:
-        following_ids = set(current_user.get('following', []) or [])
 
     # Fetch user interest preferences
     user_interests: dict = {}
