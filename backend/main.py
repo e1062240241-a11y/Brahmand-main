@@ -2205,64 +2205,37 @@ async def setup_location(location: LocationSetup, token_data: dict = Depends(ver
     city_name = loc.get('city')
     if city_name and str(city_name).strip():
         city_name_cleaned = " ".join(str(city_name).split())
-        city_group_name = f"{city_name_cleaned.title()} Group"
-        city = await db.get_community_by_name(city_group_name)
-        if not city:
-            city_id = await db.create_community({
-                "name": city_group_name, "type": "city",
-                "location": {
-                    "country": str(loc.get('country', '')).strip(),
-                    "state": str(loc.get('state', '')).strip(),
-                    "city": city_name_cleaned
-                },
-                "code": generate_community_code(city_name_cleaned) if city_name_cleaned else "GRP",
-                "members": [], "subgroups": SUBGROUPS.copy()
-            })
-            logger.info(f"Created community: {city_group_name}")
-        else:
-            city_id = city['id']
-        community_ids.append(city_id)
+        city_community = await FirebaseCommunityService.get_or_create_community(
+            f"{city_name_cleaned.title()} Group", 'city', {
+                "country": str(loc.get('country', '')).strip(),
+                "state": str(loc.get('state', '')).strip(),
+                "city": city_name_cleaned
+            }
+        )
+        community_ids.append(city_community['id'])
     
     # State Group
     state_name = loc.get('state')
     if state_name and str(state_name).strip():
         state_name_cleaned = " ".join(str(state_name).split())
-        state_group_name = f"{state_name_cleaned.title()} Group"
-        state = await db.get_community_by_name(state_group_name)
-        if not state:
-            state_id = await db.create_community({
-                "name": state_group_name, "type": "state",
-                "location": {
-                    "country": str(loc.get('country', '')).strip(),
-                    "state": state_name_cleaned
-                },
-                "code": generate_community_code(state_name_cleaned) if state_name_cleaned else "GRP",
-                "members": [], "subgroups": SUBGROUPS.copy()
-            })
-            logger.info(f"Created community: {state_group_name}")
-        else:
-            state_id = state['id']
-        community_ids.append(state_id)
+        state_community = await FirebaseCommunityService.get_or_create_community(
+            f"{state_name_cleaned.title()} Group", 'state', {
+                "country": str(loc.get('country', '')).strip(),
+                "state": state_name_cleaned
+            }
+        )
+        community_ids.append(state_community['id'])
     
     # Country Group
     country_name = loc.get('country')
     if country_name and str(country_name).strip():
         country_name_cleaned = " ".join(str(country_name).split())
-        country_group_name = f"{country_name_cleaned.title()} Group"
-        country = await db.get_community_by_name(country_group_name)
-        if not country:
-            country_id = await db.create_community({
-                "name": country_group_name, "type": "country",
-                "location": {
-                    "country": country_name_cleaned
-                },
-                "code": generate_community_code(country_name_cleaned) if country_name_cleaned else "GRP",
-                "members": [], "subgroups": SUBGROUPS.copy()
-            })
-            logger.info(f"Created community: {country_group_name}")
-        else:
-            country_id = country['id']
-        community_ids.append(country_id)
+        country_community = await FirebaseCommunityService.get_or_create_community(
+            f"{country_name_cleaned.title()} Group", 'country', {
+                "country": country_name_cleaned
+            }
+        )
+        community_ids.append(country_community['id'])
     
     # Add user to communities
     for cid in community_ids:
@@ -2392,33 +2365,19 @@ async def setup_dual_location(locations: DualLocationSetup, token_data: dict = D
     }
     
     async def create_or_get_community(name: str, comm_type: str, location: dict):
-        """Helper to create/get a community with proper label"""
-        cleaned_name = " ".join(str(name).split())
-        existing = await db.get_community_by_name(cleaned_name)
-        if existing:
-            # Update existing community with label and is_default if not set
-            if not existing.get('label') or not existing.get('is_default'):
-                await db.update_document('communities', existing['id'], {
+        """Helper to create/get a location community idempotently, with UI label backfill"""
+        community = await FirebaseCommunityService.get_or_create_community(name, comm_type, location)
+        # Update existing community with label and is_default if not set
+        if not community.get('label') or not community.get('is_default'):
+            try:
+                await db.update_document('communities', community['id'], {
                     'label': TYPE_LABELS.get(comm_type, ''),
                     'is_default': True,
                     'sort_order': TYPE_ORDER.get(comm_type, 99)
                 })
-            return existing['id']
-        
-        # Create new community
-        comm_id = await db.create_community({
-            "name": cleaned_name,
-            "type": comm_type,
-            "label": TYPE_LABELS.get(comm_type, ''),
-            "location": {k: str(v).strip() if v else "" for k, v in location.items()},
-            "code": generate_community_code(cleaned_name.split()[0]) if cleaned_name else "GRP",
-            "members": [],
-            "is_default": True,
-            "sort_order": TYPE_ORDER.get(comm_type, 99),
-            "subgroups": SUBGROUPS.copy()
-        })
-        logger.info(f"Created default community: {cleaned_name} ({comm_type})")
-        return comm_id
+            except Exception as e:
+                logger.warning(f"Failed to backfill label for community {community['id']}: {e}")
+        return community['id']
     
     # Process home location
     if locations.home_location:
@@ -5337,25 +5296,16 @@ async def action_personality_verification(request_id: str, action: str = Body(..
             
         joined_comm_ids = []
         for community_name in communities_to_join:
-            comm = await db.get_community_by_name(community_name)
-            if not comm:
-                # Create the community automatically
-                comm_type = "country" if community_name == "Bharat Group" else "state"
-                comm_loc = {"country": "Bharat"}
-                if comm_type == "state" and loc:
-                    comm_loc["state"] = str(loc.get('state', '')).strip()
-                
-                comm_id = await db.create_community({
-                    "name": community_name,
-                    "type": comm_type,
-                    "location": comm_loc,
-                    "code": generate_community_code(community_name.split()[0]),
-                    "members": [],
-                    "subgroups": SUBGROUPS.copy()
-                })
-                comm = {"id": comm_id, "name": community_name}
-                logger.info(f"Automatically created community on admin approval: {community_name}")
-                
+            comm_type = "country" if community_name == "Bharat Group" else "state"
+            comm_loc = {"country": "Bharat"}
+            if comm_type == "state" and loc:
+                comm_loc["state"] = str(loc.get('state', '')).strip()
+
+            community = await FirebaseCommunityService.get_or_create_community(
+                community_name, comm_type, comm_loc
+            )
+            comm = {"id": community['id'], "name": community_name}
+
             if comm:
                 await db.add_member_to_community(comm['id'], target_user_id)
                 await db.array_union_update('users', target_user_id, 'communities', [comm['id']])

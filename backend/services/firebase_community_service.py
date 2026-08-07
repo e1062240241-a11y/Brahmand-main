@@ -2,6 +2,7 @@
 import logging
 import base64
 import os
+import re
 from uuid import uuid4
 from urllib.parse import quote
 from datetime import datetime, timedelta
@@ -138,32 +139,110 @@ class FirebaseCommunityService:
         community_type: str,
         location: Dict[str, str]
     ) -> Dict[str, Any]:
-        """Get existing community or create new one"""
+        """Get existing community (by name or type+location identity) or create new one idempotently.
+
+        Idempotency: concurrent calls for the same location community always resolve to the
+        same document. Lookups happen by (type, location_code) in addition to the existing
+        name lookup, and creation uses a deterministic document id with overwrite=False so
+        the request that loses the race re-fetches the existing document instead of creating
+        a duplicate. Existing communities are only "touched" via last_active; created_at and
+        the membership list are never modified.
+        """
         db = await FirebaseCommunityService.get_db()
-        
+
         # Clean double spaces, trailing spaces and trim
         cleaned_name = " ".join(str(name).split())
-        
+
+        location = {k: str(v).strip() if v else "" for k, v in (location or {}).items()}
+        loc_code = FirebaseCommunityService._location_code(community_type, location)
+
+        # 1) Lookup by exact name first (covers pre-existing communities with auto-generated ids)
         community = await db.get_community_by_name(cleaned_name)
         if community:
+            await FirebaseCommunityService._touch_last_active(community['id'])
             return community
-        
+
+        # 2) Idempotent lookup by type + location identity.
+        #    Requires a composite index on (type, location_code); if the index is not deployed
+        #    yet, gracefully fall back to the name lookup above.
+        try:
+            existing = await db.find_one(
+                'communities',
+                [('type', '==', community_type), ('location_code', '==', loc_code)]
+            )
+        except Exception as exc:
+            if 'requires an index' in str(exc).lower():
+                logger.warning(
+                    f"Missing index for (type, location_code) lookup; falling back for '{cleaned_name}'"
+                )
+            else:
+                logger.warning(f"Location lookup failed for '{cleaned_name}': {exc}")
+            existing = None
+
+        if existing:
+            await FirebaseCommunityService._touch_last_active(existing['id'])
+            return existing
+
         # Create new community
         community_data = {
             "name": cleaned_name,
             "type": community_type,
-            "location": {k: str(v).strip() if v else "" for k, v in location.items()},
+            "location": location,
+            "location_code": loc_code,
             "code": generate_community_code(cleaned_name.split()[0]) if cleaned_name else "GRP",
             "members": [],
             "member_count": 0,
-            "subgroups": SUBGROUPS.copy()
+            "subgroups": SUBGROUPS.copy(),
+            "last_active": datetime.utcnow()
         }
-        
-        community_id = await db.create_community(community_data)
+
+        # Deterministic id derived from type + location so concurrent requests collide
+        # (overwrite=False fails on the second request) instead of duplicating the group.
+        # loc_code already starts with the type prefix, so it is unique across types.
+        doc_id = re.sub(r'[^a-z0-9]+', '_', loc_code).strip('_') if loc_code else None
+        try:
+            community_id = await db.create_document('communities', community_data, doc_id=doc_id, overwrite=False)
+        except Exception:
+            # A concurrent request created this community first -> re-fetch and return it
+            community = await db.get_community_by_name(cleaned_name)
+            if community:
+                await FirebaseCommunityService._touch_last_active(community['id'])
+                return community
+            try:
+                existing = await db.find_one(
+                    'communities',
+                    [('type', '==', community_type), ('location_code', '==', loc_code)]
+                )
+            except Exception:
+                existing = None
+            if existing:
+                await FirebaseCommunityService._touch_last_active(existing['id'])
+                return existing
+            raise
+
         community_data['id'] = community_id
-        
+
         logger.info(f"Created community: {cleaned_name}")
         return community_data
+
+    @staticmethod
+    def _location_code(community_type: str, location: Dict[str, str]) -> str:
+        """Build a stable, normalized identity key for a location-based community."""
+        country = (location.get('country') or '').strip().lower() or 'bharat'
+        state = (location.get('state') or '').strip().lower()
+        city = (location.get('city') or '').strip().lower()
+        return f"{str(community_type).strip().lower()}|{city}|{state}|{country}"
+
+    @staticmethod
+    async def _touch_last_active(community_id: str) -> None:
+        """Update only last_active. Never touches created_at and never resets membership."""
+        if not community_id:
+            return
+        db = await FirebaseCommunityService.get_db()
+        try:
+            await db.update_document('communities', community_id, {'last_active': datetime.utcnow()})
+        except Exception as e:
+            logger.warning(f"Failed to touch last_active for community {community_id}: {e}")
     
     @staticmethod
     async def join_location_communities(
