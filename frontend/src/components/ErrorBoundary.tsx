@@ -61,7 +61,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </Text>
           )}
 
-          <TouchableOpacity style={styles.retryButton} onPress={this.handleRetry}>
+          <TouchableOpacity style={styles.retryButton} onPress={this.handleRetry} accessibilityRole="button" accessibilityLabel="Button">
             <Ionicons name="refresh" size={20} color="#FFFFFF" />
             <Text style={styles.retryText}>Try Again</Text>
           </TouchableOpacity>

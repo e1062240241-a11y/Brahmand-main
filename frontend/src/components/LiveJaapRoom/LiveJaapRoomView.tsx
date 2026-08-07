@@ -1036,7 +1036,7 @@ export default function LiveJaapRoomView() {
       <SafeAreaView style={styles.safeArea}>
         {/* NEW HEADER */}
         <View style={styles.headerNew}>
-          <TouchableOpacity onPress={() => {
+          <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
               setShowCompletion(true);
             }} style={styles.backBtnNew}
             accessibilityRole="button"
@@ -1120,7 +1120,7 @@ export default function LiveJaapRoomView() {
 
                 <TouchableOpacity 
                   style={styles.ekantRedirectBtn}
-                  onPress={() => router.replace('/ekant-jaap')}
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> router.replace('/ekant-jaap')}
                 >
                   <LinearGradient
                     colors={['#FF6B00', '#FF8A00']}
@@ -1217,16 +1217,16 @@ export default function LiveJaapRoomView() {
               <View style={styles.bottomAreaNew}>
                 {/* Emojis */}
                 <View style={styles.reactionRowNew}>
-                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('❤️')} accessibilityRole="button" accessibilityLabel="Send heart reaction">
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> addReaction('❤️')} accessibilityRole="button" accessibilityLabel="Send heart reaction">
                      <Text style={styles.reactionEmojiNew}>❤️</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🙏')} accessibilityRole="button" accessibilityLabel="Send folded hands reaction">
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> addReaction('🙏')} accessibilityRole="button" accessibilityLabel="Send folded hands reaction">
                      <Text style={styles.reactionEmojiNew}>🙏</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('🔥')} accessibilityRole="button" accessibilityLabel="Send fire reaction">
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> addReaction('🔥')} accessibilityRole="button" accessibilityLabel="Send fire reaction">
                      <Text style={styles.reactionEmojiNew}>🔥</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() => addReaction('ॐ')} accessibilityRole="button" accessibilityLabel="Send Om reaction">
+                  <TouchableOpacity style={styles.reactionBtnNew} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> addReaction('ॐ')} accessibilityRole="button" accessibilityLabel="Send Om reaction">
                      <Text style={styles.reactionEmojiNew}>ॐ</Text>
                   </TouchableOpacity>
                 </View>
@@ -1280,7 +1280,7 @@ export default function LiveJaapRoomView() {
                       </Svg>
                     )}
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => setIsMuted(!isMuted)} style={isMuted ? styles.controlIconBtnNew : styles.volumeMuteBtnNew} accessibilityRole="button" accessibilityLabel={isMuted ? "Unmute audio" : "Mute audio"}>
+                  <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setIsMuted(!isMuted)} style={isMuted ? styles.controlIconBtnNew : styles.volumeMuteBtnNew} accessibilityRole="button" accessibilityLabel={isMuted ? "Unmute audio" : "Mute audio"}>
                     {isMuted ? (
                       <Svg width={24} height={22} viewBox="0 0 24 22" fill="none">
                         <Path d="M3.8443 1.08202C3.42997 0.614997 2.66542 0.771644 2.46814 1.36398C2.37439 1.64548 2.44182 1.9557 2.64397 2.17286L5.83438 5.68262H1.62207C0.726197 5.68258 0 6.40881 0 7.30469V13.793C0 14.6888 0.726197 15.4151 1.62207 15.415H6.20948L13.2898 20.9209C13.7827 21.3041 14.5056 21.01 14.591 20.3916C14.596 20.355 14.5986 20.3181 14.5986 20.2812V15.3228L18.8647 20.0156C19.279 20.4826 20.0435 20.326 20.2408 19.7337C20.3346 19.4522 20.2671 19.1419 20.065 18.9248L3.8443 1.08202ZM1.62207 7.30468H5.67724V13.793H1.62207V7.30468ZM12.9765 18.6227L7.29931 14.2076V7.29353L12.9765 13.5385V18.6227ZM17.2345 12.1577C18.0438 11.2386 18.0438 9.86112 17.2345 8.94196C16.8067 8.48723 17.6393 7.59679 17.6393 7.59679C17.9399 7.52599 18.2546 7.63206 18.451 7.87038C19.8007 9.40252 19.8007 11.6992 18.451 13.2313C18.0378 13.6996 17.2726 13.5449 17.0737 12.9529C16.9814 12.6781 17.0427 12.375 17.2345 12.1577ZM9.10791 4.45288C8.83259 4.09934 8.89614 3.58952 9.24984 3.3144L13.2898 0.171634C13.7827 -0.211559 14.5056 0.0825251 14.591 0.700994C14.5963 0.739234 14.5988 0.777803 14.5986 0.816409V8.40262C14.5986 9.02696 13.9228 9.41717 13.3821 9.105C13.1311 8.96012 12.9765 8.69238 12.9765 8.40262V2.47497L10.2454 4.60394C9.89069 4.87743 9.38144 4.81162 9.10791 4.45694V4.45288ZM23.52 10.5488C23.5212 12.5442 22.7858 14.4697 21.4549 15.9564C21.0312 16.4149 20.27 16.2428 20.0847 15.6466C20.0015 15.3786 20.0627 15.0867 20.2465 14.8747C22.4492 12.4118 22.4492 8.68688 20.2465 6.22398C19.8227 5.76545 20.0543 5.02018 20.6632 4.88248C20.9548 4.81653 21.2591 4.91637 21.4549 5.14226C22.7861 6.6283 23.52 8.5537 23.52 10.5488Z" fill="#1A1A1A" />

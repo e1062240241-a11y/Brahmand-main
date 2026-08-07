@@ -122,7 +122,7 @@ export const ProfileCompletionCard: React.FC<ProfileCompletionCardProps> = ({
         <Text style={styles.headerTitle}>Make Your Business Shine</Text>
 
         {onClose && (
-          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} accessibilityRole="button" accessibilityLabel="Button">
             <Ionicons name="close-circle-outline" size={24} color="#9CA3AF" />
           </TouchableOpacity>
         )}
@@ -164,7 +164,7 @@ export const ProfileCompletionCard: React.FC<ProfileCompletionCardProps> = ({
           activeOpacity={0.85}
           style={styles.ctaButtonWrapper}
           onPress={handlePress}
-        >
+         accessibilityRole="button" accessibilityLabel="Button">
           <LinearGradient
             colors={['#FF6600', '#F97316']}
             start={{ x: 0, y: 0 }}

@@ -529,11 +529,11 @@ const PostFeedCardComponent = ({
       {/* Header */}
       {isEditing ? (
         <View style={styles.editHeaderRow}>
-          <TouchableOpacity onPress={onCancelEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
+          <TouchableOpacity onPress={onCancelEdit} style={styles.editHeaderBtn} disabled={isSavingEdit} accessibilityRole="button" accessibilityLabel="Button">
             <Text style={styles.editHeaderCancelText}>{t('cancel')}</Text>
           </TouchableOpacity>
           <Text style={styles.editHeaderTitle}>{t('language') === 'hi' ? 'जानकारी संपादित करें' : 'Edit Info'}</Text>
-          <TouchableOpacity onPress={onSaveEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
+          <TouchableOpacity onPress={onSaveEdit} style={styles.editHeaderBtn} disabled={isSavingEdit} accessibilityRole="button" accessibilityLabel="Button">
             {isSavingEdit ? (
               <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
@@ -543,7 +543,7 @@ const PostFeedCardComponent = ({
         </View>
       ) : (
         <View style={[styles.headerRow, isFirstReel && { backgroundColor: '#FFFFFF', paddingTop: SPACING.md, paddingBottom: SPACING.md }]}>
-          <TouchableOpacity style={styles.userPressWrap} onPress={() => onUserPress?.(post)} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.userPressWrap} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onUserPress?.(post)} activeOpacity={0.8}>
             <Avatar name={post?.username || 'User'} photo={post?.user_photo} size={34} />
             <View style={styles.userMeta}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -558,7 +558,7 @@ const PostFeedCardComponent = ({
             <View style={styles.menuWrap}>
               <TouchableOpacity
                 style={styles.menuBtn}
-                onPress={() => setMenuVisible(!menuVisible)}
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setMenuVisible(!menuVisible)}
                 accessibilityRole="button"
                 accessibilityLabel={t('openMenu')}
               >
@@ -567,16 +567,16 @@ const PostFeedCardComponent = ({
               {menuVisible && (
                 <View style={styles.dropdownMenu}>
                   {postMenuType === 'delete' && onEdit && (
-                    <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onEdit?.(post); }}>
+                    <TouchableOpacity style={styles.dropdownItem} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> { setMenuVisible(false); onEdit?.(post); }}>
                       <Text style={styles.dropdownText}>{t('language') === 'hi' ? 'संपादित करें' : 'Edit'}</Text>
                     </TouchableOpacity>
                   )}
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => { setMenuVisible(false); onPostMenuPress?.(post); }}>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> { setMenuVisible(false); onPostMenuPress?.(post); }}>
                     <Text style={[styles.dropdownText, postMenuType !== 'delete' && styles.dropdownDangerText]}>
                       {postMenuType === 'delete' ? (t('language') === 'hi' ? 'पोस्ट हटाएं' : 'Delete post') : (t('language') === 'hi' ? 'रिपोर्ट करें' : 'Report')}
                     </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.dropdownItem} onPress={() => setMenuVisible(false)}>
+                  <TouchableOpacity style={styles.dropdownItem} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setMenuVisible(false)}>
                     <Text style={styles.dropdownText}>{t('cancel')}</Text>
                   </TouchableOpacity>
                 </View>
@@ -680,7 +680,7 @@ const PostFeedCardComponent = ({
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
                 onPress={handleMediaPress}
-              />
+              / accessibilityRole="button" accessibilityLabel="Button">
               <TouchableOpacity
                 style={styles.muteToggle}
                 onPress={toggleMute}
@@ -701,7 +701,7 @@ const PostFeedCardComponent = ({
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
               onPress={handleMediaPress}
-            >
+             accessibilityRole="button" accessibilityLabel="Button">
               <Image
                 source={{ uri: imageUri }}
                 style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
@@ -742,7 +742,7 @@ const PostFeedCardComponent = ({
             <Text style={{ color: '#FFF', marginTop: 10, fontSize: 13, fontWeight: '700' }}>{mediaError}</Text>
             <TouchableOpacity
               style={{ marginTop: 15, paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)' }}
-              onPress={() => { setMediaError(null); setMediaLoading(true); }}
+              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> { setMediaError(null); setMediaLoading(true); }}
             >
               <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '900' }}>{t('language') === 'hi' ? 'पुनः प्रयास करें' : 'RETRY'}</Text>
             </TouchableOpacity>
@@ -794,7 +794,7 @@ const PostFeedCardComponent = ({
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => onLike?.(post)}
+            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onLike?.(post)}
             accessibilityRole="button"
             accessibilityLabel={likedByMe ? t('unlike') : t('like')}
           >
@@ -802,7 +802,7 @@ const PostFeedCardComponent = ({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => onComment?.(post)}
+            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onComment?.(post)}
             accessibilityRole="button"
             accessibilityLabel={t('commentAction')}
           >
@@ -815,7 +815,7 @@ const PostFeedCardComponent = ({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => onShare?.(post)}
+            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onShare?.(post)}
             accessibilityRole="button"
             accessibilityLabel={t('share')}
           >
@@ -823,7 +823,7 @@ const PostFeedCardComponent = ({
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionBtn}
-            onPress={() => onRepost?.(post)}
+            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onRepost?.(post)}
             accessibilityRole="button"
             accessibilityLabel={t('repost')}
           >
@@ -876,7 +876,7 @@ const PostFeedCardComponent = ({
               <TouchableOpacity
                 key={emoji}
                 style={styles.quickEmojiBtnInline}
-                onPress={() => onChangeEditedCaption?.(((editedCaption || '') + emoji).slice(0, 500))}
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onChangeEditedCaption?.(((editedCaption || '') + emoji).slice(0, 500))}
                 activeOpacity={0.7}
               >
                 <Text style={styles.quickEmojiTextInline}>{emoji}</Text>
@@ -884,7 +884,7 @@ const PostFeedCardComponent = ({
             ))}
             <TouchableOpacity
               style={styles.clearCaptionBtnInline}
-              onPress={() => onChangeEditedCaption?.('')}
+              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onChangeEditedCaption?.('')}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={t('clearCaption')}
@@ -900,7 +900,7 @@ const PostFeedCardComponent = ({
         captionSegments.length > 0 && (
           <View style={{ paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm }}>
             <Pressable
-              onPress={() => {
+              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                 if (!isLongCaption) return;
                 const nextExpanded = !isCaptionExpanded;
                 setIsCaptionExpanded(nextExpanded);
@@ -940,7 +940,7 @@ const PostFeedCardComponent = ({
       {!isEditing && viewsCount > 0 && <Text style={[styles.viewsText, theme === 'light' && { color: '#444' }]}>{viewsCount} {t('language') === 'hi' ? 'व्यूज' : 'views'}</Text>}
 
       {!isEditing && (
-        <TouchableOpacity onPress={() => onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
+        <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> onComment?.(post)} style={{ paddingHorizontal: SPACING.md, marginTop: 2, marginBottom: 4 }}>
           <Text style={{ color: theme === 'light' ? '#666' : '#FFFFFF', fontSize: 13, fontWeight: '900' }}>
             {commentsCount > 0
               ? (t('language') === 'hi' ? `सभी ${commentsCount} टिप्पणियां देखें` : `View all ${commentsCount} comments`)

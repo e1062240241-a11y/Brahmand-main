@@ -39,7 +39,7 @@ export function CollapsibleSection({
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.header} onPress={toggleSection} activeOpacity={0.7}>
+      <TouchableOpacity style={styles.header} onPress={toggleSection} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Button">
         <View style={styles.titleRow}>
           {icon && (
             <Ionicons name={icon} size={20} color={COLORS.primary} style={styles.icon} />

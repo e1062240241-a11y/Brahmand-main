@@ -730,7 +730,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               </View>
               <Text style={styles.headerTitle}>Register Your Business</Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -779,7 +779,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <View style={{ flexDirection: 'row', gap: 8, zIndex: 30, position: 'relative' }}>
               <TouchableOpacity 
                 style={[styles.input, { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', width: 90, paddingHorizontal: 8 }]}
-                onPress={() => setShowCountryDropdown(!showCountryDropdown)}
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setShowCountryDropdown(!showCountryDropdown)}
               >
                 <Text style={{ fontSize: 15, color: COLORS.text, fontWeight: '500', marginRight: 4 }}>{countryCode}</Text>
                 <Ionicons name={showCountryDropdown ? "chevron-up" : "chevron-down"} size={16} color={COLORS.textSecondary} />
@@ -805,7 +805,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                       <TouchableOpacity
                         key={item.code}
                         style={[styles.dropdownListItem, { paddingVertical: 10, paddingHorizontal: 12 }]}
-                        onPress={() => {
+                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                           setCountryCode(item.code);
                           setShowCountryDropdown(false);
                         }}
@@ -839,7 +839,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               <TouchableOpacity 
                 style={styles.chipInputContainer}
                 activeOpacity={0.7}
-                onPress={() => {
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                   setSelectedTempCategories(categories);
                   setShowCategorySelector(true);
                 }}
@@ -854,7 +854,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                           <Text style={styles.categoryTagText}>{cat}</Text>
                           <TouchableOpacity 
                             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            onPress={() => setCategories(categories.filter(c => c !== cat))}
+                            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setCategories(categories.filter(c => c !== cat))}
                           >
                             <Ionicons name="close-circle" size={16} color={COLORS.primary} />
                           </TouchableOpacity>
@@ -880,7 +880,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                         <Text style={styles.categoryTagText}>{subCat}</Text>
                         <TouchableOpacity 
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          onPress={() => setSubCategories(subCategories.filter(s => s !== subCat))}
+                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setSubCategories(subCategories.filter(s => s !== subCat))}
                         >
                           <Ionicons name="close-circle" size={16} color={COLORS.primary} />
                         </TouchableOpacity>
@@ -914,7 +914,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 </View>
                 <TouchableOpacity
                   style={styles.dropdownToggleButton}
-                  onPress={() => {
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                     Keyboard.dismiss();
                     setShowSubCategoryDropdown(!showSubCategoryDropdown);
                   }}
@@ -936,7 +936,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                         <TouchableOpacity
                           key={subCat}
                           style={styles.dropdownListItem}
-                          onPress={() => {
+                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                             if (subCategories.length >= 5) {
                               Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
                               return;
@@ -960,7 +960,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     {subCategoryInput.trim() && !filteredSubCategories.includes(subCategoryInput.trim()) && (
                       <TouchableOpacity
                         style={[styles.dropdownListItem, { borderTopWidth: 1, borderTopColor: COLORS.divider }]}
-                        onPress={() => {
+                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                           if (subCategories.length >= 5) {
                             Alert.alert('Limit reached', 'Maximum 5 sub categories allowed');
                             return;
@@ -1000,7 +1000,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 style={{ position: 'absolute', right: 20, top: 16.5, zIndex: 10 }}
                 onPress={detectLocation}
                 disabled={loading}
-              >
+               accessibilityRole="button" accessibilityLabel="Button">
                 <AddressIcon width={24} height={24} color="#94A3B8" />
               </TouchableOpacity>
             </View>
@@ -1012,7 +1012,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <TouchableOpacity 
               style={styles.uploadArea} 
               onPress={pickBusinessPhotos}
-            >
+             accessibilityRole="button" accessibilityLabel="Button">
               <View style={styles.cloudIconContainer}>
                 <Ionicons name="cloud-upload" size={26} color="#FF6600" />
               </View>
@@ -1026,7 +1026,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 {selectedPhotos.map((photo, index) => (
                   <View key={index} style={styles.previewWrapper}>
                     <Image source={{ uri: photo.uri }} style={styles.previewImage} />
-                    <TouchableOpacity style={styles.removeBadge} onPress={() => removePhoto(index)}>
+                    <TouchableOpacity style={styles.removeBadge} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> removePhoto(index)}>
                       <Ionicons name="close" size={12} color="#FFF" />
                     </TouchableOpacity>
                   </View>
@@ -1057,7 +1057,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={loading}
-            >
+             accessibilityRole="button" accessibilityLabel="Button">
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
@@ -1083,7 +1083,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
         <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.surface }} edges={["top", "bottom"]}>
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <TouchableOpacity onPress={() => setMapPickerVisible(false)} style={{ marginRight: SPACING.md }}>
+              <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setMapPickerVisible(false)} style={{ marginRight: SPACING.md }}>
                 <Ionicons name="arrow-back" size={24} color={COLORS.text} />
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Select Location</Text>
@@ -1156,7 +1156,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   style={[styles.submitBtn, { marginTop: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }, loading && styles.submitBtnDisabled]}
                   onPress={handleMapConfirm}
                   disabled={loading}
-                >
+                 accessibilityRole="button" accessibilityLabel="Button">
                   {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Confirm Location</Text>}
                 </TouchableOpacity>
               </View>
@@ -1191,7 +1191,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <View style={styles.selectorHeader}>
               <TouchableOpacity
                 style={styles.selectorBackButton}
-                onPress={() => {
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                   setCustomCategoryQuery('');
                   setShowCategorySelector(false);
                 }}
@@ -1226,7 +1226,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   }}
                 />
                 {customCategoryQuery.length > 0 && (
-                  <TouchableOpacity onPress={() => setCustomCategoryQuery('')} style={{ marginRight: 4 }}>
+                  <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setCustomCategoryQuery('')} style={{ marginRight: 4 }}>
                     <Ionicons name="close-circle" size={18} color="#85736E" />
                   </TouchableOpacity>
                 )}
@@ -1243,7 +1243,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     flexDirection: 'row',
                     gap: 4,
                   }}
-                  onPress={() => {
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                     const newCat = customCategoryQuery.trim();
                     if (selectedTempCategories.includes(newCat)) {
                       Alert.alert('Already Selected', 'This category is already selected.');
@@ -1285,7 +1285,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     gap: 4,
                   }}>
                     <Text style={{ fontSize: 13, color: '#FF8D57', fontWeight: '600' }}>{cat}</Text>
-                    <TouchableOpacity onPress={() => setSelectedTempCategories(selectedTempCategories.filter(c => c !== cat))}>
+                    <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setSelectedTempCategories(selectedTempCategories.filter(c => c !== cat))}>
                       <Ionicons name="close-circle" size={16} color="#FF8D57" />
                     </TouchableOpacity>
                   </View>
@@ -1316,7 +1316,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                       isSelected && styles.selectorItemRowSelected,
                       isCustom && { backgroundColor: '#FFF7ED', borderBottomColor: '#FFE0CC' }
                     ]}
-                    onPress={() => {
+                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                       if (isSelected) {
                         setSelectedTempCategories(prev => prev.filter(c => c !== displayName));
                       } else {
@@ -1355,7 +1355,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <View style={styles.selectorBottomBar}>
               <TouchableOpacity
                 style={styles.selectorDoneButton}
-                onPress={() => {
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                   setCategories(selectedTempCategories);
                   setCustomCategoryQuery('');
                   setShowCategorySelector(false);

@@ -121,7 +121,7 @@ export const DeleteOTPModal: React.FC<DeleteOTPModalProps> = ({
                 <Text style={styles.title}>
                   {title || (t('language') === 'hi' ? 'हटाने की पुष्टि करें' : 'Confirm Deletion')}
                 </Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole="button" accessibilityLabel="Button">
                   <Ionicons name="close" size={24} color={COLORS.textSecondary} />
                 </TouchableOpacity>
               </View>
@@ -156,7 +156,7 @@ export const DeleteOTPModal: React.FC<DeleteOTPModalProps> = ({
               <TouchableOpacity
                 style={styles.resendButton}
                 onPress={handleResend}
-                disabled={timer > 0 || sendingOTP || loading}
+                disabled={timer  accessibilityRole="button" accessibilityLabel="Button"> 0 || sendingOTP || loading}
               >
                 {sendingOTP ? (
                   <ActivityIndicator size="small" color={COLORS.primary} />

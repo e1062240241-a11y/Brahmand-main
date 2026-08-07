@@ -443,7 +443,7 @@ const FestivalSectionDetailCard = ({ festival, section }: FestivalSectionDetailC
                 {idx > 0 && <View style={styles.refTabConnectorDotLine} />}
                 <TouchableOpacity
                   style={styles.refTabItem}
-                  onPress={() => {
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                     Haptics.selectionAsync().catch(() => {});
                     setActiveTab(idx);
                   }}
