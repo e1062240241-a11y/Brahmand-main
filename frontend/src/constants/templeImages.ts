@@ -2,46 +2,46 @@ import { ImageSourcePropType } from 'react-native';
 
 const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   // Jyotirlingas
-  'jyotirling-somnath-temple-gujarat': require('../../assets/images/image temple/SomnathTemple.jpg'),
-  'jyotirling-kedarnath-temple-uttarakhand': require('../../assets/images/image temple/KedarnathTemple.jpg'),
+  'jyotirling-somnath-temple-gujarat': require('../../assets/images/image temple/SomnathTemple.webp'),
+  'jyotirling-kedarnath-temple-uttarakhand': require('../../assets/images/image temple/KedarnathTemple.webp'),
   'jyotirling-mahakaleshwar-temple-ujjain': require('../../assets/images/image temple/MahakalTemple.webp'),
-  'jyotirling-kashi-vishwanath-temple-varanasi': require('../../assets/images/image temple/Kashi_Vishwanath.jpg'),
-  'jyotirling-bhimashankar-temple-maharashtra': require('../../assets/images/image temple/Mamleshwar.jpg'),
+  'jyotirling-kashi-vishwanath-temple-varanasi': require('../../assets/images/image temple/Kashi_Vishwanath.webp'),
+  'jyotirling-bhimashankar-temple-maharashtra': require('../../assets/images/image temple/Mamleshwar.webp'),
   'jyotirling-ramanathaswamy-temple-rameswaram': require('../../assets/images/image temple/Ramanathaswamy-temple.webp'),
   'jyotirling-grishneshwar-temple-maharashtra': require('../../assets/images/image temple/Grishneshwar.webp'),
   'jyotirling-grishneshwar-temple-ellora': require('../../assets/images/image temple/Grishneshwar.webp'),
-  'jyotirling-omkareshwar-temple-madhya-pradesh': require('../../assets/images/image temple/Okareshwar.jpeg'),
-  'jyotirling-trimbakeshwar-temple-maharashtra': require('../../assets/images/image temple/TrimbakehwarTemple.jpg'),
-  'jyotirling-trimbakeshwar-temple-nashik': require('../../assets/images/image temple/TrimbakehwarTemple.jpg'),
+  'jyotirling-omkareshwar-temple-madhya-pradesh': require('../../assets/images/image temple/Okareshwar.webp'),
+  'jyotirling-trimbakeshwar-temple-maharashtra': require('../../assets/images/image temple/TrimbakehwarTemple.webp'),
+  'jyotirling-trimbakeshwar-temple-nashik': require('../../assets/images/image temple/TrimbakehwarTemple.webp'),
   'jyotirling-nageshwar-temple-gujarat': require('../../assets/images/image temple/Nageshwar.webp'),
   'jyotirling-nageshwar-temple-dwarka': require('../../assets/images/image temple/Nageshwar.webp'),
-  'jyotirling-mallikarjuna-temple-andhra-pradesh': require('../../assets/images/image temple/Mallikarjuna.jpg'),
-  'jyotirling-mallikarjuna-temple-srisailam': require('../../assets/images/image temple/Mallikarjuna.jpg'),
+  'jyotirling-mallikarjuna-temple-andhra-pradesh': require('../../assets/images/image temple/Mallikarjuna.webp'),
+  'jyotirling-mallikarjuna-temple-srisailam': require('../../assets/images/image temple/Mallikarjuna.webp'),
   'jyotirling-baidyanath-temple-jharkhand': require('../../assets/images/image temple/Baidyanath.webp'),
   'jyotirling-baidyanath-temple-deoghar': require('../../assets/images/image temple/Baidyanath.webp'),
   
   // Sacred / Others & Char Dham
-  'other-tirupati-balaji-temple-andhra-pradesh': require('../../assets/images/image temple/Tirumala_090615.jpg'),
+  'other-tirupati-balaji-temple-andhra-pradesh': require('../../assets/images/image temple/Tirumala_090615.webp'),
   'other-vaishno-devi-temple-jammu-kashmir': require('../../assets/images/image temple/VaishnoDeviTemple.webp'),
-  'other-siddhivinayak-temple-mumbai': require('../../assets/images/image temple/Siddhivinayak.jpg'),
-  'other-shree-siddhivinayak-temple': require('../../assets/images/image temple/Siddhivinayak.jpg'),
-  'other-shirdi-sai-baba-temple-maharashtra': require('../../assets/images/image temple/Sai_Baba.jpg'),
-  'other-jagannath-temple-puri': require('../../assets/images/image temple/Jaganath.jpg'),
-  'chardham-jagannath-temple-puri': require('../../assets/images/image temple/Jaganath.jpg'),
+  'other-siddhivinayak-temple-mumbai': require('../../assets/images/image temple/Siddhivinayak.webp'),
+  'other-shree-siddhivinayak-temple': require('../../assets/images/image temple/Siddhivinayak.webp'),
+  'other-shirdi-sai-baba-temple-maharashtra': require('../../assets/images/image temple/Sai_Baba.webp'),
+  'other-jagannath-temple-puri': require('../../assets/images/image temple/Jaganath.webp'),
+  'chardham-jagannath-temple-puri': require('../../assets/images/image temple/Jaganath.webp'),
   'chardham-badrinath-temple-uttarakhand': require('../../assets/images/image temple/badrinath.webp'),
-  'chardham-gangotri-temple-uttarakhand': require('../../assets/images/image temple/gangotri.jpg'),
+  'chardham-gangotri-temple-uttarakhand': require('../../assets/images/image temple/gangotri.webp'),
   'chardham-yamunotri-temple-uttarakhand': require('../../assets/images/image temple/yamunotritemple.webp'),
-  'chardham-dwarkadhish-temple-dwarka': require('../../assets/images/dwarakadhish.jpg'),
-  'other-golden-temple-amritsar': require('../../assets/images/image temple/GoldenTemple.jpg'),
-  'other-meenakshi-temple-madurai': require('../../assets/images/image temple/MeenakshiTemple.jpg'),
-  'other-iskcon-temple-bangalore-karnataka': require('../../assets/images/image temple/ISKCON_Bangalore.jpg'),
-  'other-iskcon-bangalore-aarti': require('../../assets/images/image temple/ISKCON_Bangalore.jpg'),
-  'other-iskcon-mira-road-thane': require('../../assets/images/image temple/ISKCON_Mira_Road.jpg'),
-  'other-iskcon-temple-mumbai': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
-  'other-iskcon-juhu': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
-  'other-iskcon-temple-mumbai-juhu': require('../../assets/images/image temple/ISKCON_Juhu.jpg'),
+  'chardham-dwarkadhish-temple-dwarka': require('../../assets/images/dwarakadhish.webp'),
+  'other-golden-temple-amritsar': require('../../assets/images/image temple/GoldenTemple.webp'),
+  'other-meenakshi-temple-madurai': require('../../assets/images/image temple/MeenakshiTemple.webp'),
+  'other-iskcon-temple-bangalore-karnataka': require('../../assets/images/image temple/ISKCON_Bangalore.webp'),
+  'other-iskcon-bangalore-aarti': require('../../assets/images/image temple/ISKCON_Bangalore.webp'),
+  'other-iskcon-mira-road-thane': require('../../assets/images/image temple/ISKCON_Mira_Road.webp'),
+  'other-iskcon-temple-mumbai': require('../../assets/images/image temple/ISKCON_Juhu.webp'),
+  'other-iskcon-juhu': require('../../assets/images/image temple/ISKCON_Juhu.webp'),
+  'other-iskcon-temple-mumbai-juhu': require('../../assets/images/image temple/ISKCON_Juhu.webp'),
   'other-mahalaxmi-temple': require('../../assets/images/shaktipeeth/mahalaxmi.webp'),
-  'other-shri-dwarkadhish-temple-dwarka': require('../../assets/images/dwarakadhish.jpg'),
+  'other-shri-dwarkadhish-temple-dwarka': require('../../assets/images/dwarakadhish.webp'),
 
   // Shakti Peethas (from assets/images/shaktipeeth)
   'shaktipeeth-kamakhya-temple-guwahati': require('../../assets/images/shaktipeeth/kamakhya.webp'),
@@ -105,7 +105,7 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'healing-mangaladevi-temple-mangalore': require('../../assets/images/healingtemple/Mangaladevi.webp'),
 };
 
-const DEFAULT_TEMPLE_IMAGE: ImageSourcePropType = require('../../assets/images/image temple/SomnathTemple.jpg');
+const DEFAULT_TEMPLE_IMAGE: ImageSourcePropType = require('../../assets/images/image temple/SomnathTemple.webp');
 
 const normalizeTempleName = (name: string) =>
   String(name || '')
