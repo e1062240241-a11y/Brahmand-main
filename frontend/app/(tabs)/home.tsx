@@ -13,7 +13,7 @@ import SharePostModal from '../../src/components/SharePostModal';
 import UploadPostModal from '../../src/components/UploadPostModal';
 import FeedSection from '../../src/components/home/FeedSection';
 import { getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
-import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getHomeInit, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, reverseGeocode, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
+import { addPostComment, api, createCommunityRequest, deletePost, deletePostComment, discoverCommunities, followUser, getAllUsers, getHomeInit, getPostComments, getUnreadNotificationCount, markAllNotificationsRead, reportComment, reportPost, repostPost, searchByHashtag, togglePostLike, unfollowUser, updateProfile } from '../../src/services/api';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { socketService } from '../../src/services/socket';
 import { useAuthStore } from '../../src/store/authStore';
@@ -24,7 +24,6 @@ import { useUploadStore } from '../../src/store/uploadStore';
 import { useVendorStore } from '../../src/store/vendorStore';
 import { formatTimeAgo } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
-import { formatNativeGeocodedAddress } from '../../src/utils/locationHelper';
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,7 +38,7 @@ import { ActionSheetIOS, ActivityIndicator, Alert, AppState, FlatList, Interacti
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import { styles } from '../../src/components/home/home.styles';
-import { ACTION_CARD_HEIGHT, ACTION_CARD_SNAP_INTERVAL, ACTION_CARD_WIDTH, FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_HEIGHT, SCREEN_WIDTH, baseQuickAccess } from '../../src/components/home/homeConstants';
+import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, SCREEN_WIDTH, baseQuickAccess } from '../../src/components/home/homeConstants';
 import { HomeHeaderComponent } from '../../src/components/home/HomeHeaderComponent';
 
 let FileSystemModule: any = null;
@@ -52,17 +51,13 @@ try {
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const screenWidth = Platform.OS === 'android' ? windowWidth : SCREEN_WIDTH;
-  const screenHeight = Platform.OS === 'android' ? windowHeight : SCREEN_HEIGHT;
   const featureCardWidth = Platform.OS === 'android'
     ? 175
     : FEATURE_CARD_WIDTH;
   const featureCardHeight = Platform.OS === 'android' ? 82 : FEATURE_CARD_HEIGHT;
   const featureSnapInterval = Platform.OS === 'android' ? featureCardWidth + 10 : FEATURE_SNAP_INTERVAL;
-  const actionCardWidth = Platform.OS === 'android' ? 120 : ACTION_CARD_WIDTH;
-  const actionCardHeight = Platform.OS === 'android' ? 190 : ACTION_CARD_HEIGHT;
-  const actionCardSnapInterval = Platform.OS === 'android' ? 130 : ACTION_CARD_SNAP_INTERVAL;
   const bellPlayer = useAudioPlayer(require('../../assets/notifysound/bell.mp3'));
   const { t } = useTranslation();
   const onHomeScrollTabBar = useScrollToHideTabBar();
@@ -72,7 +67,6 @@ export default function HomeScreen() {
 
   const bannerScrollRef = useRef<ScrollView>(null);
   const isNavigatingRef = useRef(false);
-  const isFetchingMoreRef = useRef(false);
 
   const handleLiveJaapNavigation = useCallback((mantraType: string, title: string) => {
     if (isNavigatingRef.current) return;
@@ -83,7 +77,7 @@ export default function HomeScreen() {
     }, 1000);
   }, [router]);
 
-  const [isHomeInitialized, setIsHomeInitialized] = useState(false);
+  const [, setIsHomeInitialized] = useState(false);
 
 
 
@@ -139,10 +133,10 @@ export default function HomeScreen() {
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [selectedSharePost, setSelectedSharePost] = useState<any | null>(null);
-  const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
+  const [, setActiveCommentMenuId] = useState<string | null>(null);
   const [showUploadPostModal, setShowUploadPostModal] = useState(false);
   const [showProfileActions, setShowProfileActions] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [, setUploadingPhoto] = useState(false);
   // Apple Guideline 1.2 - report modal state
   const [reportPostModalVisible, setReportPostModalVisible] = useState(false);
   const [pendingReportPost, setPendingReportPost] = useState<any | null>(null);
@@ -165,34 +159,9 @@ export default function HomeScreen() {
   const [hanumanChantCount, setHanumanChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
   const [shivaChantCount, setShivaChantCount] = useState(() => Math.floor(Math.random() * 17) + 2);
 
-  const ROTATING_AARTIS = [
-    { id: 'jyotirling-kedarnath-temple-uttarakhand', name: 'Kedarnath Aarti' },
-    { id: 'jyotirling-somnath-temple-gujarat', name: 'Somnath Aarti' },
-    { id: 'jyotirling-mahakaleshwar-temple-ujjain', name: 'Mahakal Aarti' },
-    { id: 'jyotirling-kashi-vishwanath-temple-varanasi', name: 'Kashi Vishwanath Aarti' },
-    { id: 'other-shirdi-sai-baba-temple-maharashtra', name: 'Shirdi Sai Baba Aarti' },
-    { id: 'other-mahalaxmi-temple', name: 'Shri Mahalakshmi Mandir' },
-    { id: 'other-iskcon-temple-bangalore-karnataka', name: 'ISKCON Bangalore' },
-    { id: 'other-shri-dwarkadhish-temple-dwarka', name: 'Shri Dwarkadhish Temple' },
-    { id: 'other-siddhivinayak-temple-mumbai', name: 'Shree Siddhivinayak Ganapati Temple' },
-    { id: 'other-tirupati-balaji-temple-andhra-pradesh', name: 'Tirupati Balaji Temple' }
-  ];
-  const AARTI_YOUTUBE_URLS: Record<string, string> = {
-    'jyotirling-kedarnath-temple-uttarakhand': 'https://www.youtube.com/embed/live_stream?channel=UC7Uo3euG3IA0yBlQyIXDcUA',
-    'jyotirling-somnath-temple-gujarat': 'https://www.youtube.com/live/wuDNumfi05g?si=zxOX4lB_2ZWoA8nS',
-    'jyotirling-mahakaleshwar-temple-ujjain': 'https://www.youtube.com/live/oLIgLjyi-YE?si=gM_45Xws5kE6f3Ae',
-    'jyotirling-kashi-vishwanath-temple-varanasi': 'https://www.youtube.com/watch?v=kYJqO005yK0',
-    'other-shirdi-sai-baba-temple-maharashtra': 'https://www.youtube.com/embed/live_stream?channel=UCAoiAR0Cw2I9_ETZWQVL12A',
-    'other-mahalaxmi-temple': 'https://youtu.be/DHRoHpI_rcI',
-    'other-iskcon-temple-bangalore-karnataka': 'https://www.youtube.com/live/cVlUJPTObdk?si=R2ml8QW_T_Yb5ULe',
-    'other-shri-dwarkadhish-temple-dwarka': 'https://www.youtube.com/@shridwarkadhishmandirofficial',
-    'other-siddhivinayak-temple-mumbai': 'https://www.youtube.com/live/Wc5kA0YLf4I?si=ZFVJRlwILsyAEQZr',
-    'other-tirupati-balaji-temple-andhra-pradesh': 'https://www.youtube.com/live/dwsS3bxweBw?si=QsVpIa_kHuh0FPB6'
-  };
-
   const [isAartiModalVisible, setIsAartiModalVisible] = useState(false);
-  const [selectedAartiUrl, setSelectedAartiUrl] = useState('');
-  const [selectedAartiTitle, setSelectedAartiTitle] = useState('');
+  const [selectedAartiUrl] = useState('');
+  const [selectedAartiTitle] = useState('');
 
   const getYoutubeVideoId = (url: string) => {
     if (!url) return null;
@@ -285,13 +254,10 @@ export default function HomeScreen() {
     };
   }, [isFocused]);
 
-  const [liveLocation, setLiveLocation] = useState<string>('Detecting...');
   const [liveCoords, setLiveCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
 
   const handleConfirmHomeLocation = (locData: LocationData) => {
-    const parts = [locData.area, locData.city, locData.state].filter(Boolean);
-    setLiveLocation(parts.slice(0, 2).join(', ') || locData.display_name || 'Bharat');
     if (locData.latitude && locData.longitude) {
       setLiveCoords({ latitude: locData.latitude, longitude: locData.longitude });
     }
@@ -299,8 +265,6 @@ export default function HomeScreen() {
   };
   const scrollViewRef = useRef<any>(null);
   const currentScrollY = useRef(0);
-  const lastScrollTimeRef = useRef(0);
-  const actionCardsScrollRef = useRef<ScrollView>(null);
   const topFeaturesScrollRef = useRef<ScrollView>(null);
   const likeDebounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const originalLikeStateRefs = useRef<{ [postId: string]: boolean }>({});
@@ -371,13 +335,11 @@ export default function HomeScreen() {
       try {
         const enabled = await Location.hasServicesEnabledAsync();
         if (!enabled) {
-          setLiveLocation('Location Disabled');
           return;
         }
 
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
-          setLiveLocation('Bharat');
           return;
         }
 
@@ -386,38 +348,17 @@ export default function HomeScreen() {
           loc = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
-        } catch (locErr) {
+        } catch {
           loc = await Location.getLastKnownPositionAsync().catch(() => null);
         }
 
         if (!loc) {
-          setLiveLocation('Bharat');
           return;
         }
 
         setLiveCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
-
-        // Use native reverse geocoding for exact details
-        const reverse = await Location.reverseGeocodeAsync({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-
-        if (reverse.length > 0) {
-          const formatted = formatNativeGeocodedAddress(reverse[0]);
-          setLiveLocation(formatted || 'Bharat');
-        } else {
-          // Fallback to API if native fails
-          const response = await reverseGeocode(loc.coords.latitude, loc.coords.longitude);
-          if (response.data) {
-            setLiveLocation(response.data.display_name || response.data.area || response.data.city || 'Bharat');
-          } else {
-            setLiveLocation('Bharat');
-          }
-        }
       } catch (e) {
         console.warn('Initial location fetch failed:', e);
-        setLiveLocation('Bharat');
       }
     };
     fetchLiveLocation();
@@ -630,7 +571,6 @@ export default function HomeScreen() {
   const [communityRequests, setCommunityRequests] = useState<any[]>([]);
   const [communities, setCommunities] = useState<any[]>([]);
   const [localCommunities, setLocalCommunities] = useState<any[]>([]);
-  const [requestsLoading, setRequestsLoading] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestType] = useState<'Help' | 'Blood' | 'Medical' | 'Financial' | 'Petition'>('Help');
   const [nextFestival, setNextFestival] = useState<any | null>(null);

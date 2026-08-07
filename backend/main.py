@@ -41,7 +41,22 @@ from routes.e2ee_routes import router as e2ee_router
 from fastapi import FastAPI, APIRouter, Request, HTTPException, Depends, Body, UploadFile, File, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+import gzip
+
+# 🛠 Patch gzip.GzipFile.close to prevent Python 3.14+ GC warning: "ValueError: I/O operation on closed file"
+_orig_gzip_close = gzip.GzipFile.close
+def _safe_gzip_close(self):
+    try:
+        fileobj = getattr(self, 'fileobj', None)
+        if fileobj is None or getattr(fileobj, 'closed', False):
+            return
+        _orig_gzip_close(self)
+    except (ValueError, AttributeError, OSError):
+        pass
+gzip.GzipFile.close = _safe_gzip_close
+
 from fastapi.responses import JSONResponse, StreamingResponse, Response, HTMLResponse
+
 import socketio
 
 # Add backend directory to path
@@ -3973,53 +3988,29 @@ async def get_posts_feed(
     # Populate location data
     user_loc = (current_user.get('location') or current_user.get('home_location') or {}) if current_user else {}
 
-    # Pre-fetch following IDs if tab is following
-    following_ids = set()
-    if current_user:
-        following_ids = set(current_user.get('following', []) or [])
+    # Assemble the posts pool
+    posts_dict = {}
+    for p in pool1:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in pool2:
+        if p.get('id'):
+            posts_dict[p['id']] = p
+    for p in latest_pool:
+        if p.get('id'):
+            posts_dict[p['id']] = p
 
-    if tab == 'following':
-        if not following_ids:
-            return {"items": [], "has_more": False}
-        following_list = list(following_ids)
-        following_posts = []
-        for i in range(0, len(following_list), 10):
-            chunk = following_list[i:i+10]
-            try:
-                fp = await db.query_documents('posts', filters=[('user_id', 'in', chunk)], limit=50)
-                following_posts.extend(fp)
-            except Exception as e:
-                logger.error(f"Error querying following posts for chunk {chunk}: {e}")
-        
-        posts_dict = {}
-        for p in following_posts:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        posts = list(posts_dict.values())
-    else:
-        # Assemble the posts pool
-        posts_dict = {}
-        for p in pool1:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        for p in pool2:
-            if p.get('id'):
-                posts_dict[p['id']] = p
-        for p in latest_pool:
-            if p.get('id'):
-                posts_dict[p['id']] = p
+    # Fallback if empty
+    if not posts_dict:
+        try:
+            fallback = await db.query_documents('posts', limit=100)
+            for p in fallback:
+                if p.get('id'):
+                    posts_dict[p['id']] = p
+        except Exception as e:
+            logger.error("Firestore query error in fallback get_posts_feed: %s", e)
 
-        # Fallback if empty
-        if not posts_dict:
-            try:
-                fallback = await db.query_documents('posts', limit=100)
-                for p in fallback:
-                    if p.get('id'):
-                        posts_dict[p['id']] = p
-            except Exception as e:
-                logger.error("Firestore query error in fallback get_posts_feed: %s", e)
-
-        posts = list(posts_dict.values())
+    posts = list(posts_dict.values())
 
     # Filter out already-seen posts and non-public posts
     public_posts = []
@@ -4041,19 +4032,23 @@ async def get_posts_feed(
             
         lvl = p.get('community_level', 'country') # Default to country/public
         
-        # Scope filtering (bypass for following tab so explicitly followed user posts are shown)
-        if tab != 'following':
-            if lvl == 'city':
-                p_city = str(p.get('city') or '').strip().lower()
-                if p_city and u_city and p_city != u_city: continue
-            elif lvl == 'state':
-                p_state = str(p.get('state') or '').strip().lower()
-                if p_state and u_state and p_state != u_state: continue
-            elif lvl == 'country':
-                p_country = str(p.get('country') or '').strip().lower()
-                if p_country and u_country and p_country != u_country: continue
+        # Scope filtering
+        if lvl == 'city':
+            p_city = str(p.get('city') or '').strip().lower()
+            if p_city and u_city and p_city != u_city: continue
+        elif lvl == 'state':
+            p_state = str(p.get('state') or '').strip().lower()
+            if p_state and u_state and p_state != u_state: continue
+        elif lvl == 'country':
+            p_country = str(p.get('country') or '').strip().lower()
+            if p_country and u_country and p_country != u_country: continue
             
         public_posts.append(p)
+
+    # Pre-fetch following IDs if tab is following
+    following_ids = set()
+    if tab == 'following' and current_user:
+        following_ids = set(current_user.get('following', []) or [])
 
     # Fetch user interest preferences
     user_interests: dict = {}
@@ -10481,6 +10476,27 @@ async def test_send_notification(
     return {"status": "success", "result": res}
 
 
+@api_router.post("/notifications/library-reminder")
+async def send_library_reminder_notification(
+    data: dict,
+    token_data: dict = Depends(verify_token)
+):
+    user_id = data.get("target_user_id") or token_data["user_id"]
+    book_name = data.get("book_name")
+    target_route = data.get("route") or data.get("target_route")
+    force = bool(data.get("force", False))
+    
+    result = await FirebaseNotificationService.notify_library_reminder(
+        user_id=user_id,
+        book_name=book_name,
+        target_route=target_route,
+        force=force
+    )
+    return {"status": "success", "result": result}
+
+
+
+
 @api_router.post("/ai/chat")
 async def ai_chat(
     data: dict,
@@ -11766,6 +11782,11 @@ async def get_vendors(
             ]
 
     import math
+
+    # Batch geocoding and updates for vendors missing valid coordinates to fix N+1 queries
+    vendors_to_geocode = []
+    geocoding_tasks = []
+
     for vendor in vendors:
         v_lat = vendor.get('latitude')
         v_lng = vendor.get('longitude')
@@ -11776,17 +11797,37 @@ async def get_vendors(
             abs(v_lat) > 0.001 and abs(v_lng) > 0.001
         )
         
-        if not valid_c and vendor.get('full_address'):
-            geo_lat, geo_lng = await _geocode_address(vendor.get('full_address'))
-            if geo_lat is not None and geo_lng is not None:
-                vendor['latitude'] = geo_lat
-                vendor['longitude'] = geo_lng
-                v_lat, v_lng = geo_lat, geo_lng
-                valid_c = True
-                try:
-                    await db.update_document('vendors', vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng})
-                except Exception:
-                    pass
+        full_addr = vendor.get('full_address')
+        if not valid_c and full_addr and isinstance(full_addr, str):
+            vendors_to_geocode.append(vendor)
+            geocoding_tasks.append(_geocode_address(full_addr))
+
+    if geocoding_tasks:
+        geocoded_results = await asyncio.gather(*geocoding_tasks, return_exceptions=True)
+        vendor_updates = []
+        for vendor, result in zip(vendors_to_geocode, geocoded_results):
+            if not isinstance(result, BaseException):
+                geo_lat, geo_lng = result
+                if geo_lat is not None and geo_lng is not None:
+                    vendor['latitude'] = geo_lat
+                    vendor['longitude'] = geo_lng
+                    vendor_updates.append((vendor['id'], {'latitude': geo_lat, 'longitude': geo_lng}))
+
+        if vendor_updates:
+            try:
+                await db.batch_update_documents('vendors', vendor_updates)
+            except Exception as e:
+                logger.warning(f"Failed to batch update vendor coordinates: {e}")
+
+    for vendor in vendors:
+        v_lat = vendor.get('latitude')
+        v_lng = vendor.get('longitude')
+
+        valid_c = (
+            v_lat is not None and v_lng is not None and
+            isinstance(v_lat, (int, float)) and isinstance(v_lng, (int, float)) and
+            abs(v_lat) > 0.001 and abs(v_lng) > 0.001
+        )
                     
         if lat and lng and valid_c and v_lat is not None and v_lng is not None:
             # Haversine formula

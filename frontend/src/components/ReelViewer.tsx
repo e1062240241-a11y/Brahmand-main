@@ -698,14 +698,14 @@ const ReelVideoItem = React.memo(({
           <Pressable
             onPress={handleTapVideo}
             style={StyleSheet.absoluteFill}
-          />
+          / accessibilityRole="button" accessibilityLabel="Button">
         )}
 
         {/* Left side - hold to rewind */}
         {isVideo && (
           <Pressable
             onPress={handleTapVideo}
-            onLongPress={() => startSeek('left')}
+            onLongPress={() = accessibilityRole="button" accessibilityLabel="Button"> startSeek('left')}
             onPressOut={stopSeek}
             style={{ position: 'absolute', top: 0, left: 0, width: '35%', bottom: 0, zIndex: 2 }}
           />
@@ -714,7 +714,7 @@ const ReelVideoItem = React.memo(({
         {isVideo && (
           <Pressable
             onPress={handleTapVideo}
-            onLongPress={() => startSeek('right')}
+            onLongPress={() = accessibilityRole="button" accessibilityLabel="Button"> startSeek('right')}
             onPressOut={stopSeek}
             style={{ position: 'absolute', top: 0, right: 0, width: '35%', bottom: 0, zIndex: 2 }}
           />
@@ -724,7 +724,7 @@ const ReelVideoItem = React.memo(({
           <Pressable
             onPress={handleTapVideo}
             style={{ position: 'absolute', top: 0, left: '35%', width: '30%', bottom: 0, zIndex: 2 }}
-          />
+          / accessibilityRole="button" accessibilityLabel="Button">
         )}
       </View>
 
@@ -867,7 +867,7 @@ const ReelVideoItem = React.memo(({
           paddingLeft: 16,
         }}
       >
-        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
+        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }} accessibilityRole="button" accessibilityLabel="Button">
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -916,7 +916,7 @@ const ReelVideoItem = React.memo(({
         {post?.caption ? (
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => {
+            onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
               const nextExpanded = !isCaptionExpanded;
               setIsCaptionExpanded(nextExpanded);
               if (nextExpanded) {
@@ -984,7 +984,7 @@ const ReelVideoItem = React.memo(({
             }}
             onPress={cycleSpeed}
             hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-          >
+           accessibilityRole="button" accessibilityLabel="Button">
             <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800' }}>{playbackSpeed}x</Text>
           </TouchableOpacity>
         )}
@@ -1000,12 +1000,12 @@ const ReelVideoItem = React.memo(({
           }}
           onPress={toggleMute}
           hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-        >
+         accessibilityRole="button" accessibilityLabel="Button">
           <Ionicons name={isMuted ? 'volume-mute' : 'volume-medium'} size={26} color="#FFF" />
         </TouchableOpacity>
 
         {/* Like */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleLike}>
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleLike} accessibilityRole="button" accessibilityLabel="Button">
           <Ionicons
             name={likedByMe ? 'heart' : 'heart-outline'}
             size={34}
@@ -1022,7 +1022,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Comment */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleComment}>
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleComment} accessibilityRole="button" accessibilityLabel="Button">
           <Ionicons 
             name="chatbubble" 
             size={32} 
@@ -1039,7 +1039,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Share */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleShare}>
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleShare} accessibilityRole="button" accessibilityLabel="Button">
           <Ionicons 
             name="paper-plane" 
             size={32} 
@@ -1053,7 +1053,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Options (Three Dots) */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={onOpenOptions}>
+        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={onOpenOptions} accessibilityRole="button" accessibilityLabel="Button">
           <Ionicons 
             name="ellipsis-horizontal" 
             size={32} 
@@ -1895,7 +1895,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             <TouchableOpacity
               style={{ ...StyleSheet.absoluteFillObject }}
               activeOpacity={1}
-              onPress={() => {
+              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                 setIsCommentVisible(false);
                 setActiveCommentMenuId(null);
                 setReplyingToComment(null);
@@ -1952,14 +1952,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 {canDelete ? (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => handleDeleteComment(item)}
+                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleDeleteComment(item)}
                                   >
                                     <Ionicons name="trash-outline" size={16} color="#FF3B30" />
                                   </TouchableOpacity>
                                 ) : (
                                   <TouchableOpacity
                                     style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => handleCommentMenuPress(item)}
+                                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleCommentMenuPress(item)}
                                   >
                                     <Ionicons name="ellipsis-horizontal" size={16} color="#A88876" />
                                   </TouchableOpacity>
@@ -1973,7 +1973,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                 <Text style={{ fontSize: 11, color: '#A88876' }}>{formatTimeAgo(item?.created_at)}</Text>
                                 <TouchableOpacity
                                   style={{ marginLeft: 16 }}
-                                  onPress={() => {
+                                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                                     setReplyingToComment(item);
                                   }}
                                 >
@@ -2027,14 +2027,14 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                     {canDeleteReply ? (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4 }}
-                                        onPress={() => handleDeleteComment(reply)}
+                                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleDeleteComment(reply)}
                                       >
                                         <Ionicons name="trash-outline" size={14} color="#FF3B30" />
                                       </TouchableOpacity>
                                     ) : (
                                       <TouchableOpacity
                                         style={{ padding: 4, marginRight: -4 }}
-                                        onPress={() => handleCommentMenuPress(reply)}
+                                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleCommentMenuPress(reply)}
                                       >
                                         <Ionicons name="ellipsis-horizontal" size={14} color="#A88876" />
                                       </TouchableOpacity>
@@ -2046,7 +2046,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                                   />
                                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                                     <TouchableOpacity
-                                      onPress={() => {
+                                      onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                                         setReplyingToComment(item);
                                         setNewCommentText(`@${reply.username} `);
                                       }}
@@ -2089,7 +2089,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                     {t('language') === 'hi' ? 'को जवाब दिया जा रहा है' : 'Replying to'}{' '}
                     <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>@{replyingToComment.username}</Text>
                   </Text>
-                  <TouchableOpacity onPress={() => setReplyingToComment(null)}>
+                  <TouchableOpacity onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setReplyingToComment(null)}>
                     <Ionicons name="close-circle" size={18} color="#999" />
                   </TouchableOpacity>
                 </View>
@@ -2108,7 +2108,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   <TouchableOpacity
                     onPress={submitLocalComment}
                     disabled={!newCommentText.trim() || isSubmittingComment}
-                  >
+                   accessibilityRole="button" accessibilityLabel="Button">
                     <Text style={{
                       color: newCommentText.trim() ? COLORS.primary : '#999',
                       fontWeight: 'bold',
@@ -2162,7 +2162,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             <TouchableOpacity
               style={{ ...StyleSheet.absoluteFillObject }}
               activeOpacity={1}
-              onPress={() => setIsOptionsVisible(false)}
+              onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setIsOptionsVisible(false)}
             />
             <View style={styles.sheetContainer}>
               <View style={styles.sheetHandle} />
@@ -2170,7 +2170,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
               <TouchableOpacity
                 style={styles.sheetRow}
-                onPress={() => {
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                   toggleAutoScroll();
                   setIsOptionsVisible(false);
                 }}
@@ -2191,7 +2191,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
               <TouchableOpacity
                 style={[styles.sheetCancelBtn, { marginTop: 16 }]}
-                onPress={() => setIsOptionsVisible(false)}
+                onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setIsOptionsVisible(false)}
               >
                 <Text style={styles.sheetCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>

@@ -405,3 +405,87 @@ export async function setBadgeCount(count: number) {
   if (!Notifications) return;
   await Notifications.setBadgeCountAsync(count);
 }
+
+/**
+ * Schedules or sends push notification for library reading session:
+ * - Unfinished book:
+ *   Title: 🔖 Pick up your reading session
+ *   Body: "[Book Name]" is waiting for you in your library. Resume reading now and gain deeper insights!
+ * 
+ * - Unstarted / empty library:
+ *   Title: ✨ Unfold sacred wisdom today
+ *   Body: Give some time to begin reading  Bhagvad Geeta!
+ */
+export async function scheduleLibraryReadingNotification(
+  unfinishedBookName?: string,
+  triggerSeconds?: number,
+  force: boolean = false
+) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
+  // Enforce 1 notification per 4 days locally (4 * 24h = 345,600,000 ms)
+  const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+  if (!force) {
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const lastSentStr = await AsyncStorage.getItem('LAST_LIBRARY_REMINDER_TIMESTAMP');
+      if (lastSentStr) {
+        const lastSentTime = parseInt(lastSentStr, 10);
+        if (Date.now() - lastSentTime < FOUR_DAYS_MS) {
+          console.log('[Push] Library reading notification skipped: max 1 per 4 days allowed');
+          return null;
+        }
+      }
+    } catch (e) {
+      console.warn('[Push] Error checking last library reminder timestamp:', e);
+    }
+  }
+
+
+  let title = '';
+  let body = '';
+
+  if (unfinishedBookName && unfinishedBookName.trim()) {
+    const cleanBookName = unfinishedBookName.trim();
+    title = '🔖 Pick up your reading session';
+    body = `"${cleanBookName}" is waiting for you in your library. Resume reading now and gain deeper insights!`;
+  } else {
+    title = '✨ Unfold sacred wisdom today';
+    body = 'Give some time to begin reading  Bhagvad Geeta!';
+  }
+
+  const channelId = 'default_v4';
+  const delay = triggerSeconds && triggerSeconds > 0 ? triggerSeconds : 1;
+
+  try {
+    const notifId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data: {
+          type: 'library_reminder',
+          bookName: unfinishedBookName || '',
+          route: '/library',
+        },
+        sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
+      },
+      trigger: (Platform.OS === 'android'
+        ? { seconds: delay, channelId }
+        : { seconds: delay }) as any,
+    });
+
+    try {
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorage.setItem('LAST_LIBRARY_REMINDER_TIMESTAMP', Date.now().toString());
+    } catch (_) {}
+
+    console.log(`[Push] Library reading notification scheduled in ${delay}s (id: ${notifId})`);
+    return notifId;
+  } catch (e) {
+    console.warn('[Push] Failed to schedule library reading notification:', e);
+    return null;
+  }
+}
+
+

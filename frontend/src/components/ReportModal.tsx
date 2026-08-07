@@ -137,7 +137,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
           <>
             <View style={styles.header}>
               <Text style={styles.title}>Report</Text>
-              <TouchableOpacity onPress={handleClose} style={styles.closeBtn} accessibilityLabel="Close report">
+              <TouchableOpacity onPress={handleClose} style={styles.closeBtn} accessibilityLabel="Close report" accessibilityRole="button">
                 <Ionicons name="close" size={24} color={COLORS.text} />
               </TouchableOpacity>
             </View>
@@ -157,7 +157,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                     styles.reasonRow,
                     selectedReason === r.key && styles.reasonRowSelected,
                   ]}
-                  onPress={() => setSelectedReason(r.key)}
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setSelectedReason(r.key)}
                   accessibilityLabel={r.label}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: selectedReason === r.key }}
@@ -204,7 +204,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               onPress={handleSubmit}
               disabled={!selectedReason}
               accessibilityLabel="Submit report"
-            >
+             accessibilityRole="button">
               <Text style={styles.submitText}>Submit Report</Text>
             </TouchableOpacity>
           </>
@@ -230,7 +230,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
               style={styles.doneBtn}
               onPress={handleClose}
               accessibilityLabel="Done"
-            >
+             accessibilityRole="button">
               <Text style={styles.doneBtnText}>Done</Text>
             </TouchableOpacity>
           </View>

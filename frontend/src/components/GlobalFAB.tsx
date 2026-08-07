@@ -456,7 +456,7 @@ export function GlobalFAB() {
                       <TouchableOpacity
                         style={fabStyles.menuItemButton}
                         activeOpacity={0.8}
-                        disabled={!!(activeSOS || nearbySOSAlerts.length > 0)}
+                        disabled={!!(activeSOS || nearbySOSAlerts.length  accessibilityRole="button" accessibilityLabel="Button"> 0)}
                         onPress={() => {
                           toggleFab();
                           router.push(item.route as any);
@@ -522,7 +522,7 @@ export function GlobalFAB() {
                       </View>
                       <TouchableOpacity
                         style={fabStyles.receivedHelpBtn}
-                        onPress={() => handleResolveActiveSOS('resolved')}
+                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleResolveActiveSOS('resolved')}
                       >
                         <View style={fabStyles.receivedHelpCheck}>
                           <Ionicons name="checkmark" size={18} color="#D32F2F" />
@@ -530,7 +530,7 @@ export function GlobalFAB() {
                         <Text style={fabStyles.receivedHelpText}>{t('receivedHelp') || 'I HAVE RECEIVED HELP'}</Text>
                       </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={() => handleResolveActiveSOS('cancelled')}>
+                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleResolveActiveSOS('cancelled')}>
                       <Text style={fabStyles.cancelSOSText}>{t('cancelSOS') || 'Cancel SOS'}</Text>
                     </TouchableOpacity>
                   </View>
@@ -577,14 +577,14 @@ export function GlobalFAB() {
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#388E3C' }]}
                           disabled={true}
-                        >
+                         accessibilityRole="button" accessibilityLabel="Button">
                           <Ionicons name="checkmark-circle" size={22} color="#FFF" />
                           <Text style={fabStyles.responderBtnText}>{"ON THE WAY"}</Text>
                         </TouchableOpacity>
                       ) : (
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#4CAF50' }, isResponding && { opacity: 0.7 }]}
-                          onPress={() => handleRespondToSOS(nearbySOSAlerts[0].id)}
+                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleRespondToSOS(nearbySOSAlerts[0].id)}
                           disabled={isResponding}
                         >
                           {isResponding ? (
@@ -599,7 +599,7 @@ export function GlobalFAB() {
                       )}
                       <TouchableOpacity
                         style={[fabStyles.responderBtn, { backgroundColor: '#FF9800' }]}
-                        onPress={() => {
+                        onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                           const phone = nearbySOSAlerts[0].creator_phone || nearbySOSAlerts[0].phone || nearbySOSAlerts[0].phone_number || '';
                           if (!phone) { Alert.alert('Not Available', 'Phone number not provided.'); return; }
                           Linking.openURL(`tel:${phone}`);
@@ -611,7 +611,7 @@ export function GlobalFAB() {
                       {nearbySOSAlerts[0].responders?.some((r: any) => r.user_id === user?.id) ? (
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#D32F2F' }]}
-                          onPress={() => handleReportMisuse(nearbySOSAlerts[0].id)}
+                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleReportMisuse(nearbySOSAlerts[0].id)}
                         >
                           <MaterialCommunityIcons name="alert-octagon" size={22} color="#FFF" />
                           <Text style={fabStyles.responderBtnText}>{t('language') === 'hi' ? 'दुरुपयोग की रिपोर्ट' : 'REPORT MISUSE'}</Text>
@@ -619,7 +619,7 @@ export function GlobalFAB() {
                       ) : (
                         <TouchableOpacity
                           style={[fabStyles.responderBtn, { backgroundColor: '#2196F3' }]}
-                          onPress={() => {
+                          onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                             const s = nearbySOSAlerts[0];
                             if (s?.latitude && s?.longitude) {
                               Linking.openURL(`https://maps.google.com/?q=${s.latitude},${s.longitude}`);
@@ -636,7 +636,7 @@ export function GlobalFAB() {
                       )}
                     </View>
 
-                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={toggleFab}>
+                    <TouchableOpacity style={fabStyles.cancelSOSLink} onPress={toggleFab} accessibilityRole="button" accessibilityLabel="Button">
                       <Text style={fabStyles.cancelSOSText}>Close Alert</Text>
                     </TouchableOpacity>
                   </View>
@@ -653,7 +653,7 @@ export function GlobalFAB() {
                     <TouchableOpacity
                       style={fabStyles.centerButtonOuterRing}
                       activeOpacity={0.85}
-                      onPress={() => {
+                      onPress={() = accessibilityRole="button" accessibilityLabel="Button"> {
                         toggleFab();
                         router.push('/sos');
                       }}

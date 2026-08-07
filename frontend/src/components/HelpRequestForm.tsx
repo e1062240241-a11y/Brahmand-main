@@ -138,7 +138,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Create Help Request</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -154,7 +154,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
                     styles.typeBtn,
                     helpType === type.key && { backgroundColor: `${type.color}20`, borderColor: type.color },
                   ]}
-                  onPress={() => setHelpType(type.key as any)}
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setHelpType(type.key as any)}
                 >
                   <Ionicons name={type.icon as any} size={20} color={helpType === type.key ? type.color : COLORS.textSecondary} />
                   <Text style={[styles.typeText, helpType === type.key && { color: type.color }]}>
@@ -198,7 +198,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
                     styles.urgencyBtn,
                     urgency === level.key && { backgroundColor: level.color, borderColor: level.color },
                   ]}
-                  onPress={() => setUrgency(level.key as any)}
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setUrgency(level.key as any)}
                 >
                   <Text style={[styles.urgencyText, urgency === level.key && { color: '#FFFFFF' }]}>
                     {level.label}
@@ -228,7 +228,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
                     styles.visibilityOption,
                     visibility === option.key && styles.visibilityOptionSelected,
                   ]}
-                  onPress={() => setVisibility(option.key as any)}
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button"> setVisibility(option.key as any)}
                 >
                   <View style={styles.radioOuter}>
                     {visibility === option.key && <View style={styles.radioInner} />}
@@ -253,7 +253,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
               style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={loading}
-            >
+             accessibilityRole="button" accessibilityLabel="Button">
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (

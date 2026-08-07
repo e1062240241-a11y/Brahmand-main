@@ -266,7 +266,7 @@ export const UiverseNotifyButton: React.FC<UiverseNotifyButtonProps> = ({
           styles.pressableWrapper,
           activeNotified && { shadowColor: '#2E7D32' },
         ]}
-      >
+       accessibilityRole="button" accessibilityLabel="Button">
         {/* Outer Multi-color Cosmic Gradient Border Wrapper */}
         <LinearGradient
           colors={gradientColors}

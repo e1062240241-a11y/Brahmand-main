@@ -302,7 +302,7 @@ export function sortItemsByLocationPreference<T extends any>(
 export function groupItemsByLocationTier<T extends any>(
   items: T[],
   userLoc?: LocationInfo | null
-): Array<{ title: string; label: SubTierLabel; data: T[] }> {
+): { title: string; label: SubTierLabel; data: T[] }[] {
   const sorted = sortItemsByLocationPreference(items, userLoc);
   const groups = new Map<string, { title: string; label: SubTierLabel; data: T[] }>();
 

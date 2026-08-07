@@ -256,7 +256,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
                   <TouchableOpacity
                     key={`${item.name}-${index}`}
                     style={styles.suggestionItem}
-                    onPress={() => handleSelectHospital(item)}
+                    onPress={() = accessibilityRole="button" accessibilityLabel="Button"> handleSelectHospital(item)}
                     accessibilityRole="button"
                     accessibilityLabel={`Select hospital: ${item.name}`}
                   >
@@ -283,7 +283,7 @@ export const HospitalSearchInput: React.FC<HospitalSearchInputProps> = ({
                 <Text style={styles.statusText}>No hospitals found</Text>
                 <TouchableOpacity
                   style={styles.suggestionItem}
-                  onPress={() =>
+                  onPress={() = accessibilityRole="button" accessibilityLabel="Button">
                     handleSelectHospital({
                       name: hospitalQuery.trim(),
                       address: hospitalQuery.trim(),
