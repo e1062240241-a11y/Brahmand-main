@@ -44,7 +44,7 @@ class MessagingService:
                 
             user_loc = user.get('location') or user.get('home_location')
             if user_loc:
-                from services.community_service import CommunityService
+                from services.firebase_community_service import FirebaseCommunityService as CommunityService
                 community_service = CommunityService()
                 try:
                     community_ids = await community_service.join_location_communities(user_id, user_loc)
@@ -185,7 +185,7 @@ class MessagingService:
             if user:
                 user_loc = user.get('location') or user.get('home_location')
                 if user_loc:
-                    from services.community_service import CommunityService
+                    from services.firebase_community_service import FirebaseCommunityService as CommunityService
                     community_service = CommunityService()
                     try:
                         community_ids = await community_service.join_location_communities(user_id, user_loc)

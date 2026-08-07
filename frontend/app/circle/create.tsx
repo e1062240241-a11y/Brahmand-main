@@ -176,7 +176,7 @@ const CreateCircleScreen = () => {
     const response = await fetch(uri);
     const blob = await response.blob();
     const bucket = 'sanatan-lok.firebasestorage.app';
-    const filename = `circles/${Date.now()}_group.jpg`;
+    const filename = `circles/${Date.now()}_group.webp`;
     const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?uploadType=media&name=${encodeURIComponent(filename)}`;
 
     const uploadResponse = await fetch(uploadUrl, {

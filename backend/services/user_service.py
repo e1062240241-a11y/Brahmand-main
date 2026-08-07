@@ -7,7 +7,7 @@ import aiohttp
 from config.database import get_database, get_redis
 from utils.helpers import serialize_doc, SUPPORTED_LANGUAGES
 from utils.cache import cache_manager
-from services.community_service import CommunityService
+from services.firebase_community_service import FirebaseCommunityService as CommunityService
 
 logger = logging.getLogger(__name__)
 

@@ -7,11 +7,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const geetaCover = require('../../assets/images/featured_book_6.jpg');
-const upanishadsCover = require('../../assets/images/featured_book_7.jpg');
-const vedasCover = require('../../assets/images/ancient_new_2.jpg');
-const puranasCover = require('../../assets/images/ancient_new_3.jpg');
-const dharmaCover = require('../../assets/images/ancient_new_4.jpg');
+const geetaCover = require('../../assets/images/featured_book_6.webp');
+const upanishadsCover = require('../../assets/images/featured_book_7.webp');
+const vedasCover = require('../../assets/images/ancient_new_2.webp');
+const puranasCover = require('../../assets/images/ancient_new_3.webp');
+const dharmaCover = require('../../assets/images/ancient_new_4.webp');
 
 export default function SacredScriptures() {
   const insets = useSafeAreaInsets();

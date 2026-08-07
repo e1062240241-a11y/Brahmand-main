@@ -112,16 +112,16 @@ export default function AdminKathaUploadScreen() {
       if (selectedThumb) {
         if (Platform.OS === 'web') {
           if (selectedThumb.file) {
-            formData.append('thumbnail', selectedThumb.file, selectedThumb.name || 'thumb.jpg');
+            formData.append('thumbnail', selectedThumb.file, selectedThumb.name || 'thumb.webp');
           } else {
             const thumbResp = await fetch(selectedThumb.uri);
             const thumbBlob = await thumbResp.blob();
-            formData.append('thumbnail', thumbBlob, selectedThumb.name || 'thumb.jpg');
+            formData.append('thumbnail', thumbBlob, selectedThumb.name || 'thumb.webp');
           }
         } else {
           formData.append('thumbnail', {
             uri: selectedThumb.uri,
-            name: selectedThumb.name || 'thumb.jpg',
+            name: selectedThumb.name || 'thumb.webp',
             type: selectedThumb.mimeType || 'image/jpeg',
           } as any);
         }

@@ -845,7 +845,7 @@ export default function AstrologyScreen() {
               />
             ) : (
               <Image
-                source={require('../assets/images/kundli_chart.jpg')}
+                source={require('../assets/images/kundli_chart.webp')}
                 style={styles.chartImage}
                 resizeMode="cover"
               />

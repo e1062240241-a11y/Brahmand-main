@@ -1072,7 +1072,7 @@ const JaapBanners = React.memo(function JaapBanners({
                 })()}
 
                 <View style={[styles.featuredLiveCard, { width: screenWidth - 40 }]}>
-                    <ImageBackground source={require('../../../assets/images/hanuman_banner_new.jpg')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
+                    <ImageBackground source={require('../../../assets/images/hanuman_banner_new.webp')} style={styles.featuredLiveImage} imageStyle={{ borderRadius: 15 }} resizeMode="cover">
                         <LinearGradient
                             colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.85)']}
                             style={styles.featuredLiveOverlay}

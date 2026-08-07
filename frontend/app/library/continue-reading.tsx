@@ -13,9 +13,9 @@ import { FONTS } from '../../src/constants/theme';
 
 const { width: SW } = Dimensions.get('window');
 
-const geetaCover          = require('../../assets/images/featured_book_6.jpg');
-const upanishadCover      = require('../../assets/images/featured_book_7.jpg');
-const yogaSutrasCover     = require('../../assets/images/ancient_new_2.jpg');
+const geetaCover          = require('../../assets/images/featured_book_6.webp');
+const upanishadCover      = require('../../assets/images/featured_book_7.webp');
+const yogaSutrasCover     = require('../../assets/images/ancient_new_2.webp');
 
 const ORANGE = '#FF6B00';
 const DARK   = '#1A1A1A';

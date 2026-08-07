@@ -105,7 +105,7 @@ const UPCOMING_JAAPS = [
     title: 'Ganesh Jaap',
     titleHi: 'गणेश जाप',
     mantraType: 'ganesh_aarti',
-    image: require('../../assets/images/upcoming_ganesh.jpg'),
+    image: require('../../assets/images/upcoming_ganesh.webp'),
     allowedDays: [3], // Wednesday
   },
   {
@@ -113,7 +113,7 @@ const UPCOMING_JAAPS = [
     title: 'Shani Chalisa',
     titleHi: 'शनि चालीसा',
     mantraType: 'shani_chalisa',
-    image: require('../../assets/images/upcoming_shani.jpg'),
+    image: require('../../assets/images/upcoming_shani.webp'),
     allowedDays: [6], // Saturday
   },
   {
@@ -121,7 +121,7 @@ const UPCOMING_JAAPS = [
     title: 'Shiv Mantra',
     titleHi: 'शिव मंत्र',
     mantraType: 'shiva',
-    image: require('../../assets/images/upcoming_shiva.jpg'),
+    image: require('../../assets/images/upcoming_shiva.webp'),
     allowedDays: [1], // Monday
   },
   {
@@ -129,7 +129,7 @@ const UPCOMING_JAAPS = [
     title: 'Ganga Mantra',
     titleHi: 'गंगा मंत्र',
     mantraType: 'ganga',
-    image: require('../../assets/images/upcoming_ganga.jpg'),
+    image: require('../../assets/images/upcoming_ganga.webp'),
     allowedDays: [0], // Sunday
   },
   {
@@ -1025,7 +1025,7 @@ export default function JaapLandingScreen() {
               >
                 <View style={styles.coverBoxKatha}>
                   <Image
-                    source={require('../../assets/images/shamik_pathak_ji.jpg')}
+                    source={require('../../assets/images/shamik_pathak_ji.webp')}
                     style={styles.coverImgKatha}
                     resizeMode="cover"
                   />

@@ -372,7 +372,7 @@ export default function ProfileScreen() {
     showToast(field === 'photo' ? 'Uploading profile photo...' : 'Uploading cover photo...');
     const file = {
       uri: asset.uri,
-      name: asset.fileName || (field === 'photo' ? 'avatar.jpg' : 'cover.jpg'),
+      name: asset.fileName || (field === 'photo' ? 'avatar.webp' : 'cover.webp'),
       type: asset.mimeType || 'image/jpeg',
     };
     const uploadRes = await uploadChatMedia(file);

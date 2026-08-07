@@ -16282,7 +16282,16 @@ async def _jaap_reminder_worker():
                         continue
                         
                     date_str = now_ist.strftime("%Y-%m-%d")
-                    seen_uids_mantras = set()
+                    # Supported active live jaap rooms mapping
+                    VALID_LIVE_JAAPS = {
+                        "hanuman": ("Hanuman Chalisa", "🙏 Jaap Starting Soon"),
+                        "shiva": ("Om Namah Shivaya", "🙏 Live Jaap Starting Soon"),
+                        "krishna": ("Hare Krishna Jaap", "🙏 Live Jaap Starting Soon"),
+                        "gayatri": ("Gayatri Mantra", "🙏 Live Jaap Starting Soon"),
+                        "ganesh": ("Ganesh Mantra", "🙏 Live Jaap Starting Soon"),
+                        "laxmi": ("Laxmi Mantra", "🙏 Live Jaap Starting Soon"),
+                        "mrityunjaya": ("Mahamrityunjaya Mantra", "🙏 Live Jaap Starting Soon"),
+                    }
                     
                     for r in reminders:
                         mantra_type = r.get("mantra_type")
@@ -16290,6 +16299,12 @@ async def _jaap_reminder_worker():
                         if not uid or not mantra_type or (uid, mantra_type) in seen_uids_mantras:
                             continue
                         seen_uids_mantras.add((uid, mantra_type))
+                        
+                        # EXCLUDE event pre-registrations (shravan_katha) and coming soon mantras (shani_chalisa, ganga, etc.)
+                        if mantra_type not in VALID_LIVE_JAAPS:
+                            continue
+
+                        mantra_title, notif_title = VALID_LIVE_JAAPS[mantra_type]
                         
                         cache_key = (uid, mantra_type, session['name'], date_str)
                         if cache_key in sent_reminders_cache:
@@ -16337,29 +16352,6 @@ async def _jaap_reminder_worker():
                                 continue
                         except Exception as check_err:
                             logger.warning(f"Error checking duplicate reminder backup: {check_err}")
-
-                        # Set proper titles
-                        if mantra_type == "hanuman":
-                            mantra_title = "Hanuman Chalisa"
-                            notif_title = "🙏 Jaap Starting Soon"
-                        elif mantra_type == "shiva":
-                            mantra_title = "Om Namah Shivaya"
-                            notif_title = "🙏 Live Jaap Starting Soon"
-                        elif mantra_type == "krishna":
-                            mantra_title = "Hare Krishna Jaap"
-                            notif_title = "🙏 Live Jaap Starting Soon"
-                        elif mantra_type == "gayatri":
-                            mantra_title = "Gayatri Mantra"
-                            notif_title = "🙏 Live Jaap Starting Soon"
-                        elif mantra_type == "ganesh":
-                            mantra_title = "Ganesh Mantra"
-                            notif_title = "🙏 Live Jaap Starting Soon"
-                        elif mantra_type == "laxmi":
-                            mantra_title = "Laxmi Mantra"
-                            notif_title = "🙏 Live Jaap Starting Soon"
-                        else:
-                            mantra_title = mantra_type.capitalize() + " Mantra"
-                            notif_title = "🙏 Live Jaap Starting Soon"
 
                         # Send notification via task queue
                         await task_queue.enqueue(
