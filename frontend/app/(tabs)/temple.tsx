@@ -136,6 +136,16 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
   const rawCat = renderSafeText(item.category);
   const categoryLabel = t('language') === 'hi' && rawCat === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (rawCat || 'Sacred');
 
+  const imageSource = useMemo(() => {
+    return (
+      getTempleImageById(item.id) || 
+      getTempleImageByName(displayName) ||
+      getTempleImageByName(item.name) || 
+      (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('http') ? { uri: item.image_url } : null) || 
+      DEFAULT_TEMPLE_IMAGE
+    );
+  }, [item.id, item.name, displayName, item.image_url]);
+
   return (
     <TouchableOpacity 
       style={styles.templeItemCard}
@@ -143,8 +153,9 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
       onPress={() => onPress(item)}
     >
       <Image 
-        source={getTempleImageById(item.id) || getTempleImageByName(item.name) || (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('http') ? { uri: item.image_url } : null) || DEFAULT_TEMPLE_IMAGE} 
+        source={imageSource} 
         style={styles.templeItemImage} 
+        fadeDuration={0}
       />
       <View style={styles.templeItemInfo}>
         <Text style={styles.templeItemName}>{displayName}</Text>
@@ -776,6 +787,7 @@ export default function TempleScreen() {
       <SafeFlashList
         data={displayTemples}
         renderItem={renderItem}
+        estimatedItemSize={120}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
         refreshControl={

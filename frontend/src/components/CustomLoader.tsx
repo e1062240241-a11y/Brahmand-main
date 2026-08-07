@@ -9,7 +9,6 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 
-const AnimatedSvg = Animated.createAnimatedComponent(Svg);
 
 interface CustomLoaderProps {
   size?: number;
@@ -51,24 +50,25 @@ export const CustomLoader: React.FC<CustomLoaderProps> = ({
     <View style={[fullScreen ? styles.fullScreenContainer : styles.inlineContainer, style]}>
       <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
         {/* Rotating Blue Arc Spinner */}
-        <AnimatedSvg
-          width={size}
-          height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          style={[styles.absoluteCenter, animatedSpinnerStyle]}
-        >
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={color}
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            fill="none"
-          />
-        </AnimatedSvg>
+        <Animated.View style={[styles.absoluteCenter, animatedSpinnerStyle]}>
+          <Svg
+            width={size}
+            height={size}
+            viewBox={`0 0 ${size} ${size}`}
+          >
+            <Circle
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${circumference} ${circumference}`}
+              strokeDashoffset={strokeDashoffset}
+              strokeLinecap="round"
+              fill="none"
+            />
+          </Svg>
+        </Animated.View>
       </View>
 
       {message ? <Text style={styles.messageText}>{message}</Text> : null}

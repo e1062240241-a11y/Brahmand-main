@@ -60,6 +60,7 @@ async function saveFestivalReminderState(festivalId: string, state: ReminderStat
 }
 
 async function scheduleLocalNotif(title: string, body: string, data: any, triggerDate: Date): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
   try {
     return await Notifications.scheduleNotificationAsync({
       content: {
@@ -203,6 +204,7 @@ export async function toggleFestivalReminder(
 }
 
 export async function syncFestivalReminders(festivals: any[]) {
+  if (Platform.OS === 'web') return;
   try {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;

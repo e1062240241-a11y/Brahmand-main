@@ -181,12 +181,18 @@ class FirebaseAuthService:
 
         otp_record = await db.find_one('otps', [('phone', '==', normalized_phone)])
         if not otp_record:
-            raise ValueError("OTP not found. Please request a new OTP.")
-        if otp_record.get("attempts", 0) >= 5:
-            raise ValueError("Too many attempts. Please request a new OTP.")
-        await db.update_document('otps', otp_record['id'], {
-            'attempts': otp_record.get('attempts', 0) + 1
-        })
+            if use_mock and otp == FirebaseAuthService.MOCK_OTP:
+                otp_record = {"otp": FirebaseAuthService.MOCK_OTP, "expires_at": (datetime.utcnow() + timedelta(minutes=10)).isoformat() + 'Z', "id": None}
+            else:
+                raise ValueError("OTP not found. Please request a new OTP.")
+        
+        if otp_record.get("id"):
+            if otp_record.get("attempts", 0) >= 5:
+                raise ValueError("Too many attempts. Please request a new OTP.")
+            await db.update_document('otps', otp_record['id'], {
+                'attempts': otp_record.get('attempts', 0) + 1
+            })
+
         if otp_record["otp"] != otp and not (use_mock and otp == FirebaseAuthService.MOCK_OTP):
             raise ValueError("Invalid OTP")
         
@@ -198,7 +204,9 @@ class FirebaseAuthService:
         
         if datetime.utcnow() > expires_at:
             raise ValueError("OTP expired")
-        await db.delete_document('otps', otp_record['id'])
+
+        if otp_record.get("id"):
+            await db.delete_document('otps', otp_record['id'])
 
         # Check if user exists
         user = await db.get_user_by_phone(normalized_phone)

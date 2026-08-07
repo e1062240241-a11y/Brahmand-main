@@ -339,6 +339,7 @@ export async function scheduleLocalNotification(
   body: string,
   data?: Record<string, any>
 ) {
+  if (Platform.OS === 'web') return null;
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
 
@@ -421,6 +422,7 @@ export async function scheduleLibraryReadingNotification(
   triggerSeconds?: number,
   force: boolean = false
 ) {
+  if (Platform.OS === 'web') return null;
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
 
@@ -500,6 +502,7 @@ export async function scheduleShivKathaNotification(
   triggerSeconds?: number,
   force: boolean = false
 ) {
+  if (Platform.OS === 'web') return null;
   const Notifications = await getNotificationsModule();
   if (!Notifications) return null;
 
