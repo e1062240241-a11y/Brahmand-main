@@ -87,7 +87,7 @@ export const BlockConfirmationModal: React.FC<BlockConfirmationModalProps> = ({
           <Text style={styles.description}>{description}</Text>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
 

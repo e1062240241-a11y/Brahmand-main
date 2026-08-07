@@ -478,7 +478,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             <Text style={styles.headerTitle}>
               {isHi ? 'नौकरी प्रोफ़ाइल बनाएं' : 'Create Job Profile'}
             </Text>
-            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -498,7 +498,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
               numberOfLines={3}
             />
 
-            <TouchableOpacity style={styles.locationButton} onPress={getCurrentLocation} disabled={locationLoading} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={styles.locationButton} onPress={getCurrentLocation} disabled={locationLoading}>
               {locationLoading ? <ActivityIndicator color={COLORS.primary} /> : <Ionicons name="locate" size={18} color={COLORS.primary} />}
               <Text style={styles.locationButtonText}>
                 {isHi ? 'वर्तमान स्थान का उपयोग करें' : 'Use Current Location'}
@@ -585,11 +585,11 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
 
             <Text style={styles.label}>{isHi ? 'प्रोफ़ाइल फ़ोटो अपलोड करें' : 'Upload Profile Photo'}</Text>
             <View style={styles.rowButtons}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={pickPhotoFromGallery} accessibilityRole="button" accessibilityLabel="Button">
+              <TouchableOpacity style={styles.secondaryButton} onPress={pickPhotoFromGallery}>
                 <Ionicons name="images" size={16} color={COLORS.primary} />
                 <Text style={styles.secondaryButtonText}>{isHi ? 'गैलरी' : 'Gallery'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={capturePhotoFromCamera} accessibilityRole="button" accessibilityLabel="Button">
+              <TouchableOpacity style={styles.secondaryButton} onPress={capturePhotoFromCamera}>
                 <Ionicons name="camera" size={16} color={COLORS.primary} />
                 <Text style={styles.secondaryButtonText}>{isHi ? 'कैमरा' : 'Camera'}</Text>
               </TouchableOpacity>
@@ -597,7 +597,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
             {photoFile && (
               <View style={styles.fileRow} key={photoFile.uri}>
                 <Text style={styles.fileText} numberOfLines={1}>{photoFile.name}</Text>
-                <TouchableOpacity onPress={removePhoto} accessibilityRole="button" accessibilityLabel="Button">
+                <TouchableOpacity onPress={removePhoto}>
                   <Ionicons name="close-circle" size={20} color={COLORS.error} />
                 </TouchableOpacity>
               </View>
@@ -607,11 +607,11 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
               {isHi ? 'सीवी अपलोड करें (दस्तावेज़/छवि/पीडीएफ) *' : 'Upload CV (doc/image/pdf) *'}
             </Text>
             <View style={styles.rowButtons}>
-              <TouchableOpacity style={styles.secondaryButton} onPress={pickCvDocument} accessibilityRole="button" accessibilityLabel="Button">
+              <TouchableOpacity style={styles.secondaryButton} onPress={pickCvDocument}>
                 <Ionicons name="document-attach" size={16} color={COLORS.primary} />
                 <Text style={styles.secondaryButtonText}>{isHi ? 'फ़ाइल चुनें' : 'Choose File'}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.secondaryButton} onPress={captureCvFromCamera} accessibilityRole="button" accessibilityLabel="Button">
+              <TouchableOpacity style={styles.secondaryButton} onPress={captureCvFromCamera}>
                 <Ionicons name="camera" size={16} color={COLORS.primary} />
                 <Text style={styles.secondaryButtonText}>{isHi ? 'दस्तावेज़ कैप्चर करें' : 'Capture Doc'}</Text>
               </TouchableOpacity>
@@ -625,7 +625,7 @@ export const JobProfileModal: React.FC<JobProfileModalProps> = ({
               </View>
             )}
 
-            <TouchableOpacity style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={handleSubmit} disabled={loading} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={[styles.submitBtn, loading && styles.submitBtnDisabled]} onPress={handleSubmit} disabled={loading}>
               {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>
                 {isHi ? 'नौकरी प्रोफ़ाइल सहेजें' : 'Save Job Profile'}
               </Text>}

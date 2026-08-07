@@ -102,7 +102,7 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
                             marginBottom: 6,
                         }}
                         onPress={onPress}
-                     accessibilityRole="button" accessibilityLabel="Button">
+                    >
                         <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
@@ -141,7 +141,7 @@ const BloodRequestCard = React.memo(function BloodRequestCard({
                             marginBottom: 6,
                         }}
                         onPress={onPress}
-                     accessibilityRole="button" accessibilityLabel="Button">
+                    >
                         <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
@@ -196,7 +196,7 @@ const RegisterBusinessCard = React.memo(function RegisterBusinessCard({
                             marginBottom: 6,
                         }}
                         onPress={onPress}
-                     accessibilityRole="button" accessibilityLabel="Button">
+                    >
                         <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{myVendor ? t('manage') : t('register')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
@@ -255,7 +255,7 @@ const VerifiedVendorCard = React.memo(function VerifiedVendorCard({
                             marginBottom: 6,
                         }}
                         onPress={onPress}
-                     accessibilityRole="button" accessibilityLabel="Button">
+                    >
                         <Text style={{ color: '#FFF', fontSize: 12, textAlign: 'center', fontFamily: 'Inter_700Bold' }} numberOfLines={1}>{t('view')}</Text>
                     </TouchableOpacity>
                 </HomeCardTextureBg>
@@ -290,7 +290,7 @@ const AartiCard = React.memo(function AartiCard({
                 activeOpacity={0.9}
                 style={[styles.actionCard, { width: '100%', height: '100%', marginHorizontal: 0, borderRadius: 15, overflow: 'hidden' }]}
                 onPress={onPress}
-             accessibilityRole="button" accessibilityLabel="Button">
+            >
                 <HomeCardTextureBg texture="lavender">
                     <View style={[styles.cardMainContent, { alignItems: 'center', justifyContent: 'center', flex: 1, paddingTop: 4, paddingHorizontal: 4 }]}>
                         <View style={[styles.cardIconRow, { marginBottom: 6, marginTop: -12 }]}>

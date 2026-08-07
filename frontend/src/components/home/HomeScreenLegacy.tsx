@@ -258,7 +258,7 @@ const MagneticKathaButton = ({
             onPress={onPress}
             onPressIn={handlePressIn}
             onPressOut={handlePressOut}
-         accessibilityRole="button" accessibilityLabel="Button">
+        >
             <Animated.View
                 style={[
                     style,
@@ -360,14 +360,14 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                         activeOpacity={0.7}
                         style={styles.headerIconButton}
                         onPress={onToggleSearch}
-                     accessibilityRole="button" accessibilityLabel="Button">
+                    >
                         <Ionicons name={searchActive ? "close-outline" : "search-outline"} size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                     </TouchableOpacity>
                     <TouchableOpacity
                         activeOpacity={0.7}
                         style={styles.headerIconButton}
                         onPress={onNotificationPress}
-                     accessibilityRole="button" accessibilityLabel="Button">
+                    >
                         <View>
                             <Ionicons name="notifications-outline" size={Platform.OS === 'android' ? 22 : 24} color="#000" />
                             {(unreadCount > 0 || (!!nextFestival && (nextFestival.days_until === 0 || nextFestival.days_until === 1))) && <View style={styles.notificationDot} />}
@@ -478,7 +478,7 @@ const HomeHeaderBar = React.memo(function HomeHeaderBar({
                         <View style={styles.recentSearchSection}>
                             <View style={styles.recentSearchHeader}>
                                 <Text style={styles.recentSearchesTitle}>{t('recentSearchTitle')}</Text>
-                                <TouchableOpacity onPress={onClearRecentSearches} accessibilityRole="button" accessibilityLabel="Button">
+                                <TouchableOpacity onPress={onClearRecentSearches}>
                                     <Text style={styles.clearHistoryText}>{t('clearHistory')}</Text>
                                 </TouchableOpacity>
                             </View>

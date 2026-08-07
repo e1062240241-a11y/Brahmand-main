@@ -1427,7 +1427,7 @@ export default function LiveJaapRoomView() {
 
                 {/* Controls Bar */}
                 <View style={styles.controlsBarNew}>
-                  <TouchableOpacity onPress={toggleMic} style={isMicEnabled ? styles.volumeMuteBtnNew : styles.controlIconBtnNew} accessibilityRole="button" accessibilityLabel="Button">
+                  <TouchableOpacity onPress={toggleMic} style={isMicEnabled ? styles.volumeMuteBtnNew : styles.controlIconBtnNew}>
                     {isMicEnabled ? (
                       <Svg width={18} height={24} viewBox="0 0 18 24" fill="none">
                         <Rect x="5.25" y="1" width="7.5" height="13.5" rx="3.75" fill="#FFF" />
@@ -1453,7 +1453,7 @@ export default function LiveJaapRoomView() {
                       </Svg>
                     )}
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleShare} style={styles.controlIconBtnNew} accessibilityRole="button" accessibilityLabel="Button">
+                  <TouchableOpacity onPress={handleShare} style={styles.controlIconBtnNew}>
                     <Svg width={20} height={24} viewBox="0 0 20 24" fill="none">
                       <Path d="M15.8304 15.4299C14.708 15.4295 13.6334 15.8966 12.8512 16.7247L8.0525 13.5514C8.42996 12.5555 8.42996 11.45 8.0525 10.4541L12.8512 7.28079C15.0902 9.64055 18.9724 8.62162 19.8392 5.44671C20.706 2.2718 17.9072 -0.677903 14.8014 0.137241C12.3801 0.772727 11.0444 3.44402 11.9498 5.84032L7.15105 9.01365C4.91459 6.65131 1.03126 7.66579 0.161055 10.8397C-0.709151 14.0136 2.08642 16.9665 5.19309 16.1549C5.93751 15.9605 6.61515 15.5579 7.15105 14.9919L11.9498 18.1652C10.7911 21.24 13.302 24.4522 16.4694 23.9473C19.6369 23.4423 21.0853 19.5989 19.0765 17.0291C18.2858 16.0175 17.092 15.4294 15.8304 15.4299ZM15.8304 1.72131C17.7535 1.72131 18.9555 3.86328 17.9939 5.57686C17.0323 7.29043 14.6284 7.29043 13.6668 5.57686C13.4475 5.18612 13.3321 4.74287 13.3321 4.29168C13.3321 2.8721 14.4506 1.72131 15.8304 1.72131ZM4.1719 14.5731C2.24876 14.5731 1.04679 12.4312 2.00836 10.7176C2.96994 9.004 5.37387 9.004 6.33544 10.7176C6.5547 11.1083 6.67013 11.5516 6.67013 12.0028C6.67013 13.4223 5.55164 14.5731 4.1719 14.5731ZM15.8304 22.2842C13.9072 22.2842 12.7052 20.1423 13.6668 18.4287C14.6284 16.7151 17.0323 16.7151 17.9939 18.4287C18.2132 18.8194 18.3286 19.2627 18.3286 19.7139C18.3286 21.1334 17.2101 22.2842 15.8304 22.2842Z" fill="#1A1A1A" />
                     </Svg>

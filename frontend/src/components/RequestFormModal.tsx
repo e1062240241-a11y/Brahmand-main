@@ -405,8 +405,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         {VISIBILITY_OPTIONS.map((option) => (
           <Pressable
             key={option.key}
-            accessibilityRole="button"
-            accessibilityLabel="Button"
             style={({ pressed }) => [
               styles.visibilityOption,
               visibility === option.key && styles.visibilityOptionSelected,
@@ -441,8 +439,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             {BLOOD_GROUPS.map((bg) => (
               <Pressable
                 key={bg}
-                accessibilityRole="button"
-                accessibilityLabel="Button"
                 style={({ pressed }) => [
                   styles.bloodGroupBtn,
                   bloodGroup === bg && styles.bloodGroupBtnSelected,
@@ -536,8 +532,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             {communities.map((community) => (
               <Pressable
                 key={community?.id}
-                accessibilityRole="button"
-                accessibilityLabel="Button"
                 style={({ pressed }) => [
                   styles.communityOption,
                   selectedCommunityId === community?.id && styles.communityOptionActive,
@@ -566,8 +560,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
         {URGENCY_OPTIONS.map((option) => (
           <Pressable
             key={option.key}
-            accessibilityRole="button"
-            accessibilityLabel="Button"
             style={({ pressed }) => [
               styles.urgencyBtn,
               urgency === option.key && { backgroundColor: `${option.color}15`, borderColor: option.color },
@@ -656,8 +648,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
           <View style={styles.otpButtonRow}>
             <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Button"
               style={({ pressed }) => [
                 styles.otpButton,
                 (phoneSending || phoneVerifying) && styles.otpButtonDisabled,
@@ -689,8 +679,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
                 maxLength={6}
               />
               <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Button"
                 style={({ pressed }) => [
                   styles.otpButton,
                   (phoneVerifying || !phoneOtp.trim()) && styles.otpButtonDisabled,
@@ -731,8 +719,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
           <View style={styles.header}>
             <Pressable
               onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Button"
               style={({ pressed }) => [{ marginRight: 15 }, pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
             >
@@ -751,8 +737,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
             </View>
             <Pressable
               onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel="Button"
               style={({ pressed }) => [pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 20 }}
             >
@@ -769,8 +753,6 @@ export const RequestFormModal: React.FC<RequestFormModalProps> = ({
 
             {/* Submit Button */}
             <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Button"
               style={({ pressed }) => [
                 styles.submitBtn,
                 loading && styles.submitBtnDisabled,

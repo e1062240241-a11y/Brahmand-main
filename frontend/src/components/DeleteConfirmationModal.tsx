@@ -86,7 +86,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
           <Text style={styles.description}>{description || defaultDesc}</Text>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
               <Text style={styles.cancelButtonText}>{t('language') === 'hi' ? 'रद्द करें' : 'Cancel'}</Text>
             </TouchableOpacity>
 

@@ -307,7 +307,7 @@ const GuideItem = ({
         onPress={handlePress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-       accessibilityRole="button" accessibilityLabel="Button">
+      >
         {/* Decorative Top Accent Strip */}
         <View style={[styles.cardAccentStrip, { backgroundColor: cfg.stripColor }]} />
 

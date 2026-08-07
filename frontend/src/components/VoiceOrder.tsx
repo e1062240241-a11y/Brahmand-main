@@ -258,7 +258,7 @@ export default function VoiceOrder({ menuItems, vendorPhone, vendorName }: Voice
             style={[styles.orderButton, !transcribedText.trim() && styles.orderButtonDisabled]}
             onPress={handleOrder}
             disabled={!transcribedText.trim()}
-           accessibilityRole="button" accessibilityLabel="Button">
+          >
             <Ionicons name="cart-outline" size={20} color={COLORS.surface} />
             <Text style={styles.orderButtonText}>Order via WhatsApp</Text>
           </TouchableOpacity>

@@ -186,9 +186,7 @@ const SacredPlaceCard: React.FC<{ place: SacredPlaceItem; router: any }> = ({ pl
       onPress={handlePress}
       activeOpacity={0.88}
     >
-      <View style={styles.sacredIconCircle}>
-        <Ionicons name={getCategoryIcon(place.category)} size={20} color={THEME.accentIndigo} />
-      </View>
+      <ImageWithFallback source={getTempleImageByName(place.name)} style={styles.sacredImageThumbnail} fallbackName={place.name} />
       <View style={styles.nearbyTempleTextContainer}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={styles.nearbyTempleName} numberOfLines={1}>
@@ -328,6 +326,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: THEME.border,
+  },
+  sacredImageThumbnail: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    marginRight: 12,
   },
   sacredIconCircle: {
     width: 42,

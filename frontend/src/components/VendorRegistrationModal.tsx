@@ -730,7 +730,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               </View>
               <Text style={styles.headerTitle}>Register Your Business</Text>
             </View>
-            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -1000,7 +1000,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                 style={{ position: 'absolute', right: 20, top: 16.5, zIndex: 10 }}
                 onPress={detectLocation}
                 disabled={loading}
-               accessibilityRole="button" accessibilityLabel="Button">
+              >
                 <AddressIcon width={24} height={24} color="#94A3B8" />
               </TouchableOpacity>
             </View>
@@ -1012,7 +1012,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
             <TouchableOpacity 
               style={styles.uploadArea} 
               onPress={pickBusinessPhotos}
-             accessibilityRole="button" accessibilityLabel="Button">
+            >
               <View style={styles.cloudIconContainer}>
                 <Ionicons name="cloud-upload" size={26} color="#FF6600" />
               </View>
@@ -1057,7 +1057,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
               style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={loading}
-             accessibilityRole="button" accessibilityLabel="Button">
+            >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
@@ -1156,7 +1156,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                   style={[styles.submitBtn, { marginTop: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 }, loading && styles.submitBtnDisabled]}
                   onPress={handleMapConfirm}
                   disabled={loading}
-                 accessibilityRole="button" accessibilityLabel="Button">
+                >
                   {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.submitBtnText}>Confirm Location</Text>}
                 </TouchableOpacity>
               </View>

@@ -138,7 +138,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Create Help Request</Text>
-            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Button">
+            <TouchableOpacity onPress={onClose}>
               <Ionicons name="close" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -253,7 +253,7 @@ export const HelpRequestForm: React.FC<HelpRequestFormProps> = ({
               style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
               onPress={handleSubmit}
               disabled={loading}
-             accessibilityRole="button" accessibilityLabel="Button">
+            >
               {loading ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (

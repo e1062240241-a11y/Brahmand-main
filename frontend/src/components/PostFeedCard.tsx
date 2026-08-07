@@ -529,11 +529,11 @@ const PostFeedCardComponent = ({
       {/* Header */}
       {isEditing ? (
         <View style={styles.editHeaderRow}>
-          <TouchableOpacity onPress={onCancelEdit} style={styles.editHeaderBtn} disabled={isSavingEdit} accessibilityRole="button" accessibilityLabel="Button">
+          <TouchableOpacity onPress={onCancelEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
             <Text style={styles.editHeaderCancelText}>{t('cancel')}</Text>
           </TouchableOpacity>
           <Text style={styles.editHeaderTitle}>{t('language') === 'hi' ? 'जानकारी संपादित करें' : 'Edit Info'}</Text>
-          <TouchableOpacity onPress={onSaveEdit} style={styles.editHeaderBtn} disabled={isSavingEdit} accessibilityRole="button" accessibilityLabel="Button">
+          <TouchableOpacity onPress={onSaveEdit} style={styles.editHeaderBtn} disabled={isSavingEdit}>
             {isSavingEdit ? (
               <ActivityIndicator size="small" color={COLORS.primary} />
             ) : (
@@ -701,7 +701,7 @@ const PostFeedCardComponent = ({
               onTouchStart={handleTouchStart}
               onTouchEnd={handleTouchEnd}
               onPress={handleMediaPress}
-             accessibilityRole="button" accessibilityLabel="Button">
+            >
               <Image
                 source={{ uri: imageUri }}
                 style={[cropStyle || StyleSheet.absoluteFill, getFilterStyle(filterName)]}
