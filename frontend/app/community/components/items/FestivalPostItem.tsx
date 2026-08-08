@@ -6,6 +6,8 @@ import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
 import { VideoPlayer } from '../VideoPlayer';
 import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
+import { Avatar } from '../../../../src/components/Avatar';
+import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
 
 export const FestivalPostItem = React.memo(({ id, communityId }: { id: string, communityId: string }) => {
   const post = useCommunityStore(state => state.posts[id]);
@@ -16,12 +18,20 @@ export const FestivalPostItem = React.memo(({ id, communityId }: { id: string, c
 
   return (
     <View style={styles.festEventCard}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+         <Avatar name={post.sender_name || 'Festival Update'} photo={post.sender_photo} size={40} />
+         <View style={{ marginLeft: 10, flex: 1 }}>
+            <Text style={styles.feedPostUserName} numberOfLines={1}>{post.sender_name}</Text>
+            <Text style={styles.postTimestamp}>• {formatDateTimeIST(post.timestamp || '')}</Text>
+         </View>
+      </View>
+
       <View style={styles.festBanner}>
          <View style={styles.festBannerLeft}>
             <Ionicons name="sparkles-outline" size={28} color="#FF6B00" />
             <View style={{ marginLeft: 12, flex: 1 }}>
                <Text style={styles.festBannerTitle}>{post.content || 'Festival Updates'}</Text>
-               <Text style={styles.festBannerSub}>{post.caption || 'Join the celebration!'}</Text>
+               {post.caption ? <Text style={styles.festBannerSub}>{post.caption}</Text> : null}
             </View>
          </View>
       </View>
@@ -33,7 +43,7 @@ export const FestivalPostItem = React.memo(({ id, communityId }: { id: string, c
            <VideoPlayer
               videoUrl={post.media_url}
               thumbnailUrl={post.thumbnail_url}
-              isVisible={true} // Hardcoded true
+              isVisible={true} // Hardcoded true per instructions if viewability isn't desired
               style={styles.festEventImage}
             />
         )}
