@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Platform } from 'react-native';
 import { useCommunityStore } from '../../store/useCommunityStore';
 import { useAuthStore } from '../../../../src/store/authStore';
@@ -7,10 +7,9 @@ import { Avatar } from '../../../../src/components/Avatar';
 import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
 import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
-import { SafeVideoView } from '../../../../src/components/SafeVideoView';
-import { Link } from 'expo-router';
-// Import Mention renderer if needed (Assuming plain text or specific component is used)
+import { VideoPlayer } from '../VideoPlayer';
 import { COLORS } from '../../../../src/constants/theme';
+import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
 
 interface DiscussionPostItemProps {
   id: string;
@@ -28,16 +27,13 @@ export const DiscussionPostItem = React.memo(({
   const post = useCommunityStore(state => state.posts[id]);
   const user = useAuthStore(state => state.user);
   const actions = useCommunityActions(communityId);
+  const isVisible = useCommunityViewabilityStore(state => state.visibleItemIds.has(id));
 
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (!post || !user) return null;
 
-  const myId = user.id || user._id;
-
-  // Need to correctly type properties that may be missing from the basic Post interface
   const isFulfilled = post.status === 'fulfilled' || post.status === 'resolved' || post.status === 'done';
-  const isEventPost = post.category === 'Events';
 
   const shouldTruncate = (post.content || '').length > 300;
   const displayText = shouldTruncate && !isExpanded
@@ -52,9 +48,6 @@ export const DiscussionPostItem = React.memo(({
       hasNextThreadConnection && { paddingBottom: 0, borderBottomWidth: 0 },
       hasPrevThreadConnection && { paddingTop: 0 }
     ]}>
-      {/* Repost Header if applicable */}
-      {/* Assuming isRepost exists on post, omit for now or add if it does */}
-
       <View style={styles.postMainRow}>
         <View style={[styles.postLeftCol, { width: 48, alignItems: 'center' }]}>
           {hasPrevThreadConnection ? (
@@ -98,7 +91,6 @@ export const DiscussionPostItem = React.memo(({
             </TouchableOpacity>
           </View>
 
-          {/* Render Text Content */}
           {post.content ? (
             <View style={{ marginTop: hasPrevThreadConnection ? 0 : 2 }}>
               <TouchableOpacity activeOpacity={0.7} onPress={() => actions.openThread(id)}>
@@ -114,7 +106,6 @@ export const DiscussionPostItem = React.memo(({
             </View>
           ) : null}
 
-          {/* Render Media */}
           {post.message_type === 'image' && post.media_url ? (
             <TouchableOpacity
               activeOpacity={0.9}
@@ -128,18 +119,15 @@ export const DiscussionPostItem = React.memo(({
             </TouchableOpacity>
           ) : post.message_type === 'video' && post.media_url ? (
             <View style={[styles.postMediaContainer, isFulfilled && { opacity: 0.5 }]}>
-              {/* Note: In a FlashList, SafeVideoView usage needs onViewableItemsChanged to pause offscreen.
-                  We'll handle the playing prop later or assume SafeVideoView manages its own intersection observer */}
-              <SafeVideoView
+              <VideoPlayer
                 videoUrl={post.media_url}
                 thumbnailUrl={post.thumbnail_url}
+                isVisible={isVisible}
                 style={styles.postImage}
-                playing={false} // Will need to wire this up to viewable items
               />
             </View>
           ) : null}
 
-          {/* Render Footer Actions */}
           <View style={styles.postFooterRow}>
             <TouchableOpacity
               style={styles.postActionBtn}
@@ -179,7 +167,6 @@ export const DiscussionPostItem = React.memo(({
               </View>
             </TouchableOpacity>
           </View>
-
         </View>
       </View>
     </View>
