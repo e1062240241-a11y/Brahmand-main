@@ -4,8 +4,8 @@ import { useCommunityStore } from '../../store/useCommunityStore';
 import { Ionicons } from '@expo/vector-icons';
 import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
-import { Avatar } from '../../../../src/components/Avatar';
-import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
+import { Avatar } from '@/src/components/Avatar';
+import { formatDateTimeIST } from '@/src/utils/dateUtils';
 import { VideoPlayer } from '../VideoPlayer';
 import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
 

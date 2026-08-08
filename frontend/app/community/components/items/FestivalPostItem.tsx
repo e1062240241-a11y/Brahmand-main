@@ -6,8 +6,8 @@ import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
 import { VideoPlayer } from '../VideoPlayer';
 import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
-import { Avatar } from '../../../../src/components/Avatar';
-import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
+import { Avatar } from '@/src/components/Avatar';
+import { formatDateTimeIST } from '@/src/utils/dateUtils';
 
 export const FestivalPostItem = React.memo(({ id, communityId }: { id: string, communityId: string }) => {
   const post = useCommunityStore(state => state.posts[id]);

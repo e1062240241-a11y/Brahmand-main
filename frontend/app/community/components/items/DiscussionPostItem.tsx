@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Platform } from 'react-native';
 import { useCommunityStore } from '../../store/useCommunityStore';
-import { useAuthStore } from '../../../../src/store/authStore';
+import { useAuthStore } from '@/src/store/authStore';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Avatar } from '../../../../src/components/Avatar';
-import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
+import { Avatar } from '@/src/components/Avatar';
+import { formatDateTimeIST } from '@/src/utils/dateUtils';
 import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
 import { VideoPlayer } from '../VideoPlayer';
-import { COLORS } from '../../../../src/constants/theme';
+import { COLORS } from '@/src/constants/theme';
 import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
 
 interface DiscussionPostItemProps {

@@ -1,0 +1,2340 @@
+{
+  "summary": {
+    "total": 258,
+    "bucketA": 81,
+    "bucketB": 31,
+    "bucketC": 146,
+    "bucketD": 0
+  },
+  "buckets": {
+    "A_resolvedById": [
+      {
+        "templeId": "03abHQEE4Jiqtw68lqtu",
+        "slugId": "shiva-mallikarjuna-srisailam-hills",
+        "templeName": "Mallikarjuna Srisailam Temple",
+        "category": "Shiva Temple",
+        "resolvedFrom": "id",
+        "currentTempleKey": "srisailam",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "08pXdMR1eLLkHjrtHADk",
+        "slugId": "shaktipeeth-renuka-devi-temple-mahur",
+        "templeName": "Renuka Devi Temple – Mahur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "renuka-devi-temple-mahur",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "0HFpwT5bhKt6Ei8F0hFA",
+        "slugId": "chardham-jagannath-temple-puri",
+        "templeName": "Jagannath Temple – Puri",
+        "category": "Char Dham",
+        "resolvedFrom": "id",
+        "currentTempleKey": "jagannath-puri",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "0hdlCZpzoHJCatKTPCbc",
+        "slugId": "ashtavinayak-mayureshwar-temple-morgaon",
+        "templeName": "Mayureshwar Temple – Morgaon",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ashtavinayak-mayureshwar-temple-morgaon",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "37T4ZB9pvlGwrh9u1LE4",
+        "slugId": "sacred-tanot-mata-temple-jaisalmer",
+        "templeName": "Tanot Mata Temple – Jaisalmer",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "tanot-mata",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "4btYs0KS1COTglTH5bLm",
+        "slugId": "shaktipeeth-bakreshwar-temple-birbhum",
+        "templeName": "Bakreshwar Temple – Birbhum",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "bakreshwar-temple-birbhum",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "4faOeB9HX0cEe7qh3e6n",
+        "slugId": "ashtavinayak-varadhavinayak-temple-mahad",
+        "templeName": "Varadhavinayak Temple – Mahad",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ashtavinayak-varadhavinayak-temple-mahad",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "4wWc0gxS56XDRPKV6ftl",
+        "slugId": "devi-horanadu-annapoorneshwari-temple",
+        "templeName": "Annapoorneshwari Temple – Horanadu",
+        "category": "Devi Temple",
+        "resolvedFrom": "id",
+        "currentTempleKey": "horanadu-annapoorneshwari-temple",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "89OA8R8mKzUODJCtWnlN",
+        "slugId": "shaktipeeth-hinglaj-devi-rajasthan",
+        "templeName": "Hinglaj Mata Temple – Barmer",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "hinglaj-devi-rajasthan",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "8CoQXXm2M0aee4EmbGdI",
+        "slugId": "ashtavinayak-chintamani-temple-theur",
+        "templeName": "Chintamani Temple – Theur",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ashtavinayak-chintamani-temple-theur",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "8VjAxrFGqu0lndhmlHE1",
+        "slugId": "sacred-naini-devi-temple-nainital",
+        "templeName": "Naina Devi Temple – Nainital",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "naini-devi-temple-nainital",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "9FpEMJtXRlC8ooeLeqS0",
+        "slugId": "shaktipeeth-tarapith-temple-birbhum",
+        "templeName": "Tarapith Temple – Birbhum",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-tarapith-temple-birbhum",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "ADNI907Vtd4sTM4SMSlg",
+        "slugId": "healing-sri-aurobindo-ashram-puducherry",
+        "templeName": "Sri Aurobindo Ashram – Puducherry",
+        "category": "Healing Temples",
+        "resolvedFrom": "id",
+        "currentTempleKey": "healing-sri-aurobindo-ashram-puducherry",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "BlI0l8wJGcIE1WBlmuBu",
+        "slugId": "shaktipeeth-sharda-peeth-kashmir",
+        "templeName": "Sharada Peeth – Kashmir",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "sharda-peeth-kashmir",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "DtRMUCBaXR9V5Gjfo2KB",
+        "slugId": "sacred-belur-math-ramakrishna-mission",
+        "templeName": "Belur Math – Howrah",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "sacred-belur-math-ramakrishna-mission",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "E35DqFvnB2ZJ60Gp4Goi",
+        "slugId": "shaktipeeth-tripora-sundari-temple-tripura",
+        "templeName": "Tripura Sundari Temple – Udaipur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "tripora-sundari-temple-tripura",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "FEowNmwowgheGJSN1uZs",
+        "slugId": "shaktipeeth-saptashrungi-temple-nashik",
+        "templeName": "Saptashrungi Nivasini Temple – Vani",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "saptashrungi-temple-nashik",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "Fa1uTHrpMx2UPtPKpop4",
+        "slugId": "chardham-yamunotri-temple-uttarakhand",
+        "templeName": "Yamunotri Temple – Uttarakhand",
+        "category": "Char Dham",
+        "resolvedFrom": "id",
+        "currentTempleKey": "chardham-yamunotri-temple-uttarakhand",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "GcKoHrETVIhoRVmTRlG0",
+        "slugId": "ashtavinayak-mahaganapati-temple-ranjangaon",
+        "templeName": "Mahaganapati Temple – Ranjangaon",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ashtavinayak-mahaganapati-temple-ranjangaon",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "J7qGPHAmVDKqnVBjDoKz",
+        "slugId": "shaktipeeth-chintpurni-devi-temple-una",
+        "templeName": "Chintpurni Devi Temple – Una",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "chintpurni-devi-temple-una",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "Khngz0yKSfUmeEwreNHL",
+        "slugId": "shaktipeeth-jwala-ji-temple-kangra",
+        "templeName": "Jwala Ji Temple – Kangra",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-jwala-ji-temple-kangra",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "KkXf7AxRfVQERchLAZrq",
+        "slugId": "sacred-kasar-devi-temple-almora",
+        "templeName": "Kasar Devi Temple – Almora",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "kasar-devi-temple-almora",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "KrPkGExwHkTt5Hl1ymuT",
+        "slugId": "devi-chottanikara-temple-kochi",
+        "templeName": "Chottanikkara Bhagavathy Temple – Kochi",
+        "category": "Devi Temple",
+        "resolvedFrom": "id",
+        "currentTempleKey": "chottanikara-temple-kochi",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "OAB7zzwMn3kUJRTQRznf",
+        "slugId": "panchbhoota-srikalahasteeswara-temple-srikalahasti",
+        "templeName": "Srikalahasteeswara Temple – Srikalahasti",
+        "category": "Panch Bhoota Sthalam",
+        "resolvedFrom": "id",
+        "currentTempleKey": "panchbhoota-srikalahasteeswara-temple-srikalahasti",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "OVWk1L9Z2HLI64V84L3m",
+        "slugId": "shaktipeeth-bhavani-mandir-tuljapur",
+        "templeName": "Tulja Bhavani Temple – Tuljapur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "bhavani-mandir-tuljapur",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "R0rCbxgp6wWizA0bQDk3",
+        "slugId": "shaktipeeth-kalighat-kali-temple-kolkata",
+        "templeName": "Kalighat Kali Temple – Kolkata",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-kalighat-kali-temple-kolkata",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "RWHljJGGXrXtNPSni8gB",
+        "slugId": "shaktipeeth-harsiddhi-mata-temple-ujjain",
+        "templeName": "Harsiddhi Mata Temple – Ujjain",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "harsiddhi-mata-temple-ujjain",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "ReODA2z7UzfWQrpf00tO",
+        "slugId": "healing-dhyanalinga-isha-coimbatore",
+        "templeName": "Dhyanalinga & Isha Yoga Center",
+        "category": "Healing Temples",
+        "resolvedFrom": "id",
+        "currentTempleKey": "healing-dhyanalinga-isha-coimbatore",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "S9Q9YZ8cyecGkqnJ1084",
+        "slugId": "shaktipeeth-biraja-temple-jajpur",
+        "templeName": "Biraja Temple – Jajpur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "biraja-temple-jajpur",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "TJclcRbivjxW3xbR7Azk",
+        "slugId": "sacred-purnagiri-devi-temple-champawat",
+        "templeName": "Purnagiri Devi Temple – Champawat",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "purnagiri-devi-temple-champawat",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "VGMssV6P4ZxNMna01MNU",
+        "slugId": "panchbhoota-jambukeswarar-temple-thiruvanaikaval",
+        "templeName": "Jambukeswarar Temple – Thiruvanaikaval",
+        "category": "Panch Bhoota Sthalam",
+        "resolvedFrom": "id",
+        "currentTempleKey": "panchbhoota-jambukeswarar-temple-thiruvanaikaval",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "VfoiHXImY9Kkkxlv6sO5",
+        "slugId": "chardham-badrinath-temple-uttarakhand",
+        "templeName": "Badrinath Temple – Uttarakhand",
+        "category": "Char Dham",
+        "resolvedFrom": "id",
+        "currentTempleKey": "badrinath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "WrOUhFt8qw21GM7haqwH",
+        "slugId": "panchbhoota-arunachaleswarar-temple-thiruvannamalai",
+        "templeName": "Arunachaleswarar Temple – Thiruvannamalai",
+        "category": "Panch Bhoota Sthalam",
+        "resolvedFrom": "id",
+        "currentTempleKey": "panchbhoota-arunachaleswarar-temple-thiruvannamalai",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "YyBwlm5wyyZkgxrvScDR",
+        "slugId": "shaktipeeth-mahalaxmi-temple-kolhapur",
+        "templeName": "Mahalaxmi Temple – Kolhapur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-mahalaxmi-temple-kolhapur",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "aZUIh0yRZgKTUQF2h7Yq",
+        "slugId": "shaktipeeth-naina-devi-temple-bilaspur",
+        "templeName": "Naina Devi Temple – Bilaspur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "naina-devi-temple-bilaspur",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "bGqr42M269EFeCmbPQ1f",
+        "slugId": "shaktipeeth-kamakhya-temple-guwahati",
+        "templeName": "Kamakhya Temple – Guwahati",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-kamakhya-temple-guwahati",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "bPsW9fUrJf4eH4Tke319",
+        "slugId": "ashtavinayak-ballaleshwar-temple-pali",
+        "templeName": "Ballaleshwar Temple – Pali",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ashtavinayak-ballaleshwar-temple-pali",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "c8YyaSSSqH8EoSMqMR2T",
+        "slugId": "shaktipeeth-chinnamasta-temple-rajarappa",
+        "templeName": "Chinnamasta Temple – Rajrappa",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-chinnamasta-temple-rajarappa",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "dpGJtzLLhjI0ozYX2w1q",
+        "slugId": "shaktipeeth-jogadya-temple-burdwan",
+        "templeName": "Jogadya Temple – Khirgram",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "jogadya-temple-burdwan",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "e5DUhLAcDqrLC4o7IgJv",
+        "slugId": "shaktipeeth-chamunda-devi-temple-kangra",
+        "templeName": "Chamunda Devi Temple – Kangra",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "chamunda-devi-temple-kangra",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "fHe1oI6kcPcTzKJyscqO",
+        "slugId": "devi-kollur-mookambika-temple",
+        "templeName": "Mookambika Temple – Kollur",
+        "category": "Devi Temple",
+        "resolvedFrom": "id",
+        "currentTempleKey": "kollur-mookambika-temple",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "fxc1tNXmKvBSZvf3kU9b",
+        "slugId": "healing-anandamayi-ma-ashram-haridwar",
+        "templeName": "Anandamayi Ma Ashram – Haridwar",
+        "category": "Healing Temples",
+        "resolvedFrom": "id",
+        "currentTempleKey": "healing-anandamayi-ma-ashram-haridwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "hClQmvVoHgueaYVroQLi",
+        "slugId": "panchbhoota-ekambareswarar-temple-kanchipuram",
+        "templeName": "Ekambareswarar Temple – Kanchipuram",
+        "category": "Panch Bhoota Sthalam",
+        "resolvedFrom": "id",
+        "currentTempleKey": "panchbhoota-ekambareswarar-temple-kanchipuram",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "ibTnhap9UDqJASab5PTa",
+        "slugId": "shaktipeeth-danteshwari-temple-dantewada",
+        "templeName": "Danteshwari Temple – Dantewada",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "danteshwari-temple-dantewada",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "imUEU1WqwhZMAJ6xG4BU",
+        "slugId": "chardham-gangotri-temple-uttarakhand",
+        "templeName": "Gangotri Temple – Uttarakhand",
+        "category": "Char Dham",
+        "resolvedFrom": "id",
+        "currentTempleKey": "chardham-gangotri-temple-uttarakhand",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-baidyanath-temple-deoghar",
+        "slugId": "jyotirling-baidyanath-temple-deoghar",
+        "templeName": "Baidyanath Temple – Deoghar",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "baidyanath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-bhimashankar-temple-maharashtra",
+        "slugId": "jyotirling-bhimashankar-temple-maharashtra",
+        "templeName": "Bhimashankar Temple – Maharashtra",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "bhimashankar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-grishneshwar-temple-ellora",
+        "slugId": "jyotirling-grishneshwar-temple-ellora",
+        "templeName": "Grishneshwar Temple – Ellora",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "grishneshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-kashi-vishwanath-temple-varanasi",
+        "slugId": "jyotirling-kashi-vishwanath-temple-varanasi",
+        "templeName": "Kashi Vishwanath Temple – Varanasi",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "kashi-vishwanath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-kedarnath-temple-uttarakhand",
+        "slugId": "jyotirling-kedarnath-temple-uttarakhand",
+        "templeName": "Kedarnath Temple – Uttarakhand",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "kedarnath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-mahakaleshwar-temple-ujjain",
+        "slugId": "jyotirling-mahakaleshwar-temple-ujjain",
+        "templeName": "Mahakaleshwar Temple – Ujjain",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "mahakaleshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-mallikarjuna-temple-srisailam",
+        "slugId": "jyotirling-mallikarjuna-temple-srisailam",
+        "templeName": "Mallikarjuna Temple – Srisailam",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "srisailam",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-nageshwar-temple-dwarka",
+        "slugId": "jyotirling-nageshwar-temple-dwarka",
+        "templeName": "Nageshwar Temple – Dwarka",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "nageshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-omkareshwar-temple-madhya-pradesh",
+        "slugId": "jyotirling-omkareshwar-temple-madhya-pradesh",
+        "templeName": "Omkareshwar Temple – Madhya Pradesh",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "omkareshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-ramanathaswamy-temple-rameswaram",
+        "slugId": "jyotirling-ramanathaswamy-temple-rameswaram",
+        "templeName": "Ramanathaswamy Temple – Rameswaram",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ramanathaswamy",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-somnath-temple-gujarat",
+        "slugId": "jyotirling-somnath-temple-gujarat",
+        "templeName": "Somnath Temple – Gujarat",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "somnath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "jyotirling-trimbakeshwar-temple-nashik",
+        "slugId": "jyotirling-trimbakeshwar-temple-nashik",
+        "templeName": "Trimbakeshwar Temple – Nashik",
+        "category": "Jyotirlinga",
+        "resolvedFrom": "id",
+        "currentTempleKey": "trimbakeshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "mZ1RZkPNj29KTAXD8ef2",
+        "slugId": "healing-virupaksha-temple-hampi",
+        "templeName": "Virupaksha Temple – Hampi",
+        "category": "Healing Temples",
+        "resolvedFrom": "id",
+        "currentTempleKey": "healing-virupaksha-temple-hampi",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "oLcJ1cE4dIDdK7D7SCq8",
+        "slugId": "shaktipeeth-chamundeshwari-temple-mysore",
+        "templeName": "Chamundeshwari Temple – Mysore",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-chamundeshwari-temple-mysore",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-golden-temple-amritsar",
+        "slugId": "other-golden-temple-amritsar",
+        "templeName": "Golden Temple – Amritsar",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "other-golden-temple-amritsar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-iskcon-mira-road-thane",
+        "slugId": "other-iskcon-mira-road-thane",
+        "templeName": "ISKCON Mira Road – Thane",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "other-iskcon-mira-road-thane",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-iskcon-temple-bangalore-karnataka",
+        "slugId": "other-iskcon-temple-bangalore-karnataka",
+        "templeName": "ISKCON Bangalore aarti",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "other-iskcon-temple-bangalore-karnataka",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-jagannath-temple-puri",
+        "slugId": "other-jagannath-temple-puri",
+        "templeName": "Jagannath Temple – Puri",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "jagannath-puri",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-meenakshi-temple-madurai",
+        "slugId": "other-meenakshi-temple-madurai",
+        "templeName": "Meenakshi Temple – Madurai",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "other-meenakshi-temple-madurai",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-siddhivinayak-temple-mumbai",
+        "slugId": "other-siddhivinayak-temple-mumbai",
+        "templeName": "Shree Siddhivinayak Ganapati Temple",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "other-siddhivinayak-temple-mumbai",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-tirupati-balaji-temple-andhra-pradesh",
+        "slugId": "other-tirupati-balaji-temple-andhra-pradesh",
+        "templeName": "Tirupati Balaji Temple – Andhra Pradesh",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "other-tirupati-balaji-temple-andhra-pradesh",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "other-vaishno-devi-temple-jammu-kashmir",
+        "slugId": "other-vaishno-devi-temple-jammu-kashmir",
+        "templeName": "Vaishno Devi Temple – Jammu & Kashmir",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "other-vaishno-devi-temple-jammu-kashmir",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "p5jUP3pNi1Y1KtSp9Zyi",
+        "slugId": "devi-sree-bhadrakali-temple-attukal",
+        "templeName": "Attukal Bhagavathy Temple – Thiruvananthapuram",
+        "category": "Devi Temple",
+        "resolvedFrom": "id",
+        "currentTempleKey": "sree-bhadrakali-temple-attukal",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "qX4NDl99kIHxZ9H2lV7P",
+        "slugId": "ashtavinayak-vighnahar-temple-ozar",
+        "templeName": "Vighnahar Temple – Ozar",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ashtavinayak-vighnahar-temple-ozar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "qxv1EMLegq5KnZRXt5EZ",
+        "slugId": "ashtavinayak-girijatmak-temple-lenyadri",
+        "templeName": "Girijatmak Temple – Lenyadri",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "id",
+        "currentTempleKey": "ashtavinayak-girijatmak-temple-lenyadri",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "rehYeVTegfhKQcTJHgzV",
+        "slugId": "sacred-vaitheeswaran-koil-mayiladuthurai",
+        "templeName": "Vaitheeswaran Koil – Mayiladuthurai",
+        "category": "Sacred",
+        "resolvedFrom": "id",
+        "currentTempleKey": "sacred-vaitheeswaran-koil-mayiladuthurai",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "sStkB4MtHN88qI4N7W6M",
+        "slugId": "shaktipeeth-alopi-devi-temple-prayagraj",
+        "templeName": "Alopi Devi Temple – Prayagraj",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "alopi-devi-temple-prayagraj",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "tTPEJVrk4FYklMYIc7dU",
+        "slugId": "shaktipeeth-ambaji-temple-gujarat",
+        "templeName": "Ambaji Temple – Gujarat",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "shaktipeeth-ambaji-temple-gujarat",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "tvg3BW77061x8vg3xh8f",
+        "slugId": "chardham-dwarkadhish-temple-dwarka",
+        "templeName": "Dwarkadhish Temple – Dwarka",
+        "category": "Char Dham",
+        "resolvedFrom": "id",
+        "currentTempleKey": "dwarkadhish",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "v8Y7G4xtBK0JlhOvcbOp",
+        "slugId": "healing-ramanasramam-tiruvannamalai",
+        "templeName": "Sri Ramanasramam – Tiruvannamalai",
+        "category": "Healing Temples",
+        "resolvedFrom": "id",
+        "currentTempleKey": "healing-ramanasramam-tiruvannamalai",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "vpMToG0KQdYoDNFqBSCN",
+        "slugId": "shaktipeeth-nalateswari-temple-nalhati",
+        "templeName": "Nalateswari Temple – Nalhati",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "nalateswari-temple-nalhati",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "wPeAggfGaqHEaC0JGX7n",
+        "slugId": "shaktipeeth-attahas-temple-birbhum",
+        "templeName": "Fullara Attahas Temple – Birbhum",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "attahas-temple-birbhum",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "x7pqfMwvM8n3BucndCcz",
+        "slugId": "shaktipeeth-kankalitala-temple-bolpur",
+        "templeName": "Kankalitala Temple – Bolpur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "id",
+        "currentTempleKey": "kankalitala-temple-bolpur",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "xiZd0W589xxFZMvpVBsn",
+        "slugId": "panchbhoota-thillai-nataraja-temple-chidambaram",
+        "templeName": "Thillai Nataraja Temple – Chidambaram",
+        "category": "Panch Bhoota Sthalam",
+        "resolvedFrom": "id",
+        "currentTempleKey": "panchbhoota-thillai-nataraja-temple-chidambaram",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "xqEDMi8Cm9Kt8QVrNvBG",
+        "slugId": "other-shri-dwarkadhish-temple-dwarka",
+        "templeName": "Shri Dwarkadhish Temple – Dwarka",
+        "category": "",
+        "resolvedFrom": "id",
+        "currentTempleKey": "dwarkadhish",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "yilhdofmFA2wscBqioSF",
+        "slugId": "shiva-kedarnath-himalayan-shrine",
+        "templeName": "Kedarnath Himalayan Temple",
+        "category": "Shiva Temple",
+        "resolvedFrom": "id",
+        "currentTempleKey": "kedarnath",
+        "hasCuratedData": true
+      }
+    ],
+    "B_resolvedByNameOnly": [
+      {
+        "templeId": "5GmdWYYaA38Wx46QLyUN",
+        "slugId": "shiva-mahakaleshwar-bhasma-temple",
+        "templeName": "Mahakal Jyotirlinga Shrine – Ujjain",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "mahakaleshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "5vawXjLGFdM16y0JdIlE",
+        "slugId": "shaktipeeth-vaishno-devi-temple-jammu-kashmir",
+        "templeName": "Vaishno Devi Temple – Jammu & Kashmir",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "name",
+        "currentTempleKey": "other-vaishno-devi-temple-jammu-kashmir",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "8AKfRKrPYdAXwnmko3Jy",
+        "slugId": "shiva-kashi-vishwanath-corridor-varanasi",
+        "templeName": "Kashi Vishwanath Corridor Shrine",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "kashi-vishwanath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "965Y4sna4PIKH9tFjwcS",
+        "slugId": "shiva-somnath-patan-gujarat",
+        "templeName": "Somnath Jyotirlinga Shrine – Veraval",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "somnath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "A5XO8668YihW4pKViBBt",
+        "slugId": "vishnu-iskcon-mira-road-thane",
+        "templeName": "ISKCON Mira Road – Thane",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "other-iskcon-mira-road-thane",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "BJFpcnGkTngxwgw1fQsO",
+        "slugId": "sacred-golden-temple-amritsar",
+        "templeName": "Golden Temple – Amritsar",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "other-golden-temple-amritsar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "Bt9ChV3tZf3CkiA2f4kN",
+        "slugId": "devi-mansa-devi-temple-haridwar",
+        "templeName": "Mansa Devi Temple – Haridwar",
+        "category": "Devi Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "shaktipeeth-mansa-devi-temple-haridwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "CJX15PVKiBR9LOY5XTWs",
+        "slugId": "sacred-somnath-gujarat-coastal",
+        "templeName": "Somnath Coastal Pilgrimage Sanctuary",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "somnath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "EwwLj2P3b2K6YpdT6Di4",
+        "slugId": "vishnu-badrinath-temple-char-dham",
+        "templeName": "Badrinath Shrine – Uttarakhand",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "badrinath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "GCh8J3mqRAlJmnK8jMGe",
+        "slugId": "shiva-ramanathaswamy-corridor-rameswaram",
+        "templeName": "Ramanathaswamy Long Corridor Temple",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "ramanathaswamy",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "GZ4ymqwFHrYFqLeOBZk4",
+        "slugId": "vishnu-padmanabhaswamy-temple-thiruvananthapuram",
+        "templeName": "Padmanabhaswamy Temple – Thiruvananthapuram",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "padmanabhaswamy-temple-thiruvananthapuram",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "ILpCWntraBtR43S244AO",
+        "slugId": "sacred-siddhivinayak-temple-mumbai",
+        "templeName": "Siddhivinayak Temple – Mumbai",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "other-siddhivinayak-temple-mumbai",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "LYMlDF5EqsIVlxQjy3NI",
+        "slugId": "vishnu-guruvayur-temple-kerala",
+        "templeName": "Guruvayur Temple – Kerala",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "guruvayur-temple-kerala",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "MKL8qru1erGspGqfvGrl",
+        "slugId": "shiva-nageshwar-darukavana-gujarat",
+        "templeName": "Nageshwar Darukavana Shrine – Dwarka",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "nageshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "NU9QwwU1wJI7RvSDJ8gr",
+        "slugId": "sacred-somnath-temple-prabhas-patan",
+        "templeName": "Somnath Divine Shrine – Gujarat",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "somnath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "TBH6pghkMPTUGiVhUW1C",
+        "slugId": "shiva-grishneshwar-ellora-caves",
+        "templeName": "Grishneshwar Red Rock Temple – Ellora",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "grishneshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "Ut1rviMXKqyS9MT69ADD",
+        "slugId": "devi-bhramara-ambika-temple-srisailam",
+        "templeName": "Bhramaramba Devi Temple – Srisailam",
+        "category": "Devi Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "srisailam",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "Z3i7MMJDz0OaVpysgiY1",
+        "slugId": "vishnu-dwarakadheesh-temple-mathura",
+        "templeName": "Dwarkadhish Temple – Mathura",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "dwarkadhish",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "caUlRgU2UCPeEz3FjPFI",
+        "slugId": "sacred-sabarimala-sree-dharma-sastha-temple",
+        "templeName": "Sabarimala Sree Dharma Sastha Temple",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "sabarimala-sree-dharma-sastha-temple",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "cesyNvigMvTFq7i7qBug",
+        "slugId": "shaktipeeth-kamakhya-kanya-kumari-temple",
+        "templeName": "Kanyakumari Devi Temple – Kanyakumari",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "name",
+        "currentTempleKey": "sacred-kanya-kumari-temple-kanyakumari",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "hyT0kuBHplj6oMbTF7ZF",
+        "slugId": "vishnu-tirupati-balaji-temple-andhra-pradesh",
+        "templeName": "Tirupati Balaji Temple – Andhra Pradesh",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "other-tirupati-balaji-temple-andhra-pradesh",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "mc8Xl58SJGUh4TiqKXpM",
+        "slugId": "shiva-baba-dham-deoghar",
+        "templeName": "Baba Baidyanath Jyotirlinga – Deoghar",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "baidyanath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "ndXyIGLG9tb4HJFpCuEa",
+        "slugId": "shiva-omkareshwar-island-khandwa",
+        "templeName": "Omkareshwar Island Mandir – Narmada",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "omkareshwar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "nw3gUpOFgD9W1UUZdx6s",
+        "slugId": "shiva-bhimashankar-jyotirling-pune",
+        "templeName": "Bhimashankar Forest Temple – Pune",
+        "category": "Shiva Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "bhimashankar",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "o2EfRgCyXDbTicfV2j1c",
+        "slugId": "shaktipeeth-brareshwari-devi-temple-kangra",
+        "templeName": "Brajeshwari Devi Temple – Kangra",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "name",
+        "currentTempleKey": "shaktipeeth-brajeshwari-devi-temple-kangra",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "omPVUiCgWLVXHlfKcLiL",
+        "slugId": "sacred-somnath-mahadham-gujarat",
+        "templeName": "Somnath Maha Kshetra",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "somnath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "pMzrlH8UZd13YwOiQTaC",
+        "slugId": "sacred-kamakshi-amman-temple-kanchipuram",
+        "templeName": "Kamakshi Amman Temple – Kanchipuram",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "shaktipeeth-kamakshi-amman-temple-kanchipuram",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "urFTXJLAFY6FRL3j89DR",
+        "slugId": "devi-kalighat-mandir-kolkata",
+        "templeName": "Kalighat Kali Shrine – Kolkata",
+        "category": "Devi Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "shaktipeeth-kalighat-kali-temple-kolkata",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "vJAFaue2zK1x39YQQcse",
+        "slugId": "sacred-somnath-jyotirling-gujarat-core",
+        "templeName": "Somnath Temple Complex",
+        "category": "Sacred",
+        "resolvedFrom": "name",
+        "currentTempleKey": "somnath",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "xOidlQ0Hs7uNbTz3u7gA",
+        "slugId": "devi-meenakshi-temple-madurai",
+        "templeName": "Meenakshi Temple – Madurai",
+        "category": "Devi Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "other-meenakshi-temple-madurai",
+        "hasCuratedData": true
+      },
+      {
+        "templeId": "ybDXsy6D5BqnnOoDxnSx",
+        "slugId": "devi-chandi-devi-temple-haridwar",
+        "templeName": "Chandi Devi Temple – Haridwar",
+        "category": "Devi Temple",
+        "resolvedFrom": "name",
+        "currentTempleKey": "shaktipeeth-chandi-devi-temple-haridwar",
+        "hasCuratedData": true
+      }
+    ],
+    "C_unresolvedExpected": [
+      {
+        "templeId": "0rgrDNOPK9NgG7Jkclpl",
+        "slugId": "sacred-ambalappuzha-sree-krishna-temple",
+        "templeName": "Ambalappuzha Sri Krishna Temple – Alappuzha",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "0rgrdnopk9ngg7jkclpl",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "1ePS4bBjVB3cnfKkJkoE",
+        "slugId": "hanuman-sankat-mochan-shimla",
+        "templeName": "Sankat Mochan Temple – Shimla",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "1eps4bbjvb3cnfkkjkoe",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "2dBo7xbFpgT2ZxsnITHF",
+        "slugId": "healing-ghati-subramanya-temple",
+        "templeName": "Ghati Subramanya Temple – Doddaballapur",
+        "category": "Healing Temples",
+        "resolvedFrom": "none",
+        "currentTempleKey": "2dbo7xbfpgt2zxsnithf",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "2mFgIZ2xSwzdpEsZpfh3",
+        "slugId": "hanuman-jakhu-temple-shimla",
+        "templeName": "Jakhu Temple – Shimla",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "2mfgiz2xswzdpeszpfh3",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "2udyeLbdwK1Yy3UWNqO4",
+        "slugId": "shiva-pashupatinath-temple-nepal-border",
+        "templeName": "Pashupatinath Shrine – Indo-Nepal Border",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "2udyelbdwk1yy3uwnqo4",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "3Gtmty0S4tusafdZtmef",
+        "slugId": "sacred-thirunageswaram-naganathar-temple",
+        "templeName": "Thirunageswaram Naganathar Temple",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "3gtmty0s4tusafdztmef",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "4qMO6YnWY8wJGTdtPs1J",
+        "slugId": "sacred-kethu-temple-keelaperumpallam",
+        "templeName": "Naganathaswamy Temple – Keelaperumpallam",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "4qmo6ynwy8wjgtdtps1j",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "50n8usjT1we9TYZqjP3Q",
+        "slugId": "sacred-udupi-sri-krishna-matha",
+        "templeName": "Udupi Sri Krishna Matha – Udupi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "50n8usjt1we9tyzqjp3q",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "5EH3t52RaTKfb1CIEobA",
+        "slugId": "vishnu-vitthal-temple-pandharpur",
+        "templeName": "Vithoba Temple – Pandharpur",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "5eh3t52ratkfb1cieoba",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "6AKsoULTaLTb708DeZNu",
+        "slugId": "sacred-thiruvalla-sree-vallabha-temple",
+        "templeName": "Sree Vallabha Temple – Thiruvalla",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "6aksoultaltb708deznu",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "6Rx5RysvzRA49bdemhUo",
+        "slugId": "sacred-swamimalai-murugan-temple",
+        "templeName": "Swamimalai Murugan Temple – Thanjavur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "6rx5rysvzra49bdemhuo",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "6s59vQPDfQSkvAAAtyD5",
+        "slugId": "shiva-vadakkunnathan-temple-thrissur",
+        "templeName": "Vadakkunnathan Temple – Thrissur",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "6s59vqpdfqskvaaatyd5",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "7di6qmFYWyV3flBB37W3",
+        "slugId": "vishnu-shri-ram-mandir-ayodhya",
+        "templeName": "Ayodhya Ram Mandir Complex",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "7di6qmfywyv3flbb37w3",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "81cN00DTtcmsVJCSgKHf",
+        "slugId": "sacred-srivilliputhur-andal-temple",
+        "templeName": "Srivilliputhur Andal Temple – Virudhunagar",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "81cn00dttcmsvjcsgkhf",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "8AlRBblNJlUr0wG4KDPM",
+        "slugId": "sacred-sammed-shikharji-parasnath",
+        "templeName": "Sammed Shikharji – Giridih",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "8alrbblnjlur0wg4kdpm",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "8IAvBcEbHrU3rQMZoDtk",
+        "slugId": "sacred-kumbeshwarar-temple-kumbakonam",
+        "templeName": "Adi Kumbeswarar Temple – Kumbakonam",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "8iavbcebhru3rqmzodtk",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "8cvh8y6YqLNgnsOXFcsq",
+        "slugId": "sacred-gopnath-mahadev-temple-bhavnagar",
+        "templeName": "Gopnath Mahadev Temple – Bhavnagar",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "8cvh8y6yqlngnsoxfcsq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "8sz8D7ODqv3cA0jmS8zg",
+        "slugId": "sacred-mahakali-temple-pavagadh",
+        "templeName": "Kalika Mata Temple – Pavagadh",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "none",
+        "currentTempleKey": "8sz8d7odqv3ca0jms8zg",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "8ulQF8kVt3yQAwAQC208",
+        "slugId": "devi-kamakhya-peeth-guwahati",
+        "templeName": "Kamakhya Devi Sanctuary – Assam",
+        "category": "Devi Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "8ulqf8kvt3yqawaqc208",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "9Qme1N7IcAmnfTSzS1Nv",
+        "slugId": "sacred-hadimba-devi-temple-manali",
+        "templeName": "Hidimba Devi Temple – Manali",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "9qme1n7icamnftszs1nv",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "9sZ8mFMMRvH7ssaCajzu",
+        "slugId": "sacred-ramatheertham-vizianagaram",
+        "templeName": "Ramatheertham Temple – Vizianagaram",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "9sz8mfmmrvh7ssacajzu",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "A2eUZTlfSjRi0TUHDckV",
+        "slugId": "sacred-amararamam-amaraswaraswamy-temple",
+        "templeName": "Amareswara Swamy Temple – Amaravati",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "a2euztlfsjri0tuhdckv",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "A6hwgf2wE5yVVA9MbvIr",
+        "slugId": "sacred-ranakpur-jain-temple-pali",
+        "templeName": "Ranakpur Jain Temple – Pali",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "a6hwgf2we5yvva9mbvir",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ALyT3AHI82r8ya5zjtOk",
+        "slugId": "sacred-neelkanth-mahadev-temple-rishikesh",
+        "templeName": "Neelkanth Mahadev Temple – Rishikesh",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "alyt3ahi82r8ya5zjtok",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "AnmJGG4J0Cn7PiypzCEr",
+        "slugId": "sacred-chamundeshwari-hill-mysore",
+        "templeName": "Chamundi Hill Sanctuary – Mysuru",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "anmjgg4j0cn7piypzcer",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "AqXA93V1503SFGqxVSrF",
+        "slugId": "shiva-chinnamastika-shiva-temple",
+        "templeName": "Bhairavnath Shiva Shrine – Rajrappa",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "aqxa93v1503sfgqxvsrf",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "BXU3nJx31mvf9mmBnQaQ",
+        "slugId": "sacred-oppiliappan-temple-kumbakonam",
+        "templeName": "Uppiliappan Temple – Kumbakonam",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "bxu3njx31mvf9mmbnqaq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "CQXYvG3gBS2O76RB6i7F",
+        "slugId": "sacred-dilwara-jain-temples-mount-abu",
+        "templeName": "Dilwara Temples – Mount Abu",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "cqxyvg3gbs2o76rb6i7f",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "EB3Qiu9HncRJYDRJKPbb",
+        "slugId": "sacred-somaramam-someshwara-swamy-temple",
+        "templeName": "Someshwara Swamy Temple – Bhimavaram",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "eb3qiu9hncrjydrjkpbb",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "EqvpMfhA4vwbTs8nmwAU",
+        "slugId": "hanuman-bade-hanuman-mandir-prayagraj",
+        "templeName": "Bade Hanuman Mandir (Lying Hanuman) – Prayagraj",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "eqvpmfha4vwbts8nmwau",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "EsPwlWWPVBCHSLWMSvHj",
+        "slugId": "sacred-kukke-subramanya-temple",
+        "templeName": "Kukke Subramanya Temple – Dakshina Kannada",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "espwlwwpvbchslwmsvhj",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "FKaV6vRUMRMXwGJuiicn",
+        "slugId": "sacred-murudeshwar-coastal-temple",
+        "templeName": "Murudeshwar Coastal Sanctuary",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "fkav6vrumrmxwgjuiicn",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "FW99cDfFPi9WeEfNFd8c",
+        "slugId": "hanuman-kashtabhanjan-dev-temple-sarangpur",
+        "templeName": "Shree Kashtabhanjan Dev Hanumanji – Sarangpur",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "fw99cdffpi9weefnfd8c",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "H1H8WOZ4K0pxAktGTOhQ",
+        "slugId": "sacred-varadharaja-perumal-temple-kanchipuram",
+        "templeName": "Varadharaja Perumal Temple – Kanchipuram",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "h1h8woz4k0pxaktgtohq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "HsysQUOiqa3Jz5OYCt6q",
+        "slugId": "ashtavinayak-siddhivinayak-temple-siddhatek",
+        "templeName": "Siddhivinayak Temple – Siddhatek",
+        "category": "Ashtavinayak",
+        "resolvedFrom": "none",
+        "currentTempleKey": "hsysquoiqa3jz5oyct6q",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "I39jxDdDoi8gh4OyUazA",
+        "slugId": "sacred-kumararamam-bhimeswara-swamy",
+        "templeName": "Kumara Bhimeswara Swamy Temple – Samalkota",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "i39jxdddoi8gh4oyuaza",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ICgj9P6dgETsIXxqobw3",
+        "slugId": "shaktipeeth-devi-patan-temple-balrampur",
+        "templeName": "Devi Patan Temple – Tulsipur",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "none",
+        "currentTempleKey": "icgj9p6dgetsixxqobw3",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "JTluxxT7o3jLrGNeZMxf",
+        "slugId": "shiva-tarakeshwar-temple-hooghly",
+        "templeName": "Tarakeshwar Temple – Hooghly",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "jtluxxt7o3jlrgnezmxf",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "K4RCIINAhFeAyoWnkEjp",
+        "slugId": "shiva-tungnath-temple-chopta",
+        "templeName": "Tungnath Temple – Chopta",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "k4rciinahfeayownkejp",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "K58Zinpyp09lhLBXA8UX",
+        "slugId": "sacred-alangudi-guru-temple",
+        "templeName": "Apatsahayesvarar Temple – Alangudi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "k58zinpyp09lhlbxa8ux",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "KPUbJsMxiwtOy2xgoe1z",
+        "slugId": "sacred-brahma-temple-pushkar",
+        "templeName": "Brahma Temple – Pushkar",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "kpubjsmxiwtoy2xgoe1z",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "KYecZMkL1DYQHS5yyYO5",
+        "slugId": "sacred-thousand-pillar-temple-warangal",
+        "templeName": "Thousand Pillar Temple – Warangal",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "kyeczmkl1dyqhs5yyyo5",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "L8opaF8B4j9jeTwJWD8Z",
+        "slugId": "sacred-ramappa-temple-mulugu",
+        "templeName": "Ramappa Temple – Mulugu",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "l8opaf8b4j9jetwjwd8z",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "M20cIzy9RRRRozVb97on",
+        "slugId": "vishnu-radha-raman-temple-vrindavan",
+        "templeName": "Radha Raman Temple – Vrindavan",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "m20cizy9rrrrozvb97on",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "M3M2X21tBiLIGeKQBuAq",
+        "slugId": "sacred-triyuginarayan-temple-rudraprayag",
+        "templeName": "Triyuginarayan Temple – Rudraprayag",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "m3m2x21tbiligekqbuaq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "M3yN7ARm5F73IkMz1qAg",
+        "slugId": "sacred-draksharamam-bheemeswara-temple",
+        "templeName": "Draksharamam Bheemeswara Temple – Kakinada",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "m3yn7arm5f73ikmz1qag",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "M4RgoUtEx9vMUnoC05LY",
+        "slugId": "sacred-tiruchendur-murugan-temple",
+        "templeName": "Tiruchendur Murugan Temple – Thoothukudi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "m4rgoutex9vmunoc05ly",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "MDFWk7JwNi7uaNtSlBtN",
+        "slugId": "vishnu-nathdwara-shrinathji-temple",
+        "templeName": "Shrinathji Temple – Nathdwara",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "mdfwk7jwni7uantslbtn",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "MXneCxEMTKmQAPTOWPEo",
+        "slugId": "vishnu-prem-mandir-vrindavan",
+        "templeName": "Prem Mandir – Vrindavan",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "mxnecxemtkmqaptowpeo",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "McNkinD3SfNl2eL8cUTl",
+        "slugId": "vishnu-iskcon-temple-mumbai",
+        "templeName": "ISKCON Temple Mumbai – Juhu",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "mcnkind3sfnl2el8cutl",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "MvWT1caalyGmyiQcqpKo",
+        "slugId": "sacred-mundeshwari-devi-temple-kaimur",
+        "templeName": "Mundeshwari Devi Temple – Kaimur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "mvwt1caalygmyiqcqpko",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "MyLBln26Hkjc2AECkiTQ",
+        "slugId": "sacred-dhari-devi-temple-srinagar-garhwal",
+        "templeName": "Dhari Devi Temple – Srinagar Garhwal",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "mylbln26hkjc2aeckitq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "NUR1yNFCC7rOvUomfmuq",
+        "slugId": "shiva-pashupatinath-temple-mandsaur",
+        "templeName": "Pashupatinath Temple – Mandsaur",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "nur1ynfcc7rovuomfmuq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "NhHjGFBR4j7bXGPksi1d",
+        "slugId": "sacred-thirunallar-saneeswaran-temple",
+        "templeName": "Dharbaranyeswarar Temple – Thirunallar",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "nhhjgfbr4j7bxgpksi1d",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "OCO1rx0rzDobHa90APU2",
+        "slugId": "vishnu-simhachalam-temple-visakhapatnam",
+        "templeName": "Varaha Lakshmi Narasimha Temple – Simhachalam",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "oco1rx0rzdobha90apu2",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "OOXIMZzFLDJrXBWM8bws",
+        "slugId": "vishnu-venugopala-swamy-temple-mysore",
+        "templeName": "Venugopala Swamy Temple – KRS Mysore",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ooximzzfldjrxbwm8bws",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "OQve0PDnQehS5ljNj2aF",
+        "slugId": "sacred-triloknath-temple-lahaul",
+        "templeName": "Triloknath Temple – Lahaul Valley",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "oqve0pdnqehs5ljnj2af",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "OUX3s3XOhNVLdkMst4TL",
+        "slugId": "sacred-vishnupad-temple-gaya",
+        "templeName": "Vishnupad Temple – Gaya",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "oux3s3xohnvldkmst4tl",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "PbEeIJaKAJwt3Ue2PvXj",
+        "slugId": "hanuman-sankat-mochan-temple-varanasi",
+        "templeName": "Sankat Mochan Hanuman Temple – Varanasi",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "pbeeijakajwt3ue2pvxj",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "PgkluRNDwkkprPlaIptr",
+        "slugId": "sacred-kondagattu-anjaneya-swamy-temple",
+        "templeName": "Kondagattu Anjaneya Swamy Temple – Jagtial",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "pgklurndwkkprplaiptr",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "Q46OQ6XNqYEJ1CSkXtu3",
+        "slugId": "shiva-amarnath-cave-temple-kashmir",
+        "templeName": "Amarnath Temple – Jammu & Kashmir",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "q46oq6xnqyej1cskxtu3",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "RDsed7SRscN2XxTGIymb",
+        "slugId": "shiva-brihadisvara-temple-thanjavur",
+        "templeName": "Brihadisvara Temple – Thanjavur",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "rdsed7srscn2xxtgiymb",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "REvz1xLfD7NaThPLmG2j",
+        "slugId": "devi-dakshineswar-kali-temple-kolkata",
+        "templeName": "Dakshineswar Kali Temple – Kolkata",
+        "category": "Devi Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "revz1xlfd7nathplmg2j",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ROR5M7Uucw8ZfEFIy4k1",
+        "slugId": "sacred-jageshwar-dham-almora",
+        "templeName": "Jageshwar Dham Temple Complex – Almora",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ror5m7uucw8zfefiy4k1",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "S026Cs265DC7wUreQ6GK",
+        "slugId": "devi-katil-durgaparameshwari-temple",
+        "templeName": "Kateel Durgaparameshwari Temple – Mangalore",
+        "category": "Devi Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "s026cs265dc7wureq6gk",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "SlnFUbhqPr0RIfdMchL7",
+        "slugId": "sacred-ksheeraramam-ksheera-ramalingeswara",
+        "templeName": "Ksheera Ramalingeswara Temple – Palakollu",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "slnfubhqpr0rifdmchl7",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "SnbKg7kAJwqCy7EvRiQH",
+        "slugId": "vishnu-badrinath-dham-chamoli",
+        "templeName": "Badri Vishal Temple – Chamoli",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "snbkg7kajwqcy7evriqh",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "Ss7aYW8BhzEvRyEmX6bL",
+        "slugId": "sacred-janardhana-swamy-temple-varkala",
+        "templeName": "Janardhana Swamy Temple – Varkala",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ss7ayw8bhzevryemx6bl",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "Tly6SKkOpYbzBwdyzLHs",
+        "slugId": "sacred-suchindram-thanumalayan-temple",
+        "templeName": "Thanumalayan Temple – Suchindram",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "tly6skkopybzbwdyzlhs",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "UR7E2jphYgxyWr8kEfYj",
+        "slugId": "shiva-trimbakeshwar-dham-nashik",
+        "templeName": "Trimbak Raja Temple – Nashik",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ur7e2jphygxywr8kefyj",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "UaBYsMOzwjcxORaOXPUs",
+        "slugId": "sacred-sarangapani-temple-kumbakonam",
+        "templeName": "Sarangapani Temple – Kumbakonam",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "uabysmozwjcxoraoxpus",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "VMfFnTTi4hLOszpMZyV6",
+        "slugId": "sacred-tarnetar-mahadev-temple-surendranagar",
+        "templeName": "Trinetreshwar Mahadev Temple – Tarnetar",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "vmffntti4hloszpmzyv6",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "VWW2TLkghH4AwwZL6jG7",
+        "slugId": "sacred-tapkeshwar-temple-dehradun",
+        "templeName": "Tapkeshwar Mahadev Temple – Dehradun",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "vww2tlkghh4awwzl6jg7",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "VmRgFJImWzxnrwT96BWG",
+        "slugId": "sacred-palani-murugan-temple",
+        "templeName": "Palani Murugan Temple – Dindigul",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "vmrgfjimwzxnrwt96bwg",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "Vy6Oz8SB3CxXzxulUSoe",
+        "slugId": "vishnu-ahobilam-narasimha-temple",
+        "templeName": "Ahobilam Navanarasimha Temple",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "vy6oz8sb3cxxzxulusoe",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "WL8FLbXeHmUnbDAud8pL",
+        "slugId": "sacred-shree-ram-janmabhoomi-mandir-ayodhya",
+        "templeName": "Shree Ram Janmabhoomi Mandir – Ayodhya",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "wl8flbxehmunbdaud8pl",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "X2wyYAmEHz2UAD7K1tUS",
+        "slugId": "sacred-vashisht-kund-temple-manali",
+        "templeName": "Vashisht Temple & Hot Springs – Manali",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "x2wyyamehz2uad7k1tus",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "X71bVW8Iv9GWQpn0uek2",
+        "slugId": "sacred-birla-mandir-jaipur",
+        "templeName": "Birla Mandir (Laxmi Narayan) – Jaipur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "x71bvw8iv9gwqpn0uek2",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "X9hkX56UpC8KsBv1NkuT",
+        "slugId": "vishnu-govind-dev-ji-temple-jaipur",
+        "templeName": "Govind Dev Ji Temple – Jaipur",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "x9hkx56upc8ksbv1nkut",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "XrqJXR7vffY99lRLwWx1",
+        "slugId": "sacred-mayapur-chandrodaya-mandir",
+        "templeName": "Temple of Vedic Planetarium (TOVP) – Mayapur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "xrqjxr7vffy99lrlwwx1",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "Y9Lc6ahuteU1g0w4aTnV",
+        "slugId": "sacred-gnana-saraswathi-temple-basar",
+        "templeName": "Gnana Saraswathi Temple – Basar",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "y9lc6ahuteu1g0w4atnv",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "YEev66FvWqp966ycBAHb",
+        "slugId": "hanuman-maruti-temple-girgaum",
+        "templeName": "Girgaon Babulnath Hanuman Mandir – Mumbai",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "yeev66fvwqp966ycbahb",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ZDgSGw17IiQGn4HYKYWc",
+        "slugId": "hanuman-marutam-temple-connaught-place",
+        "templeName": "Pracheen Hanuman Mandir – Delhi",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "zdgsgw17iiqgn4hykywc",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ZTLDmCb507jld8NzyFhD",
+        "slugId": "devi-mumbadevi-temple-mumbai",
+        "templeName": "Mumbadevi Temple – Mumbai",
+        "category": "Devi Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ztldmcb507jld8nzyfhd",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ZXpdi065TQXVJBTRUw7S",
+        "slugId": "shaktipeeth-sharada-devi-temple-maihar",
+        "templeName": "Sharada Devi Temple – Maihar",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "none",
+        "currentTempleKey": "zxpdi065tqxvjbtruw7s",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "aCZTQvmsvJiuNYz8phxJ",
+        "slugId": "sacred-mahavir-mandir-patna",
+        "templeName": "Mahavir Mandir – Patna",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "acztqvmsvjiunyz8phxj",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "aRezlQVKdZ10qJ2stC9V",
+        "slugId": "sacred-khatu-shyam-temple-sikar",
+        "templeName": "Khatu Shyam Ji Temple – Sikar",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "arezlqvkdz10qj2stc9v",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "awxXdbMrl4T30plQ4DqN",
+        "slugId": "devi-mahalaxmi-temple-mumbai",
+        "templeName": "Mahalaxmi Temple – Mumbai",
+        "category": "Devi Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "awxxdbmrl4t30plq4dqn",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "bm2nQNIbVJOUsWkmez8O",
+        "slugId": "healing-sarnath-buddhist-monastery",
+        "templeName": "Sarnath Dhamek Stupa & Monastery",
+        "category": "Healing Temples",
+        "resolvedFrom": "none",
+        "currentTempleKey": "bm2nqnibvjouswkmez8o",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "boYR6tKcdOcuGYebPDkR",
+        "slugId": "shaktipeeth-vindhyavasini-temple-vindhyachal",
+        "templeName": "Vindhyavasini Temple – Vindhyachal",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "none",
+        "currentTempleKey": "boyr6tkcdocugyebpdkr",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "c12ejqmmNGpfALU6ptWh",
+        "slugId": "sacred-karni-mata-temple-deshnoke",
+        "templeName": "Karni Mata Temple (Rat Temple) – Deshnoke",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "c12ejqmmngpfalu6ptwh",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ct63duUJbSu4rZiMjwgm",
+        "slugId": "sacred-veerabhadra-temple-lepakshi",
+        "templeName": "Veerabhadra Temple – Lepakshi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ct63duujbsu4rzimjwgm",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "d49dKAPi0Iog9F6To4bI",
+        "slugId": "sacred-akshardham-temple-delhi",
+        "templeName": "Swaminarayan Akshardham – Delhi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "d49dkapi0iog9f6to4bi",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "d5gu9edWZURKHimgzCus",
+        "slugId": "vishnu-radha-damodar-temple-vrindavan",
+        "templeName": "Radha Damodar Temple – Vrindavan",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "d5gu9edwzurkhimgzcus",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "f7i8KasqBOaLs58XeXVp",
+        "slugId": "sacred-yadadri-narasimha-swamy-temple",
+        "templeName": "Yadadri Sri Lakshmi Narasimha Temple",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "f7i8kasqboals58xexvp",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "f8WGAkSVcSveJLa7Nxwk",
+        "slugId": "sacred-mahabodhi-temple-bodh-gaya",
+        "templeName": "Mahabodhi Temple Complex – Bodh Gaya",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "f8wgaksvcsvejla7nxwk",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "fQbrnE6H8IkEmGyxvRoY",
+        "slugId": "vishnu-ananta-vasudeva-temple-bhubaneswar",
+        "templeName": "Ananta Vasudeva Temple – Bhubaneswar",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "fqbrne6h8ikemgyxvroy",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "fZqs99e4LrLoV3LpLfda",
+        "slugId": "vishnu-krishna-janmabhoomi-mathura",
+        "templeName": "Shri Krishna Janmasthan – Mathura",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "fzqs99e4lrlov3lplfda",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "gAbq0ig3E9K11g1Kb6Wh",
+        "slugId": "shiva-murudeshwar-temple-karnataka",
+        "templeName": "Murudeshwar Temple – Karnataka",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "gabq0ig3e9k11g1kb6wh",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "gM0FGwHQWEqqRdE277GL",
+        "slugId": "shaktipeeth-tara-tarini-temple-ganjam",
+        "templeName": "Tara Tarini Temple – Ganjam",
+        "category": "Shakti Peetha",
+        "resolvedFrom": "none",
+        "currentTempleKey": "gm0fgwhqweqqrde277gl",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "gQT8QBJ9e75tsV9Lu0HJ",
+        "slugId": "hanuman-kainchi-dham-neem-karoli",
+        "templeName": "Kainchi Dham Ashram – Nainital",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "gqt8qbj9e75tsv9lu0hj",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "gk9ovjmWolqG8Gw5FYzF",
+        "slugId": "healing-parmarth-niketan-rishikesh",
+        "templeName": "Parmarth Niketan Ashram – Rishikesh",
+        "category": "Healing Temples",
+        "resolvedFrom": "none",
+        "currentTempleKey": "gk9ovjmwolqg8gw5fyzf",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "hg6o6hcY7r4FWk995ox0",
+        "slugId": "sacred-trinetra-ganesh-temple-ranthambore",
+        "templeName": "Trinetra Ganesh Temple – Ranthambore",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "hg6o6hcy7r4fwk995ox0",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "hlLmXbJaDCUFp4WLBOpU",
+        "slugId": "devi-kanaka-durga-temple-vijayawada",
+        "templeName": "Kanaka Durga Temple – Vijayawada",
+        "category": "Devi Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "hllmxbjadcufp4wlbopu",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "hmc1jzjBCIGZKap3EnvZ",
+        "slugId": "sacred-thiruthani-murugan-temple",
+        "templeName": "Tiruttani Murugan Temple – Tiruvallur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "hmc1jzjbcigzkap3envz",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ioUlOf1Zl1wog2vdQySX",
+        "slugId": "hanuman-salasar-balaji-temple-churu",
+        "templeName": "Salasar Balaji Temple – Churu",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ioulof1zl1wog2vdqysx",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ipDP5oHClySibC47JXxb",
+        "slugId": "healing-mangaladevi-temple-mangalore",
+        "templeName": "Mangaladevi Temple – Mangalore",
+        "category": "Healing Temples",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ipdp5ohclysibc47jxxb",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "j8LYLUaUkj3CVd3T3brH",
+        "slugId": "hanuman-mehendipur-balaji-temple-dausa",
+        "templeName": "Mehendipur Balaji Temple – Dausa",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "j8lyluaukj3cvd3t3brh",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "jK9FcYRKY9qs5aSbeSpd",
+        "slugId": "sacred-sun-temple-modhera",
+        "templeName": "Sun Temple – Modhera",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "jk9fcyrky9qs5asbespd",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "lCDqbp0vjQsxiQq2IPn3",
+        "slugId": "sacred-nagaraja-temple-nagercoil",
+        "templeName": "Nagaraja Temple – Nagercoil",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "lcdqbp0vjqsxiqq2ipn3",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "lM1YpGZz4ZyUxSo7iTAa",
+        "slugId": "sacred-tulsi-manas-temple-varanasi",
+        "templeName": "Tulsi Manas Mandir – Varanasi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "lm1ypgzz4zyuxso7itaa",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "lytyDmttSq45Pogif08p",
+        "slugId": "sacred-bhadrachalam-sita-ramachandra-swamy",
+        "templeName": "Sita Ramachandra Swamy Temple – Bhadrachalam",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "lytydmttsq45pogif08p",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "m0QKTIAqQ2zF85hGJfXg",
+        "slugId": "vishnu-sri-ranganathaswamy-temple-srirangam",
+        "templeName": "Sri Ranganathaswamy Temple – Srirangam",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "m0qktiaqq2zf85hgjfxg",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "md0YNRL6If6U1KbGlsfN",
+        "slugId": "vishnu-bankey-bihari-temple-vrindavan",
+        "templeName": "Bankey Bihari Temple – Vrindavan",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "md0ynrl6if6u1kbglsfn",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "nMGuX0F5d0Ujto2frGrM",
+        "slugId": "sacred-bala-hanuman-temple-jamnagar",
+        "templeName": "Shri Bala Hanuman Temple – Jamnagar",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "nmgux0f5d0ujto2frgrm",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "nVkTrngywNLu6icyccad",
+        "slugId": "sacred-janaki-mandir-sitamarhi",
+        "templeName": "Punaura Dham Janaki Temple – Sitamarhi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "nvktrngywnlu6icyccad",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ndpohUju83EAOWOLivrn",
+        "slugId": "sacred-thingalur-chandran-temple",
+        "templeName": "Kailasanathar Temple – Thingalur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ndpohuju83eaowolivrn",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "nmNWwhoYfKUjk8fYxzir",
+        "slugId": "sacred-shirdi-sai-baba-temple-maharashtra",
+        "templeName": "Shirdi Sai Baba Temple – Maharashtra",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "nmnwwhoyfkujk8fyxzir",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "noepkqnXYlju4eprzCs9",
+        "slugId": "vishnu-chennakesava-temple-belur",
+        "templeName": "Chennakesava Temple – Belur",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "noepkqnxylju4eprzcs9",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "ojZZr3KvUaCPhFcYWlQo",
+        "slugId": "healing-dhanvantari-temple-kerala",
+        "templeName": "Sri Dhanvantari Temple – Nelluvai",
+        "category": "Healing Temples",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ojzzr3kvuacphfcywlqo",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "other-iskcon-temple-mumbai",
+        "slugId": "other-iskcon-temple-mumbai",
+        "templeName": "ISKCON Juhu Mumbai",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "other-iskcon-temple-mumbai",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "other-mahalaxmi-temple",
+        "slugId": "other-mahalaxmi-temple",
+        "templeName": "Shri Mahalakshmi Mandir",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "other-mahalaxmi-temple",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "other-shirdi-sai-baba-temple-maharashtra",
+        "slugId": "other-shirdi-sai-baba-temple-maharashtra",
+        "templeName": "Shirdi Sai Baba Temple – Maharashtra",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "other-shirdi-sai-baba-temple-maharashtra",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "pHxRBffoxEpPppAZ2lCJ",
+        "slugId": "healing-parli-vaijnath-temple",
+        "templeName": "Parli Vaijnath Temple – Beed",
+        "category": "Healing Temples",
+        "resolvedFrom": "none",
+        "currentTempleKey": "phxrbffoxeppppaz2lcj",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "pOtlH5XH8rEE1KU91QbF",
+        "slugId": "shiva-kotilingeshwara-temple-kolar",
+        "templeName": "Kotilingeshwara Temple – Kolar",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "potlh5xh8ree1ku91qbf",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "pu75PKElyQEzhlr9uL6i",
+        "slugId": "sacred-pazhamudircholai-murugan-temple",
+        "templeName": "Pazhamudircholai Murugan Temple – Madurai",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "pu75pkelyqezhlr9ul6i",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "q9CSe2b8ZOFoFg2v6cGq",
+        "slugId": "sacred-bhalkeeshwar-temple-veraval",
+        "templeName": "Bhalka Tirth – Veraval",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "q9cse2b8zofofg2v6cgq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "qJTk14Hn1nLXEIU1gz8g",
+        "slugId": "sacred-bijli-mahadev-temple-kullu",
+        "templeName": "Bijli Mahadev Temple – Kullu",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "qjtk14hn1nlxeiu1gz8g",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "qNLdccUxsiteu2Zn7mpE",
+        "slugId": "vishnu-kalaram-temple-nashik",
+        "templeName": "Kalaram Temple – Nashik",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "qnldccuxsiteu2zn7mpe",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "r4GxbXEmBpQEyjDrTA88",
+        "slugId": "shiva-lingaraj-temple-bhubaneswar",
+        "templeName": "Lingaraj Temple – Bhubaneswar",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "r4gxbxembpqeyjdrta88",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "rTnUpAhXl9iSBNNsBs5X",
+        "slugId": "sacred-triprayar-srama-temple-thrissur",
+        "templeName": "Triprayar Sree Rama Temple – Thrissur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "rtnupahxl9isbnnsbs5x",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "s4TGpCwP4NO7JloYS3aQ",
+        "slugId": "sacred-shravanabelagola-gommateshwara",
+        "templeName": "Gommateshwara Statue – Shravanabelagola",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "s4tgpcwp4no7jloys3aq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "uCnW4QiYVscToxeAxbRA",
+        "slugId": "hanuman-hanumangarhi-temple-ayodhya",
+        "templeName": "Hanuman Garhi Temple – Ayodhya",
+        "category": "Hanuman Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ucnw4qiyvsctoxeaxbra",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "uK18jO4icjiLsoAAvtD9",
+        "slugId": "vishnu-iskcon-temple-bangalore-karnataka",
+        "templeName": "ISKCON Temple Bengaluru – Karnataka",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "uk18jo4icjilsoaavtd9",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "uX6u3PdvKUBmDmvgqi3r",
+        "slugId": "sacred-suryanar-kovil-kumbakonam",
+        "templeName": "Suryanar Kovil – Kumbakonam",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ux6u3pdvkubmdmvgqi3r",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "vT1Y2h6hkEOlnC8Gr3bV",
+        "slugId": "sacred-gokarna-mahabaleshwar-temple",
+        "templeName": "Mahabaleshwar Temple – Gokarna",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "vt1y2h6hkeolnc8gr3bv",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "wEt6Qe7l1pM1jqRiVcds",
+        "slugId": "shiva-bhojeshwar-temple-bhojpur",
+        "templeName": "Bhojeshwar Temple – Bhojpur",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "wet6qe7l1pm1jqrivcds",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "x5OhD9VeQswXUVV9l9a6",
+        "slugId": "sacred-baijnath-temple-bageshwar",
+        "templeName": "Baijnath Temple Complex – Bageshwar",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "x5ohd9veqswxuvv9l9a6",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "xaIbNPrtp0mu6hhMar7h",
+        "slugId": "shiva-kapaleeshwarar-temple-chennai",
+        "templeName": "Kapaleeshwarar Temple – Mylapore",
+        "category": "Shiva Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "xaibnprtp0mu6hhmar7h",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "xaWInhkHHZh3OugjNlOn",
+        "slugId": "vishnu-iskcon-temple-vrindavan",
+        "templeName": "ISKCON Temple – Vrindavan",
+        "category": "Vishnu Temple",
+        "resolvedFrom": "none",
+        "currentTempleKey": "xawinhkhhzh3ougjnlon",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "xviBocS3EnaAa7HxF2b5",
+        "slugId": "sacred-arankula-parthasarathy-temple",
+        "templeName": "Aranmula Parthasarathy Temple – Pathanamthitta",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "xvibocs3enaaa7hxf2b5",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "y6OwnSOk2Ux6g3rWOxY3",
+        "slugId": "sacred-kanchanur-sukran-temple",
+        "templeName": "Agniswarar Temple – Kanchanur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "y6ownsok2ux6g3rwoxy3",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "yGXp7kY1kiBIrTLPTQbq",
+        "slugId": "sacred-gorakhnath-temple-gorakhpur",
+        "templeName": "Gorakhnath Temple – Gorakhpur",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "ygxp7ky1kibirtlptqbq",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "yg3uLnNMCDdiKR1rpwO3",
+        "slugId": "sacred-patan-devi-temple-patna",
+        "templeName": "Badi Patan Devi Temple – Patna",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "yg3ulnnmcddikr1rpwo3",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "yjtddBAsjAzddz4Mx5ER",
+        "slugId": "sacred-thiruparankundram-murugan-temple",
+        "templeName": "Thiruparankundram Murugan Temple – Madurai",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "yjtddbasjazddz4mx5er",
+        "hasCuratedData": false
+      },
+      {
+        "templeId": "zW9B6KEcFa4pVPUzGyQl",
+        "slugId": "sacred-vibhuti-narayan-fort-temple-ramnagar",
+        "templeName": "Ramnagar Fort Temple – Varanasi",
+        "category": "Sacred",
+        "resolvedFrom": "none",
+        "currentTempleKey": "zw9b6kecfa4pvpuzgyql",
+        "hasCuratedData": false
+      }
+    ],
+    "D_hasAliasButFailedToResolve": []
+  }
+}

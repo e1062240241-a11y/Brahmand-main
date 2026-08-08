@@ -3,7 +3,7 @@ import { Alert, ActionSheetIOS, Platform, Share } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useCommunityStore } from '../store/useCommunityStore';
-import { useAuthStore } from '../../../../src/store/authStore';
+import { useAuthStore } from '@/src/store/authStore';
 import {
   deleteCommunityMessage,
   sendCommunityMessage,
@@ -11,9 +11,9 @@ import {
   deleteCommunityRequest,
   reportContent,
   toggleRequestInterest
-} from '../../../../src/services/api';
-import { originalAlert } from '../../../../src/utils/nativeAlert';
-import { useTranslation } from '../../../../src/utils/i18n';
+} from '@/src/services/api';
+import { originalAlert } from '@/src/utils/nativeAlert';
+import { useTranslation } from '@/src/utils/i18n';
 import { useCommunityUIStore } from './useCommunityUIStore';
 
 export const useCommunityActions = (communityId: string | null) => {

@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from '../../../../src/components/KeyboardAwareScrollView';
+import { KeyboardAwareScrollView } from '@/src/components/KeyboardAwareScrollView';
 
 interface CommunityHeaderProps {
   communityId: string;

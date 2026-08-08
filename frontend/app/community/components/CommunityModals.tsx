@@ -2,9 +2,9 @@ import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Modal, Platform } from 'react-native';
 import { useCommunityActions } from '../hooks/useCommunityActions';
 import { useCommunityUIStore } from '../hooks/useCommunityUIStore';
-import { ReportModal } from '../../../../src/components/ReportModal';
+import { ReportModal } from '@/src/components/ReportModal';
 import { useCommunityStore } from '../store/useCommunityStore';
-import { useAuthStore } from '../../../../src/store/authStore';
+import { useAuthStore } from '@/src/store/authStore';
 
 export const CommunityModals = ({ communityId }: { communityId: string }) => {
   const {

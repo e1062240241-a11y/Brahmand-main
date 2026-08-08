@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { useCommunityStore } from '../../store/useCommunityStore';
-import { useAuthStore } from '../../../../src/store/authStore';
+import { useAuthStore } from '@/src/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
-import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
+import { formatDateTimeIST } from '@/src/utils/dateUtils';
 import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
 import { VideoPlayer } from '../VideoPlayer';

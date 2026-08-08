@@ -1,7 +1,7 @@
 import React, { useEffect, useState, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useSafeVideoPlayer, SafeVideoView } from '../../../../src/components/SafeVideoView';
-import { useGlobalMute } from '../../../../src/contexts/MuteContext';
+import { useSafeVideoPlayer, SafeVideoView } from '@/src/components/SafeVideoView';
+import { useGlobalMute } from '@/src/contexts/MuteContext';
 import { Image as ExpoImage } from 'expo-image';
 
 let ExpoVideoModule: any = null;

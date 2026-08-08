@@ -24,6 +24,7 @@ import { database } from '../../src/database';
 import { FONTS } from '../../src/constants/theme';
 import { DEFAULT_TEMPLE_IMAGE, resolveTempleImage } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
+import { normalizeTempleKey } from '../../src/data/jyotirlingaTravelData';
 const SafeFlashList = FlashList as any;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -361,6 +362,19 @@ export default function TempleScreen() {
           Array.from(selectedLocations).some(loc => (t.location || '').toLowerCase().includes(loc.toLowerCase()))
         );
       }
+
+      // Canonical physical entity deduplication
+      const uniqueRecordsMap = new Map();
+      for (const rec of filteredRecords) {
+        const rawId = rec.templeId || rec.temple_id || rec.id || rec.name;
+        const cKey = normalizeTempleKey(rawId);
+        if (cKey && !uniqueRecordsMap.has(cKey)) {
+          uniqueRecordsMap.set(cKey, rec);
+        } else if (!cKey && !uniqueRecordsMap.has(rawId)) {
+          uniqueRecordsMap.set(rawId, rec);
+        }
+      }
+      filteredRecords = Array.from(uniqueRecordsMap.values());
 
       const skipCount = (pageNum - 1) * PAGE_SIZE;
       const paginatedSlice = filteredRecords.slice(skipCount, skipCount + PAGE_SIZE);
