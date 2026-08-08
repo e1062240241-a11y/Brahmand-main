@@ -1,3 +1,4 @@
+import { useCommunityViewabilityStore } from '../hooks/useCommunityViewability';
 import React, { useRef, useCallback } from 'react';
 import { View, Platform } from 'react-native';
 import { FlashList, ListRenderItemInfo } from '@shopify/flash-list';
@@ -28,6 +29,7 @@ export const CommunityFeedList: React.FC<CommunityFeedListProps> = ({
   // Use a shallow selector or strictly select the precomputed feedItems array
   // This array is stable unless posts are added/removed or thread flags change
   const feedItems = useCommunityStore(state => state.feedItems);
+  const setVisibleItemIds = useCommunityViewabilityStore(state => state.setVisibleItemIds);
 
   const renderItem = useCallback(({ item }: ListRenderItemInfo<FeedItem>) => {
     switch (item.itemType) {
@@ -58,7 +60,7 @@ export const CommunityFeedList: React.FC<CommunityFeedListProps> = ({
   // For video playing tracking - using onViewableItemsChanged properly
   const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     const visibleIds = viewableItems.map((v: any) => v.item.id);
-    // TODO: dispatch visibleIds to UI store to control which SafeVideoView is playing
+    setVisibleItemIds(visibleIds);
   }).current;
 
   return (
