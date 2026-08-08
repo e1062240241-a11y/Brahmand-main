@@ -47,6 +47,7 @@ import { Avatar } from '../../src/components/Avatar';
 import { MentionInput } from '../../src/components/MentionInput';
 import { ToastContainer } from '../../src/components/ToastContainer';
 import { ReportModal } from '../../src/components/ReportModal';
+import { CreatePostModal } from '../../src/components/community/CreatePostModal';
 import { blockUser, unblockUser } from '../../src/services/firebase/moderationService';
 import { useBlockStore } from '../../src/store/blockStore';
 import { BlockConfirmationModal } from '../../src/components/BlockConfirmationModal';
@@ -1019,27 +1020,15 @@ export default function CommunityDetailScreen() {
 
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMorePosts, setHasMorePosts] = useState(true);
-  const [newMessage, setNewMessage] = useState('');
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [selectedMediaType, setSelectedMediaType] = useState<'image' | 'video' | null>(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showTopCategoryDropdown, setShowTopCategoryDropdown] = useState(false);
   const [showBodyCategoryDropdown, setShowBodyCategoryDropdown] = useState(false);
-  const [showCategorySelector, setShowCategorySelector] = useState(false);
-  const [postCategory, setPostCategory] = useState('');
-  const [contactNumber, setContactNumber] = useState('');
-  const [sevaDetails, setSevaDetails] = useState('');
-  const [eventLocation, setEventLocation] = useState('');
-  const [eventDate, setEventDate] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [selectedFestival, setSelectedFestival] = useState<string | null>(null);
   const [festivalSort, setFestivalSort] = useState<'latest' | 'oldest'>('latest');
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
-  const [showInlineCategories, setShowInlineCategories] = useState(false);
 
   const isKycVerified =
     (user as any)?.kyc_status === 'verified' ||
@@ -3728,32 +3717,7 @@ export default function CommunityDetailScreen() {
     Alert.alert('Search', 'Search feature coming soon to community feed!');
   };
 
-  const handlePickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: false,
-      quality: 0.8,
-    });
 
-    if (!result.canceled && result.assets?.length) {
-      setSelectedImage(result.assets[0].uri);
-      setSelectedMediaType(result.assets[0].type === 'video' ? 'video' : 'image');
-    }
-  };
-
-  const handlePaste = async () => {
-    try {
-      const text = await Clipboard.getStringAsync();
-      if (text) {
-        setNewMessage(prev => prev + text);
-      } else {
-        Alert.alert('Clipboard Empty', 'There is no text in your clipboard to paste.');
-      }
-    } catch (error) {
-      console.warn('Clipboard read error:', error);
-      Alert.alert('Paste Error', 'Failed to read from clipboard.');
-    }
-  };
 
   const handleLike = (postId: string) => {
     if (Platform.OS === 'android') {
@@ -3978,35 +3942,20 @@ export default function CommunityDetailScreen() {
     }
   };
 
-  const handlePostButtonPress = () => {
-    if (!newMessage.trim() && !selectedImage) return;
-
-    if (postCategory) {
-      handleCategorySelectedAndPost(postCategory);
-    } else {
-      setShowCategorySelector(true);
-    }
-  };
-
-  const handleCategorySelectedAndPost = async (selectedCategory: string) => {
-    setShowCategorySelector(false);
-    setPostCategory(selectedCategory);
-
-    // If user selected Requests, check KYC
-    if (selectedCategory === 'Requests' && !isKycVerified) {
-      setShowCategorySelector(false);
-      router.push('/kyc');
-      return;
-    }
-
-    // Proceed to create the post
-    await executeCreatePost(selectedCategory);
-  };
 
 
 
-  const executeCreatePost = async (categoryOverride?: string) => {
-    if (!newMessage.trim() && !selectedImage) return;
+
+  const executeCreatePost = async (formData: {
+    content: string;
+    media_url?: string;
+    media_type?: 'image' | 'video';
+    category?: string;
+    contact?: string;
+    seva_details?: string;
+    location?: string;
+    start_time?: string;
+  }) => {
 
     // Check verification requirement for State and National groups
     const isRestrictedGroup = community?.type && ['state', 'country', 'national'].includes(community.type);
@@ -4027,7 +3976,7 @@ export default function CommunityDetailScreen() {
     }
 
     // Use activeTab as default category (but map 'Others' or empty to 'Feed')
-    const finalCategory = (categoryOverride === 'Others' || !categoryOverride) ? 'Feed' : categoryOverride;
+    const finalCategory = (formData.category === 'Others' || !formData.category) ? 'Feed' : formData.category;
 
     let postLocation: string | undefined = undefined;
     if (finalCategory === 'Lost & Found') {
@@ -4051,13 +4000,13 @@ export default function CommunityDetailScreen() {
         console.warn('[Community] Failed to get post location:', err);
       }
     } else if (finalCategory === 'Events') {
-      postLocation = eventLocation || undefined;
+      postLocation = formData.location || undefined;
     }
 
     // Split text into chunks of max 250 characters
-    const textChunks = newMessage.trim() ? splitTextIntoTweets(newMessage.trim(), 250) : [];
+    const textChunks = formData.content ? splitTextIntoTweets(formData.content, 250) : [];
 
-    if (textChunks.length === 0 && selectedImage) {
+    if (textChunks.length === 0 && formData.media_url) {
       textChunks.push(' ');
     }
 
@@ -4073,7 +4022,7 @@ export default function CommunityDetailScreen() {
         verificationLabel: (user as any)?.verification_level === 'national' ? 'Bharat Verified' : 'State Verified',
       },
       content: chunk,
-      image: index === 0 ? (selectedImage || undefined) : undefined, // Image only on parent
+      image: index === 0 ? (formData.media_url || undefined) : undefined, // Image only on parent
       timestamp: new Date().toISOString(),
       likes: 0,
       comments: 0,
@@ -4081,9 +4030,9 @@ export default function CommunityDetailScreen() {
       reposts: 0,
       liked: false,
       hideBadge: false,
-      contact: index === 0 ? (contactNumber || undefined) : undefined,
-      sevaDetails: index === 0 ? (sevaDetails || undefined) : undefined,
-      start_time: index === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
+      contact: index === 0 ? (formData.contact || undefined) : undefined,
+      sevaDetails: index === 0 ? (formData.seva_details || undefined) : undefined,
+      start_time: index === 0 && finalCategory === 'Events' ? (formData.start_time || undefined) : undefined,
       location: index === 0 ? (postLocation || undefined) : undefined,
       isUniversal: true, // Flag to show in general Feed
       sender_id: user?.id, // Track ownership of local posts
@@ -4113,11 +4062,11 @@ export default function CommunityDetailScreen() {
     // Attempt real API send if text or image is present
     (async () => {
       let uploadedUrl: string | undefined = undefined;
-      const localImageToUpload = selectedImage;
+      const localImageToUpload = formData.media_url;
       if (localImageToUpload) {
         try {
           const { uploadChatMedia } = require('../../src/services/api');
-          const isVideoFile = selectedMediaType === 'video' || (typeof localImageToUpload === 'string' && (
+          const isVideoFile = formData.media_type === 'video' || (typeof localImageToUpload === 'string' && (
             localImageToUpload.toLowerCase().endsWith('.mp4') || 
             localImageToUpload.toLowerCase().endsWith('.mov') || 
             localImageToUpload.toLowerCase().endsWith('.m4v') || 
@@ -4155,10 +4104,10 @@ export default function CommunityDetailScreen() {
               'text',
               finalCategory,
               i === 0 ? uploadedUrl : undefined,
-              i === 0 ? (contactNumber || undefined) : undefined,
-              i === 0 ? (sevaDetails || undefined) : undefined,
+              i === 0 ? (formData.contact || undefined) : undefined,
+              i === 0 ? (formData.seva_details || undefined) : undefined,
               i === 0 ? (postLocation || undefined) : undefined,
-              i === 0 && finalCategory === 'Events' ? (eventDate?.toISOString() || undefined) : undefined,
+              i === 0 && finalCategory === 'Events' ? (formData.start_time || undefined) : undefined,
               cachedSymmetricKey
             );
             console.log(`[Community] Real thread chunk ${i + 1} sent`);
@@ -4212,23 +4161,15 @@ export default function CommunityDetailScreen() {
         }
       }
     })();
-
-    setNewMessage('');
-    setSelectedImage(null);
-    setSelectedMediaType(null);
-    setContactNumber('');
-    setSevaDetails('');
-    setEventLocation('');
-    setEventDate(null);
     setShowCreateModal(false);
 
     // No longer switching tabs automatically to keep the user in their current context
     // The post will appear immediately in the Feed and its specific category
     // For Events with a date set, schedule a 5-min reminder for the creator
-    if (finalCategory === 'Events' && eventDate) {
+    if (finalCategory === 'Events' && formData.start_time) {
       scheduleEventReminderNotification(
-        newMessage.trim() || 'Community Event',
-        eventDate.toISOString(),
+        formData.content || 'Community Event',
+        formData.start_time,
         id as string
       ).catch(e => console.warn('[Community] Failed to schedule event reminder on create:', e));
     }
@@ -4744,530 +4685,16 @@ export default function CommunityDetailScreen() {
 
       {/* Bottom footer input bar is removed to keep layout clean and centered on top-header Create button */}
 
-      {/* Full Screen Create Post Modal */}
-      <Modal visible={showCreateModal} animationType="fade" transparent={false} hardwareAccelerated>
-        <LinearGradient colors={['#FF8D57', '#EA9B76', '#F8EDE7']} locations={[0, 0.14, 0.32]} style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingTop: Platform.OS === 'android' ? 32 : (insets.top || 44) }}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={{ flex: 1 }}
-          >
-            <View style={[styles.createModalHeader, { borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.05)', paddingHorizontal: 16, paddingTop: 15 }]}>
-              <TouchableOpacity onPress={() => { setShowCreateModal(false); setPostCategory(''); setShowInlineCategories(false); setNewMessage(''); setSelectedImage(null); setSelectedMediaType(null); setContactNumber(''); setSevaDetails(''); setEventLocation(''); setEventDate(null); }}>
-                <Text style={{ fontSize: 16, color: '#0F1419', fontFamily: FONTS.regular }}>Cancel</Text>
-              </TouchableOpacity>
-
-              <Text style={{ fontSize: 15, color: '#0F1419', fontWeight: '700', fontFamily: FONTS.bold }}>Create Post</Text>
-
-              <TouchableOpacity
-                style={[
-                  styles.twitterPostBtn,
-                  (!newMessage.trim() && !selectedImage) && { opacity: 0.5 }
-                ]}
-                onPress={handlePostButtonPress}
-                disabled={!newMessage.trim() && !selectedImage}
-              >
-                <Text style={styles.twitterPostBtnText}>Post</Text>
-              </TouchableOpacity>
-            </View>
-
-            <KeyboardAwareScrollView style={{ flex: 1, paddingHorizontal: 16 }} keyboardShouldPersistTaps="handled">
-              <View style={{ flexDirection: 'row', marginTop: 15, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 16, padding: 12 }}>
-                <Avatar name={user?.name || '?'} photo={user?.photo} size={40} />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  {!postCategory ? (
-                    <TouchableOpacity
-                      onPress={() => setShowInlineCategories(!showInlineCategories)}
-                      activeOpacity={0.7}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        alignSelf: 'flex-start',
-                        gap: 6,
-                        backgroundColor: '#FF6600',
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 16,
-                        marginBottom: 10,
-                      }}
-                    >
-                      <Ionicons name="pricetag-outline" size={14} color="#FFF" />
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: '#FFF', fontFamily: FONTS.bold }}>
-                        {t('language') === 'hi' ? 'श्रेणी चुनें *' : 'Choose Category *'}
-                      </Text>
-                      <Ionicons name={showInlineCategories ? "chevron-up" : "chevron-down"} size={12} color="#FFF" />
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.selectedCategoryBadge, { marginBottom: 10, marginTop: 0 }]}>
-                      <Ionicons name="pricetag-outline" size={14} color="#FF6B00" />
-                      <Text style={styles.selectedCategoryText}>
-                        {t('language') === 'hi' ? 'श्रेणी' : 'Category'}: {getTranslatedTab(postCategory)}
-                      </Text>
-                      <TouchableOpacity onPress={() => { setPostCategory(''); }}>
-                        <Ionicons name="close-circle" size={16} color="#FF6600" style={{ marginLeft: 6 }} />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {showInlineCategories && (
-                    <View style={{ marginBottom: 16 }}>
-                      <Text style={{ fontSize: 13, fontFamily: FONTS.bold, color: '#666', marginBottom: 8 }}>
-                        {t('language') === 'hi' ? 'श्रेणी का चयन करें' : 'Select Category'}
-                      </Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                        {POST_CATEGORIES.map((cat) => {
-                          let iconColor = '#536471';
-                          if (cat === 'Others') iconColor = '#1D9BF0';
-                          else if (cat === 'Seva') iconColor = '#E91E63';
-                          else if (cat === 'Requests') iconColor = '#FF6B00';
-                          else if (cat === 'Events') iconColor = '#00C853';
-                          else if (cat === 'Lost & Found') iconColor = '#9C27B0';
-                          else if (cat === 'Festivals') iconColor = '#FF9800';
-                          else if (cat === 'Temple Updates') iconColor = '#795548';
-
-                          return (
-                            <TouchableOpacity
-                              key={cat}
-                              onPress={() => {
-                                handleInlineCategorySelect(cat);
-                                setShowInlineCategories(false);
-                              }}
-                              style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                backgroundColor: '#FFF',
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                borderRadius: 20,
-                                borderWidth: 1,
-                                borderColor: `${iconColor}30`,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: 0.05,
-                                shadowRadius: 2,
-                                elevation: 1,
-                              }}
-                            >
-                              <View style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: 10,
-                                backgroundColor: `${iconColor}15`,
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                marginRight: 6
-                              }}>
-                                <Ionicons
-                                  name={
-                                    cat === 'Others' ? 'chatbubble-ellipses-outline' :
-                                    cat === 'Seva' ? 'heart-outline' :
-                                    cat === 'Requests' ? 'alert-circle-outline' :
-                                    cat === 'Events' ? 'calendar-outline' :
-                                    cat === 'Lost & Found' ? 'search-outline' :
-                                    cat === 'Festivals' ? 'flame-outline' :
-                                    'home-outline'
-                                  }
-                                  size={12}
-                                  color={iconColor}
-                                />
-                              </View>
-                              <Text style={{ fontSize: 12, fontFamily: FONTS.medium, color: '#333' }}>
-                                {getTranslatedTab(cat)}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
-                  <MentionInput
-                    value={newMessage}
-                    onChangeText={setNewMessage}
-                    placeholder={
-                      t('language') === 'hi'
-                        ? (postCategory ? 'क्या चल रहा है?' : 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...')
-                        : (postCategory ? "What's happening?" : "Select a category above to start writing...")
-                    }
-                    placeholderTextColor="#536471"
-                    multiline
-                    editable={!!postCategory}
-                    inputStyle={{
-                      fontSize: 18,
-                      color: '#0F1419',
-                      minHeight: 120,
-                      textAlignVertical: 'top',
-                      paddingTop: 4,
-                      lineHeight: 24,
-                      opacity: postCategory ? 1 : 0.6
-                    }}
-                    autoFocus={!!postCategory}
-                  />
-
-                  {/* Add Photo option directly beneath the input box for better accessibility */}
-                  {!selectedImage ? (
-                    <TouchableOpacity
-                      onPress={() => {
-                        if (!postCategory) {
-                          Alert.alert('', t('language') === 'hi' ? 'लिखना शुरू करने के लिए ऊपर एक श्रेणी चुनें...' : 'Select a category above to start writing...');
-                          return;
-                        }
-                        handlePickImage();
-                      }}
-                      activeOpacity={0.7}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        alignSelf: 'flex-start',
-                        gap: 6,
-                        backgroundColor: !postCategory ? '#F0F0F0' : 'rgba(255, 102, 0, 0.08)',
-                        paddingHorizontal: 14,
-                        paddingVertical: 8,
-                        borderRadius: 20,
-                        marginTop: 10,
-                        borderWidth: 1,
-                        borderColor: !postCategory ? '#E0E0E0' : 'rgba(255, 102, 0, 0.2)',
-                      }}
-                    >
-                      <Ionicons name="images-outline" size={18} color={!postCategory ? "#A0A0A0" : "#FF6600"} />
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: !postCategory ? "#A0A0A0" : "#FF6600", fontFamily: FONTS.bold }}>
-                        Add Media
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={{ position: 'relative', marginTop: 10, borderRadius: 12, overflow: 'hidden', width: '100%', height: 250 }}>
-                      <CommunityMediaItem media={selectedImage} style={{ width: '100%', height: '100%' }} isActive={true} />
-                      <TouchableOpacity
-                        style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 15, padding: 4 }}
-                        onPress={() => { setSelectedImage(null); setSelectedMediaType(null); }}
-                      >
-                        <Ionicons name="close" size={16} color="#FFF" />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-
-                  {postCategory === 'Events' && (
-                    <View style={{ marginTop: 15, backgroundColor: 'rgba(255,255,255,0.6)', padding: 12, borderRadius: 12 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F1419', marginBottom: 10 }}>Event Date & Time</Text>
-                      <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity
-                          onPress={openEventDatePicker}
-                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
-                        >
-                          <Ionicons name="calendar-outline" size={18} color="#FF6600" />
-                          <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
-                            {eventDate ? (() => {
-                              const day = String(eventDate.getDate()).padStart(2, '0');
-                              const month = String(eventDate.getMonth() + 1).padStart(2, '0');
-                              return `${day}/${month}/${eventDate.getFullYear()}`;
-                            })() : 'Select Date'}
-                          </Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity
-                          onPress={openEventTimePicker}
-                          style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: '#EEE' }}
-                        >
-                          <Ionicons name="time-outline" size={18} color="#FF6600" />
-                          <Text style={{ marginLeft: 8, fontSize: 13, color: eventDate ? '#000' : '#888' }}>
-                            {eventDate ? formatTimeIST(eventDate) : 'Select Time'}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-
-                      {showDatePicker && Platform.OS !== 'android' && (
-                        <DateTimePicker
-                          value={eventDate || new Date()}
-                          mode="date"
-                          display="default"
-                          onChange={(event, selectedDate) => {
-                            setShowDatePicker(false);
-                            if (event.type === 'set' && selectedDate) {
-                              const currentDate = eventDate || new Date();
-                              selectedDate.setHours(currentDate.getHours(), currentDate.getMinutes());
-                              setEventDate(selectedDate);
-                            }
-                          }}
-                        />
-                      )}
-
-                      {showTimePicker && Platform.OS !== 'android' && (
-                        <DateTimePicker
-                          value={eventDate || new Date()}
-                          mode="time"
-                          display="default"
-                          onChange={(event, selectedDate) => {
-                            setShowTimePicker(false);
-                            if (event.type === 'set' && selectedDate) {
-                              const newDate = new Date(eventDate || new Date());
-                              newDate.setHours(selectedDate.getHours(), selectedDate.getMinutes());
-                              setEventDate(newDate);
-                            }
-                          }}
-                        />
-                      )}
-
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: '#0F1419', marginTop: 15, marginBottom: 10 }}>Event Location</Text>
-                      <TextInput
-                        placeholder="e.g. Temple Hall, Sector 4 or Online"
-                        value={eventLocation}
-                        onChangeText={setEventLocation}
-                        placeholderTextColor="#999"
-                        style={{
-                          backgroundColor: '#FFF',
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          borderRadius: 10,
-                          borderWidth: 1,
-                          borderColor: '#EEE',
-                          fontSize: 13,
-                          color: '#000'
-                        }}
-                      />
-                    </View>
-                  )}
-
-                  {/* Contact Number for Call & WhatsApp */}
-                  {!!postCategory && (
-                    <View style={{ marginTop: 14, backgroundColor: 'rgba(255,255,255,0.7)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
-                        <Ionicons name="call-outline" size={16} color="#16A34A" />
-                        <FontAwesome5 name="whatsapp" size={15} color="#059669" />
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F1419', fontFamily: FONTS.bold }}>
-                          {t('language') === 'hi' ? 'संपर्क / व्हाट्सएप नंबर (वैकल्पिक)' : 'Contact Number (Call & WhatsApp)'}
-                        </Text>
-                      </View>
-                      <TextInput
-                        style={{
-                          backgroundColor: '#FFF',
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 10,
-                          fontSize: 14,
-                          color: '#0F1419',
-                          borderWidth: 1,
-                          borderColor: '#E2E8F0',
-                          fontFamily: FONTS.regular,
-                        }}
-                        placeholder={t('language') === 'hi' ? 'फ़ोन नंबर दर्ज करें (उदा. +91 9876543210)' : 'Enter phone number (e.g. +91 9876543210)'}
-                        placeholderTextColor="#94A3B8"
-                        value={contactNumber}
-                        onChangeText={setContactNumber}
-                        keyboardType="phone-pad"
-                        disableFullscreenUI={true}
-                      />
-                      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 4, fontFamily: FONTS.regular }}>
-                        {t('language') === 'hi'
-                          ? 'यह नंबर आपकी पोस्ट पर कॉल और व्हाट्सएप बटन दिखाएगा।'
-                          : 'Adding this will display Call and WhatsApp buttons on your post.'}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Seva Details Input */}
-                  {postCategory === 'Seva' && (
-                    <View style={{ marginTop: 12, backgroundColor: 'rgba(255,255,255,0.7)', padding: 12, borderRadius: 14, borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
-                        <Ionicons name="heart-outline" size={16} color="#E91E63" />
-                        <Text style={{ fontSize: 13, fontWeight: '700', color: '#0F1419', fontFamily: FONTS.bold }}>
-                          {t('language') === 'hi' ? 'सेवा विवरण (वैकल्पिक)' : 'Seva Details (Optional)'}
-                        </Text>
-                      </View>
-                      <TextInput
-                        style={{
-                          backgroundColor: '#FFF',
-                          borderRadius: 10,
-                          paddingHorizontal: 12,
-                          paddingVertical: 8,
-                          fontSize: 14,
-                          color: '#0F1419',
-                          borderWidth: 1,
-                          borderColor: '#E2E8F0',
-                          minHeight: 50,
-                          textAlignVertical: 'top',
-                          fontFamily: FONTS.regular,
-                        }}
-                        placeholder={t('language') === 'hi' ? 'आवश्यक सेवा या समय विवरण दर्ज करें...' : 'Enter details of volunteer work needed, timing, etc.'}
-                        placeholderTextColor="#94A3B8"
-                        value={sevaDetails}
-                        onChangeText={setSevaDetails}
-                        multiline
-                        disableFullscreenUI={true}
-                      />
-                    </View>
-                  )}
-                </View>
-              </View>
-
-            </KeyboardAwareScrollView>
-
-            {/* Keyboard-docked toolbar with minimalist layout matching premium look */}
-            <View style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              paddingTop: 10,
-              paddingBottom: Platform.OS === 'android' 
-                ? (keyboardVisible ? 10 : Math.max(insets.bottom, 28)) 
-                : (keyboardVisible ? 10 : Math.max(insets.bottom, 14)),
-              borderTopWidth: 1,
-              borderTopColor: 'rgba(244, 163, 34, 0.15)',
-              backgroundColor: '#0C0A1A'
-            }}>
-              <View />
-
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <CosmicCharacterRing text={newMessage} />
-              </View>
-            </View>
-            {Platform.OS === 'android' && keyboardVisible && keyboardHeight > 0 && (
-              <View style={{ height: keyboardHeight }} />
-            )}
-          </KeyboardAvoidingView>
-        </View>
-        </LinearGradient>
-      </Modal>
-
-      {/* Category Selector Bottom Sheet — shown when Post is tapped */}
-      <Modal
-        visible={showCategorySelector}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowCategorySelector(false)}
-      >
-        <TouchableOpacity
-          style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            justifyContent: 'flex-end',
-          }}
-          activeOpacity={1}
-          onPress={() => setShowCategorySelector(false)}
-        >
-          <View
-            style={{
-              backgroundColor: '#FFF',
-              borderTopLeftRadius: 24,
-              borderTopRightRadius: 24,
-              paddingTop: 12,
-              paddingBottom: Math.max(insets.bottom, 24),
-              shadowColor: '#000',
-              shadowOpacity: 0.15,
-              shadowRadius: 20,
-              shadowOffset: { width: 0, height: -4 },
-              elevation: 12,
-            }}
-            onStartShouldSetResponder={() => true}
-          >
-            {/* Handle bar */}
-            <View style={{ alignItems: 'center', marginBottom: 8 }}>
-              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#DDD' }} />
-            </View>
-
-            <Text style={{
-              fontSize: 17,
-              fontWeight: '700',
-              color: '#0F1419',
-              textAlign: 'center',
-              marginBottom: 16,
-              fontFamily: FONTS.bold,
-            }}>
-              Choose a Category
-            </Text>
-
-            <KeyboardAwareScrollView
-              style={{ maxHeight: 400, paddingHorizontal: 16 }}
-              showsVerticalScrollIndicator={false}
-            >
-              {POST_CATEGORIES.map(cat => {
-                let iconName: any = 'ellipse-outline';
-                let iconColor = '#536471';
-                let desc = '';
-                if (cat === 'Others') { iconName = 'chatbubble-ellipses-outline'; iconColor = '#1D9BF0'; desc = 'General community discussion'; }
-                else if (cat === 'Seva') { iconName = 'heart-outline'; iconColor = '#E91E63'; desc = 'Seva, donations & volunteer work'; }
-                else if (cat === 'Requests') { iconName = 'alert-circle-outline'; iconColor = '#FF6B00'; desc = 'Help requests, blood needs, etc.'; }
-                else if (cat === 'Events') { iconName = 'calendar-outline'; iconColor = '#00C853'; desc = 'Community events & gatherings'; }
-                else if (cat === 'Lost & Found') { iconName = 'search-outline'; iconColor = '#9C27B0'; desc = 'Lost or found items'; }
-                else if (cat === 'Festivals') { iconName = 'flame-outline'; iconColor = '#FF9800'; desc = 'Festival celebrations & updates'; }
-                else if (cat === 'Temple Updates') { iconName = 'home-outline'; iconColor = '#795548'; desc = 'Temple news & renovations'; }
-
-                return (
-                  <TouchableOpacity
-                    key={cat}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: 14,
-                      paddingHorizontal: 12,
-                      borderRadius: 16,
-                      marginBottom: 6,
-                      backgroundColor: '#FAFAFA',
-                      borderWidth: 1,
-                      borderColor: '#F0F0F0',
-                    }}
-                    onPress={() => handleCategorySelectedAndPost(cat)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: 14,
-                      backgroundColor: `${iconColor}15`,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      marginRight: 14,
-                    }}>
-                      <Ionicons name={iconName} size={22} color={iconColor} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={{
-                          fontSize: 15,
-                          fontWeight: '700',
-                          color: '#0F1419',
-                        }}>
-                          {cat}
-                        </Text>
-                        {cat === 'Requests' && !isKycVerified && (
-                          <View style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: '#FFF3E0',
-                            paddingHorizontal: 8,
-                            paddingVertical: 2,
-                            borderRadius: 8,
-                            marginLeft: 8,
-                          }}>
-                            <Ionicons name="shield-checkmark" size={12} color="#FF6B00" />
-                            <Text style={{ fontSize: 10, color: '#FF6B00', fontWeight: '700', marginLeft: 3 }}>KYC Required</Text>
-                          </View>
-                        )}
-                      </View>
-                      {desc ? (
-                        <Text style={{
-                          fontSize: 12,
-                          color: '#536471',
-                          marginTop: 2,
-                        }}>
-                          {desc}
-                        </Text>
-                      ) : null}
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
-                  </TouchableOpacity>
-                );
-              })}
-            </KeyboardAwareScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-
-
-
-      {/* Full Screen X & Threads Style Animated Media Viewer */}
-      <AnimatedFullScreenMediaViewer
-        mediaUrl={fullScreenMedia}
-        onClose={() => setFullScreenMedia(null)}
+            {/* Create Post Modal */}
+      <CreatePostModal
+        visible={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        communityId={id as string}
+        communityType={community?.type || 'city'}
+        user={user}
+        isKycVerified={isKycVerified}
+        onSubmit={executeCreatePost}
+        onVerificationRequired={() => router.push('/kyc')}
       />
 
       {/* Comment Modal */}
@@ -5754,19 +5181,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
   },
-  twitterPostBtn: {
-    backgroundColor: '#1D9BF0',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  twitterPostBtnText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
   recentRequestCard: {
     marginHorizontal: 20,
     marginTop: 20,
@@ -6158,26 +5572,12 @@ const styles = StyleSheet.create({
   createFestBtn: { backgroundColor: '#FF6B00', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
   createFestBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
-  createModalRoot: { flex: 1, backgroundColor: '#FFF' },
-  createModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 25,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0'
-  },
-  createModalTitle: { fontSize: 18, fontWeight: '800', color: '#111' },
   postBtnText: { color: '#FF3B30', fontSize: 16, fontWeight: '800' },
-  createModalContent: { flex: 1, padding: 20 },
   createPostUserInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   createPostUserMeta: { marginLeft: 12 },
   createPostUserName: { fontSize: 16, fontWeight: '800', color: '#111' },
   createPostUserLoc: { fontSize: 13, color: '#888', marginTop: 2 },
   createPostInput: { fontSize: 20, color: '#111', minHeight: 120, textAlignVertical: 'top' },
-  charCount: { alignSelf: 'flex-end', color: '#888', fontSize: 12, marginTop: 10 },
   createDivider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 25 },
   createSection: { marginBottom: 25 },
   createSectionTitle: { fontSize: 15, fontWeight: '800', color: '#111', marginBottom: 12 },
@@ -6350,11 +5750,6 @@ const styles = StyleSheet.create({
   },
   attendPromptBtnTextActive: {
     color: '#FFF',
-  },
-  dropdownModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
   },
   dropdownSheetContainer: {
     backgroundColor: '#FFFFFF',
