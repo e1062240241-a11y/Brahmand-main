@@ -22,7 +22,7 @@ import { FlashList } from '@shopify/flash-list';
 import { getTemples } from '../../src/services/api';
 import { database } from '../../src/database';
 import { FONTS } from '../../src/constants/theme';
-import { DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } from '../../src/constants/templeImages';
+import { DEFAULT_TEMPLE_IMAGE, resolveTempleImage } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 const SafeFlashList = FlashList as any;
 
@@ -130,26 +130,40 @@ interface TempleCardProps {
 }
 
 const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
+  console.log('[TEMPLE CARD RENDER]', {
+    id: item?.temple_id || item?.templeId || item?.id,
+    name: item?.name,
+  });
+
   const displayName = getTempleDisplayName(item);
   const location = getTempleLocation(item);
   const deityLabel = getTempleDeityLabel(item);
   const rawCat = renderSafeText(item.category);
   const categoryLabel = t('language') === 'hi' && rawCat === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (rawCat || 'Sacred');
 
-  const templeId = item.temple_id || item.templeId || item.id;
+  const imageSource = useMemo(
+    () => resolveTempleImage(item),
+    [
+      item.temple_id,
+      item.templeId,
+      item.id,
+      item.name,
+      item.image_url,
+      item.imageUrl,
+    ]
+  );
 
-  const imageSource = useMemo(() => {
-    return (
-      (templeId ? getTempleImageById(templeId) : null) || 
-      getTempleImageByName(displayName) ||
-      getTempleImageByName(item.name) || 
-      (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('http') ? { uri: item.image_url } : null) || 
-      DEFAULT_TEMPLE_IMAGE
-    );
-  }, [templeId, item.name, displayName, item.image_url]);
+  const [imgSource, setImgSource] = useState(imageSource);
 
-  const [imgSource, setImgSource] = React.useState(imageSource);
-  React.useEffect(() => { setImgSource(imageSource); }, [imageSource]);
+  useEffect(() => {
+    setImgSource(imageSource);
+  }, [imageSource]);
+
+  console.log('[TEMPLE SOURCE RESOLVED]', {
+    id: item.temple_id || item.templeId || item.id,
+    name: displayName,
+    source: imageSource,
+  });
 
   return (
     <TouchableOpacity 
@@ -158,11 +172,27 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
       onPress={() => onPress(item)}
     >
       <Image 
-        source={imgSource || DEFAULT_TEMPLE_IMAGE}
+        source={imgSource}
         defaultSource={DEFAULT_TEMPLE_IMAGE}
         style={styles.templeItemImage} 
+        resizeMode="cover"
         fadeDuration={0}
-        onError={() => setImgSource(DEFAULT_TEMPLE_IMAGE)}
+        onLoad={() => {
+          console.log('[TEMPLE IMAGE LOADED]', {
+            id: item.temple_id || item.templeId || item.id,
+            name: displayName,
+            source: imgSource,
+          });
+        }}
+        onError={(e) => {
+          console.error('[TEMPLE IMAGE FAILED]', {
+            id: item.temple_id || item.templeId || item.id,
+            name: displayName,
+            source: imgSource,
+            error: e.nativeEvent?.error,
+          });
+          setImgSource(DEFAULT_TEMPLE_IMAGE);
+        }}
       />
       <View style={styles.templeItemInfo}>
         <Text style={styles.templeItemName}>{displayName}</Text>
@@ -206,6 +236,7 @@ const FilterOption = React.memo(({ location, isSelected, onPress }: FilterOption
 });
 
 export default function TempleScreen() {
+  console.log('🔥🔥🔥 TEMPLE_RUNTIME_TEST_2026 🔥🔥🔥');
   const router = useRouter();
   const { t } = useTranslation();
   const [selectedTempleSection, setSelectedTempleSection] = useState<'Jyotirling' | 'Others'>('Jyotirling');
@@ -335,13 +366,15 @@ export default function TempleScreen() {
       const paginatedSlice = filteredRecords.slice(skipCount, skipCount + PAGE_SIZE);
 
       let formatted = paginatedSlice.map((t: any) => ({
-        id: t.templeId || t.temple_id || t.id,
-        name: t.name,
-        location: t.location,
-        deity: t.deity,
-        category: t.category || 'Sacred',
-        image_url: t.imageUrl || t.image_url || '',
-        is_verified: t.isVerified ?? true,
+        id: t._raw?.id || t.id,
+        temple_id: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
+        templeId: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
+        name: t.name || t._raw?.name,
+        location: t.location || t._raw?.location,
+        deity: t.deity || t._raw?.deity,
+        category: t.category || t._raw?.category || 'Sacred',
+        image_url: t.imageUrl || t.image_url || t._raw?.image_url || '',
+        is_verified: t.isVerified ?? t._raw?.is_verified ?? true,
       }));
 
       // Fallback if local DB returned 0 records total
@@ -465,13 +498,15 @@ export default function TempleScreen() {
         );
       }
       setDisplayTemples(filtered.map((t: any) => ({
-        id: t.temple_id || t.id,
-        name: t.name,
-        location: t.location,
-        deity: t.deity,
-        category: t.category,
-        image_url: t.image_url,
-        is_verified: t.is_verified,
+        id: t._raw?.id || t.id,
+        temple_id: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
+        templeId: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
+        name: t.name || t._raw?.name,
+        location: getTempleLocation(t) || t.location,
+        deity: t.deity || t._raw?.deity,
+        category: t.category || t._raw?.category || 'Sacred',
+        image_url: t.imageUrl || t.image_url || t._raw?.image_url || '',
+        is_verified: t.isVerified ?? t._raw?.is_verified ?? true,
       })));
     }
   }, [temples, displayTemples.length, selectedCategory, searchQuery]);
@@ -645,15 +680,22 @@ export default function TempleScreen() {
     await loadMoreTemples(1, true);
   }, [fetchData, loadMoreTemples]);
 
-  const renderItem = useCallback(({ item }: { item: any }) => (
-    <View style={{ paddingHorizontal: 20 }}>
-      <TempleCard
-        item={item}
-        onPress={openTempleDetails}
-        t={t}
-      />
-    </View>
-  ), [openTempleDetails, t]);
+const renderItem = useCallback(({ item }: { item: any }) => {
+    console.log('[TEMPLE RENDER ITEM]', {
+      id: item?.temple_id || item?.templeId || item?.id,
+      name: item?.name,
+    });
+
+    return (
+      <View style={{ paddingHorizontal: 20 }}>
+        <TempleCard
+          item={item}
+          onPress={openTempleDetails}
+          t={t}
+        />
+      </View>
+    );
+  }, [openTempleDetails, t]);
 
   const keyExtractor = useCallback((item: any) => item.id, []);
 
@@ -766,6 +808,13 @@ export default function TempleScreen() {
     </View>
   ), [loading, displayTemples.length, t]);
 
+  console.log('[TEMPLE DISPLAY STATE]', {
+    count: displayTemples?.length ?? 0,
+    first: displayTemples?.[0],
+    category: selectedCategory,
+    loading,
+  });
+
   return (
     <LinearGradient
       colors={['#FF8D57', '#EA9B76', '#FFEEE5']}
@@ -794,16 +843,10 @@ export default function TempleScreen() {
       <SafeFlashList
         data={displayTemples}
         renderItem={renderItem}
-        estimatedItemSize={120}
+        estimatedItemSize={140}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        onEndReached={onEndReached}
-        onEndReachedThreshold={0.5}
         keyExtractor={keyExtractor}
-        contentContainerStyle={FLASH_LIST_CONTENT_STYLE}
       />
 
       {/* Filter Modal */}

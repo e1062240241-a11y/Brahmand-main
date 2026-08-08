@@ -637,6 +637,40 @@ const getTempleImageByName = (name: string): ImageSourcePropType => {
   return res;
 };
 
+const resolveTempleImage = (item: any): ImageSourcePropType => {
+  if (!item) return DEFAULT_TEMPLE_IMAGE;
+
+  const id = String(
+    item.temple_id ||
+    item.templeId ||
+    item.id ||
+    ''
+  ).trim();
+
+  const name = String(item.name || '').trim();
+
+  // 1. Deterministic local registry by ID
+  if (id) {
+    const byId = getTempleImageById(id);
+    if (byId) return byId;
+  }
+
+  // 2. Deterministic local registry by name
+  if (name) {
+    const byName = getTempleImageByName(name);
+    if (byName) return byName;
+  }
+
+  // 3. Remote URL check
+  const imageUrl = item.image_url || item.imageUrl;
+  if (typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl)) {
+    return { uri: imageUrl };
+  }
+
+  // 4. Guaranteed local neutral fallback
+  return DEFAULT_TEMPLE_IMAGE;
+};
+
 export {
   TEMPLE_IMAGES,
   DEFAULT_TEMPLE_IMAGE,
@@ -644,4 +678,5 @@ export {
   getTempleImageById,
   getTempleImageByName,
   getTempleImageByNameDetailed,
+  resolveTempleImage,
 };

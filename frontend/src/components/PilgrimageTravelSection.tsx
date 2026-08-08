@@ -82,29 +82,43 @@ export const PilgrimageTravelSection: React.FC<PilgrimageTravelSectionProps> = (
   const router = useRouter();
   const data = getExploreNearbyData(templeId, templeName, category);
 
+  const sacredPlaces = data?.nearbySacredPlaces ?? [];
+  const nearbyTemples = data?.nearbyTemples ?? [];
+  const circuitJourney = data?.circuitJourney ?? [];
+
+  console.log('[NEARBY SOURCE TRACE]', {
+    templeId,
+    templeName,
+    hasCuratedData: data?.hasCuratedData,
+    sacredPlacesCount: sacredPlaces.length,
+    nearbyTemplesCount: nearbyTemples.length,
+    sacredPlaces: sacredPlaces.map((x) => x?.name),
+    nearbyTemples: nearbyTemples.map((x) => x?.name),
+  });
+
   return (
     <View style={styles.container}>
-      {/* SECTION 1 — NEARBY SACRED PLACES (Collapsible Dropdown Accordion) */}
-      {data.nearbySacredPlaces.length > 0 && (
-        <SacredPlacesDropdown sacredPlaces={data.nearbySacredPlaces} router={router} />
+      {/* SECTION 1 — NEARBY SACRED PLACES */}
+      {sacredPlaces.length > 0 && (
+        <SacredPlacesDropdown sacredPlaces={sacredPlaces} router={router} />
       )}
 
       {/* SECTION 2 — NEARBY TEMPLES */}
-      {data.nearbyTemples.length > 0 && (
+      {nearbyTemples.length > 0 && (
         <>
           <View style={[styles.sectionHeader, { marginTop: 28 }]}>
             <Text style={styles.sectionTitle}>Nearby Temples</Text>
           </View>
           <View style={styles.verticalListPadding}>
-            {data.nearbyTemples.map((temple) => (
+            {nearbyTemples.map((temple) => (
               <NearbyTempleCard key={temple.templeId} temple={temple} router={router} />
             ))}
           </View>
         </>
       )}
 
-      {/* SECTION 3 — CONTINUE YOUR JYOTIRLINGA / SHAKTI PEETHA JOURNEY */}
-      {data.circuitJourney.length > 0 && (
+      {/* SECTION 3 — CONTINUE YOUR JOURNEY */}
+      {circuitJourney.length > 0 && (
         <>
           <View style={[styles.sectionHeader, { marginTop: 28 }]}>
             <Text style={styles.sectionTitle}>{data.journeyTitle}</Text>
@@ -116,7 +130,7 @@ export const PilgrimageTravelSection: React.FC<PilgrimageTravelSectionProps> = (
             decelerationRate="fast"
             contentContainerStyle={styles.horizontalScrollPadding}
           >
-            {data.circuitJourney.map((item) => (
+            {circuitJourney.map((item) => (
               <CircuitJourneyCard
                 key={item.templeId}
                 item={item}
@@ -186,7 +200,9 @@ const SacredPlaceCard: React.FC<{ place: SacredPlaceItem; router: any }> = ({ pl
       onPress={handlePress}
       activeOpacity={0.88}
     >
-      <ImageWithFallback source={getTempleImageByName(place.name)} style={styles.sacredImageThumbnail} fallbackName={place.name} />
+      <View style={styles.sacredIconCircle}>
+        <Ionicons name={getCategoryIcon(place.category) as any} size={20} color={THEME.accentIndigo} />
+      </View>
       <View style={styles.nearbyTempleTextContainer}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={styles.nearbyTempleName} numberOfLines={1}>

@@ -27,6 +27,7 @@ export interface CircuitJourneyItem {
 export interface ExploreNearbyData {
   templeId: string;
   templeName: string;
+  hasCuratedData: boolean;
   nearbySacredPlaces: SacredPlaceItem[];
   nearbyTemples: NearbyTempleItem[];
   journeyTitle: string;
@@ -252,125 +253,282 @@ export const ALL_SACRED_DESTINATIONS: CircuitJourneyItem[] = [
   },
 ];
 
-export const EXPLORE_NEARBY_DATA: Record<string, { sacredPlaces: SacredPlaceItem[]; nearbyTemples: NearbyTempleItem[] }> = {
-  // 1. Baidyanath Jyotirlinga (Deoghar, Jharkhand)
-  'jyotirling-baidyanath-temple-deoghar': {
+// Central Canonical Temple Alias Registry
+export const TEMPLE_KEY_ALIASES: Record<string, string> = {
+  // Kedarnath
+  kedarnath: 'kedarnath',
+  'jyotirling-kedarnath-temple-uttarakhand': 'kedarnath',
+  'other-kedarnath-temple-uttarakhand': 'kedarnath',
+  'shiva-kedarnath-himalayan-shrine': 'kedarnath',
+  'chardham-kedarnath-temple-uttarakhand': 'kedarnath',
+  'kedarnath temple': 'kedarnath',
+
+  // Badrinath
+  badrinath: 'badrinath',
+  'badrinath-temple-uttarakhand': 'badrinath',
+  'chardham-badrinath-temple-uttarakhand': 'badrinath',
+  'other-badrinath-temple-uttarakhand': 'badrinath',
+  'badrinath temple': 'badrinath',
+
+  // Somnath
+  somnath: 'somnath',
+  'jyotirling-somnath-temple-gujarat': 'somnath',
+  'somnath-temple-gujarat': 'somnath',
+  'somnath temple': 'somnath',
+
+  // Dwarkadhish
+  dwarka: 'dwarkadhish',
+  dwarkadhish: 'dwarkadhish',
+  'other-shri-dwarkadhish-temple-dwarka': 'dwarkadhish',
+  'chardham-dwarkadhish-temple-dwarka': 'dwarkadhish',
+  'shree dwarkadhish temple': 'dwarkadhish',
+
+  // Jagannath Puri
+  puri: 'jagannath-puri',
+  jagannath: 'jagannath-puri',
+  'jagannath-puri': 'jagannath-puri',
+  'other-jagannath-temple-puri': 'jagannath-puri',
+  'chardham-jagannath-temple-puri': 'jagannath-puri',
+  'jagannath puri': 'jagannath-puri',
+
+  // Mahakaleshwar
+  mahakal: 'mahakaleshwar',
+  mahakaleshwar: 'mahakaleshwar',
+  'jyotirling-mahakaleshwar-temple-ujjain': 'mahakaleshwar',
+
+  // Kashi Vishwanath
+  kashi: 'kashi-vishwanath',
+  vishwanath: 'kashi-vishwanath',
+  varanasi: 'kashi-vishwanath',
+  'jyotirling-kashi-vishwanath-temple-varanasi': 'kashi-vishwanath',
+
+  // Baidyanath
+  baidyanath: 'baidyanath',
+  deoghar: 'baidyanath',
+  'jyotirling-baidyanath-temple-deoghar': 'baidyanath',
+
+  // Grishneshwar
+  grishneshwar: 'grishneshwar',
+  ellora: 'grishneshwar',
+  'jyotirling-grishneshwar-temple-ellora': 'grishneshwar',
+
+  // Omkareshwar
+  omkareshwar: 'omkareshwar',
+  'jyotirling-omkareshwar-temple-madhya-pradesh': 'omkareshwar',
+
+  // Bhimashankar
+  bhimashankar: 'bhimashankar',
+  'jyotirling-bhimashankar-temple-maharashtra': 'bhimashankar',
+
+  // Trimbakeshwar
+  trimbakeshwar: 'trimbakeshwar',
+  nashik: 'trimbakeshwar',
+  'jyotirling-trimbakeshwar-temple-nashik': 'trimbakeshwar',
+
+  // Nageshwar
+  nageshwar: 'nageshwar',
+  'jyotirling-nageshwar-temple-dwarka': 'nageshwar',
+
+  // Ramanathaswamy
+  ramanathaswamy: 'ramanathaswamy',
+  rameswaram: 'ramanathaswamy',
+  'jyotirling-ramanathaswamy-temple-rameswaram': 'ramanathaswamy',
+
+  // Srisailam
+  srisailam: 'srisailam',
+  mallikarjuna: 'srisailam',
+  'jyotirling-mallikarjuna-temple-srisailam': 'srisailam',
+
+  // Tanot Mata (Jaisalmer, Rajasthan)
+  'tanot-mata': 'tanot-mata',
+  '37t4zb9pvlgwrh9u1le4': 'tanot-mata',
+  'tanot mata temple – jaisalmer': 'tanot-mata',
+  'tanot mata temple': 'tanot-mata',
+  'tanot mata': 'tanot-mata',
+};
+
+/**
+ * Deterministic Normalization Function
+ * Resolves any incoming raw temple ID or temple name string into a canonical key.
+ */
+export function normalizeTempleKey(rawInput: string): string {
+  if (!rawInput) return '';
+  const lower = String(rawInput).toLowerCase().trim();
+
+  // 1. Direct match in dictionary
+  if (TEMPLE_KEY_ALIASES[lower]) {
+    return TEMPLE_KEY_ALIASES[lower];
+  }
+
+  const cleanedInput = lower.replace(/[^a-z0-9]/g, '');
+
+  // 2. Exact match after stripping non-alphanumeric
+  for (const [alias, canonical] of Object.entries(TEMPLE_KEY_ALIASES)) {
+    const cleanedAlias = alias.replace(/[^a-z0-9]/g, '');
+    if (cleanedInput === cleanedAlias) {
+      return canonical;
+    }
+  }
+
+  // 3. Robust Keyword Matching for all Major Pilgrimage Hubs
+  const coreKeywords: { kw: string; canonical: string }[] = [
+    { kw: 'kedarnath', canonical: 'kedarnath' },
+    { kw: 'badrinath', canonical: 'badrinath' },
+    { kw: 'somnath', canonical: 'somnath' },
+    { kw: 'dwarkadhish', canonical: 'dwarkadhish' },
+    { kw: 'dwarka', canonical: 'dwarkadhish' },
+    { kw: 'puri', canonical: 'jagannath-puri' },
+    { kw: 'jagannath', canonical: 'jagannath-puri' },
+    { kw: 'mahakal', canonical: 'mahakaleshwar' },
+    { kw: 'mahakaleshwar', canonical: 'mahakaleshwar' },
+    { kw: 'kashi', canonical: 'kashi-vishwanath' },
+    { kw: 'vishwanath', canonical: 'kashi-vishwanath' },
+    { kw: 'baidyanath', canonical: 'baidyanath' },
+    { kw: 'deoghar', canonical: 'baidyanath' },
+    { kw: 'grishneshwar', canonical: 'grishneshwar' },
+    { kw: 'ellora', canonical: 'grishneshwar' },
+    { kw: 'omkareshwar', canonical: 'omkareshwar' },
+    { kw: 'bhimashankar', canonical: 'bhimashankar' },
+    { kw: 'trimbakeshwar', canonical: 'trimbakeshwar' },
+    { kw: 'nageshwar', canonical: 'nageshwar' },
+    { kw: 'ramanathaswamy', canonical: 'ramanathaswamy' },
+    { kw: 'rameswaram', canonical: 'ramanathaswamy' },
+    { kw: 'srisailam', canonical: 'srisailam' },
+    { kw: 'mallikarjuna', canonical: 'srisailam' },
+    { kw: 'tanot', canonical: 'tanot-mata' },
+  ];
+
+  for (const item of coreKeywords) {
+    if (cleanedInput.includes(item.kw)) {
+      return item.canonical;
+    }
+  }
+
+  return lower;
+}
+
+export const EXPLORE_NEARBY_DATA: Record<
+  string,
+  { sacredPlaces: SacredPlaceItem[]; nearbyTemples: NearbyTempleItem[] }
+> = {
+  // 1. Kedarnath (Uttarakhand)
+  kedarnath: {
     sacredPlaces: [
       {
-        id: 'bd1',
-        name: 'Shivganga Kund',
-        category: 'Ghat',
-        distance: '0.3 km',
-        significance: 'Sacred holy bathing pool where Ravana rested the Shivling before consecration.',
-        locationQuery: 'Shivganga Kund Deoghar',
-      },
-      {
-        id: 'bd2',
-        name: 'Naulakha Mandir',
+        id: 'k1',
+        name: 'Bhairavnath Mandir Ridge',
         category: 'Temple',
+        distance: '0.5 km',
+        significance: 'Guardian deity temple protecting Kedar valley during winter months.',
+        locationQuery: 'Bhairavnath Temple Kedarnath',
+      },
+      {
+        id: 'k2',
+        name: 'Gandhi Sarovar Glacial Lake',
+        category: 'Lake',
         distance: '3 km',
-        significance: 'Architectural 146-ft Radha-Krishna temple built by Queen Charushila.',
-        locationQuery: 'Naulakha Mandir Deoghar',
+        significance: 'Glacial lake where Yudhishthira embarked on his heavenly ascent.',
+        locationQuery: 'Gandhi Sarovar Chorabari lake Kedarnath',
       },
       {
-        id: 'bd3',
-        name: 'Trikuta Parvat (Trikut Pahar)',
-        category: 'Heritage',
-        distance: '15 km',
-        significance: 'Sacred three-peaked mountain with ropeway & ancient Shiva cave shrine.',
-        locationQuery: 'Trikuta Parvat Deoghar',
+        id: 'k3',
+        name: 'Vasuki Tal High Altitude Lake',
+        category: 'Lake',
+        distance: '8 km',
+        significance: 'Crystal-clear glacial lake offering views of Chaukhamba peaks.',
+        locationQuery: 'Vasuki Tal Kedarnath',
       },
       {
-        id: 'bd4',
-        name: 'Tapovan Caves & Ashram',
-        category: 'Cave',
-        distance: '10 km',
-        significance: 'Ancient meditation caves where Sage Valmiki performed tapasya.',
-        locationQuery: 'Tapovan Caves Deoghar',
+        id: 'k4',
+        name: 'Sonprayag Sangam',
+        category: 'Ghat',
+        distance: '18 km',
+        significance: 'Confluence of Mandakini and Basuki rivers on Kedarnath trek.',
+        locationQuery: 'Sonprayag Kedarnath Route',
       },
     ],
     nearbyTemples: [
       {
-        templeId: 'basukinath-dham-jharkhand',
-        name: 'Basukinath Dham Temple',
-        image: getTempleImageById('jyotirling-baidyanath-temple-deoghar'),
-        distance: '43 km',
+        templeId: 'triyuginarayan-shiva-temple',
+        name: 'Triyuginarayan Temple',
+        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        distance: '25 km',
       },
       {
-        templeId: 'shakti-tarapith-temple-bengal',
-        name: 'Tarapith Shakti Peeth',
-        image: getTempleImageById('other-vaishno-devi-temple-jammu-kashmir'),
-        distance: '125 km',
+        templeId: 'tungnath-mahadev-temple-chopta',
+        name: 'Tungnath Mahadev Temple',
+        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        distance: '88 km',
       },
       {
-        templeId: 'jyotirling-kashi-vishwanath-temple-varanasi',
-        name: 'Kashi Vishwanath Jyotirling',
-        image: getTempleImageById('jyotirling-kashi-vishwanath-temple-varanasi'),
-        distance: '480 km',
+        templeId: 'badrinath',
+        name: 'Badrinath Temple',
+        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        distance: '218 km',
       },
     ],
   },
 
-  // 2. Grishneshwar (Ellora, Maharashtra)
-  'jyotirling-grishneshwar-temple-ellora': {
+  // 2. Badrinath (Uttarakhand)
+  badrinath: {
     sacredPlaces: [
       {
-        id: 'g1',
-        name: 'Ellora Kailasa Temple (Cave 16)',
-        category: 'Heritage',
-        distance: '1.8 km',
-        significance: 'World’s largest monolithic rock-cut Shiva temple excavated top-down.',
-        locationQuery: 'Ellora Cave 16 Kailasa Temple',
-      },
-      {
-        id: 'g2',
-        name: 'Shiva Trats Kund & Ahilyabai Tank',
+        id: 'b1',
+        name: 'Tapt Kund Thermal Springs',
         category: 'Ghat',
-        distance: '0.3 km',
-        significance: 'Ahilyabai Holkar’s sacred bathing ghat & holy water tank.',
-        locationQuery: 'Shiva Trats Kund Ellora',
+        distance: '0.1 km',
+        significance: 'Natural hot sulfur water spring for purification before Badri Darshan.',
+        locationQuery: 'Tapt Kund Badrinath',
       },
       {
-        id: 'g3',
-        name: 'Daulatabad Fort (Devgiri)',
-        category: 'Fort',
-        distance: '14 km',
-        significance: 'Impregnable 12th-century medieval hill fortress overlooking Ellora.',
-        locationQuery: 'Daulatabad Fort Devgiri',
+        id: 'b2',
+        name: 'Mana First Indian Village',
+        category: 'Heritage',
+        distance: '3 km',
+        significance: 'Mythological village housing Vyas Gufa and Saraswati River Origin.',
+        locationQuery: 'Mana Village Badrinath',
       },
       {
-        id: 'g4',
-        name: 'Gautam Rishi Ashram & Caves',
+        id: 'b3',
+        name: 'Vyas Cave & Ganesh Gufa',
         category: 'Cave',
-        distance: '4 km',
-        significance: 'Ancient hermitage of Sage Gautama in the sacred Ellora hills.',
-        locationQuery: 'Gautam Rishi Ashram Ellora Hills',
+        distance: '3.2 km',
+        significance: 'Ancient cave where Sage Vyasa composed Mahabharata with Lord Ganesha.',
+        locationQuery: 'Vyas Gufa Mana Badrinath',
+      },
+      {
+        id: 'b4',
+        name: 'Charan Paduka Sacred Rock',
+        category: 'Heritage',
+        distance: '3 km',
+        significance: 'Sacred boulder bearing footprints of Lord Vishnu on Neelkanth slope.',
+        locationQuery: 'Charan Paduka Badrinath',
       },
     ],
     nearbyTemples: [
       {
-        templeId: 'bhadra-maruti-temple-khuldabad',
-        name: 'Bhadra Maruti Temple',
-        image: getTempleImageById('other-shirdi-sai-baba-temple-maharashtra'),
-        distance: '5 km',
+        templeId: 'mata-murti-temple-badrinath',
+        name: 'Mata Murti Temple',
+        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        distance: '3 km',
       },
       {
-        templeId: 'other-shirdi-sai-baba-temple-maharashtra',
-        name: 'Shirdi Sai Baba Samadhi Mandir',
-        image: getTempleImageById('other-shirdi-sai-baba-temple-maharashtra'),
-        distance: '78 km',
+        templeId: 'kedarnath',
+        name: 'Kedarnath Temple',
+        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        distance: '218 km',
       },
       {
-        templeId: 'jyotirling-trimbakeshwar-temple-nashik',
-        name: 'Trimbakeshwar Shiva Temple',
-        image: getTempleImageById('jyotirling-trimbakeshwar-temple-nashik'),
-        distance: '172 km',
+        templeId: 'yoganarasimha-temple-joshimath',
+        name: 'Narsingh Temple Joshimath',
+        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        distance: '45 km',
       },
     ],
   },
 
-  // 3. Somnath (Veraval, Gujarat)
-  'jyotirling-somnath-temple-gujarat': {
+  // 3. Somnath (Gujarat)
+  somnath: {
     sacredPlaces: [
       {
         id: 's1',
@@ -413,13 +571,13 @@ export const EXPLORE_NEARBY_DATA: Record<string, { sacredPlaces: SacredPlaceItem
         distance: '0.2 km',
       },
       {
-        templeId: 'jyotirling-nageshwar-temple-dwarka',
+        templeId: 'nageshwar',
         name: 'Nageshwar Jyotirling',
         image: getTempleImageById('jyotirling-nageshwar-temple-dwarka'),
         distance: '230 km',
       },
       {
-        templeId: 'other-shri-dwarkadhish-temple-dwarka',
+        templeId: 'dwarkadhish',
         name: 'Shree Dwarkadhish Temple',
         image: getTempleImageById('other-shri-dwarkadhish-temple-dwarka'),
         distance: '235 km',
@@ -427,66 +585,108 @@ export const EXPLORE_NEARBY_DATA: Record<string, { sacredPlaces: SacredPlaceItem
     ],
   },
 
-  // 4. Kedarnath (Uttarakhand)
-  'jyotirling-kedarnath-temple-uttarakhand': {
+  // 4. Dwarkadhish (Dwarka, Gujarat)
+  dwarkadhish: {
     sacredPlaces: [
       {
-        id: 'k1',
-        name: 'Bhairavnath Mandir Ridge',
-        category: 'Temple',
-        distance: '0.5 km',
-        significance: 'Guardian deity temple protecting Kedar valley during winter months.',
-        locationQuery: 'Bhairavnath Temple Kedarnath',
-      },
-      {
-        id: 'k2',
-        name: 'Gandhi Sarovar Glacial Lake',
-        category: 'Lake',
-        distance: '3 km',
-        significance: 'Glacial lake where Yudhishthira embarked on his heavenly ascent.',
-        locationQuery: 'Gandhi Sarovar Chorabari lake Kedarnath',
-      },
-      {
-        id: 'k3',
-        name: 'Vasuki Tal High Altitude Lake',
-        category: 'Lake',
-        distance: '8 km',
-        significance: 'Crystal-clear glacial lake offering views of Chaukhamba peaks.',
-        locationQuery: 'Vasuki Tal Kedarnath',
-      },
-      {
-        id: 'k4',
-        name: 'Sonprayag Sangam',
+        id: 'dw1',
+        name: 'Gomti Ghat & Sangam',
         category: 'Ghat',
-        distance: '18 km',
-        significance: 'Confluence of Mandakini and Basuki rivers on Kedarnath trek.',
-        locationQuery: 'Sonprayag Kedarnath Route',
+        distance: '0.3 km',
+        significance: 'Sacred riverfront ghat where Gomti river meets Arabian Sea.',
+        locationQuery: 'Gomti Ghat Dwarka',
+      },
+      {
+        id: 'dw2',
+        name: 'Sudama Setu Suspension Bridge',
+        category: 'Heritage',
+        distance: '0.4 km',
+        significance: 'Iconic pedestrian cable bridge named after Lord Krishna’s friend Sudama.',
+        locationQuery: 'Sudama Setu Dwarka',
+      },
+      {
+        id: 'dw3',
+        name: 'Bhadkeshwar Mahadev Shrine',
+        category: 'Temple',
+        distance: '1.5 km',
+        significance: 'Ancient ocean-bound Shiva temple surrounded by waves during high tide.',
+        locationQuery: 'Bhadkeshwar Mahadev Dwarka',
       },
     ],
     nearbyTemples: [
       {
-        templeId: 'tungnath-mahadev-temple-chopta',
-        name: 'Tungnath Mahadev Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
-        distance: '88 km',
+        templeId: 'nageshwar',
+        name: 'Nageshwar Jyotirling',
+        image: getTempleImageById('jyotirling-nageshwar-temple-dwarka'),
+        distance: '16 km',
       },
       {
-        templeId: 'badrinath-temple-uttarakhand',
-        name: 'Badrinath Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
-        distance: '218 km',
+        templeId: 'rukmini-devi-temple-dwarka',
+        name: 'Rukmini Devi Temple',
+        image: getTempleImageById('other-shri-dwarkadhish-temple-dwarka'),
+        distance: '2.5 km',
       },
       {
-        templeId: 'triyuginarayan-shiva-temple',
-        name: 'Triyuginarayan Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
-        distance: '25 km',
+        templeId: 'somnath',
+        name: 'Somnath Jyotirling',
+        image: getTempleImageById('jyotirling-somnath-temple-gujarat'),
+        distance: '235 km',
       },
     ],
   },
 
-  // 5. Mahakaleshwar (Ujjain, MP)
-  'jyotirling-mahakaleshwar-temple-ujjain': {
+  // 5. Jagannath Puri (Odisha)
+  'jagannath-puri': {
+    sacredPlaces: [
+      {
+        id: 'p1',
+        name: 'Swargadwar Beach Ghat',
+        category: 'Ghat',
+        distance: '2 km',
+        significance: 'Sacred coastal cremation and bathing ghat offering heavenly entry.',
+        locationQuery: 'Swargadwar Puri',
+      },
+      {
+        id: 'p2',
+        name: 'Narendra Pokhari Sacred Tank',
+        category: 'Lake',
+        distance: '1 km',
+        significance: 'Historic holy lake where Chandan Yatra boat festivals take place.',
+        locationQuery: 'Narendra Pokhari Puri',
+      },
+      {
+        id: 'p3',
+        name: 'Grand Road Bada Danda',
+        category: 'Heritage',
+        distance: '0.1 km',
+        significance: 'World famous wide avenue used for annual Lord Jagannath Rath Yatra.',
+        locationQuery: 'Bada Danda Grand Road Puri',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'gundicha-temple-puri',
+        name: 'Gundicha Temple Puri',
+        image: getTempleImageById('other-jagannath-temple-puri'),
+        distance: '3 km',
+      },
+      {
+        templeId: 'lokanath-temple-puri',
+        name: 'Lokanath Temple Puri',
+        image: getTempleImageById('other-jagannath-temple-puri'),
+        distance: '2.5 km',
+      },
+      {
+        templeId: 'konark-sun-temple-odisha',
+        name: 'Konark Sun Temple',
+        image: getTempleImageById('other-jagannath-temple-puri'),
+        distance: '35 km',
+      },
+    ],
+  },
+
+  // 6. Mahakaleshwar (Ujjain, MP)
+  mahakaleshwar: {
     sacredPlaces: [
       {
         id: 'm1',
@@ -535,7 +735,7 @@ export const EXPLORE_NEARBY_DATA: Record<string, { sacredPlaces: SacredPlaceItem
         distance: '7 km',
       },
       {
-        templeId: 'jyotirling-omkareshwar-temple-madhya-pradesh',
+        templeId: 'omkareshwar',
         name: 'Omkareshwar Jyotirling',
         image: getTempleImageById('jyotirling-omkareshwar-temple-madhya-pradesh'),
         distance: '140 km',
@@ -543,8 +743,8 @@ export const EXPLORE_NEARBY_DATA: Record<string, { sacredPlaces: SacredPlaceItem
     ],
   },
 
-  // 6. Kashi Vishwanath (Varanasi, UP)
-  'jyotirling-kashi-vishwanath-temple-varanasi': {
+  // 7. Kashi Vishwanath (Varanasi, UP)
+  'kashi-vishwanath': {
     sacredPlaces: [
       {
         id: 'v1',
@@ -596,6 +796,390 @@ export const EXPLORE_NEARBY_DATA: Record<string, { sacredPlaces: SacredPlaceItem
         templeId: 'sankat-mochan-hanuman-temple-varanasi',
         name: 'Sankat Mochan Temple',
         image: getTempleImageById('jyotirling-kashi-vishwanath-temple-varanasi'),
+        distance: '4 km',
+      },
+    ],
+  },
+
+  // 8. Baidyanath (Deoghar, Jharkhand)
+  baidyanath: {
+    sacredPlaces: [
+      {
+        id: 'bd1',
+        name: 'Shivganga Kund',
+        category: 'Ghat',
+        distance: '0.3 km',
+        significance: 'Sacred holy bathing pool where Ravana rested the Shivling before consecration.',
+        locationQuery: 'Shivganga Kund Deoghar',
+      },
+      {
+        id: 'bd2',
+        name: 'Naulakha Mandir',
+        category: 'Temple',
+        distance: '3 km',
+        significance: 'Architectural 146-ft Radha-Krishna temple built by Queen Charushila.',
+        locationQuery: 'Naulakha Mandir Deoghar',
+      },
+      {
+        id: 'bd3',
+        name: 'Trikuta Parvat (Trikut Pahar)',
+        category: 'Heritage',
+        distance: '15 km',
+        significance: 'Sacred three-peaked mountain with ropeway & ancient Shiva cave shrine.',
+        locationQuery: 'Trikuta Parvat Deoghar',
+      },
+      {
+        id: 'bd4',
+        name: 'Tapovan Caves & Ashram',
+        category: 'Cave',
+        distance: '10 km',
+        significance: 'Ancient meditation caves where Sage Valmiki performed tapasya.',
+        locationQuery: 'Tapovan Caves Deoghar',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'basukinath-dham-jharkhand',
+        name: 'Basukinath Dham Temple',
+        image: getTempleImageById('jyotirling-baidyanath-temple-deoghar'),
+        distance: '43 km',
+      },
+      {
+        templeId: 'shakti-tarapith-temple-bengal',
+        name: 'Tarapith Shakti Peeth',
+        image: getTempleImageById('other-vaishno-devi-temple-jammu-kashmir'),
+        distance: '125 km',
+      },
+      {
+        templeId: 'kashi-vishwanath',
+        name: 'Kashi Vishwanath Jyotirling',
+        image: getTempleImageById('jyotirling-kashi-vishwanath-temple-varanasi'),
+        distance: '480 km',
+      },
+    ],
+  },
+
+  // 9. Grishneshwar (Ellora, Maharashtra)
+  grishneshwar: {
+    sacredPlaces: [
+      {
+        id: 'g1',
+        name: 'Ellora Kailasa Temple (Cave 16)',
+        category: 'Heritage',
+        distance: '1.8 km',
+        significance: 'World’s largest monolithic rock-cut Shiva temple excavated top-down.',
+        locationQuery: 'Ellora Cave 16 Kailasa Temple',
+      },
+      {
+        id: 'g2',
+        name: 'Shiva Trats Kund & Ahilyabai Tank',
+        category: 'Ghat',
+        distance: '0.3 km',
+        significance: 'Ahilyabai Holkar’s sacred bathing ghat & holy water tank.',
+        locationQuery: 'Shiva Trats Kund Ellora',
+      },
+      {
+        id: 'g3',
+        name: 'Daulatabad Fort (Devgiri)',
+        category: 'Fort',
+        distance: '14 km',
+        significance: 'Impregnable 12th-century medieval hill fortress overlooking Ellora.',
+        locationQuery: 'Daulatabad Fort Devgiri',
+      },
+      {
+        id: 'g4',
+        name: 'Gautam Rishi Ashram & Caves',
+        category: 'Cave',
+        distance: '4 km',
+        significance: 'Ancient hermitage of Sage Gautama in the sacred Ellora hills.',
+        locationQuery: 'Gautam Rishi Ashram Ellora Hills',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'bhadra-maruti-temple-khuldabad',
+        name: 'Bhadra Maruti Temple',
+        image: getTempleImageById('other-shirdi-sai-baba-temple-maharashtra'),
+        distance: '5 km',
+      },
+      {
+        templeId: 'other-shirdi-sai-baba-temple-maharashtra',
+        name: 'Shirdi Sai Baba Samadhi Mandir',
+        image: getTempleImageById('other-shirdi-sai-baba-temple-maharashtra'),
+        distance: '78 km',
+      },
+      {
+        templeId: 'trimbakeshwar',
+        name: 'Trimbakeshwar Shiva Temple',
+        image: getTempleImageById('jyotirling-trimbakeshwar-temple-nashik'),
+        distance: '172 km',
+      },
+    ],
+  },
+
+  // 10. Omkareshwar (Khandwa, MP)
+  omkareshwar: {
+    sacredPlaces: [
+      {
+        id: 'om1',
+        name: 'Narmada Sangam Ghat',
+        category: 'Ghat',
+        distance: '0.5 km',
+        significance: 'Sacred confluence where Narmada river wraps around Omkareshwar island.',
+        locationQuery: 'Narmada Ghat Omkareshwar',
+      },
+      {
+        id: 'om2',
+        name: 'Kuber Bhandari Kund',
+        category: 'Ghat',
+        distance: '1 km',
+        significance: 'Ancient riverbank water pool dedicated to Lord Kuber.',
+        locationQuery: 'Kuber Bhandari Omkareshwar',
+      },
+      {
+        id: 'om3',
+        name: 'Omkareshwar Parikrama Path',
+        category: 'Heritage',
+        distance: '7 km',
+        significance: '7 km circumambulation trail encircling the sacred Om-shaped island.',
+        locationQuery: 'Parikrama Path Omkareshwar',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'mamleshwar-temple-omkareshwar',
+        name: 'Mamleshwar Temple',
+        image: getTempleImageById('jyotirling-omkareshwar-temple-madhya-pradesh'),
+        distance: '0.2 km',
+      },
+      {
+        templeId: 'mahakaleshwar',
+        name: 'Mahakaleshwar Jyotirling',
+        image: getTempleImageById('jyotirling-mahakaleshwar-temple-ujjain'),
+        distance: '140 km',
+      },
+    ],
+  },
+
+  // 11. Bhimashankar (Pune, Maharashtra)
+  bhimashankar: {
+    sacredPlaces: [
+      {
+        id: 'bh1',
+        name: 'Mokshakund Teerth',
+        category: 'Ghat',
+        distance: '0.3 km',
+        significance: 'Sacred water tank behind Bhimashankar sanctum associated with Sage Kaushika.',
+        locationQuery: 'Mokshakund Bhimashankar',
+      },
+      {
+        id: 'bh2',
+        name: 'Gupt Bhimashankar Stream',
+        category: 'Heritage',
+        distance: '2 km',
+        significance: 'Origin stream of Bhima River emerging hidden amidst dense Sahyadri forests.',
+        locationQuery: 'Gupt Bhimashankar Forest',
+      },
+      {
+        id: 'bh3',
+        name: 'Bhimashankar Wildlife Sanctuary Trail',
+        category: 'Heritage',
+        distance: '1 km',
+        significance: 'Sacred grove sanctuary home to the Malabar Giant Squirrel (Shekru).',
+        locationQuery: 'Bhimashankar Wildlife Sanctuary',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'trimbakeshwar',
+        name: 'Trimbakeshwar Shiva Temple',
+        image: getTempleImageById('jyotirling-trimbakeshwar-temple-nashik'),
+        distance: '230 km',
+      },
+      {
+        templeId: 'grishneshwar',
+        name: 'Grishneshwar Jyotirling',
+        image: getTempleImageById('jyotirling-grishneshwar-temple-ellora'),
+        distance: '210 km',
+      },
+    ],
+  },
+
+  // 12. Trimbakeshwar (Nashik, Maharashtra)
+  trimbakeshwar: {
+    sacredPlaces: [
+      {
+        id: 't1',
+        name: 'Kushavarta Kund',
+        category: 'Ghat',
+        distance: '0.2 km',
+        significance: 'Sacred bathing tank where Sage Gautama held River Godavari to release sin.',
+        locationQuery: 'Kushavarta Kund Trimbakeshwar',
+      },
+      {
+        id: 't2',
+        name: 'Brahmagiri Hill Trek',
+        category: 'Heritage',
+        distance: '2 km',
+        significance: 'Holy mountain peak source of Godavari river with 700 stone steps.',
+        locationQuery: 'Brahmagiri Hill Trimbakeshwar',
+      },
+      {
+        id: 't3',
+        name: 'Gangadwar & Ramha Gufa Caves',
+        category: 'Cave',
+        distance: '1.5 km',
+        significance: 'Mountain cliff cave shrine marking Godavari river descent.',
+        locationQuery: 'Gangadwar Trimbakeshwar',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'kalaram-temple-nashik',
+        name: 'Kalaram Temple Nashik',
+        image: getTempleImageById('jyotirling-trimbakeshwar-temple-nashik'),
+        distance: '28 km',
+      },
+      {
+        templeId: 'other-shirdi-sai-baba-temple-maharashtra',
+        name: 'Shirdi Sai Baba Samadhi Mandir',
+        image: getTempleImageById('other-shirdi-sai-baba-temple-maharashtra'),
+        distance: '115 km',
+      },
+      {
+        templeId: 'bhimashankar',
+        name: 'Bhimashankar Jyotirling',
+        image: getTempleImageById('jyotirling-bhimashankar-temple-maharashtra'),
+        distance: '230 km',
+      },
+    ],
+  },
+
+  // 13. Nageshwar (Dwarka, Gujarat)
+  nageshwar: {
+    sacredPlaces: [
+      {
+        id: 'n1',
+        name: 'Nageshwar Sarovar Kund',
+        category: 'Ghat',
+        distance: '0.2 km',
+        significance: 'Holy water reservoir surrounding the massive 85-ft Lord Shiva statue.',
+        locationQuery: 'Nageshwar Sarovar Dwarka',
+      },
+      {
+        id: 'n2',
+        name: 'Gopi Talav Lake',
+        category: 'Lake',
+        distance: '5 km',
+        significance: 'Sacred yellow clay lake associated with Gopis & Shri Krishna.',
+        locationQuery: 'Gopi Talav Dwarka',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'dwarkadhish',
+        name: 'Shree Dwarkadhish Temple',
+        image: getTempleImageById('other-shri-dwarkadhish-temple-dwarka'),
+        distance: '16 km',
+      },
+      {
+        templeId: 'rukmini-devi-temple-dwarka',
+        name: 'Rukmini Devi Temple',
+        image: getTempleImageById('other-shri-dwarkadhish-temple-dwarka'),
+        distance: '14 km',
+      },
+      {
+        templeId: 'somnath',
+        name: 'Somnath Jyotirling',
+        image: getTempleImageById('jyotirling-somnath-temple-gujarat'),
+        distance: '230 km',
+      },
+    ],
+  },
+
+  // 14. Ramanathaswamy (Rameswaram, TN)
+  ramanathaswamy: {
+    sacredPlaces: [
+      {
+        id: 'r1',
+        name: 'Agni Theertham Beach Ghat',
+        category: 'Ghat',
+        distance: '0.2 km',
+        significance: 'Sacred ocean beach where Lord Rama performed purification after Lanka war.',
+        locationQuery: 'Agni Theertham Rameswaram',
+      },
+      {
+        id: 'r2',
+        name: '22 Holy Wells Inside Sanctum Corridor',
+        category: 'Ghat',
+        distance: '0.1 km',
+        significance: '22 sacred fresh water wells inside long temple corridor for pilgrim bath.',
+        locationQuery: '22 Teertham Rameswaram Temple',
+      },
+      {
+        id: 'r3',
+        name: 'Dhanushkodi Sangam Point',
+        category: 'Heritage',
+        distance: '18 km',
+        significance: 'Ghost town & tip of Ram Setu where Bay of Bengal meets Indian Ocean.',
+        locationQuery: 'Dhanushkodi Beach Rameswaram',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'kothandaramaswamy-temple-rameswaram',
+        name: 'Kothandaramaswamy Temple',
+        image: getTempleImageById('jyotirling-ramanathaswamy-temple-rameswaram'),
+        distance: '12 km',
+      },
+      {
+        templeId: 'meenakshi-amman-temple-madurai',
+        name: 'Meenakshi Amman Temple Madurai',
+        image: getTempleImageById('jyotirling-ramanathaswamy-temple-rameswaram'),
+        distance: '170 km',
+      },
+    ],
+  },
+
+  // 15. Srisailam (Andhra Pradesh)
+  srisailam: {
+    sacredPlaces: [
+      {
+        id: 'sr1',
+        name: 'Pathala Ganga Narmada Ghat',
+        category: 'Ghat',
+        distance: '3 km',
+        significance: 'Krishna river sacred gorge reachable by ropeway or 852 stone steps.',
+        locationQuery: 'Pathala Ganga Srisailam',
+      },
+      {
+        id: 'sr2',
+        name: 'Akka Mahadevi Caves',
+        category: 'Cave',
+        distance: '10 km',
+        significance: 'Natural riverine caves where 12th-century saint Akka Mahadevi meditated.',
+        locationQuery: 'Akka Mahadevi Caves Srisailam',
+      },
+      {
+        id: 'sr3',
+        name: 'Srisailam Dam Viewpoint',
+        category: 'Heritage',
+        distance: '8 km',
+        significance: 'Panoramic viewpoint overlooking one of South India’s largest dams.',
+        locationQuery: 'Srisailam Dam Viewpoint',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'sakshi-ganapati-temple-srisailam',
+        name: 'Sakshi Ganapati Temple',
+        image: getTempleImageById('jyotirling-mallikarjuna-temple-srisailam'),
+        distance: '3 km',
+      },
+      {
+        templeId: 'paladhara-panchadhara-srisailam',
+        name: 'Paladhara Panchadhara Shrine',
+        image: getTempleImageById('jyotirling-mallikarjuna-temple-srisailam'),
         distance: '4 km',
       },
     ],
@@ -689,78 +1273,58 @@ export function getExploreNearbyData(
     circuitJourney = ALL_SACRED_DESTINATIONS;
   }
 
-  // Filter circuit Journey to exclude current temple itself
-  const filteredCircuit = circuitJourney.filter((item) => item.templeId !== templeId);
+  // Determine canonical temple key
+  const currentTempleKey = normalizeTempleKey(templeId) || normalizeTempleKey(templeName);
 
-  const cleanNameLower = templeName.toLowerCase().trim();
+  // Retrieve curated entry
+  const curatedData = EXPLORE_NEARBY_DATA[currentTempleKey];
 
-  // Retrieve or generate base items with custom generated spiritual local assets
-  const rawData = EXPLORE_NEARBY_DATA[templeId] || {
-    sacredPlaces: [
-      {
-        id: 'gen_sp1',
-        name: 'Sacred Bathing Teertham Ghat',
-        category: 'Ghat' as const,
-        distance: '0.5 km',
-        significance: 'Holy water tank for ritual bathing before entering sanctum.',
-        locationQuery: `${templeName} Teertham Pond`,
-      },
-      {
-        id: 'gen_sp2',
-        name: 'Pilgrim Heritage Corridor',
-        category: 'Heritage' as const,
-        distance: '1.2 km',
-        significance: 'Historic spiritual pathway lined with ancient shrines & banyan trees.',
-        locationQuery: `${templeName} Heritage Walk`,
-      },
-      {
-        id: 'gen_sp3',
-        name: 'Sacred Cave Hermitage',
-        category: 'Cave' as const,
-        distance: '1.8 km',
-        significance: 'Peaceful cave hermitage associated with ancient rishi penance.',
-        locationQuery: `${templeName} Garden`,
-      },
-    ],
-    nearbyTemples: [
-      {
-        templeId: 'jyotirling-grishneshwar-temple-ellora',
-        name: 'Grishneshwar Jyotirling',
-        image: getTempleImageById('jyotirling-grishneshwar-temple-ellora'),
-        distance: 'Nearby Region',
-      },
-      {
-        templeId: 'other-shirdi-sai-baba-temple-maharashtra',
-        name: 'Shirdi Sai Baba Temple',
-        image: getTempleImageById('other-shirdi-sai-baba-temple-maharashtra'),
-        distance: 'Regional Shrine',
-      },
-      {
-        templeId: 'other-tirupati-balaji-temple-andhra-pradesh',
-        name: 'Tirupati Balaji Temple',
-        image: getTempleImageById('other-tirupati-balaji-temple-andhra-pradesh'),
-        distance: 'Major Pilgrim Center',
-      },
-    ],
-  };
-
-  // Strict filtering: Remove self from nearby sacred places and nearby temples
-  const filteredSacredPlaces = rawData.sacredPlaces.filter((place) => {
-    if (place.linkedTempleId && place.linkedTempleId === templeId) return false;
-    if (cleanNameLower && place.name.toLowerCase().includes(cleanNameLower)) return false;
-    return true;
+  // Diagnostic logging
+  console.log('[NEARBY RESOLUTION]', {
+    rawId: templeId,
+    rawName: templeName,
+    currentTempleKey,
+    hasCuratedData: !!curatedData,
+    sacredPlacesCount: curatedData?.sacredPlaces?.length ?? 0,
+    nearbyTemplesCount: curatedData?.nearbyTemples?.length ?? 0,
   });
 
-  const filteredNearbyTemples = rawData.nearbyTemples.filter((temple) => {
-    if (temple.templeId === templeId) return false;
-    if (cleanNameLower && temple.name.toLowerCase().includes(cleanNameLower)) return false;
-    return true;
+  if (!curatedData) {
+    console.warn('[NEARBY DATA MISSING]', {
+      rawId: templeId,
+      rawName: templeName,
+      currentTempleKey,
+    });
+  }
+
+  // 1. Nearby Sacred Places: Direct curated data (Independent, NOT filtered by self-temple key)
+  const sacredPlaces: SacredPlaceItem[] = curatedData?.sacredPlaces ?? [];
+
+  // 2. Nearby Temples: Curated nearby temples WITH self-temple exclusion
+  const rawNearbyTemples: NearbyTempleItem[] = curatedData?.nearbyTemples ?? [];
+  const filteredNearbyTemples = rawNearbyTemples.filter((t) => {
+    const templeItemKey = normalizeTempleKey(t.templeId) || normalizeTempleKey(t.name);
+    return templeItemKey !== currentTempleKey;
+  });
+
+  console.log('[NEARBY FILTER RESULT]', {
+    currentTempleKey,
+    beforeCount: rawNearbyTemples.length,
+    afterCount: filteredNearbyTemples.length,
+    temples: filteredNearbyTemples.map((t) => ({ id: t.templeId, name: t.name })),
+  });
+
+  // 3. Circuit Journey: Exclude self-temple
+  const filteredCircuit = circuitJourney.filter((item) => {
+    const itemKey = normalizeTempleKey(item.templeId) || normalizeTempleKey(item.name);
+    return itemKey !== currentTempleKey;
   });
 
   return {
     templeId,
     templeName,
-    nearbySacredPlaces: filteredSacredPlaces,
+    hasCuratedData: !!curatedData,
+    nearbySacredPlaces: sacredPlaces,
     nearbyTemples: filteredNearbyTemples,
     journeyTitle,
     circuitJourney: filteredCircuit,
