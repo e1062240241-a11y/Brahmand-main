@@ -14061,8 +14061,19 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     # Fallback 1: If fewer than 5 users found, expand time check to 24 hours and distance to 10km
     if len(all_target_user_ids) < 5:
         logger.info("SOS: Few users found within 1km/10min, expanding search to 10km/24h")
+
+        # Calculate bounding box for 10km to avoid full collection scan
+        lat_delta_10km = 10.0 / 111.0
+        lat_min_10km = data.latitude - lat_delta_10km
+        lat_max_10km = data.latitude + lat_delta_10km
+
+        filters_10km = [
+            ('current_location.latitude', '>=', lat_min_10km),
+            ('current_location.latitude', '<=', lat_max_10km)
+        ]
+
         expanded_users = []
-        users = await db.query_documents('users')
+        users = await db.query_documents('users', filters=filters_10km)
         one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         for u in users:
             uid = u.get('id')
