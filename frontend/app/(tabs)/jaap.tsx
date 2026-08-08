@@ -24,7 +24,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { getTempleImageByName, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
+import { getTempleImageById, getTempleImageByName, getTempleImageByNameDetailed, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeIST } from '../../src/utils/dateUtils';
@@ -1132,7 +1132,7 @@ export default function JaapLandingScreen() {
               {/* Hero Banner (Same structure as Jaap tab banner) */}
               <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
               <ImageBackground
-                source={require('../../assets/images/image temple/SomnathTemple.webp')}
+                source={require('../../assets/images/imagetemple/SomnathTemple.webp')}
                 style={styles.heroBannerFill}
                 imageStyle={styles.heroBannerImageStyle}
                 resizeMode="cover"
@@ -1339,7 +1339,11 @@ export default function JaapLandingScreen() {
                       onPress={() => router.push(`/temple/${encodeURIComponent(safeItemId)}`)}
                     >
 
-                      <Image source={TEMPLE_IMAGES[safeItemId] || getTempleImageByName(safeName) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} style={styles.newTempleCardImg} resizeMode="cover" />
+                      <Image 
+                        source={getTempleImageById(safeItemId) || getTempleImageByName(safeName)} 
+                        style={styles.newTempleCardImg} 
+                        resizeMode="cover" 
+                      />
                       <View style={styles.newTempleCardInfo}>
                         <View>
                           <Text style={styles.newTempleCardDeity} numberOfLines={1}>

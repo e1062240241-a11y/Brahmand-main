@@ -1230,7 +1230,7 @@ const DirectMessageScreen = () => {
       const result = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: 1280 } }],
-        { compress: 0.7, format: ImageManipulator.SaveFormat.webp }
+        { compress: 0.7, format: ImageManipulator.SaveFormat.WEBP }
       );
       return result.uri;
     } catch (error) {

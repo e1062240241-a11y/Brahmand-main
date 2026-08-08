@@ -136,28 +136,17 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
   const rawCat = renderSafeText(item.category);
   const categoryLabel = t('language') === 'hi' && rawCat === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (rawCat || 'Sacred');
 
-  console.log('[STEP 2 IMAGE LOOKUP]', {
-    id: item.id,
-    templeId: item.templeId,
-    name: item.name,
-    displayName,
-    imageById: getTempleImageById(item.id),
-    imageByName: getTempleImageByName(item.name),
-    remote: item.image_url,
-  });
+  const templeId = item.id || item.templeId || item.temple_id;
 
   const imageSource = useMemo(() => {
     return (
-      getTempleImageById(item.id) || 
+      (templeId ? getTempleImageById(templeId) : null) || 
       getTempleImageByName(displayName) ||
       getTempleImageByName(item.name) || 
       (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('http') ? { uri: item.image_url } : null) || 
       DEFAULT_TEMPLE_IMAGE
     );
-  }, [item.id, item.name, displayName, item.image_url]);
-
-  console.log('[STEP 3 FINAL SOURCE]', imageSource);
-  console.log('[STEP 8 DEFAULT_TEMPLE_IMAGE]', DEFAULT_TEMPLE_IMAGE);
+  }, [templeId, item.name, displayName, item.image_url]);
 
   const [imgSource, setImgSource] = React.useState(imageSource);
   React.useEffect(() => { setImgSource(imageSource); }, [imageSource]);
@@ -173,8 +162,7 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
         defaultSource={DEFAULT_TEMPLE_IMAGE}
         style={styles.templeItemImage} 
         fadeDuration={0}
-        onLoad={() => console.log('[STEP 4 LOAD SUCCESS]', item.name, item.id)}
-        onError={(e) => console.log('[STEP 4 LOAD ERROR]', item.name, item.id, e.nativeEvent)}
+        onError={() => setImgSource(DEFAULT_TEMPLE_IMAGE)}
       />
       <View style={styles.templeItemInfo}>
         <Text style={styles.templeItemName}>{displayName}</Text>
@@ -370,7 +358,6 @@ export default function TempleScreen() {
       }
 
       if (isReset) {
-        console.log('[STEP 1 DISPLAY TEMPLES RAW SLICE]', formatted.slice(0, 5));
         setDisplayTemples(formatted);
       } else {
         setDisplayTemples(prev => [...prev, ...formatted]);
@@ -710,7 +697,7 @@ export default function TempleScreen() {
 
         <View style={styles.heroRightImageContainer}>
           <Image 
-            source={require('../../assets/images/image temple/SomnathTemple.webp')} 
+            source={require('../../assets/images/imagetemple/SomnathTemple.webp')} 
             style={styles.heroSideImage} 
             resizeMode="cover"
           />
