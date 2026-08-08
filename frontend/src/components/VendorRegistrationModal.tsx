@@ -168,12 +168,14 @@ if (Platform.OS !== 'web') {
   }
 }
 
-const getWebMapHtml = (lat: number, lng: number) => `
+const getWebMapHtml = (lat: number, lng: number) => {
+  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+  return `
 <!DOCTYPE html>
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs&libraries=places"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places"></script>
     <style>
       body, html { margin: 0; padding: 0; width: 100%; height: 100%; font-family: sans-serif; }
       #map { width: 100%; height: calc(100% - 70px); }
@@ -295,6 +297,7 @@ const getWebMapHtml = (lat: number, lng: number) => `
   </body>
 </html>
 `;
+};
 
 const WEB_MAP_HTML_DEFAULT = getWebMapHtml(19.0760, 72.8777);
 
@@ -1138,7 +1141,7 @@ export const VendorRegistrationModal: React.FC<VendorRegistrationModalProps> = (
                     }
                   }}
                   query={{
-                    key: 'AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs',
+                    key: process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '',
                     language: 'en',
                   }}
                   styles={{

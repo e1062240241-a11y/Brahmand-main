@@ -30,7 +30,10 @@ import {
 } from 'react-native-agora';
 import { useKeepAwake } from 'expo-keep-awake';
 
-const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || '4f7199e5d22f4aaf936700d75affe65d';
+const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || '';
+if (!AGORA_APP_ID) {
+  throw new Error("EXPO_PUBLIC_AGORA_APP_ID is not configured in the environment");
+}
 
 declare const require: any;
 
