@@ -136,7 +136,7 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
   const rawCat = renderSafeText(item.category);
   const categoryLabel = t('language') === 'hi' && rawCat === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (rawCat || 'Sacred');
 
-  const templeId = item.id || item.templeId || item.temple_id;
+  const templeId = item.temple_id || item.templeId || item.id;
 
   const imageSource = useMemo(() => {
     return (
