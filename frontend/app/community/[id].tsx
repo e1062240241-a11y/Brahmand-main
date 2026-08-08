@@ -2656,6 +2656,13 @@ export default function CommunityDetailScreen() {
       ? item.content.slice(0, 300) + '...'
       : item.content;
 
+    const userObj = item.user || {};
+    const userName = userObj.name || (item as any).author_name || (item as any).username || (item as any).user_name || 'Sacred Devotee';
+    const userPhoto = userObj.photo || (item as any).author_photo || (item as any).user_avatar || (item as any).avatar || '';
+    const userHandle = userObj.handle ? userObj.handle : `@${userName.replace(/\s+/g, '').toLowerCase()}`;
+    const isVerified = Boolean(userObj.isVerified || (item as any).is_verified);
+    const isFeatured = Boolean(userObj.isFeatured || (item as any).is_featured);
+
     return (
       <View style={[
         styles.postContainer,
@@ -2677,7 +2684,7 @@ export default function CommunityDetailScreen() {
             ) : (
               // Parent thread post: show avatar, and draw a line down if there are replies
               <>
-                <Avatar name={item.user.name} photo={item.user.photo} size={48} />
+                <Avatar name={userName} photo={userPhoto} size={48} />
                 {hasNextThreadConnection && (
                   <View style={{ position: 'absolute', left: 24, top: 48, bottom: 0, width: 2, backgroundColor: '#CFD9DE', zIndex: 1 }} />
                 )}
@@ -2688,13 +2695,13 @@ export default function CommunityDetailScreen() {
           <View style={[styles.postRightCol, hasPrevThreadConnection && { paddingLeft: 24 }]}>
             <View style={styles.postHeaderRow}>
               <View style={styles.postNameContainer}>
-                <Text style={styles.feedPostUserName} numberOfLines={1}>{item.user.name}</Text>
-                {item.user.isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 2 }} />}
+                <Text style={styles.feedPostUserName} numberOfLines={1}>{userName}</Text>
+                {isVerified && !item.hideBadge && <MaterialCommunityIcons name="check-decagram" size={18} color="#FF6B00" style={{ marginLeft: 2 }} />}
                 <Text style={styles.postHandle} numberOfLines={1}>
-                  {item.user.handle ? ` ${item.user.handle}` : ` @${item.user.name.replace(/\s+/g, '').toLowerCase()}`}
+                  {` ${userHandle}`}
                 </Text>
                 <Text style={styles.postHandle} numberOfLines={1}> · {formatRelativeTime(item.timestamp)}</Text>
-                {item.user.isFeatured && (
+                {isFeatured && (
                   <View style={styles.featuredBadgeContainer}>
                     <Text style={styles.featuredBadgeText}>Featured</Text>
                   </View>
@@ -2705,7 +2712,7 @@ export default function CommunityDetailScreen() {
                   </View>
                 )}
               </View>
-              {(item.sender_id === user?.id || item.user.name === user?.name || String(item.id).startsWith('d')) ? (
+              {(item.sender_id === user?.id || userObj.name === user?.name || userName === user?.name || String(item.id).startsWith('d')) ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                   {((item as any).isRequestInFeed || ['requests', 'seva', 'lost & found', 'temple updates'].includes((item as any).category?.toLowerCase()) || (item as any).request_type) && !isFulfilled && (
                     <TouchableOpacity

@@ -511,6 +511,10 @@ const getTempleIdFromName = (name: string, prefix: 'jyotirling' | 'other' = 'oth
   `${prefix}-${normalizeTempleName(name)}`;
 
 
+const ALL_PREFIXES = /^(jyotirling|other|shaktipeeth|healing|sacred|ashtavinayak|panchbhoota|vishnu|shiva|devi|hanuman|ganapati|chardham|shakti)-/g;
+
+const stripPrefix = (s: string) => s.replace(ALL_PREFIXES, '').replace(ALL_PREFIXES, '');
+
 const IMAGE_LOOKUP_CACHE = new Map<string, ImageSourcePropType>();
 
 const getTempleImageById = (id: string) => {
@@ -518,13 +522,23 @@ const getTempleImageById = (id: string) => {
   if (IMAGE_LOOKUP_CACHE.has(id)) return IMAGE_LOOKUP_CACHE.get(id) || null;
 
   let result: ImageSourcePropType | null = null;
+
+  // 1. Exact match
   if (TEMPLE_IMAGES[id]) {
     result = TEMPLE_IMAGES[id];
   } else {
     const normId = normalizeTempleName(id);
+    const strippedId = stripPrefix(normId); // e.g. "venugopala-swamy-temple-mysore"
+
     for (const key of Object.keys(TEMPLE_IMAGES)) {
       const normKey = normalizeTempleName(key);
-      if (normKey === normId || (normId.length > 5 && normId.includes(normKey))) {
+      const strippedKey = stripPrefix(normKey); // e.g. "venugopalaswamy"
+
+      if (
+        normKey === normId ||
+        strippedKey === strippedId ||
+        (strippedId.length > 5 && (strippedKey.includes(strippedId) || strippedId.includes(strippedKey)))
+      ) {
         result = TEMPLE_IMAGES[key];
         break;
       }
@@ -689,7 +703,7 @@ const _rawGetTempleImageByName = (name: string) => {
   if (lowerName.includes('harsiddhi')) return TEMPLE_IMAGES['shaktipeeth-harsiddhi-mata-temple-ujjain'];
   if (lowerName.includes('maihar') || (lowerName.includes('sharada') && lowerName.includes('devi'))) return TEMPLE_IMAGES['shaktipeeth-sharada-devi-temple-maihar'];
   if (lowerName.includes('biraja')) return TEMPLE_IMAGES['shaktipeeth-biraja-temple-jajpur'];
-  if (lowerName.includes('kalika mata') || lowerName.includes('pavagadh')) return TEMPLE_IMAGES['sacred-mahakali-temple-pavagadh'];
+  if (lowerName.includes('kalika mata') || lowerName.includes('pavagadh')) return TEMPLE_IMAGES['shaktipeeth-bhavani-mandir-tuljapur'];
 
   // Healing Temples Keyword Matching
   if (lowerName.includes('ramanasramam') || lowerName.includes('ramana maharshi')) return TEMPLE_IMAGES['healing-ramanasramam-tiruvannamalai'];
@@ -729,6 +743,101 @@ const _rawGetTempleImageByName = (name: string) => {
   if (lowerName.includes('tapovan')) return TEMPLE_IMAGES['sacred-tapovan-caves'];
   if (lowerName.includes('triveni')) return TEMPLE_IMAGES['sacred-triveni-sangam-ghat'];
   if (lowerName.includes('baan stambh') || (lowerName.includes('baan') && lowerName.includes('stambh'))) return TEMPLE_IMAGES['sacred-baan-stambh'];
+
+  // Extended Shiva Temple keyword matching
+  if (lowerName.includes('trimbak raja') || (lowerName.includes('trimbak') && lowerName.includes('nashik'))) return TEMPLE_IMAGES['jyotirling-trimbakeshwar-temple-nashik'];
+  if (lowerName.includes('bhimashankar') && (lowerName.includes('pune') || lowerName.includes('forest'))) return TEMPLE_IMAGES['jyotirling-bhimashankar-temple-maharashtra'];
+  if ((lowerName.includes('somnath') && (lowerName.includes('jyotirlinga') || lowerName.includes('shrine') || lowerName.includes('veraval') || lowerName.includes('patan'))) || lowerName.includes('somnath maha') || lowerName.includes('somnath coastal') || lowerName.includes('somnath temple complex')) return TEMPLE_IMAGES['jyotirling-somnath-temple-gujarat'];
+  if (lowerName.includes('baba baidyanath') || lowerName.includes('baba dham') || (lowerName.includes('baidyanath') && lowerName.includes('deoghar'))) return TEMPLE_IMAGES['jyotirling-baidyanath-temple-deoghar'];
+  if (lowerName.includes('kashi vishwanath corridor') || (lowerName.includes('kashi') && lowerName.includes('corridor'))) return TEMPLE_IMAGES['jyotirling-kashi-vishwanath-temple-varanasi'];
+  if (lowerName.includes('mahakal jyotirlinga') || (lowerName.includes('mahakal') && lowerName.includes('ujjain'))) return TEMPLE_IMAGES['jyotirling-mahakaleshwar-temple-ujjain'];
+  if (lowerName.includes('omkareshwar island') || (lowerName.includes('omkareshwar') && lowerName.includes('narmada'))) return TEMPLE_IMAGES['jyotirling-omkareshwar-temple-madhya-pradesh'];
+  if (lowerName.includes('kedarnath himalayan') || (lowerName.includes('kedarnath') && lowerName.includes('himalayan'))) return TEMPLE_IMAGES['jyotirling-kedarnath-temple-uttarakhand'];
+  if ((lowerName.includes('grishneshwar') && (lowerName.includes('red') || lowerName.includes('ellora'))) || lowerName.includes('ghrushneshwar')) return TEMPLE_IMAGES['jyotirling-grishneshwar-temple-ellora'];
+  if (lowerName.includes('nageshwar darukavana') || (lowerName.includes('nageshwar') && lowerName.includes('dwarka'))) return TEMPLE_IMAGES['jyotirling-nageshwar-temple-dwarka'];
+  if (lowerName.includes('ramanathaswamy') && lowerName.includes('corridor')) return TEMPLE_IMAGES['jyotirling-ramanathaswamy-temple-rameswaram'];
+  if (lowerName.includes('mallikarjuna srisailam') || (lowerName.includes('mallikarjuna') && lowerName.includes('hills'))) return TEMPLE_IMAGES['jyotirling-mallikarjuna-temple-srisailam'];
+  if (lowerName.includes('gopnath mahadev') || lowerName.includes('gopnath')) return TEMPLE_IMAGES['sacred-gopnathmahadev'];
+  if (lowerName.includes('trinetreshwar') || lowerName.includes('tarnetar')) return TEMPLE_IMAGES['sacred-trinetreshwar'];
+
+  // Extended Vishnu Temple keyword matching
+  if (lowerName.includes('ahobilam') || lowerName.includes('navanarasimha') || lowerName.includes('narasimha')) return TEMPLE_IMAGES['sacred-ahobilamnavanarasimha'];
+  if (lowerName.includes('badri vishal') || (lowerName.includes('badrinath') && lowerName.includes('chamoli'))) return TEMPLE_IMAGES['chardham-badrinath-temple-uttarakhand'];
+  if (lowerName.includes('ananta vasudeva') || lowerName.includes('anantavasudeva')) return TEMPLE_IMAGES['sacred-anantavasudeva'];
+  if (lowerName.includes('venugopala') || lowerName.includes('venugopalaswamy')) return TEMPLE_IMAGES['sacred-venugopalaswamy'];
+  if (lowerName.includes('radha raman') || lowerName.includes('radharaman')) return TEMPLE_IMAGES['other-prem-mandir-vrindavan'];
+  if (lowerName.includes('radha damodar') || lowerName.includes('damodar')) return TEMPLE_IMAGES['sacred-radhadamodar'];
+  if (lowerName.includes('ayodhya ram') || lowerName.includes('ram mandir complex') || lowerName.includes('ayodhya')) return TEMPLE_IMAGES['other-shree-ram-janmabhoomi-mandir-ayodhya'];
+
+  // Extended Devi Temple keyword matching
+  if (lowerName.includes('mansa devi') || lowerName.includes('mansadevi')) return TEMPLE_IMAGES['sacred-mansadevi'];
+  if (lowerName.includes('mumbadevi') || lowerName.includes('mumbai devi')) return TEMPLE_IMAGES['other-mahalaxmi-temple'];
+  if (lowerName.includes('kamakhya') && (lowerName.includes('assam') || lowerName.includes('sanctuary') || lowerName.includes('guwahati'))) return TEMPLE_IMAGES['shaktipeeth-kamakhya-temple-guwahati'];
+  if (lowerName.includes('kalighat') && (lowerName.includes('kolkata') || lowerName.includes('kali') || lowerName.includes('shrine'))) return TEMPLE_IMAGES['shaktipeeth-kalighat-kali-temple-kolkata'];
+  if (lowerName.includes('kanaka durga') || lowerName.includes('vijayawada')) return TEMPLE_IMAGES['sacred-kanakadurga'];
+  if (lowerName.includes('bhramaramba') || lowerName.includes('bhramara') || (lowerName.includes('ambika') && lowerName.includes('srisailam'))) return TEMPLE_IMAGES['jyotirling-mallikarjuna-temple-srisailam'];
+  if (lowerName.includes('kateel') || lowerName.includes('durgaparameshwari')) return TEMPLE_IMAGES['healing-mangaladevi-temple-mangalore'];
+
+  // Extended Hanuman Temple keyword matching  
+  if (lowerName.includes('pracheen hanuman') || lowerName.includes('marutam') || lowerName.includes('connaught')) return TEMPLE_IMAGES['other-hanuman-garhi-temple-ayodhya'];
+  if (lowerName.includes('girgaon') || lowerName.includes('babulnath') || lowerName.includes('girgaum')) return TEMPLE_IMAGES['other-sankat-mochan-hanuman-temple-varanasi'];
+  if (lowerName.includes('sankat mochan') && lowerName.includes('shimla')) return TEMPLE_IMAGES['other-jakhu-temple-shimla'];
+  if (lowerName.includes('kainchi dham') || lowerName.includes('neem karoli') || lowerName.includes('kainchi')) return TEMPLE_IMAGES['sacred-kainchidham'];
+  if (lowerName.includes('bade hanuman') || lowerName.includes('lying hanuman') || (lowerName.includes('hanuman') && lowerName.includes('prayagraj'))) return TEMPLE_IMAGES['other-hanuman-garhi-temple-ayodhya'];
+  if (lowerName.includes('bala hanuman') && lowerName.includes('jamnagar')) return TEMPLE_IMAGES['other-sankat-mochan-hanuman-temple-varanasi'];
+
+  // Extended Sacred Places keyword matching
+  if (lowerName.includes('palani') || (lowerName.includes('murugan') && lowerName.includes('dindigul'))) return TEMPLE_IMAGES['sacred-palanimurugan'];
+  if (lowerName.includes('swamimalai') && lowerName.includes('murugan')) return TEMPLE_IMAGES['sacred-swamimalaimurugan'];
+  if (lowerName.includes('tiruttani') || (lowerName.includes('murugan') && lowerName.includes('tiruvallur'))) return TEMPLE_IMAGES['sacred-swamimalaimurugan'];
+  if (lowerName.includes('thiruparankundram') || (lowerName.includes('murugan') && lowerName.includes('madurai'))) return TEMPLE_IMAGES['sacred-tiruchendurmurugan'];
+  if (lowerName.includes('tiruchendur') && lowerName.includes('murugan')) return TEMPLE_IMAGES['sacred-tiruchendurmurugan'];
+  if (lowerName.includes('tovp') || lowerName.includes('vedic planetarium') || lowerName.includes('mayapur') || lowerName.includes('chandrodaya')) return TEMPLE_IMAGES['sacred-templeofvedicplanetarium'];
+  if (lowerName.includes('tanot mata') || (lowerName.includes('tanot') && lowerName.includes('jaisalmer'))) return TEMPLE_IMAGES['sacred-tanotmata'];
+  if (lowerName.includes('khatu shyam')) return TEMPLE_IMAGES['other-khatu-shyam-ji-temple-sikar'];
+  if (lowerName.includes('chamundi hill') || (lowerName.includes('chamundi') && lowerName.includes('mysore'))) return TEMPLE_IMAGES['shaktipeeth-chamundeshwari-temple-mysore'];
+  if (lowerName.includes('murudeshwar') && lowerName.includes('coastal')) return TEMPLE_IMAGES['other-murudeshwar-temple-karnataka'];
+  if (lowerName.includes('triprayar') || lowerName.includes('sree rama') && lowerName.includes('thrissur')) return TEMPLE_IMAGES['other-guruvayur-temple-kerala'];
+  if (lowerName.includes('sree vallabha') || lowerName.includes('thiruvalla')) return TEMPLE_IMAGES['sacred-sree-vallaba'];
+  if (lowerName.includes('ambalappuzha') || lowerName.includes('alappuzha')) return TEMPLE_IMAGES['other-guruvayur-temple-kerala'];
+  if (lowerName.includes('aranmula') || lowerName.includes('parthasarathy')) return TEMPLE_IMAGES['other-padmanabhaswamy-temple-thiruvananthapuram'];
+  if (lowerName.includes('janardhana swamy') || lowerName.includes('varkala')) return TEMPLE_IMAGES['sacred-janardhanaswamy'];
+  if (lowerName.includes('srivilliputhur') || lowerName.includes('andal')) return TEMPLE_IMAGES['sacred-srivilliputhurandal'];
+  if (lowerName.includes('uppiliappan') || lowerName.includes('oppiliappan')) return TEMPLE_IMAGES['sacred-uppiliappan'];
+  if (lowerName.includes('adi kumbeswarar') || (lowerName.includes('kumbeswarar') && lowerName.includes('kumbakonam'))) return TEMPLE_IMAGES['sacred-adikumbeswarar'];
+  if (lowerName.includes('varadharaja perumal') || (lowerName.includes('varadharaja') && lowerName.includes('kanchipuram'))) return TEMPLE_IMAGES['sacred-varadharajaperumal'];
+  if (lowerName.includes('kamakshi') && lowerName.includes('kanchipuram')) return TEMPLE_IMAGES['sacred-kanchipuram-kamakshi'];
+  if (lowerName.includes('thirunageswaram') || lowerName.includes('naganathaswamy') && lowerName.includes('keelaperumpallam')) return TEMPLE_IMAGES['sacred-naganathaswamy'];
+  if (lowerName.includes('apatsahayesvarar') || lowerName.includes('alangudi')) return TEMPLE_IMAGES['sacred-apatsahayesvarar'];
+  if (lowerName.includes('thingalur') || lowerName.includes('kailasanathar') && lowerName.includes('thingalur')) return TEMPLE_IMAGES['sacred-suryanarkovil'];
+  if (lowerName.includes('agniswarar') || lowerName.includes('kanchanur')) return TEMPLE_IMAGES['sacred-suryanarkovil'];
+  if (lowerName.includes('dharbaranyeswarar') || lowerName.includes('thirunallar')) return TEMPLE_IMAGES['sacred-dharbaranyeswarar'];
+  if (lowerName.includes('naganathaswamy') && lowerName.includes('keelaperumpallam')) return TEMPLE_IMAGES['sacred-naganathaswamy'];
+  if (lowerName.includes('suryanar') || lowerName.includes('suryanar kovil')) return TEMPLE_IMAGES['sacred-suryanarkovil'];
+  if (lowerName.includes('draksharamam') || lowerName.includes('bheemeswara') && lowerName.includes('kakinada')) return TEMPLE_IMAGES['sacred-kondagattuanjaneyaswamy'];
+  if (lowerName.includes('amareswara') || lowerName.includes('amaravati')) return TEMPLE_IMAGES['sacred-amareswaraswamy'];
+  if (lowerName.includes('ksheera ramalingeswara') || lowerName.includes('palakollu')) return TEMPLE_IMAGES['sacred-ksheeraramalingeswara'];
+  if (lowerName.includes('kumara bhimeswara') || lowerName.includes('samalkota')) return TEMPLE_IMAGES['sacred-kondagattuanjaneyaswamy'];
+  if (lowerName.includes('yadadri') || lowerName.includes('lakshmi narasimha') && lowerName.includes('yadadri')) return TEMPLE_IMAGES['sacred-ahobilamnavanarasimha'];
+  if (lowerName.includes('sita ramachandra') || lowerName.includes('bhadrachalam')) return TEMPLE_IMAGES['sacred-bhadrachalam-temple'];
+  if (lowerName.includes('thousand pillar') || lowerName.includes('warangal')) return TEMPLE_IMAGES['sacred-kondagattuanjaneyaswamy'];
+  if (lowerName.includes('gnana saraswathi') || lowerName.includes('basar')) return TEMPLE_IMAGES['sacred-mahavirmandir'];
+  if (lowerName.includes('kondagattu') || lowerName.includes('anjaneya swamy')) return TEMPLE_IMAGES['sacred-kondagattuanjaneyaswamy'];
+  if (lowerName.includes('patan devi') || lowerName.includes('patna devi')) return TEMPLE_IMAGES['sacred-mansadevi'];
+  if (lowerName.includes('mahavir mandir') || (lowerName.includes('mahavir') && lowerName.includes('patna'))) return TEMPLE_IMAGES['sacred-mahavirmandir'];
+  if (lowerName.includes('punaura dham') || lowerName.includes('janaki mandir') || lowerName.includes('sitamarhi')) return TEMPLE_IMAGES['sacred-mansadevi'];
+  if (lowerName.includes('mundeshwari') || lowerName.includes('kaimur')) return TEMPLE_IMAGES['sacred-mansadevi'];
+  if (lowerName.includes('ramnagar fort') || lowerName.includes('vibhuti narayan')) return TEMPLE_IMAGES['sacred-gita-mandir'];
+  if (lowerName.includes('naina devi') && lowerName.includes('nainital')) return TEMPLE_IMAGES['shaktipeeth-naina-devi-temple-bilaspur'];
+  if (lowerName.includes('dhari devi') || lowerName.includes('srinagar garhwal')) return TEMPLE_IMAGES['sacred-dharidevi'];
+  if (lowerName.includes('kasar devi') || (lowerName.includes('kasar') && lowerName.includes('almora'))) return TEMPLE_IMAGES['sacred-kasardevi'];
+  if (lowerName.includes('purnagiri') || lowerName.includes('champawat')) return TEMPLE_IMAGES['sacred-mansadevi'];
+  if (lowerName.includes('hidimba') || lowerName.includes('hadimba')) return TEMPLE_IMAGES['sacred-hidimbadevi'];
+  if (lowerName.includes('bijli mahadev') || (lowerName.includes('bijli') && lowerName.includes('kullu'))) return TEMPLE_IMAGES['sacred-bijlimahadev'];
+  if (lowerName.includes('vashisht') || (lowerName.includes('hot springs') && lowerName.includes('manali'))) return TEMPLE_IMAGES['sacred-vashishttemple'];
+  if (lowerName.includes('triloknath') || lowerName.includes('lahaul')) return TEMPLE_IMAGES['triloknathtemplelahaulvalley'];
+  if (lowerName.includes('birla mandir') || lowerName.includes('laxmi narayan') && lowerName.includes('jaipur')) return TEMPLE_IMAGES['other-govind-dev-ji-temple-jaipur'];
+  if (lowerName.includes('akshardham') || lowerName.includes('swaminarayan') && lowerName.includes('delhi')) return TEMPLE_IMAGES['other-shree-ram-janmabhoomi-mandir-ayodhya'];
   if (lowerName.includes('bhairavnath')) return TEMPLE_IMAGES['sacred-bhairavnath-mandir'];
   if (lowerName.includes('dashashwamedh')) return TEMPLE_IMAGES['sacred-dashashwamedh-ghat'];
   if (lowerName.includes('gandhi sarovar') || lowerName.includes('gandhisarovar')) return TEMPLE_IMAGES['sacred-gandhi-sarovar'];

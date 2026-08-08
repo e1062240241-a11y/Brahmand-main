@@ -3957,15 +3957,23 @@ async def get_posts_feed(
         if not following_ids:
             return []
         following_posts_dict = {}
-        # Fetch posts specifically for each followed user ID (up to 20 per followed user)
-        for fid in list(following_ids)[:30]:
-            try:
-                f_user_posts = await db.query_documents('posts', filters=[('user_id', '==', fid)], limit=20)
+        # ⚡ Bolt Optimization: Batch fetch posts specifically for each followed user ID concurrently
+        fids = list(following_ids)[:30]
+
+        async def fetch_user_posts(fid):
+            return await db.query_documents('posts', filters=[('user_id', '==', fid)], limit=20)
+
+        tasks = [fetch_user_posts(fid) for fid in fids]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        for fid, f_user_posts in zip(fids, results):
+            if isinstance(f_user_posts, BaseException):
+                logger.warning("Error fetching posts for followed user %s: %s", fid, f_user_posts)
+            else:
                 for fp in f_user_posts:
                     if fp.get('id'):
                         following_posts_dict[fp['id']] = fp
-            except Exception as fe:
-                logger.warning("Error fetching posts for followed user %s: %s", fid, fe)
+
         # Also merge with any from general pool that match following_ids
         for p in pool1 + pool2 + latest_pool:
             if p.get('id') and p.get('user_id') in following_ids:

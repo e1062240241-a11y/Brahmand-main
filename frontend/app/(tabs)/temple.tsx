@@ -136,6 +136,16 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
   const rawCat = renderSafeText(item.category);
   const categoryLabel = t('language') === 'hi' && rawCat === 'Jyotirlinga' ? 'ज्योतिर्लिंग' : (rawCat || 'Sacred');
 
+  console.log('[STEP 2 IMAGE LOOKUP]', {
+    id: item.id,
+    templeId: item.templeId,
+    name: item.name,
+    displayName,
+    imageById: getTempleImageById(item.id),
+    imageByName: getTempleImageByName(item.name),
+    remote: item.image_url,
+  });
+
   const imageSource = useMemo(() => {
     return (
       getTempleImageById(item.id) || 
@@ -146,6 +156,12 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
     );
   }, [item.id, item.name, displayName, item.image_url]);
 
+  console.log('[STEP 3 FINAL SOURCE]', imageSource);
+  console.log('[STEP 8 DEFAULT_TEMPLE_IMAGE]', DEFAULT_TEMPLE_IMAGE);
+
+  const [imgSource, setImgSource] = React.useState(imageSource);
+  React.useEffect(() => { setImgSource(imageSource); }, [imageSource]);
+
   return (
     <TouchableOpacity 
       style={styles.templeItemCard}
@@ -153,9 +169,12 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
       onPress={() => onPress(item)}
     >
       <Image 
-        source={imageSource} 
+        source={imgSource || DEFAULT_TEMPLE_IMAGE}
+        defaultSource={DEFAULT_TEMPLE_IMAGE}
         style={styles.templeItemImage} 
         fadeDuration={0}
+        onLoad={() => console.log('[STEP 4 LOAD SUCCESS]', item.name, item.id)}
+        onError={(e) => console.log('[STEP 4 LOAD ERROR]', item.name, item.id, e.nativeEvent)}
       />
       <View style={styles.templeItemInfo}>
         <Text style={styles.templeItemName}>{displayName}</Text>
@@ -351,6 +370,7 @@ export default function TempleScreen() {
       }
 
       if (isReset) {
+        console.log('[STEP 1 DISPLAY TEMPLES RAW SLICE]', formatted.slice(0, 5));
         setDisplayTemples(formatted);
       } else {
         setDisplayTemples(prev => [...prev, ...formatted]);
