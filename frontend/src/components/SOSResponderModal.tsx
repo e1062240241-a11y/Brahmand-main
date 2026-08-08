@@ -9,6 +9,7 @@ import {
   Platform,
   Linking,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, FONTS } from '../constants/theme';
@@ -89,6 +90,8 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
               onPress={onClose}
               style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.7 }]}
               android_ripple={{ color: 'rgba(0,0,0,0.1)', borderless: true, radius: 15 }}
+              accessibilityRole="button"
+              accessibilityLabel="Close modal"
             >
               <Ionicons name="close" size={24} color="#666" />
             </Pressable>
@@ -123,8 +126,15 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
               onPress={handleReportMisuse}
               disabled={reporting}
               android_ripple={{ color: 'rgba(255,59,48,0.2)', borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel="Report misuse"
+              accessibilityState={{ disabled: reporting, busy: reporting }}
             >
-              <Ionicons name="flag-outline" size={18} color="#FF3B30" />
+              {reporting ? (
+                <ActivityIndicator color="#FF3B30" size="small" style={{ marginRight: 8 }} />
+              ) : (
+                <Ionicons name="flag-outline" size={18} color="#FF3B30" />
+              )}
               <Text style={styles.reportMisuseBtnText}>{reporting ? 'REPORTING...' : 'REPORT MISUSE'}</Text>
             </Pressable>
           </View>
@@ -134,6 +144,8 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
               style={({ pressed }) => [styles.cancelBtn, pressed && { opacity: 0.7 }]}
               onPress={onClose}
               android_ripple={{ color: 'rgba(0,0,0,0.05)', borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel="Ignore emergency"
             >
               <Text style={styles.cancelBtnText}>Ignore</Text>
             </Pressable>
@@ -147,8 +159,15 @@ export const SOSResponderModal: React.FC<SOSResponderModalProps> = ({
               onPress={handleRespond}
               disabled={loading}
               android_ripple={{ color: 'rgba(255,255,255,0.25)', borderless: false }}
+              accessibilityRole="button"
+              accessibilityLabel="Respond to emergency"
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
-              <Text style={styles.respondBtnText}>I'M COMING</Text>
+              {loading ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <Text style={styles.respondBtnText}>I'M COMING</Text>
+              )}
             </Pressable>
           </View>
         </View>
