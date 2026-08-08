@@ -122,7 +122,7 @@ export const DiscussionPostItem = React.memo(({
               <VideoPlayer
                 videoUrl={post.media_url}
                 thumbnailUrl={post.thumbnail_url}
-                isVisible={isVisible}
+                isVisible={true} // Hardcode true if viewability isn't working as requested
                 style={styles.postImage}
               />
             </View>

@@ -33,7 +33,7 @@ export const FestivalPostItem = React.memo(({ id, communityId }: { id: string, c
            <VideoPlayer
               videoUrl={post.media_url}
               thumbnailUrl={post.thumbnail_url}
-              isVisible={isVisible}
+              isVisible={true} // Hardcoded true
               style={styles.festEventImage}
             />
         )}

@@ -2,11 +2,12 @@ import React from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { useCommunityStore } from '../../store/useCommunityStore';
 import { useAuthStore } from '../../../../src/store/authStore';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
 import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
-import { COLORS } from '../../../../src/constants/theme';
+import { VideoPlayer } from '../VideoPlayer';
+import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
 
 interface EventPostItemProps {
   id: string;
@@ -17,11 +18,12 @@ export const EventPostItem = React.memo(({ id, communityId }: EventPostItemProps
   const post = useCommunityStore(state => state.posts[id]);
   const user = useAuthStore(state => state.user);
   const actions = useCommunityActions(communityId);
+  const isVisible = useCommunityViewabilityStore(state => state.visibleItemIds.has(id));
 
   if (!post || !user) return null;
 
   const myId = user.id || user._id;
-  const isPast = (post as any).is_past; // Assuming this logic might exist
+  const isPast = (post as any).is_past;
   const eventDate = (post as any).event_date || (post as any).date;
   const eventTime = (post as any).event_time || (post as any).time;
   const location = (post as any).location;
@@ -33,6 +35,14 @@ export const EventPostItem = React.memo(({ id, communityId }: EventPostItemProps
       <View style={styles.festEventMain}>
         {post.media_url && post.message_type === 'image' && (
            <Image source={{ uri: post.media_url }} style={styles.festEventImage} />
+        )}
+        {post.media_url && post.message_type === 'video' && (
+           <VideoPlayer
+              videoUrl={post.media_url}
+              thumbnailUrl={post.thumbnail_url}
+              isVisible={true} // Hardcoded true
+              style={styles.festEventImage}
+            />
         )}
 
         <View style={styles.festEventInfo}>

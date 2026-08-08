@@ -2,18 +2,16 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Image, Platform } from 'react-native';
 import { useCommunityStore } from '../../store/useCommunityStore';
 import { useAuthStore } from '../../../../src/store/authStore';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../../../../src/components/Avatar';
 import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
 import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
-import { SafeVideoView } from '../../../../src/components/SafeVideoView';
-
-// Need to duplicate or extract utility functions like getRequestIconDetails, getTimeAgo if they don't exist globally
-// Assuming formatDateTimeIST for now
+import { VideoPlayer } from '../VideoPlayer';
+import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
 
 const getTimeAgo = (dateStr: string) => {
-    return formatDateTimeIST(dateStr); // Simplification, original used a specific getTimeAgo
+    return formatDateTimeIST(dateStr);
 };
 
 interface RequestPostItemProps {
@@ -25,6 +23,7 @@ export const RequestPostItem = React.memo(({ id, communityId }: RequestPostItemP
   const post = useCommunityStore(state => state.posts[id]);
   const user = useAuthStore(state => state.user);
   const actions = useCommunityActions(communityId);
+  const isVisible = useCommunityViewabilityStore(state => state.visibleItemIds.has(id));
 
   if (!post || !user) return null;
 
@@ -32,8 +31,6 @@ export const RequestPostItem = React.memo(({ id, communityId }: RequestPostItemP
   const isFulfilled = post.status === 'fulfilled' || post.status === 'resolved' || post.status === 'done';
   const ownerName = post.sender_name || 'Requester';
 
-  // Custom props from original item which might be in content or top level
-  // We'll fall back to standard Post fields if the specific request fields aren't mapped
   const requestTypeLabel = (post as any).request_type ? String((post as any).request_type).toUpperCase() : 'REQUEST';
   const title = (post as any).title || post.content || 'Request';
   const description = (post as any).description;
@@ -63,6 +60,14 @@ export const RequestPostItem = React.memo(({ id, communityId }: RequestPostItemP
           {post.media_url && post.message_type === 'image' && (
              <Image source={{ uri: post.media_url }} style={styles.festEventImage} />
           )}
+          {post.media_url && post.message_type === 'video' && (
+             <VideoPlayer
+                videoUrl={post.media_url}
+                thumbnailUrl={post.thumbnail_url}
+                isVisible={true} // Hardcoded true
+                style={styles.festEventImage}
+              />
+          )}
 
           <View style={styles.festEventInfo}>
             <Text style={styles.festEventTitle} numberOfLines={2}>{title}</Text>
@@ -71,10 +76,7 @@ export const RequestPostItem = React.memo(({ id, communityId }: RequestPostItemP
             ) : null}
             <View style={styles.festEventMeta}>
               {location ? (
-                <TouchableOpacity
-                  style={styles.festMetaRow}
-                  activeOpacity={0.7}
-                >
+                <TouchableOpacity style={styles.festMetaRow} activeOpacity={0.7}>
                   <Ionicons name="location" size={14} color="#FF6B00" />
                   <Text style={[styles.festMetaText, { color: '#FF6B00', textDecorationLine: 'underline' }]} numberOfLines={1}>
                     {location}
@@ -100,20 +102,14 @@ export const RequestPostItem = React.memo(({ id, communityId }: RequestPostItemP
                   <Text style={[styles.festActionBtnText, { color: '#FF6B00' }]}>Call</Text>
                 </TouchableOpacity>
              ) : (
-                <TouchableOpacity
-                  style={[styles.festActionBtn, { flex: 1, backgroundColor: '#FFF0E5', borderColor: '#FFD7B5' }]}
-                  onPress={() => actions.openThread(id)}
-                >
+                <TouchableOpacity style={[styles.festActionBtn, { flex: 1, backgroundColor: '#FFF0E5', borderColor: '#FFD7B5' }]} onPress={() => actions.openThread(id)}>
                   <Ionicons name="chatbubble" size={16} color="#FF6B00" />
                   <Text style={[styles.festActionBtnText, { color: '#FF6B00' }]}>Message</Text>
                 </TouchableOpacity>
              )}
 
             {myId === post.sender_id && (
-              <TouchableOpacity
-                style={[styles.festActionBtn, { flex: 1, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
-                onPress={() => actions.resolveRequest(id)}
-              >
+              <TouchableOpacity style={[styles.festActionBtn, { flex: 1, backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]} onPress={() => actions.resolveRequest(id)}>
                 <Ionicons name="checkmark-done-circle" size={16} color="#16A34A" />
                 <Text style={[styles.festActionBtnText, { color: '#16A34A' }]}>Mark Resolved</Text>
               </TouchableOpacity>

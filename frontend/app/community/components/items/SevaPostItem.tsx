@@ -6,10 +6,13 @@ import { styles } from '../sharedStyles';
 import { useCommunityActions } from '../../hooks/useCommunityActions';
 import { Avatar } from '../../../../src/components/Avatar';
 import { formatDateTimeIST } from '../../../../src/utils/dateUtils';
+import { VideoPlayer } from '../VideoPlayer';
+import { useCommunityViewabilityStore } from '../../hooks/useCommunityViewability';
 
 export const SevaPostItem = React.memo(({ id, communityId }: { id: string, communityId: string }) => {
   const post = useCommunityStore(state => state.posts[id]);
   const actions = useCommunityActions(communityId);
+  const isVisible = useCommunityViewabilityStore(state => state.visibleItemIds.has(id));
 
   if (!post) return null;
 
@@ -25,9 +28,19 @@ export const SevaPostItem = React.memo(({ id, communityId }: { id: string, commu
             <Text style={styles.postTimestamp}>• {formatDateTimeIST(post.timestamp || '')}</Text>
           </View>
           <Text style={styles.postText}>{post.content}</Text>
+
           {post.media_url && post.message_type === 'image' && (
              <Image source={{ uri: post.media_url }} style={styles.postImage} />
           )}
+          {post.media_url && post.message_type === 'video' && (
+             <VideoPlayer
+                videoUrl={post.media_url}
+                thumbnailUrl={post.thumbnail_url}
+                isVisible={true} // Hardcoded true
+                style={styles.postImage}
+              />
+          )}
+
           <View style={styles.postFooterRow}>
              <TouchableOpacity style={styles.postActionBtn} onPress={() => actions.handleLikePost(id)}>
                 <Ionicons
