@@ -1833,7 +1833,7 @@ export const getNakshatraReport = (params?: {
   lon?: number;
   tz?: number;
 }) => {
-  const paramKey = params 
+  const paramKey = params
     ? `${params.dob || ''}_${params.tob || ''}_${params.lat ?? ''}_${params.lon ?? ''}`
     : 'default';
   const cacheKey = `v2_nakshatra_${paramKey}`;
