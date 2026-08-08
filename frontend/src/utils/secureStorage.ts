@@ -46,9 +46,8 @@ const getEncryptionKey = async (): Promise<string> => {
     }
     cachedKey = key;
     return key;
-  } catch (fallbackError) {
-    cachedKey = 'brahmand_fallback_secret_key_2026';
-    return cachedKey;
+  } catch (_fallbackError) {
+    throw new Error('Failed to generate or retrieve encryption key securely.');
   }
 };
 
