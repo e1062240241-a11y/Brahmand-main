@@ -4505,10 +4505,39 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
 
-    # Fetch comments for posts concurrently if they have comments, avoiding redundant queries
+    comments_by_post_id = {}
+
+    # ⚡ Bolt Optimization: Batch fetch top comments using 'in' query for posts with <= 10 comments to avoid N+1 bottleneck securely.
+    post_ids_for_batch_comments = [
+        post.get('id') for post in paged_posts
+        if post.get('id') and 0 < post.get('comments_count', 0) <= 10
+    ]
+
+    if post_ids_for_batch_comments:
+        try:
+            comment_queries = []
+            for idx in range(0, len(post_ids_for_batch_comments), 30):
+                chunk = post_ids_for_batch_comments[idx : idx + 30]
+                comment_queries.append(
+                    db.query_documents(
+                        'post_comments',
+                        filters=[('post_id', 'in', chunk)]
+                    )
+                )
+            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
+            for res in query_results:
+                if isinstance(res, list):
+                    for comment in res:
+                        pid = comment.get('post_id')
+                        if pid:
+                            comments_by_post_id.setdefault(pid, []).append(comment)
+        except Exception as comment_err:
+            logger.warning(f"Failed to batch load comments for hashtag posts: {comment_err}")
+
+    # Fallback: Fetch comments concurrently with strict limits for viral posts (> 10 comments)
     comments_tasks = []
     for post in paged_posts:
-        if post.get('comments_count', 0) > 0:
+        if post.get('comments_count', 0) > 10:
             comments_tasks.append((
                 post.get('id'),
                 db.query_documents(
@@ -4521,12 +4550,8 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
     if comments_tasks:
         post_ids, tasks = zip(*comments_tasks)
         comments_results = await asyncio.gather(*tasks, return_exceptions=True)
-        comments_by_post_id = {
-            pid: (res if not isinstance(res, Exception) else [])
-            for pid, res in zip(post_ids, comments_results)
-        }
-    else:
-        comments_by_post_id = {}
+        for pid, res in zip(post_ids, comments_results):
+            comments_by_post_id[pid] = res if not isinstance(res, Exception) else []
 
     normalized = []
     for post in paged_posts:
