@@ -2936,14 +2936,6 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
 
 DEFAULT_BRAHMAND_LOGO = "https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png"
 
-@app.get("/admin/katha-upload", response_class=HTMLResponse)
-async def get_katha_upload_portal():
-    html_path = os.path.join(os.path.dirname(__file__), "admin_portal", "katha_upload.html")
-    if os.path.exists(html_path):
-        with open(html_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    return HTMLResponse(content="<h1>Admin Upload Dashboard File Not Found</h1>", status_code=404)
-
 @api_router.get("/share/profile/{user_id}", response_class=HTMLResponse)
 @api_router.get("/profile/{user_id}", response_class=HTMLResponse)
 async def share_profile_preview(user_id: str):
