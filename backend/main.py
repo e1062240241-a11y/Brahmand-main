@@ -23,6 +23,7 @@ from typing import Optional, List, Dict, Any
 from tempfile import NamedTemporaryFile
 from uuid import uuid4
 from urllib.parse import quote
+from google.cloud.firestore_v1.base_query import FieldFilter
 from zoneinfo import ZoneInfo as OriginalZoneInfo
 
 def ZoneInfo(key: str):
@@ -2121,7 +2122,7 @@ async def delete_user_profile(otp: str = Query(None), token_data: dict = Depends
 
     def _verify_otp_sync():
         collection_ref = db.client.collection("otp_verifications")
-        docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", "kyc").limit(1).get()
+        docs = collection_ref.where(filter=FieldFilter("phone", "==", mobile)).where(filter=FieldFilter("purpose", "==", "kyc")).limit(1).get()
         return docs
 
     docs = await db._run_sync(_verify_otp_sync)
@@ -10856,103 +10857,142 @@ Jai Shri Krishna! 🙏"""
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Session Boundary Check & Chat Summarization
-    from utils.krishna_personalizer import check_session_boundary, extract_user_profile, generate_chat_summary
-    if check_session_boundary(last_updated_str, 900): # 15 minutes boundary
-        new_session = True
-        if db_messages:
+    try:
+        # Session Boundary Check & Chat Summarization
+        from utils.krishna_personalizer import check_session_boundary, extract_user_profile, generate_chat_summary
+        if check_session_boundary(last_updated_str, 900): # 15 minutes boundary
+            new_session = True
+            if db_messages:
+                try:
+                    summary = await generate_chat_summary(db_messages)
+                    if summary:
+                        history_summaries.append(summary)
+                        history_summaries = history_summaries[-10:] # Keep last 10 summaries
+                except Exception as sum_err:
+                    logger.error(f"Failed to generate previous session summary: {sum_err}")
+
+        # Extract user profile if it's a new session or not found
+        if new_session or not profile or profile.get("mood") == "Neutral":
             try:
-                summary = await generate_chat_summary(db_messages)
-                if summary:
-                    history_summaries.append(summary)
-                    history_summaries = history_summaries[-10:] # Keep last 10 summaries
-            except Exception as sum_err:
-                logger.error(f"Failed to generate previous session summary: {sum_err}")
+                if latest_user_msg:
+                    profile = await extract_user_profile(latest_user_msg, db_messages)
+            except Exception as ext_err:
+                logger.error(f"Failed to extract profile: {ext_err}")
 
-    # Extract user profile if it's a new session or not found
-    if new_session or not profile or profile.get("mood") == "Neutral":
-        try:
-            if latest_user_msg:
-                profile = await extract_user_profile(latest_user_msg, db_messages)
-        except Exception as ext_err:
-            logger.error(f"Failed to extract profile: {ext_err}")
-
-    # Dynamic Persona Adaptation
-    persona_instruction = ""
-    mood_lower = profile.get("mood", "Neutral").lower()
-    if "anx" in mood_lower or mood_lower == "anxious":
-        persona_instruction = """
+        # Dynamic Persona Adaptation
+        persona_instruction = ""
+        mood_lower = profile.get("mood", "Neutral").lower()
+        if "anx" in mood_lower or mood_lower == "anxious":
+            persona_instruction = """
 DYNAMIC PERSONA ACTIVATION: 'Friend/Sakha'
 Focus: Comfort, Slow pace.
 Speak like a close, caring friend (Sakha). Give the user emotional warmth, reassure them that they are not alone, and keep the guidance gentle and soothing. Avoid overwhelming them with complicated tasks; prioritize emotional healing and calmness.
 """
-    elif "conf" in mood_lower or mood_lower == "confused":
-        persona_instruction = """
+        elif "conf" in mood_lower or mood_lower == "confused":
+            persona_instruction = """
 DYNAMIC PERSONA ACTIVATION: 'Guide/Sarathi'
 Focus: Clarity, Action steps.
 Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide clear, logical direction and break down their problem into practical, actionable steps. Bring structured clarity to their mind.
 """
-    elif "cur" in mood_lower or mood_lower == "curious":
-        persona_instruction = """
+        elif "cur" in mood_lower or mood_lower == "curious":
+            persona_instruction = """
 DYNAMIC PERSONA ACTIVATION: 'Teacher/Guru'
 Focus: Deep philosophy, Shlokas.
 Speak like a spiritual master (Guru). Explore the deeper philosophical concepts of the Bhagavad Gita and explain cosmic truths. ground your response in scriptural knowledge, logic, and shlokas.
 """
-    else:
-        persona_instruction = """
+        else:
+            persona_instruction = """
 DYNAMIC PERSONA ACTIVATION: 'Guide/Sarathi'
 Focus: Clarity, Action steps.
 Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide clear, logical direction and break down their problem into practical, actionable steps.
 """
-    
-    system_prompt = system_prompt + f"\n\n{persona_instruction}"
-
-    # Inject long-term history summaries if available
-    if history_summaries:
-        summaries_context = "\n".join([f"- {s}" for s in history_summaries])
-        system_prompt = system_prompt + f"\n\nUSER HISTORY & LONG-TERM MEMORY (Summary of past interactions):\n{summaries_context}\nUse this past context to maintain consistency in your relationship and wisdom with the user."
-
-    # RAG search query enhancement
-    rag_query = latest_user_msg
-    if profile and profile.get("focus_area") and profile.get("focus_area").lower() not in ("general", "none", ""):
-        rag_query = f"Bhagavad Gita wisdom for {latest_user_msg} in {profile['focus_area']}"
-
-    rag_context = ""
-    try:
-        from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
-        if latest_user_msg:
-            shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
-            rag_context = build_rag_context(shlokas)
-            if rag_context:
-                source = shlokas[0].get("source", "unknown") if shlokas else "unknown"
-                logger.info(
-                    "[RAG] Injecting %d Gita shlokas (source=%s) for query: '%s'",
-                    len(shlokas), source, rag_query[:60],
-                )
-            else:
-                logger.warning(
-                    "[RAG] No shlokas retrieved for query: '%s' — Krishna will respond without Gita grounding.",
-                    rag_query[:60],
-                )
-    except Exception as rag_err:
-        logger.error(
-            "[RAG] Retrieval raised an unexpected exception: %s — "
-            "Krishna will respond without Gita grounding.",
-            rag_err,
-        )
-        rag_context = ""
-
-    # Build the system prompt with optional RAG context
-    final_system_prompt = system_prompt
-    if rag_context:
-        final_system_prompt = system_prompt + f"\n\n{rag_context}"
-
-    def _call_nvidia():
-        return "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
-
-    try:
-        assistant_reply = await asyncio.to_thread(_call_nvidia)
         
+        system_prompt = system_prompt + f"\n\n{persona_instruction}"
+
+        # Inject long-term history summaries if available
+        if history_summaries:
+            summaries_context = "\n".join([f"- {s}" for s in history_summaries])
+            system_prompt = system_prompt + f"\n\nUSER HISTORY & LONG-TERM MEMORY (Summary of past interactions):\n{summaries_context}\nUse this past context to maintain consistency in your relationship and wisdom with the user."
+
+        async def _call_gemini_primary(messages_list: list, sys_prompt: str, model_name: str = "gemma-4-26b-a4b-it") -> str:
+            gemini_key = os.environ.get("GEMINI_API_KEY")
+            if not gemini_key:
+                raise ValueError("GEMINI_API_KEY not set")
+
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=gemini_key)
+
+            contents = []
+            for msg in messages_list[-10:]:
+                role = "user" if msg.get("role") == "user" else "model"
+                text = msg.get("content", "")
+                if text:
+                    contents.append(types.Content(
+                        role=role,
+                        parts=[types.Part.from_text(text=text)]
+                    ))
+
+            config = types.GenerateContentConfig(
+                system_instruction=sys_prompt,
+                temperature=0.7,
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            )
+
+            def _sync_call():
+                res = client.models.generate_content(
+                    model=model_name,
+                    contents=contents if contents else latest_user_msg,
+                    config=config,
+                )
+                return res.text
+
+            return await asyncio.to_thread(_sync_call)
+
+        assistant_reply = None
+
+        # Step 1: Primary - Try Gemini API directly (Model: gemma-4-26b-a4b-it, thinking budget: 0)
+        # Fast response without waiting for ChromaDB!
+        try:
+            logger.info("[Krishna-Chat] Calling primary Gemini API (model=gemma-4-26b-a4b-it, thinking=off)...")
+            assistant_reply = await _call_gemini_primary(db_messages, system_prompt, model_name="gemma-4-26b-a4b-it")
+            if assistant_reply and len(assistant_reply.strip()) > 0:
+                logger.info("[Krishna-Chat] Primary Gemini API responded successfully! Skipping ChromaDB RAG wait.")
+        except Exception as gemini_err:
+            logger.warning("[Krishna-Chat] Primary Gemini API call failed (%s). Falling back to ChromaDB RAG...", gemini_err)
+
+        # Step 2: Fallback - ChromaDB / Gita RAG Retrieval if Gemini API fails
+        if not assistant_reply:
+            rag_query = latest_user_msg
+            if profile and profile.get("focus_area") and profile.get("focus_area").lower() not in ("general", "none", ""):
+                rag_query = f"Bhagavad Gita wisdom for {latest_user_msg} in {profile['focus_area']}"
+
+            rag_context = ""
+            try:
+                from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
+                if latest_user_msg:
+                    shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
+                    rag_context = build_rag_context(shlokas)
+                    if rag_context:
+                        source = shlokas[0].get("source", "unknown") if shlokas else "unknown"
+                        logger.info(
+                            "[RAG-Fallback] Injecting %d Gita shlokas (source=%s) for query: '%s'",
+                            len(shlokas), source, rag_query[:60],
+                        )
+            except Exception as rag_err:
+                logger.error("[RAG-Fallback] ChromaDB retrieval failed: %s", rag_err)
+
+            final_system_prompt = system_prompt
+            if rag_context:
+                final_system_prompt = system_prompt + f"\n\n{rag_context}"
+
+            try:
+                assistant_reply = await _call_gemini_primary(db_messages, final_system_prompt, model_name="gemma-4-26b-a4b-it")
+            except Exception as fallback_err:
+                logger.error("[Krishna-Chat] Fallback LLM generation failed: %s", fallback_err)
+                assistant_reply = "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
+            
         # Apply regex shloka replacement for any dynamic shloka references
         from utils.krishna_gita_db import replace_gita_references
         assistant_reply = replace_gita_references(assistant_reply)
@@ -10965,7 +11005,6 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
 
             # Idempotency guard: skip append if the last two messages in Firestore
             # already represent this exact user-turn + assistant-reply pair.
-            # This prevents duplicate history entries on network retries or double-submits.
             already_stored = False
             if len(db_messages) >= 2:
                 _prev_user = db_messages[-2]
@@ -12903,7 +12942,7 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     try:
         mobile = _normalize_phone(str(phone))
         def _get_otp_docs():
-            return db.client.collection("otp_verifications").where("phone", "==", mobile).where("purpose", "==", "delete_business").limit(1).get()
+            return db.client.collection("otp_verifications").where(filter=FieldFilter("phone", "==", mobile)).where(filter=FieldFilter("purpose", "==", "delete_business")).limit(1).get()
         docs = await db._run_sync(_get_otp_docs)
         if docs:
             doc = docs[0]
@@ -15297,7 +15336,7 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     try:
         users_ref = db.client.collection('users')
         if last_pulled_at > 0:
-            query = users_ref.where('updated_at', '>', last_pulled_dt)
+            query = users_ref.where(filter=FieldFilter('updated_at', '>', last_pulled_dt))
         else:
             query = users_ref.limit(50)
         docs = await run_query_stream(query)
@@ -15323,7 +15362,7 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     try:
         posts_ref = db.client.collection('posts')
         if last_pulled_at > 0:
-            query = posts_ref.where('updated_at', '>', last_pulled_dt)
+            query = posts_ref.where(filter=FieldFilter('updated_at', '>', last_pulled_dt))
         else:
             query = posts_ref.limit(50)
         docs = await run_query_stream(query)
@@ -15422,7 +15461,7 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
 
             messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
             if last_pulled_at > 0:
-                query = messages_ref.where('created_at', '>', last_pulled_dt)
+                query = messages_ref.where(filter=FieldFilter('created_at', '>', last_pulled_dt))
             else:
                 query = messages_ref.limit(30)
             chat_message_tasks.append(fetch_chat_messages(chat_id, query))
@@ -15507,7 +15546,7 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
 
                 messages_ref = db.client.collection('chats').document(chat_id).collection('messages')
                 if last_pulled_at > 0:
-                    query = messages_ref.where('created_at', '>', last_pulled_dt)
+                    query = messages_ref.where(filter=FieldFilter('created_at', '>', last_pulled_dt))
                 else:
                     query = messages_ref.limit(30)
                 community_message_tasks.append(fetch_chat_messages(chat_id, query))
@@ -15599,7 +15638,7 @@ async def pull_sync_changes(last_pulled_at: float = 0, schema_version: int = 1, 
     try:
         if last_pulled_at > 0:
             deleted_ref = db.client.collection('deleted_records')
-            query = deleted_ref.where('deleted_at', '>', last_pulled_dt)
+            query = deleted_ref.where(filter=FieldFilter('deleted_at', '>', last_pulled_dt))
             docs = await run_query_stream(query)
             for doc in docs:
                 data = doc.to_dict()
@@ -15916,8 +15955,15 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
-    await _remove_socket_from_voice_room(sid)
-
+async def _broadcast_room_active_count(room: str):
+    if not room:
+        return
+    try:
+        room_clients = sio.manager.rooms.get('/', {}).get(room, {})
+        count = len(room_clients) if hasattr(room_clients, '__len__') else 0
+        await sio.emit('room_active_count', {'room': room, 'count': count}, room=room)
+    except Exception as e:
+        logger.warning(f"Error broadcasting room_active_count for {room}: {e}")
 
 @sio.event
 @sio.event
@@ -15947,6 +15993,7 @@ async def join_room(sid, data):
 
     # Always enter the room for general events
     await sio.enter_room(sid, room)
+    await _broadcast_room_active_count(room)
     
     return {
         'status': 'joined',
@@ -15960,9 +16007,11 @@ async def join_room(sid, data):
 async def leave_room(sid, data):
     room = data.get('room')
     peer_id = data.get('peerId')
-    if room and peer_id:
+    if room:
         await sio.leave_room(sid, room)
-        await _remove_socket_from_voice_room(sid)
+        await _broadcast_room_active_count(room)
+        if peer_id:
+            await _remove_socket_from_voice_room(sid)
         return {"status": "left", "room": room}
 
 

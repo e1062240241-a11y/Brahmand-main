@@ -28,6 +28,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById, getTempleImageByName, getTempleImageByNameDetailed, resolveTempleImage, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import { isShaktiPeetha as isShaktiPeethaGlobal } from '../../src/data/jyotirlingaTravelData';
+import { socketService } from '../../src/services/socket';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
@@ -338,10 +339,27 @@ export default function JaapLandingScreen() {
     };
 
     fetchActiveCounts();
-    const interval = setInterval(fetchActiveCounts, 10000);
+
+    // Listen for real-time room active counts via WebSockets without HTTP polling
+    socketService.connect().then(() => {
+      ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach((rName) => {
+        socketService.joinRoom(rName);
+      });
+    }).catch(err => console.warn('Socket connect failed on Jaap tab:', err));
+
+    const handleRoomActiveCount = (data: { room: string; count: number }) => {
+      if (data && data.room) {
+        const realCount = data.count || 0;
+        const mapped = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+        setActiveCounts(prev => ({ ...prev, [data.room]: mapped }));
+      }
+    };
+
+    socketService.onEvent('room_active_count', handleRoomActiveCount);
+
     return () => {
       active = false;
-      clearInterval(interval);
+      socketService.offEvent('room_active_count', handleRoomActiveCount);
     };
   }, [isFocused, activeSection]);
 

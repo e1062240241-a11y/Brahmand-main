@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException
+from google.cloud.firestore_v1.base_query import FieldFilter
 from middleware.security import verify_token
 from config.firebase_config import get_firestore
 
@@ -197,7 +198,7 @@ async def get_certificates(token_data: dict = Depends(verify_token)):
     
     certs = []
     try:
-        cert_docs = db.collection('jaap_certificates').where('user_id', '==', user_id).stream()
+        cert_docs = db.collection('jaap_certificates').where(filter=FieldFilter('user_id', '==', user_id)).stream()
         for doc in cert_docs:
             certs.append(doc.to_dict())
     except Exception as e:
