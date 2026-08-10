@@ -14008,8 +14008,9 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         except Exception as e:
             logger.error(f"Failed to broadcast SOS to community {comm_id}: {e}")
     
-    # Emit SOS alert via socket to nearby users
-    await sio.emit('sos_alert', sos_data)
+    # Emit SOS alert via socket to target (notified) users only, not a global broadcast
+    if all_target_user_ids:
+        await sio.emit('sos_alert', sos_data, room=[f"user_{uid}" for uid in all_target_user_ids])
     
     # Start escalation process in background
     await task_queue.enqueue(_escalate_sos_notifications, sos_id, all_target_user_ids)
@@ -14158,7 +14159,14 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                     'reputation': reputation
                 })
     
-    await sio.emit('sos_resolved', {'sos_id': sos_id, 'status': status})
+    # Emit to creator and all responders only (targeted, not a global broadcast)
+    resolved_rooms = [f"user_{alert.get('user_id')}"] if alert.get('user_id') else []
+    resolved_rooms += [
+        f"user_{r.get('user_id')}"
+        for r in (alert.get('responders', []) or [])
+        if r.get('user_id')
+    ]
+    await sio.emit('sos_resolved', {'sos_id': sos_id, 'status': status}, room=resolved_rooms)
     
     logger.info(f"SOS alert {sos_id} marked as {status} by {user_id}")
     return {"message": f"SOS alert {status}"}
@@ -14238,13 +14246,20 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
         except Exception as e:
             logger.error(f"Failed to save SOS responder notification: {e}")
 
+    # Emit to creator and all responders only (targeted, not a global broadcast)
+    response_rooms = [f"user_{creator_user_id}"] if creator_user_id else []
+    for existing in (updated_alert or {}).get('responders', []) or []:
+        rid = existing.get('user_id')
+        if rid and f"user_{rid}" not in response_rooms:
+            response_rooms.append(f"user_{rid}")
+
     await sio.emit('sos_response', {
         'sos_id': sos_id,
         'responder_id': user_id,
         'responder_name': (user or {}).get('name', 'User'),
         'responder_count': responder_count,
         'response': response
-    })
+    }, room=response_rooms)
     
     logger.info(f"User {user_id} responded to SOS {sos_id}: {response} (total responders: {responder_count})")
     return {"message": f"Response recorded: {response}"}
@@ -14310,11 +14325,13 @@ async def update_sos_responder_status(
     except Exception as e:
         logger.error(f"Failed to save SOS responder status update notification: {e}")
 
-    await sio.emit('sos_responder_status', {
-        'sos_id': sos_id,
-        'responder_id': user_id,
-        'status': status
-    })
+    # Emit to creator only (targeted, not a global broadcast)
+    if alert.get('user_id'):
+        await sio.emit('sos_responder_status', {
+            'sos_id': sos_id,
+            'responder_id': user_id,
+            'status': status
+        }, room=f"user_{alert.get('user_id')}")
 
     return {"message": "Responder status updated"}
 
