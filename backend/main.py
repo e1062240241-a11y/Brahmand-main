@@ -2936,14 +2936,6 @@ async def api_unblock_user(target_user_id: str, token_data: dict = Depends(verif
 
 DEFAULT_BRAHMAND_LOGO = "https://brahmandfeed23.b-cdn.net/assets/brahmand_app_icon_v2.png"
 
-@app.get("/admin/katha-upload", response_class=HTMLResponse)
-async def get_katha_upload_portal():
-    html_path = os.path.join(os.path.dirname(__file__), "admin_portal", "katha_upload.html")
-    if os.path.exists(html_path):
-        with open(html_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
-    return HTMLResponse(content="<h1>Admin Upload Dashboard File Not Found</h1>", status_code=404)
-
 @api_router.get("/share/profile/{user_id}", response_class=HTMLResponse)
 @api_router.get("/profile/{user_id}", response_class=HTMLResponse)
 async def share_profile_preview(user_id: str):
@@ -4505,10 +4497,39 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
 
     paged_posts = visible_posts[safe_offset:safe_offset + safe_limit]
 
-    # Fetch comments for posts concurrently if they have comments, avoiding redundant queries
+    comments_by_post_id = {}
+
+    # ⚡ Bolt Optimization: Batch fetch top comments using 'in' query for posts with <= 10 comments to avoid N+1 bottleneck securely.
+    post_ids_for_batch_comments = [
+        post.get('id') for post in paged_posts
+        if post.get('id') and 0 < post.get('comments_count', 0) <= 10
+    ]
+
+    if post_ids_for_batch_comments:
+        try:
+            comment_queries = []
+            for idx in range(0, len(post_ids_for_batch_comments), 30):
+                chunk = post_ids_for_batch_comments[idx : idx + 30]
+                comment_queries.append(
+                    db.query_documents(
+                        'post_comments',
+                        filters=[('post_id', 'in', chunk)]
+                    )
+                )
+            query_results = await asyncio.gather(*comment_queries, return_exceptions=True)
+            for res in query_results:
+                if isinstance(res, list):
+                    for comment in res:
+                        pid = comment.get('post_id')
+                        if pid:
+                            comments_by_post_id.setdefault(pid, []).append(comment)
+        except Exception as comment_err:
+            logger.warning(f"Failed to batch load comments for hashtag posts: {comment_err}")
+
+    # Fallback: Fetch comments concurrently with strict limits for viral posts (> 10 comments)
     comments_tasks = []
     for post in paged_posts:
-        if post.get('comments_count', 0) > 0:
+        if post.get('comments_count', 0) > 10:
             comments_tasks.append((
                 post.get('id'),
                 db.query_documents(
@@ -4521,12 +4542,8 @@ async def get_posts_by_hashtag(hashtag: str, limit: int = 20, offset: int = 0, t
     if comments_tasks:
         post_ids, tasks = zip(*comments_tasks)
         comments_results = await asyncio.gather(*tasks, return_exceptions=True)
-        comments_by_post_id = {
-            pid: (res if not isinstance(res, Exception) else [])
-            for pid, res in zip(post_ids, comments_results)
-        }
-    else:
-        comments_by_post_id = {}
+        for pid, res in zip(post_ids, comments_results):
+            comments_by_post_id[pid] = res if not isinstance(res, Exception) else []
 
     normalized = []
     for post in paged_posts:
@@ -14161,8 +14178,19 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
     # Fallback 1: If fewer than 5 users found, expand time check to 24 hours and distance to 10km
     if len(all_target_user_ids) < 5:
         logger.info("SOS: Few users found within 1km/10min, expanding search to 10km/24h")
+
+        # Calculate bounding box for 10km to avoid full collection scan
+        lat_delta_10km = 10.0 / 111.0
+        lat_min_10km = data.latitude - lat_delta_10km
+        lat_max_10km = data.latitude + lat_delta_10km
+
+        filters_10km = [
+            ('current_location.latitude', '>=', lat_min_10km),
+            ('current_location.latitude', '<=', lat_max_10km)
+        ]
+
         expanded_users = []
-        users = await db.query_documents('users')
+        users = await db.query_documents('users', filters=filters_10km)
         one_day_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         for u in users:
             uid = u.get('id')

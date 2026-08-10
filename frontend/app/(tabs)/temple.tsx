@@ -173,8 +173,8 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
       onPress={() => onPress(item)}
     >
       <Image 
-        source={imgSource}
-        defaultSource={DEFAULT_TEMPLE_IMAGE}
+        source={imgSource || DEFAULT_TEMPLE_IMAGE}
+        defaultSource={DEFAULT_TEMPLE_IMAGE as any}
         style={styles.templeItemImage} 
         resizeMode="cover"
         fadeDuration={0}

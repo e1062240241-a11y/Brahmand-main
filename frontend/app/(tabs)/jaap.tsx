@@ -1115,7 +1115,6 @@ export default function JaapLandingScreen() {
             </ScrollView>
 
             {/* Katha Section (Temporarily hidden from UI) */}
-            {/*
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>
                 {t('language') === 'hi' ? 'कथा' : 'Katha'}
@@ -1148,7 +1147,6 @@ export default function JaapLandingScreen() {
                 </View>
               </Pressable>
             </View>
-            */}
 
             {/* More Upcoming Jaaps Section */}
             <View style={styles.sectionHeaderParity}>
