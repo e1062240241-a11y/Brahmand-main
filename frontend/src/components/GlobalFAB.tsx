@@ -225,6 +225,38 @@ export function GlobalFAB() {
     };
   }, []);
 
+  // Seed an optimistic SOS card instantly from a background notification payload
+  // so the user sees the SOS interface without waiting for GPS + network calls.
+  // Declared as a plain function (not useCallback) so it is hoisted and safe to
+  // reference from the effects below regardless of declaration order.
+  function handlePendingSOS() {
+    const pendingSOS = (window as any).__PENDING_SOS;
+    if (!pendingSOS) return;
+
+    (window as any).__PENDING_SOS = null;
+
+    const optimisticSOS: any = {
+      id: pendingSOS.sos_id,
+      sos_id: pendingSOS.sos_id,
+      creator_name: pendingSOS.creator_name || 'Unknown',
+      user_name: pendingSOS.creator_name || 'Unknown',
+      emergency_type: pendingSOS.sos_type || 'emergency',
+      micro_location: pendingSOS.micro_location || 'Nearby location',
+      latitude: parseFloat(pendingSOS.latitude),
+      longitude: parseFloat(pendingSOS.longitude),
+      phone: pendingSOS.phone || '',
+      creator_phone: pendingSOS.phone || '',
+      phone_number: pendingSOS.phone || '',
+      responders: [],
+      distance: 0,
+      _optimistic: true,
+    };
+    setNearbySOSAlertsIfChanged([optimisticSOS]);
+
+    expandFab(true);
+    checkSOSStatus();
+  }
+
   // Listen for Realtime SOS events (Sockets + Foreground transitions)
   useEffect(() => {
     if (!user?.id) return;
@@ -246,8 +278,13 @@ export function GlobalFAB() {
     socketService.onEvent('sos_resolved', handleSOSResolved);
 
     const appStateSub = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active' && !keyboardVisibleRef.current) {
-        checkSOSStatus({ forceLocation: true });
+      if (nextState === 'active') {
+        if (!keyboardVisibleRef.current) {
+          // App resumed from background — handle a pending SOS notification
+          // first (seeds optimistic card instantly), then refresh full status.
+          handlePendingSOS();
+          checkSOSStatus({ forceLocation: true });
+        }
       }
     });
 
@@ -265,13 +302,10 @@ export function GlobalFAB() {
       checkSOSStatus();
     });
 
-    // Check for pending SOS from background notification
-    if ((window as any).__PENDING_SOS) {
-      setTimeout(() => {
-        DeviceEventEmitter.emit('open_sos_modal');
-        (window as any).__PENDING_SOS = null;
-      }, 500);
-    }
+    // Check for pending SOS from background notification.
+    // This effect runs on mount (cold start) — the AppState 'active' listener
+    // above also calls this when the app was already running in the background.
+    handlePendingSOS();
 
     return () => sub.remove();
   }, []);
