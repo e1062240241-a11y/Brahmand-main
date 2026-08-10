@@ -39,8 +39,6 @@ yarn-error.*
 .env
 .env.*
 .env*.local
-# keep the example env template tracked (contains no secrets)
-!.env.example
 
 # Firebase / Expo hosting artifacts
 .expo/
@@ -71,3 +69,4 @@ app-example
 
 # local test builds
 .test-build/
+!.env.example
