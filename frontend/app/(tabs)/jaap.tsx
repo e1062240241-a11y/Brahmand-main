@@ -28,6 +28,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById, getTempleImageByName, getTempleImageByNameDetailed, resolveTempleImage, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import { isShaktiPeetha as isShaktiPeethaGlobal } from '../../src/data/jyotirlingaTravelData';
+import { socketService } from '../../src/services/socket';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
@@ -120,9 +121,9 @@ const TempleCardImageItem = React.memo(({
           <MaterialCommunityIcons name="temple-hindu" size={40} color="#FF6B00" />
         </View>
       ) : (
-        <Image 
-          source={currentSource} 
-          style={styles.newTempleCardImg} 
+        <Image
+          source={currentSource}
+          style={styles.newTempleCardImg}
           resizeMode="cover"
           onLoad={() => {
             console.log('[TEMPLE IMAGE LOAD SUCCESS]', {
@@ -163,31 +164,31 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const LIVE_JAAPS = [
-  { 
-    id: '1', 
-    title: 'Hanuman\nChalisa', 
-    devotees: '9.6K', 
+  {
+    id: '1',
+    title: 'Hanuman\nChalisa',
+    devotees: '9.6K',
     image: require('../../assets/images/hanuman_jaap_card_v2.webp'),
     slok: 'श्रीगुरु चरन सरोज रज निज मनु मुकुरु सुधारि...'
   },
-  { 
-    id: '2', 
-    title: 'Hare Krishna\nJaap', 
-    devotees: '6.4K', 
+  {
+    id: '2',
+    title: 'Hare Krishna\nJaap',
+    devotees: '6.4K',
     image: require('../../assets/images/krishna_jaap_card_v2.webp'),
     slok: 'हरे कृष्ण हरे कृष्ण कृष्ण कृष्ण हरे हरे...'
   },
-  { 
-    id: '3', 
-    title: 'Om Namah\nShivaya', 
-    devotees: '5.2K', 
+  {
+    id: '3',
+    title: 'Om Namah\nShivaya',
+    devotees: '5.2K',
     image: require('../../assets/images/shiva_jaap_card_v2.webp'),
     slok: 'ॐ नमः शिवाय ॐ नमः शिवाय...'
   },
-  { 
-    id: '4', 
-    title: 'Gayatri\nMantra', 
-    devotees: '4.8K', 
+  {
+    id: '4',
+    title: 'Gayatri\nMantra',
+    devotees: '4.8K',
     image: require('../../assets/images/gayatri_jaap_card_v4_exact_clean.webp'),
     slok: 'ॐ भूर्भुवः स्वः तत्सवितुर्वरेण्यं...'
   },
@@ -315,7 +316,7 @@ export default function JaapLandingScreen() {
 
   useEffect(() => {
     if (!isFocused || activeSection !== 'jaap') return;
-    
+
     let active = true;
     const fetchActiveCounts = async () => {
       if (AppState.currentState !== 'active') return;
@@ -338,10 +339,27 @@ export default function JaapLandingScreen() {
     };
 
     fetchActiveCounts();
-    const interval = setInterval(fetchActiveCounts, 10000);
+
+    // Listen for real-time room active counts via WebSockets without HTTP polling
+    socketService.connect().then(() => {
+      ['jaap_hanuman', 'jaap_krishna', 'jaap_shiva', 'jaap_gayatri', 'jaap_ganesh', 'jaap_laxmi'].forEach((rName) => {
+        socketService.joinRoom(rName);
+      });
+    }).catch(err => console.warn('Socket connect failed on Jaap tab:', err));
+
+    const handleRoomActiveCount = (data: { room: string; count: number }) => {
+      if (data && data.room) {
+        const realCount = data.count || 0;
+        const mapped = realCount > 10 ? realCount * 18 : Math.floor(Math.random() * 17) + 2;
+        setActiveCounts(prev => ({ ...prev, [data.room]: mapped }));
+      }
+    };
+
+    socketService.onEvent('room_active_count', handleRoomActiveCount);
+
     return () => {
       active = false;
-      clearInterval(interval);
+      socketService.offEvent('room_active_count', handleRoomActiveCount);
     };
   }, [isFocused, activeSection]);
 
@@ -407,7 +425,7 @@ export default function JaapLandingScreen() {
         session_name: sessionName,
       });
       const active = response.data.active;
-      
+
       setReminders(prev => {
         const updated = { ...prev, [jaapId]: active };
         if (jaapId === '3' || jaapId === 'uj3') {
@@ -416,7 +434,7 @@ export default function JaapLandingScreen() {
         }
         return updated;
       });
-      
+
       let readableMantra = '';
       if (t('language') === 'hi') {
         if (mantraType === 'shiva') readableMantra = 'ॐ नमः शिवाय';
@@ -442,7 +460,7 @@ export default function JaapLandingScreen() {
 
       if (active) {
         const titleText = t('language') === 'hi' ? '🔔 रिमाइंडर सक्रिय' : '🔔 Reminder Set!';
-        const msgText = t('language') === 'hi' 
+        const msgText = t('language') === 'hi'
           ? `${readableMantra} के लिए आपका रिमाइंडर सफलतापूर्वक सक्रिय हो गया है।`
           : `Your reminder for ${readableMantra} has been successfully scheduled.`;
         Alert.alert(titleText, msgText);
@@ -456,7 +474,7 @@ export default function JaapLandingScreen() {
     } catch (err: any) {
       console.error('Failed to toggle reminder:', err);
       Alert.alert(
-        t('language') === 'hi' ? 'त्रुटि' : 'Error', 
+        t('language') === 'hi' ? 'त्रुटि' : 'Error',
         t('language') === 'hi' ? 'रिमाइंडर चालू/बंद नहीं किया जा सका। कृपया पुनः लॉगिन करें।' : 'Could not toggle reminder. Please login again.'
       );
     }
@@ -723,7 +741,7 @@ export default function JaapLandingScreen() {
     if (q.length > 0) {
       matchesSearch = (t.name || '').toLowerCase().includes(q);
     }
-    
+
     let matchesCategory = true;
     if (selectedCategory === 'Jyotirlinga') {
       matchesCategory = isJyotirlinga(t);
@@ -769,18 +787,18 @@ export default function JaapLandingScreen() {
     : (liveActive ? 'Mahamrityunjaya Mantra' : 'Evening Gayatri Chanting');
   const heroTagline = t('language') === 'hi'
     ? (liveActive
-        ? 'हम जाप करते हैं। हम ठीक होते हैं।\nहम एक साथ उठते हैं।'
-        : 'दिव्य प्रकाश से जुड़ें। शाम 6:00 बजे से शुरू।')
+      ? 'हम जाप करते हैं। हम ठीक होते हैं।\nहम एक साथ उठते हैं।'
+      : 'दिव्य प्रकाश से जुड़ें। शाम 6:00 बजे से शुरू।')
     : (liveActive
-        ? 'We chant. We heal.\nWe rise together.'
-        : 'Connect with the divine light. Starting at 6:00 PM.');
+      ? 'We chant. We heal.\nWe rise together.'
+      : 'Connect with the divine light. Starting at 6:00 PM.');
   const heroTimeLabel = t('language') === 'hi'
     ? (liveActive
-        ? `शाम ${liveEnd ? formatTime(liveEnd) : '5:00'} बजे तक लाइव`
-        : 'अगला सत्र: आज शाम 6:00 बजे')
+      ? `शाम ${liveEnd ? formatTime(liveEnd) : '5:00'} बजे तक लाइव`
+      : 'अगला सत्र: आज शाम 6:00 बजे')
     : (liveActive
-        ? `Live until ${liveEnd ? formatTime(liveEnd) : '5:00 PM'}`
-        : 'Next Session: 6:00 PM Today');
+      ? `Live until ${liveEnd ? formatTime(liveEnd) : '5:00 PM'}`
+      : 'Next Session: 6:00 PM Today');
 
   return (
     <LinearGradient
@@ -790,179 +808,179 @@ export default function JaapLandingScreen() {
     >
       <View style={styles.container}>
 
-      <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
-        <View style={styles.topTabsContainer}>
-          <View style={styles.topTabsInner}>
-            {/* Animated sliding thumb — single source of truth */}
-            <Animated.View
-              style={[
-                styles.topTabThumb,
-                {
-                  transform: [{
-                    translateX: sectionAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, (SCREEN_WIDTH - 40 - 8) / 2],
-                    }),
-                  }],
-                },
-              ]}
-              pointerEvents="none"
-            />
-
-            {/* Jaap tab */}
-            <Pressable
-              style={styles.topTabButton}
-              onPress={() => switchSection('jaap')}
-            >
-              <Text
+        <View style={[styles.stickyTopTabsWrap, { paddingTop: insets.top + 10 }]}>
+          <View style={styles.topTabsContainer}>
+            <View style={styles.topTabsInner}>
+              {/* Animated sliding thumb — single source of truth */}
+              <Animated.View
                 style={[
-                  styles.topTabText,
-                  activeSection === 'jaap' && styles.topTabTextActive,
+                  styles.topTabThumb,
+                  {
+                    transform: [{
+                      translateX: sectionAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, (SCREEN_WIDTH - 40 - 8) / 2],
+                      }),
+                    }],
+                  },
                 ]}
+                pointerEvents="none"
+              />
+
+              {/* Jaap tab */}
+              <Pressable
+                style={styles.topTabButton}
+                onPress={() => switchSection('jaap')}
               >
-                {t('jaap')}
-              </Text>
-            </Pressable>
+                <Text
+                  style={[
+                    styles.topTabText,
+                    activeSection === 'jaap' && styles.topTabTextActive,
+                  ]}
+                >
+                  {t('jaap')}
+                </Text>
+              </Pressable>
 
-            {/* Temple tab */}
-            <Pressable
-              style={styles.topTabButton}
-              onPress={() => switchSection('temple')}
-            >
-              <Text
-                style={[
-                  styles.topTabText,
-                  activeSection === 'temple' && styles.topTabTextActive,
-                ]}
+              {/* Temple tab */}
+              <Pressable
+                style={styles.topTabButton}
+                onPress={() => switchSection('temple')}
               >
-                {t('temple')}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </View>
-
-      {activeSection === 'jaap' ? (
-        <ScrollView
-          style={styles.mainScroll}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
-          bounces
-          onScroll={onJaapScrollTabBar}
-        >
-          <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
-            <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
-              <ImageBackground
-                source={require('../../assets/images/jaap_hero_shiva_final.webp')}
-                style={styles.heroBannerFill}
-                imageStyle={styles.heroBannerImageStyle}
-                resizeMode="cover"
-              >
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
-                  locations={[0, 0.38, 1]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-
-                <View style={styles.bannerContent}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <View style={{ paddingTop: 0, paddingLeft: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                        <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                        <Text style={{
-                          color: '#FFF',
-                          fontFamily: 'System',
-                          fontSize: 15,
-                          fontStyle: 'normal',
-                          fontWeight: '700',
-                          letterSpacing: 1,
-                          textShadowColor: 'rgba(0,0,0,0.9)',
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 6,
-                        }}>
-                          {heroTitle}
-                        </Text>
-                      </View>
-
-                      <Text style={{
-                        color: '#FFF',
-                        fontWeight: '600',
-                        opacity: 0.9,
-                        textShadowColor: 'rgba(0,0,0,0.8)',
-                        textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 4,
-                        marginLeft: 14,
-                        marginTop: 0,
-                        marginBottom: 2,
-                        fontSize: 13
-                      }}>
-                        {heroTagline}
-                      </Text>
-
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                        <Ionicons name="time-outline" size={13} color="#FFF" />
-                        <Text style={{
-                          marginTop: 0,
-                          marginLeft: 4,
-                          color: '#FFF',
-                          fontWeight: '600',
-                          fontSize: 12
-                        }}>
-                          {heroTimeLabel}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  <View style={styles.bannerFooter}>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.mockupJoinNowBtn,
-                        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                      ]}
-                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/live-jaap-welcome',
-                          params: {
-                            mantraType: liveActive ? 'mrityunjaya' : 'gayatri',
-                            title: liveActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra',
-                          },
-                        })
-                      }
-                    >
-                      <LinearGradient
-                        colors={['#FF6B00', '#FF8800']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.mockupJoinGradient}
-                      >
-                        <MaterialCommunityIcons name="broadcast" size={17} color="#FFF" />
-                        <Text style={styles.mockupJoinJaapText}>
-                          {liveActive 
-                            ? (t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap') 
-                            : (t('language') === 'hi' ? 'रिमाइंडर सेट करें' : 'Set Reminder')}
-                        </Text>
-                        <Ionicons name="chevron-forward" size={15} color="#FFF" />
-                      </LinearGradient>
-                    </Pressable>
-
-                    <View style={styles.bannerDotsRow} pointerEvents="none">
-                      {Array.from({ length: HERO_DOT_COUNT }).map((_, index) => (
-                        <View
-                          key={`hero-dot-${index}`}
-                          style={[
-                            styles.bannerDot,
-                            index === heroBannerIndex && styles.bannerDotActive,
-                          ]}
-                        />
-                      ))}
-                    </View>
-                  </View>
-                </View>
-              </ImageBackground>
+                <Text
+                  style={[
+                    styles.topTabText,
+                    activeSection === 'temple' && styles.topTabTextActive,
+                  ]}
+                >
+                  {t('temple')}
+                </Text>
+              </Pressable>
             </View>
           </View>
+        </View>
+
+        {activeSection === 'jaap' ? (
+          <ScrollView
+            style={styles.mainScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+            bounces
+            onScroll={onJaapScrollTabBar}
+          >
+            <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
+              <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
+                <ImageBackground
+                  source={require('../../assets/images/jaap_hero_shiva_final.webp')}
+                  style={styles.heroBannerFill}
+                  imageStyle={styles.heroBannerImageStyle}
+                  resizeMode="cover"
+                >
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
+                    locations={[0, 0.38, 1]}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+
+                  <View style={styles.bannerContent}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                          <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                          <Text style={{
+                            color: '#FFF',
+                            fontFamily: 'System',
+                            fontSize: 15,
+                            fontStyle: 'normal',
+                            fontWeight: '700',
+                            letterSpacing: 1,
+                            textShadowColor: 'rgba(0,0,0,0.9)',
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 6,
+                          }}>
+                            {heroTitle}
+                          </Text>
+                        </View>
+
+                        <Text style={{
+                          color: '#FFF',
+                          fontWeight: '600',
+                          opacity: 0.9,
+                          textShadowColor: 'rgba(0,0,0,0.8)',
+                          textShadowOffset: { width: 0, height: 1 },
+                          textShadowRadius: 4,
+                          marginLeft: 14,
+                          marginTop: 0,
+                          marginBottom: 2,
+                          fontSize: 13
+                        }}>
+                          {heroTagline}
+                        </Text>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                          <Ionicons name="time-outline" size={13} color="#FFF" />
+                          <Text style={{
+                            marginTop: 0,
+                            marginLeft: 4,
+                            color: '#FFF',
+                            fontWeight: '600',
+                            fontSize: 12
+                          }}>
+                            {heroTimeLabel}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    <View style={styles.bannerFooter}>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.mockupJoinNowBtn,
+                          pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                        ]}
+                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                        onPress={() =>
+                          router.push({
+                            pathname: '/live-jaap-welcome',
+                            params: {
+                              mantraType: liveActive ? 'mrityunjaya' : 'gayatri',
+                              title: liveActive ? 'Maha Mrityunjaya' : 'Gayatri Mantra',
+                            },
+                          })
+                        }
+                      >
+                        <LinearGradient
+                          colors={['#FF6B00', '#FF8800']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.mockupJoinGradient}
+                        >
+                          <MaterialCommunityIcons name="broadcast" size={17} color="#FFF" />
+                          <Text style={styles.mockupJoinJaapText}>
+                            {liveActive
+                              ? (t('language') === 'hi' ? 'लाइव जाप में शामिल हों' : 'Join Live Jaap')
+                              : (t('language') === 'hi' ? 'रिमाइंडर सेट करें' : 'Set Reminder')}
+                          </Text>
+                          <Ionicons name="chevron-forward" size={15} color="#FFF" />
+                        </LinearGradient>
+                      </Pressable>
+
+                      <View style={styles.bannerDotsRow} pointerEvents="none">
+                        {Array.from({ length: HERO_DOT_COUNT }).map((_, index) => (
+                          <View
+                            key={`hero-dot-${index}`}
+                            style={[
+                              styles.bannerDot,
+                              index === heroBannerIndex && styles.bannerDotActive,
+                            ]}
+                          />
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                </ImageBackground>
+              </View>
+            </View>
 
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>{t('moreLiveJaaps')}</Text>
@@ -992,7 +1010,7 @@ export default function JaapLandingScreen() {
               {LIVE_JAAPS.map((jaap) => {
                 const isHanuman = jaap.id === '1';
                 const isOtherLiveJaap = jaap.id === '2' || jaap.id === '3' || jaap.id === '4' || jaap.id === '5' || jaap.id === '6' || jaap.id === '7';
-                
+
                 let showLive = true;
                 let liveLabel = 'LIVE';
 
@@ -1080,37 +1098,37 @@ export default function JaapLandingScreen() {
                           </View>
                         )}
                       </View>
-                    <View style={styles.jaapCardBottomArea}>
-                      <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
-                      <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.exactJoinBtn,
-                            { flex: 1 },
-                            pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                          ]}
-                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                          onPress={() => router.push({
-                            pathname: '/live-jaap-welcome',
-                            params: {
-                              mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
-                              title: jaap.title.replace('\n', ' ')
-                            }
-                          })}
-                        >
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                            <Text style={styles.exactJoinText}>{t('join')}</Text>
-                            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
-                              <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00"/>
-                            </Svg>
-                          </View>
-                        </Pressable>
+                      <View style={styles.jaapCardBottomArea}>
+                        <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
+                        <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Pressable
+                            style={({ pressed }) => [
+                              styles.exactJoinBtn,
+                              { flex: 1 },
+                              pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                            ]}
+                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                            onPress={() => router.push({
+                              pathname: '/live-jaap-welcome',
+                              params: {
+                                mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
+                                title: jaap.title.replace('\n', ' ')
+                              }
+                            })}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                              <Text style={styles.exactJoinText}>{t('join')}</Text>
+                              <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+                                <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00" />
+                              </Svg>
+                            </View>
+                          </Pressable>
+                        </View>
                       </View>
-                    </View>
-                  </LinearGradient>
-                </Pressable>
-              );
+                    </LinearGradient>
+                  </Pressable>
+                );
               })}
             </ScrollView>
 
@@ -1182,17 +1200,17 @@ export default function JaapLandingScreen() {
                     onPress={() => handleUpcomingCardPress(jaap)}
                   >
                     <View style={[StyleSheet.absoluteFillObject, { borderRadius: 16, overflow: 'hidden' }]}>
-                      <Image 
-                        source={jaap.image} 
-                        style={{ width: '100%', height: '100%', position: 'absolute' }} 
-                        resizeMode="cover" 
+                      <Image
+                        source={jaap.image}
+                        style={{ width: '100%', height: '100%', position: 'absolute' }}
+                        resizeMode="cover"
                       />
                       <LinearGradient
                         colors={['transparent', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.8)']}
                         locations={[0, 0.5, 1]}
                         style={StyleSheet.absoluteFillObject}
                       />
-                      
+
                       <View style={styles.upcomingCardContent}>
                         <Text style={styles.upcomingCardTitle} numberOfLines={2}>
                           {displayName}
@@ -1224,343 +1242,343 @@ export default function JaapLandingScreen() {
               })}
             </View>
 
-        </ScrollView>
-      ) : (
-        <>
-          <FlatList
-            style={styles.mainScroll}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
-            onScroll={onJaapScrollTabBar}
-            scrollEventThrottle={16}
-            data={filteredTemples}
-            keyExtractor={(item, index) => renderSafeText(item.temple_id || item.templeId || item.id || item._id) || index.toString()}
-            initialNumToRender={8}
-            maxToRenderPerBatch={6}
-            windowSize={5}
-            updateCellsBatchingPeriod={50}
-            removeClippedSubviews={Platform.OS === 'android'}
-            ListHeaderComponent={
-              <View>
-                <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
-                  {/* Hero Banner (Same structure as Jaap tab banner) */}
-                  <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
-                  <ImageBackground
-                    source={require('../../assets/images/imagetemple/SomnathTemple.webp')}
-                    style={styles.heroBannerFill}
-                    imageStyle={styles.heroBannerImageStyle}
-                    resizeMode="cover"
-                  >
-                    <LinearGradient
-                      colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
-                      locations={[0, 0.38, 1]}
-                      style={StyleSheet.absoluteFillObject}
-                    />
-                    <View style={styles.bannerContent}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <View style={{ paddingTop: 0, paddingLeft: 0 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                            <Text style={{
-                              color: '#FFF',
-                              fontFamily: 'System',
-                              fontSize: 15,
-                              fontStyle: 'normal',
-                              fontWeight: '700',
-                              letterSpacing: 1,
-                              textShadowColor: 'rgba(0,0,0,0.9)',
-                              textShadowOffset: { width: 0, height: 1 },
-                              textShadowRadius: 6,
-                            }}>
-                              {t('language') === 'hi' ? 'सोमनाथ मंदिर' : 'Somnath Mandir'}
-                            </Text>
+          </ScrollView>
+        ) : (
+          <>
+            <FlatList
+              style={styles.mainScroll}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+              onScroll={onJaapScrollTabBar}
+              scrollEventThrottle={16}
+              data={filteredTemples}
+              keyExtractor={(item, index) => renderSafeText(item.temple_id || item.templeId || item.id || item._id) || index.toString()}
+              initialNumToRender={8}
+              maxToRenderPerBatch={6}
+              windowSize={5}
+              updateCellsBatchingPeriod={50}
+              removeClippedSubviews={Platform.OS === 'android'}
+              ListHeaderComponent={
+                <View>
+                  <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
+                    {/* Hero Banner (Same structure as Jaap tab banner) */}
+                    <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
+                      <ImageBackground
+                        source={require('../../assets/images/imagetemple/SomnathTemple.webp')}
+                        style={styles.heroBannerFill}
+                        imageStyle={styles.heroBannerImageStyle}
+                        resizeMode="cover"
+                      >
+                        <LinearGradient
+                          colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
+                          locations={[0, 0.38, 1]}
+                          style={StyleSheet.absoluteFillObject}
+                        />
+                        <View style={styles.bannerContent}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                                <Text style={{
+                                  color: '#FFF',
+                                  fontFamily: 'System',
+                                  fontSize: 15,
+                                  fontStyle: 'normal',
+                                  fontWeight: '700',
+                                  letterSpacing: 1,
+                                  textShadowColor: 'rgba(0,0,0,0.9)',
+                                  textShadowOffset: { width: 0, height: 1 },
+                                  textShadowRadius: 6,
+                                }}>
+                                  {t('language') === 'hi' ? 'सोमनाथ मंदिर' : 'Somnath Mandir'}
+                                </Text>
+                              </View>
+
+                              <Text style={{
+                                color: '#FFF',
+                                fontWeight: '600',
+                                opacity: 0.9,
+                                textShadowColor: 'rgba(0,0,0,0.8)',
+                                textShadowOffset: { width: 0, height: 1 },
+                                textShadowRadius: 4,
+                                marginLeft: 14,
+                                marginTop: 0,
+                                marginBottom: 2,
+                                fontSize: 13
+                              }}>
+                                {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
+                              </Text>
+
+                              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                                <Ionicons name="time-outline" size={13} color="#FFF" />
+                                <Text style={{
+                                  marginTop: 0,
+                                  marginLeft: 4,
+                                  color: '#FFF',
+                                  fontWeight: '600',
+                                  fontSize: 12
+                                }}>
+                                  {t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}
+                                </Text>
+                              </View>
+                            </View>
+
+                            <View style={[styles.mockupLiveBadge, { alignSelf: 'flex-start' }]}>
+                              <View style={styles.liveDot} />
+                              <Text style={styles.mockupLiveText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
+                            </View>
                           </View>
-
-                          <Text style={{
-                            color: '#FFF',
-                            fontWeight: '600',
-                            opacity: 0.9,
-                            textShadowColor: 'rgba(0,0,0,0.8)',
-                            textShadowOffset: { width: 0, height: 1 },
-                            textShadowRadius: 4,
-                            marginLeft: 14,
-                            marginTop: 0,
-                            marginBottom: 2,
-                            fontSize: 13
-                          }}>
-                            {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
-                          </Text>
-
-                          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                            <Ionicons name="time-outline" size={13} color="#FFF" />
-                            <Text style={{
-                              marginTop: 0,
-                              marginLeft: 4,
-                              color: '#FFF',
-                              fontWeight: '600',
-                              fontSize: 12
-                            }}>
-                              {t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}
-                            </Text>
+                          <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
+                            <Pressable
+                              style={({ pressed }) => [
+                                styles.mockupJoinNowBtn,
+                                pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                              ]}
+                              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                              onPress={() =>
+                                router.push({
+                                  pathname: '/temple/[id]',
+                                  params: {
+                                    id: 'jyotirling-somnath-temple-gujarat',
+                                    autoplayAarti: 'true',
+                                  },
+                                })
+                              }
+                            >
+                              <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
+                                <Text style={styles.mockupJoinJaapText}>
+                                  {t('language') === 'hi' ? 'लाइव आरती में शामिल हों' : 'Join Live Aarti'}
+                                </Text>
+                                <Ionicons name="chevron-forward" size={15} color="#FFF" />
+                              </LinearGradient>
+                            </Pressable>
                           </View>
                         </View>
-
-                        <View style={[styles.mockupLiveBadge, { alignSelf: 'flex-start' }]}>
-                          <View style={styles.liveDot} />
-                          <Text style={styles.mockupLiveText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
-                        </View>
-                      </View>
-                      <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
-                        <Pressable
-                          style={({ pressed }) => [
-                            styles.mockupJoinNowBtn,
-                            pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                          ]}
-                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                          onPress={() =>
-                            router.push({
-                              pathname: '/temple/[id]',
-                              params: {
-                                id: 'jyotirling-somnath-temple-gujarat',
-                                autoplayAarti: 'true',
-                              },
-                            })
-                          }
-                        >
-                          <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
-                            <Text style={styles.mockupJoinJaapText}>
-                              {t('language') === 'hi' ? 'लाइव आरती में शामिल हों' : 'Join Live Aarti'}
-                            </Text>
-                            <Ionicons name="chevron-forward" size={15} color="#FFF" />
-                          </LinearGradient>
-                        </Pressable>
-                      </View>
+                      </ImageBackground>
                     </View>
-                  </ImageBackground>
-                </View>
 
-                {/* Search Bar matching image */}
-                <View style={styles.newTempleSearchSection}>
-                  <View style={styles.newTempleSearchBarWrapper}>
-                    <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
-                    <TextInput 
-                      placeholder={t('searchMandir')}
-                      style={styles.newTempleSearchInput}
-                      value={templeSearch}
-                      onChangeText={setTempleSearch}
-                      placeholderTextColor="#999"
+                    {/* Search Bar matching image */}
+                    <View style={styles.newTempleSearchSection}>
+                      <View style={styles.newTempleSearchBarWrapper}>
+                        <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
+                        <TextInput
+                          placeholder={t('searchMandir')}
+                          style={styles.newTempleSearchInput}
+                          value={templeSearch}
+                          onChangeText={setTempleSearch}
+                          placeholderTextColor="#999"
+                        />
+                      </View>
+                      <Pressable
+                        style={({ pressed }) => [
+                          styles.filterIconBtn,
+                          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                        ]}
+                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: true, radius: 24 }}
+                      >
+                        <MaterialCommunityIcons name="text-search" size={28} color="#FF6600" />
+                      </Pressable>
+                    </View>
+
+                    {/* Temple Category Pills */}
+                    <View style={styles.templeCatPillsRow}>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
+                        {(['All', 'Jyotirlinga', 'Shakti Peetha', 'Char Dham', 'Healing Temples', 'Sacred'] as const).map((cat) => {
+                          let displayCat: string = cat;
+                          if (t('language') === 'hi') {
+                            if (cat === 'All') displayCat = 'सभी';
+                            else if (cat === 'Jyotirlinga') displayCat = 'ज्योतिर्लिंग';
+                            else if (cat === 'Shakti Peetha') displayCat = 'शक्ति पीठ';
+                            else if (cat === 'Char Dham') displayCat = 'चार धाम';
+                            else if (cat === 'Healing Temples') displayCat = 'आरोग्य मंदिर';
+                            else if (cat === 'Sacred') displayCat = 'पवित्र';
+                          }
+
+                          const isSelected = selectedCategory === cat;
+
+                          if (cat === 'Char Dham') {
+                            let subLabel = 'Bada Char Dham';
+                            if (t('language') === 'hi') {
+                              subLabel = charDhamSubFilter === 'bada' ? 'बड़ा चार धाम' : charDhamSubFilter === 'chota' ? 'छोटा चार धाम' : 'सभी चार धाम';
+                            } else {
+                              subLabel = charDhamSubFilter === 'bada' ? 'Bada Char Dham' : charDhamSubFilter === 'chota' ? 'Chota Char Dham' : 'All Char Dham';
+                            }
+
+                            return (
+                              <Pressable
+                                key={cat}
+                                style={({ pressed }) => [
+                                  styles.templeCatPill,
+                                  isSelected && styles.templeCatPillActive,
+                                  pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                                ]}
+                                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                                onPress={() => {
+                                  setSelectedCategory('Char Dham');
+                                  setShowCharDhamDropdown(true);
+                                }}
+                              >
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                  <Text style={[styles.templeCatPillText, isSelected && styles.templeCatPillTextActive]}>
+                                    {displayCat} ({subLabel})
+                                  </Text>
+                                  <MaterialCommunityIcons
+                                    name="chevron-down"
+                                    size={16}
+                                    color={isSelected ? "#FFFFFF" : "#8B4513"}
+                                    style={{ marginLeft: 4 }}
+                                  />
+                                </View>
+                              </Pressable>
+                            );
+                          }
+
+                          return (
+                            <Pressable
+                              key={cat}
+                              style={({ pressed }) => [
+                                styles.templeCatPill,
+                                selectedCategory === cat && styles.templeCatPillActive,
+                                pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                              ]}
+                              android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                              onPress={() => setSelectedCategory(cat)}
+                            >
+                              <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
+                            </Pressable>
+                          );
+                        })}
+                      </ScrollView>
+                    </View>
+                  </View>
+                </View>
+              }
+              ListEmptyComponent={
+                loadingTemples ? (
+                  <CustomLoader size={60} fullScreen={false} message="Loading Sacred Temples..." />
+                ) : (
+                  <View style={styles.noTemplesFound}>
+                    <MaterialCommunityIcons name="temple-hindu-outline" size={60} color="#F5E0C3" />
+                    <Text style={styles.noTemplesText}>
+                      {t('language') === 'hi' ? 'कोई पवित्र मंदिर नहीं मिला।' : 'No sacred temples found.'}
+                    </Text>
+                  </View>
+                )
+              }
+              renderItem={({ item, index }) => {
+                const safeItemId = renderSafeText(item.id || item.temple_id || item._id);
+                const safeName = renderSafeText(item.name);
+                const imageSource = resolveTempleImage(item);
+
+                return (
+                  <View style={styles.newTempleListPadding}>
+                    <TempleCardImageItem
+                      key={safeItemId || index}
+                      item={item}
+                      safeItemId={safeItemId}
+                      safeName={safeName}
+                      imageSource={imageSource}
+                      router={router}
+                      t={t}
+                      renderSafeText={renderSafeText}
+                      getTranslatedTempleName={getTranslatedTempleName}
+                      getTranslatedTempleLocation={getTranslatedTempleLocation}
+                      getTempleLocation={getTempleLocation}
                     />
                   </View>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.filterIconBtn,
-                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                    ]}
-                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: true, radius: 24 }}
-                  >
-                    <MaterialCommunityIcons name="text-search" size={28} color="#FF6600" />
-                  </Pressable>
-                </View>
+                );
+              }}
+            />
 
-                {/* Temple Category Pills */}
-                <View style={styles.templeCatPillsRow}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
-                    {(['All', 'Jyotirlinga', 'Shakti Peetha', 'Char Dham', 'Healing Temples', 'Sacred'] as const).map((cat) => {
-                      let displayCat: string = cat;
-                      if (t('language') === 'hi') {
-                        if (cat === 'All') displayCat = 'सभी';
-                        else if (cat === 'Jyotirlinga') displayCat = 'ज्योतिर्लिंग';
-                        else if (cat === 'Shakti Peetha') displayCat = 'शक्ति पीठ';
-                        else if (cat === 'Char Dham') displayCat = 'चार धाम';
-                        else if (cat === 'Healing Temples') displayCat = 'आरोग्य मंदिर';
-                        else if (cat === 'Sacred') displayCat = 'पवित्र';
-                      }
-
-                      const isSelected = selectedCategory === cat;
-
-                      if (cat === 'Char Dham') {
-                        let subLabel = 'Bada Char Dham';
-                        if (t('language') === 'hi') {
-                          subLabel = charDhamSubFilter === 'bada' ? 'बड़ा चार धाम' : charDhamSubFilter === 'chota' ? 'छोटा चार धाम' : 'सभी चार धाम';
-                        } else {
-                          subLabel = charDhamSubFilter === 'bada' ? 'Bada Char Dham' : charDhamSubFilter === 'chota' ? 'Chota Char Dham' : 'All Char Dham';
-                        }
-
-                        return (
-                          <Pressable
-                            key={cat} 
-                            style={({ pressed }) => [
-                              styles.templeCatPill,
-                              isSelected && styles.templeCatPillActive,
-                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                            ]}
-                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                            onPress={() => {
-                              setSelectedCategory('Char Dham');
-                              setShowCharDhamDropdown(true);
-                            }}
-                          >
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                              <Text style={[styles.templeCatPillText, isSelected && styles.templeCatPillTextActive]}>
-                                {displayCat} ({subLabel})
-                              </Text>
-                              <MaterialCommunityIcons 
-                                name="chevron-down" 
-                                size={16} 
-                                color={isSelected ? "#FFFFFF" : "#8B4513"} 
-                                style={{ marginLeft: 4 }}
-                              />
-                            </View>
-                          </Pressable>
-                        );
-                      }
-
-                      return (
-                        <Pressable
-                          key={cat} 
-                          style={({ pressed }) => [
-                            styles.templeCatPill,
-                            selectedCategory === cat && styles.templeCatPillActive,
-                            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                          ]}
-                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                          onPress={() => setSelectedCategory(cat)}
-                        >
-                          <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
-                        </Pressable>
-                      );
-                    })}
-                  </ScrollView>
-                </View>
-              </View>
-            </View>
-          }
-            ListEmptyComponent={
-              loadingTemples ? (
-                <CustomLoader size={60} fullScreen={false} message="Loading Sacred Temples..." />
-              ) : (
-                <View style={styles.noTemplesFound}>
-                  <MaterialCommunityIcons name="temple-hindu-outline" size={60} color="#F5E0C3" />
-                  <Text style={styles.noTemplesText}>
-                    {t('language') === 'hi' ? 'कोई पवित्र मंदिर नहीं मिला।' : 'No sacred temples found.'}
-                  </Text>
-                </View>
-              )
-            }
-            renderItem={({ item, index }) => {
-              const safeItemId = renderSafeText(item.id || item.temple_id || item._id);
-              const safeName = renderSafeText(item.name);
-              const imageSource = resolveTempleImage(item);
-
-              return (
-                <View style={styles.newTempleListPadding}>
-                  <TempleCardImageItem
-                    key={safeItemId || index}
-                    item={item}
-                    safeItemId={safeItemId}
-                    safeName={safeName}
-                    imageSource={imageSource}
-                    router={router}
-                    t={t}
-                    renderSafeText={renderSafeText}
-                    getTranslatedTempleName={getTranslatedTempleName}
-                    getTranslatedTempleLocation={getTranslatedTempleLocation}
-                    getTempleLocation={getTempleLocation}
-                  />
-                </View>
-              );
-            }}
-          />
-
-          {/* Char Dham Sub-Circuit Selection Modal */}
-          <Modal
-            visible={showCharDhamDropdown}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setShowCharDhamDropdown(false)}
-          >
-            <Pressable 
-              style={styles.modalOverlay}
-              onPress={() => setShowCharDhamDropdown(false)}
+            {/* Char Dham Sub-Circuit Selection Modal */}
+            <Modal
+              visible={showCharDhamDropdown}
+              transparent
+              animationType="fade"
+              onRequestClose={() => setShowCharDhamDropdown(false)}
             >
-              <View style={styles.charDhamModalCard}>
-                <View style={styles.modalHeaderRow}>
-                  <Text style={styles.modalTitle}>
-                    {t('language') === 'hi' ? 'चार धाम परिपथ चुनें' : 'Select Pilgrimage Circuit'}
-                  </Text>
-                  <Pressable onPress={() => setShowCharDhamDropdown(false)} hitSlop={10}>
-                    <Ionicons name="close-circle" size={24} color="#9CA3AF" />
-                  </Pressable>
-                </View>
-
-                {[
-                  {
-                    id: 'all',
-                    titleEn: 'All Char Dham',
-                    titleHi: 'सभी चार धाम',
-                    subtitleEn: '7 Unique Sacred Shrines',
-                    subtitleHi: '7 मुख्य पवित्र तीर्थ',
-                    count: 7,
-                  },
-                  {
-                    id: 'bada',
-                    titleEn: 'Bada Char Dham',
-                    titleHi: 'बड़ा चार धाम',
-                    subtitleEn: 'National Pilgrimage Circuit (4 Shrines)',
-                    subtitleHi: 'राष्ट्रीय चार धाम यात्रा (4 दिशाएं)',
-                    count: 4,
-                  },
-                  {
-                    id: 'chota',
-                    titleEn: 'Chota Char Dham',
-                    titleHi: 'छोटा चार धाम',
-                    subtitleEn: 'Himalayan Shrine Circuit (4 Shrines)',
-                    subtitleHi: 'हिमालयी चार धाम यात्रा (उत्तराखंड)',
-                    count: 4,
-                  },
-                ].map((item) => {
-                  const isSelected = charDhamSubFilter === item.id;
-                  const title = t('language') === 'hi' ? item.titleHi : item.titleEn;
-                  const subtitle = t('language') === 'hi' ? item.subtitleHi : item.subtitleEn;
-
-                  return (
-                    <Pressable
-                      key={item.id}
-                      style={({ pressed }) => [
-                        styles.charDhamOptionRow,
-                        isSelected && styles.charDhamOptionRowSelected,
-                        pressed && { opacity: 0.85 }
-                      ]}
-                      onPress={() => {
-                        setCharDhamSubFilter(item.id as any);
-                        setShowCharDhamDropdown(false);
-                      }}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={[styles.charDhamOptionTitle, isSelected && styles.charDhamOptionTitleSelected]}>
-                            {title}
-                          </Text>
-                          <View style={styles.charDhamBadge}>
-                            <Text style={styles.charDhamBadgeText}>{item.count}</Text>
-                          </View>
-                        </View>
-                        <Text style={styles.charDhamOptionSubtitle}>{subtitle}</Text>
-                      </View>
-
-                      <MaterialCommunityIcons
-                        name={isSelected ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"}
-                        size={22}
-                        color={isSelected ? "#F97316" : "#D1D5DB"}
-                      />
+              <Pressable
+                style={styles.modalOverlay}
+                onPress={() => setShowCharDhamDropdown(false)}
+              >
+                <View style={styles.charDhamModalCard}>
+                  <View style={styles.modalHeaderRow}>
+                    <Text style={styles.modalTitle}>
+                      {t('language') === 'hi' ? 'चार धाम परिपथ चुनें' : 'Select Pilgrimage Circuit'}
+                    </Text>
+                    <Pressable onPress={() => setShowCharDhamDropdown(false)} hitSlop={10}>
+                      <Ionicons name="close-circle" size={24} color="#9CA3AF" />
                     </Pressable>
-                  );
-                })}
-              </View>
-            </Pressable>
-          </Modal>
-      </>
-    )}
+                  </View>
+
+                  {[
+                    {
+                      id: 'all',
+                      titleEn: 'All Char Dham',
+                      titleHi: 'सभी चार धाम',
+                      subtitleEn: '7 Unique Sacred Shrines',
+                      subtitleHi: '7 मुख्य पवित्र तीर्थ',
+                      count: 7,
+                    },
+                    {
+                      id: 'bada',
+                      titleEn: 'Bada Char Dham',
+                      titleHi: 'बड़ा चार धाम',
+                      subtitleEn: 'National Pilgrimage Circuit (4 Shrines)',
+                      subtitleHi: 'राष्ट्रीय चार धाम यात्रा (4 दिशाएं)',
+                      count: 4,
+                    },
+                    {
+                      id: 'chota',
+                      titleEn: 'Chota Char Dham',
+                      titleHi: 'छोटा चार धाम',
+                      subtitleEn: 'Himalayan Shrine Circuit (4 Shrines)',
+                      subtitleHi: 'हिमालयी चार धाम यात्रा (उत्तराखंड)',
+                      count: 4,
+                    },
+                  ].map((item) => {
+                    const isSelected = charDhamSubFilter === item.id;
+                    const title = t('language') === 'hi' ? item.titleHi : item.titleEn;
+                    const subtitle = t('language') === 'hi' ? item.subtitleHi : item.subtitleEn;
+
+                    return (
+                      <Pressable
+                        key={item.id}
+                        style={({ pressed }) => [
+                          styles.charDhamOptionRow,
+                          isSelected && styles.charDhamOptionRowSelected,
+                          pressed && { opacity: 0.85 }
+                        ]}
+                        onPress={() => {
+                          setCharDhamSubFilter(item.id as any);
+                          setShowCharDhamDropdown(false);
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <Text style={[styles.charDhamOptionTitle, isSelected && styles.charDhamOptionTitleSelected]}>
+                              {title}
+                            </Text>
+                            <View style={styles.charDhamBadge}>
+                              <Text style={styles.charDhamBadgeText}>{item.count}</Text>
+                            </View>
+                          </View>
+                          <Text style={styles.charDhamOptionSubtitle}>{subtitle}</Text>
+                        </View>
+
+                        <MaterialCommunityIcons
+                          name={isSelected ? "checkbox-marked-circle" : "checkbox-blank-circle-outline"}
+                          size={22}
+                          color={isSelected ? "#F97316" : "#D1D5DB"}
+                        />
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </Pressable>
+            </Modal>
+          </>
+        )}
       </View>
     </LinearGradient>
   );

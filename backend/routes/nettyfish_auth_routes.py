@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import random
 import os
 import logging
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 from config.database import get_database
 from services.nattyfish_service import NattyFishService, _normalize_phone
@@ -37,7 +38,7 @@ async def send_nettyfish_otp(request: OTPRequest):
     collection_ref = db.collection("otp_verifications")
 
     # Check if there's an existing record for this phone + purpose to update, or create a new one
-    docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
+    docs = collection_ref.where(filter=FieldFilter("phone", "==", mobile)).where(filter=FieldFilter("purpose", "==", purpose)).limit(1).get()
 
     data = {
         "phone": mobile,
@@ -88,7 +89,7 @@ async def verify_nettyfish_otp(request: OTPVerify):
         raise HTTPException(status_code=400, detail=str(exc))
 
     collection_ref = db.collection("otp_verifications")
-    docs = collection_ref.where("phone", "==", mobile).where("purpose", "==", purpose).limit(1).get()
+    docs = collection_ref.where(filter=FieldFilter("phone", "==", mobile)).where(filter=FieldFilter("purpose", "==", purpose)).limit(1).get()
 
     if not docs:
         raise HTTPException(status_code=400, detail="No OTP request found for this number. Please request a new OTP.")
@@ -119,10 +120,10 @@ async def verify_nettyfish_otp(request: OTPVerify):
     now_iso = datetime.utcnow().isoformat()
     try:
         users_ref = db.collection("users")
-        user_docs = users_ref.where("phone", "==", mobile).limit(1).get()
+        user_docs = users_ref.where(filter=FieldFilter("phone", "==", mobile)).limit(1).get()
         if not user_docs and len(mobile) >= 10:
             clean_digits = mobile[-10:]
-            user_docs = users_ref.where("phone", "==", clean_digits).limit(1).get()
+            user_docs = users_ref.where(filter=FieldFilter("phone", "==", clean_digits)).limit(1).get()
         if user_docs:
             for u_doc in user_docs:
                 u_doc.reference.update({
