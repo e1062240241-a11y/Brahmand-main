@@ -15833,6 +15833,7 @@ async def _remove_socket_from_voice_room(sid: str):
             ROOM_PARTICIPANTS.pop(room, None)
 
     await sio.emit('peer_left', {'peerId': peer_id}, room=room, skip_sid=sid)
+    await _broadcast_room_active_count(room)
 
 @sio.event
 async def connect(sid, environ, auth):
@@ -15857,6 +15858,7 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
+    await _remove_socket_from_voice_room(sid)
 async def _broadcast_room_active_count(room: str):
     if not room:
         return
