@@ -417,12 +417,8 @@ def run_startup_diagnostics() -> dict:
     try:
         import chromadb  # noqa: F401
         report["chromadb_installed"] = True
-        logger.info("[RAG-Diag] chromadb package: INSTALLED")
     except ModuleNotFoundError:
-        logger.error(
-            "[RAG-Diag] chromadb package: NOT INSTALLED. "
-            "Fix: pip install chromadb  (and add to requirements.txt)"
-        )
+        logger.error("[RAG] chromadb package is not installed.")
 
     # 2. ChromaDB connectivity + collection
     if report["chromadb_installed"]:
@@ -431,37 +427,16 @@ def run_startup_diagnostics() -> dict:
             report["chromadb_connected"] = True
             report["collection_exists"]  = True
             report["collection_count"]   = col.count()
-            logger.info(
-                "[RAG-Diag] ChromaDB collection '%s': count=%d",
-                CHROMA_COLLECTION, report["collection_count"],
-            )
-            if report["collection_count"] == 0:
-                logger.warning(
-                    "[RAG-Diag] Collection is EMPTY — seed it with seed_krishna_db.py "
-                    "to enable vector retrieval."
-                )
         except Exception as e:
-            logger.error("[RAG-Diag] ChromaDB connection FAILED: %s", e)
+            logger.error("[RAG] ChromaDB connection failed: %s", e)
 
     # 3. Gemini key
     if not report["gemini_key_set"]:
-        logger.error("[RAG-Diag] GEMINI_API_KEY: NOT SET — embedding generation will fail.")
-    else:
-        logger.info("[RAG-Diag] GEMINI_API_KEY: set (not validated — quota may be exhausted).")
+        logger.error("[RAG] GEMINI_API_KEY not set.")
 
     # 4. Local JSON fallback
     verses = _load_local_verses()
     report["local_verses_loaded"] = len(verses)
-    if verses:
-        logger.info(
-            "[RAG-Diag] Local JSON fallback: READY (%d verses across 18 chapters).",
-            len(verses),
-        )
-    else:
-        logger.error(
-            "[RAG-Diag] Local JSON fallback: FAILED — no verses loaded. "
-            "Check path: %s", _LOCAL_GITA_DIR,
-        )
 
     # 5. Determine effective RAG mode
     if report["chromadb_connected"] and report["collection_count"] > 0 and report["gemini_key_set"]:
@@ -471,5 +446,4 @@ def run_startup_diagnostics() -> dict:
     else:
         report["rag_mode"] = "disabled"
 
-    logger.info("[RAG-Diag] Effective RAG mode: %s", report["rag_mode"].upper())
     return report

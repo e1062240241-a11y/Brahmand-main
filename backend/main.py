@@ -136,6 +136,7 @@ logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 _sandbox_auth_cache = {
