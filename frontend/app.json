@@ -12,7 +12,7 @@
       "bundleIdentifier": "com.brahmand.app",
       "googleServicesFile": "./GoogleService-Info.plist",
       "config": {
-        "googleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
+        "googleMapsApiKey": ""
       },
       "entitlements": {
         "aps-environment": "production",
@@ -57,7 +57,7 @@
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
+          "apiKey": ""
         }
       },
       "adaptiveIcon": {
@@ -190,8 +190,8 @@
       [
         "react-native-maps",
         {
-          "androidGoogleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs",
-          "iosGoogleMapsApiKey": "AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs"
+          "androidGoogleMapsApiKey": "",
+          "iosGoogleMapsApiKey": ""
         }
       ],
       [

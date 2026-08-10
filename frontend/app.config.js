@@ -5,7 +5,10 @@ const { withInfoPlist } = require('@expo/config-plugins');
 // Dynamically generate google-services.json and GoogleService-Info.plist at build time
 const firebaseApiKeyAndroid = process.env.EXPO_PUBLIC_FIREBASE_API_KEY_ANDROID || 'AIzaSyBqj-JGtJNoRBE-5Brl0p_NALobh_PWPxE';
 const firebaseApiKeyIos = process.env.EXPO_PUBLIC_FIREBASE_API_KEY_IOS || 'AIzaSyDiFc4xPsRp0Bd1AteqkTJmdA2l50cahJ4';
-const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || 'AIzaSyBK-mmtVFjREbCAP8Ea_a5RfsL4uCAoSUs';
+const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY || '';
+if (!googleMapsApiKey) {
+  console.warn('[app.config.js] EXPO_PUBLIC_GOOGLE_PLACES_API_KEY is not set; native Google Maps integration will be disabled. Provide it via an EAS secret (eas secret:set) or a local .env file.');
+}
 
 const googleServicesPath = path.resolve(__dirname, 'google-services.json');
 const googleServiceInfoPath = path.resolve(__dirname, 'GoogleService-Info.plist');
