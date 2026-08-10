@@ -170,7 +170,7 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
     >
       <Image 
         source={imgSource || DEFAULT_TEMPLE_IMAGE}
-        defaultSource={DEFAULT_TEMPLE_IMAGE}
+        defaultSource={DEFAULT_TEMPLE_IMAGE as any}
         style={styles.templeItemImage} 
         fadeDuration={0}
         onLoad={() => console.log('[STEP 4 LOAD SUCCESS]', item.name, item.id)}
