@@ -178,11 +178,10 @@ async def _stream_file_to_bunny(local_path: str, object_path: str, content_type:
 async def get_katha_status():
     """
     Returns current broadcast status for Acharya Shamik Pathak Ji Saavan Katha.
-    Live Morning Stream: 8:00 AM IST to 10:00 AM IST
-    Evening Repeat Telecast: 8:00 PM IST to 10:00 PM IST
+    Live Morning Stream: 8:00 AM IST to 8:30 AM IST
+    Evening Repeat Telecast: 8:00 PM IST to 8:30 PM IST
     """
     now_ist = datetime.now(IST)
-    start_date_ist = datetime(2026, 8, 13, 0, 0, 0, tzinfo=IST)
     
     current_hour = now_ist.hour
     current_minute = now_ist.minute
@@ -197,12 +196,36 @@ async def get_katha_status():
     mode = "OFF_AIR"
     title = "Saavan Katha — Acharya Shamik Pathak Ji"
     banner_message = "Saavan Katha Daily Uploaded Episodes"
-    next_stream = datetime(2026, 8, 13, 8, 0, 0, tzinfo=IST).isoformat()
+
+    # Calculate next stream time and current broadcast start time
+    current_broadcast_start = None
+    today_morning = now_ist.replace(hour=8, minute=0, second=0, microsecond=0)
+    today_evening = now_ist.replace(hour=20, minute=0, second=0, microsecond=0)
+    tomorrow_morning = today_morning + timedelta(days=1)
+
+    if morning_start <= total_minutes < morning_end:
+        is_live = True
+        mode = "LIVE_MORNING"
+        banner_message = "🔴 LIVE: Saavan Katha Morning Broadcast"
+        current_broadcast_start = today_morning.isoformat()
+        next_stream = today_evening.isoformat()
+    elif evening_start <= total_minutes < evening_end:
+        is_live = True
+        mode = "LIVE_EVENING"
+        banner_message = "🔴 LIVE: Saavan Katha Evening Telecast"
+        current_broadcast_start = today_evening.isoformat()
+        next_stream = tomorrow_morning.isoformat()
+    elif total_minutes < morning_start:
+        next_stream = today_morning.isoformat()
+    elif total_minutes < evening_start:
+        next_stream = today_evening.isoformat()
+    else:
+        next_stream = tomorrow_morning.isoformat()
 
     return {
         "status": "success",
-        "is_live": False,
-        "mode": "OFF_AIR",
+        "is_live": is_live,
+        "mode": mode,
         "title": title,
         "guru_name": "Acharya Shamik Pathak Ji",
         "banner_message": banner_message,
@@ -211,6 +234,7 @@ async def get_katha_status():
             "morning_live_ist": "08:00 AM",
             "evening_repeat_ist": "08:00 PM"
         },
+        "current_broadcast_start_time": current_broadcast_start,
         "next_stream_at": next_stream,
         "server_time_ist": now_ist.isoformat()
     }
