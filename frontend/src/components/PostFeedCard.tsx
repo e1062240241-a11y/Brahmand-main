@@ -370,6 +370,8 @@ const PostFeedCardComponent = ({
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const swipeDetected = useRef<boolean>(false);
+  const touchMoved = useRef<boolean>(false);
+  const touchStartTime = useRef<number>(0);
   const lastTapRef = useRef<number>(0);
   const lastTapCoords = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -450,6 +452,8 @@ const PostFeedCardComponent = ({
   const handleTouchStart = (e: any) => {
     touchStartX.current = e.nativeEvent.pageX;
     touchStartY.current = e.nativeEvent.pageY;
+    touchStartTime.current = Date.now();
+    touchMoved.current = false;
     if (e.nativeEvent.locationX !== undefined && e.nativeEvent.locationY !== undefined) {
       lastTapCoords.current = {
         x: e.nativeEvent.locationX,
@@ -463,6 +467,13 @@ const PostFeedCardComponent = ({
     const deltaX = e.nativeEvent.pageX - touchStartX.current;
     const deltaY = e.nativeEvent.pageY - touchStartY.current;
 
+    // Track whether the finger moved significantly during this touch.
+    // A scroll gesture (or any finger drift) must not be treated as a tap,
+    // otherwise an accidental touch while browsing opens the full-screen reel.
+    if (Math.abs(deltaX) > 12 || Math.abs(deltaY) > 12) {
+      touchMoved.current = true;
+    }
+
     // Detect swipe (horizontal drag in either direction)
     if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 30) {
       swipeDetected.current = true;
@@ -472,6 +483,11 @@ const PostFeedCardComponent = ({
 
   const handleMediaPress = () => {
     if (swipeDetected.current) return;
+
+    // Ignore micro-taps (accidental touches) and touches that were actually
+    // scrolls/finger drift — they shouldn't open the full-screen reel.
+    if (touchMoved.current) return;
+    if (Date.now() - touchStartTime.current < 80) return;
 
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;

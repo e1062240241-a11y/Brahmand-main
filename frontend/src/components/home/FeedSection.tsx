@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Platform, InteractionManager, Dimensions, ActivityIndicator } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { InstagramRefreshControl } from '../CustomRefreshControl';
 import PostFeedCard from '../PostFeedCard';
@@ -229,6 +229,55 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     }
   }, [activeTab, loadFeedPosts, tabFeeds]);
 
+  // Seed the feed from WatermelonDB cache so the feed shows instantly on app
+  // reopen instead of flashing an empty state and blocking on the network.
+  const loadCachedFeedFromDatabase = useCallback(async (tab: string) => {
+    if (Platform.OS === 'web') return;
+    try {
+      const { database } = require('../../database');
+      const { Q } = require('@nozbe/watermelondb');
+      const feedCollection = database.get('feeds');
+      const records = await feedCollection.query(Q.sortBy('created_at', Q.desc)).fetch();
+      if (!records || records.length === 0) return;
+
+      const cachedPosts = records.map((r: any) => ({
+        id: r.id,
+        user_id: r.userId,
+        username: r.username,
+        user_photo: r.userPhoto,
+        media_url: r.mediaUrl,
+        media_type: r.mediaType,
+        caption: r.caption,
+        likes_count: r.likesCount,
+        comments_count: r.commentsCount,
+        liked_by_me: r.likedByMe,
+        created_at: r.createdAt,
+      }));
+
+      const cached = useFeedStore.getState().tabFeeds[tab];
+      const hasCache = cached && cached.posts && cached.posts.length > 0;
+      if (!hasCache) {
+        setTabFeed(tab, {
+          posts: cachedPosts,
+          offset: cachedPosts.length,
+          hasMore: true,
+          lastFetched: Date.now(),
+        });
+      }
+    } catch (err) {
+      console.warn('[FeedSection] Failed to read cached feed from DB:', err);
+    }
+  }, [setTabFeed]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const cached = useFeedStore.getState().tabFeeds[activeTab];
+    const hasCache = cached && cached.posts && cached.posts.length > 0;
+    if (!hasCache) {
+      loadCachedFeedFromDatabase(activeTab);
+    }
+  }, [activeTab, loadCachedFeedFromDatabase]);
+
   // Ensure quality map is initialized for any newly appended posts
   useEffect(() => {
     feedPosts.forEach((post, index) => {
@@ -242,7 +291,11 @@ const FeedSection: React.FC<FeedSectionProps> = ({
     if (item.type === 'empty') {
       return (
         <View style={styles.emptyFeed}>
-          <Text style={styles.emptyFeedText}>No posts yet</Text>
+          {loadingFeed ? (
+            <ActivityIndicator size="large" color="#FF8D57" />
+          ) : (
+            <Text style={styles.emptyFeedText}>No posts yet</Text>
+          )}
         </View>
       );
     }
@@ -267,7 +320,7 @@ const FeedSection: React.FC<FeedSectionProps> = ({
         />
       </View>
     );
-  }, [activePostId, user, onLikePost, onOpenComment, onOpenProfile, onPostMenu, onRepost, onShare]);
+  }, [activePostId, user, onLikePost, onOpenComment, onOpenProfile, onPostMenu, onRepost, onShare, loadingFeed]);
 
   const overrideItemLayout = useCallback((layout: { span?: number; size?: number }, item: any) => {
     if (!item || item.type === 'empty') {
