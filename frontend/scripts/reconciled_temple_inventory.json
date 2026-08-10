@@ -1,0 +1,2535 @@
+{
+  "totalAssetKeys": 475,
+  "aliasKeysCount": 66,
+  "totalPhysicalEntities": 409,
+  "curatedCount": 45,
+  "missingCount": 364,
+  "unexpectedDuplicates": 0,
+  "mainTempleDuplicates": 0,
+  "nearbyTempleDuplicates": 0,
+  "selfReferences": 0,
+  "curatedEntities": [
+    {
+      "canonicalEntity": "somnath",
+      "assetIds": [
+        "jyotirling-somnath-temple-gujarat",
+        "shiva-somnath-patan-gujarat",
+        "sacred-somnath-gujarat-coastal",
+        "sacred-somnath-mahadham-gujarat",
+        "sacred-somnath-jyotirling-gujarat-core"
+      ]
+    },
+    {
+      "canonicalEntity": "kedarnath",
+      "assetIds": [
+        "jyotirling-kedarnath-temple-uttarakhand",
+        "shiva-kedarnath-himalayan-shrine"
+      ]
+    },
+    {
+      "canonicalEntity": "mahakaleshwar",
+      "assetIds": [
+        "jyotirling-mahakaleshwar-temple-ujjain",
+        "shiva-mahakaleshwar-bhasma-temple",
+        "sacred-mahakali-temple-pavagadh"
+      ]
+    },
+    {
+      "canonicalEntity": "kashi-vishwanath",
+      "assetIds": [
+        "jyotirling-kashi-vishwanath-temple-varanasi",
+        "shiva-kashi-vishwanath-corridor-varanasi"
+      ]
+    },
+    {
+      "canonicalEntity": "bhimashankar",
+      "assetIds": [
+        "jyotirling-bhimashankar-temple-maharashtra",
+        "shiva-bhimashankar-jyotirling-pune"
+      ]
+    },
+    {
+      "canonicalEntity": "ramanathaswamy",
+      "assetIds": [
+        "jyotirling-ramanathaswamy-temple-rameswaram",
+        "shiva-ramanathaswamy-corridor-rameswaram"
+      ]
+    },
+    {
+      "canonicalEntity": "grishneshwar",
+      "assetIds": [
+        "jyotirling-grishneshwar-temple-maharashtra",
+        "jyotirling-grishneshwar-temple-ellora",
+        "shiva-grishneshwar-ellora-caves"
+      ]
+    },
+    {
+      "canonicalEntity": "omkareshwar",
+      "assetIds": [
+        "jyotirling-omkareshwar-temple-madhya-pradesh",
+        "shiva-omkareshwar-island-khandwa"
+      ]
+    },
+    {
+      "canonicalEntity": "trimbakeshwar",
+      "assetIds": [
+        "jyotirling-trimbakeshwar-temple-maharashtra",
+        "jyotirling-trimbakeshwar-temple-nashik",
+        "shiva-trimbakeshwar-dham-nashik"
+      ]
+    },
+    {
+      "canonicalEntity": "nageshwar",
+      "assetIds": [
+        "jyotirling-nageshwar-temple-gujarat",
+        "jyotirling-nageshwar-temple-dwarka",
+        "shiva-nageshwar-darukavana-gujarat"
+      ]
+    },
+    {
+      "canonicalEntity": "srisailam",
+      "assetIds": [
+        "jyotirling-mallikarjuna-temple-andhra-pradesh",
+        "jyotirling-mallikarjuna-temple-srisailam",
+        "shiva-mallikarjuna-srisailam-hills"
+      ]
+    },
+    {
+      "canonicalEntity": "baidyanath",
+      "assetIds": [
+        "jyotirling-baidyanath-temple-jharkhand",
+        "jyotirling-baidyanath-temple-deoghar"
+      ]
+    },
+    {
+      "canonicalEntity": "other-tirupati-balaji-temple-andhra-pradesh",
+      "assetIds": [
+        "other-tirupati-balaji-temple-andhra-pradesh",
+        "vishnu-tirupati-balaji-temple-andhra-pradesh"
+      ]
+    },
+    {
+      "canonicalEntity": "other-vaishno-devi-temple-jammu-kashmir",
+      "assetIds": [
+        "other-vaishno-devi-temple-jammu-kashmir",
+        "shaktipeeth-vaishno-devi-temple-jammu-kashmir"
+      ]
+    },
+    {
+      "canonicalEntity": "other-siddhivinayak-temple-mumbai",
+      "assetIds": [
+        "other-siddhivinayak-temple-mumbai",
+        "ashtavinayak-siddhivinayak-temple-siddhatek",
+        "sacred-siddhivinayak-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "jagannath-puri",
+      "assetIds": [
+        "other-jagannath-temple-puri",
+        "chardham-jagannath-temple-puri"
+      ]
+    },
+    {
+      "canonicalEntity": "badrinath",
+      "assetIds": [
+        "chardham-badrinath-temple-uttarakhand",
+        "vishnu-badrinath-dham-chamoli",
+        "vishnu-badrinath-temple-char-dham"
+      ]
+    },
+    {
+      "canonicalEntity": "chardham-gangotri-temple-uttarakhand",
+      "assetIds": [
+        "chardham-gangotri-temple-uttarakhand"
+      ]
+    },
+    {
+      "canonicalEntity": "chardham-yamunotri-temple-uttarakhand",
+      "assetIds": [
+        "chardham-yamunotri-temple-uttarakhand"
+      ]
+    },
+    {
+      "canonicalEntity": "dwarkadhish",
+      "assetIds": [
+        "chardham-dwarkadhish-temple-dwarka",
+        "other-shri-dwarkadhish-temple-dwarka",
+        "other-dwarkadhish-temple-mathura",
+        "sacred-dwarkadhishmathura"
+      ]
+    },
+    {
+      "canonicalEntity": "other-golden-temple-amritsar",
+      "assetIds": [
+        "other-golden-temple-amritsar",
+        "sacred-golden-temple-amritsar"
+      ]
+    },
+    {
+      "canonicalEntity": "other-meenakshi-temple-madurai",
+      "assetIds": [
+        "other-meenakshi-temple-madurai",
+        "devi-meenakshi-temple-madurai"
+      ]
+    },
+    {
+      "canonicalEntity": "other-iskcon-temple-bangalore-karnataka",
+      "assetIds": [
+        "other-iskcon-temple-bangalore-karnataka",
+        "other-iskcon-bangalore-aarti",
+        "vishnu-iskcon-temple-bangalore-karnataka"
+      ]
+    },
+    {
+      "canonicalEntity": "other-iskcon-juhu",
+      "assetIds": [
+        "other-iskcon-juhu",
+        "other-iskcon-temple-mumbai-juhu"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-kamakhya-temple-guwahati",
+      "assetIds": [
+        "shaktipeeth-kamakhya-temple-guwahati",
+        "shakti-kamakhya-temple-assam",
+        "shaktipeeth-kamakhya-kanya-kumari-temple",
+        "devi-kamakhya-peeth-guwahati"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-kalighat-kali-temple-kolkata",
+      "assetIds": [
+        "shaktipeeth-kalighat-kali-temple-kolkata",
+        "shakti-kalighat-temple-kolkata",
+        "devi-kalighat-mandir-kolkata"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-tarapith-temple-birbhum",
+      "assetIds": [
+        "shaktipeeth-tarapith-temple-birbhum",
+        "shakti-tarapith-temple-bengal"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-ambaji-temple-gujarat",
+      "assetIds": [
+        "shaktipeeth-ambaji-temple-gujarat",
+        "shakti-ambaji-temple-gujarat"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-jwala-ji-temple-kangra",
+      "assetIds": [
+        "shaktipeeth-jwala-ji-temple-kangra"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-chinnamasta-temple-rajarappa",
+      "assetIds": [
+        "shaktipeeth-chinnamasta-temple-rajarappa"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-mahalaxmi-temple-kolhapur",
+      "assetIds": [
+        "shaktipeeth-mahalaxmi-temple-kolhapur"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-chamundeshwari-temple-mysore",
+      "assetIds": [
+        "shaktipeeth-chamundeshwari-temple-mysore",
+        "shakti-chamundeshwari-temple-mysore"
+      ]
+    },
+    {
+      "canonicalEntity": "naina-devi-temple-bilaspur",
+      "assetIds": [
+        "shaktipeeth-naina-devi-temple-bilaspur"
+      ]
+    },
+    {
+      "canonicalEntity": "chintpurni-devi-temple-una",
+      "assetIds": [
+        "shaktipeeth-chintpurni-devi-temple-una"
+      ]
+    },
+    {
+      "canonicalEntity": "kollur-mookambika-temple",
+      "assetIds": [
+        "devi-kollur-mookambika-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "chottanikara-temple-kochi",
+      "assetIds": [
+        "devi-chottanikara-temple-kochi"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-dakshineswar-kali-temple-kolkata",
+      "assetIds": [
+        "other-dakshineswar-kali-temple-kolkata",
+        "devi-dakshineswar-kali-temple-kolkata",
+        "sacred-dakshineswar-kali-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-karni-mata-temple-deshnoke",
+      "assetIds": [
+        "other-karni-mata-temple-deshnoke",
+        "sacred-karni-mata-temple-deshnoke"
+      ]
+    },
+    {
+      "canonicalEntity": "sree-bhadrakali-temple-attukal",
+      "assetIds": [
+        "devi-sree-bhadrakali-temple-attukal"
+      ]
+    },
+    {
+      "canonicalEntity": "horanadu-annapoorneshwari-temple",
+      "assetIds": [
+        "devi-horanadu-annapoorneshwari-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "tanot-mata",
+      "assetIds": [
+        "sacred-tanotmata",
+        "sacred-tanot-mata-temple-jaisalmer"
+      ]
+    },
+    {
+      "canonicalEntity": "shaktipeeth-kamakshi-amman-temple-kanchipuram",
+      "assetIds": [
+        "sacred-kamakshi-amman-temple-kanchipuram"
+      ]
+    },
+    {
+      "canonicalEntity": "naini-devi-temple-nainital",
+      "assetIds": [
+        "sacred-naini-devi-temple-nainital"
+      ]
+    },
+    {
+      "canonicalEntity": "kasar-devi-temple-almora",
+      "assetIds": [
+        "sacred-kasar-devi-temple-almora"
+      ]
+    },
+    {
+      "canonicalEntity": "purnagiri-devi-temple-champawat",
+      "assetIds": [
+        "sacred-purnagiri-devi-temple-champawat"
+      ]
+    }
+  ],
+  "missingEntities": [
+    {
+      "canonicalEntity": "shree-siddhivinayak-temple",
+      "assetIds": [
+        "other-shree-siddhivinayak-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "other-shirdi-sai-baba-temple-maharashtra",
+      "assetIds": [
+        "other-shirdi-sai-baba-temple-maharashtra"
+      ]
+    },
+    {
+      "canonicalEntity": "other-iskcon-mira-road-thane",
+      "assetIds": [
+        "other-iskcon-mira-road-thane",
+        "vishnu-iskcon-mira-road-thane"
+      ]
+    },
+    {
+      "canonicalEntity": "iskcon-temple-mumbai",
+      "assetIds": [
+        "other-iskcon-temple-mumbai",
+        "vishnu-iskcon-temple-mumbai"
+      ]
+    },
+    {
+      "canonicalEntity": "mahalaxmi-temple",
+      "assetIds": [
+        "other-mahalaxmi-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "vindhyavasini-temple-vindhyachal",
+      "assetIds": [
+        "shaktipeeth-vindhyavasini-temple-vindhyachal"
+      ]
+    },
+    {
+      "canonicalEntity": "sharda-peeth-kashmir",
+      "assetIds": [
+        "shaktipeeth-sharda-peeth-kashmir"
+      ]
+    },
+    {
+      "canonicalEntity": "hinglaj-devi-rajasthan",
+      "assetIds": [
+        "shaktipeeth-hinglaj-devi-rajasthan"
+      ]
+    },
+    {
+      "canonicalEntity": "tripora-sundari-temple-tripura",
+      "assetIds": [
+        "shaktipeeth-tripora-sundari-temple-tripura"
+      ]
+    },
+    {
+      "canonicalEntity": "attahas-temple-birbhum",
+      "assetIds": [
+        "shaktipeeth-attahas-temple-birbhum"
+      ]
+    },
+    {
+      "canonicalEntity": "bakreshwar-temple-birbhum",
+      "assetIds": [
+        "shaktipeeth-bakreshwar-temple-birbhum"
+      ]
+    },
+    {
+      "canonicalEntity": "nalateswari-temple-nalhati",
+      "assetIds": [
+        "shaktipeeth-nalateswari-temple-nalhati"
+      ]
+    },
+    {
+      "canonicalEntity": "jogadya-temple-burdwan",
+      "assetIds": [
+        "shaktipeeth-jogadya-temple-burdwan"
+      ]
+    },
+    {
+      "canonicalEntity": "kankalitala-temple-bolpur",
+      "assetIds": [
+        "shaktipeeth-kankalitala-temple-bolpur"
+      ]
+    },
+    {
+      "canonicalEntity": "bhavani-mandir-tuljapur",
+      "assetIds": [
+        "shaktipeeth-bhavani-mandir-tuljapur"
+      ]
+    },
+    {
+      "canonicalEntity": "renuka-devi-temple-mahur",
+      "assetIds": [
+        "shaktipeeth-renuka-devi-temple-mahur"
+      ]
+    },
+    {
+      "canonicalEntity": "saptashrungi-temple-nashik",
+      "assetIds": [
+        "shaktipeeth-saptashrungi-temple-nashik"
+      ]
+    },
+    {
+      "canonicalEntity": "danteshwari-temple-dantewada",
+      "assetIds": [
+        "shaktipeeth-danteshwari-temple-dantewada"
+      ]
+    },
+    {
+      "canonicalEntity": "chamunda-devi-temple-kangra",
+      "assetIds": [
+        "shaktipeeth-chamunda-devi-temple-kangra"
+      ]
+    },
+    {
+      "canonicalEntity": "brareshwari-devi-temple-kangra",
+      "assetIds": [
+        "shaktipeeth-brareshwari-devi-temple-kangra"
+      ]
+    },
+    {
+      "canonicalEntity": "alopi-devi-temple-prayagraj",
+      "assetIds": [
+        "shaktipeeth-alopi-devi-temple-prayagraj"
+      ]
+    },
+    {
+      "canonicalEntity": "devi-patan-temple-balrampur",
+      "assetIds": [
+        "shaktipeeth-devi-patan-temple-balrampur"
+      ]
+    },
+    {
+      "canonicalEntity": "harsiddhi-mata-temple-ujjain",
+      "assetIds": [
+        "shaktipeeth-harsiddhi-mata-temple-ujjain"
+      ]
+    },
+    {
+      "canonicalEntity": "sharada-devi-temple-maihar",
+      "assetIds": [
+        "shaktipeeth-sharada-devi-temple-maihar"
+      ]
+    },
+    {
+      "canonicalEntity": "biraja-temple-jajpur",
+      "assetIds": [
+        "shaktipeeth-biraja-temple-jajpur"
+      ]
+    },
+    {
+      "canonicalEntity": "tara-tarini-temple-ganjam",
+      "assetIds": [
+        "shaktipeeth-tara-tarini-temple-ganjam"
+      ]
+    },
+    {
+      "canonicalEntity": "ramanasramam-tiruvannamalai",
+      "assetIds": [
+        "healing-ramanasramam-tiruvannamalai"
+      ]
+    },
+    {
+      "canonicalEntity": "dhyanalinga-isha-coimbatore",
+      "assetIds": [
+        "healing-dhyanalinga-isha-coimbatore"
+      ]
+    },
+    {
+      "canonicalEntity": "virupaksha-temple-hampi",
+      "assetIds": [
+        "healing-virupaksha-temple-hampi"
+      ]
+    },
+    {
+      "canonicalEntity": "anandamayi-ma-ashram-haridwar",
+      "assetIds": [
+        "healing-anandamayi-ma-ashram-haridwar"
+      ]
+    },
+    {
+      "canonicalEntity": "mehendipur-balaji-temple-dausa",
+      "assetIds": [
+        "hanuman-mehendipur-balaji-temple-dausa"
+      ]
+    },
+    {
+      "canonicalEntity": "parmarth-niketan-rishikesh",
+      "assetIds": [
+        "healing-parmarth-niketan-rishikesh"
+      ]
+    },
+    {
+      "canonicalEntity": "sri-aurobindo-ashram-puducherry",
+      "assetIds": [
+        "healing-sri-aurobindo-ashram-puducherry"
+      ]
+    },
+    {
+      "canonicalEntity": "belur-math-ramakrishna-mission",
+      "assetIds": [
+        "sacred-belur-math-ramakrishna-mission"
+      ]
+    },
+    {
+      "canonicalEntity": "sarnath-buddhist-monastery",
+      "assetIds": [
+        "healing-sarnath-buddhist-monastery"
+      ]
+    },
+    {
+      "canonicalEntity": "mahabodhi-temple-bodh-gaya",
+      "assetIds": [
+        "sacred-mahabodhi-temple-bodh-gaya"
+      ]
+    },
+    {
+      "canonicalEntity": "vaitheeswaran-koil-mayiladuthurai",
+      "assetIds": [
+        "sacred-vaitheeswaran-koil-mayiladuthurai"
+      ]
+    },
+    {
+      "canonicalEntity": "parli-vaijnath-temple",
+      "assetIds": [
+        "healing-parli-vaijnath-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "dhanvantari-temple-kerala",
+      "assetIds": [
+        "healing-dhanvantari-temple-kerala"
+      ]
+    },
+    {
+      "canonicalEntity": "suchindram-thanumalayan-temple",
+      "assetIds": [
+        "sacred-suchindram-thanumalayan-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "ghati-subramanya-temple",
+      "assetIds": [
+        "healing-ghati-subramanya-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "srikalahasteeswara-temple-srikalahasti",
+      "assetIds": [
+        "panchbhoota-srikalahasteeswara-temple-srikalahasti"
+      ]
+    },
+    {
+      "canonicalEntity": "kukke-subramanya-temple",
+      "assetIds": [
+        "sacred-kukke-subramanya-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "mangaladevi-temple-mangalore",
+      "assetIds": [
+        "healing-mangaladevi-temple-mangalore"
+      ]
+    },
+    {
+      "canonicalEntity": "assi-ghat",
+      "assetIds": [
+        "sacred-assi-ghat"
+      ]
+    },
+    {
+      "canonicalEntity": "bhalka-tirth-shrine",
+      "assetIds": [
+        "sacred-bhalka-tirth-shrine"
+      ]
+    },
+    {
+      "canonicalEntity": "bhartrihari-caves",
+      "assetIds": [
+        "sacred-bhartrihari-caves"
+      ]
+    },
+    {
+      "canonicalEntity": "daulatabad-fort",
+      "assetIds": [
+        "sacred-daulatabad-fort"
+      ]
+    },
+    {
+      "canonicalEntity": "ellora-kailasa-temple",
+      "assetIds": [
+        "sacred-ellora-kailasa-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "gautam-rishi-ashram",
+      "assetIds": [
+        "sacred-gautam-rishi-ashram"
+      ]
+    },
+    {
+      "canonicalEntity": "gyanvapi-kund",
+      "assetIds": [
+        "sacred-gyanvapi-kund"
+      ]
+    },
+    {
+      "canonicalEntity": "manikarnika-ghat",
+      "assetIds": [
+        "sacred-manikarnika-ghat"
+      ]
+    },
+    {
+      "canonicalEntity": "naulakha-mandir",
+      "assetIds": [
+        "sacred-naulakha-mandir"
+      ]
+    },
+    {
+      "canonicalEntity": "sandipani-ashram",
+      "assetIds": [
+        "sacred-sandipani-ashram"
+      ]
+    },
+    {
+      "canonicalEntity": "shiva-trats-kund",
+      "assetIds": [
+        "sacred-shiva-trats-kund"
+      ]
+    },
+    {
+      "canonicalEntity": "sonprayag-sangam",
+      "assetIds": [
+        "sacred-sonprayag-sangam"
+      ]
+    },
+    {
+      "canonicalEntity": "tapovan-caves",
+      "assetIds": [
+        "sacred-tapovan-caves"
+      ]
+    },
+    {
+      "canonicalEntity": "triveni-sangam-ghat",
+      "assetIds": [
+        "sacred-triveni-sangam-ghat"
+      ]
+    },
+    {
+      "canonicalEntity": "baan-stambh",
+      "assetIds": [
+        "sacred-baan-stambh"
+      ]
+    },
+    {
+      "canonicalEntity": "bhairavnath-mandir",
+      "assetIds": [
+        "sacred-bhairavnath-mandir"
+      ]
+    },
+    {
+      "canonicalEntity": "dashashwamedh-ghat",
+      "assetIds": [
+        "sacred-dashashwamedh-ghat"
+      ]
+    },
+    {
+      "canonicalEntity": "gandhi-sarovar",
+      "assetIds": [
+        "sacred-gandhi-sarovar"
+      ]
+    },
+    {
+      "canonicalEntity": "gita-mandir",
+      "assetIds": [
+        "sacred-gita-mandir"
+      ]
+    },
+    {
+      "canonicalEntity": "ram-ghat",
+      "assetIds": [
+        "sacred-ram-ghat"
+      ]
+    },
+    {
+      "canonicalEntity": "shivganga-kund",
+      "assetIds": [
+        "sacred-shivganga-kund"
+      ]
+    },
+    {
+      "canonicalEntity": "trikuta-parvat",
+      "assetIds": [
+        "sacred-trikuta-parvat"
+      ]
+    },
+    {
+      "canonicalEntity": "vasuki-tal",
+      "assetIds": [
+        "sacred-vasuki-tal"
+      ]
+    },
+    {
+      "canonicalEntity": "mayureshwar-temple-morgaon",
+      "assetIds": [
+        "ashtavinayak-mayureshwar-temple-morgaon"
+      ]
+    },
+    {
+      "canonicalEntity": "ballaleshwar-temple-pali",
+      "assetIds": [
+        "ashtavinayak-ballaleshwar-temple-pali"
+      ]
+    },
+    {
+      "canonicalEntity": "varadhavinayak-temple-mahad",
+      "assetIds": [
+        "ashtavinayak-varadhavinayak-temple-mahad"
+      ]
+    },
+    {
+      "canonicalEntity": "chintamani-temple-theur",
+      "assetIds": [
+        "ashtavinayak-chintamani-temple-theur"
+      ]
+    },
+    {
+      "canonicalEntity": "girijatmak-temple-lenyadri",
+      "assetIds": [
+        "ashtavinayak-girijatmak-temple-lenyadri"
+      ]
+    },
+    {
+      "canonicalEntity": "vighnahar-temple-ozar",
+      "assetIds": [
+        "ashtavinayak-vighnahar-temple-ozar"
+      ]
+    },
+    {
+      "canonicalEntity": "mahaganapati-temple-ranjangaon",
+      "assetIds": [
+        "ashtavinayak-mahaganapati-temple-ranjangaon"
+      ]
+    },
+    {
+      "canonicalEntity": "ekambareswarar-temple-kanchipuram",
+      "assetIds": [
+        "panchbhoota-ekambareswarar-temple-kanchipuram"
+      ]
+    },
+    {
+      "canonicalEntity": "jambukeswarar-temple-thiruvanaikaval",
+      "assetIds": [
+        "panchbhoota-jambukeswarar-temple-thiruvanaikaval"
+      ]
+    },
+    {
+      "canonicalEntity": "arunachaleswarar-temple-thiruvannamalai",
+      "assetIds": [
+        "panchbhoota-arunachaleswarar-temple-thiruvannamalai"
+      ]
+    },
+    {
+      "canonicalEntity": "thillai-nataraja-temple-chidambaram",
+      "assetIds": [
+        "panchbhoota-thillai-nataraja-temple-chidambaram"
+      ]
+    },
+    {
+      "canonicalEntity": "bankey-bihari-temple-vrindavan",
+      "assetIds": [
+        "vishnu-bankey-bihari-temple-vrindavan"
+      ]
+    },
+    {
+      "canonicalEntity": "brahma-temple-pushkar",
+      "assetIds": [
+        "other-brahma-temple-pushkar",
+        "sacred-brahma-temple-pushkar"
+      ]
+    },
+    {
+      "canonicalEntity": "brihadisvara-temple-thanjavur",
+      "assetIds": [
+        "other-brihadisvara-temple-thanjavur",
+        "shiva-brihadisvara-temple-thanjavur"
+      ]
+    },
+    {
+      "canonicalEntity": "govind-dev-ji-temple-jaipur",
+      "assetIds": [
+        "other-govind-dev-ji-temple-jaipur",
+        "vishnu-govind-dev-ji-temple-jaipur"
+      ]
+    },
+    {
+      "canonicalEntity": "guruvayur-temple-kerala",
+      "assetIds": [
+        "other-guruvayur-temple-kerala",
+        "vishnu-guruvayur-temple-kerala"
+      ]
+    },
+    {
+      "canonicalEntity": "jakhu-temple-shimla",
+      "assetIds": [
+        "other-jakhu-temple-shimla"
+      ]
+    },
+    {
+      "canonicalEntity": "kalaram-temple-nashik",
+      "assetIds": [
+        "other-kalaram-temple-nashik",
+        "vishnu-kalaram-temple-nashik"
+      ]
+    },
+    {
+      "canonicalEntity": "kashtabhanjan-dev-hanumanji-sarangpur",
+      "assetIds": [
+        "other-kashtabhanjan-dev-hanumanji-sarangpur"
+      ]
+    },
+    {
+      "canonicalEntity": "khatu-shyam-ji-temple-sikar",
+      "assetIds": [
+        "other-khatu-shyam-ji-temple-sikar"
+      ]
+    },
+    {
+      "canonicalEntity": "lingaraj-temple-bhubaneswar",
+      "assetIds": [
+        "other-lingaraj-temple-bhubaneswar",
+        "shiva-lingaraj-temple-bhubaneswar"
+      ]
+    },
+    {
+      "canonicalEntity": "murudeshwar-temple-karnataka",
+      "assetIds": [
+        "other-murudeshwar-temple-karnataka",
+        "shiva-murudeshwar-temple-karnataka"
+      ]
+    },
+    {
+      "canonicalEntity": "neelkanth-mahadev-temple-rishikesh",
+      "assetIds": [
+        "other-neelkanth-mahadev-temple-rishikesh",
+        "sacred-neelkanth-mahadev-temple-rishikesh"
+      ]
+    },
+    {
+      "canonicalEntity": "pashupatinath-temple-mandsaur",
+      "assetIds": [
+        "other-pashupatinath-temple-mandsaur",
+        "shiva-pashupatinath-temple-mandsaur"
+      ]
+    },
+    {
+      "canonicalEntity": "prem-mandir-vrindavan",
+      "assetIds": [
+        "other-prem-mandir-vrindavan",
+        "vishnu-prem-mandir-vrindavan"
+      ]
+    },
+    {
+      "canonicalEntity": "salasar-balaji-temple-churu",
+      "assetIds": [
+        "other-salasar-balaji-temple-churu",
+        "hanuman-salasar-balaji-temple-churu"
+      ]
+    },
+    {
+      "canonicalEntity": "sankat-mochan-hanuman-temple-varanasi",
+      "assetIds": [
+        "other-sankat-mochan-hanuman-temple-varanasi"
+      ]
+    },
+    {
+      "canonicalEntity": "shrinathji-temple-nathdwara",
+      "assetIds": [
+        "other-shrinathji-temple-nathdwara"
+      ]
+    },
+    {
+      "canonicalEntity": "shree-ram-janmabhoomi-mandir-ayodhya",
+      "assetIds": [
+        "other-shree-ram-janmabhoomi-mandir-ayodhya"
+      ]
+    },
+    {
+      "canonicalEntity": "padmanabhaswamy-temple-thiruvananthapuram",
+      "assetIds": [
+        "other-padmanabhaswamy-temple-thiruvananthapuram",
+        "vishnu-padmanabhaswamy-temple-thiruvananthapuram"
+      ]
+    },
+    {
+      "canonicalEntity": "sri-ranganathaswamy-temple-srirangam",
+      "assetIds": [
+        "other-sri-ranganathaswamy-temple-srirangam",
+        "vishnu-sri-ranganathaswamy-temple-srirangam"
+      ]
+    },
+    {
+      "canonicalEntity": "sun-temple-modhera",
+      "assetIds": [
+        "other-sun-temple-modhera",
+        "sacred-sun-temple-modhera"
+      ]
+    },
+    {
+      "canonicalEntity": "triyuginarayan-temple-rudraprayag",
+      "assetIds": [
+        "other-triyuginarayan-temple-rudraprayag",
+        "sacred-triyuginarayan-temple-rudraprayag"
+      ]
+    },
+    {
+      "canonicalEntity": "tungnath-temple-chopta",
+      "assetIds": [
+        "other-tungnath-temple-chopta",
+        "shiva-tungnath-temple-chopta"
+      ]
+    },
+    {
+      "canonicalEntity": "udupi-sri-krishna-matha",
+      "assetIds": [
+        "other-udupi-sri-krishna-matha"
+      ]
+    },
+    {
+      "canonicalEntity": "vithoba-temple-pandharpur",
+      "assetIds": [
+        "other-vithoba-temple-pandharpur"
+      ]
+    },
+    {
+      "canonicalEntity": "hanuman-garhi-temple-ayodhya",
+      "assetIds": [
+        "other-hanuman-garhi-temple-ayodhya"
+      ]
+    },
+    {
+      "canonicalEntity": "hanumangarhi-temple-ayodhya",
+      "assetIds": [
+        "hanuman-hanumangarhi-temple-ayodhya"
+      ]
+    },
+    {
+      "canonicalEntity": "iskcon-temple-vrindavan",
+      "assetIds": [
+        "other-iskcon-temple-vrindavan",
+        "vishnu-iskcon-temple-vrindavan"
+      ]
+    },
+    {
+      "canonicalEntity": "shri-krishna-janmasthan-mathura",
+      "assetIds": [
+        "other-shri-krishna-janmasthan-mathura"
+      ]
+    },
+    {
+      "canonicalEntity": "sabarimala-sree-dharma-sastha-temple",
+      "assetIds": [
+        "other-sabarimala-sree-dharma-sastha-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "shri-ram-mandir-ayodhya",
+      "assetIds": [
+        "vishnu-shri-ram-mandir-ayodhya"
+      ]
+    },
+    {
+      "canonicalEntity": "dwarakadheesh-temple-mathura",
+      "assetIds": [
+        "vishnu-dwarakadheesh-temple-mathura"
+      ]
+    },
+    {
+      "canonicalEntity": "krishna-janmabhoomi-mathura",
+      "assetIds": [
+        "vishnu-krishna-janmabhoomi-mathura"
+      ]
+    },
+    {
+      "canonicalEntity": "radha-raman-temple-vrindavan",
+      "assetIds": [
+        "vishnu-radha-raman-temple-vrindavan"
+      ]
+    },
+    {
+      "canonicalEntity": "radha-damodar-temple-vrindavan",
+      "assetIds": [
+        "vishnu-radha-damodar-temple-vrindavan"
+      ]
+    },
+    {
+      "canonicalEntity": "nathdwara-shrinathji-temple",
+      "assetIds": [
+        "vishnu-nathdwara-shrinathji-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "vitthal-temple-pandharpur",
+      "assetIds": [
+        "vishnu-vitthal-temple-pandharpur"
+      ]
+    },
+    {
+      "canonicalEntity": "venugopala-swamy-temple-mysore",
+      "assetIds": [
+        "vishnu-venugopala-swamy-temple-mysore"
+      ]
+    },
+    {
+      "canonicalEntity": "chennakesava-temple-belur",
+      "assetIds": [
+        "vishnu-chennakesava-temple-belur"
+      ]
+    },
+    {
+      "canonicalEntity": "simhachalam-temple-visakhapatnam",
+      "assetIds": [
+        "vishnu-simhachalam-temple-visakhapatnam"
+      ]
+    },
+    {
+      "canonicalEntity": "ahobilam-narasimha-temple",
+      "assetIds": [
+        "vishnu-ahobilam-narasimha-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "ananta-vasudeva-temple-bhubaneswar",
+      "assetIds": [
+        "vishnu-ananta-vasudeva-temple-bhubaneswar"
+      ]
+    },
+    {
+      "canonicalEntity": "amarnath-cave-temple-kashmir",
+      "assetIds": [
+        "shiva-amarnath-cave-temple-kashmir"
+      ]
+    },
+    {
+      "canonicalEntity": "bhojeshwar-temple-bhojpur",
+      "assetIds": [
+        "shiva-bhojeshwar-temple-bhojpur"
+      ]
+    },
+    {
+      "canonicalEntity": "pashupatinath-temple-nepal-border",
+      "assetIds": [
+        "shiva-pashupatinath-temple-nepal-border"
+      ]
+    },
+    {
+      "canonicalEntity": "tarakeshwar-temple-hooghly",
+      "assetIds": [
+        "shiva-tarakeshwar-temple-hooghly"
+      ]
+    },
+    {
+      "canonicalEntity": "baba-dham-deoghar",
+      "assetIds": [
+        "shiva-baba-dham-deoghar"
+      ]
+    },
+    {
+      "canonicalEntity": "kapaleeshwarar-temple-chennai",
+      "assetIds": [
+        "shiva-kapaleeshwarar-temple-chennai"
+      ]
+    },
+    {
+      "canonicalEntity": "vadakkunnathan-temple-thrissur",
+      "assetIds": [
+        "shiva-vadakkunnathan-temple-thrissur"
+      ]
+    },
+    {
+      "canonicalEntity": "chinnamastika-shiva-temple",
+      "assetIds": [
+        "shiva-chinnamastika-shiva-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "kotilingeshwara-temple-kolar",
+      "assetIds": [
+        "shiva-kotilingeshwara-temple-kolar"
+      ]
+    },
+    {
+      "canonicalEntity": "mahalaxmi-temple-mumbai",
+      "assetIds": [
+        "devi-mahalaxmi-temple-mumbai"
+      ]
+    },
+    {
+      "canonicalEntity": "mumbadevi-temple-mumbai",
+      "assetIds": [
+        "devi-mumbadevi-temple-mumbai"
+      ]
+    },
+    {
+      "canonicalEntity": "mansa-devi-temple-haridwar",
+      "assetIds": [
+        "devi-mansa-devi-temple-haridwar"
+      ]
+    },
+    {
+      "canonicalEntity": "chandi-devi-temple-haridwar",
+      "assetIds": [
+        "devi-chandi-devi-temple-haridwar"
+      ]
+    },
+    {
+      "canonicalEntity": "kanaka-durga-temple-vijayawada",
+      "assetIds": [
+        "devi-kanaka-durga-temple-vijayawada"
+      ]
+    },
+    {
+      "canonicalEntity": "bhramara-ambika-temple-srisailam",
+      "assetIds": [
+        "devi-bhramara-ambika-temple-srisailam"
+      ]
+    },
+    {
+      "canonicalEntity": "katil-durgaparameshwari-temple",
+      "assetIds": [
+        "devi-katil-durgaparameshwari-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "kashtabhanjan-dev-temple-sarangpur",
+      "assetIds": [
+        "hanuman-kashtabhanjan-dev-temple-sarangpur"
+      ]
+    },
+    {
+      "canonicalEntity": "marutam-temple-connaught-place",
+      "assetIds": [
+        "hanuman-marutam-temple-connaught-place"
+      ]
+    },
+    {
+      "canonicalEntity": "maruti-temple-girgaum",
+      "assetIds": [
+        "hanuman-maruti-temple-girgaum"
+      ]
+    },
+    {
+      "canonicalEntity": "sankat-mochan-shimla",
+      "assetIds": [
+        "hanuman-sankat-mochan-shimla"
+      ]
+    },
+    {
+      "canonicalEntity": "kainchi-dham-neem-karoli",
+      "assetIds": [
+        "hanuman-kainchi-dham-neem-karoli"
+      ]
+    },
+    {
+      "canonicalEntity": "bade-hanuman-mandir-prayagraj",
+      "assetIds": [
+        "hanuman-bade-hanuman-mandir-prayagraj"
+      ]
+    },
+    {
+      "canonicalEntity": "hanuman-garhi-ayodhya",
+      "assetIds": [
+        "hanuman-hanuman-garhi-ayodhya"
+      ]
+    },
+    {
+      "canonicalEntity": "adikumbeswarar",
+      "assetIds": [
+        "sacred-adikumbeswarar"
+      ]
+    },
+    {
+      "canonicalEntity": "agniswarar",
+      "assetIds": [
+        "sacred-agniswarar"
+      ]
+    },
+    {
+      "canonicalEntity": "ahobilamnavanarasimha",
+      "assetIds": [
+        "sacred-ahobilamnavanarasimha"
+      ]
+    },
+    {
+      "canonicalEntity": "amareswaraswamy",
+      "assetIds": [
+        "sacred-amareswaraswamy"
+      ]
+    },
+    {
+      "canonicalEntity": "amarnath",
+      "assetIds": [
+        "sacred-amarnath"
+      ]
+    },
+    {
+      "canonicalEntity": "ambalappuzha-sri-krishna-temple",
+      "assetIds": [
+        "sacred-ambalappuzha-sri-krishna-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "anantavasudeva",
+      "assetIds": [
+        "sacred-anantavasudeva"
+      ]
+    },
+    {
+      "canonicalEntity": "annapoorneshwari",
+      "assetIds": [
+        "sacred-annapoorneshwari"
+      ]
+    },
+    {
+      "canonicalEntity": "apatsahayesvarar",
+      "assetIds": [
+        "sacred-apatsahayesvarar"
+      ]
+    },
+    {
+      "canonicalEntity": "aranmula-parthasarathy",
+      "assetIds": [
+        "sacred-aranmula-parthasarathy"
+      ]
+    },
+    {
+      "canonicalEntity": "arunachaleswarar",
+      "assetIds": [
+        "sacred-arunachaleswarar"
+      ]
+    },
+    {
+      "canonicalEntity": "attukal",
+      "assetIds": [
+        "sacred-attukal"
+      ]
+    },
+    {
+      "canonicalEntity": "babulnath",
+      "assetIds": [
+        "sacred-babulnath"
+      ]
+    },
+    {
+      "canonicalEntity": "badehanumanmandir",
+      "assetIds": [
+        "sacred-badehanumanmandir"
+      ]
+    },
+    {
+      "canonicalEntity": "baijnath",
+      "assetIds": [
+        "sacred-baijnath"
+      ]
+    },
+    {
+      "canonicalEntity": "bankebihari-temple",
+      "assetIds": [
+        "sacred-bankebihari-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "bhadrachalam-temple",
+      "assetIds": [
+        "sacred-bhadrachalam-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "bhalkatirthshrine",
+      "assetIds": [
+        "sacred-bhalkatirthshrine"
+      ]
+    },
+    {
+      "canonicalEntity": "bhartrihari",
+      "assetIds": [
+        "sacred-bhartrihari"
+      ]
+    },
+    {
+      "canonicalEntity": "bhojeshwar",
+      "assetIds": [
+        "sacred-bhojeshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "bijlimahadev",
+      "assetIds": [
+        "sacred-bijlimahadev"
+      ]
+    },
+    {
+      "canonicalEntity": "birla-temple",
+      "assetIds": [
+        "sacred-birla-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "brahma-temple",
+      "assetIds": [
+        "sacred-brahma-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "brihadisvara",
+      "assetIds": [
+        "sacred-brihadisvara"
+      ]
+    },
+    {
+      "canonicalEntity": "chamundi",
+      "assetIds": [
+        "sacred-chamundi"
+      ]
+    },
+    {
+      "canonicalEntity": "chennakesava",
+      "assetIds": [
+        "sacred-chennakesava"
+      ]
+    },
+    {
+      "canonicalEntity": "chottanikkara",
+      "assetIds": [
+        "sacred-chottanikkara"
+      ]
+    },
+    {
+      "canonicalEntity": "daulatabad",
+      "assetIds": [
+        "sacred-daulatabad"
+      ]
+    },
+    {
+      "canonicalEntity": "dharbaranyeswarar",
+      "assetIds": [
+        "sacred-dharbaranyeswarar"
+      ]
+    },
+    {
+      "canonicalEntity": "dharidevi",
+      "assetIds": [
+        "sacred-dharidevi"
+      ]
+    },
+    {
+      "canonicalEntity": "draksharama-temple",
+      "assetIds": [
+        "sacred-draksharama-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "ekambareshwar",
+      "assetIds": [
+        "sacred-ekambareshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "ellorakailasa",
+      "assetIds": [
+        "sacred-ellorakailasa"
+      ]
+    },
+    {
+      "canonicalEntity": "gautamrishiashram",
+      "assetIds": [
+        "sacred-gautamrishiashram"
+      ]
+    },
+    {
+      "canonicalEntity": "girijatmaj",
+      "assetIds": [
+        "sacred-girijatmaj"
+      ]
+    },
+    {
+      "canonicalEntity": "gnanasaraswathi",
+      "assetIds": [
+        "sacred-gnanasaraswathi"
+      ]
+    },
+    {
+      "canonicalEntity": "gommateshwara",
+      "assetIds": [
+        "sacred-gommateshwara"
+      ]
+    },
+    {
+      "canonicalEntity": "gopnathmahadev",
+      "assetIds": [
+        "sacred-gopnathmahadev"
+      ]
+    },
+    {
+      "canonicalEntity": "gorakhnath",
+      "assetIds": [
+        "sacred-gorakhnath"
+      ]
+    },
+    {
+      "canonicalEntity": "govinddev",
+      "assetIds": [
+        "sacred-govinddev"
+      ]
+    },
+    {
+      "canonicalEntity": "guruvayur",
+      "assetIds": [
+        "sacred-guruvayur"
+      ]
+    },
+    {
+      "canonicalEntity": "gyanvapi",
+      "assetIds": [
+        "sacred-gyanvapi"
+      ]
+    },
+    {
+      "canonicalEntity": "hidimbadevi",
+      "assetIds": [
+        "sacred-hidimbadevi"
+      ]
+    },
+    {
+      "canonicalEntity": "hidimba-devi",
+      "assetIds": [
+        "sacred-hidimba-devi"
+      ]
+    },
+    {
+      "canonicalEntity": "jakhu",
+      "assetIds": [
+        "sacred-jakhu"
+      ]
+    },
+    {
+      "canonicalEntity": "janardhanaswamy",
+      "assetIds": [
+        "sacred-janardhanaswamy"
+      ]
+    },
+    {
+      "canonicalEntity": "kainchidham",
+      "assetIds": [
+        "sacred-kainchidham"
+      ]
+    },
+    {
+      "canonicalEntity": "kalaram",
+      "assetIds": [
+        "sacred-kalaram"
+      ]
+    },
+    {
+      "canonicalEntity": "kalikamata",
+      "assetIds": [
+        "sacred-kalikamata"
+      ]
+    },
+    {
+      "canonicalEntity": "kanakadurga",
+      "assetIds": [
+        "sacred-kanakadurga"
+      ]
+    },
+    {
+      "canonicalEntity": "kanchipuram-kamakshi",
+      "assetIds": [
+        "sacred-kanchipuram-kamakshi"
+      ]
+    },
+    {
+      "canonicalEntity": "kasardevi",
+      "assetIds": [
+        "sacred-kasardevi"
+      ]
+    },
+    {
+      "canonicalEntity": "kashtabhanjan",
+      "assetIds": [
+        "sacred-kashtabhanjan"
+      ]
+    },
+    {
+      "canonicalEntity": "kateeldurgaparameshwari",
+      "assetIds": [
+        "sacred-kateeldurgaparameshwari"
+      ]
+    },
+    {
+      "canonicalEntity": "khatushyam",
+      "assetIds": [
+        "sacred-khatushyam"
+      ]
+    },
+    {
+      "canonicalEntity": "kondagattuanjaneyaswamy",
+      "assetIds": [
+        "sacred-kondagattuanjaneyaswamy"
+      ]
+    },
+    {
+      "canonicalEntity": "kotilingeshwara",
+      "assetIds": [
+        "sacred-kotilingeshwara"
+      ]
+    },
+    {
+      "canonicalEntity": "ksheeraramalingeswara",
+      "assetIds": [
+        "sacred-ksheeraramalingeswara"
+      ]
+    },
+    {
+      "canonicalEntity": "kumararama-bhimesvara",
+      "assetIds": [
+        "sacred-kumararama-bhimesvara"
+      ]
+    },
+    {
+      "canonicalEntity": "lingaraj",
+      "assetIds": [
+        "sacred-lingaraj"
+      ]
+    },
+    {
+      "canonicalEntity": "maa-mundeshwari-devi",
+      "assetIds": [
+        "sacred-maa-mundeshwari-devi"
+      ]
+    },
+    {
+      "canonicalEntity": "mahabaleshwar",
+      "assetIds": [
+        "sacred-mahabaleshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "mahaganapati",
+      "assetIds": [
+        "sacred-mahaganapati"
+      ]
+    },
+    {
+      "canonicalEntity": "mahavirmandir",
+      "assetIds": [
+        "sacred-mahavirmandir"
+      ]
+    },
+    {
+      "canonicalEntity": "mansadevi",
+      "assetIds": [
+        "sacred-mansadevi"
+      ]
+    },
+    {
+      "canonicalEntity": "murudeshwara",
+      "assetIds": [
+        "sacred-murudeshwara"
+      ]
+    },
+    {
+      "canonicalEntity": "naganathaswamy",
+      "assetIds": [
+        "sacred-naganathaswamy"
+      ]
+    },
+    {
+      "canonicalEntity": "nagaraja",
+      "assetIds": [
+        "sacred-nagaraja"
+      ]
+    },
+    {
+      "canonicalEntity": "naulakha",
+      "assetIds": [
+        "sacred-naulakha"
+      ]
+    },
+    {
+      "canonicalEntity": "neelkanth",
+      "assetIds": [
+        "sacred-neelkanth"
+      ]
+    },
+    {
+      "canonicalEntity": "palanimurugan",
+      "assetIds": [
+        "sacred-palanimurugan"
+      ]
+    },
+    {
+      "canonicalEntity": "pashupatinath",
+      "assetIds": [
+        "sacred-pashupatinath"
+      ]
+    },
+    {
+      "canonicalEntity": "pazhamudircholai",
+      "assetIds": [
+        "sacred-pazhamudircholai"
+      ]
+    },
+    {
+      "canonicalEntity": "pracheenhanuman",
+      "assetIds": [
+        "sacred-pracheenhanuman"
+      ]
+    },
+    {
+      "canonicalEntity": "premmandir",
+      "assetIds": [
+        "sacred-premmandir"
+      ]
+    },
+    {
+      "canonicalEntity": "punaura-sitamarhi",
+      "assetIds": [
+        "sacred-punaura-sitamarhi"
+      ]
+    },
+    {
+      "canonicalEntity": "purnagiridevi",
+      "assetIds": [
+        "sacred-purnagiridevi"
+      ]
+    },
+    {
+      "canonicalEntity": "radhadamodar",
+      "assetIds": [
+        "sacred-radhadamodar"
+      ]
+    },
+    {
+      "canonicalEntity": "ramappa-temple",
+      "assetIds": [
+        "sacred-ramappa-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "ramatheertham",
+      "assetIds": [
+        "sacred-ramatheertham"
+      ]
+    },
+    {
+      "canonicalEntity": "ramnagar-fort",
+      "assetIds": [
+        "sacred-ramnagar-fort"
+      ]
+    },
+    {
+      "canonicalEntity": "ranakpur",
+      "assetIds": [
+        "sacred-ranakpur"
+      ]
+    },
+    {
+      "canonicalEntity": "salasarbalaji",
+      "assetIds": [
+        "sacred-salasarbalaji"
+      ]
+    },
+    {
+      "canonicalEntity": "sandipaniashram",
+      "assetIds": [
+        "sacred-sandipaniashram"
+      ]
+    },
+    {
+      "canonicalEntity": "sankatmochan",
+      "assetIds": [
+        "sacred-sankatmochan"
+      ]
+    },
+    {
+      "canonicalEntity": "sarangapani",
+      "assetIds": [
+        "sacred-sarangapani"
+      ]
+    },
+    {
+      "canonicalEntity": "shivatrats",
+      "assetIds": [
+        "sacred-shivatrats"
+      ]
+    },
+    {
+      "canonicalEntity": "shreenathjitemple",
+      "assetIds": [
+        "sacred-shreenathjitemple"
+      ]
+    },
+    {
+      "canonicalEntity": "shri-ram-janambhoomi-mandir",
+      "assetIds": [
+        "sacred-shri-ram-janambhoomi-mandir"
+      ]
+    },
+    {
+      "canonicalEntity": "someshwara",
+      "assetIds": [
+        "sacred-someshwara"
+      ]
+    },
+    {
+      "canonicalEntity": "sonprayagsangam",
+      "assetIds": [
+        "sacred-sonprayagsangam"
+      ]
+    },
+    {
+      "canonicalEntity": "sree-padmanabhaswamy",
+      "assetIds": [
+        "sacred-sree-padmanabhaswamy"
+      ]
+    },
+    {
+      "canonicalEntity": "sree-vallaba",
+      "assetIds": [
+        "sacred-sree-vallaba"
+      ]
+    },
+    {
+      "canonicalEntity": "sriranganathaswamy",
+      "assetIds": [
+        "sacred-sriranganathaswamy"
+      ]
+    },
+    {
+      "canonicalEntity": "srivilliputhurandal",
+      "assetIds": [
+        "sacred-srivilliputhurandal"
+      ]
+    },
+    {
+      "canonicalEntity": "suntemple",
+      "assetIds": [
+        "sacred-suntemple"
+      ]
+    },
+    {
+      "canonicalEntity": "suryanarkovil",
+      "assetIds": [
+        "sacred-suryanarkovil"
+      ]
+    },
+    {
+      "canonicalEntity": "swamimalaimurugan",
+      "assetIds": [
+        "sacred-swamimalaimurugan"
+      ]
+    },
+    {
+      "canonicalEntity": "swaminarayanakshardham",
+      "assetIds": [
+        "sacred-swaminarayanakshardham"
+      ]
+    },
+    {
+      "canonicalEntity": "tapovancaves",
+      "assetIds": [
+        "sacred-tapovancaves"
+      ]
+    },
+    {
+      "canonicalEntity": "tarakeshwar",
+      "assetIds": [
+        "sacred-tarakeshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "templeofvedicplanetarium",
+      "assetIds": [
+        "sacred-templeofvedicplanetarium"
+      ]
+    },
+    {
+      "canonicalEntity": "thillainataraja",
+      "assetIds": [
+        "sacred-thillainataraja"
+      ]
+    },
+    {
+      "canonicalEntity": "thirunageswaramnaganathar",
+      "assetIds": [
+        "sacred-thirunageswaramnaganathar"
+      ]
+    },
+    {
+      "canonicalEntity": "thiruparankundrammurugan",
+      "assetIds": [
+        "sacred-thiruparankundrammurugan"
+      ]
+    },
+    {
+      "canonicalEntity": "thiruttani-temple-rajagopuram",
+      "assetIds": [
+        "sacred-thiruttani-temple-rajagopuram"
+      ]
+    },
+    {
+      "canonicalEntity": "thousandpillar",
+      "assetIds": [
+        "sacred-thousandpillar"
+      ]
+    },
+    {
+      "canonicalEntity": "tiruchendurmurugan",
+      "assetIds": [
+        "sacred-tiruchendurmurugan"
+      ]
+    },
+    {
+      "canonicalEntity": "trilokinath",
+      "assetIds": [
+        "sacred-trilokinath"
+      ]
+    },
+    {
+      "canonicalEntity": "trinetreshwar",
+      "assetIds": [
+        "sacred-trinetreshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "triprayarsree",
+      "assetIds": [
+        "sacred-triprayarsree"
+      ]
+    },
+    {
+      "canonicalEntity": "triveni-ghat",
+      "assetIds": [
+        "sacred-triveni-ghat"
+      ]
+    },
+    {
+      "canonicalEntity": "triyuginarayan",
+      "assetIds": [
+        "sacred-triyuginarayan"
+      ]
+    },
+    {
+      "canonicalEntity": "tungnath",
+      "assetIds": [
+        "sacred-tungnath"
+      ]
+    },
+    {
+      "canonicalEntity": "udupi-sri-krishna-matha-temple",
+      "assetIds": [
+        "sacred-udupi-sri-krishna-matha-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "uppiliappan",
+      "assetIds": [
+        "sacred-uppiliappan"
+      ]
+    },
+    {
+      "canonicalEntity": "vadakkunnathan",
+      "assetIds": [
+        "sacred-vadakkunnathan"
+      ]
+    },
+    {
+      "canonicalEntity": "varadvinayak",
+      "assetIds": [
+        "sacred-varadvinayak"
+      ]
+    },
+    {
+      "canonicalEntity": "varadharajaperumal",
+      "assetIds": [
+        "sacred-varadharajaperumal"
+      ]
+    },
+    {
+      "canonicalEntity": "varahalakshminarasimha",
+      "assetIds": [
+        "sacred-varahalakshminarasimha"
+      ]
+    },
+    {
+      "canonicalEntity": "vashishttemple",
+      "assetIds": [
+        "sacred-vashishttemple"
+      ]
+    },
+    {
+      "canonicalEntity": "veerabhadra",
+      "assetIds": [
+        "sacred-veerabhadra"
+      ]
+    },
+    {
+      "canonicalEntity": "venugopalaswamy",
+      "assetIds": [
+        "sacred-venugopalaswamy"
+      ]
+    },
+    {
+      "canonicalEntity": "vighnahar",
+      "assetIds": [
+        "sacred-vighnahar"
+      ]
+    },
+    {
+      "canonicalEntity": "vishnupad",
+      "assetIds": [
+        "sacred-vishnupad"
+      ]
+    },
+    {
+      "canonicalEntity": "vithoba",
+      "assetIds": [
+        "sacred-vithoba"
+      ]
+    },
+    {
+      "canonicalEntity": "yadadrisrilakshminarasimha",
+      "assetIds": [
+        "sacred-yadadrisrilakshminarasimha"
+      ]
+    },
+    {
+      "canonicalEntity": "baan",
+      "assetIds": [
+        "sacred-baan"
+      ]
+    },
+    {
+      "canonicalEntity": "ballaleshwar",
+      "assetIds": [
+        "sacred-ballaleshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "bhairavnath",
+      "assetIds": [
+        "sacred-bhairavnath"
+      ]
+    },
+    {
+      "canonicalEntity": "chandi-devi",
+      "assetIds": [
+        "sacred-chandi-devi"
+      ]
+    },
+    {
+      "canonicalEntity": "chintamani",
+      "assetIds": [
+        "sacred-chintamani"
+      ]
+    },
+    {
+      "canonicalEntity": "dilwara",
+      "assetIds": [
+        "sacred-dilwara"
+      ]
+    },
+    {
+      "canonicalEntity": "gandhisarvor",
+      "assetIds": [
+        "sacred-gandhisarvor"
+      ]
+    },
+    {
+      "canonicalEntity": "gitamandir",
+      "assetIds": [
+        "sacred-gitamandir"
+      ]
+    },
+    {
+      "canonicalEntity": "hanumangarhi",
+      "assetIds": [
+        "sacred-hanumangarhi"
+      ]
+    },
+    {
+      "canonicalEntity": "iskconvrindavan",
+      "assetIds": [
+        "sacred-iskconvrindavan"
+      ]
+    },
+    {
+      "canonicalEntity": "jageshwar",
+      "assetIds": [
+        "sacred-jageshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "jambukeswarar",
+      "assetIds": [
+        "sacred-jambukeswarar"
+      ]
+    },
+    {
+      "canonicalEntity": "kailashnathwar",
+      "assetIds": [
+        "sacred-kailashnathwar"
+      ]
+    },
+    {
+      "canonicalEntity": "kapaleeshwarar",
+      "assetIds": [
+        "sacred-kapaleeshwarar"
+      ]
+    },
+    {
+      "canonicalEntity": "karnimata",
+      "assetIds": [
+        "sacred-karnimata"
+      ]
+    },
+    {
+      "canonicalEntity": "krishnajanmasthan",
+      "assetIds": [
+        "sacred-krishnajanmasthan"
+      ]
+    },
+    {
+      "canonicalEntity": "mayureshwar",
+      "assetIds": [
+        "sacred-mayureshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "mumba-devi",
+      "assetIds": [
+        "sacred-mumba-devi"
+      ]
+    },
+    {
+      "canonicalEntity": "ramghat",
+      "assetIds": [
+        "sacred-ramghat"
+      ]
+    },
+    {
+      "canonicalEntity": "sabarimala",
+      "assetIds": [
+        "sacred-sabarimala"
+      ]
+    },
+    {
+      "canonicalEntity": "sammed-shikharji",
+      "assetIds": [
+        "sacred-sammed-shikharji"
+      ]
+    },
+    {
+      "canonicalEntity": "shivganga",
+      "assetIds": [
+        "sacred-shivganga"
+      ]
+    },
+    {
+      "canonicalEntity": "shri-radha-raman",
+      "assetIds": [
+        "sacred-shri-radha-raman"
+      ]
+    },
+    {
+      "canonicalEntity": "tapkeshwar",
+      "assetIds": [
+        "sacred-tapkeshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "trikuta",
+      "assetIds": [
+        "sacred-trikuta"
+      ]
+    },
+    {
+      "canonicalEntity": "trinetra-ganesh-temple",
+      "assetIds": [
+        "sacred-trinetra-ganesh-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "tulsi-manas",
+      "assetIds": [
+        "sacred-tulsi-manas"
+      ]
+    },
+    {
+      "canonicalEntity": "palani-murugan-temple",
+      "assetIds": [
+        "sacred-palani-murugan-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "swamimalai-murugan-temple",
+      "assetIds": [
+        "sacred-swamimalai-murugan-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "thiruthani-murugan-temple",
+      "assetIds": [
+        "sacred-thiruthani-murugan-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "thiruparankundram-murugan-temple",
+      "assetIds": [
+        "sacred-thiruparankundram-murugan-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "pazhamudircholai-murugan-temple",
+      "assetIds": [
+        "sacred-pazhamudircholai-murugan-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "tiruchendur-murugan-temple",
+      "assetIds": [
+        "sacred-tiruchendur-murugan-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "shravanabelagola-gommateshwara",
+      "assetIds": [
+        "sacred-shravanabelagola-gommateshwara"
+      ]
+    },
+    {
+      "canonicalEntity": "mayapur-chandrodaya-mandir",
+      "assetIds": [
+        "sacred-mayapur-chandrodaya-mandir"
+      ]
+    },
+    {
+      "canonicalEntity": "sammed-shikharji-parasnath",
+      "assetIds": [
+        "sacred-sammed-shikharji-parasnath"
+      ]
+    },
+    {
+      "canonicalEntity": "dilwara-jain-temples-mount-abu",
+      "assetIds": [
+        "sacred-dilwara-jain-temples-mount-abu"
+      ]
+    },
+    {
+      "canonicalEntity": "ranakpur-jain-temple-pali",
+      "assetIds": [
+        "sacred-ranakpur-jain-temple-pali"
+      ]
+    },
+    {
+      "canonicalEntity": "khatu-shyam-temple-sikar",
+      "assetIds": [
+        "sacred-khatu-shyam-temple-sikar"
+      ]
+    },
+    {
+      "canonicalEntity": "trinetra-ganesh-temple-ranthambore",
+      "assetIds": [
+        "sacred-trinetra-ganesh-temple-ranthambore"
+      ]
+    },
+    {
+      "canonicalEntity": "chamundeshwari-hill-mysore",
+      "assetIds": [
+        "sacred-chamundeshwari-hill-mysore"
+      ]
+    },
+    {
+      "canonicalEntity": "murudeshwar-coastal-temple",
+      "assetIds": [
+        "sacred-murudeshwar-coastal-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "gokarna-mahabaleshwar-temple",
+      "assetIds": [
+        "sacred-gokarna-mahabaleshwar-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "triprayar-srama-temple-thrissur",
+      "assetIds": [
+        "sacred-triprayar-srama-temple-thrissur"
+      ]
+    },
+    {
+      "canonicalEntity": "thiruvalla-sree-vallabha-temple",
+      "assetIds": [
+        "sacred-thiruvalla-sree-vallabha-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "ambalappuzha-sree-krishna-temple",
+      "assetIds": [
+        "sacred-ambalappuzha-sree-krishna-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "arankula-parthasarathy-temple",
+      "assetIds": [
+        "sacred-arankula-parthasarathy-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "janardhana-swamy-temple-varkala",
+      "assetIds": [
+        "sacred-janardhana-swamy-temple-varkala"
+      ]
+    },
+    {
+      "canonicalEntity": "nagaraja-temple-nagercoil",
+      "assetIds": [
+        "sacred-nagaraja-temple-nagercoil"
+      ]
+    },
+    {
+      "canonicalEntity": "srivilliputhur-andal-temple",
+      "assetIds": [
+        "sacred-srivilliputhur-andal-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "oppiliappan-temple-kumbakonam",
+      "assetIds": [
+        "sacred-oppiliappan-temple-kumbakonam"
+      ]
+    },
+    {
+      "canonicalEntity": "sarangapani-temple-kumbakonam",
+      "assetIds": [
+        "sacred-sarangapani-temple-kumbakonam"
+      ]
+    },
+    {
+      "canonicalEntity": "kumbeshwarar-temple-kumbakonam",
+      "assetIds": [
+        "sacred-kumbeshwarar-temple-kumbakonam"
+      ]
+    },
+    {
+      "canonicalEntity": "varadharaja-perumal-temple-kanchipuram",
+      "assetIds": [
+        "sacred-varadharaja-perumal-temple-kanchipuram"
+      ]
+    },
+    {
+      "canonicalEntity": "thirunageswaram-naganathar-temple",
+      "assetIds": [
+        "sacred-thirunageswaram-naganathar-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "thingalur-chandran-temple",
+      "assetIds": [
+        "sacred-thingalur-chandran-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "alangudi-guru-temple",
+      "assetIds": [
+        "sacred-alangudi-guru-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "kanchanur-sukran-temple",
+      "assetIds": [
+        "sacred-kanchanur-sukran-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "thirunallar-saneeswaran-temple",
+      "assetIds": [
+        "sacred-thirunallar-saneeswaran-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "kethu-temple-keelaperumpallam",
+      "assetIds": [
+        "sacred-kethu-temple-keelaperumpallam"
+      ]
+    },
+    {
+      "canonicalEntity": "suryanar-kovil-kumbakonam",
+      "assetIds": [
+        "sacred-suryanar-kovil-kumbakonam"
+      ]
+    },
+    {
+      "canonicalEntity": "ramatheertham-vizianagaram",
+      "assetIds": [
+        "sacred-ramatheertham-vizianagaram"
+      ]
+    },
+    {
+      "canonicalEntity": "draksharamam-bheemeswara-temple",
+      "assetIds": [
+        "sacred-draksharamam-bheemeswara-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "amararamam-amaraswaraswamy-temple",
+      "assetIds": [
+        "sacred-amararamam-amaraswaraswamy-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "somaramam-someshwara-swamy-temple",
+      "assetIds": [
+        "sacred-somaramam-someshwara-swamy-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "ksheeraramam-ksheera-ramalingeswara",
+      "assetIds": [
+        "sacred-ksheeraramam-ksheera-ramalingeswara"
+      ]
+    },
+    {
+      "canonicalEntity": "kumararamam-bhimeswara-swamy",
+      "assetIds": [
+        "sacred-kumararamam-bhimeswara-swamy"
+      ]
+    },
+    {
+      "canonicalEntity": "yadadri-narasimha-swamy-temple",
+      "assetIds": [
+        "sacred-yadadri-narasimha-swamy-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "bhadrachalam-sita-ramachandra-swamy",
+      "assetIds": [
+        "sacred-bhadrachalam-sita-ramachandra-swamy"
+      ]
+    },
+    {
+      "canonicalEntity": "thousand-pillar-temple-warangal",
+      "assetIds": [
+        "sacred-thousand-pillar-temple-warangal"
+      ]
+    },
+    {
+      "canonicalEntity": "ramappa-temple-mulugu",
+      "assetIds": [
+        "sacred-ramappa-temple-mulugu"
+      ]
+    },
+    {
+      "canonicalEntity": "gnana-saraswathi-temple-basar",
+      "assetIds": [
+        "sacred-gnana-saraswathi-temple-basar"
+      ]
+    },
+    {
+      "canonicalEntity": "kondagattu-anjaneya-swamy-temple",
+      "assetIds": [
+        "sacred-kondagattu-anjaneya-swamy-temple"
+      ]
+    },
+    {
+      "canonicalEntity": "veerabhadra-temple-lepakshi",
+      "assetIds": [
+        "sacred-veerabhadra-temple-lepakshi"
+      ]
+    },
+    {
+      "canonicalEntity": "patan-devi-temple-patna",
+      "assetIds": [
+        "sacred-patan-devi-temple-patna"
+      ]
+    },
+    {
+      "canonicalEntity": "mahavir-mandir-patna",
+      "assetIds": [
+        "sacred-mahavir-mandir-patna"
+      ]
+    },
+    {
+      "canonicalEntity": "janaki-mandir-sitamarhi",
+      "assetIds": [
+        "sacred-janaki-mandir-sitamarhi"
+      ]
+    },
+    {
+      "canonicalEntity": "mundeshwari-devi-temple-kaimur",
+      "assetIds": [
+        "sacred-mundeshwari-devi-temple-kaimur"
+      ]
+    },
+    {
+      "canonicalEntity": "gorakhnath-temple-gorakhpur",
+      "assetIds": [
+        "sacred-gorakhnath-temple-gorakhpur"
+      ]
+    },
+    {
+      "canonicalEntity": "tulsi-manas-temple-varanasi",
+      "assetIds": [
+        "sacred-tulsi-manas-temple-varanasi"
+      ]
+    },
+    {
+      "canonicalEntity": "vibhuti-narayan-fort-temple-ramnagar",
+      "assetIds": [
+        "sacred-vibhuti-narayan-fort-temple-ramnagar"
+      ]
+    },
+    {
+      "canonicalEntity": "dhari-devi-temple-srinagar-garhwal",
+      "assetIds": [
+        "sacred-dhari-devi-temple-srinagar-garhwal"
+      ]
+    },
+    {
+      "canonicalEntity": "tapkeshwar-temple-dehradun",
+      "assetIds": [
+        "sacred-tapkeshwar-temple-dehradun"
+      ]
+    },
+    {
+      "canonicalEntity": "jageshwar-dham-almora",
+      "assetIds": [
+        "sacred-jageshwar-dham-almora"
+      ]
+    },
+    {
+      "canonicalEntity": "baijnath-temple-bageshwar",
+      "assetIds": [
+        "sacred-baijnath-temple-bageshwar"
+      ]
+    },
+    {
+      "canonicalEntity": "hadimba-devi-temple-manali",
+      "assetIds": [
+        "sacred-hadimba-devi-temple-manali"
+      ]
+    },
+    {
+      "canonicalEntity": "bijli-mahadev-temple-kullu",
+      "assetIds": [
+        "sacred-bijli-mahadev-temple-kullu"
+      ]
+    },
+    {
+      "canonicalEntity": "vashisht-kund-temple-manali",
+      "assetIds": [
+        "sacred-vashisht-kund-temple-manali"
+      ]
+    },
+    {
+      "canonicalEntity": "triloknath-temple-lahaul",
+      "assetIds": [
+        "sacred-triloknath-temple-lahaul"
+      ]
+    },
+    {
+      "canonicalEntity": "bala-hanuman-temple-jamnagar",
+      "assetIds": [
+        "sacred-bala-hanuman-temple-jamnagar"
+      ]
+    },
+    {
+      "canonicalEntity": "bhalkeeshwar-temple-veraval",
+      "assetIds": [
+        "sacred-bhalkeeshwar-temple-veraval"
+      ]
+    },
+    {
+      "canonicalEntity": "gopnath-mahadev-temple-bhavnagar",
+      "assetIds": [
+        "sacred-gopnath-mahadev-temple-bhavnagar"
+      ]
+    },
+    {
+      "canonicalEntity": "tarnetar-mahadev-temple-surendranagar",
+      "assetIds": [
+        "sacred-tarnetar-mahadev-temple-surendranagar"
+      ]
+    },
+    {
+      "canonicalEntity": "vasukital",
+      "assetIds": [
+        "sacred-vasukital"
+      ]
+    }
+  ]
+}

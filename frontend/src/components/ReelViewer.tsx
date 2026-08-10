@@ -867,7 +867,7 @@ const ReelVideoItem = React.memo(({
           paddingLeft: 16,
         }}
       >
-        <TouchableOpacity onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('close') || 'Close'} onPress={onClose} hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }} style={{ alignSelf: 'flex-start' }}>
           <Ionicons name="close" size={30} color="#FFF" />
         </TouchableOpacity>
       </View>
@@ -974,6 +974,8 @@ const ReelVideoItem = React.memo(({
         {/* Speed control */}
         {isVideo && (
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Playback speed: ${playbackSpeed}x`}
             style={{
               alignItems: 'center',
               marginBottom: 24,
@@ -991,6 +993,8 @@ const ReelVideoItem = React.memo(({
 
         {/* Volume toggle */}
         <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={isMuted ? (t('unmute') || 'Unmute') : (t('mute') || 'Mute')}
           style={{
             alignItems: 'center',
             marginBottom: 24,
@@ -1005,7 +1009,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Like */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleLike}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={likedByMe ? (t('unlike') || 'Unlike') : (t('like') || 'Like')} style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleLike}>
           <Ionicons
             name={likedByMe ? 'heart' : 'heart-outline'}
             size={34}
@@ -1022,7 +1026,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Comment */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleComment}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('comments') || 'Comments'} style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleComment}>
           <Ionicons 
             name="chatbubble" 
             size={32} 
@@ -1039,7 +1043,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Share */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleShare}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('share') || 'Share'} style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleShare}>
           <Ionicons 
             name="paper-plane" 
             size={32} 
@@ -1053,7 +1057,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Options (Three Dots) */}
-        <TouchableOpacity style={{ alignItems: 'center', marginBottom: 20 }} onPress={onOpenOptions}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('openMenu') || 'Open menu'} style={{ alignItems: 'center', marginBottom: 20 }} onPress={onOpenOptions}>
           <Ionicons 
             name="ellipsis-horizontal" 
             size={32} 

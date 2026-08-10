@@ -1,0 +1,374 @@
+[
+  {
+    "opaqueId": "08pXdMR1eLLkHjrtHADk",
+    "slugId": "shaktipeeth-renuka-devi-temple-mahur",
+    "canonicalKey": "renuka-devi-temple-mahur",
+    "name": "Renuka Devi Temple – Mahur"
+  },
+  {
+    "opaqueId": "0HFpwT5bhKt6Ei8F0hFA",
+    "slugId": "chardham-jagannath-temple-puri",
+    "canonicalKey": "jagannath-puri",
+    "name": "Jagannath Temple – Puri"
+  },
+  {
+    "opaqueId": "0hdlCZpzoHJCatKTPCbc",
+    "slugId": "ashtavinayak-mayureshwar-temple-morgaon",
+    "canonicalKey": "ashtavinayak-mayureshwar-temple-morgaon",
+    "name": "Mayureshwar Temple – Morgaon"
+  },
+  {
+    "opaqueId": "4btYs0KS1COTglTH5bLm",
+    "slugId": "shaktipeeth-bakreshwar-temple-birbhum",
+    "canonicalKey": "bakreshwar-temple-birbhum",
+    "name": "Bakreshwar Temple – Birbhum"
+  },
+  {
+    "opaqueId": "4faOeB9HX0cEe7qh3e6n",
+    "slugId": "ashtavinayak-varadhavinayak-temple-mahad",
+    "canonicalKey": "ashtavinayak-varadhavinayak-temple-mahad",
+    "name": "Varadhavinayak Temple – Mahad"
+  },
+  {
+    "opaqueId": "4wWc0gxS56XDRPKV6ftl",
+    "slugId": "devi-horanadu-annapoorneshwari-temple",
+    "canonicalKey": "horanadu-annapoorneshwari-temple",
+    "name": "Annapoorneshwari Temple – Horanadu"
+  },
+  {
+    "opaqueId": "89OA8R8mKzUODJCtWnlN",
+    "slugId": "shaktipeeth-hinglaj-devi-rajasthan",
+    "canonicalKey": "hinglaj-devi-rajasthan",
+    "name": "Hinglaj Mata Temple – Barmer"
+  },
+  {
+    "opaqueId": "8CoQXXm2M0aee4EmbGdI",
+    "slugId": "ashtavinayak-chintamani-temple-theur",
+    "canonicalKey": "ashtavinayak-chintamani-temple-theur",
+    "name": "Chintamani Temple – Theur"
+  },
+  {
+    "opaqueId": "8VjAxrFGqu0lndhmlHE1",
+    "slugId": "sacred-naini-devi-temple-nainital",
+    "canonicalKey": "naini-devi-temple-nainital",
+    "name": "Naina Devi Temple – Nainital"
+  },
+  {
+    "opaqueId": "9FpEMJtXRlC8ooeLeqS0",
+    "slugId": "shaktipeeth-tarapith-temple-birbhum",
+    "canonicalKey": "shaktipeeth-tarapith-temple-birbhum",
+    "name": "Tarapith Temple – Birbhum"
+  },
+  {
+    "opaqueId": "BlI0l8wJGcIE1WBlmuBu",
+    "slugId": "shaktipeeth-sharda-peeth-kashmir",
+    "canonicalKey": "sharda-peeth-kashmir",
+    "name": "Sharada Peeth – Kashmir"
+  },
+  {
+    "opaqueId": "E35DqFvnB2ZJ60Gp4Goi",
+    "slugId": "shaktipeeth-tripora-sundari-temple-tripura",
+    "canonicalKey": "tripora-sundari-temple-tripura",
+    "name": "Tripura Sundari Temple – Udaipur"
+  },
+  {
+    "opaqueId": "FEowNmwowgheGJSN1uZs",
+    "slugId": "shaktipeeth-saptashrungi-temple-nashik",
+    "canonicalKey": "saptashrungi-temple-nashik",
+    "name": "Saptashrungi Nivasini Temple – Vani"
+  },
+  {
+    "opaqueId": "Fa1uTHrpMx2UPtPKpop4",
+    "slugId": "chardham-yamunotri-temple-uttarakhand",
+    "canonicalKey": "chardham-yamunotri-temple-uttarakhand",
+    "name": "Yamunotri Temple – Uttarakhand"
+  },
+  {
+    "opaqueId": "GcKoHrETVIhoRVmTRlG0",
+    "slugId": "ashtavinayak-mahaganapati-temple-ranjangaon",
+    "canonicalKey": "ashtavinayak-mahaganapati-temple-ranjangaon",
+    "name": "Mahaganapati Temple – Ranjangaon"
+  },
+  {
+    "opaqueId": "J7qGPHAmVDKqnVBjDoKz",
+    "slugId": "shaktipeeth-chintpurni-devi-temple-una",
+    "canonicalKey": "chintpurni-devi-temple-una",
+    "name": "Chintpurni Devi Temple – Una"
+  },
+  {
+    "opaqueId": "Khngz0yKSfUmeEwreNHL",
+    "slugId": "shaktipeeth-jwala-ji-temple-kangra",
+    "canonicalKey": "shaktipeeth-jwala-ji-temple-kangra",
+    "name": "Jwala Ji Temple – Kangra"
+  },
+  {
+    "opaqueId": "KkXf7AxRfVQERchLAZrq",
+    "slugId": "sacred-kasar-devi-temple-almora",
+    "canonicalKey": "kasar-devi-temple-almora",
+    "name": "Kasar Devi Temple – Almora"
+  },
+  {
+    "opaqueId": "KrPkGExwHkTt5Hl1ymuT",
+    "slugId": "devi-chottanikara-temple-kochi",
+    "canonicalKey": "chottanikara-temple-kochi",
+    "name": "Chottanikkara Bhagavathy Temple – Kochi"
+  },
+  {
+    "opaqueId": "OAB7zzwMn3kUJRTQRznf",
+    "slugId": "panchbhoota-srikalahasteeswara-temple-srikalahasti",
+    "canonicalKey": "panchbhoota-srikalahasteeswara-temple-srikalahasti",
+    "name": "Srikalahasteeswara Temple – Srikalahasti"
+  },
+  {
+    "opaqueId": "OVWk1L9Z2HLI64V84L3m",
+    "slugId": "shaktipeeth-bhavani-mandir-tuljapur",
+    "canonicalKey": "bhavani-mandir-tuljapur",
+    "name": "Tulja Bhavani Temple – Tuljapur"
+  },
+  {
+    "opaqueId": "R0rCbxgp6wWizA0bQDk3",
+    "slugId": "shaktipeeth-kalighat-kali-temple-kolkata",
+    "canonicalKey": "shaktipeeth-kalighat-kali-temple-kolkata",
+    "name": "Kalighat Kali Temple – Kolkata"
+  },
+  {
+    "opaqueId": "RWHljJGGXrXtNPSni8gB",
+    "slugId": "shaktipeeth-harsiddhi-mata-temple-ujjain",
+    "canonicalKey": "harsiddhi-mata-temple-ujjain",
+    "name": "Harsiddhi Mata Temple – Ujjain"
+  },
+  {
+    "opaqueId": "ReODA2z7UzfWQrpf00tO",
+    "slugId": "healing-dhyanalinga-isha-coimbatore",
+    "canonicalKey": "healing-dhyanalinga-isha-coimbatore",
+    "name": "Dhyanalinga & Isha Yoga Center"
+  },
+  {
+    "opaqueId": "S9Q9YZ8cyecGkqnJ1084",
+    "slugId": "shaktipeeth-biraja-temple-jajpur",
+    "canonicalKey": "biraja-temple-jajpur",
+    "name": "Biraja Temple – Jajpur"
+  },
+  {
+    "opaqueId": "TJclcRbivjxW3xbR7Azk",
+    "slugId": "sacred-purnagiri-devi-temple-champawat",
+    "canonicalKey": "purnagiri-devi-temple-champawat",
+    "name": "Purnagiri Devi Temple – Champawat"
+  },
+  {
+    "opaqueId": "VGMssV6P4ZxNMna01MNU",
+    "slugId": "panchbhoota-jambukeswarar-temple-thiruvanaikaval",
+    "canonicalKey": "panchbhoota-jambukeswarar-temple-thiruvanaikaval",
+    "name": "Jambukeswarar Temple – Thiruvanaikaval"
+  },
+  {
+    "opaqueId": "VfoiHXImY9Kkkxlv6sO5",
+    "slugId": "chardham-badrinath-temple-uttarakhand",
+    "canonicalKey": "badrinath",
+    "name": "Badrinath Temple – Uttarakhand"
+  },
+  {
+    "opaqueId": "WrOUhFt8qw21GM7haqwH",
+    "slugId": "panchbhoota-arunachaleswarar-temple-thiruvannamalai",
+    "canonicalKey": "panchbhoota-arunachaleswarar-temple-thiruvannamalai",
+    "name": "Arunachaleswarar Temple – Thiruvannamalai"
+  },
+  {
+    "opaqueId": "YyBwlm5wyyZkgxrvScDR",
+    "slugId": "shaktipeeth-mahalaxmi-temple-kolhapur",
+    "canonicalKey": "shaktipeeth-mahalaxmi-temple-kolhapur",
+    "name": "Mahalaxmi Temple – Kolhapur"
+  },
+  {
+    "opaqueId": "aZUIh0yRZgKTUQF2h7Yq",
+    "slugId": "shaktipeeth-naina-devi-temple-bilaspur",
+    "canonicalKey": "naina-devi-temple-bilaspur",
+    "name": "Naina Devi Temple – Bilaspur"
+  },
+  {
+    "opaqueId": "bGqr42M269EFeCmbPQ1f",
+    "slugId": "shaktipeeth-kamakhya-temple-guwahati",
+    "canonicalKey": "shaktipeeth-kamakhya-temple-guwahati",
+    "name": "Kamakhya Temple – Guwahati"
+  },
+  {
+    "opaqueId": "bPsW9fUrJf4eH4Tke319",
+    "slugId": "ashtavinayak-ballaleshwar-temple-pali",
+    "canonicalKey": "ashtavinayak-ballaleshwar-temple-pali",
+    "name": "Ballaleshwar Temple – Pali"
+  },
+  {
+    "opaqueId": "c8YyaSSSqH8EoSMqMR2T",
+    "slugId": "shaktipeeth-chinnamasta-temple-rajarappa",
+    "canonicalKey": "shaktipeeth-chinnamasta-temple-rajarappa",
+    "name": "Chinnamasta Temple – Rajrappa"
+  },
+  {
+    "opaqueId": "dpGJtzLLhjI0ozYX2w1q",
+    "slugId": "shaktipeeth-jogadya-temple-burdwan",
+    "canonicalKey": "jogadya-temple-burdwan",
+    "name": "Jogadya Temple – Khirgram"
+  },
+  {
+    "opaqueId": "e5DUhLAcDqrLC4o7IgJv",
+    "slugId": "shaktipeeth-chamunda-devi-temple-kangra",
+    "canonicalKey": "chamunda-devi-temple-kangra",
+    "name": "Chamunda Devi Temple – Kangra"
+  },
+  {
+    "opaqueId": "fHe1oI6kcPcTzKJyscqO",
+    "slugId": "devi-kollur-mookambika-temple",
+    "canonicalKey": "kollur-mookambika-temple",
+    "name": "Mookambika Temple – Kollur"
+  },
+  {
+    "opaqueId": "hClQmvVoHgueaYVroQLi",
+    "slugId": "panchbhoota-ekambareswarar-temple-kanchipuram",
+    "canonicalKey": "panchbhoota-ekambareswarar-temple-kanchipuram",
+    "name": "Ekambareswarar Temple – Kanchipuram"
+  },
+  {
+    "opaqueId": "ibTnhap9UDqJASab5PTa",
+    "slugId": "shaktipeeth-danteshwari-temple-dantewada",
+    "canonicalKey": "danteshwari-temple-dantewada",
+    "name": "Danteshwari Temple – Dantewada"
+  },
+  {
+    "opaqueId": "imUEU1WqwhZMAJ6xG4BU",
+    "slugId": "chardham-gangotri-temple-uttarakhand",
+    "canonicalKey": "chardham-gangotri-temple-uttarakhand",
+    "name": "Gangotri Temple – Uttarakhand"
+  },
+  {
+    "opaqueId": "mZ1RZkPNj29KTAXD8ef2",
+    "slugId": "healing-virupaksha-temple-hampi",
+    "canonicalKey": "healing-virupaksha-temple-hampi",
+    "name": "Virupaksha Temple – Hampi"
+  },
+  {
+    "opaqueId": "oLcJ1cE4dIDdK7D7SCq8",
+    "slugId": "shaktipeeth-chamundeshwari-temple-mysore",
+    "canonicalKey": "shaktipeeth-chamundeshwari-temple-mysore",
+    "name": "Chamundeshwari Temple – Mysore"
+  },
+  {
+    "opaqueId": "other-golden-temple-amritsar",
+    "slugId": "other-golden-temple-amritsar",
+    "canonicalKey": "other-golden-temple-amritsar",
+    "name": "Golden Temple – Amritsar"
+  },
+  {
+    "opaqueId": "other-iskcon-mira-road-thane",
+    "slugId": "other-iskcon-mira-road-thane",
+    "canonicalKey": "other-iskcon-mira-road-thane",
+    "name": "ISKCON Mira Road – Thane"
+  },
+  {
+    "opaqueId": "other-iskcon-temple-bangalore-karnataka",
+    "slugId": "other-iskcon-temple-bangalore-karnataka",
+    "canonicalKey": "other-iskcon-temple-bangalore-karnataka",
+    "name": "ISKCON Bangalore aarti"
+  },
+  {
+    "opaqueId": "other-meenakshi-temple-madurai",
+    "slugId": "other-meenakshi-temple-madurai",
+    "canonicalKey": "other-meenakshi-temple-madurai",
+    "name": "Meenakshi Temple – Madurai"
+  },
+  {
+    "opaqueId": "other-siddhivinayak-temple-mumbai",
+    "slugId": "other-siddhivinayak-temple-mumbai",
+    "canonicalKey": "other-siddhivinayak-temple-mumbai",
+    "name": "Shree Siddhivinayak Ganapati Temple"
+  },
+  {
+    "opaqueId": "other-tirupati-balaji-temple-andhra-pradesh",
+    "slugId": "other-tirupati-balaji-temple-andhra-pradesh",
+    "canonicalKey": "other-tirupati-balaji-temple-andhra-pradesh",
+    "name": "Tirupati Balaji Temple – Andhra Pradesh"
+  },
+  {
+    "opaqueId": "other-vaishno-devi-temple-jammu-kashmir",
+    "slugId": "other-vaishno-devi-temple-jammu-kashmir",
+    "canonicalKey": "other-vaishno-devi-temple-jammu-kashmir",
+    "name": "Vaishno Devi Temple – Jammu & Kashmir"
+  },
+  {
+    "opaqueId": "p5jUP3pNi1Y1KtSp9Zyi",
+    "slugId": "devi-sree-bhadrakali-temple-attukal",
+    "canonicalKey": "sree-bhadrakali-temple-attukal",
+    "name": "Attukal Bhagavathy Temple – Thiruvananthapuram"
+  },
+  {
+    "opaqueId": "qX4NDl99kIHxZ9H2lV7P",
+    "slugId": "ashtavinayak-vighnahar-temple-ozar",
+    "canonicalKey": "ashtavinayak-vighnahar-temple-ozar",
+    "name": "Vighnahar Temple – Ozar"
+  },
+  {
+    "opaqueId": "qxv1EMLegq5KnZRXt5EZ",
+    "slugId": "ashtavinayak-girijatmak-temple-lenyadri",
+    "canonicalKey": "ashtavinayak-girijatmak-temple-lenyadri",
+    "name": "Girijatmak Temple – Lenyadri"
+  },
+  {
+    "opaqueId": "sStkB4MtHN88qI4N7W6M",
+    "slugId": "shaktipeeth-alopi-devi-temple-prayagraj",
+    "canonicalKey": "alopi-devi-temple-prayagraj",
+    "name": "Alopi Devi Temple – Prayagraj"
+  },
+  {
+    "opaqueId": "tTPEJVrk4FYklMYIc7dU",
+    "slugId": "shaktipeeth-ambaji-temple-gujarat",
+    "canonicalKey": "shaktipeeth-ambaji-temple-gujarat",
+    "name": "Ambaji Temple – Gujarat"
+  },
+  {
+    "opaqueId": "tvg3BW77061x8vg3xh8f",
+    "slugId": "chardham-dwarkadhish-temple-dwarka",
+    "canonicalKey": "dwarkadhish",
+    "name": "Dwarkadhish Temple – Dwarka"
+  },
+  {
+    "opaqueId": "v8Y7G4xtBK0JlhOvcbOp",
+    "slugId": "healing-ramanasramam-tiruvannamalai",
+    "canonicalKey": "healing-ramanasramam-tiruvannamalai",
+    "name": "Sri Ramanasramam – Tiruvannamalai"
+  },
+  {
+    "opaqueId": "vpMToG0KQdYoDNFqBSCN",
+    "slugId": "shaktipeeth-nalateswari-temple-nalhati",
+    "canonicalKey": "nalateswari-temple-nalhati",
+    "name": "Nalateswari Temple – Nalhati"
+  },
+  {
+    "opaqueId": "wPeAggfGaqHEaC0JGX7n",
+    "slugId": "shaktipeeth-attahas-temple-birbhum",
+    "canonicalKey": "attahas-temple-birbhum",
+    "name": "Fullara Attahas Temple – Birbhum"
+  },
+  {
+    "opaqueId": "x7pqfMwvM8n3BucndCcz",
+    "slugId": "shaktipeeth-kankalitala-temple-bolpur",
+    "canonicalKey": "kankalitala-temple-bolpur",
+    "name": "Kankalitala Temple – Bolpur"
+  },
+  {
+    "opaqueId": "xiZd0W589xxFZMvpVBsn",
+    "slugId": "panchbhoota-thillai-nataraja-temple-chidambaram",
+    "canonicalKey": "panchbhoota-thillai-nataraja-temple-chidambaram",
+    "name": "Thillai Nataraja Temple – Chidambaram"
+  },
+  {
+    "opaqueId": "xqEDMi8Cm9Kt8QVrNvBG",
+    "slugId": "other-shri-dwarkadhish-temple-dwarka",
+    "canonicalKey": "dwarkadhish",
+    "name": "Shri Dwarkadhish Temple – Dwarka"
+  },
+  {
+    "opaqueId": "yilhdofmFA2wscBqioSF",
+    "slugId": "shiva-kedarnath-himalayan-shrine",
+    "canonicalKey": "kedarnath",
+    "name": "Kedarnath Himalayan Temple"
+  }
+]

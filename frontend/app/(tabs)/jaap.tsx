@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   Pressable,
   Image,
   Dimensions,
@@ -24,7 +25,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { getTempleImageByName, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
+import { getTempleImageById, getTempleImageByName, getTempleImageByNameDetailed, resolveTempleImage, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeIST } from '../../src/utils/dateUtils';
@@ -55,6 +56,105 @@ const UPCOMING_CARD_HEIGHT = Platform.OS === 'android'
 const JAAP_CARD_WIDTH = Platform.OS === 'android' ? 125 : 115;
 const JAAP_CARD_HEIGHT = Platform.OS === 'android' ? 190 : 180;
 const JAAP_CARD_MARGIN_RIGHT = Platform.OS === 'android' ? 12 : 16;
+
+const TempleCardImageItem = React.memo(({
+  item,
+  safeItemId,
+  safeName,
+  imageSource,
+  router,
+  t,
+  renderSafeText,
+  getTranslatedTempleName,
+  getTranslatedTempleLocation,
+  getTempleLocation,
+}: any) => {
+  const [currentSource, setCurrentSource] = useState(imageSource);
+  const [hasError, setHasError] = useState(false);
+  const targetId = item?.temple_id || item?.templeId || item?.id || safeItemId;
+
+  useEffect(() => {
+    setCurrentSource(imageSource);
+    setHasError(false);
+
+    console.log('[TEMPLE IMAGE COMPONENT MOUNT]', {
+      templeId: targetId,
+      templeName: safeName,
+      source: imageSource,
+    });
+
+    return () => {
+      console.log('[TEMPLE IMAGE COMPONENT UNMOUNT]', {
+        templeId: targetId,
+        templeName: safeName,
+      });
+    };
+  }, [imageSource, targetId, safeName]);
+
+  const rawDeity = renderSafeText(item?.deity) || 'LORD SHIVA';
+  let formattedDeity = rawDeity;
+  if (safeName.toLowerCase().includes('iskcon') || safeName.toLowerCase().includes('borivali')) {
+    formattedDeity = 'LORD KRISHNA';
+  }
+  if (t('language') === 'hi') {
+    const upper = formattedDeity.toUpperCase();
+    if (upper.includes('SHIVA')) formattedDeity = 'भगवान शिव';
+    else if (upper.includes('KRISHNA')) formattedDeity = 'भगवान कृष्ण';
+    else if (upper.includes('GANESHA') || upper.includes('GANESH')) formattedDeity = 'भगवान गणेश';
+    else if (upper.includes('HANUMAN')) formattedDeity = 'हनुमान जी';
+    else if (upper.includes('LAXMI') || upper.includes('LAKSHMI')) formattedDeity = 'माता लक्ष्मी';
+  }
+
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        styles.newTempleCard,
+        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+      ]}
+      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+      onPress={() => router.push(`/temple/${encodeURIComponent(safeItemId)}`)}
+    >
+      {hasError ? (
+        <View style={[styles.newTempleCardImg, { backgroundColor: '#FFF7ED', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#FED7AA' }]}>
+          <MaterialCommunityIcons name="temple-hindu" size={40} color="#FF6B00" />
+        </View>
+      ) : (
+        <Image 
+          source={currentSource} 
+          style={styles.newTempleCardImg} 
+          resizeMode="cover"
+          onLoad={() => {
+            console.log('[TEMPLE IMAGE LOAD SUCCESS]', {
+              templeId: targetId,
+              templeName: safeName,
+              source: currentSource,
+            });
+          }}
+          onError={(event) => {
+            console.log('[TEMPLE IMAGE LOAD ERROR]', {
+              templeId: targetId,
+              templeName: safeName,
+              source: currentSource,
+              error: event.nativeEvent?.error,
+            });
+            if (!hasError) {
+              setHasError(true);
+            }
+          }}
+        />
+      )}
+      <View style={styles.newTempleCardInfo}>
+        <View>
+          <Text style={styles.newTempleCardDeity} numberOfLines={1}>
+            {formattedDeity}
+          </Text>
+          <Text style={styles.newTempleCardName} numberOfLines={2}>{getTranslatedTempleName(safeName)}</Text>
+          <Text style={styles.newTempleCardLoc} numberOfLines={1}>{getTranslatedTempleLocation(getTempleLocation(item), safeName)}</Text>
+        </View>
+      </View>
+    </Pressable>
+  );
+});
 
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -1007,7 +1107,6 @@ export default function JaapLandingScreen() {
             </ScrollView>
 
             {/* Katha Section (Temporarily hidden from UI) */}
-            {/*
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>
                 {t('language') === 'hi' ? 'कथा' : 'Katha'}
@@ -1040,7 +1139,6 @@ export default function JaapLandingScreen() {
                 </View>
               </Pressable>
             </View>
-            */}
 
             {/* More Upcoming Jaaps Section */}
             <View style={styles.sectionHeaderParity}>
@@ -1120,253 +1218,218 @@ export default function JaapLandingScreen() {
 
         </ScrollView>
       ) : (
-        <ScrollView
-          style={styles.mainScroll}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
-          bounces
-          onScroll={onJaapScrollTabBar}
-          scrollEventThrottle={16}
-        >
-            <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
-              {/* Hero Banner (Same structure as Jaap tab banner) */}
-              <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
-              <ImageBackground
-                source={require('../../assets/images/image temple/SomnathTemple.webp')}
-                style={styles.heroBannerFill}
-                imageStyle={styles.heroBannerImageStyle}
-                resizeMode="cover"
-              >
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
-                  locations={[0, 0.38, 1]}
-                  style={StyleSheet.absoluteFillObject}
-                />
-                <View style={styles.bannerContent}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <View style={{ paddingTop: 0, paddingLeft: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                        <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
-                        <Text style={{
-                          color: '#FFF',
-                          fontFamily: 'System',
-                          fontSize: 15,
-                          fontStyle: 'normal',
-                          fontWeight: '700',
-                          letterSpacing: 1,
-                          textShadowColor: 'rgba(0,0,0,0.9)',
-                          textShadowOffset: { width: 0, height: 1 },
-                          textShadowRadius: 6,
-                        }}>
-                          {t('language') === 'hi' ? 'सोमनाथ मंदिर' : 'Somnath Mandir'}
-                        </Text>
+        <>
+          <FlatList
+            style={styles.mainScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 90 + insets.bottom }}
+            onScroll={onJaapScrollTabBar}
+            scrollEventThrottle={16}
+            data={filteredTemples}
+            keyExtractor={(item, index) => renderSafeText(item.temple_id || item.templeId || item.id || item._id) || index.toString()}
+            initialNumToRender={8}
+            maxToRenderPerBatch={6}
+            windowSize={5}
+            updateCellsBatchingPeriod={50}
+            removeClippedSubviews={Platform.OS === 'android'}
+            ListHeaderComponent={
+              <View>
+                <View style={{ backgroundColor: 'transparent', paddingTop: 12, zIndex: 10 }}>
+                  {/* Hero Banner (Same structure as Jaap tab banner) */}
+                  <View style={[styles.heroFixedContainer, { height: BANNER_HEIGHT, marginTop: 0 }]}>
+                  <ImageBackground
+                    source={require('../../assets/images/imagetemple/SomnathTemple.webp')}
+                    style={styles.heroBannerFill}
+                    imageStyle={styles.heroBannerImageStyle}
+                    resizeMode="cover"
+                  >
+                    <LinearGradient
+                      colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.82)']}
+                      locations={[0, 0.38, 1]}
+                      style={StyleSheet.absoluteFillObject}
+                    />
+                    <View style={styles.bannerContent}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <View style={{ paddingTop: 0, paddingLeft: 0 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                            <View style={[styles.liveDot, { backgroundColor: '#FFD700', marginRight: 8 }]} />
+                            <Text style={{
+                              color: '#FFF',
+                              fontFamily: 'System',
+                              fontSize: 15,
+                              fontStyle: 'normal',
+                              fontWeight: '700',
+                              letterSpacing: 1,
+                              textShadowColor: 'rgba(0,0,0,0.9)',
+                              textShadowOffset: { width: 0, height: 1 },
+                              textShadowRadius: 6,
+                            }}>
+                              {t('language') === 'hi' ? 'सोमनाथ मंदिर' : 'Somnath Mandir'}
+                            </Text>
+                          </View>
+
+                          <Text style={{
+                            color: '#FFF',
+                            fontWeight: '600',
+                            opacity: 0.9,
+                            textShadowColor: 'rgba(0,0,0,0.8)',
+                            textShadowOffset: { width: 0, height: 1 },
+                            textShadowRadius: 4,
+                            marginLeft: 14,
+                            marginTop: 0,
+                            marginBottom: 2,
+                            fontSize: 13
+                          }}>
+                            {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
+                          </Text>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
+                            <Ionicons name="time-outline" size={13} color="#FFF" />
+                            <Text style={{
+                              marginTop: 0,
+                              marginLeft: 4,
+                              color: '#FFF',
+                              fontWeight: '600',
+                              fontSize: 12
+                            }}>
+                              {t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={[styles.mockupLiveBadge, { alignSelf: 'flex-start' }]}>
+                          <View style={styles.liveDot} />
+                          <Text style={styles.mockupLiveText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
+                        </View>
                       </View>
-
-                      <Text style={{
-                        color: '#FFF',
-                        fontWeight: '600',
-                        opacity: 0.9,
-                        textShadowColor: 'rgba(0,0,0,0.8)',
-                        textShadowOffset: { width: 0, height: 1 },
-                        textShadowRadius: 4,
-                        marginLeft: 14,
-                        marginTop: 0,
-                        marginBottom: 2,
-                        fontSize: 13
-                      }}>
-                        {t('language') === 'hi' ? '1,248 भक्त जाप कर रहे हैं' : '1,248 devotees are chanting'}
-                      </Text>
-
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 14 }}>
-                        <Ionicons name="time-outline" size={13} color="#FFF" />
-                        <Text style={{
-                          marginTop: 0,
-                          marginLeft: 4,
-                          color: '#FFF',
-                          fontWeight: '600',
-                          fontSize: 12
-                        }}>
-                          {t('language') === 'hi' ? 'शाम 5:00 बजे तक लाइव' : 'Live until 5:00 PM'}
-                        </Text>
+                      <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
+                        <Pressable
+                          style={({ pressed }) => [
+                            styles.mockupJoinNowBtn,
+                            pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                          ]}
+                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                          onPress={() =>
+                            router.push({
+                              pathname: '/temple/[id]',
+                              params: {
+                                id: 'jyotirling-somnath-temple-gujarat',
+                                autoplayAarti: 'true',
+                              },
+                            })
+                          }
+                        >
+                          <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
+                            <Text style={styles.mockupJoinJaapText}>
+                              {t('language') === 'hi' ? 'लाइव आरती में शामिल हों' : 'Join Live Aarti'}
+                            </Text>
+                            <Ionicons name="chevron-forward" size={15} color="#FFF" />
+                          </LinearGradient>
+                        </Pressable>
                       </View>
                     </View>
-
-                    <View style={[styles.mockupLiveBadge, { alignSelf: 'flex-start' }]}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.mockupLiveText}>{t('language') === 'hi' ? 'लाइव' : 'LIVE'}</Text>
-                    </View>
-                  </View>
-                  <View style={[styles.bannerFooter, { paddingBottom: 0 }]}>
-                    <Pressable
-                      style={({ pressed }) => [
-                        styles.mockupJoinNowBtn,
-                        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                      ]}
-                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/temple/[id]',
-                          params: {
-                            id: 'jyotirling-somnath-temple-gujarat',
-                            autoplayAarti: 'true',
-                          },
-                        })
-                      }
-                    >
-                      <LinearGradient colors={['#FF6B00', '#FF8800']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.mockupJoinGradient}>
-                        <Text style={styles.mockupJoinJaapText}>
-                          {t('language') === 'hi' ? 'लाइव आरती में शामिल हों' : 'Join Live Aarti'}
-                        </Text>
-                        <Ionicons name="chevron-forward" size={15} color="#FFF" />
-                      </LinearGradient>
-                    </Pressable>
-                  </View>
+                  </ImageBackground>
                 </View>
-              </ImageBackground>
-            </View>
 
-            {/* Search Bar matching image */}
-            <View style={styles.newTempleSearchSection}>
-              <View style={styles.newTempleSearchBarWrapper}>
-                <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
-                <TextInput 
-                  placeholder={t('searchMandir')}
-                  style={styles.newTempleSearchInput}
-                  value={templeSearch}
-                  onChangeText={setTempleSearch}
-                  placeholderTextColor="#999"
-                />
+                {/* Search Bar matching image */}
+                <View style={styles.newTempleSearchSection}>
+                  <View style={styles.newTempleSearchBarWrapper}>
+                    <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
+                    <TextInput 
+                      placeholder={t('searchMandir')}
+                      style={styles.newTempleSearchInput}
+                      value={templeSearch}
+                      onChangeText={setTempleSearch}
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.filterIconBtn,
+                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                    ]}
+                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: true, radius: 24 }}
+                  >
+                    <MaterialCommunityIcons name="text-search" size={28} color="#FF6600" />
+                  </Pressable>
+                </View>
+
+                {/* Temple Category Pills */}
+                <View style={styles.templeCatPillsRow}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
+                    {(['All', 'Jyotirlinga', 'Shakti Peetha', 'Char Dham', 'Healing Temples', 'Sacred'] as const).map((cat) => {
+                      let displayCat: string = cat;
+                      if (t('language') === 'hi') {
+                        if (cat === 'All') displayCat = 'सभी';
+                        else if (cat === 'Jyotirlinga') displayCat = 'ज्योतिर्लिंग';
+                        else if (cat === 'Shakti Peetha') displayCat = 'शक्ति पीठ';
+                        else if (cat === 'Char Dham') displayCat = 'चार धाम';
+                        else if (cat === 'Healing Temples') displayCat = 'आरोग्य मंदिर';
+                        else if (cat === 'Sacred') displayCat = 'पवित्र';
+                      }
+
+                      const isSelected = selectedCategory === cat;
+
+                      if (cat === 'Char Dham') {
+                        let subLabel = 'Bada Char Dham';
+                        if (t('language') === 'hi') {
+                          subLabel = charDhamSubFilter === 'bada' ? 'बड़ा चार धाम' : charDhamSubFilter === 'chota' ? 'छोटा चार धाम' : 'सभी चार धाम';
+                        } else {
+                          subLabel = charDhamSubFilter === 'bada' ? 'Bada Char Dham' : charDhamSubFilter === 'chota' ? 'Chota Char Dham' : 'All Char Dham';
+                        }
+
+                        return (
+                          <Pressable
+                            key={cat} 
+                            style={({ pressed }) => [
+                              styles.templeCatPill,
+                              isSelected && styles.templeCatPillActive,
+                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                            ]}
+                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                            onPress={() => {
+                              setSelectedCategory('Char Dham');
+                              setShowCharDhamDropdown(true);
+                            }}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <Text style={[styles.templeCatPillText, isSelected && styles.templeCatPillTextActive]}>
+                                {displayCat} ({subLabel})
+                              </Text>
+                              <MaterialCommunityIcons 
+                                name="chevron-down" 
+                                size={16} 
+                                color={isSelected ? "#FFFFFF" : "#8B4513"} 
+                                style={{ marginLeft: 4 }}
+                              />
+                            </View>
+                          </Pressable>
+                        );
+                      }
+
+                      return (
+                        <Pressable
+                          key={cat} 
+                          style={({ pressed }) => [
+                            styles.templeCatPill,
+                            selectedCategory === cat && styles.templeCatPillActive,
+                            pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                          ]}
+                          android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                          onPress={() => setSelectedCategory(cat)}
+                        >
+                          <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
               </View>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.filterIconBtn,
-                  pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                ]}
-                android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: true, radius: 24 }}
-              >
-                <MaterialCommunityIcons name="text-search" size={28} color="#FF6600" />
-              </Pressable>
             </View>
-
-            {/* Temple Category Pills */}
-            <View style={styles.templeCatPillsRow}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingLeft: 20 }}>
-                {(['All', 'Jyotirlinga', 'Shakti Peetha', 'Char Dham', 'Healing Temples', 'Sacred'] as const).map((cat) => {
-                  let displayCat: string = cat;
-                  if (t('language') === 'hi') {
-                    if (cat === 'All') displayCat = 'सभी';
-                    else if (cat === 'Jyotirlinga') displayCat = 'ज्योतिर्लिंग';
-                    else if (cat === 'Shakti Peetha') displayCat = 'शक्ति पीठ';
-                    else if (cat === 'Char Dham') displayCat = 'चार धाम';
-                    else if (cat === 'Healing Temples') displayCat = 'आरोग्य मंदिर';
-                    else if (cat === 'Sacred') displayCat = 'पवित्र';
-                  }
-
-                  const isSelected = selectedCategory === cat;
-
-                  if (cat === 'Char Dham') {
-                    let subLabel = 'Bada Char Dham';
-                    if (t('language') === 'hi') {
-                      subLabel = charDhamSubFilter === 'bada' ? 'बड़ा चार धाम' : charDhamSubFilter === 'chota' ? 'छोटा चार धाम' : 'सभी चार धाम';
-                    } else {
-                      subLabel = charDhamSubFilter === 'bada' ? 'Bada Char Dham' : charDhamSubFilter === 'chota' ? 'Chota Char Dham' : 'All Char Dham';
-                    }
-
-                    return (
-                      <Pressable
-                        key={cat} 
-                        style={({ pressed }) => [
-                          styles.templeCatPill,
-                          isSelected && styles.templeCatPillActive,
-                          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                        ]}
-                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                        onPress={() => {
-                          setSelectedCategory('Char Dham');
-                          setShowCharDhamDropdown(true);
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={[styles.templeCatPillText, isSelected && styles.templeCatPillTextActive]}>
-                            {displayCat} ({subLabel})
-                          </Text>
-                          <MaterialCommunityIcons 
-                            name="chevron-down" 
-                            size={16} 
-                            color={isSelected ? "#FFFFFF" : "#8B4513"} 
-                            style={{ marginLeft: 4 }}
-                          />
-                        </View>
-                      </Pressable>
-                    );
-                  }
-
-                  return (
-                    <Pressable
-                      key={cat} 
-                      style={({ pressed }) => [
-                        styles.templeCatPill,
-                        selectedCategory === cat && styles.templeCatPillActive,
-                        pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                      ]}
-                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                      onPress={() => setSelectedCategory(cat)}
-                    >
-                      <Text style={[styles.templeCatPillText, selectedCategory === cat && styles.templeCatPillTextActive]}>{displayCat}</Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          </View>
-
-          {/* Temple List */}
-            <View style={styles.newTempleListPadding}>
-              {loadingTemples ? (
+          }
+            ListEmptyComponent={
+              loadingTemples ? (
                 <CustomLoader size={60} fullScreen={false} message="Loading Sacred Temples..." />
-              ) : filteredTemples.length > 0 ? (
-                filteredTemples.map((item, idx) => {
-                  const safeItemId = renderSafeText(item.id || item.temple_id || item._id);
-                  const safeName = renderSafeText(item.name);
-                  return (
-                    <Pressable
-                      key={safeItemId || idx} 
-                      style={({ pressed }) => [
-                        styles.newTempleCard,
-                        pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                      ]}
-                      android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                      onPress={() => router.push(`/temple/${encodeURIComponent(safeItemId)}`)}
-                    >
-
-                      <Image source={TEMPLE_IMAGES[safeItemId] || getTempleImageByName(safeName) || (item.image_url ? { uri: item.image_url } : DEFAULT_TEMPLE_IMAGE)} style={styles.newTempleCardImg} resizeMode="cover" />
-                      <View style={styles.newTempleCardInfo}>
-                        <View>
-                          <Text style={styles.newTempleCardDeity} numberOfLines={1}>
-                            {(() => {
-                              let rawDeity = renderSafeText(item.deity) || 'LORD SHIVA';
-                              if (safeName.toLowerCase().includes('iskcon') || safeName.toLowerCase().includes('borivali')) {
-                                rawDeity = 'LORD KRISHNA';
-                              }
-                              if (t('language') === 'hi') {
-                                const upper = rawDeity.toUpperCase();
-                                if (upper.includes('SHIVA')) return 'भगवान शिव';
-                                if (upper.includes('KRISHNA')) return 'भगवान कृष्ण';
-                                if (upper.includes('GANESHA') || upper.includes('GANESH')) return 'भगवान गणेश';
-                                if (upper.includes('HANUMAN')) return 'हनुमान जी';
-                                if (upper.includes('LAXMI') || upper.includes('LAKSHMI')) return 'माता लक्ष्मी';
-                                return rawDeity;
-                              }
-                              return rawDeity;
-                            })()}
-                          </Text>
-                          <Text style={styles.newTempleCardName} numberOfLines={2}>{getTranslatedTempleName(safeName)}</Text>
-                          <Text style={styles.newTempleCardLoc} numberOfLines={1}>{getTranslatedTempleLocation(getTempleLocation(item), safeName)}</Text>
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })
               ) : (
                 <View style={styles.noTemplesFound}>
                   <MaterialCommunityIcons name="temple-hindu-outline" size={60} color="#F5E0C3" />
@@ -1374,8 +1437,32 @@ export default function JaapLandingScreen() {
                     {t('language') === 'hi' ? 'कोई पवित्र मंदिर नहीं मिला।' : 'No sacred temples found.'}
                   </Text>
                 </View>
-              )}
-            </View>
+              )
+            }
+            renderItem={({ item, index }) => {
+              const safeItemId = renderSafeText(item.id || item.temple_id || item._id);
+              const safeName = renderSafeText(item.name);
+              const imageSource = resolveTempleImage(item);
+
+              return (
+                <View style={styles.newTempleListPadding}>
+                  <TempleCardImageItem
+                    key={safeItemId || index}
+                    item={item}
+                    safeItemId={safeItemId}
+                    safeName={safeName}
+                    imageSource={imageSource}
+                    router={router}
+                    t={t}
+                    renderSafeText={renderSafeText}
+                    getTranslatedTempleName={getTranslatedTempleName}
+                    getTranslatedTempleLocation={getTranslatedTempleLocation}
+                    getTempleLocation={getTempleLocation}
+                  />
+                </View>
+              );
+            }}
+          />
 
           {/* Char Dham Sub-Circuit Selection Modal */}
           <Modal
@@ -1464,8 +1551,8 @@ export default function JaapLandingScreen() {
               </View>
             </Pressable>
           </Modal>
-        </ScrollView>
-      )}
+      </>
+    )}
       </View>
     </LinearGradient>
   );
@@ -1878,8 +1965,8 @@ const styles = StyleSheet.create({
   newTempleSearchBarWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 25, paddingHorizontal: 16, height: 46, borderWidth: 1, borderColor: '#CCC' },
   newTempleSearchInput: { flex: 1, fontSize: 14, color: '#333', fontFamily: 'Inter_500Medium' },
   filterIconBtn: { padding: 4 },
-  newTempleListPadding: { paddingHorizontal: 16, paddingBottom: 20 },
-  newTempleCard: { backgroundColor: '#FFF', minHeight: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 16, flexDirection: 'row', alignItems: 'center', position: 'relative', overflow: 'hidden' },
+  newTempleListPadding: { paddingHorizontal: 16, paddingBottom: 6 },
+  newTempleCard: { backgroundColor: '#FFF', minHeight: 127, alignSelf: 'stretch', borderRadius: 16, padding: 12, marginBottom: 6, flexDirection: 'row', alignItems: 'center', position: 'relative', overflow: 'hidden' },
   newTempleCardImg: { width: 80, height: 95, borderRadius: 12 },
   newTempleCardInfo: { flex: 1, marginLeft: 16, justifyContent: 'center' },
   newTempleCardDeity: { color: '#FF6B35', fontSize: 11, fontWeight: '700', lineHeight: 15, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 2, alignSelf: 'flex-start' },

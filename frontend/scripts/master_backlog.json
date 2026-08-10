@@ -1,0 +1,3450 @@
+[
+  {
+    "canonicalKey": "other-tirupati-balaji-temple-andhra-pradesh",
+    "registeredIds": [
+      "other-tirupati-balaji-temple-andhra-pradesh"
+    ],
+    "name": "Tirupati Balaji Temple Andhra Pradesh",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-vaishno-devi-temple-jammu-kashmir",
+    "registeredIds": [
+      "other-vaishno-devi-temple-jammu-kashmir"
+    ],
+    "name": "Vaishno Devi Temple Jammu Kashmir",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "other-siddhivinayak-temple-mumbai",
+    "registeredIds": [
+      "other-siddhivinayak-temple-mumbai"
+    ],
+    "name": "Siddhivinayak Temple Mumbai",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-shree-siddhivinayak-temple",
+    "registeredIds": [
+      "other-shree-siddhivinayak-temple"
+    ],
+    "name": "Shree Siddhivinayak Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-shirdi-sai-baba-temple-maharashtra",
+    "registeredIds": [
+      "other-shirdi-sai-baba-temple-maharashtra"
+    ],
+    "name": "Shirdi Sai Baba Temple Maharashtra",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "chardham-gangotri-temple-uttarakhand",
+    "registeredIds": [
+      "chardham-gangotri-temple-uttarakhand"
+    ],
+    "name": "Gangotri Temple Uttarakhand",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "chardham-yamunotri-temple-uttarakhand",
+    "registeredIds": [
+      "chardham-yamunotri-temple-uttarakhand"
+    ],
+    "name": "Yamunotri Temple Uttarakhand",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-golden-temple-amritsar",
+    "registeredIds": [
+      "other-golden-temple-amritsar"
+    ],
+    "name": "Golden Temple Amritsar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-meenakshi-temple-madurai",
+    "registeredIds": [
+      "other-meenakshi-temple-madurai"
+    ],
+    "name": "Meenakshi Temple Madurai",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-iskcon-temple-bangalore-karnataka",
+    "registeredIds": [
+      "other-iskcon-temple-bangalore-karnataka"
+    ],
+    "name": "Iskcon Temple Bangalore Karnataka",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-iskcon-bangalore-aarti",
+    "registeredIds": [
+      "other-iskcon-bangalore-aarti"
+    ],
+    "name": "Iskcon Bangalore Aarti",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-iskcon-mira-road-thane",
+    "registeredIds": [
+      "other-iskcon-mira-road-thane"
+    ],
+    "name": "Iskcon Mira Road Thane",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-iskcon-temple-mumbai",
+    "registeredIds": [
+      "other-iskcon-temple-mumbai"
+    ],
+    "name": "Iskcon Temple Mumbai",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-iskcon-juhu",
+    "registeredIds": [
+      "other-iskcon-juhu"
+    ],
+    "name": "Iskcon Juhu",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-iskcon-temple-mumbai-juhu",
+    "registeredIds": [
+      "other-iskcon-temple-mumbai-juhu"
+    ],
+    "name": "Iskcon Temple Mumbai Juhu",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-mahalaxmi-temple",
+    "registeredIds": [
+      "other-mahalaxmi-temple"
+    ],
+    "name": "Mahalaxmi Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "shaktipeeth-kamakhya-temple-guwahati",
+    "registeredIds": [
+      "shaktipeeth-kamakhya-temple-guwahati"
+    ],
+    "name": "Kamakhya Temple Guwahati",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shakti-kamakhya-temple-assam",
+    "registeredIds": [
+      "shakti-kamakhya-temple-assam"
+    ],
+    "name": "Kamakhya Temple Assam",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-kalighat-kali-temple-kolkata",
+    "registeredIds": [
+      "shaktipeeth-kalighat-kali-temple-kolkata"
+    ],
+    "name": "Kalighat Kali Temple Kolkata",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shakti-kalighat-temple-kolkata",
+    "registeredIds": [
+      "shakti-kalighat-temple-kolkata"
+    ],
+    "name": "Kalighat Temple Kolkata",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-tarapith-temple-birbhum",
+    "registeredIds": [
+      "shaktipeeth-tarapith-temple-birbhum"
+    ],
+    "name": "Tarapith Temple Birbhum",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shakti-tarapith-temple-bengal",
+    "registeredIds": [
+      "shakti-tarapith-temple-bengal"
+    ],
+    "name": "Tarapith Temple Bengal",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-ambaji-temple-gujarat",
+    "registeredIds": [
+      "shaktipeeth-ambaji-temple-gujarat"
+    ],
+    "name": "Ambaji Temple Gujarat",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shakti-ambaji-temple-gujarat",
+    "registeredIds": [
+      "shakti-ambaji-temple-gujarat"
+    ],
+    "name": "Ambaji Temple Gujarat",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-vaishno-devi-temple-jammu-kashmir",
+    "registeredIds": [
+      "shaktipeeth-vaishno-devi-temple-jammu-kashmir"
+    ],
+    "name": "Vaishno Devi Temple Jammu Kashmir",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-jwala-ji-temple-kangra",
+    "registeredIds": [
+      "shaktipeeth-jwala-ji-temple-kangra"
+    ],
+    "name": "Jwala Ji Temple Kangra",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-chinnamasta-temple-rajarappa",
+    "registeredIds": [
+      "shaktipeeth-chinnamasta-temple-rajarappa"
+    ],
+    "name": "Chinnamasta Temple Rajarappa",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-mahalaxmi-temple-kolhapur",
+    "registeredIds": [
+      "shaktipeeth-mahalaxmi-temple-kolhapur"
+    ],
+    "name": "Mahalaxmi Temple Kolhapur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-chamundeshwari-temple-mysore",
+    "registeredIds": [
+      "shaktipeeth-chamundeshwari-temple-mysore"
+    ],
+    "name": "Chamundeshwari Temple Mysore",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shakti-chamundeshwari-temple-mysore",
+    "registeredIds": [
+      "shakti-chamundeshwari-temple-mysore"
+    ],
+    "name": "Chamundeshwari Temple Mysore",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-vindhyavasini-temple-vindhyachal",
+    "registeredIds": [
+      "shaktipeeth-vindhyavasini-temple-vindhyachal"
+    ],
+    "name": "Vindhyavasini Temple Vindhyachal",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-kamakhya-kanya-kumari-temple",
+    "registeredIds": [
+      "shaktipeeth-kamakhya-kanya-kumari-temple"
+    ],
+    "name": "Kamakhya Kanya Kumari Temple",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-sharda-peeth-kashmir",
+    "registeredIds": [
+      "shaktipeeth-sharda-peeth-kashmir"
+    ],
+    "name": "Sharda Peeth Kashmir",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-hinglaj-devi-rajasthan",
+    "registeredIds": [
+      "shaktipeeth-hinglaj-devi-rajasthan"
+    ],
+    "name": "Hinglaj Devi Rajasthan",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-tripora-sundari-temple-tripura",
+    "registeredIds": [
+      "shaktipeeth-tripora-sundari-temple-tripura"
+    ],
+    "name": "Tripora Sundari Temple Tripura",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-attahas-temple-birbhum",
+    "registeredIds": [
+      "shaktipeeth-attahas-temple-birbhum"
+    ],
+    "name": "Attahas Temple Birbhum",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-bakreshwar-temple-birbhum",
+    "registeredIds": [
+      "shaktipeeth-bakreshwar-temple-birbhum"
+    ],
+    "name": "Bakreshwar Temple Birbhum",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-nalateswari-temple-nalhati",
+    "registeredIds": [
+      "shaktipeeth-nalateswari-temple-nalhati"
+    ],
+    "name": "Nalateswari Temple Nalhati",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-jogadya-temple-burdwan",
+    "registeredIds": [
+      "shaktipeeth-jogadya-temple-burdwan"
+    ],
+    "name": "Jogadya Temple Burdwan",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-kankalitala-temple-bolpur",
+    "registeredIds": [
+      "shaktipeeth-kankalitala-temple-bolpur"
+    ],
+    "name": "Kankalitala Temple Bolpur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-bhavani-mandir-tuljapur",
+    "registeredIds": [
+      "shaktipeeth-bhavani-mandir-tuljapur"
+    ],
+    "name": "Bhavani Mandir Tuljapur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-renuka-devi-temple-mahur",
+    "registeredIds": [
+      "shaktipeeth-renuka-devi-temple-mahur"
+    ],
+    "name": "Renuka Devi Temple Mahur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-saptashrungi-temple-nashik",
+    "registeredIds": [
+      "shaktipeeth-saptashrungi-temple-nashik"
+    ],
+    "name": "Saptashrungi Temple Nashik",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-danteshwari-temple-dantewada",
+    "registeredIds": [
+      "shaktipeeth-danteshwari-temple-dantewada"
+    ],
+    "name": "Danteshwari Temple Dantewada",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-chamunda-devi-temple-kangra",
+    "registeredIds": [
+      "shaktipeeth-chamunda-devi-temple-kangra"
+    ],
+    "name": "Chamunda Devi Temple Kangra",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-naina-devi-temple-bilaspur",
+    "registeredIds": [
+      "shaktipeeth-naina-devi-temple-bilaspur"
+    ],
+    "name": "Naina Devi Temple Bilaspur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-brareshwari-devi-temple-kangra",
+    "registeredIds": [
+      "shaktipeeth-brareshwari-devi-temple-kangra"
+    ],
+    "name": "Brareshwari Devi Temple Kangra",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-chintpurni-devi-temple-una",
+    "registeredIds": [
+      "shaktipeeth-chintpurni-devi-temple-una"
+    ],
+    "name": "Chintpurni Devi Temple Una",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-alopi-devi-temple-prayagraj",
+    "registeredIds": [
+      "shaktipeeth-alopi-devi-temple-prayagraj"
+    ],
+    "name": "Alopi Devi Temple Prayagraj",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-devi-patan-temple-balrampur",
+    "registeredIds": [
+      "shaktipeeth-devi-patan-temple-balrampur"
+    ],
+    "name": "Devi Patan Temple Balrampur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-harsiddhi-mata-temple-ujjain",
+    "registeredIds": [
+      "shaktipeeth-harsiddhi-mata-temple-ujjain"
+    ],
+    "name": "Harsiddhi Mata Temple Ujjain",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-sharada-devi-temple-maihar",
+    "registeredIds": [
+      "shaktipeeth-sharada-devi-temple-maihar"
+    ],
+    "name": "Sharada Devi Temple Maihar",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-biraja-temple-jajpur",
+    "registeredIds": [
+      "shaktipeeth-biraja-temple-jajpur"
+    ],
+    "name": "Biraja Temple Jajpur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "shaktipeeth-tara-tarini-temple-ganjam",
+    "registeredIds": [
+      "shaktipeeth-tara-tarini-temple-ganjam"
+    ],
+    "name": "Tara Tarini Temple Ganjam",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "healing-ramanasramam-tiruvannamalai",
+    "registeredIds": [
+      "healing-ramanasramam-tiruvannamalai"
+    ],
+    "name": "Ramanasramam Tiruvannamalai",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "healing-dhyanalinga-isha-coimbatore",
+    "registeredIds": [
+      "healing-dhyanalinga-isha-coimbatore"
+    ],
+    "name": "Dhyanalinga Isha Coimbatore",
+    "category": "Sacred Healing Shrine"
+  },
+  {
+    "canonicalKey": "healing-virupaksha-temple-hampi",
+    "registeredIds": [
+      "healing-virupaksha-temple-hampi"
+    ],
+    "name": "Virupaksha Temple Hampi",
+    "category": "Sacred Healing Shrine"
+  },
+  {
+    "canonicalKey": "healing-anandamayi-ma-ashram-haridwar",
+    "registeredIds": [
+      "healing-anandamayi-ma-ashram-haridwar"
+    ],
+    "name": "Anandamayi Ma Ashram Haridwar",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "hanuman-mehendipur-balaji-temple-dausa",
+    "registeredIds": [
+      "hanuman-mehendipur-balaji-temple-dausa"
+    ],
+    "name": "Mehendipur Balaji Temple Dausa",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "healing-parmarth-niketan-rishikesh",
+    "registeredIds": [
+      "healing-parmarth-niketan-rishikesh"
+    ],
+    "name": "Parmarth Niketan Rishikesh",
+    "category": "Sacred Healing Shrine"
+  },
+  {
+    "canonicalKey": "healing-sri-aurobindo-ashram-puducherry",
+    "registeredIds": [
+      "healing-sri-aurobindo-ashram-puducherry"
+    ],
+    "name": "Sri Aurobindo Ashram Puducherry",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-belur-math-ramakrishna-mission",
+    "registeredIds": [
+      "sacred-belur-math-ramakrishna-mission"
+    ],
+    "name": "Belur Math Ramakrishna Mission",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "healing-sarnath-buddhist-monastery",
+    "registeredIds": [
+      "healing-sarnath-buddhist-monastery"
+    ],
+    "name": "Sarnath Buddhist Monastery",
+    "category": "Sacred Healing Shrine"
+  },
+  {
+    "canonicalKey": "sacred-mahabodhi-temple-bodh-gaya",
+    "registeredIds": [
+      "sacred-mahabodhi-temple-bodh-gaya"
+    ],
+    "name": "Mahabodhi Temple Bodh Gaya",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "devi-kollur-mookambika-temple",
+    "registeredIds": [
+      "devi-kollur-mookambika-temple"
+    ],
+    "name": "Kollur Mookambika Temple",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-chottanikara-temple-kochi",
+    "registeredIds": [
+      "devi-chottanikara-temple-kochi"
+    ],
+    "name": "Chottanikara Temple Kochi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-vaitheeswaran-koil-mayiladuthurai",
+    "registeredIds": [
+      "sacred-vaitheeswaran-koil-mayiladuthurai"
+    ],
+    "name": "Vaitheeswaran Koil Mayiladuthurai",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "healing-parli-vaijnath-temple",
+    "registeredIds": [
+      "healing-parli-vaijnath-temple"
+    ],
+    "name": "Parli Vaijnath Temple",
+    "category": "Sacred Healing Shrine"
+  },
+  {
+    "canonicalKey": "healing-dhanvantari-temple-kerala",
+    "registeredIds": [
+      "healing-dhanvantari-temple-kerala"
+    ],
+    "name": "Dhanvantari Temple Kerala",
+    "category": "Sacred Healing Shrine"
+  },
+  {
+    "canonicalKey": "sacred-suchindram-thanumalayan-temple",
+    "registeredIds": [
+      "sacred-suchindram-thanumalayan-temple"
+    ],
+    "name": "Suchindram Thanumalayan Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "healing-ghati-subramanya-temple",
+    "registeredIds": [
+      "healing-ghati-subramanya-temple"
+    ],
+    "name": "Ghati Subramanya Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "panchbhoota-srikalahasteeswara-temple-srikalahasti",
+    "registeredIds": [
+      "panchbhoota-srikalahasteeswara-temple-srikalahasti"
+    ],
+    "name": "Srikalahasteeswara Temple Srikalahasti",
+    "category": "Panchbhoota Stalam"
+  },
+  {
+    "canonicalKey": "sacred-kukke-subramanya-temple",
+    "registeredIds": [
+      "sacred-kukke-subramanya-temple"
+    ],
+    "name": "Kukke Subramanya Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "healing-mangaladevi-temple-mangalore",
+    "registeredIds": [
+      "healing-mangaladevi-temple-mangalore"
+    ],
+    "name": "Mangaladevi Temple Mangalore",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-assi-ghat",
+    "registeredIds": [
+      "sacred-assi-ghat"
+    ],
+    "name": "Assi Ghat",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhalka-tirth-shrine",
+    "registeredIds": [
+      "sacred-bhalka-tirth-shrine"
+    ],
+    "name": "Bhalka Tirth Shrine",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhartrihari-caves",
+    "registeredIds": [
+      "sacred-bhartrihari-caves"
+    ],
+    "name": "Bhartrihari Caves",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-daulatabad-fort",
+    "registeredIds": [
+      "sacred-daulatabad-fort"
+    ],
+    "name": "Daulatabad Fort",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ellora-kailasa-temple",
+    "registeredIds": [
+      "sacred-ellora-kailasa-temple"
+    ],
+    "name": "Ellora Kailasa Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gautam-rishi-ashram",
+    "registeredIds": [
+      "sacred-gautam-rishi-ashram"
+    ],
+    "name": "Gautam Rishi Ashram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-gyanvapi-kund",
+    "registeredIds": [
+      "sacred-gyanvapi-kund"
+    ],
+    "name": "Gyanvapi Kund",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-manikarnika-ghat",
+    "registeredIds": [
+      "sacred-manikarnika-ghat"
+    ],
+    "name": "Manikarnika Ghat",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-naulakha-mandir",
+    "registeredIds": [
+      "sacred-naulakha-mandir"
+    ],
+    "name": "Naulakha Mandir",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sandipani-ashram",
+    "registeredIds": [
+      "sacred-sandipani-ashram"
+    ],
+    "name": "Sandipani Ashram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-shiva-trats-kund",
+    "registeredIds": [
+      "sacred-shiva-trats-kund"
+    ],
+    "name": "Shiva Trats Kund",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-sonprayag-sangam",
+    "registeredIds": [
+      "sacred-sonprayag-sangam"
+    ],
+    "name": "Sonprayag Sangam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-tapovan-caves",
+    "registeredIds": [
+      "sacred-tapovan-caves"
+    ],
+    "name": "Tapovan Caves",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-triveni-sangam-ghat",
+    "registeredIds": [
+      "sacred-triveni-sangam-ghat"
+    ],
+    "name": "Triveni Sangam Ghat",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-baan-stambh",
+    "registeredIds": [
+      "sacred-baan-stambh"
+    ],
+    "name": "Baan Stambh",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhairavnath-mandir",
+    "registeredIds": [
+      "sacred-bhairavnath-mandir"
+    ],
+    "name": "Bhairavnath Mandir",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-dashashwamedh-ghat",
+    "registeredIds": [
+      "sacred-dashashwamedh-ghat"
+    ],
+    "name": "Dashashwamedh Ghat",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gandhi-sarovar",
+    "registeredIds": [
+      "sacred-gandhi-sarovar"
+    ],
+    "name": "Gandhi Sarovar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gita-mandir",
+    "registeredIds": [
+      "sacred-gita-mandir"
+    ],
+    "name": "Gita Mandir",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ram-ghat",
+    "registeredIds": [
+      "sacred-ram-ghat"
+    ],
+    "name": "Ram Ghat",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-shivganga-kund",
+    "registeredIds": [
+      "sacred-shivganga-kund"
+    ],
+    "name": "Shivganga Kund",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-trikuta-parvat",
+    "registeredIds": [
+      "sacred-trikuta-parvat"
+    ],
+    "name": "Trikuta Parvat",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-vasuki-tal",
+    "registeredIds": [
+      "sacred-vasuki-tal"
+    ],
+    "name": "Vasuki Tal",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-mayureshwar-temple-morgaon",
+    "registeredIds": [
+      "ashtavinayak-mayureshwar-temple-morgaon"
+    ],
+    "name": "Mayureshwar Temple Morgaon",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-siddhivinayak-temple-siddhatek",
+    "registeredIds": [
+      "ashtavinayak-siddhivinayak-temple-siddhatek"
+    ],
+    "name": "Siddhivinayak Temple Siddhatek",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-ballaleshwar-temple-pali",
+    "registeredIds": [
+      "ashtavinayak-ballaleshwar-temple-pali"
+    ],
+    "name": "Ballaleshwar Temple Pali",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-varadhavinayak-temple-mahad",
+    "registeredIds": [
+      "ashtavinayak-varadhavinayak-temple-mahad"
+    ],
+    "name": "Varadhavinayak Temple Mahad",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-chintamani-temple-theur",
+    "registeredIds": [
+      "ashtavinayak-chintamani-temple-theur"
+    ],
+    "name": "Chintamani Temple Theur",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-girijatmak-temple-lenyadri",
+    "registeredIds": [
+      "ashtavinayak-girijatmak-temple-lenyadri"
+    ],
+    "name": "Girijatmak Temple Lenyadri",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-vighnahar-temple-ozar",
+    "registeredIds": [
+      "ashtavinayak-vighnahar-temple-ozar"
+    ],
+    "name": "Vighnahar Temple Ozar",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "ashtavinayak-mahaganapati-temple-ranjangaon",
+    "registeredIds": [
+      "ashtavinayak-mahaganapati-temple-ranjangaon"
+    ],
+    "name": "Mahaganapati Temple Ranjangaon",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "panchbhoota-ekambareswarar-temple-kanchipuram",
+    "registeredIds": [
+      "panchbhoota-ekambareswarar-temple-kanchipuram"
+    ],
+    "name": "Ekambareswarar Temple Kanchipuram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "panchbhoota-jambukeswarar-temple-thiruvanaikaval",
+    "registeredIds": [
+      "panchbhoota-jambukeswarar-temple-thiruvanaikaval"
+    ],
+    "name": "Jambukeswarar Temple Thiruvanaikaval",
+    "category": "Panchbhoota Stalam"
+  },
+  {
+    "canonicalKey": "panchbhoota-arunachaleswarar-temple-thiruvannamalai",
+    "registeredIds": [
+      "panchbhoota-arunachaleswarar-temple-thiruvannamalai"
+    ],
+    "name": "Arunachaleswarar Temple Thiruvannamalai",
+    "category": "Panchbhoota Stalam"
+  },
+  {
+    "canonicalKey": "panchbhoota-thillai-nataraja-temple-chidambaram",
+    "registeredIds": [
+      "panchbhoota-thillai-nataraja-temple-chidambaram"
+    ],
+    "name": "Thillai Nataraja Temple Chidambaram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-bankey-bihari-temple-vrindavan",
+    "registeredIds": [
+      "vishnu-bankey-bihari-temple-vrindavan"
+    ],
+    "name": "Bankey Bihari Temple Vrindavan",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-brahma-temple-pushkar",
+    "registeredIds": [
+      "other-brahma-temple-pushkar"
+    ],
+    "name": "Brahma Temple Pushkar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-brihadisvara-temple-thanjavur",
+    "registeredIds": [
+      "other-brihadisvara-temple-thanjavur"
+    ],
+    "name": "Brihadisvara Temple Thanjavur",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-dakshineswar-kali-temple-kolkata",
+    "registeredIds": [
+      "other-dakshineswar-kali-temple-kolkata"
+    ],
+    "name": "Dakshineswar Kali Temple Kolkata",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-govind-dev-ji-temple-jaipur",
+    "registeredIds": [
+      "other-govind-dev-ji-temple-jaipur"
+    ],
+    "name": "Govind Dev Ji Temple Jaipur",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-guruvayur-temple-kerala",
+    "registeredIds": [
+      "other-guruvayur-temple-kerala"
+    ],
+    "name": "Guruvayur Temple Kerala",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-jakhu-temple-shimla",
+    "registeredIds": [
+      "other-jakhu-temple-shimla"
+    ],
+    "name": "Jakhu Temple Shimla",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-kalaram-temple-nashik",
+    "registeredIds": [
+      "other-kalaram-temple-nashik"
+    ],
+    "name": "Kalaram Temple Nashik",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-kashtabhanjan-dev-hanumanji-sarangpur",
+    "registeredIds": [
+      "other-kashtabhanjan-dev-hanumanji-sarangpur"
+    ],
+    "name": "Kashtabhanjan Dev Hanumanji Sarangpur",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "other-khatu-shyam-ji-temple-sikar",
+    "registeredIds": [
+      "other-khatu-shyam-ji-temple-sikar"
+    ],
+    "name": "Khatu Shyam Ji Temple Sikar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-lingaraj-temple-bhubaneswar",
+    "registeredIds": [
+      "other-lingaraj-temple-bhubaneswar"
+    ],
+    "name": "Lingaraj Temple Bhubaneswar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-murudeshwar-temple-karnataka",
+    "registeredIds": [
+      "other-murudeshwar-temple-karnataka"
+    ],
+    "name": "Murudeshwar Temple Karnataka",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-neelkanth-mahadev-temple-rishikesh",
+    "registeredIds": [
+      "other-neelkanth-mahadev-temple-rishikesh"
+    ],
+    "name": "Neelkanth Mahadev Temple Rishikesh",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "other-pashupatinath-temple-mandsaur",
+    "registeredIds": [
+      "other-pashupatinath-temple-mandsaur"
+    ],
+    "name": "Pashupatinath Temple Mandsaur",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-prem-mandir-vrindavan",
+    "registeredIds": [
+      "other-prem-mandir-vrindavan"
+    ],
+    "name": "Prem Mandir Vrindavan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-salasar-balaji-temple-churu",
+    "registeredIds": [
+      "other-salasar-balaji-temple-churu"
+    ],
+    "name": "Salasar Balaji Temple Churu",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-sankat-mochan-hanuman-temple-varanasi",
+    "registeredIds": [
+      "other-sankat-mochan-hanuman-temple-varanasi"
+    ],
+    "name": "Sankat Mochan Hanuman Temple Varanasi",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "other-shrinathji-temple-nathdwara",
+    "registeredIds": [
+      "other-shrinathji-temple-nathdwara"
+    ],
+    "name": "Shrinathji Temple Nathdwara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-shree-ram-janmabhoomi-mandir-ayodhya",
+    "registeredIds": [
+      "other-shree-ram-janmabhoomi-mandir-ayodhya"
+    ],
+    "name": "Shree Ram Janmabhoomi Mandir Ayodhya",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-padmanabhaswamy-temple-thiruvananthapuram",
+    "registeredIds": [
+      "other-padmanabhaswamy-temple-thiruvananthapuram"
+    ],
+    "name": "Padmanabhaswamy Temple Thiruvananthapuram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-sri-ranganathaswamy-temple-srirangam",
+    "registeredIds": [
+      "other-sri-ranganathaswamy-temple-srirangam"
+    ],
+    "name": "Sri Ranganathaswamy Temple Srirangam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-sun-temple-modhera",
+    "registeredIds": [
+      "other-sun-temple-modhera"
+    ],
+    "name": "Sun Temple Modhera",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-triyuginarayan-temple-rudraprayag",
+    "registeredIds": [
+      "other-triyuginarayan-temple-rudraprayag"
+    ],
+    "name": "Triyuginarayan Temple Rudraprayag",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-tungnath-temple-chopta",
+    "registeredIds": [
+      "other-tungnath-temple-chopta"
+    ],
+    "name": "Tungnath Temple Chopta",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-udupi-sri-krishna-matha",
+    "registeredIds": [
+      "other-udupi-sri-krishna-matha"
+    ],
+    "name": "Udupi Sri Krishna Matha",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-vithoba-temple-pandharpur",
+    "registeredIds": [
+      "other-vithoba-temple-pandharpur"
+    ],
+    "name": "Vithoba Temple Pandharpur",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-hanuman-garhi-temple-ayodhya",
+    "registeredIds": [
+      "other-hanuman-garhi-temple-ayodhya"
+    ],
+    "name": "Hanuman Garhi Temple Ayodhya",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-hanumangarhi-temple-ayodhya",
+    "registeredIds": [
+      "hanuman-hanumangarhi-temple-ayodhya"
+    ],
+    "name": "Hanumangarhi Temple Ayodhya",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "other-iskcon-temple-vrindavan",
+    "registeredIds": [
+      "other-iskcon-temple-vrindavan"
+    ],
+    "name": "Iskcon Temple Vrindavan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "vishnu-iskcon-temple-vrindavan",
+    "registeredIds": [
+      "vishnu-iskcon-temple-vrindavan"
+    ],
+    "name": "Iskcon Temple Vrindavan",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-iskcon-temple-bangalore-karnataka",
+    "registeredIds": [
+      "vishnu-iskcon-temple-bangalore-karnataka"
+    ],
+    "name": "Iskcon Temple Bangalore Karnataka",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-iskcon-mira-road-thane",
+    "registeredIds": [
+      "vishnu-iskcon-mira-road-thane"
+    ],
+    "name": "Iskcon Mira Road Thane",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-iskcon-temple-mumbai",
+    "registeredIds": [
+      "vishnu-iskcon-temple-mumbai"
+    ],
+    "name": "Iskcon Temple Mumbai",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "other-karni-mata-temple-deshnoke",
+    "registeredIds": [
+      "other-karni-mata-temple-deshnoke"
+    ],
+    "name": "Karni Mata Temple Deshnoke",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "other-shri-krishna-janmasthan-mathura",
+    "registeredIds": [
+      "other-shri-krishna-janmasthan-mathura"
+    ],
+    "name": "Shri Krishna Janmasthan Mathura",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "other-sabarimala-sree-dharma-sastha-temple",
+    "registeredIds": [
+      "other-sabarimala-sree-dharma-sastha-temple"
+    ],
+    "name": "Sabarimala Sree Dharma Sastha Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "vishnu-tirupati-balaji-temple-andhra-pradesh",
+    "registeredIds": [
+      "vishnu-tirupati-balaji-temple-andhra-pradesh"
+    ],
+    "name": "Tirupati Balaji Temple Andhra Pradesh",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-sri-ranganathaswamy-temple-srirangam",
+    "registeredIds": [
+      "vishnu-sri-ranganathaswamy-temple-srirangam"
+    ],
+    "name": "Sri Ranganathaswamy Temple Srirangam",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-guruvayur-temple-kerala",
+    "registeredIds": [
+      "vishnu-guruvayur-temple-kerala"
+    ],
+    "name": "Guruvayur Temple Kerala",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-padmanabhaswamy-temple-thiruvananthapuram",
+    "registeredIds": [
+      "vishnu-padmanabhaswamy-temple-thiruvananthapuram"
+    ],
+    "name": "Padmanabhaswamy Temple Thiruvananthapuram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-prem-mandir-vrindavan",
+    "registeredIds": [
+      "vishnu-prem-mandir-vrindavan"
+    ],
+    "name": "Prem Mandir Vrindavan",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-shri-ram-mandir-ayodhya",
+    "registeredIds": [
+      "vishnu-shri-ram-mandir-ayodhya"
+    ],
+    "name": "Shri Ram Mandir Ayodhya",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-dwarakadheesh-temple-mathura",
+    "registeredIds": [
+      "vishnu-dwarakadheesh-temple-mathura"
+    ],
+    "name": "Dwarakadheesh Temple Mathura",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-krishna-janmabhoomi-mathura",
+    "registeredIds": [
+      "vishnu-krishna-janmabhoomi-mathura"
+    ],
+    "name": "Krishna Janmabhoomi Mathura",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-radha-raman-temple-vrindavan",
+    "registeredIds": [
+      "vishnu-radha-raman-temple-vrindavan"
+    ],
+    "name": "Radha Raman Temple Vrindavan",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-radha-damodar-temple-vrindavan",
+    "registeredIds": [
+      "vishnu-radha-damodar-temple-vrindavan"
+    ],
+    "name": "Radha Damodar Temple Vrindavan",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-govind-dev-ji-temple-jaipur",
+    "registeredIds": [
+      "vishnu-govind-dev-ji-temple-jaipur"
+    ],
+    "name": "Govind Dev Ji Temple Jaipur",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-nathdwara-shrinathji-temple",
+    "registeredIds": [
+      "vishnu-nathdwara-shrinathji-temple"
+    ],
+    "name": "Nathdwara Shrinathji Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-kalaram-temple-nashik",
+    "registeredIds": [
+      "vishnu-kalaram-temple-nashik"
+    ],
+    "name": "Kalaram Temple Nashik",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-vitthal-temple-pandharpur",
+    "registeredIds": [
+      "vishnu-vitthal-temple-pandharpur"
+    ],
+    "name": "Vitthal Temple Pandharpur",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-venugopala-swamy-temple-mysore",
+    "registeredIds": [
+      "vishnu-venugopala-swamy-temple-mysore"
+    ],
+    "name": "Venugopala Swamy Temple Mysore",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-chennakesava-temple-belur",
+    "registeredIds": [
+      "vishnu-chennakesava-temple-belur"
+    ],
+    "name": "Chennakesava Temple Belur",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-simhachalam-temple-visakhapatnam",
+    "registeredIds": [
+      "vishnu-simhachalam-temple-visakhapatnam"
+    ],
+    "name": "Simhachalam Temple Visakhapatnam",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-ahobilam-narasimha-temple",
+    "registeredIds": [
+      "vishnu-ahobilam-narasimha-temple"
+    ],
+    "name": "Ahobilam Narasimha Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "vishnu-ananta-vasudeva-temple-bhubaneswar",
+    "registeredIds": [
+      "vishnu-ananta-vasudeva-temple-bhubaneswar"
+    ],
+    "name": "Ananta Vasudeva Temple Bhubaneswar",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "shiva-lingaraj-temple-bhubaneswar",
+    "registeredIds": [
+      "shiva-lingaraj-temple-bhubaneswar"
+    ],
+    "name": "Lingaraj Temple Bhubaneswar",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-brihadisvara-temple-thanjavur",
+    "registeredIds": [
+      "shiva-brihadisvara-temple-thanjavur"
+    ],
+    "name": "Brihadisvara Temple Thanjavur",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-amarnath-cave-temple-kashmir",
+    "registeredIds": [
+      "shiva-amarnath-cave-temple-kashmir"
+    ],
+    "name": "Amarnath Cave Temple Kashmir",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-tungnath-temple-chopta",
+    "registeredIds": [
+      "shiva-tungnath-temple-chopta"
+    ],
+    "name": "Tungnath Temple Chopta",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-pashupatinath-temple-mandsaur",
+    "registeredIds": [
+      "shiva-pashupatinath-temple-mandsaur"
+    ],
+    "name": "Pashupatinath Temple Mandsaur",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-bhojeshwar-temple-bhojpur",
+    "registeredIds": [
+      "shiva-bhojeshwar-temple-bhojpur"
+    ],
+    "name": "Bhojeshwar Temple Bhojpur",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-murudeshwar-temple-karnataka",
+    "registeredIds": [
+      "shiva-murudeshwar-temple-karnataka"
+    ],
+    "name": "Murudeshwar Temple Karnataka",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-pashupatinath-temple-nepal-border",
+    "registeredIds": [
+      "shiva-pashupatinath-temple-nepal-border"
+    ],
+    "name": "Pashupatinath Temple Nepal Border",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-tarakeshwar-temple-hooghly",
+    "registeredIds": [
+      "shiva-tarakeshwar-temple-hooghly"
+    ],
+    "name": "Tarakeshwar Temple Hooghly",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-baba-dham-deoghar",
+    "registeredIds": [
+      "shiva-baba-dham-deoghar"
+    ],
+    "name": "Baba Dham Deoghar",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-kapaleeshwarar-temple-chennai",
+    "registeredIds": [
+      "shiva-kapaleeshwarar-temple-chennai"
+    ],
+    "name": "Kapaleeshwarar Temple Chennai",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-vadakkunnathan-temple-thrissur",
+    "registeredIds": [
+      "shiva-vadakkunnathan-temple-thrissur"
+    ],
+    "name": "Vadakkunnathan Temple Thrissur",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-chinnamastika-shiva-temple",
+    "registeredIds": [
+      "shiva-chinnamastika-shiva-temple"
+    ],
+    "name": "Chinnamastika Shiva Temple",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "shiva-kotilingeshwara-temple-kolar",
+    "registeredIds": [
+      "shiva-kotilingeshwara-temple-kolar"
+    ],
+    "name": "Kotilingeshwara Temple Kolar",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "devi-meenakshi-temple-madurai",
+    "registeredIds": [
+      "devi-meenakshi-temple-madurai"
+    ],
+    "name": "Meenakshi Temple Madurai",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-mahalaxmi-temple-mumbai",
+    "registeredIds": [
+      "devi-mahalaxmi-temple-mumbai"
+    ],
+    "name": "Mahalaxmi Temple Mumbai",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-mumbadevi-temple-mumbai",
+    "registeredIds": [
+      "devi-mumbadevi-temple-mumbai"
+    ],
+    "name": "Mumbadevi Temple Mumbai",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-mansa-devi-temple-haridwar",
+    "registeredIds": [
+      "devi-mansa-devi-temple-haridwar"
+    ],
+    "name": "Mansa Devi Temple Haridwar",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-chandi-devi-temple-haridwar",
+    "registeredIds": [
+      "devi-chandi-devi-temple-haridwar"
+    ],
+    "name": "Chandi Devi Temple Haridwar",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-kamakhya-peeth-guwahati",
+    "registeredIds": [
+      "devi-kamakhya-peeth-guwahati"
+    ],
+    "name": "Kamakhya Peeth Guwahati",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-kalighat-mandir-kolkata",
+    "registeredIds": [
+      "devi-kalighat-mandir-kolkata"
+    ],
+    "name": "Kalighat Mandir Kolkata",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-dakshineswar-kali-temple-kolkata",
+    "registeredIds": [
+      "devi-dakshineswar-kali-temple-kolkata"
+    ],
+    "name": "Dakshineswar Kali Temple Kolkata",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-kanaka-durga-temple-vijayawada",
+    "registeredIds": [
+      "devi-kanaka-durga-temple-vijayawada"
+    ],
+    "name": "Kanaka Durga Temple Vijayawada",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-sree-bhadrakali-temple-attukal",
+    "registeredIds": [
+      "devi-sree-bhadrakali-temple-attukal"
+    ],
+    "name": "Sree Bhadrakali Temple Attukal",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-katil-durgaparameshwari-temple",
+    "registeredIds": [
+      "devi-katil-durgaparameshwari-temple"
+    ],
+    "name": "Katil Durgaparameshwari Temple",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "devi-horanadu-annapoorneshwari-temple",
+    "registeredIds": [
+      "devi-horanadu-annapoorneshwari-temple"
+    ],
+    "name": "Horanadu Annapoorneshwari Temple",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "hanuman-kashtabhanjan-dev-temple-sarangpur",
+    "registeredIds": [
+      "hanuman-kashtabhanjan-dev-temple-sarangpur"
+    ],
+    "name": "Kashtabhanjan Dev Temple Sarangpur",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-marutam-temple-connaught-place",
+    "registeredIds": [
+      "hanuman-marutam-temple-connaught-place"
+    ],
+    "name": "Marutam Temple Connaught Place",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-maruti-temple-girgaum",
+    "registeredIds": [
+      "hanuman-maruti-temple-girgaum"
+    ],
+    "name": "Maruti Temple Girgaum",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-sankat-mochan-shimla",
+    "registeredIds": [
+      "hanuman-sankat-mochan-shimla"
+    ],
+    "name": "Sankat Mochan Shimla",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-kainchi-dham-neem-karoli",
+    "registeredIds": [
+      "hanuman-kainchi-dham-neem-karoli"
+    ],
+    "name": "Kainchi Dham Neem Karoli",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-bade-hanuman-mandir-prayagraj",
+    "registeredIds": [
+      "hanuman-bade-hanuman-mandir-prayagraj"
+    ],
+    "name": "Bade Hanuman Mandir Prayagraj",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-hanuman-garhi-ayodhya",
+    "registeredIds": [
+      "hanuman-hanuman-garhi-ayodhya"
+    ],
+    "name": "Hanuman Garhi Ayodhya",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "hanuman-salasar-balaji-temple-churu",
+    "registeredIds": [
+      "hanuman-salasar-balaji-temple-churu"
+    ],
+    "name": "Salasar Balaji Temple Churu",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-adikumbeswarar",
+    "registeredIds": [
+      "sacred-adikumbeswarar"
+    ],
+    "name": "Adikumbeswarar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-agniswarar",
+    "registeredIds": [
+      "sacred-agniswarar"
+    ],
+    "name": "Agniswarar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ahobilamnavanarasimha",
+    "registeredIds": [
+      "sacred-ahobilamnavanarasimha"
+    ],
+    "name": "Ahobilamnavanarasimha",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-amareswaraswamy",
+    "registeredIds": [
+      "sacred-amareswaraswamy"
+    ],
+    "name": "Amareswaraswamy",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-amarnath",
+    "registeredIds": [
+      "sacred-amarnath"
+    ],
+    "name": "Amarnath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ambalappuzha-sri-krishna-temple",
+    "registeredIds": [
+      "sacred-ambalappuzha-sri-krishna-temple"
+    ],
+    "name": "Ambalappuzha Sri Krishna Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-anantavasudeva",
+    "registeredIds": [
+      "sacred-anantavasudeva"
+    ],
+    "name": "Anantavasudeva",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-annapoorneshwari",
+    "registeredIds": [
+      "sacred-annapoorneshwari"
+    ],
+    "name": "Annapoorneshwari",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-apatsahayesvarar",
+    "registeredIds": [
+      "sacred-apatsahayesvarar"
+    ],
+    "name": "Apatsahayesvarar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-aranmula-parthasarathy",
+    "registeredIds": [
+      "sacred-aranmula-parthasarathy"
+    ],
+    "name": "Aranmula Parthasarathy",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-arunachaleswarar",
+    "registeredIds": [
+      "sacred-arunachaleswarar"
+    ],
+    "name": "Arunachaleswarar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-attukal",
+    "registeredIds": [
+      "sacred-attukal"
+    ],
+    "name": "Attukal",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-babulnath",
+    "registeredIds": [
+      "sacred-babulnath"
+    ],
+    "name": "Babulnath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-badehanumanmandir",
+    "registeredIds": [
+      "sacred-badehanumanmandir"
+    ],
+    "name": "Badehanumanmandir",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "sacred-baijnath",
+    "registeredIds": [
+      "sacred-baijnath"
+    ],
+    "name": "Baijnath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bankebihari-temple",
+    "registeredIds": [
+      "sacred-bankebihari-temple"
+    ],
+    "name": "Bankebihari Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhadrachalam-temple",
+    "registeredIds": [
+      "sacred-bhadrachalam-temple"
+    ],
+    "name": "Bhadrachalam Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhalkatirthshrine",
+    "registeredIds": [
+      "sacred-bhalkatirthshrine"
+    ],
+    "name": "Bhalkatirthshrine",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhartrihari",
+    "registeredIds": [
+      "sacred-bhartrihari"
+    ],
+    "name": "Bhartrihari",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhojeshwar",
+    "registeredIds": [
+      "sacred-bhojeshwar"
+    ],
+    "name": "Bhojeshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bijlimahadev",
+    "registeredIds": [
+      "sacred-bijlimahadev"
+    ],
+    "name": "Bijlimahadev",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-birla-temple",
+    "registeredIds": [
+      "sacred-birla-temple"
+    ],
+    "name": "Birla Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-brahma-temple",
+    "registeredIds": [
+      "sacred-brahma-temple"
+    ],
+    "name": "Brahma Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-brihadisvara",
+    "registeredIds": [
+      "sacred-brihadisvara"
+    ],
+    "name": "Brihadisvara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-chamundi",
+    "registeredIds": [
+      "sacred-chamundi"
+    ],
+    "name": "Chamundi",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-chennakesava",
+    "registeredIds": [
+      "sacred-chennakesava"
+    ],
+    "name": "Chennakesava",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-chottanikkara",
+    "registeredIds": [
+      "sacred-chottanikkara"
+    ],
+    "name": "Chottanikkara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-dakshineswar-kali-temple",
+    "registeredIds": [
+      "sacred-dakshineswar-kali-temple"
+    ],
+    "name": "Dakshineswar Kali Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-daulatabad",
+    "registeredIds": [
+      "sacred-daulatabad"
+    ],
+    "name": "Daulatabad",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-dharbaranyeswarar",
+    "registeredIds": [
+      "sacred-dharbaranyeswarar"
+    ],
+    "name": "Dharbaranyeswarar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-dharidevi",
+    "registeredIds": [
+      "sacred-dharidevi"
+    ],
+    "name": "Dharidevi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-draksharama-temple",
+    "registeredIds": [
+      "sacred-draksharama-temple"
+    ],
+    "name": "Draksharama Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-ekambareshwar",
+    "registeredIds": [
+      "sacred-ekambareshwar"
+    ],
+    "name": "Ekambareshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ellorakailasa",
+    "registeredIds": [
+      "sacred-ellorakailasa"
+    ],
+    "name": "Ellorakailasa",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gautamrishiashram",
+    "registeredIds": [
+      "sacred-gautamrishiashram"
+    ],
+    "name": "Gautamrishiashram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-girijatmaj",
+    "registeredIds": [
+      "sacred-girijatmaj"
+    ],
+    "name": "Girijatmaj",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gnanasaraswathi",
+    "registeredIds": [
+      "sacred-gnanasaraswathi"
+    ],
+    "name": "Gnanasaraswathi",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gommateshwara",
+    "registeredIds": [
+      "sacred-gommateshwara"
+    ],
+    "name": "Gommateshwara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gopnathmahadev",
+    "registeredIds": [
+      "sacred-gopnathmahadev"
+    ],
+    "name": "Gopnathmahadev",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-gorakhnath",
+    "registeredIds": [
+      "sacred-gorakhnath"
+    ],
+    "name": "Gorakhnath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-govinddev",
+    "registeredIds": [
+      "sacred-govinddev"
+    ],
+    "name": "Govinddev",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-guruvayur",
+    "registeredIds": [
+      "sacred-guruvayur"
+    ],
+    "name": "Guruvayur",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gyanvapi",
+    "registeredIds": [
+      "sacred-gyanvapi"
+    ],
+    "name": "Gyanvapi",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-hidimbadevi",
+    "registeredIds": [
+      "sacred-hidimbadevi"
+    ],
+    "name": "Hidimbadevi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-hidimba-devi",
+    "registeredIds": [
+      "sacred-hidimba-devi"
+    ],
+    "name": "Hidimba Devi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-jakhu",
+    "registeredIds": [
+      "sacred-jakhu"
+    ],
+    "name": "Jakhu",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-janardhanaswamy",
+    "registeredIds": [
+      "sacred-janardhanaswamy"
+    ],
+    "name": "Janardhanaswamy",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kainchidham",
+    "registeredIds": [
+      "sacred-kainchidham"
+    ],
+    "name": "Kainchidham",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kalaram",
+    "registeredIds": [
+      "sacred-kalaram"
+    ],
+    "name": "Kalaram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-kalikamata",
+    "registeredIds": [
+      "sacred-kalikamata"
+    ],
+    "name": "Kalikamata",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-kanakadurga",
+    "registeredIds": [
+      "sacred-kanakadurga"
+    ],
+    "name": "Kanakadurga",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kanchipuram-kamakshi",
+    "registeredIds": [
+      "sacred-kanchipuram-kamakshi"
+    ],
+    "name": "Kanchipuram Kamakshi",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-kasardevi",
+    "registeredIds": [
+      "sacred-kasardevi"
+    ],
+    "name": "Kasardevi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-kashtabhanjan",
+    "registeredIds": [
+      "sacred-kashtabhanjan"
+    ],
+    "name": "Kashtabhanjan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kateeldurgaparameshwari",
+    "registeredIds": [
+      "sacred-kateeldurgaparameshwari"
+    ],
+    "name": "Kateeldurgaparameshwari",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-khatushyam",
+    "registeredIds": [
+      "sacred-khatushyam"
+    ],
+    "name": "Khatushyam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kondagattuanjaneyaswamy",
+    "registeredIds": [
+      "sacred-kondagattuanjaneyaswamy"
+    ],
+    "name": "Kondagattuanjaneyaswamy",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "sacred-kotilingeshwara",
+    "registeredIds": [
+      "sacred-kotilingeshwara"
+    ],
+    "name": "Kotilingeshwara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ksheeraramalingeswara",
+    "registeredIds": [
+      "sacred-ksheeraramalingeswara"
+    ],
+    "name": "Ksheeraramalingeswara",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-kumararama-bhimesvara",
+    "registeredIds": [
+      "sacred-kumararama-bhimesvara"
+    ],
+    "name": "Kumararama Bhimesvara",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-lingaraj",
+    "registeredIds": [
+      "sacred-lingaraj"
+    ],
+    "name": "Lingaraj",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-maa-mundeshwari-devi",
+    "registeredIds": [
+      "sacred-maa-mundeshwari-devi"
+    ],
+    "name": "Maa Mundeshwari Devi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-mahabaleshwar",
+    "registeredIds": [
+      "sacred-mahabaleshwar"
+    ],
+    "name": "Mahabaleshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-mahaganapati",
+    "registeredIds": [
+      "sacred-mahaganapati"
+    ],
+    "name": "Mahaganapati",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "sacred-mahavirmandir",
+    "registeredIds": [
+      "sacred-mahavirmandir"
+    ],
+    "name": "Mahavirmandir",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-mansadevi",
+    "registeredIds": [
+      "sacred-mansadevi"
+    ],
+    "name": "Mansadevi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-murudeshwara",
+    "registeredIds": [
+      "sacred-murudeshwara"
+    ],
+    "name": "Murudeshwara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-naganathaswamy",
+    "registeredIds": [
+      "sacred-naganathaswamy"
+    ],
+    "name": "Naganathaswamy",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-nagaraja",
+    "registeredIds": [
+      "sacred-nagaraja"
+    ],
+    "name": "Nagaraja",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-naulakha",
+    "registeredIds": [
+      "sacred-naulakha"
+    ],
+    "name": "Naulakha",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-neelkanth",
+    "registeredIds": [
+      "sacred-neelkanth"
+    ],
+    "name": "Neelkanth",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-palanimurugan",
+    "registeredIds": [
+      "sacred-palanimurugan"
+    ],
+    "name": "Palanimurugan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-pashupatinath",
+    "registeredIds": [
+      "sacred-pashupatinath"
+    ],
+    "name": "Pashupatinath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-pazhamudircholai",
+    "registeredIds": [
+      "sacred-pazhamudircholai"
+    ],
+    "name": "Pazhamudircholai",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-pracheenhanuman",
+    "registeredIds": [
+      "sacred-pracheenhanuman"
+    ],
+    "name": "Pracheenhanuman",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "sacred-premmandir",
+    "registeredIds": [
+      "sacred-premmandir"
+    ],
+    "name": "Premmandir",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-punaura-sitamarhi",
+    "registeredIds": [
+      "sacred-punaura-sitamarhi"
+    ],
+    "name": "Punaura Sitamarhi",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-purnagiridevi",
+    "registeredIds": [
+      "sacred-purnagiridevi"
+    ],
+    "name": "Purnagiridevi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-radhadamodar",
+    "registeredIds": [
+      "sacred-radhadamodar"
+    ],
+    "name": "Radhadamodar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ramappa-temple",
+    "registeredIds": [
+      "sacred-ramappa-temple"
+    ],
+    "name": "Ramappa Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-ramatheertham",
+    "registeredIds": [
+      "sacred-ramatheertham"
+    ],
+    "name": "Ramatheertham",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-ramnagar-fort",
+    "registeredIds": [
+      "sacred-ramnagar-fort"
+    ],
+    "name": "Ramnagar Fort",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-ranakpur",
+    "registeredIds": [
+      "sacred-ranakpur"
+    ],
+    "name": "Ranakpur",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-salasarbalaji",
+    "registeredIds": [
+      "sacred-salasarbalaji"
+    ],
+    "name": "Salasarbalaji",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-sandipaniashram",
+    "registeredIds": [
+      "sacred-sandipaniashram"
+    ],
+    "name": "Sandipaniashram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-sankatmochan",
+    "registeredIds": [
+      "sacred-sankatmochan"
+    ],
+    "name": "Sankatmochan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sarangapani",
+    "registeredIds": [
+      "sacred-sarangapani"
+    ],
+    "name": "Sarangapani",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-shivatrats",
+    "registeredIds": [
+      "sacred-shivatrats"
+    ],
+    "name": "Shivatrats",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-shreenathjitemple",
+    "registeredIds": [
+      "sacred-shreenathjitemple"
+    ],
+    "name": "Shreenathjitemple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-shri-ram-janambhoomi-mandir",
+    "registeredIds": [
+      "sacred-shri-ram-janambhoomi-mandir"
+    ],
+    "name": "Shri Ram Janambhoomi Mandir",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-siddhivinayak-temple",
+    "registeredIds": [
+      "sacred-siddhivinayak-temple"
+    ],
+    "name": "Siddhivinayak Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-someshwara",
+    "registeredIds": [
+      "sacred-someshwara"
+    ],
+    "name": "Someshwara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sonprayagsangam",
+    "registeredIds": [
+      "sacred-sonprayagsangam"
+    ],
+    "name": "Sonprayagsangam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sree-padmanabhaswamy",
+    "registeredIds": [
+      "sacred-sree-padmanabhaswamy"
+    ],
+    "name": "Sree Padmanabhaswamy",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sree-vallaba",
+    "registeredIds": [
+      "sacred-sree-vallaba"
+    ],
+    "name": "Sree Vallaba",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sriranganathaswamy",
+    "registeredIds": [
+      "sacred-sriranganathaswamy"
+    ],
+    "name": "Sriranganathaswamy",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-srivilliputhurandal",
+    "registeredIds": [
+      "sacred-srivilliputhurandal"
+    ],
+    "name": "Srivilliputhurandal",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-suntemple",
+    "registeredIds": [
+      "sacred-suntemple"
+    ],
+    "name": "Suntemple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-suryanarkovil",
+    "registeredIds": [
+      "sacred-suryanarkovil"
+    ],
+    "name": "Suryanarkovil",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-swamimalaimurugan",
+    "registeredIds": [
+      "sacred-swamimalaimurugan"
+    ],
+    "name": "Swamimalaimurugan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-swaminarayanakshardham",
+    "registeredIds": [
+      "sacred-swaminarayanakshardham"
+    ],
+    "name": "Swaminarayanakshardham",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-tapovancaves",
+    "registeredIds": [
+      "sacred-tapovancaves"
+    ],
+    "name": "Tapovancaves",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-tarakeshwar",
+    "registeredIds": [
+      "sacred-tarakeshwar"
+    ],
+    "name": "Tarakeshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-templeofvedicplanetarium",
+    "registeredIds": [
+      "sacred-templeofvedicplanetarium"
+    ],
+    "name": "Templeofvedicplanetarium",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-thillainataraja",
+    "registeredIds": [
+      "sacred-thillainataraja"
+    ],
+    "name": "Thillainataraja",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-thirunageswaramnaganathar",
+    "registeredIds": [
+      "sacred-thirunageswaramnaganathar"
+    ],
+    "name": "Thirunageswaramnaganathar",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-thiruparankundrammurugan",
+    "registeredIds": [
+      "sacred-thiruparankundrammurugan"
+    ],
+    "name": "Thiruparankundrammurugan",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-thiruttani-temple-rajagopuram",
+    "registeredIds": [
+      "sacred-thiruttani-temple-rajagopuram"
+    ],
+    "name": "Thiruttani Temple Rajagopuram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-thousandpillar",
+    "registeredIds": [
+      "sacred-thousandpillar"
+    ],
+    "name": "Thousandpillar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-tiruchendurmurugan",
+    "registeredIds": [
+      "sacred-tiruchendurmurugan"
+    ],
+    "name": "Tiruchendurmurugan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-trilokinath",
+    "registeredIds": [
+      "sacred-trilokinath"
+    ],
+    "name": "Trilokinath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-trinetreshwar",
+    "registeredIds": [
+      "sacred-trinetreshwar"
+    ],
+    "name": "Trinetreshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-triprayarsree",
+    "registeredIds": [
+      "sacred-triprayarsree"
+    ],
+    "name": "Triprayarsree",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-triveni-ghat",
+    "registeredIds": [
+      "sacred-triveni-ghat"
+    ],
+    "name": "Triveni Ghat",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-triyuginarayan",
+    "registeredIds": [
+      "sacred-triyuginarayan"
+    ],
+    "name": "Triyuginarayan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-tungnath",
+    "registeredIds": [
+      "sacred-tungnath"
+    ],
+    "name": "Tungnath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-udupi-sri-krishna-matha-temple",
+    "registeredIds": [
+      "sacred-udupi-sri-krishna-matha-temple"
+    ],
+    "name": "Udupi Sri Krishna Matha Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-uppiliappan",
+    "registeredIds": [
+      "sacred-uppiliappan"
+    ],
+    "name": "Uppiliappan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-vadakkunnathan",
+    "registeredIds": [
+      "sacred-vadakkunnathan"
+    ],
+    "name": "Vadakkunnathan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-varadvinayak",
+    "registeredIds": [
+      "sacred-varadvinayak"
+    ],
+    "name": "Varadvinayak",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-varadharajaperumal",
+    "registeredIds": [
+      "sacred-varadharajaperumal"
+    ],
+    "name": "Varadharajaperumal",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-varahalakshminarasimha",
+    "registeredIds": [
+      "sacred-varahalakshminarasimha"
+    ],
+    "name": "Varahalakshminarasimha",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-vashishttemple",
+    "registeredIds": [
+      "sacred-vashishttemple"
+    ],
+    "name": "Vashishttemple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-veerabhadra",
+    "registeredIds": [
+      "sacred-veerabhadra"
+    ],
+    "name": "Veerabhadra",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-venugopalaswamy",
+    "registeredIds": [
+      "sacred-venugopalaswamy"
+    ],
+    "name": "Venugopalaswamy",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-vighnahar",
+    "registeredIds": [
+      "sacred-vighnahar"
+    ],
+    "name": "Vighnahar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-vishnupad",
+    "registeredIds": [
+      "sacred-vishnupad"
+    ],
+    "name": "Vishnupad",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-vithoba",
+    "registeredIds": [
+      "sacred-vithoba"
+    ],
+    "name": "Vithoba",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-yadadrisrilakshminarasimha",
+    "registeredIds": [
+      "sacred-yadadrisrilakshminarasimha"
+    ],
+    "name": "Yadadrisrilakshminarasimha",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-baan",
+    "registeredIds": [
+      "sacred-baan"
+    ],
+    "name": "Baan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ballaleshwar",
+    "registeredIds": [
+      "sacred-ballaleshwar"
+    ],
+    "name": "Ballaleshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhairavnath",
+    "registeredIds": [
+      "sacred-bhairavnath"
+    ],
+    "name": "Bhairavnath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-chandi-devi",
+    "registeredIds": [
+      "sacred-chandi-devi"
+    ],
+    "name": "Chandi Devi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-chintamani",
+    "registeredIds": [
+      "sacred-chintamani"
+    ],
+    "name": "Chintamani",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-dilwara",
+    "registeredIds": [
+      "sacred-dilwara"
+    ],
+    "name": "Dilwara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gandhisarvor",
+    "registeredIds": [
+      "sacred-gandhisarvor"
+    ],
+    "name": "Gandhisarvor",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gitamandir",
+    "registeredIds": [
+      "sacred-gitamandir"
+    ],
+    "name": "Gitamandir",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-hanumangarhi",
+    "registeredIds": [
+      "sacred-hanumangarhi"
+    ],
+    "name": "Hanumangarhi",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "sacred-iskconvrindavan",
+    "registeredIds": [
+      "sacred-iskconvrindavan"
+    ],
+    "name": "Iskconvrindavan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-jageshwar",
+    "registeredIds": [
+      "sacred-jageshwar"
+    ],
+    "name": "Jageshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-jambukeswarar",
+    "registeredIds": [
+      "sacred-jambukeswarar"
+    ],
+    "name": "Jambukeswarar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kailashnathwar",
+    "registeredIds": [
+      "sacred-kailashnathwar"
+    ],
+    "name": "Kailashnathwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kapaleeshwarar",
+    "registeredIds": [
+      "sacred-kapaleeshwarar"
+    ],
+    "name": "Kapaleeshwarar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-karnimata",
+    "registeredIds": [
+      "sacred-karnimata"
+    ],
+    "name": "Karnimata",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-krishnajanmasthan",
+    "registeredIds": [
+      "sacred-krishnajanmasthan"
+    ],
+    "name": "Krishnajanmasthan",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-mayureshwar",
+    "registeredIds": [
+      "sacred-mayureshwar"
+    ],
+    "name": "Mayureshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-mumba-devi",
+    "registeredIds": [
+      "sacred-mumba-devi"
+    ],
+    "name": "Mumba Devi",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-ramghat",
+    "registeredIds": [
+      "sacred-ramghat"
+    ],
+    "name": "Ramghat",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-sabarimala",
+    "registeredIds": [
+      "sacred-sabarimala"
+    ],
+    "name": "Sabarimala",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sammed-shikharji",
+    "registeredIds": [
+      "sacred-sammed-shikharji"
+    ],
+    "name": "Sammed Shikharji",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-shivganga",
+    "registeredIds": [
+      "sacred-shivganga"
+    ],
+    "name": "Shivganga",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-shri-radha-raman",
+    "registeredIds": [
+      "sacred-shri-radha-raman"
+    ],
+    "name": "Shri Radha Raman",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-tapkeshwar",
+    "registeredIds": [
+      "sacred-tapkeshwar"
+    ],
+    "name": "Tapkeshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-trikuta",
+    "registeredIds": [
+      "sacred-trikuta"
+    ],
+    "name": "Trikuta",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-trinetra-ganesh-temple",
+    "registeredIds": [
+      "sacred-trinetra-ganesh-temple"
+    ],
+    "name": "Trinetra Ganesh Temple",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "sacred-tulsi-manas",
+    "registeredIds": [
+      "sacred-tulsi-manas"
+    ],
+    "name": "Tulsi Manas",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-palani-murugan-temple",
+    "registeredIds": [
+      "sacred-palani-murugan-temple"
+    ],
+    "name": "Palani Murugan Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-swamimalai-murugan-temple",
+    "registeredIds": [
+      "sacred-swamimalai-murugan-temple"
+    ],
+    "name": "Swamimalai Murugan Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-thiruthani-murugan-temple",
+    "registeredIds": [
+      "sacred-thiruthani-murugan-temple"
+    ],
+    "name": "Thiruthani Murugan Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-thiruparankundram-murugan-temple",
+    "registeredIds": [
+      "sacred-thiruparankundram-murugan-temple"
+    ],
+    "name": "Thiruparankundram Murugan Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-pazhamudircholai-murugan-temple",
+    "registeredIds": [
+      "sacred-pazhamudircholai-murugan-temple"
+    ],
+    "name": "Pazhamudircholai Murugan Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-tiruchendur-murugan-temple",
+    "registeredIds": [
+      "sacred-tiruchendur-murugan-temple"
+    ],
+    "name": "Tiruchendur Murugan Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-shravanabelagola-gommateshwara",
+    "registeredIds": [
+      "sacred-shravanabelagola-gommateshwara"
+    ],
+    "name": "Shravanabelagola Gommateshwara",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-mayapur-chandrodaya-mandir",
+    "registeredIds": [
+      "sacred-mayapur-chandrodaya-mandir"
+    ],
+    "name": "Mayapur Chandrodaya Mandir",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sammed-shikharji-parasnath",
+    "registeredIds": [
+      "sacred-sammed-shikharji-parasnath"
+    ],
+    "name": "Sammed Shikharji Parasnath",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-dilwara-jain-temples-mount-abu",
+    "registeredIds": [
+      "sacred-dilwara-jain-temples-mount-abu"
+    ],
+    "name": "Dilwara Jain Temples Mount Abu",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ranakpur-jain-temple-pali",
+    "registeredIds": [
+      "sacred-ranakpur-jain-temple-pali"
+    ],
+    "name": "Ranakpur Jain Temple Pali",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-karni-mata-temple-deshnoke",
+    "registeredIds": [
+      "sacred-karni-mata-temple-deshnoke"
+    ],
+    "name": "Karni Mata Temple Deshnoke",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-brahma-temple-pushkar",
+    "registeredIds": [
+      "sacred-brahma-temple-pushkar"
+    ],
+    "name": "Brahma Temple Pushkar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-khatu-shyam-temple-sikar",
+    "registeredIds": [
+      "sacred-khatu-shyam-temple-sikar"
+    ],
+    "name": "Khatu Shyam Temple Sikar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-trinetra-ganesh-temple-ranthambore",
+    "registeredIds": [
+      "sacred-trinetra-ganesh-temple-ranthambore"
+    ],
+    "name": "Trinetra Ganesh Temple Ranthambore",
+    "category": "Ganesh Temple"
+  },
+  {
+    "canonicalKey": "sacred-chamundeshwari-hill-mysore",
+    "registeredIds": [
+      "sacred-chamundeshwari-hill-mysore"
+    ],
+    "name": "Chamundeshwari Hill Mysore",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-murudeshwar-coastal-temple",
+    "registeredIds": [
+      "sacred-murudeshwar-coastal-temple"
+    ],
+    "name": "Murudeshwar Coastal Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gokarna-mahabaleshwar-temple",
+    "registeredIds": [
+      "sacred-gokarna-mahabaleshwar-temple"
+    ],
+    "name": "Gokarna Mahabaleshwar Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-triprayar-srama-temple-thrissur",
+    "registeredIds": [
+      "sacred-triprayar-srama-temple-thrissur"
+    ],
+    "name": "Triprayar Srama Temple Thrissur",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-thiruvalla-sree-vallabha-temple",
+    "registeredIds": [
+      "sacred-thiruvalla-sree-vallabha-temple"
+    ],
+    "name": "Thiruvalla Sree Vallabha Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ambalappuzha-sree-krishna-temple",
+    "registeredIds": [
+      "sacred-ambalappuzha-sree-krishna-temple"
+    ],
+    "name": "Ambalappuzha Sree Krishna Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-arankula-parthasarathy-temple",
+    "registeredIds": [
+      "sacred-arankula-parthasarathy-temple"
+    ],
+    "name": "Arankula Parthasarathy Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-janardhana-swamy-temple-varkala",
+    "registeredIds": [
+      "sacred-janardhana-swamy-temple-varkala"
+    ],
+    "name": "Janardhana Swamy Temple Varkala",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-nagaraja-temple-nagercoil",
+    "registeredIds": [
+      "sacred-nagaraja-temple-nagercoil"
+    ],
+    "name": "Nagaraja Temple Nagercoil",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-srivilliputhur-andal-temple",
+    "registeredIds": [
+      "sacred-srivilliputhur-andal-temple"
+    ],
+    "name": "Srivilliputhur Andal Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-oppiliappan-temple-kumbakonam",
+    "registeredIds": [
+      "sacred-oppiliappan-temple-kumbakonam"
+    ],
+    "name": "Oppiliappan Temple Kumbakonam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-sarangapani-temple-kumbakonam",
+    "registeredIds": [
+      "sacred-sarangapani-temple-kumbakonam"
+    ],
+    "name": "Sarangapani Temple Kumbakonam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kumbeshwarar-temple-kumbakonam",
+    "registeredIds": [
+      "sacred-kumbeshwarar-temple-kumbakonam"
+    ],
+    "name": "Kumbeshwarar Temple Kumbakonam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-varadharaja-perumal-temple-kanchipuram",
+    "registeredIds": [
+      "sacred-varadharaja-perumal-temple-kanchipuram"
+    ],
+    "name": "Varadharaja Perumal Temple Kanchipuram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-kamakshi-amman-temple-kanchipuram",
+    "registeredIds": [
+      "sacred-kamakshi-amman-temple-kanchipuram"
+    ],
+    "name": "Kamakshi Amman Temple Kanchipuram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-thirunageswaram-naganathar-temple",
+    "registeredIds": [
+      "sacred-thirunageswaram-naganathar-temple"
+    ],
+    "name": "Thirunageswaram Naganathar Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-thingalur-chandran-temple",
+    "registeredIds": [
+      "sacred-thingalur-chandran-temple"
+    ],
+    "name": "Thingalur Chandran Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-alangudi-guru-temple",
+    "registeredIds": [
+      "sacred-alangudi-guru-temple"
+    ],
+    "name": "Alangudi Guru Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kanchanur-sukran-temple",
+    "registeredIds": [
+      "sacred-kanchanur-sukran-temple"
+    ],
+    "name": "Kanchanur Sukran Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-thirunallar-saneeswaran-temple",
+    "registeredIds": [
+      "sacred-thirunallar-saneeswaran-temple"
+    ],
+    "name": "Thirunallar Saneeswaran Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kethu-temple-keelaperumpallam",
+    "registeredIds": [
+      "sacred-kethu-temple-keelaperumpallam"
+    ],
+    "name": "Kethu Temple Keelaperumpallam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-suryanar-kovil-kumbakonam",
+    "registeredIds": [
+      "sacred-suryanar-kovil-kumbakonam"
+    ],
+    "name": "Suryanar Kovil Kumbakonam",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ramatheertham-vizianagaram",
+    "registeredIds": [
+      "sacred-ramatheertham-vizianagaram"
+    ],
+    "name": "Ramatheertham Vizianagaram",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-draksharamam-bheemeswara-temple",
+    "registeredIds": [
+      "sacred-draksharamam-bheemeswara-temple"
+    ],
+    "name": "Draksharamam Bheemeswara Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-amararamam-amaraswaraswamy-temple",
+    "registeredIds": [
+      "sacred-amararamam-amaraswaraswamy-temple"
+    ],
+    "name": "Amararamam Amaraswaraswamy Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-somaramam-someshwara-swamy-temple",
+    "registeredIds": [
+      "sacred-somaramam-someshwara-swamy-temple"
+    ],
+    "name": "Somaramam Someshwara Swamy Temple",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-ksheeraramam-ksheera-ramalingeswara",
+    "registeredIds": [
+      "sacred-ksheeraramam-ksheera-ramalingeswara"
+    ],
+    "name": "Ksheeraramam Ksheera Ramalingeswara",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-kumararamam-bhimeswara-swamy",
+    "registeredIds": [
+      "sacred-kumararamam-bhimeswara-swamy"
+    ],
+    "name": "Kumararamam Bhimeswara Swamy",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-yadadri-narasimha-swamy-temple",
+    "registeredIds": [
+      "sacred-yadadri-narasimha-swamy-temple"
+    ],
+    "name": "Yadadri Narasimha Swamy Temple",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhadrachalam-sita-ramachandra-swamy",
+    "registeredIds": [
+      "sacred-bhadrachalam-sita-ramachandra-swamy"
+    ],
+    "name": "Bhadrachalam Sita Ramachandra Swamy",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-thousand-pillar-temple-warangal",
+    "registeredIds": [
+      "sacred-thousand-pillar-temple-warangal"
+    ],
+    "name": "Thousand Pillar Temple Warangal",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-ramappa-temple-mulugu",
+    "registeredIds": [
+      "sacred-ramappa-temple-mulugu"
+    ],
+    "name": "Ramappa Temple Mulugu",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-gnana-saraswathi-temple-basar",
+    "registeredIds": [
+      "sacred-gnana-saraswathi-temple-basar"
+    ],
+    "name": "Gnana Saraswathi Temple Basar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kondagattu-anjaneya-swamy-temple",
+    "registeredIds": [
+      "sacred-kondagattu-anjaneya-swamy-temple"
+    ],
+    "name": "Kondagattu Anjaneya Swamy Temple",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "sacred-veerabhadra-temple-lepakshi",
+    "registeredIds": [
+      "sacred-veerabhadra-temple-lepakshi"
+    ],
+    "name": "Veerabhadra Temple Lepakshi",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-patan-devi-temple-patna",
+    "registeredIds": [
+      "sacred-patan-devi-temple-patna"
+    ],
+    "name": "Patan Devi Temple Patna",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-mahavir-mandir-patna",
+    "registeredIds": [
+      "sacred-mahavir-mandir-patna"
+    ],
+    "name": "Mahavir Mandir Patna",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-janaki-mandir-sitamarhi",
+    "registeredIds": [
+      "sacred-janaki-mandir-sitamarhi"
+    ],
+    "name": "Janaki Mandir Sitamarhi",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-mundeshwari-devi-temple-kaimur",
+    "registeredIds": [
+      "sacred-mundeshwari-devi-temple-kaimur"
+    ],
+    "name": "Mundeshwari Devi Temple Kaimur",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-gorakhnath-temple-gorakhpur",
+    "registeredIds": [
+      "sacred-gorakhnath-temple-gorakhpur"
+    ],
+    "name": "Gorakhnath Temple Gorakhpur",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-tulsi-manas-temple-varanasi",
+    "registeredIds": [
+      "sacred-tulsi-manas-temple-varanasi"
+    ],
+    "name": "Tulsi Manas Temple Varanasi",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-vibhuti-narayan-fort-temple-ramnagar",
+    "registeredIds": [
+      "sacred-vibhuti-narayan-fort-temple-ramnagar"
+    ],
+    "name": "Vibhuti Narayan Fort Temple Ramnagar",
+    "category": "Vishnu / Char Dham"
+  },
+  {
+    "canonicalKey": "sacred-naini-devi-temple-nainital",
+    "registeredIds": [
+      "sacred-naini-devi-temple-nainital"
+    ],
+    "name": "Naini Devi Temple Nainital",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-triyuginarayan-temple-rudraprayag",
+    "registeredIds": [
+      "sacred-triyuginarayan-temple-rudraprayag"
+    ],
+    "name": "Triyuginarayan Temple Rudraprayag",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-dhari-devi-temple-srinagar-garhwal",
+    "registeredIds": [
+      "sacred-dhari-devi-temple-srinagar-garhwal"
+    ],
+    "name": "Dhari Devi Temple Srinagar Garhwal",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-neelkanth-mahadev-temple-rishikesh",
+    "registeredIds": [
+      "sacred-neelkanth-mahadev-temple-rishikesh"
+    ],
+    "name": "Neelkanth Mahadev Temple Rishikesh",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-tapkeshwar-temple-dehradun",
+    "registeredIds": [
+      "sacred-tapkeshwar-temple-dehradun"
+    ],
+    "name": "Tapkeshwar Temple Dehradun",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-kasar-devi-temple-almora",
+    "registeredIds": [
+      "sacred-kasar-devi-temple-almora"
+    ],
+    "name": "Kasar Devi Temple Almora",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-jageshwar-dham-almora",
+    "registeredIds": [
+      "sacred-jageshwar-dham-almora"
+    ],
+    "name": "Jageshwar Dham Almora",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-baijnath-temple-bageshwar",
+    "registeredIds": [
+      "sacred-baijnath-temple-bageshwar"
+    ],
+    "name": "Baijnath Temple Bageshwar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-purnagiri-devi-temple-champawat",
+    "registeredIds": [
+      "sacred-purnagiri-devi-temple-champawat"
+    ],
+    "name": "Purnagiri Devi Temple Champawat",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-hadimba-devi-temple-manali",
+    "registeredIds": [
+      "sacred-hadimba-devi-temple-manali"
+    ],
+    "name": "Hadimba Devi Temple Manali",
+    "category": "Shakti Peetha / Devi"
+  },
+  {
+    "canonicalKey": "sacred-bijli-mahadev-temple-kullu",
+    "registeredIds": [
+      "sacred-bijli-mahadev-temple-kullu"
+    ],
+    "name": "Bijli Mahadev Temple Kullu",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-vashisht-kund-temple-manali",
+    "registeredIds": [
+      "sacred-vashisht-kund-temple-manali"
+    ],
+    "name": "Vashisht Kund Temple Manali",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-triloknath-temple-lahaul",
+    "registeredIds": [
+      "sacred-triloknath-temple-lahaul"
+    ],
+    "name": "Triloknath Temple Lahaul",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-bala-hanuman-temple-jamnagar",
+    "registeredIds": [
+      "sacred-bala-hanuman-temple-jamnagar"
+    ],
+    "name": "Bala Hanuman Temple Jamnagar",
+    "category": "Hanuman Temple"
+  },
+  {
+    "canonicalKey": "sacred-bhalkeeshwar-temple-veraval",
+    "registeredIds": [
+      "sacred-bhalkeeshwar-temple-veraval"
+    ],
+    "name": "Bhalkeeshwar Temple Veraval",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-gopnath-mahadev-temple-bhavnagar",
+    "registeredIds": [
+      "sacred-gopnath-mahadev-temple-bhavnagar"
+    ],
+    "name": "Gopnath Mahadev Temple Bhavnagar",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-tarnetar-mahadev-temple-surendranagar",
+    "registeredIds": [
+      "sacred-tarnetar-mahadev-temple-surendranagar"
+    ],
+    "name": "Tarnetar Mahadev Temple Surendranagar",
+    "category": "Shiva Temple"
+  },
+  {
+    "canonicalKey": "sacred-sun-temple-modhera",
+    "registeredIds": [
+      "sacred-sun-temple-modhera"
+    ],
+    "name": "Sun Temple Modhera",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-golden-temple-amritsar",
+    "registeredIds": [
+      "sacred-golden-temple-amritsar"
+    ],
+    "name": "Golden Temple Amritsar",
+    "category": "Other Sacred Temple"
+  },
+  {
+    "canonicalKey": "sacred-vasukital",
+    "registeredIds": [
+      "sacred-vasukital"
+    ],
+    "name": "Vasukital",
+    "category": "Other Sacred Temple"
+  }
+]

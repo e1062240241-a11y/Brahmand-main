@@ -104,10 +104,30 @@ export default function KathaPage() {
       console.log("player.status:", player?.status);
       console.log("player.error:", player?.error);
       console.log("player.duration:", player?.duration);
+
+      // Live Sync Logic
+      if (status.is_live && status.server_time_ist && status.current_broadcast_start_time && !hasSyncedLive) {
+        // Only attempt to seek if video has loaded its duration and is ready
+        if (player.status === 'readyToPlay' || player.status === 'playing') {
+          const serverTime = new Date(status.server_time_ist).getTime();
+          const startTime = new Date(status.current_broadcast_start_time).getTime();
+          const offsetSeconds = Math.max(0, (serverTime - startTime) / 1000);
+
+          console.log(`[Katha Live Sync] ServerTime: ${status.server_time_ist}, StartTime: ${status.current_broadcast_start_time}`);
+          console.log(`[Katha Live Sync] Calculated Offset: ${offsetSeconds} seconds`);
+
+          if (offsetSeconds > 0) {
+            player.seekBy(offsetSeconds);
+            setHasSyncedLive(true);
+            setIsPlaying(true);
+            player.play();
+          }
+        }
+      }
     } else {
       console.log("player instance: initializing or invalid");
     }
-  }, [activeVideoUrl, player]);
+  }, [activeVideoUrl, player, status, player?.status]);
 
   // Zero-Heat Thermal Management: Instantly pause video when screen loses focus
   useEffect(() => {
@@ -174,6 +194,8 @@ export default function KathaPage() {
             guru_name: statusJson.guru_name,
             banner_message: statusJson.banner_message,
             next_stream_at: statusJson.next_stream_at,
+            current_broadcast_start_time: statusJson.current_broadcast_start_time,
+            server_time_ist: statusJson.server_time_ist,
           });
         }
       }
@@ -187,7 +209,12 @@ export default function KathaPage() {
         console.log('[KathaPage] Episodes received:', JSON.stringify(epJson.episodes?.map((e: any) => ({ id: e.id, title: e.title, video_url: e.video_url }))));
         if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
           setEpisodes(epJson.episodes);
-          setActiveEpisode(epJson.episodes[0]);
+
+          // Select the latest episode (highest episode_number)
+          const latestEp = epJson.episodes.reduce((prev: KathaEpisode, current: KathaEpisode) => {
+            return (prev.episode_number || 0) > (current.episode_number || 0) ? prev : current;
+          });
+          setActiveEpisode(latestEp);
           console.log('[KathaPage] setEpisodes called with', epJson.episodes.length, 'episodes');
         } else {
           console.warn('[KathaPage] API returned empty episodes, falling back to DEFAULT_EPISODE');
@@ -226,7 +253,13 @@ export default function KathaPage() {
           if (epJson.status === 'success' && Array.isArray(epJson.episodes) && epJson.episodes.length > 0) {
             setEpisodes(epJson.episodes);
             // Only update active episode if none is set yet
-            setActiveEpisode(prev => prev ?? epJson.episodes[0]);
+            setActiveEpisode(prev => {
+              if (prev) return prev;
+              const latestEp = epJson.episodes.reduce((p: KathaEpisode, c: KathaEpisode) => {
+                return (p.episode_number || 0) > (c.episode_number || 0) ? p : c;
+              });
+              return latestEp;
+            });
             console.log('[KathaPage] isFocused refresh: episodes updated:', epJson.episodes.length);
           }
         }
@@ -506,6 +539,23 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
+  },
+  offAirContainer: {
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  offAirTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  offAirSub: {
+    color: '#CCC',
+    fontSize: 14,
+    marginTop: 5,
   },
   videoPlayer: {
     width: '100%',
