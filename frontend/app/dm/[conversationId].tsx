@@ -1113,6 +1113,29 @@ const DirectMessageScreen = () => {
     let pollingInterval: NodeJS.Timeout | null = null;
     const socketListenerId = `dm_${conversationId}_${Date.now()}`;
 
+    const stopPolling = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (pollingInterval) return;
+      pollingInterval = setInterval(async () => {
+        if (AppState.currentState !== 'active') return;
+        await fetchMessagesViaAPI();
+      }, 4000);
+    };
+
+    const handleSocketConnect = () => {
+      stopPolling();
+    };
+
+    const handleSocketDisconnect = () => {
+      startPolling();
+    };
+
     const handleRequestUpdated = (data: any) => {
       if (data && (data.chat_id === conversationId || data.conversation_id === conversationId)) {
         console.log('[Chat] dm_request_updated event received:', data);
@@ -1128,11 +1151,14 @@ const DirectMessageScreen = () => {
       }
     };
 
+    socketService.onEvent('connect', handleSocketConnect);
+    socketService.onEvent('disconnect', handleSocketDisconnect);
+    socketService.onEvent('dm_request_updated', handleRequestUpdated);
+
     (async () => {
       try {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
-        socketService.onEvent('dm_request_updated', handleRequestUpdated);
 
         socketService.onMessage(socketListenerId, async (rawMessage: any) => {
           if (isBlockedRef.current) return;
@@ -1180,17 +1206,24 @@ const DirectMessageScreen = () => {
           }
         });
       } catch (error) {
-        console.error('[Chat] Socket real-time setup failed:', error);
+        console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
+        startPolling();
       }
     })();
+
+    if (!socketService.isConnected() && !pollingInterval) {
+      startPolling();
+    }
 
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {
       socketService.offEvent('dm_request_updated', handleRequestUpdated);
+      socketService.offEvent('connect', handleSocketConnect);
+      socketService.offEvent('disconnect', handleSocketDisconnect);
       socketService.offMessage(socketListenerId);
       socketService.leaveRoom(conversationId!);
-      if (pollingInterval) clearInterval(pollingInterval);
+      stopPolling();
     };
   }, [conversationId, fetchConversation, fetchMessagesViaAPI, markMessagesAsRead, uploadingMedia]);
 

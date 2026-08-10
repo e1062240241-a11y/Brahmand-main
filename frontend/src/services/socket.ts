@@ -23,8 +23,10 @@ class SocketService {
       transports: Platform.OS === 'web' || isLocalTunnel ? ['polling'] : ['websocket', 'polling'],
       auth: { token },
       autoConnect: true,
-      reconnectionAttempts: 5,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       timeout: isLocalTunnel ? 20000 : 10000,
       ...(Platform.OS === 'web' ? { upgrade: false, withCredentials: false } : {}),
     };
@@ -110,6 +112,10 @@ class SocketService {
       this.socket = null;
     }
     this.connectPromise = null;
+  }
+
+  isConnected(): boolean {
+    return !!(this.socket && this.socket.connected);
   }
 
   joinRoom(room: string, peerId?: string) {

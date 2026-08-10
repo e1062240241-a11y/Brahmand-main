@@ -531,6 +531,31 @@ const ChatScreen = ({
       await fetchCommunityInfo();
     };
 
+    const startPolling = () => {
+      if (pollingInterval) return;
+      pollingInterval = setInterval(async () => {
+        if (AppState.currentState !== 'active') return;
+        const shouldContinue = await fetchMessages(true);
+        if (shouldContinue === false && pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+      }, 4000);
+    };
+
+    const stopPolling = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    };
+
+    const handleSocketConnect = () => stopPolling();
+    const handleSocketDisconnect = () => startPolling();
+
+    socketService.onEvent('connect', handleSocketConnect);
+    socketService.onEvent('disconnect', handleSocketDisconnect);
+
     const setupSocket = async () => {
       try {
         await socketService.connect();
@@ -538,37 +563,24 @@ const ChatScreen = ({
         socketService.onMessage(listenerId, (message) => addRealtimeMessage(message));
       } catch (error) {
         console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
-        if (!pollingInterval) {
-          pollingInterval = setInterval(async () => {
-            if (AppState.currentState !== 'active') return;
-            const shouldContinue = await fetchMessages(true);
-            if (shouldContinue === false && pollingInterval) {
-              clearInterval(pollingInterval);
-            }
-          }, 3000);
-        }
+        startPolling();
       }
     };
 
     loadClearedAtAndData();
 
-    if (Platform.OS === 'web') {
-      // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
-      pollingInterval = setInterval(async () => {
-        if (AppState.currentState !== 'active') return;
-        const shouldContinue = await fetchMessages(true);
-        if (shouldContinue === false && pollingInterval) {
-          clearInterval(pollingInterval);
-        }
-      }, 3000);
-    } else {
-      setupSocket();
+    setupSocket();
+
+    if (!socketService.isConnected() && !pollingInterval) {
+      startPolling();
     }
 
     return () => {
       socketService.leaveRoom(room);
+      socketService.offEvent('connect', handleSocketConnect);
+      socketService.offEvent('disconnect', handleSocketDisconnect);
       socketService.offMessage(listenerId);
-      if (pollingInterval) clearInterval(pollingInterval);
+      stopPolling();
     };
   }, [type, id, subgroup, fetchMessages, fetchCircleInfo, clearChatStorageKey, clearedAtMs, addRealtimeMessage]);
 
