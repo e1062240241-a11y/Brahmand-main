@@ -137,6 +137,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("google_genai").setLevel(logging.WARNING)
+logging.getLogger("google_genai.models").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 _sandbox_auth_cache = {
@@ -10845,45 +10847,23 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
 
         assistant_reply = None
 
-        # Step 1: Primary - Try Gemini API directly (Model: gemma-4-26b-a4b-it, thinking budget: 0)
-        # Fast response without waiting for ChromaDB!
+        # Step 1: Primary - Independent Gemini API Call (No AFC, no ChromaDB dependency)
         try:
-            logger.info("[Krishna-Chat] Calling primary Gemini API (model=gemma-4-26b-a4b-it, thinking=off)...")
+            logger.info("[Krishna-Chat] Calling primary Gemini API...")
             assistant_reply = await _call_gemini_primary(db_messages, system_prompt, model_name="gemma-4-26b-a4b-it")
             if assistant_reply and len(assistant_reply.strip()) > 0:
-                logger.info("[Krishna-Chat] Primary Gemini API responded successfully! Skipping ChromaDB RAG wait.")
+                logger.info("[Krishna-Chat] Primary Gemini API responded successfully!")
         except Exception as gemini_err:
-            logger.warning("[Krishna-Chat] Primary Gemini API call failed (%s). Falling back to ChromaDB RAG...", gemini_err)
+            logger.warning("[Krishna-Chat] Gemini API call failed (%s). Activating independent ChromaDB/Gita DB fallback...", gemini_err)
 
-        # Step 2: Fallback - ChromaDB / Gita RAG Retrieval if Gemini API fails
+        # Step 2: Fallback - Independent ChromaDB / Gita DB Fallback (No extra Gemini API calls)
         if not assistant_reply:
-            rag_query = latest_user_msg
-            if profile and profile.get("focus_area") and profile.get("focus_area").lower() not in ("general", "none", ""):
-                rag_query = f"Bhagavad Gita wisdom for {latest_user_msg} in {profile['focus_area']}"
-
-            rag_context = ""
             try:
-                from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
-                if latest_user_msg:
-                    shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
-                    rag_context = build_rag_context(shlokas)
-                    if rag_context:
-                        source = shlokas[0].get("source", "unknown") if shlokas else "unknown"
-                        logger.info(
-                            "[RAG-Fallback] Injecting %d Gita shlokas (source=%s) for query: '%s'",
-                            len(shlokas), source, rag_query[:60],
-                        )
-            except Exception as rag_err:
-                logger.error("[RAG-Fallback] ChromaDB retrieval failed: %s", rag_err)
-
-            final_system_prompt = system_prompt
-            if rag_context:
-                final_system_prompt = system_prompt + f"\n\n{rag_context}"
-
-            try:
-                assistant_reply = await _call_gemini_primary(db_messages, final_system_prompt, model_name="gemma-4-26b-a4b-it")
+                from utils.krishna_gita_db import get_gita_solution
+                sol = get_gita_solution(latest_user_msg)
+                assistant_reply = sol.get("response", "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏")
             except Exception as fallback_err:
-                logger.error("[Krishna-Chat] Fallback LLM generation failed: %s", fallback_err)
+                logger.error("[Krishna-Chat] Fallback retrieval failed: %s", fallback_err)
                 assistant_reply = "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
             
         # Apply regex shloka replacement for any dynamic shloka references
