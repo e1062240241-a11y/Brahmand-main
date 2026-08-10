@@ -235,13 +235,40 @@ const NearbyTempleCard: React.FC<{ temple: NearbyTempleItem; router: any }> = ({
     router.push(`/temple/${temple.templeId}`);
   };
 
+  const resolvedImage = (() => {
+    if (temple.image && temple.image !== DEFAULT_TEMPLE_IMAGE) {
+      return resolveImageSource(temple.image);
+    }
+    if (temple.templeId) {
+      const byId = getTempleImageById(temple.templeId);
+      if (byId && byId !== DEFAULT_TEMPLE_IMAGE) return byId;
+    }
+    if (temple.name) {
+      const byName = getTempleImageByName(temple.name);
+      if (byName && byName !== DEFAULT_TEMPLE_IMAGE) return byName;
+    }
+    return null;
+  })();
+
+  const hasValidPhoto = Boolean(resolvedImage && resolvedImage !== DEFAULT_TEMPLE_IMAGE);
+
   return (
     <TouchableOpacity
       style={styles.nearbyTempleCard}
       onPress={handlePress}
       activeOpacity={0.88}
     >
-      <ImageWithFallback source={temple.image} style={styles.nearbyTempleImage} fallbackName={temple.name} />
+      {hasValidPhoto ? (
+        <Image
+          source={resolvedImage!}
+          style={styles.nearbyTempleImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.sacredIconCircle}>
+          <Ionicons name="location-outline" size={20} color={THEME.accentIndigo} />
+        </View>
+      )}
       <View style={styles.nearbyTempleTextContainer}>
         <Text style={styles.nearbyTempleName} numberOfLines={1}>
           {temple.name}

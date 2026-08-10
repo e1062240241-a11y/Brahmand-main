@@ -1,4 +1,4 @@
-import { getTempleImageById } from '../constants/templeImages';
+import { getTempleImageById, getTempleImageByName } from '../constants/templeImages';
 import { CENTRALIZED_SACRED_PLACES_DATA } from './templeSacredPlacesData';
 
 export interface SacredPlaceItem {
@@ -302,6 +302,40 @@ export const TEMPLE_KEY_ALIASES: Record<string, string> = {
   vishwanath: 'kashi-vishwanath',
   varanasi: 'kashi-vishwanath',
   'jyotirling-kashi-vishwanath-temple-varanasi': 'kashi-vishwanath',
+  'kaal-bhairav-mandir-varanasi': 'kashi-vishwanath',
+  'annapurna-mata-mandir-varanasi': 'kashi-vishwanath',
+  'sankat-mochan-hanuman-temple-varanasi': 'kashi-vishwanath',
+
+  // Kedarnath sub-temples
+  'triyuginarayan-shiva-temple': 'kedarnath',
+  'tungnath-mahadev-temple-chopta': 'kedarnath',
+
+  // Badrinath sub-temples
+  'mata-murti-temple-badrinath': 'badrinath',
+  'yoganarasimha-temple-joshimath': 'badrinath',
+
+  // Baidyanath sub-temples
+  'basukinath-dham-jharkhand': 'baidyanath',
+  'shakti-tarapith-temple-bengal': 'baidyanath',
+
+  // Grishneshwar sub-temples
+  'bhadra-maruti-temple-khuldabad': 'grishneshwar',
+
+  // Omkareshwar sub-temples
+  'mamleshwar-temple-omkareshwar': 'omkareshwar',
+
+  // Trimbakeshwar sub-temples
+  'kalaram-temple-nashik': 'trimbakeshwar',
+
+  // Nageshwar sub-temples
+  'rukmini-devi-temple-dwarka': 'nageshwar',
+
+  // Ramanathaswamy sub-temples
+  'kothandaramaswamy-temple-rameswaram': 'ramanathaswamy',
+
+  // Srisailam sub-temples
+  'sakshi-ganapati-temple-srisailam': 'srisailam',
+  'paladhara-panchadhara-srisailam': 'srisailam',
 
   // Baidyanath
   baidyanath: 'baidyanath',
@@ -452,19 +486,19 @@ export const EXPLORE_NEARBY_DATA: Record<
       {
         templeId: 'triyuginarayan-shiva-temple',
         name: 'Triyuginarayan Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        image: getTempleImageByName('Triyuginarayan'),
         distance: '25 km',
       },
       {
         templeId: 'tungnath-mahadev-temple-chopta',
         name: 'Tungnath Mahadev Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        image: getTempleImageByName('Tungnath'),
         distance: '88 km',
       },
       {
         templeId: 'badrinath',
         name: 'Badrinath Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        image: getTempleImageByName('Badrinath'),
         distance: '218 km',
       },
     ],
@@ -510,19 +544,19 @@ export const EXPLORE_NEARBY_DATA: Record<
       {
         templeId: 'mata-murti-temple-badrinath',
         name: 'Mata Murti Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        image: getTempleImageByName('Mata Murti'),
         distance: '3 km',
       },
       {
         templeId: 'kedarnath',
         name: 'Kedarnath Temple',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        image: getTempleImageByName('Kedarnath'),
         distance: '218 km',
       },
       {
         templeId: 'yoganarasimha-temple-joshimath',
         name: 'Narsingh Temple Joshimath',
-        image: getTempleImageById('jyotirling-kedarnath-temple-uttarakhand'),
+        image: getTempleImageByName('Narsingh'),
         distance: '45 km',
       },
     ],
@@ -784,19 +818,19 @@ export const EXPLORE_NEARBY_DATA: Record<
       {
         templeId: 'annapurna-mata-mandir-varanasi',
         name: 'Annapurna Mata Mandir',
-        image: getTempleImageById('jyotirling-kashi-vishwanath-temple-varanasi'),
+        image: getTempleImageById('devi-annapoorneshwari-temple-horanadu') || getTempleImageByName('Annapurna'),
         distance: '0.1 km',
       },
       {
         templeId: 'kaal-bhairav-mandir-varanasi',
         name: 'Kaal Bhairav Mandir',
-        image: getTempleImageById('jyotirling-kashi-vishwanath-temple-varanasi'),
+        image: getTempleImageById('sacred-bhairavnath') || getTempleImageByName('bhairavnath'),
         distance: '1.5 km',
       },
       {
         templeId: 'sankat-mochan-hanuman-temple-varanasi',
         name: 'Sankat Mochan Temple',
-        image: getTempleImageById('jyotirling-kashi-vishwanath-temple-varanasi'),
+        image: getTempleImageById('other-sankat-mochan-hanuman-temple-varanasi') || getTempleImageByName('sankatmochan'),
         distance: '4 km',
       },
     ],
@@ -842,13 +876,13 @@ export const EXPLORE_NEARBY_DATA: Record<
       {
         templeId: 'basukinath-dham-jharkhand',
         name: 'Basukinath Dham Temple',
-        image: getTempleImageById('jyotirling-baidyanath-temple-deoghar'),
+        image: getTempleImageByName('Basukinath'),
         distance: '43 km',
       },
       {
         templeId: 'shakti-tarapith-temple-bengal',
         name: 'Tarapith Shakti Peeth',
-        image: getTempleImageById('other-vaishno-devi-temple-jammu-kashmir'),
+        image: getTempleImageByName('Tarapith'),
         distance: '125 km',
       },
       {
@@ -1130,13 +1164,13 @@ export const EXPLORE_NEARBY_DATA: Record<
       {
         templeId: 'kothandaramaswamy-temple-rameswaram',
         name: 'Kothandaramaswamy Temple',
-        image: getTempleImageById('jyotirling-ramanathaswamy-temple-rameswaram'),
+        image: getTempleImageByName('Kothandaramaswamy'),
         distance: '12 km',
       },
       {
         templeId: 'meenakshi-amman-temple-madurai',
         name: 'Meenakshi Amman Temple Madurai',
-        image: getTempleImageById('jyotirling-ramanathaswamy-temple-rameswaram'),
+        image: getTempleImageByName('Meenakshi'),
         distance: '170 km',
       },
     ],
@@ -1174,13 +1208,13 @@ export const EXPLORE_NEARBY_DATA: Record<
       {
         templeId: 'sakshi-ganapati-temple-srisailam',
         name: 'Sakshi Ganapati Temple',
-        image: getTempleImageById('jyotirling-mallikarjuna-temple-srisailam'),
+        image: getTempleImageByName('Sakshi Ganapati'),
         distance: '3 km',
       },
       {
         templeId: 'paladhara-panchadhara-srisailam',
         name: 'Paladhara Panchadhara Shrine',
-        image: getTempleImageById('jyotirling-mallikarjuna-temple-srisailam'),
+        image: getTempleImageByName('Paladhara'),
         distance: '4 km',
       },
     ],
@@ -1396,19 +1430,18 @@ export function getExploreNearbyData(
   }
 
   // 1. Nearby Sacred Places: Curated data OR Centralized master dataset lookup
-  const sacredPlaces: SacredPlaceItem[] =
+  const rawSacredPlaces: SacredPlaceItem[] =
     curatedData?.sacredPlaces ??
     CENTRALIZED_SACRED_PLACES_DATA[templeId] ??
     CENTRALIZED_SACRED_PLACES_DATA[currentTempleKey] ??
     CENTRALIZED_SACRED_PLACES_DATA[normalizeTempleKey(templeName)] ??
     [];
 
-  // 2. Nearby Temples: Curated nearby temples WITH self-temple exclusion OR Coordinate-based Fallback
+  // 2. Nearby Temples: Curated nearby temples OR Coordinate-based Fallback
   let rawNearbyTemples: NearbyTempleItem[] = curatedData?.nearbyTemples ?? [];
 
   // Fallback: If no curated nearby temples, compute via coordinates using inventory
   if (rawNearbyTemples.length === 0) {
-    // Find current temple in dump if coords not explicitly passed
     let currentLat = coords?.latitude;
     let currentLon = coords?.longitude;
 
@@ -1430,8 +1463,14 @@ export function getExploreNearbyData(
         const candKey = normalizeTempleKey(candidate.id || candidate.temple_id) || normalizeTempleKey(candidate.name);
         const candidateId = candidate.temple_id || candidate.id;
 
-        // Exclude current temple
-        if (candKey === currentTempleKey || candidateId === templeId) continue;
+        // Exclude current temple early from coordinate distance calculation
+        if (
+          candidateId === templeId ||
+          candKey === currentTempleKey ||
+          normalizeTempleKey(candidate.name) === currentTempleKey
+        ) {
+          continue;
+        }
         if (!candidate.coords?.latitude || !candidate.coords?.longitude) continue;
 
         const distKm = calculateDistanceKm(
@@ -1460,35 +1499,89 @@ export function getExploreNearbyData(
     }
   }
 
-  const filteredNearbyTemples = rawNearbyTemples.filter((t) => {
-    const templeItemKey = normalizeTempleKey(t.templeId) || normalizeTempleKey(t.name);
-    return templeItemKey !== currentTempleKey && t.templeId !== templeId;
-  });
+  // Robust Centralized Canonical Identity Matcher
+  const isCurrentTemple = (item: any) => {
+    if (!item) return false;
+
+    const currentIds = new Set(
+      [
+        templeId,
+        templeName,
+        currentTempleKey,
+        normalizeTempleKey(templeId),
+        normalizeTempleKey(currentTempleKey),
+        normalizeTempleKey(templeName),
+        templeName.split('–')[0].trim(),
+        normalizeTempleKey(templeName.split('–')[0].trim()),
+      ]
+        .map((v) => String(v || '').toLowerCase().trim())
+        .filter(Boolean)
+    );
+
+    const itemValues = [
+      item?.id,
+      item?.templeId,
+      item?.temple_id,
+      item?.name,
+      item?.templeName,
+      item?.name ? String(item.name).split('–')[0].trim() : '',
+    ]
+      .filter(Boolean)
+      .flatMap((v) => {
+        const str = String(v);
+        const norm = normalizeTempleKey(str);
+        return [str.toLowerCase().trim(), norm, norm ? normalizeTempleKey(norm) : ''];
+      })
+      .filter(Boolean);
+
+    return itemValues.some((val) => currentIds.has(val));
+  };
+
+  // Final Output Level Self-Filtering across all collections
+  const filteredSacredPlaces = rawSacredPlaces.filter((item) => !isCurrentTemple(item));
+  const filteredNearbyTemples = rawNearbyTemples.filter((item) => !isCurrentTemple(item));
+  const filteredCircuit = circuitJourney.filter((item) => !isCurrentTemple(item));
+
+  // Unique Deduplication for Nearby Temples & Sacred Places
+  const seenNearbyTempleKeys = new Set<string>();
+  const deduplicatedNearbyTemples: NearbyTempleItem[] = [];
+  for (const item of filteredNearbyTemples) {
+    const key = normalizeTempleKey(item.templeId) || normalizeTempleKey(item.name) || String(item.name || '').toLowerCase().trim();
+    if (key && !seenNearbyTempleKeys.has(key)) {
+      seenNearbyTempleKeys.add(key);
+      deduplicatedNearbyTemples.push(item);
+    }
+  }
+
+  const seenSacredKeys = new Set<string>();
+  const deduplicatedSacredPlaces: SacredPlaceItem[] = [];
+  for (const item of filteredSacredPlaces) {
+    const key = item.id || normalizeTempleKey(item.name) || String(item.name || '').toLowerCase().trim();
+    if (key && !seenSacredKeys.has(key)) {
+      seenSacredKeys.add(key);
+      deduplicatedSacredPlaces.push(item);
+    }
+  }
 
   console.log('[NEARBY PIPELINE COUNTS]', {
-    sourceCount: rawNearbyTemples.length,
-    afterCurrentTempleFilter: filteredNearbyTemples.length,
-    finalCount: filteredNearbyTemples.length
+    sacredPlacesRaw: rawSacredPlaces.length,
+    sacredPlacesFinal: deduplicatedSacredPlaces.length,
+    nearbyTemplesRaw: rawNearbyTemples.length,
+    nearbyTemplesFinal: deduplicatedNearbyTemples.length,
   });
 
   console.log('[NEARBY FINAL RESULT]', {
     hasCuratedData: !!curatedData,
-    sacredPlacesCount: sacredPlaces.length,
-    nearbyTemplesCount: filteredNearbyTemples.length
-  });
-
-  // 3. Circuit Journey: Exclude self-temple
-  const filteredCircuit = circuitJourney.filter((item) => {
-    const itemKey = normalizeTempleKey(item.templeId) || normalizeTempleKey(item.name);
-    return itemKey !== currentTempleKey;
+    sacredPlacesCount: deduplicatedSacredPlaces.length,
+    nearbyTemplesCount: deduplicatedNearbyTemples.length,
   });
 
   return {
     templeId,
     templeName,
     hasCuratedData: !!curatedData,
-    nearbySacredPlaces: sacredPlaces,
-    nearbyTemples: filteredNearbyTemples,
+    nearbySacredPlaces: deduplicatedSacredPlaces,
+    nearbyTemples: deduplicatedNearbyTemples,
     journeyTitle,
     circuitJourney: filteredCircuit,
   };
