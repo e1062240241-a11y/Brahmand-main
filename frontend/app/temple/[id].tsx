@@ -1,3 +1,4 @@
+import { resolveTempleTransport } from '../../src/data/templeTransportResolver';
 // accessibility: placeholder
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated, Dimensions, Share } from 'react-native';
@@ -986,7 +987,7 @@ export default function TempleDetailScreen() {
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   const galleryScrollRef = useRef<FlatList>(null);
 
-  const templeKey = getSpecialTempleKey(temple?.name || '');
+  const templeKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
   const specialTempleData = SPECIAL_TEMPLE_DATA[templeKey] || null;
   const resolvedCoords = temple?.coords || specialTempleData?.coords || null;
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
@@ -1032,11 +1033,19 @@ export default function TempleDetailScreen() {
 
   const loadLocalTempleData = async () => {
     try {
-      const localTemples = await database.get('temples').query(Q.where('temple_id', resolvedTempleId)).fetch();
+      let localTemples = await database.get('temples').query(Q.where('temple_id', resolvedTempleId)).fetch();
+      if (!localTemples || localTemples.length === 0) {
+        try {
+          const rec = await database.get('temples').find(resolvedTempleId);
+          if (rec) localTemples = [rec];
+        } catch (_) {}
+      }
       if (localTemples && localTemples.length > 0) {
         const t = localTemples[0] as any;
+        const realTempleId = t.templeId || t._raw?.temple_id || resolvedTempleId;
         setTemple({
-          id: t.templeId,
+          id: realTempleId,
+          temple_id: realTempleId,
           name: t.name,
           location: t.location,
           deity: t.deity,
@@ -1724,100 +1733,7 @@ if (!temple) {
     return null;
   };
 
-  // Helper to resolve verified travel connectivity (By Air, By Rail, By Bus / Road) for the 12 Jyotirlingas
-  const getAuthenticJyotirlingaTransport = () => {
-    const nameLower = (temple.name || '').toLowerCase();
-    const idLower = (resolvedTempleId || '').toLowerCase();
-    const keyLower = (templeKey || '').toLowerCase();
-    const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
 
-    if (match('somnath')) {
-      return {
-        air: 'Diu Airport (~85 km), Rajkot Airport (~195 km)',
-        rail: 'Veraval Railway Station (~7 km)',
-        bus: 'Regular GSRTC and private buses from Rajkot, Ahmedabad, Junagadh, Dwarka, and Diu. Taxis are readily available from Veraval.'
-      };
-    }
-    if (match('mallikarjuna') || match('srisailam')) {
-      return {
-        air: 'Hyderabad Airport (~215 km)',
-        rail: 'Markapur Road Railway Station (~85 km)',
-        bus: 'APSRTC buses operate from Hyderabad, Vijayawada, Guntur, Kurnool, and Nandyal. Hill-road taxi services are also available.'
-      };
-    }
-    if (match('mahakal')) {
-      return {
-        air: 'Devi Ahilyabai Holkar Airport, Indore (~55 km)',
-        rail: 'Ujjain Junction (~2 km)',
-        bus: 'Frequent buses from Indore, Bhopal, Ratlam, Kota, and nearby cities. Auto-rickshaws and taxis are available from the station.'
-      };
-    }
-    if (match('omkareshwar')) {
-      return {
-        air: 'Indore Airport (~80 km)',
-        rail: 'Omkareshwar Road Railway Station (Mortakka) (~12 km)',
-        bus: 'Regular buses from Indore, Khandwa, Ujjain, and Khargone. Local taxis and shared vehicles are available.'
-      };
-    }
-    if (match('kedarnath')) {
-      return {
-        air: 'Jolly Grant Airport, Dehradun (~238 km to Gaurikund)',
-        rail: 'Rishikesh Railway Station (~216 km to Gaurikund)',
-        bus: 'Buses and taxis connect Dehradun, Haridwar, and Rishikesh to Gaurikund. From Gaurikund, devotees undertake a 16 km trek or use helicopter, pony, or palanquin services during the pilgrimage season.'
-      };
-    }
-    if (match('bhimashankar')) {
-      return {
-        air: 'Pune Airport (~125 km)',
-        rail: 'Pune Junction (~110 km)',
-        bus: 'MSRTC buses run from Pune, Nashik, and Mumbai. Private taxis are also available.'
-      };
-    }
-    if (match('kashi') || match('vishwanath')) {
-      return {
-        air: 'Lal Bahadur Shastri International Airport (~26 km)',
-        rail: 'Varanasi Junction (~5 km), Banaras Station (~6 km)',
-        bus: 'Excellent UPSRTC and private bus connectivity from Prayagraj, Lucknow, Gorakhpur, and nearby cities. E-rickshaws and autos are available to the temple area.'
-      };
-    }
-    if (match('trimbakeshwar')) {
-      return {
-        air: 'Nashik Airport (~40 km), Mumbai Airport (~180 km)',
-        rail: 'Nashik Road Railway Station (~39 km)',
-        bus: 'Frequent buses from Nashik CBS. Taxis and shared cabs are easily available.'
-      };
-    }
-    if (match('baidyanath') || match('babadham') || match('vaidyanath')) {
-      return {
-        air: 'Deoghar Airport (~12 km)',
-        rail: 'Jasidih Junction (~8 km)',
-        bus: 'Regular buses and taxis from Jasidih, Dumka, Bhagalpur, Ranchi, and Patna.'
-      };
-    }
-    if (match('nageshwar')) {
-      return {
-        air: 'Jamnagar Airport (~137 km)',
-        rail: 'Dwarka Railway Station (~17 km)',
-        bus: 'GSRTC buses connect Dwarka with Jamnagar, Rajkot, Ahmedabad, and Porbandar. Taxis are available from Dwarka.'
-      };
-    }
-    if (match('rameshwar') || match('ramanathaswamy')) {
-      return {
-        air: 'Madurai Airport (~170 km)',
-        rail: 'Rameswaram Railway Station (~2 km)',
-        bus: 'TNSTC buses connect Madurai, Chennai, Tiruchirappalli, and other cities. Auto-rickshaws and taxis are available from the station.'
-      };
-    }
-    if (match('grishneshwar') || match('ghrushneshwar') || match('grineshwar')) {
-      return {
-        air: 'Chhatrapati Sambhajinagar Airport (~35 km)',
-        rail: 'Chhatrapati Sambhajinagar Railway Station (~30 km)',
-        bus: 'MSRTC buses operate from Chhatrapati Sambhajinagar to Verul (Ellora). Taxis and local buses are available.'
-      };
-    }
-
-    return null;
-  };
 
   // Helper to map raw facility names/keys into clean, user-friendly labels with emojis
   const formatAmenityLabel = (amenity: string): string => {
@@ -2771,17 +2687,24 @@ if (!temple) {
           <TempleFacilitiesSection />
           {/* ABOUT TEMPLE STORY & TRAVEL ROUTE VISUALIZATION */}
           {(() => {
-            const authenticTransport = getAuthenticJyotirlingaTransport();
-            const airInfo = authenticTransport?.air || temple?.nearest_airport;
-            const railInfo = authenticTransport?.rail || temple?.nearest_railway;
-            const busInfo = authenticTransport?.bus || temple?.nearest_bus_stand;
+            const travelData = resolveTempleTransport({
+              temple,
+              templeId: resolvedTempleId,
+              templeName: temple?.name,
+              coords: resolvedCoords,
+              locationLabel: formatTempleLocation(temple),
+              guidance: templeGuidance,
+            });
 
-            const festList = Array.isArray(templeFestivals)
-              ? templeFestivals.map((f: any) => (typeof f === 'object' ? f.name || f.name_hi : String(f)))
-              : templeFestivals
-              ? [String(templeFestivals)]
-              : ['Maha Shivratri', 'Shravan Somvar', 'Annakutotsav'];
+            console.log('[TRAVEL DATA RESOLVED]', {
+              templeId: resolvedTempleId,
+              templeName: temple?.name,
+              travelData,
+            });
 
+            const airInfo = travelData.air;
+            const railInfo = travelData.rail;
+            const busInfo = travelData.bus;
             return (
               <AboutTempleStory
                 templeName={temple?.name || 'Temple Shrine'}
@@ -2790,10 +2713,10 @@ if (!temple) {
                 significance={templeSignificance || 'Believed to be one of the sacred pilgrimage shrines where divine energies reside.'}
                 history={typeof templeHistory === 'string' ? templeHistory : 'Tracing ancient origins, rebuilt across eras by royal patrons and devotees.'}
                 architecture={templeArchitecture || 'Built in traditional sacred Indian temple architectural style with carved stone pillars and sanctum.'}
-                festivals={festList}
-                airRoute={airInfo || 'Nearest Major Airport'}
-                railRoute={railInfo || 'Nearest Railway Station'}
-                busRoute={busInfo ? `Direct connectivity: ${busInfo}` : 'Regular buses & taxis available from neighboring cities'}
+                festivals={Array.isArray(temple?.festivals) ? temple.festivals : []}
+                airRoute={airInfo || ""}
+                railRoute={railInfo || ""}
+                busRoute={busInfo || ""}
               />
             );
           })()}
@@ -2874,6 +2797,7 @@ if (!temple) {
             templeName={temple?.name || ''}
             location={temple?.location || ''}
             category={temple?.category || ''}
+            coords={temple?.coords}
           />
 
         </ScrollView>

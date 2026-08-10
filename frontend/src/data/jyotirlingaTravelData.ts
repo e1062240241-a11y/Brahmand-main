@@ -1,4 +1,5 @@
 import { getTempleImageById } from '../constants/templeImages';
+import { CENTRALIZED_SACRED_PLACES_DATA } from './templeSacredPlacesData';
 
 export interface SacredPlaceItem {
   id: string;
@@ -1212,22 +1213,82 @@ export function isHealingTemple(templeId: string, templeName: string = '', categ
   );
 }
 
+const SHAKTI_PEETHA_KEYS = new Set([
+  'kamakhya',
+  'kalighat',
+  'tarapith',
+  'ambaji',
+  'tripura-sundari',
+  'jwala-ji',
+  'hinglaj',
+  'chhinnamasta',
+  'biraja',
+  'vishalakshi',
+  'mangalagauri',
+  'kanyakumari',
+  'naina-devi',
+  'harsiddhi',
+  'sharda-peeth',
+  'amarnath-shakti',
+  'kamakshi-amman',
+  'maihar-sharda',
+  'taratarini',
+  'vindhyavasini',
+  'danteshwari',
+  'muktinath-gandaki',
+  'bhabanipur',
+  'kiriteswari',
+  'manibandh',
+  'katyayani-vrindavan',
+  'bhadrakali-kurukshetra',
+  'devi-talab-jalandhar',
+  'pashupatinath-guheshwari',
+  'sugandha',
+  'attahas',
+  'kankalitala',
+  'nalateswari',
+  'janaki-janakpur',
+  'chintpurni',
+  'mookambika',
+  'chottanikara',
+]);
+
 export function isShaktiPeetha(templeId: string, templeName: string = '', category: string = ''): boolean {
-  const checkStr = `${templeId} ${templeName} ${category}`.toLowerCase();
-  return (
-    checkStr.includes('shakti') ||
-    checkStr.includes('peeth') ||
-    checkStr.includes('devi') ||
-    checkStr.includes('mata') ||
-    checkStr.includes('kamakhya') ||
-    checkStr.includes('vaishno') ||
-    checkStr.includes('meenakshi') ||
-    checkStr.includes('mahalaxmi') ||
-    checkStr.includes('kalighat') ||
-    checkStr.includes('ambaji') ||
-    checkStr.includes('chamundeshwari') ||
-    checkStr.includes('kamakshi')
-  );
+  const cKey = normalizeTempleKey(templeId) || normalizeTempleKey(templeName);
+  if (cKey && SHAKTI_PEETHA_KEYS.has(cKey)) {
+    return true;
+  }
+
+  const checkStr = `${templeId} ${templeName} ${category}`.toLowerCase().trim();
+
+  const shaktiPeethaKeywords = [
+    'kamakhya',
+    'kamakshi',
+    'kalighat',
+    'tarapith',
+    'tarapeeth',
+    'ambaji',
+    'chhinnamasta',
+    'jwala ji',
+    'jwalaji',
+    'hinglaj',
+    'mahakali',
+    'tripura sundari',
+    'tripureshwari',
+    'biraja',
+    'vimala',
+    'mangalagauri',
+    'vishalakshi',
+    'shakti peetha',
+    'shakti pitha',
+    'shaktipeetha',
+    'shaktipitha',
+    'chintpurni',
+    'mookambika',
+    'chottanikara',
+  ];
+
+  return shaktiPeethaKeywords.some((keyword) => checkStr.includes(keyword));
 }
 
 export function isJyotirlinga(templeId: string, templeName: string = '', category: string = ''): boolean {
@@ -1248,10 +1309,25 @@ export function isJyotirlinga(templeId: string, templeName: string = '', categor
   );
 }
 
+import TEMPLE_DUMP_DATA from '../constants/templeDataDump.json';
+
+function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180);
+  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 export function getExploreNearbyData(
   templeId: string,
   templeName: string = '',
-  category: string = ''
+  category: string = '',
+  coords?: { latitude: number; longitude: number }
 ): ExploreNearbyData {
   let journeyTitle = 'Continue Your Jyotirlinga Journey';
   let circuitJourney = ALL_12_JYOTIRLINGAS;
@@ -1279,6 +1355,28 @@ export function getExploreNearbyData(
   // Retrieve curated entry
   const curatedData = EXPLORE_NEARBY_DATA[currentTempleKey];
 
+  console.log('[NEARBY RUNTIME INPUT]', {
+    rawRouteId: templeId,
+    loadedTempleId: templeId,
+    loadedTempleName: templeName,
+    category,
+    coords
+  });
+
+  console.log('[NEARBY CANONICAL RESULT]', {
+    candidates: { idNorm: normalizeTempleKey(templeId), nameNorm: normalizeTempleKey(templeName) },
+    normalizedKey: currentTempleKey,
+    matchedKey: currentTempleKey,
+    source: curatedData ? (normalizeTempleKey(templeId) && EXPLORE_NEARBY_DATA[normalizeTempleKey(templeId)] ? 'id' : 'name') : 'none'
+  });
+
+  console.log('[NEARBY DATA LOOKUP]', {
+    matchedKey: currentTempleKey,
+    exploreDataExists: !!curatedData,
+    sacredPlacesCount: curatedData?.sacredPlaces?.length ?? 0,
+    nearbyTemplesCount: curatedData?.nearbyTemples?.length ?? 0
+  });
+
   // Diagnostic logging
   console.log('[NEARBY RESOLUTION]', {
     rawId: templeId,
@@ -1297,21 +1395,86 @@ export function getExploreNearbyData(
     });
   }
 
-  // 1. Nearby Sacred Places: Direct curated data (Independent, NOT filtered by self-temple key)
-  const sacredPlaces: SacredPlaceItem[] = curatedData?.sacredPlaces ?? [];
+  // 1. Nearby Sacred Places: Curated data OR Centralized master dataset lookup
+  const sacredPlaces: SacredPlaceItem[] =
+    curatedData?.sacredPlaces ??
+    CENTRALIZED_SACRED_PLACES_DATA[templeId] ??
+    CENTRALIZED_SACRED_PLACES_DATA[currentTempleKey] ??
+    CENTRALIZED_SACRED_PLACES_DATA[normalizeTempleKey(templeName)] ??
+    [];
 
-  // 2. Nearby Temples: Curated nearby temples WITH self-temple exclusion
-  const rawNearbyTemples: NearbyTempleItem[] = curatedData?.nearbyTemples ?? [];
+  // 2. Nearby Temples: Curated nearby temples WITH self-temple exclusion OR Coordinate-based Fallback
+  let rawNearbyTemples: NearbyTempleItem[] = curatedData?.nearbyTemples ?? [];
+
+  // Fallback: If no curated nearby temples, compute via coordinates using inventory
+  if (rawNearbyTemples.length === 0) {
+    // Find current temple in dump if coords not explicitly passed
+    let currentLat = coords?.latitude;
+    let currentLon = coords?.longitude;
+
+    if ((!currentLat || !currentLon) && Array.isArray(TEMPLE_DUMP_DATA)) {
+      const dumpMatch = (TEMPLE_DUMP_DATA as any[]).find((t) => {
+        const dumpKey = normalizeTempleKey(t.id || t.temple_id) || normalizeTempleKey(t.name);
+        return dumpKey === currentTempleKey || t.id === templeId || t.temple_id === templeId;
+      });
+      if (dumpMatch?.coords?.latitude && dumpMatch?.coords?.longitude) {
+        currentLat = dumpMatch.coords.latitude;
+        currentLon = dumpMatch.coords.longitude;
+      }
+    }
+
+    if (currentLat && currentLon && Array.isArray(TEMPLE_DUMP_DATA)) {
+      const candidates: { templeId: string; name: string; image: any; distanceKm: number; distance: string }[] = [];
+
+      for (const candidate of TEMPLE_DUMP_DATA as any[]) {
+        const candKey = normalizeTempleKey(candidate.id || candidate.temple_id) || normalizeTempleKey(candidate.name);
+        const candidateId = candidate.temple_id || candidate.id;
+
+        // Exclude current temple
+        if (candKey === currentTempleKey || candidateId === templeId) continue;
+        if (!candidate.coords?.latitude || !candidate.coords?.longitude) continue;
+
+        const distKm = calculateDistanceKm(
+          currentLat,
+          currentLon,
+          candidate.coords.latitude,
+          candidate.coords.longitude
+        );
+
+        candidates.push({
+          templeId: candidateId,
+          name: candidate.name,
+          image: getTempleImageById(candidateId) || getTempleImageById(candKey),
+          distanceKm: distKm,
+          distance: `${Math.round(distKm)} km`,
+        });
+      }
+
+      candidates.sort((a, b) => a.distanceKm - b.distanceKm);
+      rawNearbyTemples = candidates.slice(0, 3).map((item) => ({
+        templeId: item.templeId,
+        name: item.name,
+        image: item.image,
+        distance: item.distance,
+      }));
+    }
+  }
+
   const filteredNearbyTemples = rawNearbyTemples.filter((t) => {
     const templeItemKey = normalizeTempleKey(t.templeId) || normalizeTempleKey(t.name);
-    return templeItemKey !== currentTempleKey;
+    return templeItemKey !== currentTempleKey && t.templeId !== templeId;
   });
 
-  console.log('[NEARBY FILTER RESULT]', {
-    currentTempleKey,
-    beforeCount: rawNearbyTemples.length,
-    afterCount: filteredNearbyTemples.length,
-    temples: filteredNearbyTemples.map((t) => ({ id: t.templeId, name: t.name })),
+  console.log('[NEARBY PIPELINE COUNTS]', {
+    sourceCount: rawNearbyTemples.length,
+    afterCurrentTempleFilter: filteredNearbyTemples.length,
+    finalCount: filteredNearbyTemples.length
+  });
+
+  console.log('[NEARBY FINAL RESULT]', {
+    hasCuratedData: !!curatedData,
+    sacredPlacesCount: sacredPlaces.length,
+    nearbyTemplesCount: filteredNearbyTemples.length
   });
 
   // 3. Circuit Journey: Exclude self-temple

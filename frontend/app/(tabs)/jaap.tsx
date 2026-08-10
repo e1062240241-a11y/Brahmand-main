@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { getTempleImageById, getTempleImageByName, getTempleImageByNameDetailed, resolveTempleImage, TEMPLE_IMAGES, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import api, { getTemples } from '../../src/services/api';
+import { isShaktiPeetha as isShaktiPeethaGlobal } from '../../src/data/jyotirlingaTravelData';
 import { getCurrentGayatriEnd, isWithinGayatriMantraWindow, formatTime, getCurrentHanumanStatus, getCurrentOtherJaapStatus } from '../../src/features/live-mantra/schedule';
 import { formatTimeIST } from '../../src/utils/dateUtils';
 import { useTranslation } from '../../src/utils/i18n';
@@ -642,11 +643,18 @@ export default function JaapLandingScreen() {
   };
 
   const isShaktiPeetha = (t: any) => {
+    const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+    const tName = (t.name || '').toLowerCase();
     const category = (t.category || '').trim().toLowerCase();
     const categoryIds = Array.isArray(t.category_ids)
       ? t.category_ids.map((c: string) => String(c).toLowerCase())
       : [];
-    return category.includes('shakti') || categoryIds.some((c: string) => c.includes('shakti'));
+
+    if (category === 'shakti peetha' || category === 'shaktipeetha' || categoryIds.includes('shakti_peetha') || categoryIds.includes('shaktipeetha')) {
+      return true;
+    }
+
+    return isShaktiPeethaGlobal(tid, tName, category);
   };
 
   const isBadaCharDham = (t: any) => {

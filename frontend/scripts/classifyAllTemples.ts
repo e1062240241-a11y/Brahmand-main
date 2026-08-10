@@ -14,7 +14,6 @@ Module.prototype.require = function (request: string) {
 import {
   getExploreNearbyData,
   normalizeTempleKey,
-  resolveCuratedKeyByName,
   TEMPLE_KEY_ALIASES,
   EXPLORE_NEARBY_DATA,
 } from '../src/data/jyotirlingaTravelData';
@@ -64,17 +63,11 @@ for (const temple of templeDump) {
     slugId,
     templeName,
     category,
-    resolvedFrom: result.resolvedFrom,
-    currentTempleKey: result.currentTempleKey,
     hasCuratedData: result.hasCuratedData,
   };
 
   if (result.hasCuratedData) {
-    if (result.resolvedFrom === 'id') {
-      buckets.A_resolvedById.push(recordInfo);
-    } else {
-      buckets.B_resolvedByNameOnly.push(recordInfo);
-    }
+    buckets.A_resolvedById.push(recordInfo);
   } else {
     // Check if an alias was INTENDED/EXPECTED for this record
     // e.g. does templeId, slugId, or sanitized name exist in TEMPLE_KEY_ALIASES?
@@ -94,19 +87,11 @@ for (const temple of templeDump) {
 }
 
 console.log(`CLASSIFICATION BREAKDOWN:`);
-console.log(`- Bucket A (Resolved via ID, Curated Data Found - HEALTHY): ${buckets.A_resolvedById.length}`);
+console.log(`- Bucket A (Resolved Curated Data Found - HEALTHY): ${buckets.A_resolvedById.length}`);
 console.log(`- Bucket B (Resolved via Name Fallback Only - FRAGILE): ${buckets.B_resolvedByNameOnly.length}`);
 console.log(`- Bucket C (Unresolved Expected - Legitimate Uncurated): ${buckets.C_unresolvedExpected.length}`);
 console.log(`- Bucket D (Has Alias in TEMPLE_KEY_ALIASES but Failed - BUG): ${buckets.D_hasAliasButFailedToResolve.length}`);
 console.log(`\n=======================================================\n`);
-
-if (buckets.B_resolvedByNameOnly.length > 0) {
-  console.log(`--- BUCKET B (NAME FALLBACK ONLY - LATENT RISK) (${buckets.B_resolvedByNameOnly.length} items) ---`);
-  buckets.B_resolvedByNameOnly.forEach((item, i) => {
-    console.log(`${i + 1}. Opaque ID: "${item.templeId}" | Slug ID: "${item.slugId}" | Name: "${item.templeName}" -> Resolved to "${item.currentTempleKey}" via NAME`);
-  });
-  console.log(`\n-------------------------------------------------------\n`);
-}
 
 if (buckets.D_hasAliasButFailedToResolve.length > 0) {
   console.log(`--- BUCKET D (ALIAS EXISTS BUT FAILED TO RESOLVE - HIGH PRIORITY) (${buckets.D_hasAliasButFailedToResolve.length} items) ---`);

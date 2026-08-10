@@ -639,6 +639,17 @@ api.interceptors.response.use(
 );
 
 // Auth APIs
+export const resolveTempleTransport = (payload: {
+  temple_id: string;
+  temple_name: string;
+  city?: string;
+  state?: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  missing_modes: string[];
+}) => api.post<{ air?: string; rail?: string; bus?: string }>("/temple/transport/resolve", payload);
+
 export const sendOTP = (phone: string) => api.post("/auth/send-otp", { phone });
 
 export const verifyOTP = (phone: string, otp: string) =>

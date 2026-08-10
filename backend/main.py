@@ -6050,6 +6050,106 @@ async def forward_geocode(request: dict):
     return []
 
 
+TRAVEL_TRANSPORT_CACHE = {}
+
+@api_router.post("/temple/transport/resolve")
+async def resolve_temple_transport_endpoint(request: dict):
+    """
+    Universal Temple Transport Resolver with Caching & Google Places API Fallback.
+    Expects payload: { temple_id, temple_name, city, state, location, latitude, longitude, missing_modes: ['air', 'rail', 'bus'] }
+    """
+    import math
+
+    temple_id = str(request.get("temple_id") or "").strip()
+    temple_name = str(request.get("temple_name") or "").strip()
+    city = str(request.get("city") or "").strip()
+    state = str(request.get("state") or "").strip()
+    location = str(request.get("location") or "").strip()
+    lat = request.get("latitude")
+    lng = request.get("longitude")
+    missing_modes = request.get("missing_modes", ["air", "rail", "bus"])
+
+    if not isinstance(missing_modes, list):
+        missing_modes = ["air", "rail", "bus"]
+
+    # 1. Generate Cache Key
+    cache_key = f"transport:{temple_id}:{temple_name.lower()}:{lat}:{lng}"
+    if cache_key in TRAVEL_TRANSPORT_CACHE:
+        logger.info(f"[TRANSPORT RESOLVER] Cache hit for {cache_key}")
+        return TRAVEL_TRANSPORT_CACHE[cache_key]
+
+    resolved_data = {"air": "", "rail": "", "bus": ""}
+
+    api_key = (
+        os.environ.get("GOOGLE_PLACES_API_KEY")
+        or os.environ.get("GOOGLE_MAPS_API_KEY")
+        or os.environ.get("GOOGLE_CLOUD_VISION_API_KEY")
+    )
+
+    loc_query = ", ".join([p for p in [temple_name, city, state, location] if p])
+
+    def haversine_km(lat1, lon1, lat2, lon2):
+        try:
+            r = 6371
+            dlat = math.radians(lat2 - lat1)
+            dlon = math.radians(lon2 - lon1)
+            a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
+            c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+            return round(r * c)
+        except Exception:
+            return None
+
+    if api_key and loc_query:
+        # Helper to search Google Nearby/Text Search
+        async def fetch_nearby_place(query_type: str, search_query: str):
+            try:
+                url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+                params = {
+                    "query": search_query,
+                    "key": api_key,
+                    "language": "en",
+                    "region": "in"
+                }
+                if lat and lng:
+                    try:
+                        params["location"] = f"{float(lat)},{float(lng)}"
+                        params["radius"] = "100000"  # 100km search radius
+                    except ValueError:
+                        pass
+
+                session = get_shared_client_session()
+                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=6)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        results = data.get("results", [])
+                        if results:
+                            best = results[0]
+                            place_name = best.get("name", "").strip()
+                            place_lat = best.get("geometry", {}).get("location", {}).get("lat")
+                            place_lng = best.get("geometry", {}).get("location", {}).get("lng")
+
+                            dist_str = ""
+                            if lat and lng and place_lat and place_lng:
+                                dist_km = haversine_km(float(lat), float(lng), float(place_lat), float(place_lng))
+                                if dist_km is not None and dist_km > 0:
+                                    dist_str = f" (~{dist_km} km)"
+
+                            if place_name:
+                                return f"{place_name}{dist_str}"
+            except Exception as ex:
+                logger.warning(f"Google Places search failed for {query_type}: {ex}")
+            return ""
+
+        if "air" in missing_modes:
+            resolved_data["air"] = await fetch_nearby_place("air", f"airport near {loc_query}")
+        if "rail" in missing_modes:
+            resolved_data["rail"] = await fetch_nearby_place("rail", f"railway station near {loc_query}")
+        if "bus" in missing_modes:
+            resolved_data["bus"] = await fetch_nearby_place("bus", f"bus stand near {loc_query}")
+
+    TRAVEL_TRANSPORT_CACHE[cache_key] = resolved_data
+    return resolved_data
+
 @api_router.post("/places/hospitals/search")
 async def search_hospitals(request: dict):
     """Search hospitals via Google Places API from backend to avoid browser CORS issues."""

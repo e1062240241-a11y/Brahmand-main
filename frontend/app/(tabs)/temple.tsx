@@ -24,7 +24,7 @@ import { database } from '../../src/database';
 import { FONTS } from '../../src/constants/theme';
 import { DEFAULT_TEMPLE_IMAGE, resolveTempleImage } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
-import { normalizeTempleKey } from '../../src/data/jyotirlingaTravelData';
+import { normalizeTempleKey, isShaktiPeetha as isShaktiPeethaGlobal } from '../../src/data/jyotirlingaTravelData';
 const SafeFlashList = FlashList as any;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -275,11 +275,18 @@ export default function TempleScreen() {
       };
 
       const isShaktiPeetha = (t: any) => {
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const tName = (t.name || '').toLowerCase();
         const category = (t.category || '').trim().toLowerCase();
         const categoryIds = Array.isArray(t.category_ids)
           ? t.category_ids.map((c: string) => String(c).toLowerCase())
           : [];
-        return category.includes('shakti') || categoryIds.some((c: string) => c.includes('shakti'));
+
+        if (category === 'shakti peetha' || category === 'shaktipeetha' || categoryIds.includes('shakti_peetha') || categoryIds.includes('shaktipeetha')) {
+          return true;
+        }
+
+        return isShaktiPeethaGlobal(tid, tName, category);
       };
 
       const isBadaCharDham = (t: any) => {
@@ -380,7 +387,7 @@ export default function TempleScreen() {
       const paginatedSlice = filteredRecords.slice(skipCount, skipCount + PAGE_SIZE);
 
       let formatted = paginatedSlice.map((t: any) => ({
-        id: t._raw?.id || t.id,
+        id: t._raw?.temple_id || t.templeId || t.temple_id || t._raw?.id || t.id,
         temple_id: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
         templeId: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
         name: t.name || t._raw?.name,
@@ -441,11 +448,18 @@ export default function TempleScreen() {
       };
 
       const isShaktiPeetha = (t: any) => {
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const tName = (t.name || '').toLowerCase();
         const category = (t.category || '').trim().toLowerCase();
         const categoryIds = Array.isArray(t.category_ids)
           ? t.category_ids.map((c: string) => String(c).toLowerCase())
           : [];
-        return category.includes('shakti') || categoryIds.some((c: string) => c.includes('shakti'));
+
+        if (category === 'shakti peetha' || category === 'shaktipeetha' || categoryIds.includes('shakti_peetha') || categoryIds.includes('shaktipeetha')) {
+          return true;
+        }
+
+        return isShaktiPeethaGlobal(tid, tName, category);
       };
 
       const isBadaCharDham = (t: any) => {
@@ -512,7 +526,7 @@ export default function TempleScreen() {
         );
       }
       setDisplayTemples(filtered.map((t: any) => ({
-        id: t._raw?.id || t.id,
+        id: t._raw?.temple_id || t.templeId || t.temple_id || t._raw?.id || t.id,
         temple_id: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
         templeId: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
         name: t.name || t._raw?.name,
@@ -646,7 +660,8 @@ export default function TempleScreen() {
   }, [loadLocalTemples, fetchData]);
 
   const openTempleDetails = useCallback((item: any) => {
-    router.push(`/temple/${encodeURIComponent(String(item.id))}`);
+    const targetId = item.temple_id || item.templeId || item.id;
+    router.push(`/temple/${encodeURIComponent(String(targetId))}`);
   }, [router]);
 
   const uniqueLocations = useMemo(() => {

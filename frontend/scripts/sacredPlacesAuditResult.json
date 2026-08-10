@@ -1,0 +1,2190 @@
+{
+  "curatedCount": 35,
+  "uncuratedCount": 223,
+  "missingTemples": [
+    {
+      "id": "08pXdMR1eLLkHjrtHADk",
+      "name": "Renuka Devi Temple – Mahur",
+      "category": "Shakti Peetha",
+      "city": "Mahur",
+      "state": "Maharashtra",
+      "lat": 19.8292,
+      "lng": 77.9142
+    },
+    {
+      "id": "0hdlCZpzoHJCatKTPCbc",
+      "name": "Mayureshwar Temple – Morgaon",
+      "category": "Ashtavinayak",
+      "city": "Morgaon",
+      "state": "Maharashtra",
+      "lat": 18.2758,
+      "lng": 74.3168
+    },
+    {
+      "id": "0rgrDNOPK9NgG7Jkclpl",
+      "name": "Ambalappuzha Sri Krishna Temple – Alappuzha",
+      "category": "Sacred",
+      "city": "Ambalapuzha",
+      "state": "Kerala",
+      "lat": 9.3817,
+      "lng": 76.3639
+    },
+    {
+      "id": "1ePS4bBjVB3cnfKkJkoE",
+      "name": "Sankat Mochan Temple – Shimla",
+      "category": "Hanuman Temple",
+      "city": "Shimla",
+      "state": "Himachal Pradesh",
+      "lat": 31.0944,
+      "lng": 77.1375
+    },
+    {
+      "id": "2dBo7xbFpgT2ZxsnITHF",
+      "name": "Ghati Subramanya Temple – Doddaballapur",
+      "category": "Healing Temples",
+      "city": "Bengaluru Rural",
+      "state": "Karnataka",
+      "lat": 13.3551,
+      "lng": 77.5218
+    },
+    {
+      "id": "2mFgIZ2xSwzdpEsZpfh3",
+      "name": "Jakhu Temple – Shimla",
+      "category": "Hanuman Temple",
+      "city": "Shimla",
+      "state": "Himachal Pradesh",
+      "lat": 31.1011,
+      "lng": 77.1818
+    },
+    {
+      "id": "2udyeLbdwK1Yy3UWNqO4",
+      "name": "Pashupatinath Shrine – Indo-Nepal Border",
+      "category": "Shiva Temple",
+      "city": "Pithoragarh",
+      "state": "Uttarakhand",
+      "lat": 29.5833,
+      "lng": 80.2167
+    },
+    {
+      "id": "37T4ZB9pvlGwrh9u1LE4",
+      "name": "Tanot Mata Temple – Jaisalmer",
+      "category": "Sacred",
+      "city": "Jaisalmer",
+      "state": "Rajasthan",
+      "lat": 27.35,
+      "lng": 70.3667
+    },
+    {
+      "id": "3Gtmty0S4tusafdZtmef",
+      "name": "Thirunageswaram Naganathar Temple",
+      "category": "Sacred",
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "lat": 10.9636,
+      "lng": 79.4319
+    },
+    {
+      "id": "4btYs0KS1COTglTH5bLm",
+      "name": "Bakreshwar Temple – Birbhum",
+      "category": "Shakti Peetha",
+      "city": "Suri",
+      "state": "West Bengal",
+      "lat": 23.8825,
+      "lng": 87.3708
+    },
+    {
+      "id": "4faOeB9HX0cEe7qh3e6n",
+      "name": "Varadhavinayak Temple – Mahad",
+      "category": "Ashtavinayak",
+      "city": "Mahad",
+      "state": "Maharashtra",
+      "lat": 18.8074,
+      "lng": 73.2381
+    },
+    {
+      "id": "4qMO6YnWY8wJGTdtPs1J",
+      "name": "Naganathaswamy Temple – Keelaperumpallam",
+      "category": "Sacred",
+      "city": "Mayiladuthurai",
+      "state": "Tamil Nadu",
+      "lat": 11.1333,
+      "lng": 79.8333
+    },
+    {
+      "id": "4wWc0gxS56XDRPKV6ftl",
+      "name": "Annapoorneshwari Temple – Horanadu",
+      "category": "Devi Temple",
+      "city": "Chikkamagaluru",
+      "state": "Karnataka",
+      "lat": 13.2708,
+      "lng": 75.34
+    },
+    {
+      "id": "50n8usjT1we9TYZqjP3Q",
+      "name": "Udupi Sri Krishna Matha – Udupi",
+      "category": "Sacred",
+      "city": "Udupi",
+      "state": "Karnataka",
+      "lat": 13.3408,
+      "lng": 74.7819
+    },
+    {
+      "id": "5EH3t52RaTKfb1CIEobA",
+      "name": "Vithoba Temple – Pandharpur",
+      "category": "Vishnu Temple",
+      "city": "Pandharpur",
+      "state": "Maharashtra",
+      "lat": 17.6775,
+      "lng": 75.3283
+    },
+    {
+      "id": "5vawXjLGFdM16y0JdIlE",
+      "name": "Vaishno Devi Temple – Jammu & Kashmir",
+      "category": "Shakti Peetha",
+      "city": "Katra",
+      "state": "Jammu & Kashmir",
+      "lat": 33.0308,
+      "lng": 74.9492
+    },
+    {
+      "id": "6AKsoULTaLTb708DeZNu",
+      "name": "Sree Vallabha Temple – Thiruvalla",
+      "category": "Sacred",
+      "city": "Thiruvalla",
+      "state": "Kerala",
+      "lat": 9.3833,
+      "lng": 76.575
+    },
+    {
+      "id": "6Rx5RysvzRA49bdemhUo",
+      "name": "Swamimalai Murugan Temple – Thanjavur",
+      "category": "Sacred",
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "lat": 10.9567,
+      "lng": 79.3242
+    },
+    {
+      "id": "6s59vQPDfQSkvAAAtyD5",
+      "name": "Vadakkunnathan Temple – Thrissur",
+      "category": "Shiva Temple",
+      "city": "Thrissur",
+      "state": "Kerala",
+      "lat": 10.5242,
+      "lng": 76.2139
+    },
+    {
+      "id": "7di6qmFYWyV3flBB37W3",
+      "name": "Ayodhya Ram Mandir Complex",
+      "category": "Vishnu Temple",
+      "city": "Ayodhya",
+      "state": "Uttar Pradesh",
+      "lat": 26.7922,
+      "lng": 82.1998
+    },
+    {
+      "id": "81cN00DTtcmsVJCSgKHf",
+      "name": "Srivilliputhur Andal Temple – Virudhunagar",
+      "category": "Sacred",
+      "city": "Srivilliputhur",
+      "state": "Tamil Nadu",
+      "lat": 9.51,
+      "lng": 77.6322
+    },
+    {
+      "id": "89OA8R8mKzUODJCtWnlN",
+      "name": "Hinglaj Mata Temple – Barmer",
+      "category": "Shakti Peetha",
+      "city": "Barmer",
+      "state": "Rajasthan",
+      "lat": 25.75,
+      "lng": 71.3833
+    },
+    {
+      "id": "8AlRBblNJlUr0wG4KDPM",
+      "name": "Sammed Shikharji – Giridih",
+      "category": "Sacred",
+      "city": "Giridih",
+      "state": "Jharkhand",
+      "lat": 23.9631,
+      "lng": 86.1481
+    },
+    {
+      "id": "8CoQXXm2M0aee4EmbGdI",
+      "name": "Chintamani Temple – Theur",
+      "category": "Ashtavinayak",
+      "city": "Theur",
+      "state": "Maharashtra",
+      "lat": 18.5262,
+      "lng": 73.9877
+    },
+    {
+      "id": "8IAvBcEbHrU3rQMZoDtk",
+      "name": "Adi Kumbeswarar Temple – Kumbakonam",
+      "category": "Sacred",
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "lat": 10.9589,
+      "lng": 79.37
+    },
+    {
+      "id": "8VjAxrFGqu0lndhmlHE1",
+      "name": "Naina Devi Temple – Nainital",
+      "category": "Sacred",
+      "city": "Nainital",
+      "state": "Uttarakhand",
+      "lat": 29.3956,
+      "lng": 79.4589
+    },
+    {
+      "id": "8cvh8y6YqLNgnsOXFcsq",
+      "name": "Gopnath Mahadev Temple – Bhavnagar",
+      "category": "Shiva Temple",
+      "city": "Bhavnagar",
+      "state": "Gujarat",
+      "lat": 21.2167,
+      "lng": 72.1167
+    },
+    {
+      "id": "8sz8D7ODqv3cA0jmS8zg",
+      "name": "Kalika Mata Temple – Pavagadh",
+      "category": "Shakti Peetha",
+      "city": "Panchmahal",
+      "state": "Gujarat",
+      "lat": 22.4642,
+      "lng": 73.5222
+    },
+    {
+      "id": "8ulQF8kVt3yQAwAQC208",
+      "name": "Kamakhya Devi Sanctuary – Assam",
+      "category": "Devi Temple",
+      "city": "Guwahati",
+      "state": "Assam",
+      "lat": 26.1664,
+      "lng": 91.7067
+    },
+    {
+      "id": "9FpEMJtXRlC8ooeLeqS0",
+      "name": "Tarapith Temple – Birbhum",
+      "category": "Shakti Peetha",
+      "city": "Tarapith",
+      "state": "West Bengal",
+      "lat": 24.1147,
+      "lng": 87.8003
+    },
+    {
+      "id": "9Qme1N7IcAmnfTSzS1Nv",
+      "name": "Hidimba Devi Temple – Manali",
+      "category": "Sacred",
+      "city": "Kullu",
+      "state": "Himachal Pradesh",
+      "lat": 32.2475,
+      "lng": 77.1814
+    },
+    {
+      "id": "9sZ8mFMMRvH7ssaCajzu",
+      "name": "Ramatheertham Temple – Vizianagaram",
+      "category": "Sacred",
+      "city": "Vizianagaram",
+      "state": "Andhra Pradesh",
+      "lat": 18.1667,
+      "lng": 83.4833
+    },
+    {
+      "id": "A2eUZTlfSjRi0TUHDckV",
+      "name": "Amareswara Swamy Temple – Amaravati",
+      "category": "Sacred",
+      "city": "Amaravati",
+      "state": "Andhra Pradesh",
+      "lat": 16.5814,
+      "lng": 80.3564
+    },
+    {
+      "id": "A5XO8668YihW4pKViBBt",
+      "name": "ISKCON Mira Road – Thane",
+      "category": "Vishnu Temple",
+      "city": "Mira Road",
+      "state": "Maharashtra",
+      "lat": 19.2694,
+      "lng": 72.8717
+    },
+    {
+      "id": "A6hwgf2wE5yVVA9MbvIr",
+      "name": "Ranakpur Jain Temple – Pali",
+      "category": "Sacred",
+      "city": "Ranakpur",
+      "state": "Rajasthan",
+      "lat": 25.1158,
+      "lng": 73.4731
+    },
+    {
+      "id": "ADNI907Vtd4sTM4SMSlg",
+      "name": "Sri Aurobindo Ashram – Puducherry",
+      "category": "Healing Temples",
+      "city": "Puducherry",
+      "state": "Puducherry",
+      "lat": 11.9365,
+      "lng": 79.8335
+    },
+    {
+      "id": "ALyT3AHI82r8ya5zjtOk",
+      "name": "Neelkanth Mahadev Temple – Rishikesh",
+      "category": "Sacred",
+      "city": "Pauri Garhwal",
+      "state": "Uttarakhand",
+      "lat": 30.0847,
+      "lng": 78.3364
+    },
+    {
+      "id": "AnmJGG4J0Cn7PiypzCEr",
+      "name": "Chamundi Hill Sanctuary – Mysuru",
+      "category": "Sacred",
+      "city": "Mysuru",
+      "state": "Karnataka",
+      "lat": 12.2753,
+      "lng": 76.6704
+    },
+    {
+      "id": "AqXA93V1503SFGqxVSrF",
+      "name": "Bhairavnath Shiva Shrine – Rajrappa",
+      "category": "Shiva Temple",
+      "city": "Ramgarh",
+      "state": "Jharkhand",
+      "lat": 23.6306,
+      "lng": 85.7139
+    },
+    {
+      "id": "BJFpcnGkTngxwgw1fQsO",
+      "name": "Golden Temple – Amritsar",
+      "category": "Sacred",
+      "city": "Amritsar",
+      "state": "Punjab",
+      "lat": 31.62,
+      "lng": 74.8765
+    },
+    {
+      "id": "BXU3nJx31mvf9mmBnQaQ",
+      "name": "Uppiliappan Temple – Kumbakonam",
+      "category": "Sacred",
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "lat": 10.9389,
+      "lng": 79.4267
+    },
+    {
+      "id": "BlI0l8wJGcIE1WBlmuBu",
+      "name": "Sharada Peeth – Kashmir",
+      "category": "Shakti Peetha",
+      "city": "Kupwara",
+      "state": "Jammu & Kashmir",
+      "lat": 34.7925,
+      "lng": 73.8475
+    },
+    {
+      "id": "Bt9ChV3tZf3CkiA2f4kN",
+      "name": "Mansa Devi Temple – Haridwar",
+      "category": "Devi Temple",
+      "city": "Haridwar",
+      "state": "Uttarakhand",
+      "lat": 29.9566,
+      "lng": 78.1633
+    },
+    {
+      "id": "CQXYvG3gBS2O76RB6i7F",
+      "name": "Dilwara Temples – Mount Abu",
+      "category": "Sacred",
+      "city": "Mount Abu",
+      "state": "Rajasthan",
+      "lat": 24.6022,
+      "lng": 74.7214
+    },
+    {
+      "id": "DtRMUCBaXR9V5Gjfo2KB",
+      "name": "Belur Math – Howrah",
+      "category": "Sacred",
+      "city": "Howrah",
+      "state": "West Bengal",
+      "lat": 22.6319,
+      "lng": 88.3556
+    },
+    {
+      "id": "E35DqFvnB2ZJ60Gp4Goi",
+      "name": "Tripura Sundari Temple – Udaipur",
+      "category": "Shakti Peetha",
+      "city": "Udaipur",
+      "state": "Tripura",
+      "lat": 23.5323,
+      "lng": 91.49
+    },
+    {
+      "id": "EB3Qiu9HncRJYDRJKPbb",
+      "name": "Someshwara Swamy Temple – Bhimavaram",
+      "category": "Sacred",
+      "city": "Bhimavaram",
+      "state": "Andhra Pradesh",
+      "lat": 16.5414,
+      "lng": 81.5233
+    },
+    {
+      "id": "EqvpMfhA4vwbTs8nmwAU",
+      "name": "Bade Hanuman Mandir (Lying Hanuman) – Prayagraj",
+      "category": "Hanuman Temple",
+      "city": "Prayagraj",
+      "state": "Uttar Pradesh",
+      "lat": 25.4322,
+      "lng": 81.8842
+    },
+    {
+      "id": "EsPwlWWPVBCHSLWMSvHj",
+      "name": "Kukke Subramanya Temple – Dakshina Kannada",
+      "category": "Sacred",
+      "city": "Subramanya",
+      "state": "Karnataka",
+      "lat": 12.6631,
+      "lng": 75.6178
+    },
+    {
+      "id": "FEowNmwowgheGJSN1uZs",
+      "name": "Saptashrungi Nivasini Temple – Vani",
+      "category": "Shakti Peetha",
+      "city": "Vani",
+      "state": "Maharashtra",
+      "lat": 20.3925,
+      "lng": 73.9056
+    },
+    {
+      "id": "FKaV6vRUMRMXwGJuiicn",
+      "name": "Murudeshwar Coastal Sanctuary",
+      "category": "Sacred",
+      "city": "Murudeshwar",
+      "state": "Karnataka",
+      "lat": 14.0942,
+      "lng": 74.4849
+    },
+    {
+      "id": "FW99cDfFPi9WeEfNFd8c",
+      "name": "Shree Kashtabhanjan Dev Hanumanji – Sarangpur",
+      "category": "Hanuman Temple",
+      "city": "Sarangpur",
+      "state": "Gujarat",
+      "lat": 22.1467,
+      "lng": 71.7825
+    },
+    {
+      "id": "Fa1uTHrpMx2UPtPKpop4",
+      "name": "Yamunotri Temple – Uttarakhand",
+      "category": "Char Dham",
+      "city": "Uttarkashi",
+      "state": "Uttarakhand",
+      "lat": 31.0142,
+      "lng": 78.4599
+    },
+    {
+      "id": "GZ4ymqwFHrYFqLeOBZk4",
+      "name": "Padmanabhaswamy Temple – Thiruvananthapuram",
+      "category": "Vishnu Temple",
+      "city": "Thiruvananthapuram",
+      "state": "Kerala",
+      "lat": 8.483,
+      "lng": 76.9436
+    },
+    {
+      "id": "GcKoHrETVIhoRVmTRlG0",
+      "name": "Mahaganapati Temple – Ranjangaon",
+      "category": "Ashtavinayak",
+      "city": "Ranjangaon",
+      "state": "Maharashtra",
+      "lat": 18.8475,
+      "lng": 74.2435
+    },
+    {
+      "id": "H1H8WOZ4K0pxAktGTOhQ",
+      "name": "Varadharaja Perumal Temple – Kanchipuram",
+      "category": "Sacred",
+      "city": "Kanchipuram",
+      "state": "Tamil Nadu",
+      "lat": 12.8183,
+      "lng": 79.7247
+    },
+    {
+      "id": "HsysQUOiqa3Jz5OYCt6q",
+      "name": "Siddhivinayak Temple – Siddhatek",
+      "category": "Ashtavinayak",
+      "city": "Siddhatek",
+      "state": "Maharashtra",
+      "lat": 18.5284,
+      "lng": 74.6628
+    },
+    {
+      "id": "I39jxDdDoi8gh4OyUazA",
+      "name": "Kumara Bhimeswara Swamy Temple – Samalkota",
+      "category": "Sacred",
+      "city": "Samalkota",
+      "state": "Andhra Pradesh",
+      "lat": 17.05,
+      "lng": 82.1833
+    },
+    {
+      "id": "ICgj9P6dgETsIXxqobw3",
+      "name": "Devi Patan Temple – Tulsipur",
+      "category": "Shakti Peetha",
+      "city": "Balrampur",
+      "state": "Uttar Pradesh",
+      "lat": 27.5517,
+      "lng": 82.4175
+    },
+    {
+      "id": "ILpCWntraBtR43S244AO",
+      "name": "Siddhivinayak Temple – Mumbai",
+      "category": "Sacred",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 19.0166,
+      "lng": 72.8302
+    },
+    {
+      "id": "J7qGPHAmVDKqnVBjDoKz",
+      "name": "Chintpurni Devi Temple – Una",
+      "category": "Shakti Peetha",
+      "city": "Una",
+      "state": "Himachal Pradesh",
+      "lat": 31.8078,
+      "lng": 76.1311
+    },
+    {
+      "id": "JTluxxT7o3jLrGNeZMxf",
+      "name": "Tarakeshwar Temple – Hooghly",
+      "category": "Shiva Temple",
+      "city": "Tarakeswar",
+      "state": "West Bengal",
+      "lat": 22.8872,
+      "lng": 88.0169
+    },
+    {
+      "id": "K4RCIINAhFeAyoWnkEjp",
+      "name": "Tungnath Temple – Chopta",
+      "category": "Shiva Temple",
+      "city": "Rudraprayag",
+      "state": "Uttarakhand",
+      "lat": 30.4883,
+      "lng": 79.2186
+    },
+    {
+      "id": "K58Zinpyp09lhLBXA8UX",
+      "name": "Apatsahayesvarar Temple – Alangudi",
+      "category": "Sacred",
+      "city": "Valangaiman",
+      "state": "Tamil Nadu",
+      "lat": 10.8933,
+      "lng": 79.41
+    },
+    {
+      "id": "KPUbJsMxiwtOy2xgoe1z",
+      "name": "Brahma Temple – Pushkar",
+      "category": "Sacred",
+      "city": "Pushkar",
+      "state": "Rajasthan",
+      "lat": 26.4883,
+      "lng": 74.5508
+    },
+    {
+      "id": "KYecZMkL1DYQHS5yyYO5",
+      "name": "Thousand Pillar Temple – Warangal",
+      "category": "Sacred",
+      "city": "Hanumakonda",
+      "state": "Telangana",
+      "lat": 18.0036,
+      "lng": 79.5742
+    },
+    {
+      "id": "Khngz0yKSfUmeEwreNHL",
+      "name": "Jwala Ji Temple – Kangra",
+      "category": "Shakti Peetha",
+      "city": "Kangra",
+      "state": "Himachal Pradesh",
+      "lat": 31.8763,
+      "lng": 76.3228
+    },
+    {
+      "id": "KkXf7AxRfVQERchLAZrq",
+      "name": "Kasar Devi Temple – Almora",
+      "category": "Sacred",
+      "city": "Almora",
+      "state": "Uttarakhand",
+      "lat": 29.6342,
+      "lng": 79.6739
+    },
+    {
+      "id": "KrPkGExwHkTt5Hl1ymuT",
+      "name": "Chottanikkara Bhagavathy Temple – Kochi",
+      "category": "Devi Temple",
+      "city": "Kochi",
+      "state": "Kerala",
+      "lat": 9.9322,
+      "lng": 76.3922
+    },
+    {
+      "id": "L8opaF8B4j9jeTwJWD8Z",
+      "name": "Ramappa Temple – Mulugu",
+      "category": "Sacred",
+      "city": "Mulugu",
+      "state": "Telangana",
+      "lat": 18.2583,
+      "lng": 79.9406
+    },
+    {
+      "id": "LYMlDF5EqsIVlxQjy3NI",
+      "name": "Guruvayur Temple – Kerala",
+      "category": "Vishnu Temple",
+      "city": "Guruvayur",
+      "state": "Kerala",
+      "lat": 10.5946,
+      "lng": 76.0387
+    },
+    {
+      "id": "M20cIzy9RRRRozVb97on",
+      "name": "Radha Raman Temple – Vrindavan",
+      "category": "Vishnu Temple",
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "lat": 27.5858,
+      "lng": 77.7031
+    },
+    {
+      "id": "M3M2X21tBiLIGeKQBuAq",
+      "name": "Triyuginarayan Temple – Rudraprayag",
+      "category": "Sacred",
+      "city": "Rudraprayag",
+      "state": "Uttarakhand",
+      "lat": 30.6406,
+      "lng": 78.9817
+    },
+    {
+      "id": "M3yN7ARm5F73IkMz1qAg",
+      "name": "Draksharamam Bheemeswara Temple – Kakinada",
+      "category": "Sacred",
+      "city": "Kakinada",
+      "state": "Andhra Pradesh",
+      "lat": 16.7936,
+      "lng": 82.0628
+    },
+    {
+      "id": "M4RgoUtEx9vMUnoC05LY",
+      "name": "Tiruchendur Murugan Temple – Thoothukudi",
+      "category": "Sacred",
+      "city": "Tiruchendur",
+      "state": "Tamil Nadu",
+      "lat": 8.4964,
+      "lng": 78.1289
+    },
+    {
+      "id": "MDFWk7JwNi7uaNtSlBtN",
+      "name": "Shrinathji Temple – Nathdwara",
+      "category": "Vishnu Temple",
+      "city": "Nathdwara",
+      "state": "Rajasthan",
+      "lat": 24.9317,
+      "lng": 73.8181
+    },
+    {
+      "id": "MXneCxEMTKmQAPTOWPEo",
+      "name": "Prem Mandir – Vrindavan",
+      "category": "Vishnu Temple",
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "lat": 27.5714,
+      "lng": 77.6744
+    },
+    {
+      "id": "McNkinD3SfNl2eL8cUTl",
+      "name": "ISKCON Temple Mumbai – Juhu",
+      "category": "Vishnu Temple",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 19.1128,
+      "lng": 72.8274
+    },
+    {
+      "id": "MvWT1caalyGmyiQcqpKo",
+      "name": "Mundeshwari Devi Temple – Kaimur",
+      "category": "Sacred",
+      "city": "Kaimur",
+      "state": "Bihar",
+      "lat": 24.9667,
+      "lng": 83.5667
+    },
+    {
+      "id": "MyLBln26Hkjc2AECkiTQ",
+      "name": "Dhari Devi Temple – Srinagar Garhwal",
+      "category": "Sacred",
+      "city": "Pauri Garhwal",
+      "state": "Uttarakhand",
+      "lat": 30.2525,
+      "lng": 78.8475
+    },
+    {
+      "id": "NUR1yNFCC7rOvUomfmuq",
+      "name": "Pashupatinath Temple – Mandsaur",
+      "category": "Shiva Temple",
+      "city": "Mandsaur",
+      "state": "Madhya Pradesh",
+      "lat": 24.0725,
+      "lng": 75.0745
+    },
+    {
+      "id": "NhHjGFBR4j7bXGPksi1d",
+      "name": "Dharbaranyeswarar Temple – Thirunallar",
+      "category": "Sacred",
+      "city": "Karaikal",
+      "state": "Puducherry",
+      "lat": 10.93,
+      "lng": 79.79
+    },
+    {
+      "id": "OAB7zzwMn3kUJRTQRznf",
+      "name": "Srikalahasteeswara Temple – Srikalahasti",
+      "category": "Panch Bhoota Sthalam",
+      "city": "Srikalahasti",
+      "state": "Andhra Pradesh",
+      "lat": 13.7498,
+      "lng": 79.6984
+    },
+    {
+      "id": "OCO1rx0rzDobHa90APU2",
+      "name": "Varaha Lakshmi Narasimha Temple – Simhachalam",
+      "category": "Vishnu Temple",
+      "city": "Visakhapatnam",
+      "state": "Andhra Pradesh",
+      "lat": 17.7664,
+      "lng": 83.2422
+    },
+    {
+      "id": "OOXIMZzFLDJrXBWM8bws",
+      "name": "Venugopala Swamy Temple – KRS Mysore",
+      "category": "Vishnu Temple",
+      "city": "Mysuru",
+      "state": "Karnataka",
+      "lat": 12.4231,
+      "lng": 76.5714
+    },
+    {
+      "id": "OQve0PDnQehS5ljNj2aF",
+      "name": "Triloknath Temple – Lahaul Valley",
+      "category": "Sacred",
+      "city": "Lahaul and Spiti",
+      "state": "Himachal Pradesh",
+      "lat": 32.6892,
+      "lng": 76.6917
+    },
+    {
+      "id": "OUX3s3XOhNVLdkMst4TL",
+      "name": "Vishnupad Temple – Gaya",
+      "category": "Sacred",
+      "city": "Gaya",
+      "state": "Bihar",
+      "lat": 24.7775,
+      "lng": 85.0078
+    },
+    {
+      "id": "OVWk1L9Z2HLI64V84L3m",
+      "name": "Tulja Bhavani Temple – Tuljapur",
+      "category": "Shakti Peetha",
+      "city": "Tuljapur",
+      "state": "Maharashtra",
+      "lat": 18.0114,
+      "lng": 76.0792
+    },
+    {
+      "id": "PbEeIJaKAJwt3Ue2PvXj",
+      "name": "Sankat Mochan Hanuman Temple – Varanasi",
+      "category": "Hanuman Temple",
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "lat": 25.2818,
+      "lng": 82.9976
+    },
+    {
+      "id": "PgkluRNDwkkprPlaIptr",
+      "name": "Kondagattu Anjaneya Swamy Temple – Jagtial",
+      "category": "Sacred",
+      "city": "Jagtial",
+      "state": "Telangana",
+      "lat": 18.6667,
+      "lng": 78.9333
+    },
+    {
+      "id": "Q46OQ6XNqYEJ1CSkXtu3",
+      "name": "Amarnath Temple – Jammu & Kashmir",
+      "category": "Shiva Temple",
+      "city": "Anantnag",
+      "state": "Jammu & Kashmir",
+      "lat": 34.2155,
+      "lng": 75.5037
+    },
+    {
+      "id": "R0rCbxgp6wWizA0bQDk3",
+      "name": "Kalighat Kali Temple – Kolkata",
+      "category": "Shakti Peetha",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "lat": 22.5186,
+      "lng": 88.3426
+    },
+    {
+      "id": "RDsed7SRscN2XxTGIymb",
+      "name": "Brihadisvara Temple – Thanjavur",
+      "category": "Shiva Temple",
+      "city": "Thanjavur",
+      "state": "Tamil Nadu",
+      "lat": 10.7828,
+      "lng": 79.1318
+    },
+    {
+      "id": "REvz1xLfD7NaThPLmG2j",
+      "name": "Dakshineswar Kali Temple – Kolkata",
+      "category": "Devi Temple",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "lat": 22.655,
+      "lng": 88.3575
+    },
+    {
+      "id": "ROR5M7Uucw8ZfEFIy4k1",
+      "name": "Jageshwar Dham Temple Complex – Almora",
+      "category": "Sacred",
+      "city": "Almora",
+      "state": "Uttarakhand",
+      "lat": 29.6417,
+      "lng": 79.8517
+    },
+    {
+      "id": "RWHljJGGXrXtNPSni8gB",
+      "name": "Harsiddhi Mata Temple – Ujjain",
+      "category": "Shakti Peetha",
+      "city": "Ujjain",
+      "state": "Madhya Pradesh",
+      "lat": 23.1814,
+      "lng": 75.7664
+    },
+    {
+      "id": "ReODA2z7UzfWQrpf00tO",
+      "name": "Dhyanalinga & Isha Yoga Center",
+      "category": "Healing Temples",
+      "city": "Coimbatore",
+      "state": "Tamil Nadu",
+      "lat": 10.9765,
+      "lng": 76.7351
+    },
+    {
+      "id": "S026Cs265DC7wUreQ6GK",
+      "name": "Kateel Durgaparameshwari Temple – Mangalore",
+      "category": "Devi Temple",
+      "city": "Mangalore",
+      "state": "Karnataka",
+      "lat": 13.0236,
+      "lng": 74.8483
+    },
+    {
+      "id": "S9Q9YZ8cyecGkqnJ1084",
+      "name": "Biraja Temple – Jajpur",
+      "category": "Shakti Peetha",
+      "city": "Jajpur",
+      "state": "Odisha",
+      "lat": 20.8503,
+      "lng": 86.3333
+    },
+    {
+      "id": "SlnFUbhqPr0RIfdMchL7",
+      "name": "Ksheera Ramalingeswara Temple – Palakollu",
+      "category": "Sacred",
+      "city": "Palakollu",
+      "state": "Andhra Pradesh",
+      "lat": 16.5175,
+      "lng": 81.7289
+    },
+    {
+      "id": "SnbKg7kAJwqCy7EvRiQH",
+      "name": "Badri Vishal Temple – Chamoli",
+      "category": "Vishnu Temple",
+      "city": "Badrinath",
+      "state": "Uttarakhand",
+      "lat": 30.7433,
+      "lng": 79.4938
+    },
+    {
+      "id": "Ss7aYW8BhzEvRyEmX6bL",
+      "name": "Janardhana Swamy Temple – Varkala",
+      "category": "Sacred",
+      "city": "Varkala",
+      "state": "Kerala",
+      "lat": 8.7308,
+      "lng": 76.7119
+    },
+    {
+      "id": "TJclcRbivjxW3xbR7Azk",
+      "name": "Purnagiri Devi Temple – Champawat",
+      "category": "Sacred",
+      "city": "Champawat",
+      "state": "Uttarakhand",
+      "lat": 29.1167,
+      "lng": 80.2
+    },
+    {
+      "id": "Tly6SKkOpYbzBwdyzLHs",
+      "name": "Thanumalayan Temple – Suchindram",
+      "category": "Sacred",
+      "city": "Suchindram",
+      "state": "Tamil Nadu",
+      "lat": 8.1567,
+      "lng": 77.465
+    },
+    {
+      "id": "UR7E2jphYgxyWr8kEfYj",
+      "name": "Trimbak Raja Temple – Nashik",
+      "category": "Shiva Temple",
+      "city": "Nashik",
+      "state": "Maharashtra",
+      "lat": 19.9419,
+      "lng": 73.5298
+    },
+    {
+      "id": "UaBYsMOzwjcxORaOXPUs",
+      "name": "Sarangapani Temple – Kumbakonam",
+      "category": "Sacred",
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "lat": 10.9583,
+      "lng": 79.375
+    },
+    {
+      "id": "VGMssV6P4ZxNMna01MNU",
+      "name": "Jambukeswarar Temple – Thiruvanaikaval",
+      "category": "Panch Bhoota Sthalam",
+      "city": "Tiruchirappalli",
+      "state": "Tamil Nadu",
+      "lat": 10.8533,
+      "lng": 78.7056
+    },
+    {
+      "id": "VMfFnTTi4hLOszpMZyV6",
+      "name": "Trinetreshwar Mahadev Temple – Tarnetar",
+      "category": "Shiva Temple",
+      "city": "Surendranagar",
+      "state": "Gujarat",
+      "lat": 22.4833,
+      "lng": 71.2333
+    },
+    {
+      "id": "VWW2TLkghH4AwwZL6jG7",
+      "name": "Tapkeshwar Mahadev Temple – Dehradun",
+      "category": "Sacred",
+      "city": "Dehradun",
+      "state": "Uttarakhand",
+      "lat": 30.3475,
+      "lng": 78.0125
+    },
+    {
+      "id": "VmRgFJImWzxnrwT96BWG",
+      "name": "Palani Murugan Temple – Dindigul",
+      "category": "Sacred",
+      "city": "Palani",
+      "state": "Tamil Nadu",
+      "lat": 10.4503,
+      "lng": 77.5203
+    },
+    {
+      "id": "Vy6Oz8SB3CxXzxulUSoe",
+      "name": "Ahobilam Navanarasimha Temple",
+      "category": "Vishnu Temple",
+      "city": "Ahobilam",
+      "state": "Andhra Pradesh",
+      "lat": 15.1333,
+      "lng": 78.7167
+    },
+    {
+      "id": "WL8FLbXeHmUnbDAud8pL",
+      "name": "Shree Ram Janmabhoomi Mandir – Ayodhya",
+      "category": "Sacred",
+      "city": "Ayodhya",
+      "state": "Uttar Pradesh",
+      "lat": 26.7922,
+      "lng": 82.1998
+    },
+    {
+      "id": "WrOUhFt8qw21GM7haqwH",
+      "name": "Arunachaleswarar Temple – Thiruvannamalai",
+      "category": "Panch Bhoota Sthalam",
+      "city": "Thiruvannamalai",
+      "state": "Tamil Nadu",
+      "lat": 12.2319,
+      "lng": 79.0677
+    },
+    {
+      "id": "X2wyYAmEHz2UAD7K1tUS",
+      "name": "Vashisht Temple & Hot Springs – Manali",
+      "category": "Sacred",
+      "city": "Kullu",
+      "state": "Himachal Pradesh",
+      "lat": 32.2611,
+      "lng": 77.1889
+    },
+    {
+      "id": "X71bVW8Iv9GWQpn0uek2",
+      "name": "Birla Mandir (Laxmi Narayan) – Jaipur",
+      "category": "Sacred",
+      "city": "Jaipur",
+      "state": "Rajasthan",
+      "lat": 26.8921,
+      "lng": 75.8153
+    },
+    {
+      "id": "X9hkX56UpC8KsBv1NkuT",
+      "name": "Govind Dev Ji Temple – Jaipur",
+      "category": "Vishnu Temple",
+      "city": "Jaipur",
+      "state": "Rajasthan",
+      "lat": 26.9261,
+      "lng": 75.8242
+    },
+    {
+      "id": "XrqJXR7vffY99lRLwWx1",
+      "name": "Temple of Vedic Planetarium (TOVP) – Mayapur",
+      "category": "Sacred",
+      "city": "Mayapur",
+      "state": "West Bengal",
+      "lat": 23.4244,
+      "lng": 88.3878
+    },
+    {
+      "id": "Y9Lc6ahuteU1g0w4aTnV",
+      "name": "Gnana Saraswathi Temple – Basar",
+      "category": "Sacred",
+      "city": "Nirmal",
+      "state": "Telangana",
+      "lat": 18.8783,
+      "lng": 77.9542
+    },
+    {
+      "id": "YEev66FvWqp966ycBAHb",
+      "name": "Girgaon Babulnath Hanuman Mandir – Mumbai",
+      "category": "Hanuman Temple",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 18.9558,
+      "lng": 72.8128
+    },
+    {
+      "id": "YyBwlm5wyyZkgxrvScDR",
+      "name": "Mahalaxmi Temple – Kolhapur",
+      "category": "Shakti Peetha",
+      "city": "Kolhapur",
+      "state": "Maharashtra",
+      "lat": 16.6946,
+      "lng": 74.2238
+    },
+    {
+      "id": "ZDgSGw17IiQGn4HYKYWc",
+      "name": "Pracheen Hanuman Mandir – Delhi",
+      "category": "Hanuman Temple",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "lat": 28.6294,
+      "lng": 77.2147
+    },
+    {
+      "id": "ZTLDmCb507jld8NzyFhD",
+      "name": "Mumbadevi Temple – Mumbai",
+      "category": "Devi Temple",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 18.9515,
+      "lng": 72.8306
+    },
+    {
+      "id": "ZXpdi065TQXVJBTRUw7S",
+      "name": "Sharada Devi Temple – Maihar",
+      "category": "Shakti Peetha",
+      "city": "Maihar",
+      "state": "Madhya Pradesh",
+      "lat": 24.2675,
+      "lng": 80.7583
+    },
+    {
+      "id": "aCZTQvmsvJiuNYz8phxJ",
+      "name": "Mahavir Mandir – Patna",
+      "category": "Sacred",
+      "city": "Patna",
+      "state": "Bihar",
+      "lat": 25.6119,
+      "lng": 85.1314
+    },
+    {
+      "id": "aRezlQVKdZ10qJ2stC9V",
+      "name": "Khatu Shyam Ji Temple – Sikar",
+      "category": "Sacred",
+      "city": "Sikar",
+      "state": "Rajasthan",
+      "lat": 27.3653,
+      "lng": 75.4011
+    },
+    {
+      "id": "aZUIh0yRZgKTUQF2h7Yq",
+      "name": "Naina Devi Temple – Bilaspur",
+      "category": "Shakti Peetha",
+      "city": "Bilaspur",
+      "state": "Himachal Pradesh",
+      "lat": 31.3061,
+      "lng": 76.5369
+    },
+    {
+      "id": "awxXdbMrl4T30plQ4DqN",
+      "name": "Mahalaxmi Temple – Mumbai",
+      "category": "Devi Temple",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 18.9774,
+      "lng": 72.8066
+    },
+    {
+      "id": "bGqr42M269EFeCmbPQ1f",
+      "name": "Kamakhya Temple – Guwahati",
+      "category": "Shakti Peetha",
+      "city": "Guwahati",
+      "state": "Assam",
+      "lat": 26.1664,
+      "lng": 91.7067
+    },
+    {
+      "id": "bPsW9fUrJf4eH4Tke319",
+      "name": "Ballaleshwar Temple – Pali",
+      "category": "Ashtavinayak",
+      "city": "Pali",
+      "state": "Maharashtra",
+      "lat": 18.5367,
+      "lng": 73.2208
+    },
+    {
+      "id": "bm2nQNIbVJOUsWkmez8O",
+      "name": "Sarnath Dhamek Stupa & Monastery",
+      "category": "Healing Temples",
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "lat": 25.3811,
+      "lng": 83.0214
+    },
+    {
+      "id": "boYR6tKcdOcuGYebPDkR",
+      "name": "Vindhyavasini Temple – Vindhyachal",
+      "category": "Shakti Peetha",
+      "city": "Mirzapur",
+      "state": "Uttar Pradesh",
+      "lat": 25.1663,
+      "lng": 82.5054
+    },
+    {
+      "id": "c12ejqmmNGpfALU6ptWh",
+      "name": "Karni Mata Temple (Rat Temple) – Deshnoke",
+      "category": "Sacred",
+      "city": "Bikaner",
+      "state": "Rajasthan",
+      "lat": 27.7908,
+      "lng": 73.3411
+    },
+    {
+      "id": "c8YyaSSSqH8EoSMqMR2T",
+      "name": "Chinnamasta Temple – Rajrappa",
+      "category": "Shakti Peetha",
+      "city": "Ramgarh",
+      "state": "Jharkhand",
+      "lat": 23.6306,
+      "lng": 85.7139
+    },
+    {
+      "id": "caUlRgU2UCPeEz3FjPFI",
+      "name": "Sabarimala Sree Dharma Sastha Temple",
+      "category": "Sacred",
+      "city": "Pathanamthitta",
+      "state": "Kerala",
+      "lat": 9.4344,
+      "lng": 77.0811
+    },
+    {
+      "id": "cesyNvigMvTFq7i7qBug",
+      "name": "Kanyakumari Devi Temple – Kanyakumari",
+      "category": "Shakti Peetha",
+      "city": "Kanyakumari",
+      "state": "Tamil Nadu",
+      "lat": 8.078,
+      "lng": 77.555
+    },
+    {
+      "id": "ct63duUJbSu4rZiMjwgm",
+      "name": "Veerabhadra Temple – Lepakshi",
+      "category": "Sacred",
+      "city": "Anantapur",
+      "state": "Andhra Pradesh",
+      "lat": 13.8017,
+      "lng": 77.6094
+    },
+    {
+      "id": "d49dKAPi0Iog9F6To4bI",
+      "name": "Swaminarayan Akshardham – Delhi",
+      "category": "Sacred",
+      "city": "New Delhi",
+      "state": "Delhi",
+      "lat": 28.6127,
+      "lng": 77.2773
+    },
+    {
+      "id": "d5gu9edWZURKHimgzCus",
+      "name": "Radha Damodar Temple – Vrindavan",
+      "category": "Vishnu Temple",
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "lat": 27.5839,
+      "lng": 77.7011
+    },
+    {
+      "id": "dpGJtzLLhjI0ozYX2w1q",
+      "name": "Jogadya Temple – Khirgram",
+      "category": "Shakti Peetha",
+      "city": "Burdwan",
+      "state": "West Bengal",
+      "lat": 23.5283,
+      "lng": 88.0267
+    },
+    {
+      "id": "e5DUhLAcDqrLC4o7IgJv",
+      "name": "Chamunda Devi Temple – Kangra",
+      "category": "Shakti Peetha",
+      "city": "Kangra",
+      "state": "Himachal Pradesh",
+      "lat": 32.1622,
+      "lng": 76.4253
+    },
+    {
+      "id": "f7i8KasqBOaLs58XeXVp",
+      "name": "Yadadri Sri Lakshmi Narasimha Temple",
+      "category": "Sacred",
+      "city": "Yadadri Bhuvanagiri",
+      "state": "Telangana",
+      "lat": 17.5897,
+      "lng": 78.9481
+    },
+    {
+      "id": "f8WGAkSVcSveJLa7Nxwk",
+      "name": "Mahabodhi Temple Complex – Bodh Gaya",
+      "category": "Sacred",
+      "city": "Gaya",
+      "state": "Bihar",
+      "lat": 24.696,
+      "lng": 84.9914
+    },
+    {
+      "id": "fHe1oI6kcPcTzKJyscqO",
+      "name": "Mookambika Temple – Kollur",
+      "category": "Devi Temple",
+      "city": "Udupi",
+      "state": "Karnataka",
+      "lat": 13.8647,
+      "lng": 74.8142
+    },
+    {
+      "id": "fQbrnE6H8IkEmGyxvRoY",
+      "name": "Ananta Vasudeva Temple – Bhubaneswar",
+      "category": "Vishnu Temple",
+      "city": "Bhubaneswar",
+      "state": "Odisha",
+      "lat": 20.2422,
+      "lng": 85.835
+    },
+    {
+      "id": "fZqs99e4LrLoV3LpLfda",
+      "name": "Shri Krishna Janmasthan – Mathura",
+      "category": "Vishnu Temple",
+      "city": "Mathura",
+      "state": "Uttar Pradesh",
+      "lat": 27.505,
+      "lng": 77.6692
+    },
+    {
+      "id": "fxc1tNXmKvBSZvf3kU9b",
+      "name": "Anandamayi Ma Ashram – Haridwar",
+      "category": "Healing Temples",
+      "city": "Haridwar",
+      "state": "Uttarakhand",
+      "lat": 29.9328,
+      "lng": 78.1402
+    },
+    {
+      "id": "gAbq0ig3E9K11g1Kb6Wh",
+      "name": "Murudeshwar Temple – Karnataka",
+      "category": "Shiva Temple",
+      "city": "Murudeshwar",
+      "state": "Karnataka",
+      "lat": 14.0942,
+      "lng": 74.4849
+    },
+    {
+      "id": "gM0FGwHQWEqqRdE277GL",
+      "name": "Tara Tarini Temple – Ganjam",
+      "category": "Shakti Peetha",
+      "city": "Berhampur",
+      "state": "Odisha",
+      "lat": 19.49,
+      "lng": 84.9
+    },
+    {
+      "id": "gQT8QBJ9e75tsV9Lu0HJ",
+      "name": "Kainchi Dham Ashram – Nainital",
+      "category": "Hanuman Temple",
+      "city": "Nainital",
+      "state": "Uttarakhand",
+      "lat": 29.4217,
+      "lng": 79.5153
+    },
+    {
+      "id": "gk9ovjmWolqG8Gw5FYzF",
+      "name": "Parmarth Niketan Ashram – Rishikesh",
+      "category": "Healing Temples",
+      "city": "Rishikesh",
+      "state": "Uttarakhand",
+      "lat": 30.1192,
+      "lng": 78.314
+    },
+    {
+      "id": "hClQmvVoHgueaYVroQLi",
+      "name": "Ekambareswarar Temple – Kanchipuram",
+      "category": "Panch Bhoota Sthalam",
+      "city": "Kanchipuram",
+      "state": "Tamil Nadu",
+      "lat": 12.8438,
+      "lng": 79.7008
+    },
+    {
+      "id": "hg6o6hcY7r4FWk995ox0",
+      "name": "Trinetra Ganesh Temple – Ranthambore",
+      "category": "Sacred",
+      "city": "Sawai Madhopur",
+      "state": "Rajasthan",
+      "lat": 26.0189,
+      "lng": 76.4542
+    },
+    {
+      "id": "hlLmXbJaDCUFp4WLBOpU",
+      "name": "Kanaka Durga Temple – Vijayawada",
+      "category": "Devi Temple",
+      "city": "Vijayawada",
+      "state": "Andhra Pradesh",
+      "lat": 16.5161,
+      "lng": 80.6081
+    },
+    {
+      "id": "hmc1jzjBCIGZKap3EnvZ",
+      "name": "Tiruttani Murugan Temple – Tiruvallur",
+      "category": "Sacred",
+      "city": "Tiruttani",
+      "state": "Tamil Nadu",
+      "lat": 13.1783,
+      "lng": 79.6083
+    },
+    {
+      "id": "hyT0kuBHplj6oMbTF7ZF",
+      "name": "Tirupati Balaji Temple – Andhra Pradesh",
+      "category": "Vishnu Temple",
+      "city": "Tirupati",
+      "state": "Andhra Pradesh",
+      "lat": 13.6833,
+      "lng": 79.3476
+    },
+    {
+      "id": "ibTnhap9UDqJASab5PTa",
+      "name": "Danteshwari Temple – Dantewada",
+      "category": "Shakti Peetha",
+      "city": "Dantewada",
+      "state": "Chhattisgarh",
+      "lat": 18.9,
+      "lng": 81.35
+    },
+    {
+      "id": "imUEU1WqwhZMAJ6xG4BU",
+      "name": "Gangotri Temple – Uttarakhand",
+      "category": "Char Dham",
+      "city": "Uttarkashi",
+      "state": "Uttarakhand",
+      "lat": 30.9947,
+      "lng": 78.9398
+    },
+    {
+      "id": "ioUlOf1Zl1wog2vdQySX",
+      "name": "Salasar Balaji Temple – Churu",
+      "category": "Hanuman Temple",
+      "city": "Salasar",
+      "state": "Rajasthan",
+      "lat": 27.7218,
+      "lng": 74.7088
+    },
+    {
+      "id": "ipDP5oHClySibC47JXxb",
+      "name": "Mangaladevi Temple – Mangalore",
+      "category": "Healing Temples",
+      "city": "Mangaluru",
+      "state": "Karnataka",
+      "lat": 12.853,
+      "lng": 74.8465
+    },
+    {
+      "id": "j8LYLUaUkj3CVd3T3brH",
+      "name": "Mehendipur Balaji Temple – Dausa",
+      "category": "Hanuman Temple",
+      "city": "Dausa",
+      "state": "Rajasthan",
+      "lat": 26.9936,
+      "lng": 76.9634
+    },
+    {
+      "id": "jK9FcYRKY9qs5aSbeSpd",
+      "name": "Sun Temple – Modhera",
+      "category": "Sacred",
+      "city": "Mehsana",
+      "state": "Gujarat",
+      "lat": 23.5836,
+      "lng": 72.1331
+    },
+    {
+      "id": "lCDqbp0vjQsxiQq2IPn3",
+      "name": "Nagaraja Temple – Nagercoil",
+      "category": "Sacred",
+      "city": "Nagercoil",
+      "state": "Tamil Nadu",
+      "lat": 8.1833,
+      "lng": 77.4333
+    },
+    {
+      "id": "lM1YpGZz4ZyUxSo7iTAa",
+      "name": "Tulsi Manas Mandir – Varanasi",
+      "category": "Sacred",
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "lat": 25.2858,
+      "lng": 82.9997
+    },
+    {
+      "id": "lytyDmttSq45Pogif08p",
+      "name": "Sita Ramachandra Swamy Temple – Bhadrachalam",
+      "category": "Sacred",
+      "city": "Bhadrachalam",
+      "state": "Telangana",
+      "lat": 17.6689,
+      "lng": 80.8872
+    },
+    {
+      "id": "m0QKTIAqQ2zF85hGJfXg",
+      "name": "Sri Ranganathaswamy Temple – Srirangam",
+      "category": "Vishnu Temple",
+      "city": "Tiruchirappalli",
+      "state": "Tamil Nadu",
+      "lat": 10.8623,
+      "lng": 78.6901
+    },
+    {
+      "id": "mZ1RZkPNj29KTAXD8ef2",
+      "name": "Virupaksha Temple – Hampi",
+      "category": "Healing Temples",
+      "city": "Hampi",
+      "state": "Karnataka",
+      "lat": 15.335,
+      "lng": 76.46
+    },
+    {
+      "id": "md0YNRL6If6U1KbGlsfN",
+      "name": "Bankey Bihari Temple – Vrindavan",
+      "category": "Vishnu Temple",
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "lat": 27.5813,
+      "lng": 77.7003
+    },
+    {
+      "id": "nMGuX0F5d0Ujto2frGrM",
+      "name": "Shri Bala Hanuman Temple – Jamnagar",
+      "category": "Hanuman Temple",
+      "city": "Jamnagar",
+      "state": "Gujarat",
+      "lat": 22.4744,
+      "lng": 70.0719
+    },
+    {
+      "id": "nVkTrngywNLu6icyccad",
+      "name": "Punaura Dham Janaki Temple – Sitamarhi",
+      "category": "Sacred",
+      "city": "Sitamarhi",
+      "state": "Bihar",
+      "lat": 26.5936,
+      "lng": 85.4858
+    },
+    {
+      "id": "ndpohUju83EAOWOLivrn",
+      "name": "Kailasanathar Temple – Thingalur",
+      "category": "Sacred",
+      "city": "Thanjavur",
+      "state": "Tamil Nadu",
+      "lat": 10.9,
+      "lng": 79.0833
+    },
+    {
+      "id": "nmNWwhoYfKUjk8fYxzir",
+      "name": "Shirdi Sai Baba Temple – Maharashtra",
+      "category": "Sacred",
+      "city": "Shirdi",
+      "state": "Maharashtra",
+      "lat": 19.7662,
+      "lng": 74.477
+    },
+    {
+      "id": "noepkqnXYlju4eprzCs9",
+      "name": "Chennakesava Temple – Belur",
+      "category": "Vishnu Temple",
+      "city": "Belur",
+      "state": "Karnataka",
+      "lat": 13.1625,
+      "lng": 75.86
+    },
+    {
+      "id": "o2EfRgCyXDbTicfV2j1c",
+      "name": "Brajeshwari Devi Temple – Kangra",
+      "category": "Shakti Peetha",
+      "city": "Kangra",
+      "state": "Himachal Pradesh",
+      "lat": 32.0967,
+      "lng": 76.2689
+    },
+    {
+      "id": "oLcJ1cE4dIDdK7D7SCq8",
+      "name": "Chamundeshwari Temple – Mysore",
+      "category": "Shakti Peetha",
+      "city": "Mysuru",
+      "state": "Karnataka",
+      "lat": 12.2753,
+      "lng": 76.6704
+    },
+    {
+      "id": "ojZZr3KvUaCPhFcYWlQo",
+      "name": "Sri Dhanvantari Temple – Nelluvai",
+      "category": "Healing Temples",
+      "city": "Thrissur",
+      "state": "Kerala",
+      "lat": 10.6621,
+      "lng": 76.2415
+    },
+    {
+      "id": "other-golden-temple-amritsar",
+      "name": "Golden Temple – Amritsar",
+      "category": "Sacred",
+      "city": "Amritsar",
+      "state": "Punjab",
+      "lat": 31.62,
+      "lng": 74.8765
+    },
+    {
+      "id": "other-iskcon-mira-road-thane",
+      "name": "ISKCON Mira Road – Thane",
+      "category": "Sacred",
+      "city": "Mira Road",
+      "state": "Maharashtra",
+      "lat": 19.2694199,
+      "lng": 72.8716525
+    },
+    {
+      "id": "other-iskcon-temple-bangalore-karnataka",
+      "name": "ISKCON Bangalore aarti",
+      "category": "Sacred",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "lat": 13.0098,
+      "lng": 77.5511
+    },
+    {
+      "id": "other-iskcon-temple-mumbai",
+      "name": "ISKCON Juhu Mumbai",
+      "category": "Sacred",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 19.1128,
+      "lng": 72.8274
+    },
+    {
+      "id": "other-mahalaxmi-temple",
+      "name": "Shri Mahalakshmi Mandir",
+      "category": "Sacred",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 18.9774,
+      "lng": 72.8066
+    },
+    {
+      "id": "other-meenakshi-temple-madurai",
+      "name": "Meenakshi Temple – Madurai",
+      "category": "Sacred",
+      "city": "Madurai",
+      "state": "Tamil Nadu",
+      "lat": 9.9195,
+      "lng": 78.1193
+    },
+    {
+      "id": "other-shirdi-sai-baba-temple-maharashtra",
+      "name": "Shirdi Sai Baba Temple – Maharashtra",
+      "category": "Sacred",
+      "city": "Shirdi",
+      "state": "Maharashtra",
+      "lat": 19.7661782,
+      "lng": 74.4769973
+    },
+    {
+      "id": "other-siddhivinayak-temple-mumbai",
+      "name": "Shree Siddhivinayak Ganapati Temple",
+      "category": "Sacred",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "lat": 19.0166,
+      "lng": 72.8302
+    },
+    {
+      "id": "other-tirupati-balaji-temple-andhra-pradesh",
+      "name": "Tirupati Balaji Temple – Andhra Pradesh",
+      "category": "Sacred",
+      "city": "Tirupati",
+      "state": "Andhra Pradesh",
+      "lat": 13.6833,
+      "lng": 79.3476
+    },
+    {
+      "id": "other-vaishno-devi-temple-jammu-kashmir",
+      "name": "Vaishno Devi Temple – Jammu & Kashmir",
+      "category": "Sacred",
+      "city": "Katra",
+      "state": "Jammu & Kashmir",
+      "lat": 33.0308,
+      "lng": 74.9492
+    },
+    {
+      "id": "p5jUP3pNi1Y1KtSp9Zyi",
+      "name": "Attukal Bhagavathy Temple – Thiruvananthapuram",
+      "category": "Devi Temple",
+      "city": "Thiruvananthapuram",
+      "state": "Kerala",
+      "lat": 8.4725,
+      "lng": 76.9536
+    },
+    {
+      "id": "pHxRBffoxEpPppAZ2lCJ",
+      "name": "Parli Vaijnath Temple – Beed",
+      "category": "Healing Temples",
+      "city": "Beed",
+      "state": "Maharashtra",
+      "lat": 18.8485,
+      "lng": 76.5367
+    },
+    {
+      "id": "pMzrlH8UZd13YwOiQTaC",
+      "name": "Kamakshi Amman Temple – Kanchipuram",
+      "category": "Sacred",
+      "city": "Kanchipuram",
+      "state": "Tamil Nadu",
+      "lat": 12.84,
+      "lng": 79.7028
+    },
+    {
+      "id": "pOtlH5XH8rEE1KU91QbF",
+      "name": "Kotilingeshwara Temple – Kolar",
+      "category": "Shiva Temple",
+      "city": "Kolar",
+      "state": "Karnataka",
+      "lat": 13.0236,
+      "lng": 78.3039
+    },
+    {
+      "id": "pu75PKElyQEzhlr9uL6i",
+      "name": "Pazhamudircholai Murugan Temple – Madurai",
+      "category": "Sacred",
+      "city": "Madurai",
+      "state": "Tamil Nadu",
+      "lat": 10.0917,
+      "lng": 78.215
+    },
+    {
+      "id": "q9CSe2b8ZOFoFg2v6cGq",
+      "name": "Bhalka Tirth – Veraval",
+      "category": "Sacred",
+      "city": "Veraval",
+      "state": "Gujarat",
+      "lat": 20.9,
+      "lng": 70.3667
+    },
+    {
+      "id": "qJTk14Hn1nLXEIU1gz8g",
+      "name": "Bijli Mahadev Temple – Kullu",
+      "category": "Sacred",
+      "city": "Kullu",
+      "state": "Himachal Pradesh",
+      "lat": 31.9478,
+      "lng": 77.1478
+    },
+    {
+      "id": "qNLdccUxsiteu2Zn7mpE",
+      "name": "Kalaram Temple – Nashik",
+      "category": "Vishnu Temple",
+      "city": "Nashik",
+      "state": "Maharashtra",
+      "lat": 19.9989,
+      "lng": 73.7942
+    },
+    {
+      "id": "qX4NDl99kIHxZ9H2lV7P",
+      "name": "Vighnahar Temple – Ozar",
+      "category": "Ashtavinayak",
+      "city": "Ozar",
+      "state": "Maharashtra",
+      "lat": 19.1868,
+      "lng": 73.9482
+    },
+    {
+      "id": "qxv1EMLegq5KnZRXt5EZ",
+      "name": "Girijatmak Temple – Lenyadri",
+      "category": "Ashtavinayak",
+      "city": "Junnar",
+      "state": "Maharashtra",
+      "lat": 19.2415,
+      "lng": 73.8864
+    },
+    {
+      "id": "r4GxbXEmBpQEyjDrTA88",
+      "name": "Lingaraj Temple – Bhubaneswar",
+      "category": "Shiva Temple",
+      "city": "Bhubaneswar",
+      "state": "Odisha",
+      "lat": 20.2382,
+      "lng": 85.8337
+    },
+    {
+      "id": "rTnUpAhXl9iSBNNsBs5X",
+      "name": "Triprayar Sree Rama Temple – Thrissur",
+      "category": "Sacred",
+      "city": "Thrissur",
+      "state": "Kerala",
+      "lat": 10.4167,
+      "lng": 76.1167
+    },
+    {
+      "id": "rehYeVTegfhKQcTJHgzV",
+      "name": "Vaitheeswaran Koil – Mayiladuthurai",
+      "category": "Sacred",
+      "city": "Mayiladuthurai",
+      "state": "Tamil Nadu",
+      "lat": 11.2003,
+      "lng": 79.7128
+    },
+    {
+      "id": "s4TGpCwP4NO7JloYS3aQ",
+      "name": "Gommateshwara Statue – Shravanabelagola",
+      "category": "Sacred",
+      "city": "Hassan",
+      "state": "Karnataka",
+      "lat": 12.8589,
+      "lng": 76.4864
+    },
+    {
+      "id": "sStkB4MtHN88qI4N7W6M",
+      "name": "Alopi Devi Temple – Prayagraj",
+      "category": "Shakti Peetha",
+      "city": "Prayagraj",
+      "state": "Uttar Pradesh",
+      "lat": 25.4358,
+      "lng": 81.8622
+    },
+    {
+      "id": "tTPEJVrk4FYklMYIc7dU",
+      "name": "Ambaji Temple – Gujarat",
+      "category": "Shakti Peetha",
+      "city": "Ambaji",
+      "state": "Gujarat",
+      "lat": 24.3317,
+      "lng": 72.8464
+    },
+    {
+      "id": "uCnW4QiYVscToxeAxbRA",
+      "name": "Hanuman Garhi Temple – Ayodhya",
+      "category": "Hanuman Temple",
+      "city": "Ayodhya",
+      "state": "Uttar Pradesh",
+      "lat": 26.7956,
+      "lng": 82.1994
+    },
+    {
+      "id": "uK18jO4icjiLsoAAvtD9",
+      "name": "ISKCON Temple Bengaluru – Karnataka",
+      "category": "Vishnu Temple",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "lat": 13.0098,
+      "lng": 77.5511
+    },
+    {
+      "id": "uX6u3PdvKUBmDmvgqi3r",
+      "name": "Suryanar Kovil – Kumbakonam",
+      "category": "Sacred",
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "lat": 11.0308,
+      "lng": 79.4756
+    },
+    {
+      "id": "urFTXJLAFY6FRL3j89DR",
+      "name": "Kalighat Kali Shrine – Kolkata",
+      "category": "Devi Temple",
+      "city": "Kolkata",
+      "state": "West Bengal",
+      "lat": 22.5186,
+      "lng": 88.3426
+    },
+    {
+      "id": "v8Y7G4xtBK0JlhOvcbOp",
+      "name": "Sri Ramanasramam – Tiruvannamalai",
+      "category": "Healing Temples",
+      "city": "Tiruvannamalai",
+      "state": "Tamil Nadu",
+      "lat": 12.2253,
+      "lng": 79.0669
+    },
+    {
+      "id": "vT1Y2h6hkEOlnC8Gr3bV",
+      "name": "Mahabaleshwar Temple – Gokarna",
+      "category": "Sacred",
+      "city": "Gokarna",
+      "state": "Karnataka",
+      "lat": 14.5433,
+      "lng": 74.3164
+    },
+    {
+      "id": "vpMToG0KQdYoDNFqBSCN",
+      "name": "Nalateswari Temple – Nalhati",
+      "category": "Shakti Peetha",
+      "city": "Nalhati",
+      "state": "West Bengal",
+      "lat": 24.2961,
+      "lng": 87.8344
+    },
+    {
+      "id": "wEt6Qe7l1pM1jqRiVcds",
+      "name": "Bhojeshwar Temple – Bhojpur",
+      "category": "Shiva Temple",
+      "city": "Bhojpur",
+      "state": "Madhya Pradesh",
+      "lat": 23.1003,
+      "lng": 77.5858
+    },
+    {
+      "id": "wPeAggfGaqHEaC0JGX7n",
+      "name": "Fullara Attahas Temple – Birbhum",
+      "category": "Shakti Peetha",
+      "city": "Labhpur",
+      "state": "West Bengal",
+      "lat": 23.8242,
+      "lng": 87.8105
+    },
+    {
+      "id": "x5OhD9VeQswXUVV9l9a6",
+      "name": "Baijnath Temple Complex – Bageshwar",
+      "category": "Sacred",
+      "city": "Bageshwar",
+      "state": "Uttarakhand",
+      "lat": 29.9078,
+      "lng": 79.6178
+    },
+    {
+      "id": "x7pqfMwvM8n3BucndCcz",
+      "name": "Kankalitala Temple – Bolpur",
+      "category": "Shakti Peetha",
+      "city": "Bolpur",
+      "state": "West Bengal",
+      "lat": 23.7056,
+      "lng": 87.7128
+    },
+    {
+      "id": "xOidlQ0Hs7uNbTz3u7gA",
+      "name": "Meenakshi Temple – Madurai",
+      "category": "Devi Temple",
+      "city": "Madurai",
+      "state": "Tamil Nadu",
+      "lat": 9.9195,
+      "lng": 78.1193
+    },
+    {
+      "id": "xaIbNPrtp0mu6hhMar7h",
+      "name": "Kapaleeshwarar Temple – Mylapore",
+      "category": "Shiva Temple",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "lat": 13.0339,
+      "lng": 80.2697
+    },
+    {
+      "id": "xaWInhkHHZh3OugjNlOn",
+      "name": "ISKCON Temple – Vrindavan",
+      "category": "Vishnu Temple",
+      "city": "Vrindavan",
+      "state": "Uttar Pradesh",
+      "lat": 27.5728,
+      "lng": 77.6844
+    },
+    {
+      "id": "xiZd0W589xxFZMvpVBsn",
+      "name": "Thillai Nataraja Temple – Chidambaram",
+      "category": "Panch Bhoota Sthalam",
+      "city": "Chidambaram",
+      "state": "Tamil Nadu",
+      "lat": 11.3992,
+      "lng": 79.6935
+    },
+    {
+      "id": "xviBocS3EnaAa7HxF2b5",
+      "name": "Aranmula Parthasarathy Temple – Pathanamthitta",
+      "category": "Sacred",
+      "city": "Aranmula",
+      "state": "Kerala",
+      "lat": 9.3333,
+      "lng": 76.6833
+    },
+    {
+      "id": "y6OwnSOk2Ux6g3rWOxY3",
+      "name": "Agniswarar Temple – Kanchanur",
+      "category": "Sacred",
+      "city": "Kumbakonam",
+      "state": "Tamil Nadu",
+      "lat": 11.0333,
+      "lng": 79.4833
+    },
+    {
+      "id": "yGXp7kY1kiBIrTLPTQbq",
+      "name": "Gorakhnath Temple – Gorakhpur",
+      "category": "Sacred",
+      "city": "Gorakhpur",
+      "state": "Uttar Pradesh",
+      "lat": 26.7725,
+      "lng": 83.3644
+    },
+    {
+      "id": "ybDXsy6D5BqnnOoDxnSx",
+      "name": "Chandi Devi Temple – Haridwar",
+      "category": "Devi Temple",
+      "city": "Haridwar",
+      "state": "Uttarakhand",
+      "lat": 29.9431,
+      "lng": 78.1806
+    },
+    {
+      "id": "yg3uLnNMCDdiKR1rpwO3",
+      "name": "Badi Patan Devi Temple – Patna",
+      "category": "Sacred",
+      "city": "Patna",
+      "state": "Bihar",
+      "lat": 25.6167,
+      "lng": 85.1833
+    },
+    {
+      "id": "yjtddBAsjAzddz4Mx5ER",
+      "name": "Thiruparankundram Murugan Temple – Madurai",
+      "category": "Sacred",
+      "city": "Madurai",
+      "state": "Tamil Nadu",
+      "lat": 9.8817,
+      "lng": 78.0717
+    },
+    {
+      "id": "zW9B6KEcFa4pVPUzGyQl",
+      "name": "Ramnagar Fort Temple – Varanasi",
+      "category": "Sacred",
+      "city": "Varanasi",
+      "state": "Uttar Pradesh",
+      "lat": 25.2678,
+      "lng": 83.0239
+    }
+  ],
+  "curatedList": [
+    {
+      "id": "03abHQEE4Jiqtw68lqtu",
+      "name": "Mallikarjuna Srisailam Temple",
+      "matchedKey": "srisailam"
+    },
+    {
+      "id": "0HFpwT5bhKt6Ei8F0hFA",
+      "name": "Jagannath Temple – Puri",
+      "matchedKey": "jagannath-puri"
+    },
+    {
+      "id": "5GmdWYYaA38Wx46QLyUN",
+      "name": "Mahakal Jyotirlinga Shrine – Ujjain",
+      "matchedKey": "mahakaleshwar"
+    },
+    {
+      "id": "8AKfRKrPYdAXwnmko3Jy",
+      "name": "Kashi Vishwanath Corridor Shrine",
+      "matchedKey": "kashi-vishwanath"
+    },
+    {
+      "id": "965Y4sna4PIKH9tFjwcS",
+      "name": "Somnath Jyotirlinga Shrine – Veraval",
+      "matchedKey": "somnath"
+    },
+    {
+      "id": "CJX15PVKiBR9LOY5XTWs",
+      "name": "Somnath Coastal Pilgrimage Sanctuary",
+      "matchedKey": "somnath"
+    },
+    {
+      "id": "EwwLj2P3b2K6YpdT6Di4",
+      "name": "Badrinath Shrine – Uttarakhand",
+      "matchedKey": "badrinath"
+    },
+    {
+      "id": "GCh8J3mqRAlJmnK8jMGe",
+      "name": "Ramanathaswamy Long Corridor Temple",
+      "matchedKey": "ramanathaswamy"
+    },
+    {
+      "id": "MKL8qru1erGspGqfvGrl",
+      "name": "Nageshwar Darukavana Shrine – Dwarka",
+      "matchedKey": "nageshwar"
+    },
+    {
+      "id": "NU9QwwU1wJI7RvSDJ8gr",
+      "name": "Somnath Divine Shrine – Gujarat",
+      "matchedKey": "somnath"
+    },
+    {
+      "id": "TBH6pghkMPTUGiVhUW1C",
+      "name": "Grishneshwar Red Rock Temple – Ellora",
+      "matchedKey": "grishneshwar"
+    },
+    {
+      "id": "Ut1rviMXKqyS9MT69ADD",
+      "name": "Bhramaramba Devi Temple – Srisailam",
+      "matchedKey": "srisailam"
+    },
+    {
+      "id": "VfoiHXImY9Kkkxlv6sO5",
+      "name": "Badrinath Temple – Uttarakhand",
+      "matchedKey": "badrinath"
+    },
+    {
+      "id": "Z3i7MMJDz0OaVpysgiY1",
+      "name": "Dwarkadhish Temple – Mathura",
+      "matchedKey": "dwarkadhish"
+    },
+    {
+      "id": "jyotirling-baidyanath-temple-deoghar",
+      "name": "Baidyanath Temple – Deoghar",
+      "matchedKey": "baidyanath"
+    },
+    {
+      "id": "jyotirling-bhimashankar-temple-maharashtra",
+      "name": "Bhimashankar Temple – Maharashtra",
+      "matchedKey": "bhimashankar"
+    },
+    {
+      "id": "jyotirling-grishneshwar-temple-ellora",
+      "name": "Grishneshwar Temple – Ellora",
+      "matchedKey": "grishneshwar"
+    },
+    {
+      "id": "jyotirling-kashi-vishwanath-temple-varanasi",
+      "name": "Kashi Vishwanath Temple – Varanasi",
+      "matchedKey": "kashi-vishwanath"
+    },
+    {
+      "id": "jyotirling-kedarnath-temple-uttarakhand",
+      "name": "Kedarnath Temple – Uttarakhand",
+      "matchedKey": "kedarnath"
+    },
+    {
+      "id": "jyotirling-mahakaleshwar-temple-ujjain",
+      "name": "Mahakaleshwar Temple – Ujjain",
+      "matchedKey": "mahakaleshwar"
+    },
+    {
+      "id": "jyotirling-mallikarjuna-temple-srisailam",
+      "name": "Mallikarjuna Temple – Srisailam",
+      "matchedKey": "srisailam"
+    },
+    {
+      "id": "jyotirling-nageshwar-temple-dwarka",
+      "name": "Nageshwar Temple – Dwarka",
+      "matchedKey": "nageshwar"
+    },
+    {
+      "id": "jyotirling-omkareshwar-temple-madhya-pradesh",
+      "name": "Omkareshwar Temple – Madhya Pradesh",
+      "matchedKey": "omkareshwar"
+    },
+    {
+      "id": "jyotirling-ramanathaswamy-temple-rameswaram",
+      "name": "Ramanathaswamy Temple – Rameswaram",
+      "matchedKey": "ramanathaswamy"
+    },
+    {
+      "id": "jyotirling-somnath-temple-gujarat",
+      "name": "Somnath Temple – Gujarat",
+      "matchedKey": "somnath"
+    },
+    {
+      "id": "jyotirling-trimbakeshwar-temple-nashik",
+      "name": "Trimbakeshwar Temple – Nashik",
+      "matchedKey": "trimbakeshwar"
+    },
+    {
+      "id": "mc8Xl58SJGUh4TiqKXpM",
+      "name": "Baba Baidyanath Jyotirlinga – Deoghar",
+      "matchedKey": "baidyanath"
+    },
+    {
+      "id": "ndXyIGLG9tb4HJFpCuEa",
+      "name": "Omkareshwar Island Mandir – Narmada",
+      "matchedKey": "omkareshwar"
+    },
+    {
+      "id": "nw3gUpOFgD9W1UUZdx6s",
+      "name": "Bhimashankar Forest Temple – Pune",
+      "matchedKey": "bhimashankar"
+    },
+    {
+      "id": "omPVUiCgWLVXHlfKcLiL",
+      "name": "Somnath Maha Kshetra",
+      "matchedKey": "somnath"
+    },
+    {
+      "id": "other-jagannath-temple-puri",
+      "name": "Jagannath Temple – Puri",
+      "matchedKey": "jagannath-puri"
+    },
+    {
+      "id": "tvg3BW77061x8vg3xh8f",
+      "name": "Dwarkadhish Temple – Dwarka",
+      "matchedKey": "dwarkadhish"
+    },
+    {
+      "id": "vJAFaue2zK1x39YQQcse",
+      "name": "Somnath Temple Complex",
+      "matchedKey": "somnath"
+    },
+    {
+      "id": "xqEDMi8Cm9Kt8QVrNvBG",
+      "name": "Shri Dwarkadhish Temple – Dwarka",
+      "matchedKey": "dwarkadhish"
+    },
+    {
+      "id": "yilhdofmFA2wscBqioSF",
+      "name": "Kedarnath Himalayan Temple",
+      "matchedKey": "kedarnath"
+    }
+  ]
+}

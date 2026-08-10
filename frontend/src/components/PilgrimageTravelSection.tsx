@@ -72,15 +72,17 @@ interface PilgrimageTravelSectionProps {
   templeName?: string;
   location?: any;
   category?: string;
+  coords?: { latitude: number; longitude: number };
 }
 
 export const PilgrimageTravelSection: React.FC<PilgrimageTravelSectionProps> = ({
   templeId,
   templeName = '',
   category = '',
+  coords,
 }) => {
   const router = useRouter();
-  const data = getExploreNearbyData(templeId, templeName, category);
+  const data = getExploreNearbyData(templeId, templeName, category, coords);
 
   const sacredPlaces = data?.nearbySacredPlaces ?? [];
   const nearbyTemples = data?.nearbyTemples ?? [];
@@ -94,6 +96,15 @@ export const PilgrimageTravelSection: React.FC<PilgrimageTravelSectionProps> = (
     nearbyTemplesCount: nearbyTemples.length,
     sacredPlaces: sacredPlaces.map((x) => x?.name),
     nearbyTemples: nearbyTemples.map((x) => x?.name),
+  });
+
+  console.log('[NEARBY SECTION PROPS]', {
+    templeName,
+    hasCuratedData: data?.hasCuratedData,
+    sacredPlacesCount: sacredPlaces?.length,
+    nearbyTemplesCount: nearbyTemples?.length,
+    shouldRenderSacredPlaces: sacredPlaces.length > 0,
+    shouldRenderNearbyTemples: nearbyTemples.length > 0
   });
 
   return (
