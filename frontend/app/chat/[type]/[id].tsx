@@ -719,8 +719,9 @@ const ChatScreen = ({
         await database.write(async () => {
           const collection = database.get('chats');
           const records = await collection.query(Q.where('chat_id', id)).fetch();
-          for (const record of records) {
-            await record.destroyPermanently();
+          const batchOps = records.map(record => record.prepareDestroyPermanently());
+          if (batchOps.length > 0) {
+            await database.batch(...batchOps);
           }
         });
       } catch (err) {}
@@ -979,13 +980,17 @@ const ChatScreen = ({
             await database.write(async () => {
               const chatsColl = database.get('chats');
               const msgs = await chatsColl.query(Q.where('chat_id', id)).fetch();
-              for (const m of msgs) await m.destroyPermanently();
+              const batchOps = msgs.map(m => m.prepareDestroyPermanently());
 
               const convsColl = database.get('conversations');
               try {
                 const conv = await convsColl.find(id);
-                await conv.destroyPermanently();
+                batchOps.push(conv.prepareDestroyPermanently());
               } catch (e) {}
+
+              if (batchOps.length > 0) {
+                await database.batch(...batchOps);
+              }
             });
           } catch (e) {}
         }

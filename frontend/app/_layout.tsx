@@ -1190,8 +1190,9 @@ export default function RootLayout() {
                     const postsToDelete = posts.filter((p: any) => p.userId === otherId);
                     if (postsToDelete.length > 0) {
                       await database.write(async () => {
-                        for (const post of postsToDelete) {
-                          await post.destroyPermanently();
+                        const batchOps = postsToDelete.map((post: any) => post.prepareDestroyPermanently());
+                        if (batchOps.length > 0) {
+                          await database.batch(...batchOps);
                         }
                       });
                       console.log(`[Socket] Permanently deleted ${postsToDelete.length} posts by ${otherId} from WatermelonDB due to block`);

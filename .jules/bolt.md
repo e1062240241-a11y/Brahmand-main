@@ -22,3 +22,6 @@
 ## 2024-08-08 - [Optimize SOS alert geographic fallback query]
 **Learning:** Found a critical OOM risk and performance bottleneck in `create_sos_alert` where fallback queries fetched the entire users collection into memory `await db.query_documents('users')` to calculate exact distances in Python. Firebase reads are expensive and O(N) operations in Python block the async event loop.
 **Action:** When performing geographic queries without composite indexes, always use a bounding box pre-filter for latitude (e.g., `lat_delta_10km = 10.0 / 111.0`) in the database query `filters` to drastically reduce the returned result set before running detailed haversine calculations in-memory.
+## 2026-08-10 - [Optimize WatermelonDB N+1 deletes]
+**Learning:** Found N+1 query loops when deleting records permanently from local SQLite WatermelonDB (e.g. iterating over records and calling `await record.destroyPermanently()`). In React Native, numerous sequential async calls over the bridge to SQLite cause significant performance bottlenecks and UI thread stutter.
+**Action:** Always batch deletes in WatermelonDB. Use `record.prepareDestroyPermanently()` to build an array of operations and commit them simultaneously with `await database.batch(...ops)`.
