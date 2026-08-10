@@ -2,6 +2,7 @@ import { resolveTempleTransport } from '../../src/data/templeTransportResolver';
 // accessibility: placeholder
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Linking, Platform, Modal, Image, Animated, Dimensions, Share } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +12,7 @@ import { getTemple, getTemplePosts } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { getTempleImageById, getTempleImageByName, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
+import { getTempleImageById, getTempleImageByName, resolveTempleImage, DEFAULT_TEMPLE_IMAGE } from '../../src/constants/templeImages';
 import { useTranslation } from '../../src/utils/i18n';
 import { CustomLoader } from '../../src/components/CustomLoader';
 import { PilgrimageTravelSection } from '../../src/components/PilgrimageTravelSection';
@@ -1237,20 +1238,11 @@ if (!temple) {
   const displayName = templeKey || temple.name || 'Temple';
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
-  const templeImageSource = (() => {
-    const byId = getTempleImageById(resolvedTempleId);
-    if (byId && byId !== DEFAULT_TEMPLE_IMAGE) return byId;
-
-    const byName = getTempleImageByName(temple.name || displayName) || getTempleImageByName(displayName);
-    if (byName && byName !== DEFAULT_TEMPLE_IMAGE) return byName;
-
-    const remoteUrl = temple.image_url || temple.imageUrl || temple.image || temple.photo;
-    if (remoteUrl && typeof remoteUrl === 'string' && (remoteUrl.startsWith('http://') || remoteUrl.startsWith('https://'))) {
-      return { uri: remoteUrl };
-    }
-
-    return byId || byName || DEFAULT_TEMPLE_IMAGE;
-  })();
+  const templeImageSource = resolveTempleImage({
+    ...temple,
+    temple_id: temple.temple_id || temple.templeId || resolvedTempleId,
+    name: temple.name || displayName,
+  });
 
   const categoryBadge = getCategoryBadge(temple.category);
   const templeImages: any[] = (Array.isArray(temple.images) && temple.images.length > 0)
@@ -2567,7 +2559,13 @@ if (!temple) {
           {/* 1. HERO & OVERVIEW */}
           <View style={styles.infoCard}>
             <View style={styles.heroImageContainer}>
-              <Image source={templeImageSource} style={styles.heroImage} resizeMode="cover" />
+              <ExpoImage
+                source={templeImageSource}
+                style={styles.heroImage}
+                contentFit="cover"
+                contentPosition="top"
+                transition={200}
+              />
               <LinearGradient
                 colors={['transparent', 'rgba(0,0,0,0.55)']}
                 style={styles.heroImageOverlay}
@@ -2969,7 +2967,7 @@ const styles = StyleSheet.create({
   },
   heroImageContainer: {
     width: '100%',
-    height: 200,
+    height: 280,
     position: 'relative',
   },
   heroImage: {

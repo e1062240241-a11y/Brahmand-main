@@ -147,14 +147,14 @@ export const resolveTempleCanonicalKeys = (temple: any): string[] => {
   }
 
   // 3. Location-based candidate fallback
-  if (location) {
+  if (location && typeof location === 'string') {
     const cleanLoc = location.toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (cleanLoc && !candidates.includes(cleanLoc)) {
+    if (cleanLoc && cleanLoc !== 'objectobject' && !candidates.includes(cleanLoc)) {
       candidates.push(cleanLoc);
     }
   }
 
-  return candidates;
+  return candidates.filter((c) => Boolean(c) && typeof c === 'string' && c !== 'objectobject');
 };
 
 /**

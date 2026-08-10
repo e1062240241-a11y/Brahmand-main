@@ -93,6 +93,10 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'healing-sri-aurobindo-ashram-puducherry': require('../../assets/images/imagetemple/SriAurobindo.webp'),
   'sacred-belur-math-ramakrishna-mission': require('../../assets/images/imagetemple/BelurMath.webp'),
   'healing-sarnath-buddhist-monastery': require('../../assets/images/imagetemple/sarnathvaranasi.webp'),
+  'healing-sarnath-dhamek-stupa-monastery': require('../../assets/images/imagetemple/sarnathvaranasi.webp'),
+  'healing-sarnath-dhamek-stupa': require('../../assets/images/imagetemple/sarnathvaranasi.webp'),
+  'sarnath-dhamek-stupa-monastery': require('../../assets/images/imagetemple/sarnathvaranasi.webp'),
+  'sarnath-dhamek-stupa': require('../../assets/images/imagetemple/sarnathvaranasi.webp'),
   'sacred-mahabodhi-temple-bodh-gaya': require('../../assets/images/imagetemple/mahabodhi.webp'),
   'devi-kollur-mookambika-temple': require('../../assets/images/imagetemple/kollurmookambika.webp'),
   'devi-chottanikara-temple-kochi': require('../../assets/images/imagetemple/Chottanikkara.webp'),
@@ -592,8 +596,8 @@ const _rawGetTempleImageByNameDetailed = (name: string) => {
     for (const key of allKeys) {
       const normKeyStripped = normalizeTempleName(key, { stripLocation: true, stripPrefixes: true });
       if (normInputStripped.length >= 4 && normKeyStripped.length >= 4) {
-        const s1 = normInputStripped.replace(/(mandir|temple)/g, '');
-        const s2 = normKeyStripped.replace(/(mandir|temple)/g, '');
+        const s1 = normInputStripped.replace(/(mandir|temple|monastery|stupa|dhamek|ashram|peeth)/g, '');
+        const s2 = normKeyStripped.replace(/(mandir|temple|monastery|stupa|dhamek|ashram|peeth)/g, '');
         if (s1 && s2 && (s1 === s2 || s1.includes(s2) || s2.includes(s1))) {
           return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 5 (Controlled Fuzzy Match)' };
         }
