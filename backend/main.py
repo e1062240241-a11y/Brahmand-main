@@ -10748,114 +10748,6 @@ IDENTITY RULES:
     except Exception as fs_name_err:
         logger.warning(f"Failed to fetch user name from Firestore: {fs_name_err}")
 
-    # Check for My Krishna complete Gita problem mapping database match
-    from utils.krishna_gita_db import find_matched_problem, replace_gita_references
-    matched_prob = find_matched_problem(latest_user_msg)
-
-    if matched_prob is not None:
-        def _call_nvidia_empathy():
-            return "Main samajh sakta hoon tumhara mann pareshaan hai."
-
-        async def _call_nvidia_translate(hinglish_text: str) -> str:
-            return ""
-
-        try:
-            empathy_line = await asyncio.to_thread(_call_nvidia_empathy)
-            
-            encouragement_map = {
-                "gussa": "Gussa ko jeetna hai toh mujhse judo. Main hoon na!",
-                "tension": "Tension mat lo. Main hoon na!",
-                "paisa": "Paisa aayega jaayega. Main hoon na!",
-                "akelapan": "Main hoon na!",
-                "dar": "Dar ko jeeto. Main hoon na!",
-                "confusion": "Raasta mil jayega. Bas bharosa rakho!",
-                "aalas": "Utho, aage badho. Main hoon na!",
-                "overthinking": "Itna mat socho. Main sambhal lunga!",
-                "pachtava": "Pachtava mat karo. Aage badho!",
-                "neend": "Chain se so jao. Main raksha karunga!",
-                "rishta": "Rishton ko sambhalo. Main madad karunga!",
-                "motivation": "Shuru karo. Main tumhare saath hoon!",
-                "eershya": "Eershya chhodo. Apna rasta dekho!",
-                "health": "Sehat ka dhyan rakho. Main tumhare saath hoon!",
-                "udaas": "Udaas mat ho. Main hoon na!",
-                "career": "Raasta mil jayega. Bas bharosa rakho!",
-                "phone": "Phone ko control karo. Main madad karunga!",
-                "failure": "Haar mat maano. Main tumhare saath hoon!",
-                "future": "Kal ki chinta mat karo. Main hoon na!",
-                "stuck": "Atakna mat. Aage badho!",
-                "nafrat": "Nafrat ko pyaar mein badlo!",
-                "boring": "Kuch naya karo. Main tumhare saath hoon!",
-                "focus": "Focus lao. Main buddhi dunga!",
-                "self_doubt": "Khud pe bharosa rakho. Main hoon na!",
-                "anxiety": "Shant ho jao. Main hoon na!",
-                "shanti": "Shant ho jao. Main tumhare saath hoon. Main hoon na!",
-                "life_purpose": "Jeevan ke uddeshya ko samjho. Main hoon na!",
-                "karma": "Karma karte chalo. Main hoon na!",
-                "bhakti": "Bhakti se mujhse judo. Main hoon na!",
-                "moksha": "Moksha ke raah pe chalo. Main hoon na!",
-                "dhyan": "Dhyan lagao. Main hoon na!"
-            }
-            encouragement_line = encouragement_map.get(matched_prob["key"], "Main tumhare saath hoon. Main hoon na!")
-            
-            # Build short 1-2 action steps (take first 2 from the list)
-            short_actions = matched_prob['actions'][:2]
-            actions_short_str = " ".join(short_actions)
-
-            templated_response = f"""Hey mere bhakta! {empathy_line}
-
-Bhagavad Gita mein maine Arjun ko samjhaya tha —
-({matched_prob['shlok']})
-
-{matched_prob['relevance']}
-
-{actions_short_str}
-
-{matched_prob['promise_meaning']}. {encouragement_line}
-Jai Shri Krishna! 🙏"""
-
-            assistant_reply = replace_gita_references(templated_response)
-
-            # No English translation requested, only Hinglish/Hindi
-            pass
-
-            try:
-                from datetime import datetime, timezone
-                db = await get_firestore()
-                chat_ref = db.collection('krishna_chats').document(user_id)
-                
-                db_messages.append({
-                    "role": "user",
-                    "content": latest_user_msg,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
-                db_messages.append({
-                    "role": "assistant",
-                    "content": assistant_reply,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                })
-                
-                db_messages = db_messages[-100:]
-                
-                chat_ref.set({
-                    "messages": db_messages,
-                    "profile": profile,
-                    "history_summaries": history_summaries,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                })
-            except Exception as fs_err:
-                logger.warning(f"Failed to save chat to Firestore: {fs_err}")
-
-            return {
-                "choices": [
-                    {
-                        "message": {
-                            "content": assistant_reply
-                        }
-                    }
-                ]
-            }
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
 
     try:
         # Session Boundary Check & Chat Summarization
@@ -10952,13 +10844,46 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
 
         assistant_reply = None
 
-        # Call Gemini API directly (Model: gemma-4-26b-a4b-it, thinking budget: 0)
+        # Step 1: Primary - Try Gemini API directly (Model: gemma-4-26b-a4b-it, thinking budget: 0)
+        # Fast response without waiting for ChromaDB!
         try:
-            logger.info("[Krishna-Chat] Calling Gemini API (model=gemma-4-26b-a4b-it)...")
+            logger.info("[Krishna-Chat] Calling primary Gemini API (model=gemma-4-26b-a4b-it, thinking=off)...")
             assistant_reply = await _call_gemini_primary(db_messages, system_prompt, model_name="gemma-4-26b-a4b-it")
+            if assistant_reply and len(assistant_reply.strip()) > 0:
+                logger.info("[Krishna-Chat] Primary Gemini API responded successfully! Skipping ChromaDB RAG wait.")
         except Exception as gemini_err:
-            logger.error("[Krishna-Chat] Gemini API call failed (%s). Using fallback response.", gemini_err)
-            assistant_reply = "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
+            logger.warning("[Krishna-Chat] Primary Gemini API call failed (%s). Falling back to ChromaDB RAG...", gemini_err)
+
+        # Step 2: Fallback - ChromaDB / Gita RAG Retrieval if Gemini API fails
+        if not assistant_reply:
+            rag_query = latest_user_msg
+            if profile and profile.get("focus_area") and profile.get("focus_area").lower() not in ("general", "none", ""):
+                rag_query = f"Bhagavad Gita wisdom for {latest_user_msg} in {profile['focus_area']}"
+
+            rag_context = ""
+            try:
+                from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
+                if latest_user_msg:
+                    shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
+                    rag_context = build_rag_context(shlokas)
+                    if rag_context:
+                        source = shlokas[0].get("source", "unknown") if shlokas else "unknown"
+                        logger.info(
+                            "[RAG-Fallback] Injecting %d Gita shlokas (source=%s) for query: '%s'",
+                            len(shlokas), source, rag_query[:60],
+                        )
+            except Exception as rag_err:
+                logger.error("[RAG-Fallback] ChromaDB retrieval failed: %s", rag_err)
+
+            final_system_prompt = system_prompt
+            if rag_context:
+                final_system_prompt = system_prompt + f"\n\n{rag_context}"
+
+            try:
+                assistant_reply = await _call_gemini_primary(db_messages, final_system_prompt, model_name="gemma-4-26b-a4b-it")
+            except Exception as fallback_err:
+                logger.error("[Krishna-Chat] Fallback LLM generation failed: %s", fallback_err)
+                assistant_reply = "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
             
         # Apply regex shloka replacement for any dynamic shloka references
         from utils.krishna_gita_db import replace_gita_references
