@@ -66,7 +66,7 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 3. Service (Vendors/Jobs) */}
+      {/* 3. Service (Vendors) */}
       <Tabs.Screen
         name="vendor"
         options={{
@@ -109,7 +109,6 @@ export default function TabLayout() {
       <Tabs.Screen name="legacy_index" options={{ href: null }} />
       <Tabs.Screen name="temple" options={{ href: null }} />
       <Tabs.Screen name="circles" options={{ href: null }} />
-      <Tabs.Screen name="jobs" options={{ href: null }} />
       <Tabs.Screen name="discover" options={{ href: null }} />
     </Tabs>
       </TabBarProvider>

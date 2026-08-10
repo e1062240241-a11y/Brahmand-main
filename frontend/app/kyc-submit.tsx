@@ -311,7 +311,7 @@ export default function KycSubmitScreen() {
       const response = await generateUserAadhaarOtp({
         aadhaar_number: trimmed,
         consent: 'Y',
-        reason: 'Jobs KYC verification',
+        reason: 'KYC verification',
       });
       const referenceId =
         response?.data?.reference_id ||

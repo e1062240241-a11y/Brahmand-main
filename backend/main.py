@@ -86,7 +86,7 @@ except ImportError:
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
-    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, JobProfileCreate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
+    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -9173,7 +9173,7 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
 
 @api_router.post("/kyc/aadhaar/otp")
 async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
-    """Generate Aadhaar OTP via Sandbox for user-level KYC (jobs/organizer flow)."""
+    """Generate Aadhaar OTP via Sandbox for user-level KYC."""
     db = await get_db()
     user_id = token_data["user_id"]
 
@@ -9261,7 +9261,7 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
 
 @api_router.post("/kyc/aadhaar/otp/verify")
 async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
-    """Verify Aadhaar OTP via Sandbox for user-level KYC (jobs/organizer flow)."""
+    """Verify Aadhaar OTP via Sandbox for user-level KYC."""
     db = await get_db()
     user_id = token_data["user_id"]
 
@@ -12463,7 +12463,7 @@ async def extract_user_kyc_text_from_image(
     image_base64: Optional[str] = Form(None),
     token_data: dict = Depends(verify_token)
 ):
-    """Use Google Cloud Vision to extract text from user KYC images (jobs flow)."""
+    """Use Google Cloud Vision to extract text from user KYC images."""
     if vision is None:
         raise HTTPException(status_code=501, detail="Google Cloud Vision client library is not installed")
 
@@ -12888,212 +12888,6 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
-
-
-# =================== JOB PROFILES ===================
-
-@api_router.post("/jobs/profile")
-async def create_or_update_job_profile(data: JobProfileCreate, token_data: dict = Depends(verify_token)):
-    """Create or update current user's job profile."""
-    db = await get_db()
-    user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
-
-    profile_payload = {
-        "owner_id": user_id,
-        "name": (data.name or (user or {}).get('name') or '').strip(),
-        "current_address": (data.current_address or '').strip(),
-        "experience_years": data.experience_years or 0,
-        "profession": (data.profession or '').strip(),
-        "preferred_work_city": (data.preferred_work_city or '').strip(),
-        "latitude": data.latitude,
-        "longitude": data.longitude,
-        "location_link": data.location_link,
-        "photos": data.photos or [],
-        "cv_url": data.cv_url,
-    }
-
-    existing = await db.find_one('job_profiles', [('owner_id', '==', user_id)])
-    if existing:
-        await db.update_document('job_profiles', existing['id'], profile_payload)
-        profile = await db.get_document('job_profiles', existing['id'])
-        return profile
-
-    profile_id = await db.create_document('job_profiles', profile_payload)
-    await db.update_document('users', user_id, {'job_profile_id': profile_id})
-    profile_payload['id'] = profile_id
-    return profile_payload
-
-
-@api_router.get("/jobs/profile/my")
-async def get_my_job_profile(token_data: dict = Depends(verify_token)):
-    """Get current user's job profile."""
-    db = await get_db()
-    user_id = token_data["user_id"]
-    profile = await db.find_one('job_profiles', [('owner_id', '==', user_id)])
-    return profile
-
-
-def _can_view_job_cv(requester_user: Optional[dict], profile_owner_id: Optional[str]) -> bool:
-    if not requester_user:
-        return False
-    if requester_user.get('id') == profile_owner_id:
-        return True
-    return requester_user.get('kyc_status') == 'verified'
-
-
-@api_router.get("/jobs/profile/{profile_id}")
-async def get_job_profile(profile_id: str, token_data: dict = Depends(verify_token)):
-    """Get a single job profile with CV visibility gated by KYC verification."""
-    db = await get_db()
-    requester_id = token_data["user_id"]
-
-    profile = await db.get_document('job_profiles', profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Job profile not found")
-
-    requester_user = await db.get_document('users', requester_id)
-    if not _can_view_job_cv(requester_user, profile.get('owner_id')):
-        profile['cv_url'] = None
-
-    return profile
-
-
-@api_router.get("/jobs/profiles")
-async def get_job_profiles(
-    search: Optional[str] = None,
-    profession: Optional[str] = None,
-    city: Optional[str] = None,
-    lat: Optional[float] = None,
-    lng: Optional[float] = None,
-    limit: int = 50,
-    token_data: Optional[dict] = Depends(optional_verify_token)
-):
-    """Get job profiles with optional filters."""
-    db = await get_db()
-    profiles = await db.query_documents('job_profiles', limit=limit)
-    requester_user = None
-    requester_id = None
-    if token_data and token_data.get("user_id"):
-        requester_id = token_data["user_id"]
-        requester_user = await db.get_document('users', requester_id)
-
-    if profession:
-        profession_lower = profession.lower()
-        profiles = [p for p in profiles if profession_lower in str(p.get('profession', '')).lower()]
-
-    if city:
-        city_lower = city.lower()
-        profiles = [p for p in profiles if city_lower in str(p.get('preferred_work_city', '')).lower()]
-
-    if search:
-        term = search.lower()
-        profiles = [
-            p for p in profiles
-            if term in str(p.get('name', '')).lower()
-            or term in str(p.get('profession', '')).lower()
-            or term in str(p.get('preferred_work_city', '')).lower()
-        ]
-
-    if lat and lng:
-        import math
-        for profile in profiles:
-            if profile.get('latitude') and profile.get('longitude'):
-                R = 6371
-                lat1, lon1 = math.radians(lat), math.radians(lng)
-                lat2, lon2 = math.radians(profile['latitude']), math.radians(profile['longitude'])
-                dlat, dlon = lat2 - lat1, lon2 - lon1
-                a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-                profile['distance'] = R * 2 * math.asin(math.sqrt(a))
-            else:
-                profile['distance'] = None
-        profiles.sort(key=lambda p: p.get('distance') or 999999)
-
-    for profile in profiles:
-        if not _can_view_job_cv(requester_user, profile.get('owner_id')):
-            profile['cv_url'] = None
-
-    return profiles
-
-
-@api_router.post("/jobs/profile/{profile_id}/upload")
-async def upload_job_profile_file(
-    profile_id: str,
-    doc_type: str = Form(...),
-    file: UploadFile = File(...),
-    token_data: dict = Depends(verify_token)
-):
-    """Upload job profile assets (photo/cv) to Firebase Storage."""
-    from firebase_admin import storage as firebase_storage
-
-    db = await get_db()
-    user_id = token_data["user_id"]
-    profile = await db.get_document('job_profiles', profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Job profile not found")
-
-    if profile.get('owner_id') != user_id:
-        raise HTTPException(status_code=403, detail="Only the owner can upload profile files")
-
-    if doc_type not in {'photo', 'cv'}:
-        raise HTTPException(status_code=400, detail="doc_type must be one of: photo, cv")
-
-    file_bytes = await file.read()
-    if not file_bytes:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
-
-    content_type = file.content_type or 'application/octet-stream'
-    if doc_type == 'photo' and content_type not in {'image/png', 'image/jpeg', 'image/jpg', 'image/webp'}:
-        raise HTTPException(status_code=400, detail="Photo must be an image")
-    if doc_type == 'cv' and content_type not in {
-        'application/pdf', 'image/png', 'image/jpeg', 'image/jpg',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    }:
-        raise HTTPException(status_code=400, detail="CV must be PDF, DOC, DOCX, or image")
-
-    extension = 'bin'
-    if '/' in content_type:
-        extension = content_type.split('/')[-1].replace('jpeg', 'jpg')
-
-    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET') or 'sanatan-lok.firebasestorage.app'
-    try:
-        bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
-
-        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
-        if doc_type == 'photo':
-            object_path = f"jobs/{profile_id}/photos/{timestamp}.{extension}"
-        else:
-            object_path = f"jobs/{profile_id}/cv/cv.{extension}"
-
-        blob = bucket.blob(object_path)
-        download_token = uuid4().hex
-        blob.metadata = {'firebaseStorageDownloadTokens': download_token}
-        blob.upload_from_string(file_bytes, content_type=content_type)
-
-        public_url = (
-            f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
-            f"{quote(object_path, safe='')}?alt=media&token={download_token}"
-        )
-    except Exception as exc:
-        logger.exception("Job profile file upload failed for profile_id=%s doc_type=%s", profile_id, doc_type)
-        raise HTTPException(status_code=500, detail=f"Firebase Storage upload failed: {str(exc)}")
-
-    update_data = {}
-    if doc_type == 'photo':
-        update_data['photos'] = [public_url]
-    else:
-        update_data['cv_url'] = public_url
-
-    await db.update_document('job_profiles', profile_id, update_data)
-
-    return {
-        "message": "File uploaded",
-        "doc_type": doc_type,
-        "path": object_path,
-        "url": public_url,
-        **update_data,
-    }
 
 
 @api_router.get("/admin/vendors/review-queue")

@@ -29,7 +29,6 @@ import { sortItemsByLocationPreference, computeLocationTier } from '../../src/ut
 import { useScrollToHideTabBar } from '../../src/utils/scroll';
 import { isCategoryMatch, filterVendorsBySmartSearch } from '../../src/utils/categoryMatcher';
 import { VendorRegistrationModal } from '../../src/components/VendorRegistrationModal';
-import { JobProfileModal } from '../../src/components/JobProfileModal';
 import VendorCategories from '../../src/components/VendorCategories';
 import { useTranslation } from '../../src/utils/i18n';
 import { useIsFocused } from '@react-navigation/native';
@@ -38,7 +37,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
 import { useVendorStore, Vendor } from '../../src/store/vendorStore';
 import { ensureForegroundPermission, getCurrentPosition } from '../../src/services/location';
-import { createOrUpdateJobProfile, getJobProfiles, getMyJobProfile, getKYCStatus, uploadJobProfileFile } from '../../src/services/api';
+import { getKYCStatus } from '../../src/services/api';
 import * as Location from 'expo-location';
 
 const VSCREEN_WIDTH = Dimensions.get('window').width;
@@ -56,24 +55,7 @@ const businessRightColWidth = (businessGridWidth - 12) / 3.13;
 const businessLeftColWidth = businessRightColWidth * 2.13;
 
 const TABS = ['Nearby'];
-const MAIN_SECTIONS = ['Services', 'Jobs'];
 const TOP_SKILL_SUGGESTIONS = ['Carpenter', 'Housemaid', 'Plumber', 'Electrician', 'Cook', 'Teacher', 'Painter', 'Beautician'];
-
-interface JobProfile {
-  id: string;
-  owner_id: string;
-  name: string;
-  current_address: string;
-  experience_years: number;
-  profession: string;
-  preferred_work_city: string;
-  latitude?: number;
-  longitude?: number;
-  location_link?: string;
-  photos?: string[];
-  cv_url?: string;
-  distance?: number;
-}
 
 const LOCAL_TRANSLATIONS = {
   en: {
@@ -92,11 +74,7 @@ const LOCAL_TRANSLATIONS = {
     verify: 'Verify',
     registerYourService: 'Register Your Service',
     registerBusinessService: 'Register Your Business/Service',
-    createJobProfile: 'Create Job Profile',
-    updateJobProfile: 'Update Job Profile',
-    noJobsFound: 'No jobs found',
     noServicesFound: 'No services found',
-    createJobProfileSub: 'Create a job profile to appear here.',
     beFirstRegisterSub: 'Be the first to register in this area!',
     preferredCityNotSet: 'Preferred city not set',
     years: 'yrs',
@@ -142,7 +120,6 @@ const LOCAL_TRANSLATIONS = {
     kycRequired: 'KYC Required',
     kycRequiredTitle: 'KYC Required',
     kycRequiredMsg: 'Please complete your KYC verification to manage your business/service.',
-    jobSaveSuccess: 'Job profile saved successfully.',
   },
   hi: {
     nearby: 'आस-पास',
@@ -160,11 +137,7 @@ const LOCAL_TRANSLATIONS = {
     verify: 'सत्यापित करें',
     registerYourService: 'अपनी सेवा पंजीकृत करें',
     registerBusinessService: 'अपना व्यवसाय/सेवा पंजीकृत करें',
-    createJobProfile: 'नौकरी प्रोफ़ाइल बनाएं',
-    updateJobProfile: 'नौकरी प्रोफ़ाइल अपडेट करें',
-    noJobsFound: 'कोई नौकरी नहीं मिली',
     noServicesFound: 'कोई सेवाएं नहीं मिलीं',
-    createJobProfileSub: 'यहाँ दिखने के लिए एक नौकरी प्रोफ़ाइल बनाएं।',
     beFirstRegisterSub: 'इस क्षेत्र में पंजीकरण करने वाले पहले व्यक्ति बनें!',
     preferredCityNotSet: 'पसंदीदा शहर सेट नहीं है',
     years: 'वर्ष',
@@ -210,7 +183,6 @@ const LOCAL_TRANSLATIONS = {
     kycRequired: 'केवाईसी आवश्यक',
     kycRequiredTitle: 'केवाईसी आवश्यक',
     kycRequiredMsg: 'अपना व्यवसाय/सेवा प्रबंधित करने के लिए कृपया केवाईसी सत्यापन पूरा करें।',
-    jobSaveSuccess: 'नौकरी प्रोफ़ाइल सफलतापूर्वक सहेजी गई।',
   }
 };
 
@@ -263,10 +235,8 @@ export default function VendorScreen() {
   const canAccessDashboard = hasVerifiedKyc || hasPendingKyc;
   
   const [activeTab, setActiveTab] = useState('Nearby');
-  const [activeSection, setActiveSection] = useState('Services');
   const [refreshing, setRefreshing] = useState(false);
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
-  const [showJobProfileModal, setShowJobProfileModal] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -278,9 +248,6 @@ export default function VendorScreen() {
   const [typedSkillPlaceholder, setTypedSkillPlaceholder] = useState('');
   const [isPlaceholderPaused, setIsPlaceholderPaused] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [jobProfiles, setJobProfiles] = useState<JobProfile[]>([]);
-  const [myJobProfile, setMyJobProfile] = useState<JobProfile | null>(null);
-  const [jobsLoading, setJobsLoading] = useState(false);
 
   const searchAnim = useRef(new Animated.Value(0)).current;
 
@@ -304,24 +271,6 @@ export default function VendorScreen() {
     }
   }, [updateUser]);
 
-  const ensureKycVerifiedForCv = useCallback(async () => {
-    const latestStatus = await loadKycStatus();
-    const isVerified =
-      latestStatus === 'verified' ||
-      Boolean((user as any)?.is_verified) ||
-      (user as any)?.kyc_status === 'verified' ||
-      myVendor?.kyc_status === 'verified';
-
-    if (isVerified) {
-      return true;
-    }
-
-    router.push({
-      pathname: '/kyc',
-      params: { returnUrl: '/(tabs)/vendor' }
-    });
-    return false;
-  }, [loadKycStatus, user, myVendor?.kyc_status, router]);
   const filterAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput | null>(null);
   const registerBtnRef = useRef<any>(null);
@@ -331,11 +280,6 @@ export default function VendorScreen() {
   const homeLatitude = Number.isFinite(hLatVal) && Math.abs(hLatVal) > 0.001 ? hLatVal : undefined;
   const homeLongitude = Number.isFinite(hLngVal) && Math.abs(hLngVal) > 0.001 ? hLngVal : undefined;
   const hasHomeCoordinates = typeof homeLatitude === 'number' && typeof homeLongitude === 'number';
-
-  const jobProfessionFilters = React.useMemo(() => {
-    const professions = [...new Set((jobProfiles || []).map((profile) => (profile.profession || '').trim()).filter(Boolean))];
-    return professions.sort();
-  }, [jobProfiles]);
 
   const loadData = useCallback(async () => {
     // Get user location
@@ -414,38 +358,13 @@ export default function VendorScreen() {
     await fetchCategories();
   }, [fetchVendors, fetchMyVendor, fetchCategories, hasHomeCoordinates, homeLatitude, homeLongitude]);
 
-  const loadJobsData = useCallback(async () => {
-    setJobsLoading((prev) => jobProfiles.length === 0 ? true : prev);
-    try {
-      const [profilesRes, myProfileRes] = await Promise.all([
-        getJobProfiles({
-          search: searchTerm || undefined,
-          profession: searchCategory !== 'All' ? searchCategory : undefined,
-          lat: userLocation?.lat,
-          lng: userLocation?.lng,
-          limit: 50,
-        }),
-        getMyJobProfile(),
-      ]);
-
-      setJobProfiles((profilesRes?.data || []) as JobProfile[]);
-      setMyJobProfile((myProfileRes?.data || null) as JobProfile | null);
-    } catch (error: any) {
-      console.warn('Error loading jobs:', error?.message || error);
-      setJobProfiles([]);
-      setMyJobProfile(null);
-    } finally {
-      setJobsLoading(false);
-    }
-  }, [searchTerm, searchCategory, userLocation?.lat, userLocation?.lng]);
-
   useEffect(() => {
     // Redirect to auth if not authenticated after auth is loaded
     if (!authLoading && !isAuthenticated) {
       router.replace('/');
       return;
     }
-    
+
     if (!userId) {
       return;
     }
@@ -456,13 +375,6 @@ export default function VendorScreen() {
     if (!userId) return;
     loadKycStatus();
   }, [userId]);
-
-  useEffect(() => {
-    if (!userId) return;
-    if (activeSection === 'Jobs') {
-      loadJobsData();
-    }
-  }, [activeSection, userId, loadJobsData]);
 
   useEffect(() => {
     if (searchTerm) {
@@ -477,34 +389,10 @@ export default function VendorScreen() {
 
   const searchSuggestions = React.useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return [] as { label: string; type: 'vendor' | 'category' | 'job' | 'profession' }[];
+    if (!term) return [] as { label: string; type: 'vendor' | 'category' }[];
 
     const seen = new Set<string>();
-    const suggestions: { label: string; type: 'vendor' | 'category' | 'job' | 'profession' }[] = [];
-
-    if (activeSection === 'Jobs') {
-      (jobProfiles || []).forEach((job) => {
-        const name = (job.name || '').trim();
-        if (name && name.toLowerCase().includes(term)) {
-          const key = `job:${name.toLowerCase()}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            suggestions.push({ label: name, type: 'job' });
-          }
-        }
-
-        const role = (job.profession || '').trim();
-        if (role && role.toLowerCase().includes(term)) {
-          const key = `profession:${role.toLowerCase()}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            suggestions.push({ label: role, type: 'profession' });
-          }
-        }
-      });
-
-      return suggestions.slice(0, 10);
-    }
+    const suggestions: { label: string; type: 'vendor' | 'category' }[] = [];
 
     (vendors || []).forEach((vendor) => {
       const name = (vendor.business_name || '').trim();
@@ -523,7 +411,7 @@ export default function VendorScreen() {
     });
 
     return suggestions.slice(0, 10);
-  }, [activeSection, searchTerm, vendors, filteredCategories, jobProfiles]);
+  }, [searchTerm, vendors, filteredCategories]);
 
   useEffect(() => {
     let typeTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -615,106 +503,10 @@ export default function VendorScreen() {
     return sortItemsByLocationPreference(withDist, userLocInfo, searchTerm);
   }, [vendors, activeTab, searchTerm, searchCategory, userLocInfo]);
 
-  const displayJobProfiles = React.useMemo(() => {
-    let filtered = [...(jobProfiles || [])];
-
-    if (searchCategory !== 'All') {
-      const target = searchCategory.toLowerCase();
-      filtered = filtered.filter((profile) => (profile.profession || '').toLowerCase().includes(target));
-    }
-
-    if (searchTerm && searchTerm.trim()) {
-      filtered = filterVendorsBySmartSearch(filtered, searchTerm);
-    }
-
-    const withDist = filtered.map((p) => {
-      const dynDist = calculateHaversineDistance(userLocInfo.latitude, userLocInfo.longitude, p.latitude, p.longitude);
-      const effectiveDist = dynDist !== null ? dynDist : (typeof p.distance === 'number' ? p.distance : undefined);
-      return { ...p, effectiveDist };
-    });
-
-    return sortItemsByLocationPreference(withDist, userLocInfo, searchTerm);
-  }, [jobProfiles, searchCategory, searchTerm, userLocInfo]);
-
   const handleRefresh = async () => {
     setRefreshing(true);
-    if (activeSection === 'Jobs') {
-      await loadKycStatus();
-      await loadJobsData();
-    } else {
-      await loadData();
-    }
+    await loadData();
     setRefreshing(false);
-  };
-
-  const handleCreateJobProfile = async (data: {
-    name: string;
-    currentAddress: string;
-    experienceYears: number;
-    profession: string;
-    preferredWorkCity: string;
-    latitude?: number;
-    longitude?: number;
-    locationLink?: string;
-    photoFile?: { uri: string; name: string; type: string };
-    cvFile?: { uri: string; name: string; type: string };
-  }) => {
-    try {
-      const profileRes = await createOrUpdateJobProfile({
-        name: data.name,
-        current_address: data.currentAddress,
-        experience_years: data.experienceYears,
-        profession: data.profession,
-        preferred_work_city: data.preferredWorkCity,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        location_link: data.locationLink,
-        photos: [],
-        cv_url: undefined,
-      });
-
-      const profileId = profileRes?.data?.id;
-      if (!profileId) {
-        throw new Error('Could not create job profile.');
-      }
-
-      const uploadedPhotos: string[] = [];
-      if (data.photoFile) {
-        const uploadRes = await uploadJobProfileFile(profileId, 'photo', data.photoFile);
-        const photos = uploadRes?.data?.photos || [];
-        if (Array.isArray(photos)) {
-          uploadedPhotos.splice(0, uploadedPhotos.length, ...photos);
-        }
-      }
-
-      let uploadedCvUrl: string | undefined;
-      if (data.cvFile) {
-        const cvRes = await uploadJobProfileFile(profileId, 'cv', data.cvFile);
-        uploadedCvUrl = cvRes?.data?.cv_url || cvRes?.data?.url;
-      }
-
-      await createOrUpdateJobProfile({
-        name: data.name,
-        current_address: data.currentAddress,
-        experience_years: data.experienceYears,
-        profession: data.profession,
-        preferred_work_city: data.preferredWorkCity,
-        latitude: data.latitude,
-        longitude: data.longitude,
-        location_link: data.locationLink,
-        photos: uploadedPhotos,
-        cv_url: uploadedCvUrl,
-      });
-
-      Alert.alert('Success', localT('jobSaveSuccess'));
-      await loadJobsData();
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail;
-      const detailMessage = typeof detail === 'string'
-        ? detail
-        : detail?.message || (detail ? JSON.stringify(detail) : '');
-      throw new Error(detailMessage || error?.message || 'Failed to save job profile.');
-    }
   };
 
   const handleSkillPlaceholderPress = () => {
@@ -924,95 +716,6 @@ export default function VendorScreen() {
         >
           <Ionicons name="call" size={20} color={COLORS.primary} />
         </Pressable>
-      </Pressable>
-    );
-  };
-
-  const renderJobProfile = ({ item }: { item: JobProfile }) => {
-    const firstPhoto = (item.photos || []).find((url) => !!url);
-    const cvIconName = isKycVerified ? 'document-text' : 'lock-closed';
-    const cvIconColor = isKycVerified ? COLORS.primary : COLORS.textLight;
-
-    return (
-      <Pressable
-        style={({ pressed }) => [
-          styles.vendorCard,
-          Platform.OS === 'ios' && pressed && { opacity: 0.7 }
-        ]}
-        android_ripple={{ color: 'rgba(0, 0, 0, 0.1)' }}
-        onPress={() => {
-          setSearchTerm('');
-          router.push(`/jobs/${item.id}`);
-        }}
-      >
-        <View style={styles.vendorImageContainer}>
-          {firstPhoto ? (
-            <Image source={{ uri: firstPhoto }} style={styles.vendorImage} />
-          ) : (
-            <View style={styles.vendorImagePlaceholder}>
-              <Ionicons name="briefcase" size={28} color={COLORS.primary} />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.vendorInfo}>
-          <View style={styles.vendorNameRow}>
-            <Text style={styles.vendorName}>{item.name || 'Unnamed Profile'}</Text>
-            {myJobProfile?.id === item.id && (
-              <Ionicons name="person-circle" size={16} color={COLORS.info} style={styles.vendorVerifiedIcon} />
-            )}
-          </View>
-
-          <View style={styles.categoriesRow}>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>
-                {localT(item.profession?.toLowerCase() as any) || item.profession || localT('profession')}
-              </Text>
-            </View>
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{item.experience_years || 0} {localT('years')}</Text>
-            </View>
-          </View>
-
-          <View style={styles.distanceRow}>
-            <Ionicons name="location" size={12} color={COLORS.textLight} />
-            <Text style={styles.distanceText}>{item.preferred_work_city || localT('preferredCityNotSet')}</Text>
-          </View>
-        </View>
-
-        {item.cv_url ? (
-          <Pressable
-            style={({ pressed }) => [
-              styles.callButton,
-              Platform.OS === 'ios' && pressed && { opacity: 0.7 }
-            ]}
-            android_ripple={{ color: 'rgba(0, 0, 0, 0.05)', borderless: true }}
-            onPress={async () => {
-              const canViewCv = await ensureKycVerifiedForCv();
-              if (!canViewCv) {
-                return;
-              }
-
-              try {
-                const url = typeof item.cv_url === 'string' ? item.cv_url : '';
-                if (!url) {
-                  Alert.alert(localT('unavailable'), localT('cvNotAvailable'));
-                  return;
-                }
-                const canOpen = await Linking.canOpenURL(url);
-                if (!canOpen) {
-                  Alert.alert(localT('unavailable'), localT('cvOpenError'));
-                  return;
-                }
-                await Linking.openURL(url);
-              } catch {
-                Alert.alert(localT('unavailable'), localT('cvOpenError'));
-              }
-            }}
-          >
-            <Ionicons name={cvIconName} size={18} color={cvIconColor} />
-          </Pressable>
-        ) : null}
       </Pressable>
     );
   };
@@ -1346,7 +1049,7 @@ export default function VendorScreen() {
       ) : (
         <View style={{ flex: 1 }}>
           {/* Loading State */}
-          {((activeSection === 'Services' && loading && vendors.length === 0) || (activeSection === 'Jobs' && jobsLoading && jobProfiles.length === 0)) && (
+          {loading && vendors.length === 0 && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={COLORS.primary} />
             </View>
@@ -1354,9 +1057,8 @@ export default function VendorScreen() {
 
           {/* Listing */}
           <FlatList
-            key={activeSection}
-            data={activeSection === 'Jobs' ? displayJobProfiles : displayVendors}
-            renderItem={activeSection === 'Jobs' ? (renderJobProfile as any) : (renderVendor as any)}
+            data={displayVendors}
+            renderItem={renderVendor}
             keyExtractor={(item: any) => item.id}
             contentContainerStyle={[styles.listContent, { paddingBottom: 90 }]}
             onScroll={onVendorScrollTabBar}
@@ -1369,17 +1071,17 @@ export default function VendorScreen() {
               />
             }
             ListEmptyComponent={
-              !((activeSection === 'Services' && loading) || (activeSection === 'Jobs' && jobsLoading)) ? (
+              !loading ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name={activeSection === 'Jobs' ? 'briefcase-outline' : 'storefront-outline'} size={48} color={COLORS.textLight} />
+                  <Ionicons name="storefront-outline" size={48} color={COLORS.textLight} />
                   <Text style={styles.emptyText}>
                     {searchTerm
                       ? getNoItemsInAreaText(searchTerm)
-                      : (activeSection === 'Jobs' ? localT('noJobsFound') : localT('noServicesFound'))}
+                      : localT('noServicesFound')}
                   </Text>
                   {!searchTerm && (
                     <Text style={styles.emptySubtext}>
-                      {activeSection === 'Jobs' ? localT('createJobProfileSub') : localT('beFirstRegisterSub')}
+                      {localT('beFirstRegisterSub')}
                     </Text>
                   )}
                 </View>
@@ -1395,16 +1097,6 @@ export default function VendorScreen() {
         onClose={() => setShowRegistrationModal(false)}
         onSubmit={handleRegisterVendor}
       />
-
-      <JobProfileModal
-        visible={showJobProfileModal}
-        onClose={() => setShowJobProfileModal(false)}
-        onSubmit={handleCreateJobProfile}
-      />
-
-
-
-
 
     </LinearGradient>
   );

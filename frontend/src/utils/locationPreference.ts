@@ -1,5 +1,5 @@
 /**
- * Location Preference & Search Relevance Utility for Businesses (Services) and Jobs.
+ * Location Preference & Search Relevance Utility for Businesses (Services).
  * 
  * Distance Sub-Tiers:
  * 1. Immediate  (<= 2 km)

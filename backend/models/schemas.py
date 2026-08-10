@@ -595,32 +595,6 @@ class VendorResponse(BaseModel):
     created_at: datetime
 
 
-class JobProfileCreate(BaseModel):
-    name: str = Field(..., min_length=2, max_length=120)
-    current_address: str = Field(..., min_length=5, max_length=500)
-    experience_years: int = Field(default=0, ge=0, le=60)
-    profession: str = Field(..., min_length=2, max_length=120)
-    preferred_work_city: str = Field(..., min_length=2, max_length=120)
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    location_link: Optional[str] = None
-    photos: Optional[List[str]] = Field(default_factory=list, max_length=5)
-    cv_url: Optional[str] = None
-
-
-class JobProfileUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=2, max_length=120)
-    current_address: Optional[str] = Field(None, min_length=5, max_length=500)
-    experience_years: Optional[int] = Field(None, ge=0, le=60)
-    profession: Optional[str] = Field(None, min_length=2, max_length=120)
-    preferred_work_city: Optional[str] = Field(None, min_length=2, max_length=120)
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    location_link: Optional[str] = None
-    photos: Optional[List[str]] = Field(None, max_length=5)
-    cv_url: Optional[str] = None
-
-
 # ================= SOS MODELS =================
 
 class SOSCreate(BaseModel):
