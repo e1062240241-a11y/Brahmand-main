@@ -5528,7 +5528,7 @@ async def get_horoscope(token_data: dict = Depends(verify_token)):
     zodiac_signs = ["Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius"]
     zodiac_sign = zodiac_signs[(month - 1) % 12]
 
-    horoscope = await _generate_horoscope_with_gemini(zodiac_sign)
+    horoscope = await _generate_horoscope_with_groq(zodiac_sign)
     day_of_year = datetime.utcnow().timetuple().tm_yday
     return {
         "zodiac_sign": zodiac_sign,
@@ -10809,54 +10809,80 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             summaries_context = "\n".join([f"- {s}" for s in history_summaries])
             system_prompt = system_prompt + f"\n\nUSER HISTORY & LONG-TERM MEMORY (Summary of past interactions):\n{summaries_context}\nUse this past context to maintain consistency in your relationship and wisdom with the user."
 
-        async def _call_gemini_primary(messages_list: list, sys_prompt: str, model_name: str = "gemma-4-26b-a4b-it") -> str:
-            gemini_key = os.environ.get("GEMINI_API_KEY")
-            if not gemini_key:
-                raise ValueError("GEMINI_API_KEY not set")
+        async def _call_groq_primary(messages_list: list, sys_prompt: str, model_name: str = None) -> str:
+            groq_key = os.environ.get("GROQ_API_KEY")
+            if not groq_key:
+                raise ValueError("GROQ_API_KEY not set")
 
-            from google import genai
-            from google.genai import types
+            model_to_use = model_name or os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
-            client = genai.Client(api_key=gemini_key)
+            from utils.groq_rate_limiter import groq_rate_limiter
+            acquired = await groq_rate_limiter.acquire(estimated_tokens=600, timeout=15.0)
+            if not acquired:
+                raise RuntimeError("Groq Rate Limit capacity exceeded (30 RPM / 30k TPM)")
 
-            contents = []
+            formatted_msgs = [{"role": "system", "content": sys_prompt}]
             for msg in messages_list[-10:]:
-                role = "user" if msg.get("role") == "user" else "model"
+                role = "user" if msg.get("role") == "user" else "assistant"
                 text = msg.get("content", "")
                 if text:
-                    contents.append(types.Content(
-                        role=role,
-                        parts=[types.Part.from_text(text=text)]
-                    ))
+                    formatted_msgs.append({"role": role, "content": text})
 
-            config = types.GenerateContentConfig(
-                system_instruction=sys_prompt,
-                temperature=0.7,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            )
-
-            def _sync_call():
-                res = client.models.generate_content(
-                    model=model_name,
-                    contents=contents if contents else latest_user_msg,
-                    config=config,
+            def _sync_groq_call():
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {groq_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": model_to_use,
+                    "messages": formatted_msgs,
+                    "temperature": 0.7,
+                    "max_tokens": 1024
+                }
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=30
                 )
-                return res.text
+                resp.raise_for_status()
+                res_data = resp.json()
+                return res_data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-            return await asyncio.to_thread(_sync_call)
+            return await asyncio.to_thread(_sync_groq_call)
 
         assistant_reply = None
 
-        # Step 1: Primary - Independent Gemini API Call (No AFC, no ChromaDB dependency)
+        # Step 1: Primary - Independent Groq API Call
         try:
-            logger.info("[Krishna-Chat] Calling primary Gemini API...")
-            assistant_reply = await _call_gemini_primary(db_messages, system_prompt, model_name="gemma-4-26b-a4b-it")
+            logger.info("[Krishna-Chat] Calling primary Groq API...")
+            assistant_reply = await _call_groq_primary(db_messages, system_prompt)
             if assistant_reply and len(assistant_reply.strip()) > 0:
-                logger.info("[Krishna-Chat] Primary Gemini API responded successfully!")
-        except Exception as gemini_err:
-            logger.warning("[Krishna-Chat] Gemini API call failed (%s). Activating independent ChromaDB/Gita DB fallback...", gemini_err)
+                logger.info("[Krishna-Chat] Primary Groq API responded successfully!")
+        except Exception as groq_err:
+            logger.warning("[Krishna-Chat] Groq API call failed (%s). Activating independent ChromaDB/Gita DB fallback...", groq_err)
 
-        # Step 2: Fallback - Independent ChromaDB / Gita DB Fallback (No extra Gemini API calls)
+        # Step 2: Fallback - Independent ChromaDB / Gita DB Fallback (No extra Groq/Gemini API calls)
+        if not assistant_reply:
+            try:
+                from services.krishna_rag_service import retrieve_relevant_shlokas
+                shlokas = retrieve_relevant_shlokas(latest_user_msg, top_k=1)
+                if shlokas and len(shlokas) > 0:
+                    shloka_data = shlokas[0]
+                    ch = shloka_data.get("chapter", "")
+                    v = shloka_data.get("verse", "")
+                    txt = shloka_data.get("text", "")
+                    trans = shloka_data.get("translation", "")
+                    assistant_reply = (
+                        f"Arre mere bhakta, Bhagavad Gita (Adhyay {ch}, Shlok {v}) mein kaha gaya hai:\n\n"
+                        f"\"{txt}\"\n\n"
+                        f"Bhaavarth: {trans}\n\n"
+                        f"Sadaiv dharma aur karma ke maarg par chalo. Jai Shri Krishna! 🙏"
+                    )
+            except Exception as rag_err:
+                logger.warning("[Krishna-Chat] ChromaDB RAG fallback attempt failed: %s", rag_err)
+
         if not assistant_reply:
             try:
                 from utils.krishna_gita_db import get_gita_solution
@@ -14865,13 +14891,14 @@ RASHI_TO_ENGLISH = {
     "Dhanu": "sagittarius", "Makar": "capricorn", "Kumbh": "aquarius", "Meen": "pisces"
 }
 
-async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
+async def _generate_horoscope_with_groq(zodiac_name: str) -> dict:
     import os
     import asyncio
     import json
     import random
     from datetime import datetime
     from utils.cache import cache_manager
+    from utils.groq_rate_limiter import groq_rate_limiter
     
     zodiac_clean = zodiac_name.lower().strip()
     today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -14885,14 +14912,19 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     except Exception as e:
         logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
+    acquired = await groq_rate_limiter.acquire(estimated_tokens=500, timeout=15.0)
+    if not acquired:
+        logger.warning("[Horoscope] Groq rate limit reached, triggering mock generator")
+        raise RuntimeError("Groq Rate limit exceeded")
+
     def _call():
         import requests
-        nvidia_key = os.environ.get("NVIDIA_API_KEY")
-        invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+        groq_key = os.environ.get("GROQ_API_KEY")
+        invoke_url = "https://api.groq.com/openai/v1/chat/completions"
 
         headers = {
-            "Authorization": f"Bearer {nvidia_key}",
-            "Accept": "application/json"
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json"
         }
 
         prompt = (
@@ -14914,16 +14946,13 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         )
 
         payload = {
-            "model": "google/gemma-4-31b-it",
+            "model": os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 1024,
-            "temperature": 1.0,
-            "top_p": 0.95,
-            "stream": False,
-            "chat_template_kwargs": {"enable_thinking": False}
+            "temperature": 0.7
         }
 
-        response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
+        response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -14957,7 +14986,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             
         return data
     except Exception as e:
-        logger.warning("Gemini horoscope generation failed, using mock generator: %s", e)
+        logger.warning("Groq horoscope generation failed, using mock generator: %s", e)
         
         # Seed random to ensure different signs have completely different, day-consistent values
         import hashlib
@@ -15038,7 +15067,7 @@ async def get_daily_horoscope_api(
         # Handle case where user passes Hindi name
         name = RASHI_TO_ENGLISH.get(zodiac_name, name)
         
-        payload = await _generate_horoscope_with_gemini(name)
+        payload = await _generate_horoscope_with_groq(name)
         return payload
     except Exception as exc:
         logger.error("Horoscope fetch failed: %s", exc)
@@ -15050,7 +15079,7 @@ async def get_horoscope(rashi: str):
     """Get daily horoscope for a rashi (using Gemini)"""
     english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
     try:
-        horoscope = await _generate_horoscope_with_gemini(english_name)
+        horoscope = await _generate_horoscope_with_groq(english_name)
         # Return in a format compatible with old structure if needed, or just the new one
         return {
             "rashi": rashi,
@@ -15082,7 +15111,7 @@ async def get_user_horoscope(token_data: dict = Depends(verify_token)):
     
     english_name = RASHI_TO_ENGLISH.get(user_rashi, user_rashi.lower())
     try:
-        horoscope = await _generate_horoscope_with_gemini(english_name)
+        horoscope = await _generate_horoscope_with_groq(english_name)
         return {
             "has_profile": True,
             "rashi": user_rashi,

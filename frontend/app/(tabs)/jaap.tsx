@@ -78,19 +78,6 @@ const TempleCardImageItem = React.memo(({
   useEffect(() => {
     setCurrentSource(imageSource);
     setHasError(false);
-
-    console.log('[TEMPLE IMAGE COMPONENT MOUNT]', {
-      templeId: targetId,
-      templeName: safeName,
-      source: imageSource,
-    });
-
-    return () => {
-      console.log('[TEMPLE IMAGE COMPONENT UNMOUNT]', {
-        templeId: targetId,
-        templeName: safeName,
-      });
-    };
   }, [imageSource, targetId, safeName]);
 
   const rawDeity = renderSafeText(item?.deity) || 'LORD SHIVA';
@@ -125,20 +112,7 @@ const TempleCardImageItem = React.memo(({
           source={currentSource}
           style={styles.newTempleCardImg}
           resizeMode="cover"
-          onLoad={() => {
-            console.log('[TEMPLE IMAGE LOAD SUCCESS]', {
-              templeId: targetId,
-              templeName: safeName,
-              source: currentSource,
-            });
-          }}
-          onError={(event) => {
-            console.log('[TEMPLE IMAGE LOAD ERROR]', {
-              templeId: targetId,
-              templeName: safeName,
-              source: currentSource,
-              error: event.nativeEvent?.error,
-            });
+          onError={() => {
             if (!hasError) {
               setHasError(true);
             }

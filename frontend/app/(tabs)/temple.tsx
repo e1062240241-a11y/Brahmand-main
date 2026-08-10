@@ -131,11 +131,6 @@ interface TempleCardProps {
 }
 
 const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
-  console.log('[TEMPLE CARD RENDER]', {
-    id: item?.temple_id || item?.templeId || item?.id,
-    name: item?.name,
-  });
-
   const displayName = getTempleDisplayName(item);
   const location = getTempleLocation(item);
   const deityLabel = getTempleDeityLabel(item);
@@ -160,12 +155,6 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
     setImgSource(imageSource);
   }, [imageSource]);
 
-  console.log('[TEMPLE SOURCE RESOLVED]', {
-    id: item.temple_id || item.templeId || item.id,
-    name: displayName,
-    source: imageSource,
-  });
-
   return (
     <TouchableOpacity 
       style={styles.templeItemCard}
@@ -178,13 +167,7 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
         style={styles.templeItemImage} 
         resizeMode="cover"
         fadeDuration={0}
-        onLoad={() => {
-          console.log('[TEMPLE IMAGE LOADED]', {
-            id: item.temple_id || item.templeId || item.id,
-            name: displayName,
-            source: imgSource,
-          });
-        }}
+        onLoad={() => {}}
         onError={(e) => {
           console.error('[TEMPLE IMAGE FAILED]', {
             id: item.temple_id || item.templeId || item.id,
@@ -710,11 +693,6 @@ export default function TempleScreen() {
   }, [fetchData, loadMoreTemples]);
 
 const renderItem = useCallback(({ item }: { item: any }) => {
-    console.log('[TEMPLE RENDER ITEM]', {
-      id: item?.temple_id || item?.templeId || item?.id,
-      name: item?.name,
-    });
-
     return (
       <View style={{ paddingHorizontal: 20 }}>
         <TempleCard
@@ -837,12 +815,7 @@ const renderItem = useCallback(({ item }: { item: any }) => {
     </View>
   ), [loading, displayTemples.length, t]);
 
-  console.log('[TEMPLE DISPLAY STATE]', {
-    count: displayTemples?.length ?? 0,
-    first: displayTemples?.[0],
-    category: selectedCategory,
-    loading,
-  });
+
 
   return (
     <LinearGradient

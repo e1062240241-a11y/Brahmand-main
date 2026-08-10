@@ -1,4 +1,8 @@
-from .cache import cache_manager
+try:
+    from .cache import cache_manager
+except Exception:
+    cache_manager = None
+
 from .helpers import (
     generate_sl_id,
     generate_circle_code,
