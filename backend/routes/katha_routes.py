@@ -222,21 +222,52 @@ async def get_katha_status():
     else:
         next_stream = tomorrow_morning.isoformat()
 
+    # Determine current episode based on saavan_start_date
+    saavan_start_date_str = "2026-08-13"
+    saavan_start = datetime.strptime(saavan_start_date_str, "%Y-%m-%d").replace(tzinfo=IST)
+
+    # Calculate days elapsed (if today is 13th, delta is 0 days, so episode = 1)
+    # Use the date part only to avoid time variations
+    start_date = saavan_start.date()
+    today_date = now_ist.date()
+
+    delta_days = (today_date - start_date).days
+    active_episode_number = max(1, delta_days + 1)
+
+    # Retrieve all episodes
+    episodes_resp = await get_katha_episodes()
+    episodes = episodes_resp.get("episodes", [])
+
+    # Find active episode
+    active_episode = next((ep for ep in episodes if ep.get("episode_number") == active_episode_number), None)
+
+    # Fallback to last uploaded episode if future day has no video yet
+    if not active_episode and episodes:
+        active_episode = episodes[-1]
+
+    active_video_url = active_episode.get("video_url") if active_episode else "https://vjs.zencdn.net/v/oceans.mp4"
+    active_episode_title = active_episode.get("title") if active_episode else title
+    active_duration = active_episode.get("duration") if active_episode else "01:30:00"
+
     return {
         "status": "success",
         "is_live": is_live,
         "mode": mode,
-        "title": title,
+        "title": active_episode_title,
         "guru_name": "Acharya Shamik Pathak Ji",
         "banner_message": banner_message,
-        "saavan_start_date": "2026-08-13",
+        "saavan_start_date": saavan_start_date_str,
         "schedule": {
             "morning_live_ist": "08:00 AM",
             "evening_repeat_ist": "08:00 PM"
         },
         "current_broadcast_start_time": current_broadcast_start,
         "next_stream_at": next_stream,
-        "server_time_ist": now_ist.isoformat()
+        "server_time_ist": now_ist.isoformat(),
+        "active_episode_number": active_episode.get("episode_number") if active_episode else active_episode_number,
+        "active_video_url": active_video_url,
+        "active_episode_id": active_episode.get("id") if active_episode else f"saavan_katha_ep{active_episode_number}",
+        "active_duration": active_duration
     }
 
 
@@ -258,11 +289,10 @@ async def get_katha_episodes():
     merged: Dict[str, Any] = {**local_store, **IN_MEMORY_EPISODES}
 
     db = None
-    if not merged:
-        try:
-            db = await asyncio.wait_for(get_firestore(), timeout=1.0)
-        except Exception as db_err:
-            logger.warning(f"[TRACE /episodes] get_firestore timeout/bypass: {db_err}")
+    try:
+        db = await asyncio.wait_for(get_firestore(), timeout=1.0)
+    except Exception as db_err:
+        logger.warning(f"[TRACE /episodes] get_firestore timeout: {db_err}")
 
     firestore_keys = []
     if db:
@@ -321,6 +351,16 @@ async def admin_upload_katha_episode(
     """
     logger.info("UPLOAD START")
     episode_id = f"saavan_katha_ep{episode_number}"
+
+    # Check if this episode number is already uploaded
+    episodes_resp = await get_katha_episodes()
+    episodes = episodes_resp.get("episodes", [])
+    if any(ep.get("episode_number") == episode_number for ep in episodes):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Episode {episode_number} is already uploaded. Please choose a different episode number."
+        )
+
     logger.info(f"Episode ID: {episode_id}")
     logger.info(f"JSON path: {JSON_STORE_PATH.resolve()}")
 
