@@ -1832,70 +1832,6 @@ if (!temple) {
     if (match('dwarka') || match('dwarkadhish')) {
       return [
         {
-          icon: '👞',
-          title: 'Shoe Stand & Lockers',
-          points: [
-            'Lockers available outside Gate No. 56 & Gate No. 13',
-            'Keep electronics and footwear secured before entering queue',
-            'Token system enforced for quick retrieval'
-          ]
-        },
-        {
-          icon: '📵',
-          title: 'Mobile & Camera Policy',
-          points: [
-            'Mobile phones prohibited inside main mandir premises',
-            'Photography permitted outside at Gomti Ghat & riverfront',
-            'Deposit devices in official trust lockers before entering'
-          ]
-        },
-        {
-          icon: '👕',
-          title: 'Dress Code & Traditions',
-          points: [
-            'Modest Indian traditional attire strongly recommended',
-            'Shorts, skirts, and sleeveless tops are strictly restricted',
-            'Follow temple queue discipline during daily Shringar Darshan'
-          ]
-        }
-      ];
-    }
-
-    if (match('somnath')) {
-      return [
-        {
-          icon: '👞',
-          title: 'Shoe Stand & Cloak Room',
-          points: [
-            'Free shoe counters managed by Somnath Trust',
-            'Paid cloak room available for heavy baggage near main gate',
-            'High-security screening before entry checkpoint'
-          ]
-        },
-        {
-          icon: '📵',
-          title: 'Mobile & Security Rules',
-          points: [
-            'Mobiles permitted only in outer courtyard & designated zone',
-            'Strict ban inside main sanctum (Garbhagriha)',
-            'Sea-facing photography allowed outside complex perimeter'
-          ]
-        },
-        {
-          icon: '🎆',
-          title: 'Laser Show & Special Entry',
-          points: [
-            'Light & Sound show daily at 8:00 PM near sea front',
-            'Senior citizen golf cart service available from parking',
-            'Special VIP queue desk inside administrative complex'
-          ]
-        }
-      ];
-    }
-
-    if (match('dwarka') || match('dwarkadhish')) {
-      return [
-        {
           icon: '🎟️',
           title: 'Entry & Darshan',
           points: [
@@ -2719,17 +2655,26 @@ if (!temple) {
               '👥': { iconName: 'people-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' },
             };
 
-            const formattedGuidelines = authenticVisitorGuidelines.map((g, idx) => {
-              const iconMeta = GUIDELINE_ICONS[g.icon] || { iconName: 'information-circle-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' };
-              return {
-                id: `g-${idx}`,
-                title: g.title,
-                iconName: iconMeta.iconName,
-                iconColor: iconMeta.iconColor,
-                badgeBg: iconMeta.badgeBg,
-                content: Array.isArray(g.points) ? g.points.join('\n• ') : String(g.points),
-              };
-            });
+            const hasTopShoeAmenity = authenticFacilities.some(f => f.includes('shoe') || f.includes('footwear'));
+
+            const formattedGuidelines = authenticVisitorGuidelines
+              .filter(g => {
+                if (!hasTopShoeAmenity) return true;
+                const titleLower = (g.title || '').toLowerCase();
+                // Filter out duplicate shoe stand section from guidelines if already shown in top amenities grid
+                return !(titleLower.includes('shoe') || titleLower.includes('footwear'));
+              })
+              .map((g, idx) => {
+                const iconMeta = GUIDELINE_ICONS[g.icon] || { iconName: 'information-circle-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' };
+                return {
+                  id: `g-${idx}`,
+                  title: g.title,
+                  iconName: iconMeta.iconName,
+                  iconColor: iconMeta.iconColor,
+                  badgeBg: iconMeta.badgeBg,
+                  content: Array.isArray(g.points) ? g.points.join('\n• ') : String(g.points),
+                };
+              });
 
             return (
               <TempleFacilitiesSection

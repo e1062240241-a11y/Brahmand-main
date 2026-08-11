@@ -236,6 +236,9 @@ export const resolveTempleTransport = (options: TransportResolutionOptions): Tra
   else if (hasStatic) source = 'static';
   else if (hasDb) source = 'db';
 
+  if (__DEV__ && !hasDb && !hasStatic && rawName) {
+    console.warn(`[templeTransportResolver] Unable to resolve transport mapping for temple: "${rawName}" (ID: "${rawId}")`);
+  }
 
   return {
     air: airFinal,

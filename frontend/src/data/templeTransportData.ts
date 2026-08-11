@@ -269,9 +269,9 @@ export const CURATED_TEMPLE_TRANSPORT: Record<string, TempleTransport> = {
     "bus": "KSRTC and private luxury buses operate frequently connecting Ambalapuzha with major district terminals."
   },
   "sankat-mochan-shimla": {
-    "air": "Lal Bahadur Shastri International Airport Varanasi (~25 km)",
-    "rail": "Varanasi Junction (BSB) (~4 km), Banaras (BSBS) (~3 km)",
-    "bus": "UPSRTC & local electric buses operate regularly connecting Cantt Bus Stand to Godowlia and Ghats."
+    "air": "Shimla Airport Jubbarhatti (~20 km), Chandigarh International Airport (~120 km)",
+    "rail": "Shimla Railway Station (Toy Train) (~5 km), Kalka Railway Station (~85 km)",
+    "bus": "HRTC and local Shimla city buses operate regularly from ISBT Tutikandi along Kalka-Shimla highway."
   },
   "ghati-subramanya-doddaballapur": {
     "air": "Kempegowda International Airport Bengaluru (~120 km), Mangaluru Airport (~110 km)",

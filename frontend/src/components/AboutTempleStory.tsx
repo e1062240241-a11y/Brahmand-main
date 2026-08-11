@@ -76,6 +76,15 @@ export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
   const safeRail = formatStringProp(railRoute, '');
   const safeBus = formatStringProp(busRoute, '');
 
+  const DEFAULT_FESTIVALS = ['Maha Shivratri', 'Shravan Somvar', 'Annakutotsav'];
+  const safeFestivals = useMemo(() => {
+    if (Array.isArray(festivals) && festivals.length > 0) {
+      const valid = festivals.map(f => (typeof f === 'string' ? f.trim() : String(f))).filter(Boolean);
+      if (valid.length > 0) return valid;
+    }
+    return DEFAULT_FESTIVALS;
+  }, [festivals]);
+
   const storyNodes = useMemo(() => {
     const rawNodes: StoryNode[] = [
       {
@@ -148,12 +157,12 @@ export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
         </View>
       )}
 
-      {/* 3. FESTIVAL CHIPS (WITH BEAUTIFUL COLORS) */}
-      {festivals.length > 0 && (
+      {/* 3. MAJOR FESTIVALS CELEBRATED */}
+      {safeFestivals.length > 0 && (
         <View style={styles.festivalsBlock}>
           <Text style={styles.subHeadingTitle}>Major festivals</Text>
           <View style={styles.chipsRow}>
-            {festivals.map((fest, idx) => {
+            {safeFestivals.map((fest, idx) => {
               const theme = FEST_COLORS[idx % FEST_COLORS.length];
               return (
                 <View
