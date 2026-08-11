@@ -76,8 +76,8 @@ export default function KathaPage() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [episodes, setEpisodes] = useState<KathaEpisode[]>([DEFAULT_EPISODE]);
-  const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(DEFAULT_EPISODE);
+  const [episodes, setEpisodes] = useState<KathaEpisode[]>([]);
+  const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(null);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   const [hasSyncedLive, setHasSyncedLive] = useState(false);
   const [status, setStatus] = useState<KathaStatus>({
@@ -98,7 +98,7 @@ export default function KathaPage() {
   const isUserSelectedOldEpisode = activeEpisode && activeEpisode.id !== status.active_episode_id;
   const activeVideoUrl = isUserSelectedOldEpisode
     ? activeEpisode.video_url
-    : (status.active_video_url || 'https://vjs.zencdn.net/v/oceans.mp4');
+    : (status.active_video_url || '');
 
   // We want to pause initially if it's live and we haven't synced yet
   const shouldInitialPause = status.is_live && !isUserSelectedOldEpisode && !hasSyncedLive;
@@ -246,19 +246,19 @@ export default function KathaPage() {
           setActiveEpisode(latestEp);
           console.log('[KathaPage] setEpisodes called with', epJson.episodes.length, 'episodes');
         } else {
-          console.warn('[KathaPage] API returned empty episodes, falling back to DEFAULT_EPISODE');
-          setEpisodes([DEFAULT_EPISODE]);
-          setActiveEpisode(DEFAULT_EPISODE);
+          console.warn('[KathaPage] API returned empty episodes');
+          setEpisodes([]);
+          setActiveEpisode(null);
         }
       } else {
         console.warn('[KathaPage] Episode fetch failed with status:', epRes.status);
-        setEpisodes([DEFAULT_EPISODE]);
-        setActiveEpisode(DEFAULT_EPISODE);
+        setEpisodes([]);
+        setActiveEpisode(null);
       }
     } catch (err) {
       console.warn('[KathaPage] Error fetching data:', err);
-      setEpisodes([DEFAULT_EPISODE]);
-      setActiveEpisode(DEFAULT_EPISODE);
+      setEpisodes([]);
+      setActiveEpisode(null);
     } finally {
       setLoading(false);
       setRefreshing(false);
