@@ -289,11 +289,10 @@ async def get_katha_episodes():
     merged: Dict[str, Any] = {**local_store, **IN_MEMORY_EPISODES}
 
     db = None
-    if not merged:
-        try:
-            db = await asyncio.wait_for(get_firestore(), timeout=1.0)
-        except Exception as db_err:
-            logger.warning(f"[TRACE /episodes] get_firestore timeout/bypass: {db_err}")
+    try:
+        db = await asyncio.wait_for(get_firestore(), timeout=1.0)
+    except Exception as db_err:
+        logger.warning(f"[TRACE /episodes] get_firestore timeout: {db_err}")
 
     firestore_keys = []
     if db:
