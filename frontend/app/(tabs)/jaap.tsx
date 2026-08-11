@@ -1069,21 +1069,12 @@ export default function JaapLandingScreen() {
                 }
 
                 return (
-                  <Pressable
+                  <View
                     key={jaap.id}
-                    style={({ pressed }) => [
+                    style={[
                       styles.jaapCardContainer,
-                      { backgroundColor: '#1A0A00' },
-                      pressed && Platform.OS === 'ios' && { opacity: 0.8 }
+                      { backgroundColor: '#1A0A00' }
                     ]}
-                    android_ripple={{ color: 'rgba(255,255,255,0.2)', borderless: false }}
-                    onPress={() => router.push({
-                      pathname: '/live-jaap-welcome',
-                      params: {
-                        mantraType: jaap.id === '1' ? 'hanuman' : jaap.id === '2' ? 'krishna' : jaap.id === '3' ? 'shiva' : jaap.id === '4' ? 'gayatri' : jaap.id === '5' ? 'ganesh' : jaap.id === '6' ? 'laxmi' : 'krishna',
-                        title: jaap.title.replace('\n', ' ')
-                      }
-                    })}
                   >
                     <Image
                       source={jaap.image}
@@ -1129,7 +1120,7 @@ export default function JaapLandingScreen() {
                         </View>
                       </View>
                     </LinearGradient>
-                  </Pressable>
+                  </View>
                 );
               })}
             </ScrollView>

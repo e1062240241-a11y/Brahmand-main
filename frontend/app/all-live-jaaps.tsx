@@ -278,11 +278,9 @@ export default function AllLiveJaapsScreen() {
           }
 
           return (
-            <TouchableOpacity
+            <View
               key={jaap.id}
               style={styles.card}
-              activeOpacity={0.9}
-              onPress={() => goToJaap(jaap)}
             >
               <Image source={jaap.image} style={styles.cardImage} resizeMode="cover" />
               <LinearGradient
@@ -335,7 +333,7 @@ export default function AllLiveJaapsScreen() {
                   </View>
                 </View>
               </LinearGradient>
-            </TouchableOpacity>
+            </View>
           );
         })}
 

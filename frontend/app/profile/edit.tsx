@@ -311,7 +311,11 @@ export default function EditProfileScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack}>
+          <TouchableOpacity
+            onPress={handleBack}
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+            style={styles.backBtn}
+          >
             <Ionicons name="arrow-back" size={24} color={COLORS.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
@@ -695,8 +699,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
   },
+  backBtn: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
   headerSpacer: {
-    width: 24,
+    width: 44,
   },
   scrollView: {
     flex: 1,

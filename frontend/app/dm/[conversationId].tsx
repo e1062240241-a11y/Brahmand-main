@@ -62,6 +62,7 @@ import { blockUser, unblockUser, isUserBlocked, getUsersWhoBlockedMe } from '../
 import { useBlockStore } from '../../src/store/blockStore';
 import { useLanguageStore } from '../../src/utils/i18n';
 import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../src/components/SafeVideoView';
+import { useTabBar } from '../../src/contexts/TabBarContext';
 
 const DM_STRINGS = {
   en: {
@@ -532,6 +533,16 @@ const DirectMessageScreen = () => {
   const blockedByMeUserIds = useBlockStore(state => state.blockedByMeUserIds);
   const addBlock = useBlockStore(state => state.addBlock);
   const removeBlock = useBlockStore(state => state.removeBlock);
+
+  let hideTabBar: (() => void) | undefined;
+  try {
+    const tabBar = useTabBar();
+    hideTabBar = tabBar.hideTabBar;
+  } catch (_e) {}
+
+  useEffect(() => {
+    hideTabBar?.();
+  }, [hideTabBar]);
 
   const targetUserId = conversation?.user?.id || userId;
   const isBlockedByMe = targetUserId ? blockedByMeUserIds.includes(String(targetUserId)) : false;
@@ -1996,7 +2007,7 @@ const DirectMessageScreen = () => {
             </View>
           </TouchableOpacity>
         )}
-        <TouchableOpacity style={styles.moreButton} onPress={openChatOptions} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+        <TouchableOpacity style={styles.moreButton} onPress={openChatOptions} hitSlop={{ top: 18, bottom: 18, left: 18, right: 18 }}>
           <Ionicons name="ellipsis-vertical" size={24} color="#000000" />
         </TouchableOpacity>
       </View>
@@ -2560,8 +2571,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
     flexShrink: 0
   },
-  backButton: { marginRight: SPACING.md, padding: 4 },
-  moreButton: { padding: 6, borderRadius: BORDER_RADIUS.full, marginLeft: 8 },
+  backButton: { marginRight: SPACING.sm, padding: 8, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
+  moreButton: { padding: 8, minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center', borderRadius: BORDER_RADIUS.full, marginLeft: 4 },
   headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   headerTextInfo: { marginLeft: 12, flex: 1 },
   avatarWrapper: { position: 'relative' },
