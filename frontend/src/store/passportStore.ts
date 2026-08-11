@@ -3,6 +3,7 @@ import { secureStorage } from '../utils/secureStorage';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../database';
 import { useAuthStore } from './authStore';
+import api from '../services/api';
 import {
   PassportAnswer,
   PassportCertificate,
@@ -67,12 +68,54 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       const userId = useAuthStore.getState().user?.id;
       const storageKey = userId ? `brahmand_passport_data_${userId}` : PASSPORT_STORAGE_KEY;
       const raw = await secureStorage.getItem(storageKey);
-      if (!raw) {
-        set({ journeys: [], badges: [], certificates: [], total_jaap: 0, books_completed: 0, daily_hanuman_count: {}, daily_other_jaap_count: {} });
-        return;
+      let parsed: any = null;
+      if (raw) {
+        try { parsed = JSON.parse(raw); } catch (_e) {}
+      } else {
+        const legacyRaw = await secureStorage.getItem(PASSPORT_STORAGE_KEY);
+        if (legacyRaw) {
+          try { parsed = JSON.parse(legacyRaw); } catch (_e) {}
+        }
       }
-      const parsed = JSON.parse(raw) as Omit<PassportState, 'loadPassport' | 'addJourney' | 'awardBadge' | 'addJaap' | 'completeBook'>;
-      set(parsed);
+
+      if (parsed) {
+        set({
+          journeys: parsed.journeys || [],
+          badges: parsed.badges || [],
+          certificates: parsed.certificates || [],
+          total_jaap: parsed.total_jaap || 0,
+          books_completed: parsed.books_completed || 0,
+          daily_hanuman_count: parsed.daily_hanuman_count || {},
+          daily_other_jaap_count: parsed.daily_other_jaap_count || {},
+        });
+      }
+
+      // Fetch backend Jaap Stats to restore previous user counts from Firestore
+      try {
+        const statsRes = await api.get('/jaap/stats');
+        if (statsRes.data?.status === 'success' && statsRes.data?.stats) {
+          const stats = statsRes.data.stats;
+          const backendTotalChants = stats.total_chants || 0;
+          if (backendTotalChants > 0) {
+            set((state) => {
+              const nextTotal = Math.max(state.total_jaap, backendTotalChants);
+              const nextState = { ...state, total_jaap: nextTotal };
+              persistPassportState({
+                journeys: nextState.journeys,
+                badges: nextState.badges,
+                certificates: nextState.certificates,
+                total_jaap: nextState.total_jaap,
+                books_completed: nextState.books_completed,
+                daily_hanuman_count: nextState.daily_hanuman_count,
+                daily_other_jaap_count: nextState.daily_other_jaap_count,
+              });
+              return nextState;
+            });
+          }
+        }
+      } catch (_err) {
+        // Silent catch for offline or unauthenticated
+      }
     } catch (error) {
       console.warn('[PassportStore] Failed to load passport data:', error);
     }
@@ -349,6 +392,15 @@ export const usePassportStore = create<PassportState>((set, get) => ({
       });
       return nextState;
     });
+
+    // Record jaap session to backend for cloud persistence across devices
+    try {
+      api.post('/jaap/record', {
+        mantra_type: mantraType || 'general',
+        count_increment: count,
+        time_spent_seconds: count * 2
+      }).catch(() => {});
+    } catch (_e) {}
 
     // Check if daily target met
     const current = get();

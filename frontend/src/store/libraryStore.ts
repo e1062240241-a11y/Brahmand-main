@@ -29,6 +29,13 @@ export const useLibraryStore = create<LibraryState>()(
           progresses: { ...state.progresses, [progress.id]: progress }
         }));
 
+        if (progress.progressPercent >= 0.95) {
+          try {
+            const { usePassportStore } = require('./passportStore');
+            usePassportStore.getState().completeBook(progress.chapterName || progress.id, 1, new Date().toISOString().slice(0, 10));
+          } catch (_e) {}
+        }
+
         // Sync with WatermelonDB
         try {
           await database.write(async () => {

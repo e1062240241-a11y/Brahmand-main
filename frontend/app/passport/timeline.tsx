@@ -3,8 +3,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, TouchableWithoutFeedback, Alert, Platform, InteractionManager } from 'react-native';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { usePassportStore } from '../../src/store/passportStore';
+import { useLibraryStore } from '../../src/store/libraryStore';
 import { PassportJourney } from '../../src/types/passport';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
@@ -101,14 +102,23 @@ function PassportTimelineScreen({
   observedCertificates?: any[];
 }) {
   const router = useRouter();
-  // Determine if badges are earned
-  const hasFirstYatra = observedBadges.some(b => b.title?.toLowerCase().includes('yatra') || b.title?.toLowerCase().includes('first'));
-  const hasBookFinisher = observedBadges.some(b => b.title?.toLowerCase().includes('book') || b.title?.toLowerCase().includes('finisher'));
-  const has1000Jaaps = observedBadges.some(b => b.title?.toLowerCase().includes('jaap') || b.title?.toLowerCase().includes('1000') || b.title?.toLowerCase().includes('jaaps'));
+  const zustandBadges = usePassportStore((state) => state.badges) || [];
+  const allBadges = [...observedBadges, ...zustandBadges];
+  const hasFirstYatra = allBadges.some(b => b.title?.toLowerCase().includes('yatra') || b.title?.toLowerCase().includes('first')) || (journeysCount > 0);
+  const hasBookFinisher = allBadges.some(b => b.title?.toLowerCase().includes('book') || b.title?.toLowerCase().includes('finisher')) || (booksCount > 0);
+  const has1000Jaaps = allBadges.some(b => b.title?.toLowerCase().includes('jaap') || b.title?.toLowerCase().includes('1000')) || (jaapCount >= 108);
 
   const totalJaap = usePassportStore((state) => state.total_jaap);
-  const booksCompleted = usePassportStore((state) => state.books_completed);
+  const zustandJourneys = usePassportStore((state) => state.journeys) || [];
+  const booksCompleted = usePassportStore((state) => state.books_completed) || 0;
+  const certificates = usePassportStore((state) => state.certificates) || [];
+  const libraryProgresses = useLibraryStore((state) => state.progresses) || {};
   const loadPassport = usePassportStore((state) => state.loadPassport);
+
+  const journeysCount = Math.max(observedJourneys.length, zustandJourneys.length);
+  const jaapCount = totalJaap || 0;
+  const libraryCompletedCount = Object.values(libraryProgresses).filter((p: any) => p && (p.progressPercent >= 0.95 || (p.lastReadPage >= p.totalPages && p.totalPages > 0))).length;
+  const booksCount = Math.max(booksCompleted, observedCertificates.length, certificates.length, libraryCompletedCount);
 
   const [queryLocation, setQueryLocation] = useState('');
   const [showFilterOptions, setShowFilterOptions] = useState(false);
@@ -131,7 +141,6 @@ function PassportTimelineScreen({
         allLocations.add(j.location.trim());
       }
     });
-    
 
     POPULAR_TEMPLES.forEach(t => allLocations.add(t));
 
@@ -140,10 +149,6 @@ function PassportTimelineScreen({
       loc.toLowerCase().includes(lowercaseQuery)
     );
 
-    // Sort matching suggestions:
-    // 1. Starts with query prefix
-    // 2. Contains word starting with query prefix
-    // 3. Contains query anywhere
     return matches.sort((a, b) => {
       const aLower = a.toLowerCase();
       const bLower = b.toLowerCase();
@@ -163,9 +168,11 @@ function PassportTimelineScreen({
     }).slice(0, 5);
   }, [observedJourneys, queryLocation]);
 
-  useEffect(() => {
-    loadPassport();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadPassport();
+    }, [loadPassport])
+  );
 
   const recentMonths = useMemo(() => {
     const months = [];
@@ -380,7 +387,7 @@ function PassportTimelineScreen({
         <View style={styles.statsGrid}>
           <View style={styles.statBoxJourneys}>
             <Text style={styles.statLabel}>Journeys</Text>
-            <Text style={styles.statValue}>{observedJourneys.length}</Text>
+            <Text style={styles.statValue}>{journeysCount}</Text>
           </View>
           
           <View style={styles.statDividerContainer}>
@@ -389,7 +396,7 @@ function PassportTimelineScreen({
 
           <View style={styles.statBoxJaap}>
             <Text style={styles.statLabel}>Total Jaap</Text>
-            <Text style={styles.statValue}>{totalJaap}</Text>
+            <Text style={styles.statValue}>{jaapCount}</Text>
           </View>
 
           <View style={styles.statDividerContainer}>
@@ -398,7 +405,7 @@ function PassportTimelineScreen({
 
           <View style={styles.statBoxBooks}>
             <Text style={styles.statLabel}>Books</Text>
-            <Text style={styles.statValue}>{booksCompleted}</Text>
+            <Text style={styles.statValue}>{booksCount}</Text>
           </View>
         </View>
 

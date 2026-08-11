@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TextInput, Alert, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from '../../src/components/KeyboardAwareScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +7,7 @@ import { usePassportStore } from '../../src/store/passportStore';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 function PassportProgressScreen({
@@ -31,9 +31,11 @@ function PassportProgressScreen({
   const [bookName, setBookName] = useState('');
   const [completionDays, setCompletionDays] = useState('30');
 
-  useEffect(() => {
-    loadPassport();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadPassport();
+    }, [loadPassport])
+  );
 
   const handleAddJaap = async () => {
     const count = parseInt(jaapInput, 10);
