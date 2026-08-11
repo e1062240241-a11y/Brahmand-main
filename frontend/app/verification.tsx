@@ -81,7 +81,12 @@ export default function VerificationScreen() {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.header}>
-            <TouchableOpacity style={styles.backButton} onPress={() => router.replace('/(tabs)/profile')}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.replace('/(tabs)/profile')}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
               <Ionicons name="arrow-back" size={24} color={COLORS.text} />
             </TouchableOpacity>
           </View>
@@ -110,7 +115,7 @@ export default function VerificationScreen() {
               />
 
               <Text style={styles.label}>ID Type</Text>
-              <View style={styles.idTypeContainer}>
+              <View style={styles.idTypeContainer} accessibilityRole="radiogroup">
                 {idTypes.map((type) => (
                   <TouchableOpacity
                     key={type.value}
@@ -119,6 +124,8 @@ export default function VerificationScreen() {
                       idType === type.value && styles.idTypeButtonSelected,
                     ]}
                     onPress={() => setIdType(type.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: idType === type.value }}
                   >
                     <Text
                       style={[
