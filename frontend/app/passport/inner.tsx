@@ -10,10 +10,11 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { useAuthStore, sanitizeUserProfile } from '../../src/store/authStore';
 import { usePassportStore } from '../../src/store/passportStore';
 import { usePersonalityStore } from '../../src/store/personalityStore';
+import { useLibraryStore } from '../../src/store/libraryStore';
 import { getUserProfile } from '../../src/services/api';
 import withObservables from '@nozbe/with-observables';
 import { database } from '../../src/database';
@@ -35,6 +36,10 @@ function PassportInnerScreen({
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
   const totalJaap = usePassportStore((state) => state.total_jaap);
+  const zustandJourneys = usePassportStore((state) => state.journeys) || [];
+  const booksCompleted = usePassportStore((state) => state.books_completed) || 0;
+  const certificates = usePassportStore((state) => state.certificates) || [];
+  const libraryProgresses = useLibraryStore((state) => state.progresses) || {};
   const loadPassport = usePassportStore((state) => state.loadPassport);
   const personalityData = usePersonalityStore((state) => state.data);
 
@@ -42,22 +47,24 @@ function PassportInnerScreen({
     Platform.OS === 'android' ? sanitizeUserProfile(user) : user
   );
 
-  useEffect(() => {
-    loadPassport();
-    const fetchLatest = async () => {
-      try {
-        const res = await getUserProfile();
-        if (res.data) {
-          const sanitized = Platform.OS === 'android' ? sanitizeUserProfile(res.data) : res.data;
-          setLocalUser(sanitized);
-          updateUser(sanitized);
+  useFocusEffect(
+    React.useCallback(() => {
+      loadPassport();
+      const fetchLatest = async () => {
+        try {
+          const res = await getUserProfile();
+          if (res.data) {
+            const sanitized = Platform.OS === 'android' ? sanitizeUserProfile(res.data) : res.data;
+            setLocalUser(sanitized);
+            updateUser(sanitized);
+          }
+        } catch (err) {
+          console.warn('[PassportInner] Profile fetch failed:', err);
         }
-      } catch (err) {
-        console.warn('[PassportInner] Profile fetch failed:', err);
-      }
-    };
-    fetchLatest();
-  }, []);
+      };
+      fetchLatest();
+    }, [loadPassport, updateUser])
+  );
 
   const handleBack = () => {
     if (router.canGoBack()) {
@@ -67,8 +74,10 @@ function PassportInnerScreen({
     }
   };
 
-  const journeysCount = observedJourneys.length;
+  const journeysCount = Math.max(observedJourneys.length, zustandJourneys.length);
   const jaapCount = totalJaap || 0;
+  const libraryCompletedCount = Object.values(libraryProgresses).filter((p: any) => p && (p.progressPercent >= 0.95 || (p.lastReadPage >= p.totalPages && p.totalPages > 0))).length;
+  const booksCount = Math.max(booksCompleted, certificates.length, libraryCompletedCount);
   const badgesCount = observedBadges.length;
 
   // ── Derived data (English only) ────────────────────────────

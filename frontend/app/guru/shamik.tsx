@@ -310,8 +310,12 @@ export default function AcharyaShamikHimalayanProfileScreen() {
 
       {/* Floating Header */}
       <View style={styles.topHeader}>
-        <TouchableOpacity style={styles.headerBackBtn} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={22} color={LIGHT_THEME.primaryForest} />
+        <TouchableOpacity
+          style={styles.headerBackBtn}
+          onPress={() => router.back()}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+        >
+          <Ionicons name="arrow-back" size={24} color={LIGHT_THEME.primaryForest} />
         </TouchableOpacity>
 
         <Text style={styles.headerTitle}>{isHindi ? 'आचार्य शमिक' : 'Acharya Shamik'}</Text>
@@ -737,9 +741,9 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   headerBackBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(81, 120, 90, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',

@@ -22,6 +22,7 @@ import withObservables from '@nozbe/with-observables';
 import { Q } from '@nozbe/watermelondb';
 import { database } from '../../../src/database';
 import { SafeVideoView, isPlayerValid, useSafeVideoPlayer } from '../../../src/components/SafeVideoView';
+import { useTabBar } from '../../../src/contexts/TabBarContext';
 
 let chatImageManipulator: typeof ImageManipulatorType | null = null;
 const getChatImageManipulator = async () => {
@@ -293,6 +294,16 @@ const ChatScreen = ({
       updated_at: msg.updatedAt || msg.updated_at
     }));
   }, [observedMessages]);
+  let hideTabBar: (() => void) | undefined;
+  try {
+    const tabBar = useTabBar();
+    hideTabBar = tabBar.hideTabBar;
+  } catch (_e) {}
+
+  useEffect(() => {
+    hideTabBar?.();
+  }, [hideTabBar]);
+
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(() => {
     const cachedData = useChatStore.getState().caches[roomKey];
@@ -1524,9 +1535,9 @@ const ChatScreen = ({
           <TouchableOpacity 
             style={styles.menuButton} 
             onPress={handleOpenCircleOptions}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            hitSlop={{ top: 18, bottom: 18, left: 18, right: 18 }}
           >
-            <Ionicons name="ellipsis-vertical" size={20} color={COLORS.text} />
+            <Ionicons name="ellipsis-vertical" size={22} color={COLORS.text} />
           </TouchableOpacity>
         )}
       </View>
@@ -2445,8 +2456,12 @@ const styles = StyleSheet.create({
     marginRight: SPACING.md,
   },
   menuButton: {
-    marginLeft: SPACING.sm,
-    padding: SPACING.xs,
+    marginLeft: SPACING.xs,
+    padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerInfo: {
     flex: 1,

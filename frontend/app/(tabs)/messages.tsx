@@ -29,6 +29,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, FONTS } from '../../src/constants/theme';
 import { useAuthStore } from '../../src/store/authStore';
@@ -62,6 +63,53 @@ const USER_GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 let initialCommunityFetchDone = false;
 let initialChatFetchDone = false;
+
+// 3D Press-In Depth animation helper component for chats
+const PressableDepthRow = ({ children, onPress, onLongPress, style }: any) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.94, // Inward depth scale on Z-axis
+      friction: 6,
+      tension: 350,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      friction: 5,
+      tension: 300,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleLongPress = () => {
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch (_e) {}
+    }
+    onLongPress?.();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <Pressable
+        style={style}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        onLongPress={handleLongPress}
+        delayLongPress={280}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+};
 
 // Cache helpers
 const getCachedData = async (key: string) => {
@@ -1714,13 +1762,9 @@ function MessagesScreen({
               <View style={styles.chatSection}>
                 <Text style={styles.privateChatSectionTitle}>{t('groupChats')}</Text>
                 {filteredGroups.map((item, index) => (
-                  <Pressable
+                  <PressableDepthRow
                     key={item.id ? `${item.id}-${index}` : `group-${index}`}
-                    style={({ pressed }) => [
-                      styles.chatRow,
-                      pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                    ]}
-                    android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                    style={styles.chatRow}
                     onPress={() => {
                       router.push(`/chat/circle/${item.id}`);
                     }}
@@ -1743,7 +1787,7 @@ function MessagesScreen({
                         />
                       )}
                     </View>
-                  </Pressable>
+                  </PressableDepthRow>
                 ))}
               </View>
             ) : !searchQuery && (
@@ -1763,12 +1807,8 @@ function MessagesScreen({
                   const itemKey = conversationId ? `${conversationId}-${index}` : `dm-${index}`;
                   return (
                     <View key={itemKey}>
-                      <Pressable
-                        style={({ pressed }) => [
-                          styles.chatRow,
-                          pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                        ]}
-                        android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                      <PressableDepthRow
+                        style={styles.chatRow}
                         onPress={() => {
                           const userSL = (item.user as any)?.sl_id || (item.user as any)?.slId || '';
                           router.push(`/dm/${conversationId}?userId=${item.user?.id || ''}&userName=${encodeURIComponent(item.user?.name || '')}&userSL=${encodeURIComponent(userSL)}&userPhoto=${encodeURIComponent(item.user?.photo || '')}`);
@@ -1825,7 +1865,7 @@ function MessagesScreen({
                             );
                           })()}
                         </View>
-                      </Pressable>
+                      </PressableDepthRow>
                       {index < paginatedConversations.length - 1 && <View style={styles.chatSeparator} />}
                     </View>
                   );

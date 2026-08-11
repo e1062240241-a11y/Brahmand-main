@@ -23,6 +23,7 @@ import { KaraokeSyncEngine, KaraokeData, KaraokeSection } from '../src/component
 import hanumanChalisaData from '../assets/data/hanuman-chalisa-karaoke.json';
 import { useTranslation } from '../src/utils/i18n';
 import { useKeepAwake } from 'expo-keep-awake';
+import { usePassportStore } from '../src/store/passportStore';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -271,6 +272,7 @@ const EkantJaapPage = () => {
                     return nextValue;
                 });
                 setTotalJaapCount((c) => c + 1);
+                usePassportStore.getState().addJaap(1, selectedNaam?.name || 'ekant');
             }, 1000);
         } else if (intervalRef.current) {
             clearInterval(intervalRef.current);

@@ -1400,6 +1400,7 @@ export default function ProfileScreen() {
           <View style={styles.actionButtonsRow}>
             <Pressable
               style={({ pressed }) => [styles.addPostButton, pressed && styles.actionPressed]}
+              pressRetentionOffset={{ top: 10, left: 10, right: 10, bottom: 10 }}
               onPress={() => setShowUploadModal(true)}
             >
               <Ionicons name="add" size={20} color="#FFF" />
@@ -1407,6 +1408,7 @@ export default function ProfileScreen() {
             </Pressable>
             <Pressable
               style={({ pressed }) => [styles.shareProfileButton, pressed && styles.actionPressed]}
+              pressRetentionOffset={{ top: 10, left: 10, right: 10, bottom: 10 }}
               onPress={handleShareProfile}
             >
               <Ionicons name="arrow-redo-outline" size={20} color="#FFF" />
@@ -1574,20 +1576,22 @@ export default function ProfileScreen() {
           </TouchableOpacity>
           <View style={styles.navRightGroup}>
             <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 20 }}
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 24 }}
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
               style={({ pressed }) => [styles.navRightBtn, Platform.OS === 'ios' && pressed && { opacity: 0.6 }]}
               onPress={() => showImageSourcePicker('cover_photo')}
             >
-              <Svg width={16} height={16} viewBox="0 0 16 17" fill="none">
+              <Svg width={18} height={18} viewBox="0 0 16 17" fill="none">
                 <Path d="M15.5625 4.12027L12.0589 0.617491C11.5691 0.127503 10.7747 0.127503 10.2848 0.617491L0.617688 10.2846C0.381388 10.5191 0.248944 10.8384 0.250006 11.1713V14.6749C0.250006 15.3676 0.811619 15.9292 1.50436 15.9292H14.675C15.1579 15.9287 15.4591 15.4058 15.2173 14.9879C15.1053 14.7944 14.8987 14.6751 14.675 14.6749H6.78204L15.5625 5.89439C16.0525 5.40452 16.0525 4.61015 15.5625 4.12027ZM5.00792 14.6749H1.50436V11.1713L8.40329 4.27236L11.9069 7.77592L5.00792 14.6749ZM12.7935 6.88925L9.29075 3.38569L11.1723 1.50416L14.6751 5.00772L12.7935 6.88925Z" fill="#FFF" stroke="#FFF" strokeWidth="0.5" />
               </Svg>
             </Pressable>
             <Pressable
-              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 20 }}
+              android_ripple={{ color: 'rgba(255, 255, 255, 0.3)', borderless: true, radius: 24 }}
+              hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
               style={({ pressed }) => [styles.navRightBtn, Platform.OS === 'ios' && pressed && { opacity: 0.6 }]}
               onPress={() => setShowSettingsModal(true)}
             >
-              <Svg width={16} height={16} viewBox="24 0 16 17" fill="none">
+              <Svg width={20} height={20} viewBox="24 0 16 17" fill="none">
                 <Path d="M39.9314 8.28457C39.9314 8.80415 39.5102 9.22535 38.9906 9.22537H25.1922C24.468 9.22534 24.0153 8.44132 24.3775 7.81413C24.5455 7.52307 24.8561 7.34377 25.1922 7.34377H38.9906C39.5102 7.3438 39.9314 7.765 39.9314 8.28457ZM25.1922 4.20777H38.9906C39.7148 4.20777 40.1675 3.42377 39.8054 2.79657C39.6373 2.5055 39.3267 2.32618 38.9906 2.32617H25.1922C24.468 2.3262 24.0153 3.11022 24.3775 3.73741C24.5455 4.02847 24.8561 4.20777 25.1922 4.20777ZM38.9906 12.3614H25.1922C24.468 12.3614 24.0153 13.1454 24.3775 13.7726C24.5455 14.0637 24.8561 14.243 25.1922 14.243H38.9906C39.7148 14.243 40.1675 13.459 39.8054 12.8318C39.6373 12.5407 39.3267 12.3614 38.9906 12.3614Z" fill="#FFF" />
               </Svg>
             </Pressable>
@@ -2258,7 +2262,11 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   navRightBtn: {
-    padding: 4,
+    padding: 8,
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerContent: {
     overflow: 'hidden',
