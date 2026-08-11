@@ -522,8 +522,18 @@ export default function JaapLandingScreen() {
     }
   }, [isFocused]);
 
-  // Auto-scroll effect for More Live Jaaps
+  // Auto-scroll effect for More Live Jaaps (Only active when focused and app in foreground)
+  const [appActive, setAppActive] = useState(() => AppState.currentState === 'active');
+
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      setAppActive(nextAppState === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused || !appActive) return;
     const maxOffset = CARD_WIDTH * (LIVE_JAAPS.length - 2);
     const autoScroll = setInterval(() => {
       jaapScrollOffset.current += jaapScrollDir.current * CARD_WIDTH;
@@ -535,7 +545,7 @@ export default function JaapLandingScreen() {
       jaapScrollRef.current?.scrollTo({ x: jaapScrollOffset.current, animated: true });
     }, 4000);
     return () => clearInterval(autoScroll);
-  }, []);
+  }, [isFocused, appActive]);
 
   const liveActive = isWithinGayatriMantraWindow(now);
   const liveEnd = getCurrentGayatriEnd(now);
@@ -1125,8 +1135,7 @@ export default function JaapLandingScreen() {
               })}
             </ScrollView>
 
-            {/* Katha Section (Temporarily commented out for OTA update) */}
-            {/* 
+            {/* Katha Section */}
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>
                 {t('language') === 'hi' ? 'कथा' : 'Katha'}
@@ -1159,7 +1168,6 @@ export default function JaapLandingScreen() {
                 </View>
               </Pressable>
             </View>
-            */}
 
             {/* More Upcoming Jaaps Section */}
             <View style={styles.sectionHeaderParity}>
