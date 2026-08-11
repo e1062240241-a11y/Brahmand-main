@@ -38,64 +38,39 @@ interface TempleFacilitiesSectionProps {
   onAmenityPress?: (amenity: AmenityTile) => void;
 }
 
-const DEFAULT_QUICK_GLANCE = [
-  { icon: 'ticket-outline' as const, text: 'Free entry', color: '#2563EB' },
-  { icon: 'time-outline' as const, text: '20–45 min wait', color: '#D97706' },
-  { icon: 'shirt-outline' as const, text: 'Modest dress', color: '#7C3AED' },
-];
-
-const DEFAULT_AMENITIES: AmenityTile[] = [
-  { id: 'parking', label: 'Parking', iconName: 'car-outline', iconColor: '#2563EB', bgColor: '#EFF6FF' },
-  { id: 'lockers', label: 'Lockers', iconName: 'lock-closed-outline', iconColor: '#4F46E5', bgColor: '#EEF2FF' },
-  { id: 'prasad', label: 'Prasad Counter', iconName: 'restaurant-outline', iconColor: '#EA580C', bgColor: '#FFF7ED' },
-  { id: 'restrooms', label: 'Restrooms', iconName: 'man-outline', iconColor: '#059669', bgColor: '#ECFDF5' },
-  { id: 'water', label: 'Drinking Water', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
-  { id: 'shoes', label: 'Shoe Stand', iconName: 'footsteps-outline', iconColor: '#D97706', bgColor: '#FFFBEB' },
-];
-
-const DEFAULT_GUIDELINES: GuidelineSection[] = [
-  {
-    id: 'entry',
-    title: 'Entry & Darshan',
-    iconName: 'ticket-outline',
-    iconColor: '#2563EB', // Blue / Accent for access/info
-    badgeBg: '#EFF6FF',
-    content:
-      'General entry is free for all pilgrims. Special VIP or Sugam Darshan passes are available at the trust administrative desk or via the official online portal. Peak festival days may require pre-booked slots.',
-  },
-  {
-    id: 'queue',
-    title: 'Queue & Visit Info',
-    iconName: 'time-outline',
-    iconColor: '#D97706', // Amber / Warning for timing
-    badgeBg: '#FFFBEB',
-    content:
-      'Average queue waiting time is 20 to 45 minutes on general weekdays and 1.5 to 3 hours during weekend mornings and major festive days. Early morning Mangla Aarti hours offer the shortest wait.',
-  },
-  {
-    id: 'dress',
-    title: 'Dress Code & Customs',
-    iconName: 'shirt-outline',
-    iconColor: '#7C3AED', // Purple for rules & customs
-    badgeBg: '#F5F3FF',
-    content:
-      'Devotees are requested to wear modest traditional attire. Shorts, sleeveless tops, and short skirts are strictly disallowed inside the inner mandir. Leather items and shoes must be deposited outside.',
-  },
-];
-
 export const TempleFacilitiesSection: React.FC<TempleFacilitiesSectionProps> = ({
-  quickGlanceItems = DEFAULT_QUICK_GLANCE,
-  amenities = DEFAULT_AMENITIES,
-  guidelines = DEFAULT_GUIDELINES,
+  quickGlanceItems,
+  amenities,
+  guidelines,
   onAmenityPress,
 }) => {
-  // First item expanded by default (index 0 / 'entry')
-  const [expandedId, setExpandedId] = useState<string | null>(guidelines[0]?.id || 'entry');
+  const [expandedId, setExpandedId] = useState<string | null>(
+    guidelines && guidelines.length > 0 ? guidelines[0].id : null
+  );
 
   const toggleAccordion = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedId((prev) => (prev === id ? null : id));
   };
+
+  // Check if we have any data to show
+  const hasData = (quickGlanceItems && quickGlanceItems.length > 0) ||
+                  (amenities && amenities.length > 0) ||
+                  (guidelines && guidelines.length > 0);
+
+  if (!hasData) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.noDataContainer}>
+          <Ionicons name="information-circle-outline" size={40} color="#94A3B8" />
+          <Text style={styles.noDataTitle}>No Facility Information</Text>
+          <Text style={styles.noDataSubtitle}>
+            Facility details for this temple are not yet available.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -105,72 +80,78 @@ export const TempleFacilitiesSection: React.FC<TempleFacilitiesSectionProps> = (
       </View>
 
       {/* 2. Quick-glance summary strip */}
-      <View style={styles.summaryStrip}>
-        {quickGlanceItems.map((item, index) => (
-          <View key={`summary-${index}`} style={styles.summaryItem}>
-            <Ionicons name={item.icon} size={15} color={item.color || '#475569'} />
-            <Text style={styles.summaryText}>{item.text}</Text>
-            {index < quickGlanceItems.length - 1 && <View style={styles.summaryDivider} />}
-          </View>
-        ))}
-      </View>
-
-      {/* 3. Temple premises amenities (3-Column Uniform Icon Grid) */}
-      <View style={styles.sectionBlock}>
-        <Text style={styles.sectionSubTitle}>Temple premises amenities</Text>
-        <View style={styles.gridContainer}>
-          {amenities.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.gridTile}
-              activeOpacity={0.7}
-              onPress={() => onAmenityPress?.(item)}
-            >
-              <View style={[styles.amenityIconCircle, { backgroundColor: item.bgColor || '#F8FAFC' }]}>
-                <Ionicons name={item.iconName} size={20} color={item.iconColor || '#334155'} />
-              </View>
-              <Text style={styles.gridTileLabel} numberOfLines={1}>
-                {item.label}
-              </Text>
-            </TouchableOpacity>
+      {quickGlanceItems && quickGlanceItems.length > 0 && (
+        <View style={styles.summaryStrip}>
+          {quickGlanceItems.map((item, index) => (
+            <View key={`summary-${index}`} style={styles.summaryItem}>
+              <Ionicons name={item.icon} size={15} color={item.color || '#475569'} />
+              <Text style={styles.summaryText}>{item.text}</Text>
+              {index < quickGlanceItems.length - 1 && <View style={styles.summaryDivider} />}
+            </View>
           ))}
         </View>
-      </View>
+      )}
+
+      {/* 3. Temple premises amenities (3-Column Uniform Icon Grid) */}
+      {amenities && amenities.length > 0 && (
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionSubTitle}>Temple premises amenities</Text>
+          <View style={styles.gridContainer}>
+            {amenities.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.gridTile}
+                activeOpacity={0.7}
+                onPress={() => onAmenityPress?.(item)}
+              >
+                <View style={[styles.amenityIconCircle, { backgroundColor: item.bgColor || '#F8FAFC' }]}>
+                  <Ionicons name={item.iconName} size={20} color={item.iconColor || '#334155'} />
+                </View>
+                <Text style={styles.gridTileLabel} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
 
       {/* 4. Pilgrim guidelines (Collapsible Accordion Cards) */}
-      <View style={styles.sectionBlock}>
-        <Text style={styles.sectionSubTitle}>Pilgrim guidelines</Text>
-        <View style={styles.accordionList}>
-          {guidelines.map((item) => {
-            const isExpanded = expandedId === item.id;
-            return (
-              <View key={item.id} style={styles.accordionCard}>
-                <TouchableOpacity
-                  style={styles.accordionHeader}
-                  onPress={() => toggleAccordion(item.id)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[styles.iconCircle, { backgroundColor: item.badgeBg }]}>
-                    <Ionicons name={item.iconName} size={16} color={item.iconColor} />
-                  </View>
-                  <Text style={styles.accordionTitle}>{item.title}</Text>
-                  <Ionicons
-                    name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={18}
-                    color="#64748B"
-                  />
-                </TouchableOpacity>
+      {guidelines && guidelines.length > 0 && (
+        <View style={styles.sectionBlock}>
+          <Text style={styles.sectionSubTitle}>Pilgrim guidelines</Text>
+          <View style={styles.accordionList}>
+            {guidelines.map((item) => {
+              const isExpanded = expandedId === item.id;
+              return (
+                <View key={item.id} style={styles.accordionCard}>
+                  <TouchableOpacity
+                    style={styles.accordionHeader}
+                    onPress={() => toggleAccordion(item.id)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.iconCircle, { backgroundColor: item.badgeBg }]}>
+                      <Ionicons name={item.iconName} size={16} color={item.iconColor} />
+                    </View>
+                    <Text style={styles.accordionTitle}>{item.title}</Text>
+                    <Ionicons
+                      name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                      size={18}
+                      color="#64748B"
+                    />
+                  </TouchableOpacity>
 
-                {isExpanded && (
-                  <View style={styles.accordionBody}>
-                    <Text style={styles.accordionContent}>{item.content}</Text>
-                  </View>
-                )}
-              </View>
-            );
-          })}
+                  {isExpanded && (
+                    <View style={styles.accordionBody}>
+                      <Text style={styles.accordionContent}>{item.content}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      )}
     </View>
   );
 };
@@ -308,5 +289,28 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#475569',
     lineHeight: 21, // ~1.6 line height for enhanced scannability
+  },
+  noDataContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 30,
+    paddingHorizontal: 20,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 8,
+  },
+  noDataTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  noDataSubtitle: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

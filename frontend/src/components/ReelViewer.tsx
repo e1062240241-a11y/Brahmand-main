@@ -154,11 +154,24 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
   const [duration, setDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const durationRef = useRef(0);
-  const timeIntervalRef = useRef<any>(null);
+  const animFrameRef = useRef<number>();
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    if (!player || !isActive) return;
-    const interval = setInterval(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!player || !isActive || !isMountedRef.current) return;
+
+    const updateProgress = () => {
+      if (!isMountedRef.current || !player) return;
       try {
         const ct = player.currentTime || 0;
         setCurrentTime(ct);
@@ -167,9 +180,18 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
           durationRef.current = pd;
           setDuration(pd);
         }
-      } catch {}
-    }, 250);
-    return () => clearInterval(interval);
+        animFrameRef.current = requestAnimationFrame(updateProgress);
+      } catch (e) {
+        // Silent fail
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(updateProgress);
+    return () => {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
   }, [player, isActive]);
 
   const seekPlayerRef = useRef<(pageX: number) => void>(() => { });
@@ -301,10 +323,10 @@ const ReelVideoItem = React.memo(({
   const [instagramHearts, setInstagramHearts] = useState<InstagramHeartItem[]>([]);
 
   // ponytail: rapid instagram double-tap pink heart pop animation
-  const triggerInstagramHeart = (tapX?: number, tapY?: number) => {
+  const triggerInstagramHeart = (_tapX?: number, _tapY?: number) => {
     const id = `${Date.now()}-${Math.random()}`;
-    const x = tapX && tapX > 0 ? tapX : SCREEN_WIDTH / 2;
-    const y = tapY && tapY > 0 ? tapY : SCREEN_HEIGHT / 2;
+    const x = SCREEN_WIDTH / 2;
+    const y = SCREEN_HEIGHT / 2;
     const rotation = `${(Math.random() - 0.5) * 30}deg`;
 
     const scale = new Animated.Value(0);
@@ -470,16 +492,41 @@ const ReelVideoItem = React.memo(({
     }
   }, [isMuted, player]);
 
-  // Clean up web player on unmount to prevent audio leaks
+  // Fix 3: Clean up video player & web element on unmount or player change
   useEffect(() => {
     return () => {
+      if (player) {
+        try {
+          player.pause();
+          player.replace?.(null);
+          if (Platform.OS !== 'web') {
+            player.destroy?.();
+          }
+        } catch (e) {}
+      }
       if (Platform.OS === 'web' && videoRef.current) {
         try {
           videoRef.current.pause();
+          videoRef.current.src = '';
+          videoRef.current.load();
         } catch (e) {}
       }
     };
-  }, []);
+  }, [player]);
+
+  const prevPostIdRef = useRef(post?.id);
+  useEffect(() => {
+    const currentPostId = post?.id;
+    if (prevPostIdRef.current !== currentPostId) {
+      if (player) {
+        try {
+          player.pause();
+          player.replace?.(null);
+        } catch (e) {}
+      }
+      prevPostIdRef.current = currentPostId;
+    }
+  }, [post?.id, player]);
 
   useEffect(() => {
     if (player) {
@@ -998,7 +1045,7 @@ const ReelVideoItem = React.memo(({
           accessibilityLabel={isMuted ? (t('unmute') || 'Unmute') : (t('mute') || 'Mute')}
           style={{
             alignItems: 'center',
-            marginBottom: 24,
+            marginBottom: 20,
             padding: 10,
             borderRadius: 30,
             backgroundColor: 'rgba(0,0,0,0.4)',
@@ -1010,7 +1057,7 @@ const ReelVideoItem = React.memo(({
         </TouchableOpacity>
 
         {/* Like */}
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel={likedByMe ? (t('unlike') || 'Unlike') : (t('like') || 'Like')} style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleLike}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={likedByMe ? (t('unlike') || 'Unlike') : (t('like') || 'Like')} style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleLike}>
           <Ionicons
             name={likedByMe ? 'heart' : 'heart-outline'}
             size={34}
@@ -1021,13 +1068,15 @@ const ReelVideoItem = React.memo(({
               textShadowRadius: 4,
             }}
           />
-          <Text style={{ color: '#fff', marginTop: 4, fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }}>
-            {likesCount > 0 ? likesCount : ''}
-          </Text>
+          {likesCount > 0 ? (
+            <Text style={{ color: '#fff', marginTop: 4, fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }}>
+              {likesCount}
+            </Text>
+          ) : null}
         </TouchableOpacity>
 
         {/* Comment */}
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('comments') || 'Comments'} style={{ alignItems: 'center', marginBottom: 24 }} onPress={handleComment}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={t('comments') || 'Comments'} style={{ alignItems: 'center', marginBottom: 20 }} onPress={handleComment}>
           <Ionicons 
             name="chatbubble" 
             size={32} 
@@ -1038,9 +1087,6 @@ const ReelVideoItem = React.memo(({
               textShadowRadius: 4,
             }}
           />
-          <Text style={{ color: '#fff', marginTop: 4, fontSize: 13, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 3 }}>
-            {commentsCount}
-          </Text>
         </TouchableOpacity>
 
         {/* Share */}
@@ -1074,6 +1120,148 @@ const ReelVideoItem = React.memo(({
     </View>
   );
 });
+
+const CommentItem = React.memo(({ 
+  item, 
+  replies, 
+  user, 
+  selectedPost, 
+  onDelete, 
+  onMenuPress, 
+  onReply,
+  t 
+}: any) => {
+  const canDelete = item.user_id === user?.id || selectedPost?.user_id === user?.id;
+  return (
+    <View style={{ marginBottom: 12, position: 'relative', paddingHorizontal: 16 }}>
+      {replies.length > 0 && (
+        <View style={{
+          position: 'absolute',
+          left: 31,
+          top: 32,
+          bottom: 0,
+          width: 1.5,
+          backgroundColor: '#E6E1E8',
+          zIndex: 1,
+        }} />
+      )}
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+        <Avatar photo={item?.user_photo} name={item?.username || 'User'} size={32} />
+        <View style={{
+          flex: 1,
+          marginLeft: 10,
+          backgroundColor: '#F7EDE7',
+          borderRadius: 16,
+          padding: 12,
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#3F2C20' }}>{item?.username || 'User'}</Text>
+            {canDelete ? (
+              <TouchableOpacity
+                style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                onPress={() => onDelete(item)}
+              >
+                <Ionicons name="trash-outline" size={16} color="#FF3B30" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={{ padding: 4, marginRight: -4, marginTop: -4 }}
+                onPress={() => onMenuPress(item)}
+              >
+                <Ionicons name="ellipsis-horizontal" size={16} color="#A88876" />
+              </TouchableOpacity>
+            )}
+          </View>
+          <MentionText
+            text={item?.text || ''}
+            style={{ fontSize: 14, color: '#3F2C20', marginTop: 3, lineHeight: 18 }}
+          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <Text style={{ fontSize: 11, color: '#A88876' }}>{formatTimeAgo(item?.created_at)}</Text>
+            <TouchableOpacity
+              style={{ marginLeft: 16 }}
+              onPress={() => onReply(item)}
+            >
+              <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Render nested replies */}
+      {replies.map((reply: any, index: number) => {
+        const canDeleteReply = reply.user_id === user?.id || selectedPost?.user_id === user?.id;
+        const isLastReply = index === replies.length - 1;
+        return (
+          <View key={reply.id || `${reply.user_id}-${reply.created_at}`} style={{ flexDirection: 'row', alignItems: 'flex-start', marginLeft: 42, marginTop: 8, position: 'relative' }}>
+            <View style={{
+              position: 'absolute',
+              left: -26,
+              top: 0,
+              bottom: isLastReply ? undefined : 0,
+              height: isLastReply ? 12 : undefined,
+              width: 1.5,
+              backgroundColor: '#E6E1E8',
+              zIndex: 1,
+            }} />
+            <View style={{
+              position: 'absolute',
+              left: -26,
+              top: 12,
+              width: 26,
+              height: 1.5,
+              backgroundColor: '#E6E1E8',
+              zIndex: 1,
+            }} />
+
+            <Avatar photo={reply?.user_photo} name={reply?.username || 'User'} size={24} />
+            <View style={{
+              flex: 1,
+              marginLeft: 8,
+              backgroundColor: '#FAF7F5',
+              borderRadius: 16,
+              padding: 12,
+            }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 12, color: '#222' }}>{reply.username}</Text>
+                  <Text style={{ fontSize: 10, color: '#999', marginLeft: 8 }}>{formatTimeAgo(reply.created_at)}</Text>
+                </View>
+                {canDeleteReply ? (
+                  <TouchableOpacity
+                    style={{ padding: 4, marginRight: -4 }}
+                    onPress={() => onDelete(reply)}
+                  >
+                    <Ionicons name="trash-outline" size={14} color="#FF3B30" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={{ padding: 4, marginRight: -4 }}
+                    onPress={() => onMenuPress(reply)}
+                  >
+                    <Ionicons name="ellipsis-horizontal" size={14} color="#A88876" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              <MentionText
+                text={reply.text}
+                style={{ fontSize: 13, color: '#444', marginTop: 3, lineHeight: 17 }}
+              />
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <TouchableOpacity
+                  onPress={() => onReply(item, reply.username)}
+                >
+                  <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+});
+CommentItem.displayName = 'CommentItem';
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
   const insets = useSafeAreaInsets();
@@ -1370,28 +1558,32 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     }
   }, []);
 
-  // Listen for new comments via socket — no polling
+  // Fix 2: Stable socket comment handlers with useCallback
+  const handleNewComment = useCallback((data: any) => {
+    const postId = selectedPost?.id ? String(selectedPost.id) : null;
+    if (!postId || String(data.post_id) !== postId) return;
+    setLocalComments(prev => {
+      const comment = data.comment;
+      if (!comment) return prev;
+      if (prev.some((c: any) => c.id === comment.id)) return prev;
+      const filtered = prev.filter((c: any) => c.id !== comment.id);
+      return [comment, ...filtered];
+    });
+  }, [selectedPost?.id]);
+
+  const handleCommentDeleted = useCallback((data: any) => {
+    const postId = selectedPost?.id ? String(selectedPost.id) : null;
+    if (!postId || String(data.post_id) !== postId) return;
+    setLocalComments(prev => prev.filter((c: any) => c.id !== data.comment_id));
+  }, [selectedPost?.id]);
+
+  // Listen for new comments via socket — clean lifecycle
   useEffect(() => {
     if (!isCommentVisible || !selectedPost?.id) return;
     const postId = String(selectedPost.id);
     const room = `post_${postId}`;
 
     socketService.joinRoom(room).catch(() => {});
-
-    const handleNewComment = (data: any) => {
-      if (String(data.post_id) !== postId) return;
-      setLocalComments(prev => {
-        const comment = data.comment;
-        if (!comment) return prev;
-        if (prev.some((c: any) => c.id === comment.id)) return prev;
-        const optimistic = prev.filter((c: any) => c.is_optimistic);
-        return [...optimistic.filter((c: any) => c.id !== comment.id), comment];
-      });
-    };
-    const handleCommentDeleted = (data: any) => {
-      if (String(data.post_id) !== postId) return;
-      setLocalComments(prev => prev.filter((c: any) => c.id !== data.comment_id));
-    };
 
     socketService.onEvent('new_comment', handleNewComment);
     socketService.onEvent('comment_deleted', handleCommentDeleted);
@@ -1401,16 +1593,17 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       socketService.offEvent('comment_deleted', handleCommentDeleted);
       socketService.leaveRoom(room);
     };
-  }, [isCommentVisible, selectedPost?.id]);
+  }, [isCommentVisible, selectedPost?.id, handleNewComment, handleCommentDeleted]);
 
-  const submitLocalComment = async () => {
+  // Fix 4: Batched comment submission
+  const submitLocalComment = useCallback(async () => {
     if (!selectedPost || !newCommentText.trim() || isSubmittingComment) return;
 
     const textToPost = newCommentText.trim();
     const tempId = `temp-${Date.now()}`;
     const parentId = replyingToComment?.id || null;
 
-    // Create optimistic comment object
+    // Create optimistic comment
     const optimisticComment = {
       id: tempId,
       text: textToPost,
@@ -1422,35 +1615,32 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       parent_id: parentId,
     };
 
-    // Add to UI immediately
-    setLocalComments(prev => [optimisticComment, ...prev]);
+    // BATCH optimistic updates together
+    setIsSubmittingComment(true);
     setNewCommentText('');
     setReplyingToComment(null);
+    setLocalComments(prev => [optimisticComment, ...prev]);
     Keyboard.dismiss();
 
-    setIsSubmittingComment(true);
     try {
       const res = await addPostComment(selectedPost.id, textToPost, parentId || undefined);
-      // Replace temporary comment with real one from server
       const serverComment = res.data?.comment || res.data;
-      setLocalComments(prev => prev.map(c => c.id === tempId ? serverComment : c));
 
-      // Update comment count on post
-      setSelectedPost((prev: any) => prev ? {
-        ...prev,
-        comments_count: (Number(prev.comments_count) || 0) + 1,
-      } : null);
-      setVideos(prev => prev.map(v => {
-        if (v.id === selectedPost.id) {
-          return {
-            ...v,
-            comments_count: (Number(v.comments_count) || 0) + 1,
-          };
-        }
-        return v;
-      }));
+      // BATCH server response updates
+      const updatedPost = {
+        ...selectedPost,
+        comments_count: (Number(selectedPost.comments_count) || 0) + 1,
+      };
+
+      setLocalComments(prev =>
+        prev.map(c => c.id === tempId ? { ...serverComment, is_optimistic: false } : c)
+      );
+      setSelectedPost(updatedPost);
+      setVideos(prev => prev.map(v =>
+        v.id === selectedPost.id ? updatedPost : v
+      ));
+
     } catch (e) {
-      // Rollback on failure
       setLocalComments(prev => prev.filter(c => c.id !== tempId));
       Alert.alert(
         t('language') === 'hi' ? 'त्रुटि' : 'Error', 
@@ -1459,7 +1649,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     } finally {
       setIsSubmittingComment(false);
     }
-  };
+  }, [selectedPost, newCommentText, isSubmittingComment, replyingToComment, user, t]);
 
   const handleDeleteComment = useCallback(async (comment: any) => {
     const commentId = comment?.id;
@@ -1590,11 +1780,30 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   hasMoreRef.current = hasMore;
   videosRef.current = videos;
   activeIndexRef.current = activeIndex;
-  callbacksRef.current = { onClose, onLike, onComment, onShare, toggleMute };
+  callbacksRef.current = {
+    onClose,
+    onLike,
+    onComment,
+    onShare,
+    toggleMute,
+    handleCloseWrapper,
+    handleLikeLocal,
+    handleCommentWrapper,
+    handleShareWrapper,
+    handleToggleMuteWrapper,
+    handleOpenOptions,
+    handleShareLocal,
+    handleCommentLocal,
+    handleVideoEnded,
+  };
+
+  const lastLoadTimeRef = useRef<number>(0);
 
   const loadMoreReels = useCallback(async () => {
     if (loadingRef.current) return;
+    if (Date.now() - lastLoadTimeRef.current < 1500) return;
 
+    lastLoadTimeRef.current = Date.now();
     setLoading(true);
     loadingRef.current = true;
     try {
@@ -1627,19 +1836,32 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
       const uniqueNew = newPosts.filter((p: any) => p?.id && !currentIds.has(p.id));
 
       if (uniqueNew.length > 0) {
-        // Great — append fresh unseen content
-        setVideos(prev => [...prev, ...uniqueNew]);
+        // Great — append fresh unseen content with state deduplication
+        setVideos(prev => {
+          const existingIds = new Set(prev.map((p: any) => p.id));
+          const filtered = uniqueNew.filter((p: any) => !existingIds.has(p.id));
+          if (filtered.length === 0) return prev;
+          return [...prev, ...filtered];
+        });
       } else {
         // All returned posts already queued — recycle from the full session pool
         const pool = allSessionPostsRef.current;
         if (pool.length > 1) {
           // Shuffle the entire session pool and append, giving a fresh experience
           const shuffled = [...pool].sort(() => Math.random() - 0.5);
-          setVideos(prev => [...prev, ...shuffled]);
+          setVideos(prev => {
+            const existingIds = new Set(prev.map((p: any) => p.id));
+            const filtered = shuffled.filter((p: any) => !existingIds.has(p.id));
+            return filtered.length > 0 ? [...prev, ...filtered] : prev;
+          });
         } else if (currentVideos.length > 1) {
           // Fallback: recycle what's currently queued
           const shuffled = [...currentVideos].sort(() => Math.random() - 0.5);
-          setVideos(prev => [...prev, ...shuffled]);
+          setVideos(prev => {
+            const existingIds = new Set(prev.map((p: any) => p.id));
+            const filtered = shuffled.filter((p: any) => !existingIds.has(p.id));
+            return filtered.length > 0 ? [...prev, ...filtered] : prev;
+          });
         }
       }
 
@@ -1660,26 +1882,35 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   loadMoreRef.current = loadMoreReels;
 
+  const initialPostRef = useRef(initialPost);
+  const isInitialLoadDoneRef = useRef(false);
+
   useEffect(() => {
     if (isVisible) {
-      // Reset all state for fresh session
-      seenIdsRef.current.clear();
-      allSessionPostsRef.current = [];
-      if (initialPost?.id) {
-        seenIdsRef.current.add(initialPost.id);
-        allSessionPostsRef.current.push(initialPost);
+      if (initialPostRef.current?.id !== initialPost?.id) {
+        initialPostRef.current = initialPost;
+        seenIdsRef.current.clear();
+        allSessionPostsRef.current = [];
+        if (initialPost?.id) {
+          seenIdsRef.current.add(initialPost.id);
+          allSessionPostsRef.current.push(initialPost);
+        }
+        setVideos([initialPost]);
+        setActiveIndex(0);
+        setHasMore(true);
+        setLoading(false);
+        loadingRef.current = false;
+        hasMoreRef.current = true;
+        watchStartRef.current = Date.now();
+        isInitialLoadDoneRef.current = false;
       }
-      setVideos([initialPost]);
-      setActiveIndex(0);
-      setHasMore(true);
-      setLoading(false);
-      loadingRef.current = false;
-      hasMoreRef.current = true;
-      watchStartRef.current = Date.now();
-      // Load more after short delay so initial video starts playing first
-      setTimeout(() => loadMoreRef.current(), 1000);
+      if (!isInitialLoadDoneRef.current) {
+        isInitialLoadDoneRef.current = true;
+        const timer = setTimeout(() => loadMoreRef.current(), 1000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [isVisible, initialPost]);
+  }, [isVisible, initialPost?.id]);
 
   // Send watch event when active reel changes
   const sendWatchEventLocal = useCallback((post: any, watchedMs: number) => {
@@ -1776,19 +2007,54 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     }
   }, [activeIndex, videos]);
 
+  // Fix 5: AbortController ref for video pre-warming fetch requests
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map());
+
   useEffect(() => {
     const nextPost = videos[activeIndex + 1];
     if (!nextPost) return;
     const nextUrl = String(nextPost?.media_url || nextPost?.mediaUrl || '');
     const isNextVideo = /\.(mp4|mov|m4v|webm)(\?|$)/i.test(nextUrl);
     if (isNextVideo && nextUrl) {
-      // Delay pre-warming by 1500ms to allow the active video to start playing smoothly first
+      // Cancel any existing pre-warming for this URL
+      const existingController = abortControllersRef.current.get(nextUrl);
+      if (existingController) {
+        existingController.abort();
+        abortControllersRef.current.delete(nextUrl);
+      }
+
+      const abortController = new AbortController();
+      abortControllersRef.current.set(nextUrl, abortController);
+
+      // Delay pre-warming by 1500ms to allow active video to start playing smoothly first
       const timer = setTimeout(() => {
-        fetch(nextUrl, { method: 'GET', headers: { Range: 'bytes=0-1048576' } }).catch(() => { });
+        fetch(nextUrl, {
+          method: 'GET',
+          headers: { Range: 'bytes=0-1048576' },
+          signal: abortController.signal,
+        }).catch((error) => {
+          if (error.name === 'AbortError') return;
+          if (__DEV__) console.warn('Pre-warm failed:', error);
+        });
       }, 1500);
-      return () => clearTimeout(timer);
+
+      return () => {
+        clearTimeout(timer);
+        abortController.abort();
+        abortControllersRef.current.delete(nextUrl);
+      };
     }
   }, [activeIndex, videos]);
+
+  // Clean up all pending pre-warm abort controllers on component unmount
+  useEffect(() => {
+    return () => {
+      abortControllersRef.current.forEach((controller) => {
+        controller.abort();
+      });
+      abortControllersRef.current.clear();
+    };
+  }, []);
 
   const getItemLayout = (_: any, index: number) => ({
     length: screenSize.height,
@@ -1796,30 +2062,34 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     index,
   });
 
-  // OPT-6: renderItem does NOT depend on activeIndex state.
-  // It reads from activeIndexRef so the callback identity is stable and
-  // FlatList does NOT re-render all items on every swipe.
-  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => (
-    <ReelVideoItem
-      post={item}
-      isActive={index === activeIndexRef.current}
-      shouldLoad={Math.abs(index - activeIndexRef.current) <= 1}
-      onClose={handleCloseWrapper}
-      onLike={handleLikeLocal}
-      onComment={handleCommentWrapper}
-      onShare={handleShareWrapper}
-      isMuted={isMuted}
-      toggleMute={handleToggleMuteWrapper}
-      screenSize={screenSize}
-      onShareLocal={handleShareLocal}
-      onCommentLocal={handleCommentLocal}
-      autoScroll={autoScroll}
-      onVideoEnded={handleVideoEnded}
-      onOpenOptions={handleOpenOptions}
-      appState={appState}
-    />
-  // OPT-6: removed activeIndex from deps — use ref instead
-  ), [isMuted, screenSize, handleShareLocal, handleCommentLocal, handleLikeLocal, autoScroll, handleVideoEnded, appState, handleCloseWrapper, handleCommentWrapper, handleShareWrapper, handleOpenOptions, handleToggleMuteWrapper]);
+  // Fix 1: renderItem depends ONLY on stable values (isMuted, screenSize, autoScroll, appState).
+  // All callbacks are accessed via callbacksRef.current to avoid recreation & FlatList re-renders.
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
+    const isActive = index === activeIndexRef.current;
+    const shouldLoad = Math.abs(index - activeIndexRef.current) <= 1;
+
+    return (
+      <ReelVideoItem
+        key={item?.id || index}
+        post={item}
+        isActive={isActive}
+        shouldLoad={shouldLoad}
+        onClose={callbacksRef.current.handleCloseWrapper}
+        onLike={callbacksRef.current.handleLikeLocal}
+        onComment={callbacksRef.current.handleCommentWrapper}
+        onShare={callbacksRef.current.handleShareWrapper}
+        isMuted={isMuted}
+        toggleMute={callbacksRef.current.handleToggleMuteWrapper}
+        screenSize={screenSize}
+        onShareLocal={callbacksRef.current.handleShareLocal}
+        onCommentLocal={callbacksRef.current.handleCommentLocal}
+        autoScroll={autoScroll}
+        onVideoEnded={callbacksRef.current.handleVideoEnded}
+        onOpenOptions={callbacksRef.current.handleOpenOptions}
+        appState={appState}
+      />
+    );
+  }, [isMuted, screenSize, autoScroll, appState]);
 
   // OPT-5: memoize comment tree — only recomputes when localComments changes,
   // not on every parent render triggered by swipe/mute/etc.
@@ -1845,7 +2115,28 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
     [localComments, blockedUserIds]
   );
 
-  const flatListExtraData = useMemo(() => ({ activeIndex, isMuted }), [activeIndex, isMuted]);
+  const handleReply = useCallback((item: any, replyUsername?: string) => {
+    setReplyingToComment(item);
+    if (replyUsername) {
+      setNewCommentText(`@${replyUsername} `);
+    }
+  }, []);
+
+  const renderCommentItem = useCallback(({ item }: { item: any }) => {
+    const replies = repliesMap[item.id] || [];
+    return (
+      <CommentItem
+        item={item}
+        replies={replies}
+        user={user}
+        selectedPost={selectedPost}
+        onDelete={handleDeleteComment}
+        onMenuPress={handleCommentMenuPress}
+        onReply={handleReply}
+        t={t}
+      />
+    );
+  }, [repliesMap, user, selectedPost, handleDeleteComment, handleCommentMenuPress, handleReply, t]);
 
   return (
     <Modal
@@ -1863,7 +2154,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
             ref={flatListRef}
             data={videos}
             renderItem={renderItem}
-            extraData={flatListExtraData}
+            extraData={isMuted}
             // OPT-1: key by post.id (stable) instead of array index
           // This makes FlatList use O(1) key matching on mutations instead
           // of O(n) full reconciliation every time setVideos() is called.
@@ -1939,7 +2230,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
               }}
             >
               <View style={{ width: 40, height: 5, backgroundColor: '#DDD', borderRadius: 3, alignSelf: 'center', marginBottom: 15 }} />
-              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>{t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'} ({selectedPost?.comments_count ?? localComments.length ?? 0})</Text>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 }}>{t('language') === 'hi' ? 'टिप्पणियाँ' : 'Comments'}</Text>
 
               {/* OPT-5: repliesMap & parentComments are now pre-computed useMemo values */}
               <FlatList
@@ -1949,146 +2240,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                     maxToRenderPerBatch={5}
                     windowSize={5}
                     removeClippedSubviews={Platform.OS === 'android'}
-
-                    renderItem={({ item }) => {
-                      const canDelete = item.user_id === user?.id || selectedPost?.user_id === user?.id;
-                      const replies = repliesMap[item.id] || [];
-                      return (
-                        <View style={{ marginBottom: 12, position: 'relative', paddingHorizontal: 16 }}>
-                          {replies.length > 0 && (
-                            <View style={{
-                              position: 'absolute',
-                              left: 31,
-                              top: 32,
-                              bottom: 0,
-                              width: 1.5,
-                              backgroundColor: '#E6E1E8',
-                              zIndex: 1,
-                            }} />
-                          )}
-                          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                            <Avatar photo={item?.user_photo} name={item?.username || 'User'} size={32} />
-                            <View style={{
-                              flex: 1,
-                              marginLeft: 10,
-                              backgroundColor: '#F7EDE7',
-                              borderRadius: 16,
-                              padding: 12,
-                            }}>
-                              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <Text style={{ fontWeight: 'bold', fontSize: 13, color: '#3F2C20' }}>{item?.username || 'User'}</Text>
-                                {canDelete ? (
-                                  <TouchableOpacity
-                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => handleDeleteComment(item)}
-                                  >
-                                    <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-                                  </TouchableOpacity>
-                                ) : (
-                                  <TouchableOpacity
-                                    style={{ padding: 4, marginRight: -4, marginTop: -4 }}
-                                    onPress={() => handleCommentMenuPress(item)}
-                                  >
-                                    <Ionicons name="ellipsis-horizontal" size={16} color="#A88876" />
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                              <MentionText
-                                text={item?.text || ''}
-                                style={{ fontSize: 14, color: '#3F2C20', marginTop: 3, lineHeight: 18 }}
-                              />
-                              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                <Text style={{ fontSize: 11, color: '#A88876' }}>{formatTimeAgo(item?.created_at)}</Text>
-                                <TouchableOpacity
-                                  style={{ marginLeft: 16 }}
-                                  onPress={() => {
-                                    setReplyingToComment(item);
-                                  }}
-                                >
-                                  <Text style={{ fontSize: 12, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-                          </View>
-
-                          {/* Render nested replies */}
-                          {replies.map((reply: any, index: number) => {
-                            const canDeleteReply = reply.user_id === user?.id || selectedPost?.user_id === user?.id;
-                            const isLastReply = index === replies.length - 1;
-                            return (
-                              <View key={reply.id || `${reply.user_id}-${reply.created_at}`} style={{ flexDirection: 'row', alignItems: 'flex-start', marginLeft: 42, marginTop: 8, position: 'relative' }}>
-                                {/* Thread vertical line segment */}
-                                <View style={{
-                                  position: 'absolute',
-                                  left: -26,
-                                  top: 0,
-                                  bottom: isLastReply ? undefined : 0,
-                                  height: isLastReply ? 12 : undefined,
-                                  width: 1.5,
-                                  backgroundColor: '#E6E1E8',
-                                  zIndex: 1,
-                                }} />
-                                {/* Thread horizontal branch line */}
-                                <View style={{
-                                  position: 'absolute',
-                                  left: -26,
-                                  top: 12,
-                                  width: 26,
-                                  height: 1.5,
-                                  backgroundColor: '#E6E1E8',
-                                  zIndex: 1,
-                                }} />
-
-                                <Avatar photo={reply?.user_photo} name={reply?.username || 'User'} size={24} />
-                                <View style={{
-                                  flex: 1,
-                                  marginLeft: 8,
-                                  backgroundColor: '#FAF7F5',
-                                  borderRadius: 16,
-                                  padding: 12,
-                                }}>
-                                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                      <Text style={{ fontWeight: 'bold', fontSize: 12, color: '#222' }}>{reply.username}</Text>
-                                      <Text style={{ fontSize: 10, color: '#999', marginLeft: 8 }}>{formatTimeAgo(reply.created_at)}</Text>
-                                    </View>
-                                    {canDeleteReply ? (
-                                      <TouchableOpacity
-                                        style={{ padding: 4, marginRight: -4 }}
-                                        onPress={() => handleDeleteComment(reply)}
-                                      >
-                                        <Ionicons name="trash-outline" size={14} color="#FF3B30" />
-                                      </TouchableOpacity>
-                                    ) : (
-                                      <TouchableOpacity
-                                        style={{ padding: 4, marginRight: -4 }}
-                                        onPress={() => handleCommentMenuPress(reply)}
-                                      >
-                                        <Ionicons name="ellipsis-horizontal" size={14} color="#A88876" />
-                                      </TouchableOpacity>
-                                    )}
-                                  </View>
-                                  <MentionText
-                                    text={reply.text}
-                                    style={{ fontSize: 13, color: '#444', marginTop: 3, lineHeight: 17 }}
-                                  />
-                                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                                    <TouchableOpacity
-                                      onPress={() => {
-                                        setReplyingToComment(item);
-                                        setNewCommentText(`@${reply.username} `);
-                                      }}
-                                    >
-                                      <Text style={{ fontSize: 11, color: COLORS.primary, fontWeight: '600' }}>{t('language') === 'hi' ? 'जवाब दें' : 'Reply'}</Text>
-                                    </TouchableOpacity>
-                                  </View>
-                                </View>
-                              </View>
-                            );
-                          })}
-                        </View>
-                      );
-                    }}
+                    renderItem={renderCommentItem}
                     ListEmptyComponent={
                       commentsLoading ? (
                         <ActivityIndicator style={{ marginTop: 40 }} color={COLORS.primary} />
@@ -2202,7 +2354,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
               activeOpacity={1}
               onPress={() => setIsOptionsVisible(false)}
             />
-            <View style={styles.sheetContainer}>
+            <View style={[styles.sheetContainer, { paddingBottom: Math.max(insets.bottom, 24) }]}>
               <View style={styles.sheetHandle} />
               <Text style={styles.sheetTitle}>{t('reelSettings')}</Text>
 
@@ -2225,13 +2377,6 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 <View style={[styles.toggleTrack, autoScroll && styles.toggleTrackActive]}>
                   <View style={[styles.toggleThumb, autoScroll && styles.toggleThumbActive]} />
                 </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.sheetCancelBtn, { marginTop: 16 }]}
-                onPress={() => setIsOptionsVisible(false)}
-              >
-                <Text style={styles.sheetCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2270,7 +2415,7 @@ const styles = StyleSheet.create({
   },
   sheetBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'transparent',
     justifyContent: 'flex-end',
   },
   sheetContainer: {

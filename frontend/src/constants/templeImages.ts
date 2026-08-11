@@ -545,6 +545,29 @@ const normalizeTempleName = (
   return str.replace(/[^a-z0-9]/g, '');
 };
 
+// Pre-computed normalized lookup maps for O(1) tier resolution
+const NORM_KEY_MAP = new Map<string, string>();
+const NORM_NAME_MAP = new Map<string, string>();
+const NORM_STRIPPED_MAP = new Map<string, string>();
+
+// Initialize pre-computed normalized maps for TEMPLE_IMAGES
+Object.keys(TEMPLE_IMAGES).forEach((key) => {
+  const normKey = normalizeTempleName(key);
+  if (normKey && !NORM_KEY_MAP.has(normKey)) {
+    NORM_KEY_MAP.set(normKey, key);
+  }
+
+  const normName = normalizeTempleName(key, { stripLocation: true });
+  if (normName && !NORM_NAME_MAP.has(normName)) {
+    NORM_NAME_MAP.set(normName, key);
+  }
+
+  const normStripped = normalizeTempleName(key, { stripLocation: true, stripPrefixes: true });
+  if (normStripped && !NORM_STRIPPED_MAP.has(normStripped)) {
+    NORM_STRIPPED_MAP.set(normStripped, key);
+  }
+});
+
 const TEMPLE_FALLBACK_POOL: ImageSourcePropType[] = [
   require('../../assets/images/clean_parchment_bg.webp'),
 ];
@@ -555,52 +578,42 @@ const _rawGetTempleImageByNameDetailed = (name: string) => {
     return { key: 'DEFAULT_TEMPLE_IMAGE', res: DEFAULT_TEMPLE_IMAGE, tier: 'Tier 6 (Default)' };
   }
 
-  // 1. Exact ID match
+  // 1. Exact ID match (O(1))
   if (TEMPLE_IMAGES[input]) {
     return { key: input, res: TEMPLE_IMAGES[input], tier: 'Tier 1 (Exact ID)' };
   }
 
-  const allKeys = Object.keys(TEMPLE_IMAGES);
-
-  // 2. Exact Normalized Key match
+  // 2. Exact Normalized Key match (O(1))
   const normInputRaw = normalizeTempleName(input);
-  if (normInputRaw) {
-    for (const key of allKeys) {
-      if (normalizeTempleName(key) === normInputRaw) {
-        return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 2 (Exact Normalized Key)' };
-      }
-    }
+  if (normInputRaw && NORM_KEY_MAP.has(normInputRaw)) {
+    const key = NORM_KEY_MAP.get(normInputRaw)!;
+    return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 2 (Exact Normalized Key)' };
   }
 
-  // 3. Exact Normalized Name match (with location suffix stripped)
+  // 3. Exact Normalized Name match (with location suffix stripped) (O(1))
   const normInputNoLoc = normalizeTempleName(input, { stripLocation: true });
-  if (normInputNoLoc) {
-    for (const key of allKeys) {
-      if (normalizeTempleName(key, { stripLocation: true }) === normInputNoLoc) {
-        return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 3 (Exact Normalized Name)' };
-      }
-    }
+  if (normInputNoLoc && NORM_NAME_MAP.has(normInputNoLoc)) {
+    const key = NORM_NAME_MAP.get(normInputNoLoc)!;
+    return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 3 (Exact Normalized Name)' };
   }
 
-  // 4. Prefix-stripped Normalized Key match
+  // 4. Prefix-stripped Normalized Key match (O(1))
   const normInputStripped = normalizeTempleName(input, { stripLocation: true, stripPrefixes: true });
-  if (normInputStripped) {
-    for (const key of allKeys) {
-      if (normalizeTempleName(key, { stripLocation: true, stripPrefixes: true }) === normInputStripped) {
-        return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 4 (Prefix-stripped Key)' };
-      }
-    }
+  if (normInputStripped && NORM_STRIPPED_MAP.has(normInputStripped)) {
+    const key = NORM_STRIPPED_MAP.get(normInputStripped)!;
+    return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 4 (Prefix-stripped Key)' };
   }
 
   // 5. Controlled Fuzzy match (last resort before default fallback)
-  if (normInputStripped) {
-    for (const key of allKeys) {
-      const normKeyStripped = normalizeTempleName(key, { stripLocation: true, stripPrefixes: true });
-      if (normInputStripped.length >= 4 && normKeyStripped.length >= 4) {
-        const s1 = normInputStripped.replace(/(mandir|temple|monastery|stupa|dhamek|ashram|peeth)/g, '');
-        const s2 = normKeyStripped.replace(/(mandir|temple|monastery|stupa|dhamek|ashram|peeth)/g, '');
-        if (s1 && s2 && (s1 === s2 || s1.includes(s2) || s2.includes(s1))) {
-          return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 5 (Controlled Fuzzy Match)' };
+  if (normInputStripped && normInputStripped.length >= 4) {
+    const s1 = normInputStripped.replace(/(mandir|temple|monastery|stupa|dhamek|ashram|peeth)/g, '');
+    if (s1) {
+      for (const [normKeyStripped, key] of NORM_STRIPPED_MAP.entries()) {
+        if (normKeyStripped.length >= 4) {
+          const s2 = normKeyStripped.replace(/(mandir|temple|monastery|stupa|dhamek|ashram|peeth)/g, '');
+          if (s2 && (s1 === s2 || s1.includes(s2) || s2.includes(s1))) {
+            return { key, res: TEMPLE_IMAGES[key], tier: 'Tier 5 (Controlled Fuzzy Match)' };
+          }
         }
       }
     }
@@ -618,19 +631,26 @@ const _rawGetTempleImageByNameDetailed = (name: string) => {
   return { key: `poolFallback:${poolIndex}`, res: fallbackAsset, tier: 'Tier 6 (Default Fallback)' };
 };
 
-const getTempleImageById = (id: string): ImageSourcePropType | null => {
-  if (!id) return null;
-  const detailed = _rawGetTempleImageByNameDetailed(id);
-  if (detailed.tier.includes('Tier 6')) return null;
-  return detailed.res || null;
-};
-
 const getTempleImageByNameDetailed = (name: string) => {
   const key = String(name || '').trim();
   if (DETAILED_LOOKUP_CACHE.has(key)) return DETAILED_LOOKUP_CACHE.get(key)!;
   const res = _rawGetTempleImageByNameDetailed(key);
   DETAILED_LOOKUP_CACHE.set(key, res);
   return res;
+};
+
+const getTempleImageById = (id: string): ImageSourcePropType | null => {
+  if (!id) return null;
+  const detailed = getTempleImageByNameDetailed(id);
+  if (detailed.tier.includes('Tier 6')) return null;
+  return detailed.res || null;
+};
+
+const getTempleImageByNameStrict = (name: string): ImageSourcePropType | null => {
+  if (!name) return null;
+  const detailed = getTempleImageByNameDetailed(name);
+  if (detailed.tier.includes('Tier 6')) return null;
+  return detailed.res || null;
 };
 
 const getTempleImageByName = (name: string): ImageSourcePropType => {
@@ -654,25 +674,25 @@ const resolveTempleImage = (item: any): ImageSourcePropType => {
 
   const name = String(item.name || '').trim();
 
-  // 1. Deterministic local registry by ID
+  // 1. Deterministic local registry lookup by ID (Tiers 1-5 only)
   if (id) {
     const byId = getTempleImageById(id);
     if (byId) return byId;
   }
 
-  // 2. Deterministic local registry by name
+  // 2. Deterministic local registry lookup by name (Tiers 1-5 only)
   if (name) {
-    const byName = getTempleImageByName(name);
+    const byName = getTempleImageByNameStrict(name);
     if (byName) return byName;
   }
 
-  // 3. Remote URL check
+  // 3. Remote URL check (valid HTTP / HTTPS string)
   const imageUrl = item.image_url || item.imageUrl;
-  if (typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl)) {
-    return { uri: imageUrl };
+  if (typeof imageUrl === 'string' && /^https?:\/\//i.test(imageUrl.trim())) {
+    return { uri: imageUrl.trim() };
   }
 
-  // 4. Guaranteed local neutral fallback
+  // 4. Guaranteed local neutral fallback (Tier 6)
   return DEFAULT_TEMPLE_IMAGE;
 };
 

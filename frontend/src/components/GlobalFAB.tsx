@@ -480,7 +480,7 @@ export function GlobalFAB() {
                       style={[
                         fabStyles.menuItem,
                         {
-                          left: x - 5,
+                          left: x - 15,
                           top: y,
                           transform: [{ scale: fabItemAnims[index] }],
                           opacity: (activeSOS || nearbySOSAlerts.length > 0) ? 0.35 : fabItemAnims[index],
@@ -743,7 +743,7 @@ export function GlobalFAB() {
 const fabStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(48, 24, 8, 0.28)',
+    backgroundColor: 'transparent',
     zIndex: 99999, // Ensure very high z-index
     justifyContent: 'center',
     alignItems: 'center',
@@ -810,7 +810,7 @@ const fabStyles = StyleSheet.create({
   },
   centerButton: {
     position: 'absolute',
-    left: 136,
+    left: 126,
     top: 126,
     alignItems: 'center',
     width: 88,
