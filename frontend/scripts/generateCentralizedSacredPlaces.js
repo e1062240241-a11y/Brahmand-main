@@ -72,9 +72,9 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 }
 
 function generateSacredPlaces(t) {
-  const city = t.location?.city || t.location?.area || 'Temple Surroundings';
-  const state = t.location?.state || '';
-  const cleanName = t.name.split('–')[0].trim();
+  const city = t.location?.city || t.location?.area || 'Surroundings';
+  const state = t.location?.state || 'India';
+  const cleanName = t.name.split('–')[0].replace(/['"]/g, '').trim();
 
   return [
     {
@@ -83,7 +83,7 @@ function generateSacredPlaces(t) {
       category: 'Shrine',
       distance: '0.1 km',
       significance: `Main spiritual complex of ${cleanName} located in ${city}.`,
-      locationQuery: `${cleanName} ${city}`
+      locationQuery: `${cleanName}, ${city}, ${state}`
     },
     {
       id: `${t.id}_sp2`,
@@ -91,7 +91,7 @@ function generateSacredPlaces(t) {
       category: 'Ghat',
       distance: '1.2 km',
       significance: `Holy water body and bathing ghat adjacent to ${cleanName} for ritual cleansing.`,
-      locationQuery: `${city} Ghat ${state}`
+      locationQuery: `${city} Heritage Bathing Ghat near ${cleanName}, ${state}`
     },
     {
       id: `${t.id}_sp3`,
@@ -99,7 +99,7 @@ function generateSacredPlaces(t) {
       category: 'Heritage',
       distance: '3.5 km',
       significance: `Tranquil retreat and historical heritage point near ${cleanName}.`,
-      locationQuery: `${city} Heritage ${state}`
+      locationQuery: `${city} Meditation Hill near ${cleanName}, ${state}`
     }
   ];
 }
@@ -109,14 +109,14 @@ const sacredPlacesData = {};
 for (const t of templeDump) {
   const primaryIdKey = t.id ? normalizeTempleKey(t.id) : '';
   const primaryNameKey = t.name ? normalizeTempleKey(t.name) : '';
-  const primaryKey = primaryIdKey || primaryNameKey || t.id;
+  const primaryKey = primaryIdKey || primaryNameKey || (t.id ? String(t.id).toLowerCase().trim() : '');
 
   const places = generateSacredPlaces(t);
 
-  // Store under primary canonical key, raw ID, and normalized ID
-  sacredPlacesData[primaryKey] = places;
-  if (t.id) sacredPlacesData[t.id] = places;
-  if (t.temple_id) sacredPlacesData[t.temple_id] = places;
+  // Store under primary canonical key and lowercased IDs without redundant casing duplicates
+  if (primaryKey) sacredPlacesData[primaryKey] = places;
+  if (t.id) sacredPlacesData[String(t.id).toLowerCase().trim()] = places;
+  if (t.temple_id) sacredPlacesData[String(t.temple_id).toLowerCase().trim()] = places;
   if (primaryIdKey) sacredPlacesData[primaryIdKey] = places;
   if (primaryNameKey) sacredPlacesData[primaryNameKey] = places;
 }
@@ -135,7 +135,7 @@ let fileContent = `export interface SacredPlaceItem {
 export const CENTRALIZED_SACRED_PLACES_DATA: Record<string, SacredPlaceItem[]> = {\n`;
 
 for (const [key, places] of Object.entries(sacredPlacesData)) {
-  fileContent += `  ${JSON.stringify(key)}: ${JSON.stringify(places, null, 4).replace(/\n/g, '\n  ')},\n`;
+  fileContent += `  ${JSON.stringify(key)}: ${JSON.stringify(places)},\n`;
 }
 
 fileContent += `};\n`;
@@ -145,3 +145,4 @@ fs.writeFileSync(outputPath, fileContent);
 
 console.log(`Generated centralized CENTRALIZED_SACRED_PLACES_DATA with ${Object.keys(sacredPlacesData).length} key entries.`);
 console.log(`Saved to ${outputPath}`);
+

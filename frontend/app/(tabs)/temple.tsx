@@ -434,7 +434,7 @@ export default function TempleScreen() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCategory, selectedLocations, temples]);
+  }, [searchQuery, selectedCategory, selectedLocations, charDhamSubFilter]);
 
   // Fallback to API data if WatermelonDB hasn't populated displayTemples
   useEffect(() => {
@@ -525,6 +525,20 @@ export default function TempleScreen() {
           (t.deity || '').toLowerCase().includes(q)
         );
       }
+
+      // Canonical physical entity deduplication
+      const uniqueRecordsMap = new Map();
+      for (const rec of filtered) {
+        const rawId = rec.templeId || rec.temple_id || rec.id || rec.name;
+        const cKey = normalizeTempleKey(rawId);
+        if (cKey && !uniqueRecordsMap.has(cKey)) {
+          uniqueRecordsMap.set(cKey, rec);
+        } else if (!cKey && !uniqueRecordsMap.has(rawId)) {
+          uniqueRecordsMap.set(rawId, rec);
+        }
+      }
+      filtered = Array.from(uniqueRecordsMap.values());
+
       setDisplayTemples(filtered.map((t: any) => ({
         id: t._raw?.temple_id || t.templeId || t.temple_id || t._raw?.id || t.id,
         temple_id: t._raw?.temple_id || t.templeId || t.temple_id || t.id,
@@ -542,7 +556,7 @@ export default function TempleScreen() {
   // Reset pagination on filter or search parameters change
   useEffect(() => {
     loadMoreTemples(1, true);
-  }, [searchQuery, selectedCategory, selectedLocations, loadMoreTemples]);
+  }, [searchQuery, selectedCategory, selectedLocations, charDhamSubFilter]);
 
   const loadLocalTemples = useCallback(async () => {
     try {
@@ -702,7 +716,7 @@ export default function TempleScreen() {
     if (hasMore && !loading) {
       loadMoreTemples(page + 1, false);
     }
-  }, [hasMore, loading, page, loadMoreTemples]);
+  }, [hasMore, loading, page]);
 
   const onRefresh = useCallback(async () => {
     await fetchData();
@@ -726,7 +740,7 @@ const renderItem = useCallback(({ item }: { item: any }) => {
     );
   }, [openTempleDetails, t]);
 
-  const keyExtractor = useCallback((item: any) => item.id, []);
+  const keyExtractor = useCallback((item: any) => item?.id || item?.temple_id || item?.templeId || `item-${Math.random()}`, []);
 
   const ListHeader = useCallback(() => (
     <View>

@@ -10,6 +10,7 @@
     "ios": "expo run:ios --scheme sanatanlok",
     "web": "expo start --web --scheme sanatanlok",
     "lint": "expo lint",
+    "audit:nearby": "npx ts-node scripts/auditCuratedRuntimeCoverage.js",
     "postinstall": "patch-package"
   },
   "dependencies": {

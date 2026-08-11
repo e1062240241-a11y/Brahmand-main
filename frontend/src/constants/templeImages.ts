@@ -467,6 +467,7 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'sacred-thirunallar-saneeswaran-temple': require('../../assets/images/imagetemple/Dharbaranyeswarar.webp'),
   'sacred-kethu-temple-keelaperumpallam': require('../../assets/images/imagetemple/Naganathaswamy.webp'),
   'sacred-suryanar-kovil-kumbakonam': require('../../assets/images/imagetemple/SuryanarKovil.webp'),
+  'sacred-siddhivinayak-temple-mumbai': require('../../assets/images/imagetemple/Siddhivinayak.webp'),
   'sacred-ramatheertham-vizianagaram': require('../../assets/images/imagetemple/Ramatheertham.webp'),
   'sacred-draksharamam-bheemeswara-temple': require('../../assets/images/imagetemple/Draksharama_temple.webp'),
   'sacred-amararamam-amaraswaraswamy-temple': require('../../assets/images/imagetemple/AmareswaraSwamy.webp'),

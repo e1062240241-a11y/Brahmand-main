@@ -17,7 +17,7 @@ import {
   NearbyTempleItem,
   CircuitJourneyItem,
 } from '../data/jyotirlingaTravelData';
-import { DEFAULT_TEMPLE_IMAGE, getTempleImageByName } from '../constants/templeImages';
+import { DEFAULT_TEMPLE_IMAGE, getTempleImageByName, getTempleImageById } from '../constants/templeImages';
 
 // Color Palette Definition
 const THEME = {
@@ -75,6 +75,19 @@ interface PilgrimageTravelSectionProps {
   coords?: { latitude: number; longitude: number };
 }
 
+/** Distance filter options for user control */
+const DISTANCE_FILTERS = [
+  { label: 'All', value: 0 },
+  { label: '< 10 km', value: 10 },
+  { label: '< 50 km', value: 50 },
+  { label: '< 200 km', value: 200 },
+];
+
+/**
+ * Main UI component for rendering Nearby Sacred Places, Nearby Temples, and Circuit Journeys.
+ * Incorporates interactive distance filter chips, fallback placeholder icons, memoized data calculation,
+ * and graceful empty states.
+ */
 export const PilgrimageTravelSection: React.FC<PilgrimageTravelSectionProps> = ({
   templeId,
   templeName = '',
@@ -82,33 +95,61 @@ export const PilgrimageTravelSection: React.FC<PilgrimageTravelSectionProps> = (
   coords,
 }) => {
   const router = useRouter();
-  const data = getExploreNearbyData(templeId, templeName, category, coords);
+  const [selectedMaxDist, setSelectedMaxDist] = useState<number>(0);
+
+  // Memoized data resolution with distance filter support
+  const data = React.useMemo(() => {
+    return getExploreNearbyData(
+      templeId,
+      templeName,
+      category,
+      coords,
+      selectedMaxDist > 0 ? { maxDistanceKm: selectedMaxDist } : undefined
+    );
+  }, [templeId, templeName, category, coords?.latitude, coords?.longitude, selectedMaxDist]);
 
   const sacredPlaces = data?.nearbySacredPlaces ?? [];
   const nearbyTemples = data?.nearbyTemples ?? [];
   const circuitJourney = data?.circuitJourney ?? [];
 
-  console.log('[NEARBY SOURCE TRACE]', {
-    templeId,
-    templeName,
-    hasCuratedData: data?.hasCuratedData,
-    sacredPlacesCount: sacredPlaces.length,
-    nearbyTemplesCount: nearbyTemples.length,
-    sacredPlaces: sacredPlaces.map((x) => x?.name),
-    nearbyTemples: nearbyTemples.map((x) => x?.name),
-  });
-
-  console.log('[NEARBY SECTION PROPS]', {
-    templeName,
-    hasCuratedData: data?.hasCuratedData,
-    sacredPlacesCount: sacredPlaces?.length,
-    nearbyTemplesCount: nearbyTemples?.length,
-    shouldRenderSacredPlaces: sacredPlaces.length > 0,
-    shouldRenderNearbyTemples: nearbyTemples.length > 0
-  });
+  const hasNoNearbyData = sacredPlaces.length === 0 && nearbyTemples.length === 0;
 
   return (
     <View style={styles.container}>
+      {/* INTERACTIVE DISTANCE FILTER CHIPS */}
+      {!hasNoNearbyData && (
+        <View style={styles.filterChipContainer}>
+          <Text style={styles.filterChipLabel}>Proximity:</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {DISTANCE_FILTERS.map((f) => {
+              const active = selectedMaxDist === f.value;
+              return (
+                <TouchableOpacity
+                  key={f.label}
+                  style={[styles.filterChip, active && styles.filterChipActive]}
+                  onPress={() => setSelectedMaxDist(f.value)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* EMPTY DATA STATE */}
+      {hasNoNearbyData && (
+        <View style={styles.emptyStateContainer}>
+          <Ionicons name="compass-outline" size={24} color={THEME.textMuted} />
+          <Text style={styles.emptyStateText}>
+            No additional nearby shrines found within selected range. Explore the pilgrimage circuit below.
+          </Text>
+        </View>
+      )}
+
       {/* SECTION 1 — NEARBY SACRED PLACES */}
       {sacredPlaces.length > 0 && (
         <SacredPlacesDropdown sacredPlaces={sacredPlaces} router={router} />
@@ -156,6 +197,8 @@ export const PilgrimageTravelSection: React.FC<PilgrimageTravelSectionProps> = (
   );
 };
 
+
+
 /* -------------------------------------------------------------------------- */
 /* SUB-COMPONENTS                                                             */
 /* -------------------------------------------------------------------------- */
@@ -181,11 +224,27 @@ const SacredPlaceCard: React.FC<{ place: SacredPlaceItem; router: any }> = ({ pl
   const handlePress = () => {
     if (place.linkedTempleId) {
       router.push(`/temple/${place.linkedTempleId}`);
-    } else if (place.locationQuery) {
-      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.locationQuery)}`);
-    } else {
-      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`);
+      return;
     }
+
+    // Determine base query
+    let searchQuery = place.locationQuery || place.name;
+
+    // If query is identical to plain name, add category context for better search accuracy
+    if (searchQuery === place.name && place.category) {
+      searchQuery = `${place.name} ${place.category}`;
+    }
+
+    // Clean search query (strip quotes & trim)
+    const cleanedQuery = searchQuery.replace(/^['"]+|['"]+$/g, '').trim();
+    const primaryUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanedQuery)}`;
+
+    Linking.openURL(primaryUrl).catch((error) => {
+      console.warn('[SACRED PLACE MAP ERROR]', error);
+      // Fallback: search by plain name
+      const fallbackUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}`;
+      Linking.openURL(fallbackUrl).catch((err) => console.error('[SACRED PLACE FALLBACK ERROR]', err));
+    });
   };
 
   const getCategoryIcon = (cat: string) => {
@@ -541,4 +600,56 @@ const styles = StyleSheet.create({
     color: THEME.textMuted,
     marginTop: 2,
   },
+  emptyStateContainer: {
+    marginHorizontal: 20,
+    marginVertical: 12,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  emptyStateText: {
+    fontSize: 13,
+    color: THEME.textMuted,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  filterChipContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 14,
+    gap: 10,
+  },
+  filterChipLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: THEME.textMuted,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#EFE8DC',
+    borderWidth: 1,
+    borderColor: THEME.border,
+  },
+  filterChipActive: {
+    backgroundColor: THEME.accentIndigo,
+    borderColor: THEME.accentIndigo,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: THEME.textPrimary,
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
 });
+
+

@@ -12,6 +12,7 @@ import {
   Alert,
   Platform,
   Animated,
+  Easing,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -78,7 +79,7 @@ const NamasteIcon = ({ size = 16, color = '#8A5A2B' }) => (
   </Svg>
 );
 
-const shivlingImg = require('../assets/images/shivling_artwork.webp');
+const shivlingImg = require('../assets/images/shivling.jpeg');
 
 // High quality sharp Shivling Artwork for Section 3
 const ShivlingArtwork = () => (
@@ -97,47 +98,37 @@ export default function ShravanPaathPage() {
   });
   const [registeredCount, setRegisteredCount] = useState(0);
 
-  const rippleScale1 = useRef(new Animated.Value(0.2)).current;
-  const rippleOpacity1 = useRef(new Animated.Value(0.8)).current;
-  const rippleScale2 = useRef(new Animated.Value(0.2)).current;
-  const rippleOpacity2 = useRef(new Animated.Value(0.8)).current;
+  // Cosmic Space Animated Button States
+  const rotateAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (interested) return;
+    // Fast continuous 360deg infinite rotation for space starfield (Linear easing)
+    const rotateLoop = Animated.loop(
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 2500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
 
-    const createRippleLoop = (scaleAnim: Animated.Value, opacityAnim: Animated.Value, delay: number) => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.parallel([
-            Animated.timing(scaleAnim, {
-              toValue: 4.5,
-              duration: 2200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-              toValue: 0,
-              duration: 2200,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.timing(scaleAnim, { toValue: 0.2, duration: 0, useNativeDriver: true }),
-          Animated.timing(opacityAnim, { toValue: 0.45, duration: 0, useNativeDriver: true }),
-        ])
-      );
-    };
-
-    const loop1 = createRippleLoop(rippleScale1, rippleOpacity1, 0);
-    const loop2 = createRippleLoop(rippleScale2, rippleOpacity2, 1100);
-
-    loop1.start();
-    loop2.start();
+    rotateLoop.start();
 
     return () => {
-      loop1.stop();
-      loop2.stop();
+      rotateLoop.stop();
     };
-  }, [interested]);
+  }, []);
+
+  const rotateInterpolate = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const pulseScale = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.8, 1.15],
+  });
 
   const fetchReminderStats = useCallback(() => {
     api.get('/jaap/reminder-stats?mantra_type=shravan_katha')
@@ -416,71 +407,66 @@ export default function ShravanPaathPage() {
             </View>
           </View>
 
-          {/* PRIMARY INTERESTED ACTION BUTTON */}
+          {/* PRIMARY INTERESTED ACTION BUTTON (Cosmic Space Animated Button) */}
           <TouchableOpacity
-            activeOpacity={0.9}
+            activeOpacity={0.85}
             onPress={handleInterested}
-            style={styles.ctaButtonWrapper}
+            style={styles.spaceBtnContainer}
           >
+            {/* Solid Orange Border via LinearGradient wrapper */}
             <LinearGradient
-              colors={interested ? ['#388E3C', '#2E7D32'] : ['#F25C05', '#E05300']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.ctaButtonGradient}
+              colors={
+                interested
+                  ? ['#2E7D32', '#4CAF50', '#81C784', '#2E7D32']
+                  : ['#FF6B00', '#F25C05', '#D85A00', '#FF8C00']
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.spaceBtnBorderGradient}
             >
-              {/* Continuous Water Ripple Overlay (Covers entire button, subtle & lightweight) */}
-              {!interested && (
-                <View pointerEvents="none" style={{ ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderRadius: 14 }}>
-                  <Animated.View
-                    style={{
-                      position: 'absolute',
-                      width: 120,
-                      height: 120,
-                      borderRadius: 60,
-                      backgroundColor: 'rgba(255, 255, 255, 0.22)',
-                      transform: [{ scale: rippleScale1 }],
-                      opacity: rippleOpacity1,
-                    }}
-                  />
-                  <Animated.View
-                    style={{
-                      position: 'absolute',
-                      width: 120,
-                      height: 120,
-                      borderRadius: 60,
-                      backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                      transform: [{ scale: rippleScale2 }],
-                      opacity: rippleOpacity2,
-                    }}
-                  />
+              <View style={[styles.spaceBtnInner, interested && styles.spaceBtnInnerActive]}>
+                {/* Background Stars Layer (Only Stars Rotating Animation) */}
+                <Animated.View
+                  pointerEvents="none"
+                  style={[
+                    styles.spaceStarsContainer,
+                    {
+                      transform: [{ rotate: rotateInterpolate }],
+                    },
+                  ]}
+                >
+                  {/* Stars Pattern Overlay */}
+                  <View style={styles.starDot1} />
+                  <View style={styles.starDot2} />
+                  <View style={styles.starDot3} />
+                  <View style={styles.starDot4} />
+                  <View style={styles.starDot5} />
+                  <View style={styles.starDot6} />
+                  <View style={styles.starDot7} />
+                  <View style={styles.starDot8} />
+                </Animated.View>
+
+                {/* Button Content */}
+                <View style={styles.spaceBtnContentRow}>
+                  <View style={styles.spaceIconBox}>
+                    {interested ? (
+                      <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                        <Path
+                          d="M4.5 12.5L9.5 17.5L19.5 6.5"
+                          stroke="#4CAF50"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </Svg>
+                    ) : (
+                      <Ionicons name="notifications" size={18} color="#FFDB3B" />
+                    )}
+                  </View>
+                  <Text style={styles.spaceStrongText}>
+                    {interested ? 'REGISTRATION CONFIRMED' : 'मैं INTERESTED हूँ'}
+                  </Text>
                 </View>
-              )}
-
-              <View style={{ justifyContent: 'center', alignItems: 'center', width: 30, height: 30, zIndex: 2, marginLeft: 6 }}>
-                {interested ? (
-                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M4.5 12.5L9.5 17.5L19.5 6.5"
-                      stroke="#000000"
-                      strokeWidth="4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </Svg>
-                ) : (
-                  <Ionicons name="notifications" size={22} color="#FFFFFF" />
-                )}
-              </View>
-
-              <View style={[styles.ctaTextCol, { zIndex: 2, alignItems: interested ? 'flex-start' : 'center', paddingRight: interested ? 0 : 20 }]}>
-                <Text style={styles.ctaMainTitle}>
-                  {interested ? 'Registration Confirmed' : 'मैं Interested हूँ'}
-                </Text>
-                <Text style={interested ? styles.ctaSubTitle : { fontSize: 12, color: '#000000', marginTop: 2, fontWeight: '500' }}>
-                  {interested
-                    ? 'You are now one of the devotees joining this Shravan journey.'
-                    : 'Lets be a part of this journey.'}
-                </Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
@@ -831,55 +817,141 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 
-  /* CTA BUTTON STYLES */
-  ctaButtonWrapper: {
-    marginTop: Platform.OS === 'android' ? -6 : 0,
-    marginBottom: Platform.OS === 'android' ? 8 : 12,
-    borderRadius: 16,
-    shadowColor: '#F25C05',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
+  /* COSMIC SPACE ANIMATED BUTTON STYLES (Clean Rotating Stars & Orange Border) */
+  spaceBtnContainer: {
+    width: '100%',
+    marginVertical: 10,
+    alignSelf: 'center',
+    shadowColor: '#D85A00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
     shadowRadius: 10,
-    elevation: 6,
+    elevation: 8,
   },
-  ctaButtonGradient: {
+  spaceBtnBorderGradient: {
+    padding: 3, // Simulates border: double 4px transparent gradient border
+    borderRadius: 30,
+  },
+  spaceBtnInner: {
     height: 52,
-    borderRadius: 14,
+    borderRadius: 27,
+    backgroundColor: '#212121',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    justifyContent: 'space-between',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'hidden',
   },
-  ctaBellIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  spaceBtnInnerActive: {
+    backgroundColor: '#122614',
+  },
+  spaceStarsContainer: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  ctaTextCol: {
-    flex: 1,
-    paddingHorizontal: 10,
-  },
-  ctaMainTitle: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  ctaSubTitle: {
-    color: '#FFEFE5',
-    fontSize: 10.5,
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  ctaArrowCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  starDot1: {
+    position: 'absolute',
+    top: 40,
+    left: 80,
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
     backgroundColor: '#FFFFFF',
+    opacity: 0.9,
+  },
+  starDot2: {
+    position: 'absolute',
+    top: 180,
+    left: 40,
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.25,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.7,
+  },
+  starDot3: {
+    position: 'absolute',
+    top: 90,
+    right: 50,
+    width: 3.5,
+    height: 3.5,
+    borderRadius: 1.75,
+    backgroundColor: '#FFDB3B',
+    opacity: 0.95,
+  },
+  starDot4: {
+    position: 'absolute',
+    bottom: 50,
+    right: 90,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.8,
+  },
+  starDot5: {
+    position: 'absolute',
+    top: 220,
+    right: 120,
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#FE53BB',
+    opacity: 0.85,
+  },
+  starDot6: {
+    position: 'absolute',
+    bottom: 90,
+    left: 110,
+    width: 2.5,
+    height: 2.5,
+    borderRadius: 1.25,
+    backgroundColor: '#8F51EA',
+    opacity: 0.75,
+  },
+  starDot7: {
+    position: 'absolute',
+    top: 130,
+    left: 180,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.9,
+  },
+  starDot8: {
+    position: 'absolute',
+    bottom: 140,
+    right: 40,
+    width: 2,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.6,
+  },
+  spaceBtnContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  spaceIconBox: {
+    marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  spaceStrongText: {
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-medium',
+    fontSize: 13.5,
+    fontWeight: '900',
+    letterSpacing: 3,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(255, 255, 255, 0.75)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
 
   /* SOCIAL PROOF BAR STYLES */

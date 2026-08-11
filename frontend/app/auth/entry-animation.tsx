@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, TouchableOpacity, Image, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Image, Platform, useWindowDimensions } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import Svg, { Path, Circle, Mask } from 'react-native-svg';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Mask } from 'react-native-svg';
 import { useAuthStore } from '../../src/store/authStore';
 import { FONTS } from '../../src/constants/theme';
 
@@ -76,26 +77,22 @@ export default function EntryAnimationScreen() {
   const containerOpacity = useRef(new Animated.Value(1)).current;
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
-  // Design references: Width: 390, Height: 844
-  // We compute scaling factor based on screen width/height to fit smaller devices
   const isAndroid = Platform.OS === 'android';
-  const isSmallScreen = isAndroid && (screenWidth < 375 || screenHeight < 700);
 
-  const cardWidth = isAndroid ? Math.min(357, screenWidth - 32) : 357;
-  const cardHeight = isAndroid ? (screenHeight < 700 ? Math.min(380, screenHeight * 0.48) : 474) : 474;
-  const imageContainerHeight = isAndroid ? (screenHeight < 700 ? Math.min(280, cardHeight - 100) : 364) : 364;
+  // Card height dynamically scales with available vertical space without introducing hard minimum overflows on short devices (< 650px)
+  const cardWidth = Math.min(357, screenWidth - 32);
+  const availableContentHeight = screenHeight - (insets.top + insets.bottom + 210); // 210px accounts for footer + iconsRow
+  const cardHeight = Math.min(474, Math.max(280, availableContentHeight));
+  const imageContainerHeight = Math.min(364, Math.max(180, cardHeight - 110));
 
-  const titleFontSize = isAndroid ? (screenHeight < 700 ? 22 : 28) : 28;
+  const titleFontSize = screenHeight < 700 ? 22 : 28;
 
-  const iconsRowWidth = isAndroid ? Math.min(329, screenWidth - 32) : 329;
-  const iconsRowGap = isAndroid ? (screenWidth < 360 ? 12 : 32) : 32;
-  const iconsRowMargin = isAndroid ? (isSmallScreen ? 12 : 24) : 24;
+  const iconsRowWidth = Math.min(329, screenWidth - 32);
+  const iconsRowGap = screenWidth < 360 ? 12 : 32;
 
-  const checkboxMarginBottom = isAndroid ? (isSmallScreen ? 16 : 24) : 24;
-
-  const continueButtonWidth = isAndroid ? Math.min(359, screenWidth - 32) : 359;
-  const continueButtonMargin = isAndroid ? (isSmallScreen ? 16 : 30) : 30;
+  const continueButtonWidth = Math.min(359, screenWidth - 32);
 
   useEffect(() => {
     if (params.accepted === 'true') {
@@ -143,102 +140,114 @@ export default function EntryAnimationScreen() {
 
   return (
     <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
-      <View style={styles.content}>
-
-        {/* Main Content Card (Rectangle 1506) */}
-        <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
-          <View style={[styles.imageContainer, { width: cardWidth, height: imageContainerHeight }]}>
-            <Image
-              source={require('../../assets/images/icon.png')}
-              style={styles.lotusImage}
-              resizeMode="contain"
-            />
-          </View>
-
-          <View style={styles.contentContainer}>
-            <Text style={[styles.title, { fontSize: titleFontSize }]}>BRAHMAND</Text>
-            <View style={styles.dividerContainer}>
-              <View style={styles.line} />
-              <View style={styles.ornamentWrapper}>
-                <LotusOrnament />
-              </View>
-              <View style={styles.line} />
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        {/* Main Content Area */}
+        <View style={styles.mainContent}>
+          {/* Main Content Card */}
+          <View style={[styles.card, { width: cardWidth, height: cardHeight }]}>
+            <View style={[styles.imageContainer, { width: cardWidth, height: imageContainerHeight }]}>
+              <Image
+                source={require('../../assets/images/icon.png')}
+                style={styles.lotusImage}
+                resizeMode="contain"
+              />
             </View>
 
-            <Text style={styles.subtitle}>The Daily Sanatan Community</Text>
+            <View style={styles.contentContainer}>
+              <Text style={[styles.title, { fontSize: titleFontSize }]}>BRAHMAND</Text>
+              <View style={styles.dividerContainer}>
+                <View style={styles.line} />
+                <View style={styles.ornamentWrapper}>
+                  <LotusOrnament />
+                </View>
+                <View style={styles.line} />
+              </View>
+
+              <Text style={styles.subtitle}>The Daily Sanatan Community</Text>
+            </View>
+          </View>
+
+          {/* Icons Row */}
+          <View style={[styles.iconsRow, { width: iconsRowWidth, gap: iconsRowGap }]}>
+            <IconItem icon={DharmaIcon} label="Dharma" customWidth={58} />
+            <IconItem icon={SafetyIcon} label="Safety" customWidth={52} />
+            <IconItem icon={TrustedIcon} label="Trusted" customWidth={54} />
+            <IconItem icon={CommunityIcon} label="Community" isWide={true} customWidth={68} />
           </View>
         </View>
 
-        {/* Icons Row */}
-        <View style={[styles.iconsRow, { width: iconsRowWidth, gap: iconsRowGap, marginTop: iconsRowMargin, marginBottom: iconsRowMargin }]}>
-          <IconItem icon={DharmaIcon} label="Dharma" customWidth={58} />
-          <IconItem icon={SafetyIcon} label="Safety" customWidth={52} />
-          <IconItem icon={TrustedIcon} label="Trusted" customWidth={54} />
-          <IconItem icon={CommunityIcon} label="Community" isWide={true} customWidth={68} />
-        </View>
-
-        {/* Checkbox and Terms Section */}
-        <View style={[styles.checkboxContainer, { marginBottom: checkboxMarginBottom }]}>
-          <TouchableOpacity
-            style={styles.checkbox}
-            onPress={() => setAgreed(!agreed)}
-            activeOpacity={0.8}
-          >
-            {agreed ? <CheckedCheckboxIcon /> : <UncheckedCheckboxIcon />}
-          </TouchableOpacity>
-          <Text style={styles.termsText}>
-            I agree to the{' '}
-            <Text style={styles.termsLink} onPress={handleOpenPrivacyPolicy}>
-              Terms of Condition and Privacy Policy
-            </Text>
-          </Text>
-        </View>
-
-        {/* Continue Button */}
-        <TouchableOpacity
-          style={[styles.continueButton, { width: continueButtonWidth, marginBottom: continueButtonMargin }, !agreed && styles.continueButtonDisabled]}
-          onPress={handleContinue}
-          disabled={!agreed}
-          activeOpacity={0.9}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
-
-        {/* Admin Login Helper & Web Footer */}
-        {Platform.OS === 'web' && (
-          <View style={styles.webFooterContainer}>
-            <Text style={styles.webFooterText}>
-              © 2026 Brahmand. Operated by SNV Overseas LLP.
-            </Text>
-
+        {/* Footer Area */}
+        <View style={[
+          styles.footer,
+          { paddingBottom: Math.max(insets.bottom, 16) }
+        ]}>
+          {/* Checkbox and Terms Section */}
+          <View style={styles.checkboxContainer}>
             <TouchableOpacity
-              style={styles.adminLoginButton}
-              onPress={() => router.push('/admin/login')}
+              style={styles.checkbox}
+              onPress={() => setAgreed(!agreed)}
               activeOpacity={0.8}
             >
-              <Text style={styles.adminLoginText}>Login as Admin</Text>
+              {agreed ? <CheckedCheckboxIcon /> : <UncheckedCheckboxIcon />}
             </TouchableOpacity>
+            <Text style={styles.termsText}>
+              I agree to the{' '}
+              <Text style={styles.termsLink} onPress={handleOpenPrivacyPolicy}>
+                Terms of Condition and Privacy Policy
+              </Text>
+            </Text>
           </View>
-        )}
 
-      </View>
+          {/* Continue Button */}
+          <TouchableOpacity
+            style={[styles.continueButton, { width: continueButtonWidth }, !agreed && styles.continueButtonDisabled]}
+            onPress={handleContinue}
+            disabled={!agreed}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
+
+          {/* Admin Login Helper & Web Footer */}
+          {Platform.OS === 'web' && (
+            <View style={styles.webFooterContainer}>
+              <Text style={styles.webFooterText}>
+                © 2026 Brahmand. Operated by SNV Overseas LLP.
+              </Text>
+
+              <TouchableOpacity
+                style={styles.adminLoginButton}
+                onPress={() => router.push('/admin/login')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.adminLoginText}>Login as Admin</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </SafeAreaView>
     </Animated.View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  content: {
+  safeArea: {
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  mainContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
     width: '100%',
+    paddingHorizontal: 16,
   },
   card: {
     width: 357,
@@ -317,8 +326,8 @@ const styles = StyleSheet.create({
     width: 329,
     height: 84,
     gap: 32,
-    marginTop: 24,
-    marginBottom: 24,
+    marginTop: 20,
+    marginBottom: 10,
   },
   iconItemContainer: {
     minWidth: 52,
@@ -348,12 +357,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     includeFontPadding: false,
   },
+  footer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   checkbox: {
     width: 16,
@@ -401,7 +416,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 8,
     elevation: 4,
-    marginBottom: 30,
     alignSelf: 'center',
   },
   continueButtonDisabled: {

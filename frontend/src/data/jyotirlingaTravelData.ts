@@ -341,11 +341,13 @@ export const TEMPLE_KEY_ALIASES: Record<string, string> = {
   baidyanath: 'baidyanath',
   deoghar: 'baidyanath',
   'jyotirling-baidyanath-temple-deoghar': 'baidyanath',
+  'jyotirling-baidyanath-temple-jharkhand': 'baidyanath',
 
   // Grishneshwar
   grishneshwar: 'grishneshwar',
   ellora: 'grishneshwar',
   'jyotirling-grishneshwar-temple-ellora': 'grishneshwar',
+  'jyotirling-grishneshwar-temple-maharashtra': 'grishneshwar',
 
   // Omkareshwar
   omkareshwar: 'omkareshwar',
@@ -359,10 +361,12 @@ export const TEMPLE_KEY_ALIASES: Record<string, string> = {
   trimbakeshwar: 'trimbakeshwar',
   nashik: 'trimbakeshwar',
   'jyotirling-trimbakeshwar-temple-nashik': 'trimbakeshwar',
+  'jyotirling-trimbakeshwar-temple-maharashtra': 'trimbakeshwar',
 
   // Nageshwar
   nageshwar: 'nageshwar',
   'jyotirling-nageshwar-temple-dwarka': 'nageshwar',
+  'jyotirling-nageshwar-temple-gujarat': 'nageshwar',
 
   // Ramanathaswamy
   ramanathaswamy: 'ramanathaswamy',
@@ -373,6 +377,11 @@ export const TEMPLE_KEY_ALIASES: Record<string, string> = {
   srisailam: 'srisailam',
   mallikarjuna: 'srisailam',
   'jyotirling-mallikarjuna-temple-srisailam': 'srisailam',
+  'jyotirling-mallikarjuna-temple-andhra-pradesh': 'srisailam',
+  'shiva-mallikarjuna-srisailam-hills': 'srisailam',
+  '03abhqee4jiqtw68lqtu': 'srisailam',
+  '03abHQEE4Jiqtw68lqtu': 'srisailam',
+  'mallikarjuna srisailam temple': 'srisailam',
 
   // Tanot Mata (Jaisalmer, Rajasthan)
   'tanot-mata': 'tanot-mata',
@@ -380,6 +389,45 @@ export const TEMPLE_KEY_ALIASES: Record<string, string> = {
   'tanot mata temple – jaisalmer': 'tanot-mata',
   'tanot mata temple': 'tanot-mata',
   'tanot mata': 'tanot-mata',
+
+  // Belur Math (Howrah, West Bengal)
+  'belur-math': 'belur-math',
+  'dtrmucbaxr9v5gjfo2kb': 'belur-math',
+  'DtRMUCBaXR9V5Gjfo2KB': 'belur-math',
+  'sacred-belur-math-ramakrishna-mission': 'belur-math',
+  'belur math – howrah': 'belur-math',
+  'belur math': 'belur-math',
+
+  // Mayureshwar Temple (Morgaon, Maharashtra)
+  'mayureshwar-morgaon': 'mayureshwar-morgaon',
+  '0hdlczpzohjcatktpcbc': 'mayureshwar-morgaon',
+  '0hdlCZpzoHJCatKTPCbc': 'mayureshwar-morgaon',
+  'ashtavinayak-mayureshwar-temple-morgaon': 'mayureshwar-morgaon',
+  'mayureshwar temple – morgaon': 'mayureshwar-morgaon',
+  'mayureshwar temple': 'mayureshwar-morgaon',
+  'morgaon': 'mayureshwar-morgaon',
+
+  // Ghati Subramanya (Karnataka)
+  'ghati-subramanya': 'ghati-subramanya',
+  '2dbo7xbfpgt2zxsnithf': 'ghati-subramanya',
+  '2dBo7xbFpgT2ZxsnITHF': 'ghati-subramanya',
+  'ghati subramanya temple – doddaballapur': 'ghati-subramanya',
+  'ghati subramanya temple': 'ghati-subramanya',
+  'ghati subramanya': 'ghati-subramanya',
+
+  // Siddhivinayak Mumbai vs Siddhatek
+  'siddhivinayak-mumbai': 'siddhivinayak-mumbai',
+  'sacred-siddhivinayak-temple-mumbai': 'siddhivinayak-mumbai',
+  'other-siddhivinayak-temple-mumbai': 'siddhivinayak-mumbai',
+  'shree-siddhivinayak-ganapati': 'siddhivinayak-mumbai',
+  'shree siddhivinayak ganapati temple': 'siddhivinayak-mumbai',
+  'siddhivinayak temple – mumbai': 'siddhivinayak-mumbai',
+  'ilpcwntrabtr43s244ao': 'siddhivinayak-mumbai',
+
+  'siddhivinayak-siddhatek': 'siddhivinayak-siddhatek',
+  'ashtavinayak-siddhivinayak-temple-siddhatek': 'siddhivinayak-siddhatek',
+  'siddhivinayak temple – siddhatek': 'siddhivinayak-siddhatek',
+  'hsysquoiqa3jz5oyct6q': 'siddhivinayak-siddhatek',
 };
 
 /**
@@ -431,6 +479,10 @@ export function normalizeTempleKey(rawInput: string): string {
     { kw: 'srisailam', canonical: 'srisailam' },
     { kw: 'mallikarjuna', canonical: 'srisailam' },
     { kw: 'tanot', canonical: 'tanot-mata' },
+    { kw: 'belur math', canonical: 'belur-math' },
+    { kw: 'belurmath', canonical: 'belur-math' },
+    { kw: 'morgaon', canonical: 'mayureshwar-morgaon' },
+    { kw: 'mayureshwar', canonical: 'mayureshwar-morgaon' },
   ];
 
   for (const item of coreKeywords) {
@@ -1001,27 +1053,43 @@ export const EXPLORE_NEARBY_DATA: Record<
     sacredPlaces: [
       {
         id: 'bh1',
-        name: 'Mokshakund Teerth',
-        category: 'Ghat',
-        distance: '0.3 km',
-        significance: 'Sacred water tank behind Bhimashankar sanctum associated with Sage Kaushika.',
-        locationQuery: 'Mokshakund Bhimashankar',
-      },
-      {
-        id: 'bh2',
-        name: 'Gupt Bhimashankar Stream',
+        name: 'Gupt Bhimashankar Stream & Trail',
         category: 'Heritage',
         distance: '2 km',
-        significance: 'Origin stream of Bhima River emerging hidden amidst dense Sahyadri forests.',
+        significance: 'Mystical origin trail of the Bhima River emerging hidden amidst dense Sahyadri forests.',
         locationQuery: 'Gupt Bhimashankar Forest',
       },
       {
+        id: 'bh2',
+        name: 'Kamalaja Mata Mandir',
+        category: 'Temple',
+        distance: '0.5 km',
+        significance: 'Venerated shrine dedicated to Goddess Parvati (Kamalaja Devi) within the temple complex.',
+        locationQuery: 'Kamalaja Mata Mandir Bhimashankar',
+      },
+      {
         id: 'bh3',
-        name: 'Bhimashankar Wildlife Sanctuary Trail',
-        category: 'Heritage',
+        name: 'Sakshi Vinayak Temple',
+        category: 'Temple',
         distance: '1 km',
-        significance: 'Sacred grove sanctuary home to the Malabar Giant Squirrel (Shekru).',
-        locationQuery: 'Bhimashankar Wildlife Sanctuary',
+        significance: 'Revered Ganesha shrine where pilgrims seek blessings as a witness to their pilgrimage.',
+        locationQuery: 'Sakshi Vinayak Temple Bhimashankar',
+      },
+      {
+        id: 'bh4',
+        name: 'Lenyadri Girijatmaj Ganesha Temple',
+        category: 'Temple',
+        distance: '45 km',
+        significance: 'Prominent Ashtavinayak cave temple carved into the Junnar mountain cliffs.',
+        locationQuery: 'Lenyadri Girijatmaj Ganesha Temple',
+      },
+      {
+        id: 'bh5',
+        name: 'Ozar Vigneshwara Temple',
+        category: 'Temple',
+        distance: '62 km',
+        significance: 'Sacred Ashtavinayak shrine of Lord Ganesha situated along the Kukadi riverbank.',
+        locationQuery: 'Ozar Vigneshwara Temple',
       },
     ],
     nearbyTemples: [
@@ -1219,6 +1287,152 @@ export const EXPLORE_NEARBY_DATA: Record<
       },
     ],
   },
+
+  // Belur Math (Howrah, West Bengal)
+  'belur-math': {
+    sacredPlaces: [
+      {
+        id: 'bm1',
+        name: 'Dakshineswar Kali Temple',
+        category: 'Temple',
+        distance: '2.7 km',
+        significance: 'Historic Bhavatarini Kali shrine associated with Paramahamsa Sri Ramakrishna across the Hooghly River.',
+        locationQuery: 'Dakshineswar Kali Temple Kolkata',
+      },
+      {
+        id: 'bm2',
+        name: 'Adyapeath Mandir',
+        category: 'Temple',
+        distance: '3.2 km',
+        significance: 'Revered spiritual temple dedicated to Adya Ma, founded by Annada Thakur.',
+        locationQuery: 'Adyapeath Mandir Dakshineswar',
+      },
+      {
+        id: 'bm3',
+        name: "Old Math & Nilambar Mukherjee's Garden House",
+        category: 'Heritage',
+        distance: '1 km',
+        significance: "Sacred heritage garden residence where Holy Mother Sri Sarada Devi stayed and meditated.",
+        locationQuery: "Nilambar Mukherjee Garden House Belur",
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'dakshineswar-kali-temple-kolkata',
+        name: 'Dakshineswar Kali Temple',
+        image: getTempleImageByName('Dakshineswar'),
+        distance: '2.7 km',
+      },
+      {
+        templeId: 'kalighat-kali-temple-kolkata',
+        name: 'Kalighat Kali Temple',
+        image: getTempleImageByName('Kalighat'),
+        distance: '18 km',
+      },
+    ],
+  },
+
+  // Mayureshwar Temple (Morgaon, Maharashtra)
+  'mayureshwar-morgaon': {
+    sacredPlaces: [
+      {
+        id: 'mm1',
+        name: 'Karha River Confluence Ghat',
+        category: 'Ghat',
+        distance: '0.5 km',
+        significance: 'Sacred riverfront ghat along the Karha River associated with Lord Ganesha ritual baths.',
+        locationQuery: 'Karha River Morgaon',
+      },
+      {
+        id: 'mm2',
+        name: 'Nandi Mandap & Stone Elephant Shrines',
+        category: 'Heritage',
+        distance: '0.1 km',
+        significance: 'Unique architecture featuring a prominent Nandi bull facing Lord Mayureshwar shrine.',
+        locationQuery: 'Mayureshwar Temple Morgaon',
+      },
+      {
+        id: 'mm3',
+        name: 'Chintamani Temple (Theur)',
+        category: 'Temple',
+        distance: '55 km',
+        significance: 'Revered 2nd Ashtavinayak shrine dedicated to Lord Ganesha.',
+        locationQuery: 'Chintamani Temple Theur',
+      },
+      {
+        id: 'mm4',
+        name: 'Mahaganapati Temple (Ranjangaon)',
+        category: 'Temple',
+        distance: '68 km',
+        significance: 'Prominent Ashtavinayak pilgrimage shrine invoking Lord Ganesha before battle.',
+        locationQuery: 'Mahaganapati Temple Ranjangaon',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'ashtavinayak-chintamani-temple-theur',
+        name: 'Chintamani Temple Theur',
+        image: getTempleImageByName('Chintamani'),
+        distance: '55 km',
+      },
+      {
+        templeId: 'ashtavinayak-mahaganapati-temple-ranjangaon',
+        name: 'Mahaganapati Temple Ranjangaon',
+        image: getTempleImageByName('Mahaganapati'),
+        distance: '68 km',
+      },
+      {
+        templeId: 'bhimashankar',
+        name: 'Bhimashankar Jyotirling',
+        image: getTempleImageById('jyotirling-bhimashankar-temple-maharashtra'),
+        distance: '160 km',
+      },
+    ],
+  },
+
+  // Ghati Subramanya (Doddaballapur, Karnataka)
+  'ghati-subramanya': {
+    sacredPlaces: [
+      {
+        id: 'gs1',
+        name: 'Kumaradhara Teertha (Holy Pond)',
+        category: 'Ghat',
+        distance: '0.2 km',
+        significance: 'Sacred natural pond where devotees take a holy dip before offering prayers to Lord Subramanya.',
+        locationQuery: 'Kumaradhara Teertha Ghati Subramanya',
+      },
+      {
+        id: 'gs2',
+        name: 'Naga Prathishtapana Anthill Shrine',
+        category: 'Shrine',
+        distance: '0.1 km',
+        significance: 'Sacred grove featuring thousands of snake idols (Naga Prathishta) installed by pilgrims.',
+        locationQuery: 'Naga Prathishta Ghati Subramanya',
+      },
+      {
+        id: 'gs3',
+        name: 'Makalidurga Hill & Fort Trail',
+        category: 'Fort',
+        distance: '10 km',
+        significance: 'Scenic granite hill crowned with an ancient fort and Shiva temple, popular for pilgrimage trekking.',
+        locationQuery: 'Makalidurga Fort Karnataka',
+      },
+    ],
+    nearbyTemples: [
+      {
+        templeId: 'bhoga-nandeeshwara-temple-nandi',
+        name: 'Bhoga Nandeeshwara Temple (Nandi Hills)',
+        image: getTempleImageByName('Bhoga Nandeeshwara'),
+        distance: '32 km',
+      },
+      {
+        templeId: 'iskcon-temple-bangalore',
+        name: 'ISKCON Temple Bengaluru',
+        image: getTempleImageByName('ISKCON Bengaluru'),
+        distance: '45 km',
+      },
+    ],
+  },
 };
 
 export function isCharDham(templeId: string, templeName: string = '', category: string = ''): boolean {
@@ -1357,11 +1571,61 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return R * c;
 }
 
+/**
+ * Helper to parse a distance string (e.g. "0.5 km", "230 km") into a numeric value in kilometers.
+ * @param distanceStr - Raw distance string representation.
+ * @returns Distance in kilometers, or Infinity if unparseable.
+ */
+export function parseDistanceKm(distanceStr: string): number {
+  if (!distanceStr) return Infinity;
+  const match = String(distanceStr).match(/([\d.]+)/);
+  return match ? parseFloat(match[1]) : Infinity;
+}
+
+/** In-memory cache for computed coordinate fallback distances */
+const COORD_CACHE = new Map<string, NearbyTempleItem[]>();
+
+/**
+ * Clears the in-memory coordinate fallback distance cache.
+ */
+export function clearNearbyCache(): void {
+  COORD_CACHE.clear();
+}
+
+/**
+ * Retrieves diagnostic statistics for the nearby coordinate cache.
+ */
+export function getNearbyCacheStats(): { cachedCount: number } {
+  return { cachedCount: COORD_CACHE.size };
+}
+
+/**
+ * Main resolution engine for "Explore Nearby" sacred places, temples, and circuit journeys.
+ *
+ * Priority Resolution Pipeline:
+ * 1. Curated Hand-crafted Data (EXPLORE_NEARBY_DATA) - Prioritized if non-empty.
+ * 2. Centralized Master Dataset (CENTRALIZED_SACRED_PLACES_DATA) - Fallback for sacred places.
+ * 3. Spatial Coordinate Distance Engine - Fallback for nearby temples using Haversine & Bounding Box filters.
+ *
+ * Features:
+ * - Priority override preservation (empty curated arrays do not block centralized data).
+ * - High-performance spatial indexing (bounding box pre-filtering + memory caching).
+ * - Identity-matched deduplication across aliases and raw IDs.
+ * - Optional proximity distance filtering (`maxDistanceKm`).
+ *
+ * @param templeId - Raw route or Firestore ID of the active temple.
+ * @param templeName - Human-readable name of the active temple.
+ * @param category - Category classification (e.g., Jyotirlinga, Shakti Peetha, Char Dham).
+ * @param coords - Optional geographical coordinates of the active temple.
+ * @param options - Additional resolution options (e.g. maxDistanceKm filter).
+ * @returns Structured ExploreNearbyData object with deduplicated sacred places, temples, and circuit journey.
+ */
 export function getExploreNearbyData(
   templeId: string,
   templeName: string = '',
   category: string = '',
-  coords?: { latitude: number; longitude: number }
+  coords?: { latitude: number; longitude: number },
+  options?: { maxDistanceKm?: number }
 ): ExploreNearbyData {
   let journeyTitle = 'Continue Your Jyotirlinga Journey';
   let circuitJourney = ALL_12_JYOTIRLINGAS;
@@ -1389,152 +1653,111 @@ export function getExploreNearbyData(
   // Retrieve curated entry
   const curatedData = EXPLORE_NEARBY_DATA[currentTempleKey];
 
-  console.log('[NEARBY RUNTIME INPUT]', {
-    rawRouteId: templeId,
-    loadedTempleId: templeId,
-    loadedTempleName: templeName,
-    category,
-    coords
-  });
+  // 1. Priority Data Logic: Curated non-empty sacred places take precedence, otherwise fall back to Centralized master dataset lookup
+  const curatedSacred =
+    curatedData?.sacredPlaces && curatedData.sacredPlaces.length > 0
+      ? curatedData.sacredPlaces
+      : null;
 
-  console.log('[NEARBY CANONICAL RESULT]', {
-    candidates: { idNorm: normalizeTempleKey(templeId), nameNorm: normalizeTempleKey(templeName) },
-    normalizedKey: currentTempleKey,
-    matchedKey: currentTempleKey,
-    source: curatedData ? (normalizeTempleKey(templeId) && EXPLORE_NEARBY_DATA[normalizeTempleKey(templeId)] ? 'id' : 'name') : 'none'
-  });
-
-  console.log('[NEARBY DATA LOOKUP]', {
-    matchedKey: currentTempleKey,
-    exploreDataExists: !!curatedData,
-    sacredPlacesCount: curatedData?.sacredPlaces?.length ?? 0,
-    nearbyTemplesCount: curatedData?.nearbyTemples?.length ?? 0
-  });
-
-  // Diagnostic logging
-  console.log('[NEARBY RESOLUTION]', {
-    rawId: templeId,
-    rawName: templeName,
-    currentTempleKey,
-    hasCuratedData: !!curatedData,
-    sacredPlacesCount: curatedData?.sacredPlaces?.length ?? 0,
-    nearbyTemplesCount: curatedData?.nearbyTemples?.length ?? 0,
-  });
-
-  if (!curatedData) {
-    console.warn('[NEARBY DATA MISSING]', {
-      rawId: templeId,
-      rawName: templeName,
-      currentTempleKey,
-    });
-  }
-
-  // 1. Nearby Sacred Places: Curated data OR Centralized master dataset lookup
-  const rawSacredPlaces: SacredPlaceItem[] =
-    curatedData?.sacredPlaces ??
+  const centralizedSacred =
     CENTRALIZED_SACRED_PLACES_DATA[templeId] ??
+    CENTRALIZED_SACRED_PLACES_DATA[String(templeId).toLowerCase().trim()] ??
     CENTRALIZED_SACRED_PLACES_DATA[currentTempleKey] ??
     CENTRALIZED_SACRED_PLACES_DATA[normalizeTempleKey(templeName)] ??
+    CENTRALIZED_SACRED_PLACES_DATA[normalizeTempleKey(templeId)] ??
     [];
 
-  // 2. Nearby Temples: Curated nearby temples OR Coordinate-based Fallback
-  let rawNearbyTemples: NearbyTempleItem[] = curatedData?.nearbyTemples ?? [];
+  const initialSacredPlaces: SacredPlaceItem[] = curatedSacred ?? centralizedSacred;
+  const rawSacredPlaces = initialSacredPlaces;
 
-  // Fallback: If no curated nearby temples, compute via coordinates using inventory
+  // 2. Nearby Temples: Curated non-empty nearby temples OR Cached Coordinate-based Fallback
+  let rawNearbyTemples: NearbyTempleItem[] =
+    curatedData?.nearbyTemples && curatedData.nearbyTemples.length > 0
+      ? [...curatedData.nearbyTemples]
+      : [];
+
+  // Fallback: If no curated nearby temples, compute via coordinates using inventory (cached)
   if (rawNearbyTemples.length === 0) {
-    let currentLat = coords?.latitude;
-    let currentLon = coords?.longitude;
+    const cacheKey = `${currentTempleKey}_${coords?.latitude || 0}_${coords?.longitude || 0}`;
+    if (COORD_CACHE.has(cacheKey)) {
+      rawNearbyTemples = COORD_CACHE.get(cacheKey)!;
+    } else {
+      let currentLat = coords?.latitude;
+      let currentLon = coords?.longitude;
 
-    if ((!currentLat || !currentLon) && Array.isArray(TEMPLE_DUMP_DATA)) {
-      const dumpMatch = (TEMPLE_DUMP_DATA as any[]).find((t) => {
-        const dumpKey = normalizeTempleKey(t.id || t.temple_id) || normalizeTempleKey(t.name);
-        return dumpKey === currentTempleKey || t.id === templeId || t.temple_id === templeId;
-      });
-      if (dumpMatch?.coords?.latitude && dumpMatch?.coords?.longitude) {
-        currentLat = dumpMatch.coords.latitude;
-        currentLon = dumpMatch.coords.longitude;
-      }
-    }
-
-    if (currentLat && currentLon && Array.isArray(TEMPLE_DUMP_DATA)) {
-      const candidates: { templeId: string; name: string; image: any; distanceKm: number; distance: string }[] = [];
-
-      for (const candidate of TEMPLE_DUMP_DATA as any[]) {
-        const candKey = normalizeTempleKey(candidate.id || candidate.temple_id) || normalizeTempleKey(candidate.name);
-        const candidateId = candidate.temple_id || candidate.id;
-
-        // Exclude current temple early from coordinate distance calculation
-        if (
-          candidateId === templeId ||
-          candKey === currentTempleKey ||
-          normalizeTempleKey(candidate.name) === currentTempleKey
-        ) {
-          continue;
-        }
-        if (!candidate.coords?.latitude || !candidate.coords?.longitude) continue;
-
-        const distKm = calculateDistanceKm(
-          currentLat,
-          currentLon,
-          candidate.coords.latitude,
-          candidate.coords.longitude
-        );
-
-        candidates.push({
-          templeId: candidateId,
-          name: candidate.name,
-          image: getTempleImageById(candidateId) || getTempleImageById(candKey),
-          distanceKm: distKm,
-          distance: `${Math.round(distKm)} km`,
+      if ((!currentLat || !currentLon) && Array.isArray(TEMPLE_DUMP_DATA)) {
+        const dumpMatch = (TEMPLE_DUMP_DATA as any[]).find((t) => {
+          const dumpKey = normalizeTempleKey(t.id || t.temple_id) || normalizeTempleKey(t.name);
+          return dumpKey === currentTempleKey || t.id === templeId || t.temple_id === templeId;
         });
+        if (dumpMatch?.coords?.latitude && dumpMatch?.coords?.longitude) {
+          currentLat = dumpMatch.coords.latitude;
+          currentLon = dumpMatch.coords.longitude;
+        }
       }
 
-      candidates.sort((a, b) => a.distanceKm - b.distanceKm);
-      rawNearbyTemples = candidates.slice(0, 3).map((item) => ({
-        templeId: item.templeId,
-        name: item.name,
-        image: item.image,
-        distance: item.distance,
-      }));
+      if (currentLat && currentLon && Array.isArray(TEMPLE_DUMP_DATA)) {
+        const candidates: { templeId: string; name: string; image: any; distanceKm: number; distance: string }[] = [];
+
+        for (const candidate of TEMPLE_DUMP_DATA as any[]) {
+          const candKey = normalizeTempleKey(candidate.id || candidate.temple_id) || normalizeTempleKey(candidate.name);
+          const candidateId = candidate.temple_id || candidate.id;
+
+          // Exclude current temple early from coordinate distance calculation (exact ID or exact name match)
+          if (
+            candidateId === templeId ||
+            (candidate.name && templeName && normalizeTempleKey(candidate.name) === normalizeTempleKey(templeName))
+          ) {
+            continue;
+          }
+          if (!candidate.coords?.latitude || !candidate.coords?.longitude) continue;
+
+          // Efficient Bounding Box pre-filter (~3.0 degrees lat/lon ~300km) to avoid heavy haversine calculations
+          const latDiff = Math.abs(candidate.coords.latitude - currentLat);
+          const lonDiff = Math.abs(candidate.coords.longitude - currentLon);
+          if (latDiff > 3.0 || lonDiff > 3.0) continue;
+
+          const distKm = calculateDistanceKm(
+            currentLat,
+            currentLon,
+            candidate.coords.latitude,
+            candidate.coords.longitude
+          );
+
+          candidates.push({
+            templeId: candidateId,
+            name: candidate.name,
+            image: getTempleImageById(candidateId) || getTempleImageById(candKey),
+            distanceKm: distKm,
+            distance: `${Math.round(distKm)} km`,
+          });
+        }
+
+        candidates.sort((a, b) => a.distanceKm - b.distanceKm);
+        rawNearbyTemples = candidates.slice(0, 3).map((item) => ({
+          templeId: item.templeId,
+          name: item.name,
+          image: item.image,
+          distance: item.distance,
+        }));
+        COORD_CACHE.set(cacheKey, rawNearbyTemples);
+      }
     }
   }
 
-  // Robust Centralized Canonical Identity Matcher
+  // Robust Canonical Self-Identity Matcher (only filter out exact same temple)
   const isCurrentTemple = (item: any) => {
     if (!item) return false;
 
-    const currentIds = new Set(
-      [
-        templeId,
-        templeName,
-        currentTempleKey,
-        normalizeTempleKey(templeId),
-        normalizeTempleKey(currentTempleKey),
-        normalizeTempleKey(templeName),
-        templeName.split('–')[0].trim(),
-        normalizeTempleKey(templeName.split('–')[0].trim()),
-      ]
-        .map((v) => String(v || '').toLowerCase().trim())
-        .filter(Boolean)
-    );
+    const itemId = String(item.templeId || item.id || '').toLowerCase().trim();
+    const itemName = String(item.name || '').toLowerCase().trim();
+    const activeId = String(templeId || '').toLowerCase().trim();
+    const activeName = String(templeName || '').toLowerCase().trim();
 
-    const itemValues = [
-      item?.id,
-      item?.templeId,
-      item?.temple_id,
-      item?.name,
-      item?.templeName,
-      item?.name ? String(item.name).split('–')[0].trim() : '',
-    ]
-      .filter(Boolean)
-      .flatMap((v) => {
-        const str = String(v);
-        const norm = normalizeTempleKey(str);
-        return [str.toLowerCase().trim(), norm, norm ? normalizeTempleKey(norm) : ''];
-      })
-      .filter(Boolean);
+    if (itemId && activeId && itemId === activeId) return true;
+    if (itemName && activeName && itemName === activeName) return true;
 
-    return itemValues.some((val) => currentIds.has(val));
+    return false;
   };
 
   // Final Output Level Self-Filtering across all collections
@@ -1542,47 +1765,54 @@ export function getExploreNearbyData(
   const filteredNearbyTemples = rawNearbyTemples.filter((item) => !isCurrentTemple(item));
   const filteredCircuit = circuitJourney.filter((item) => !isCurrentTemple(item));
 
-  // Unique Deduplication for Nearby Temples & Sacred Places
+  // Enhanced Deduplication for Nearby Temples & Sacred Places (by canonical ID & normalized clean name)
   const seenNearbyTempleKeys = new Set<string>();
-  const deduplicatedNearbyTemples: NearbyTempleItem[] = [];
+  let deduplicatedNearbyTemples: NearbyTempleItem[] = [];
   for (const item of filteredNearbyTemples) {
-    const key = normalizeTempleKey(item.templeId) || normalizeTempleKey(item.name) || String(item.name || '').toLowerCase().trim();
-    if (key && !seenNearbyTempleKeys.has(key)) {
-      seenNearbyTempleKeys.add(key);
+    const normIdKey = normalizeTempleKey(item.templeId);
+    const normNameKey = normalizeTempleKey(item.name);
+    const cleanNameKey = String(item.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const primaryKey = normIdKey || normNameKey || cleanNameKey;
+
+    if (primaryKey && !seenNearbyTempleKeys.has(primaryKey) && !seenNearbyTempleKeys.has(cleanNameKey)) {
+      seenNearbyTempleKeys.add(primaryKey);
+      seenNearbyTempleKeys.add(cleanNameKey);
       deduplicatedNearbyTemples.push(item);
     }
   }
 
-  const seenSacredKeys = new Set<string>();
-  const deduplicatedSacredPlaces: SacredPlaceItem[] = [];
+  const seenSacredNames = new Set<string>();
+  let deduplicatedSacredPlaces: SacredPlaceItem[] = [];
   for (const item of filteredSacredPlaces) {
-    const key = item.id || normalizeTempleKey(item.name) || String(item.name || '').toLowerCase().trim();
-    if (key && !seenSacredKeys.has(key)) {
-      seenSacredKeys.add(key);
+    const cleanName = String(item.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (cleanName && !seenSacredNames.has(cleanName)) {
+      seenSacredNames.add(cleanName);
       deduplicatedSacredPlaces.push(item);
     }
   }
 
-  console.log('[NEARBY PIPELINE COUNTS]', {
-    sacredPlacesRaw: rawSacredPlaces.length,
-    sacredPlacesFinal: deduplicatedSacredPlaces.length,
-    nearbyTemplesRaw: rawNearbyTemples.length,
-    nearbyTemplesFinal: deduplicatedNearbyTemples.length,
-  });
+  // Apply optional maxDistanceKm proximity filter
+  if (options?.maxDistanceKm && options.maxDistanceKm > 0) {
+    const maxDist = options.maxDistanceKm;
+    deduplicatedSacredPlaces = deduplicatedSacredPlaces.filter(
+      (item) => parseDistanceKm(item.distance) <= maxDist
+    );
+    deduplicatedNearbyTemples = deduplicatedNearbyTemples.filter(
+      (item) => parseDistanceKm(item.distance) <= maxDist
+    );
+  }
 
-  console.log('[NEARBY FINAL RESULT]', {
-    hasCuratedData: !!curatedData,
-    sacredPlacesCount: deduplicatedSacredPlaces.length,
-    nearbyTemplesCount: deduplicatedNearbyTemples.length,
-  });
+  const hasCuratedData = deduplicatedSacredPlaces.length > 0 || deduplicatedNearbyTemples.length > 0;
 
   return {
     templeId,
     templeName,
-    hasCuratedData: !!curatedData,
+    hasCuratedData,
     nearbySacredPlaces: deduplicatedSacredPlaces,
     nearbyTemples: deduplicatedNearbyTemples,
     journeyTitle,
     circuitJourney: filteredCircuit,
   };
 }
+
+
