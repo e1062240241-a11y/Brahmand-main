@@ -236,18 +236,6 @@ export const resolveTempleTransport = (options: TransportResolutionOptions): Tra
   else if (hasStatic) source = 'static';
   else if (hasDb) source = 'db';
 
-  // 5. Diagnostic Logging
-  console.log('[TRANSPORT KEY RESOLUTION]', {
-    templeId: rawId,
-    templeName: rawName,
-    category: templeObj?.category || options.category || 'Sacred',
-    candidates,
-    matchedKey: matchedKey || null,
-    source,
-    air: airFinal,
-    rail: railFinal,
-    bus: busFinal,
-  });
 
   return {
     air: airFinal,

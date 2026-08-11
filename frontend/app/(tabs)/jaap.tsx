@@ -43,6 +43,39 @@ const BANNER_HEIGHT = Math.round(BANNER_WIDTH * 0.48);
 const BANNER_RADIUS = 22;
 const HERO_DOT_COUNT = 4;
 
+const SubtleJoinButton = ({ onPress, style, children }: any) => {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 0.95, // Smooth subtle press inward
+      duration: 70,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 1, // Smooth linear return without bounce
+      duration: 100,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
+      <Pressable
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onPress={onPress}
+        style={styles.exactJoinBtn}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 const UPCOMING_GRID_PADDING = Platform.OS === 'android'
   ? 12
   : Math.max(10, (SCREEN_WIDTH - 361) / 2);
@@ -1076,13 +1109,8 @@ export default function JaapLandingScreen() {
                         <Text style={styles.jaapCardTitleExact}>{translatedTitle}</Text>
                         <Text style={styles.jaapCardSlokExact} numberOfLines={2}>{jaap.slok}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.exactJoinBtn,
-                              { flex: 1 },
-                              pressed && Platform.OS === 'ios' && { opacity: 0.8 }
-                            ]}
-                            android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
+                          <SubtleJoinButton
+                            style={{ flex: 1 }}
                             onPress={() => router.push({
                               pathname: '/live-jaap-welcome',
                               params: {
@@ -1097,7 +1125,7 @@ export default function JaapLandingScreen() {
                                 <Path d="M8.00596 0C1.85215 0 -1.99398 6.66666 1.08293 12C4.15983 17.3333 11.8521 17.3333 14.929 12C15.6306 10.7838 16 9.40429 16 8C15.9953 3.58365 12.419 0.00466837 8.00596 0ZM11.1229 8.50615L7.12585 11.2754C6.7365 11.5448 6.2017 11.2914 6.16322 10.8193C6.16187 10.8026 6.16118 10.7859 6.16118 10.7692V5.23077C6.16119 4.75705 6.67363 4.46098 7.08358 4.69784C7.09802 4.70619 7.11213 4.71512 7.12585 4.72462L11.1229 7.49384C11.4764 7.73853 11.4764 8.26147 11.1229 8.50615Z" fill="#FF7B00" />
                               </Svg>
                             </View>
-                          </Pressable>
+                          </SubtleJoinButton>
                         </View>
                       </View>
                     </LinearGradient>

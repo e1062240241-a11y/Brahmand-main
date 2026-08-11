@@ -2758,12 +2758,6 @@ if (!temple) {
               guidance: templeGuidance,
             });
 
-            console.log('[TRAVEL DATA RESOLVED]', {
-              templeId: resolvedTempleId,
-              templeName: temple?.name,
-              travelData,
-            });
-
             const airInfo = travelData.air;
             const railInfo = travelData.rail;
             const busInfo = travelData.bus;
