@@ -28,41 +28,7 @@ BUNNY_PULL_ZONE_URL = os.getenv("BUNNY_PULL_ZONE_URL", "https://brahmandfeed23.b
 # IST timezone helper (+05:30)
 IST = timezone(timedelta(hours=5, minutes=30))
 CHUNK_SIZE = 1024 * 1024  # 1MB chunk size for zero-RAM memory streaming
-
-DEFAULT_EPISODES = [
-    {
-        "id": "saavan_katha_ep1",
-        "title": "Saavan Katha Day 1 — Shiv Mahima & Mangalacharan",
-        "episode_number": 1,
-        "date": "2026-08-13",
-        "duration": "01:30:00",
-        "guru_name": "Acharya Shamik Pathak Ji",
-        "video_url": "https://vjs.zencdn.net/v/oceans.mp4",
-        "thumbnail_url": "",
-        "description": "The sacred beginning of Saavan Katha with Acharya Shamik Pathak Ji.",
-        "created_at": "2026-08-13T08:00:00+05:30"
-    }
-]
-
 IN_MEMORY_EPISODES: Dict[str, Any] = {}
-JSON_STORE_PATH = Path(__file__).parent.parent / "data" / "katha_episodes_store.json"
-
-def _load_local_episodes() -> Dict[str, Any]:
-    try:
-        if JSON_STORE_PATH.exists():
-            with open(JSON_STORE_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception as e:
-        logger.warning(f"Error loading local katha_episodes_store.json: {e}")
-    return {}
-
-def _save_local_episodes(episodes_dict: Dict[str, Any]):
-    try:
-        JSON_STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(JSON_STORE_PATH, "w", encoding="utf-8") as f:
-            json.dump(episodes_dict, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.warning(f"Error saving local katha_episodes_store.json: {e}")
 
 
 def _detect_video_content_type(filename: str, provided_type: Optional[str]) -> tuple[str, str]:
@@ -109,9 +75,17 @@ async def _verify_admin_auth(
         db = await get_firestore()
         if db:
             try:
-                user_doc = db.collection("users").document(user_id).get()
-                if user_doc.exists and (user_doc.to_dict().get("is_admin") or user_doc.to_dict().get("role") == "admin"):
-                    return True
+                raw_res = db.collection("users").document(user_id).get()
+                if asyncio.iscoroutine(raw_res) or hasattr(raw_res, "__await__"):
+                    user_doc: Any = await raw_res
+                else:
+                    user_doc: Any = raw_res
+
+                if user_doc and getattr(user_doc, "exists", False):
+                    to_dict_func = getattr(user_doc, "to_dict", None)
+                    doc_data = to_dict_func() if callable(to_dict_func) else {}
+                    if doc_data.get("is_admin") or doc_data.get("role") == "admin":
+                        return True
             except Exception:
                 pass
     raise HTTPException(status_code=403, detail="Admin authorization required")
@@ -245,7 +219,7 @@ async def get_katha_status():
     if not active_episode and episodes:
         active_episode = episodes[-1]
 
-    active_video_url = active_episode.get("video_url") if active_episode else "https://vjs.zencdn.net/v/oceans.mp4"
+    active_video_url = active_episode.get("video_url") if active_episode else ""
     active_episode_title = active_episode.get("title") if active_episode else title
     active_duration = active_episode.get("duration") if active_episode else "01:30:00"
 
@@ -274,19 +248,9 @@ async def get_katha_status():
 @router.get("/episodes")
 async def get_katha_episodes():
     """
-    Fetch published Saavan Katha episodes.
-    Merges: Firestore + local JSON store + in-memory uploads (priority order).
+    Fetch published Saavan Katha episodes directly from Firestore database.
     """
-    resolved_path = JSON_STORE_PATH.resolve()
-    logger.info(f"[TRACE /episodes] JSON_STORE_PATH raw: {JSON_STORE_PATH}")
-    logger.info(f"[TRACE /episodes] JSON_STORE_PATH resolved: {resolved_path}")
-    logger.info(f"[TRACE /episodes] JSON_STORE_PATH exists: {JSON_STORE_PATH.exists()}")
-
-    local_store = _load_local_episodes()
-    logger.info(f"[TRACE /episodes] Local JSON keys: {list(local_store.keys())}")
-    logger.info(f"[TRACE /episodes] In-Memory keys: {list(IN_MEMORY_EPISODES.keys())}")
-
-    merged: Dict[str, Any] = {**local_store, **IN_MEMORY_EPISODES}
+    merged: Dict[str, Any] = {**IN_MEMORY_EPISODES}
 
     db = None
     try:
@@ -294,36 +258,24 @@ async def get_katha_episodes():
     except Exception as db_err:
         logger.warning(f"[TRACE /episodes] get_firestore timeout: {db_err}")
 
-    firestore_keys = []
     if db:
         try:
             docs = await asyncio.wait_for(
                 asyncio.to_thread(lambda: list(db.collection("katha_episodes").stream())),
-                timeout=2.0
+                timeout=3.0
             )
-            logger.info(f"[TRACE /episodes] Firestore doc count: {len(docs)}")
             for doc in docs:
-                firestore_keys.append(doc.id)
                 d = doc.to_dict()
                 d["id"] = doc.id
                 if doc.id not in merged:
                     merged[doc.id] = d
-            logger.info(f"[TRACE /episodes] Firestore doc IDs: {firestore_keys}")
         except Exception as err:
             logger.warning(f"[TRACE /episodes] Firestore fetch fallback triggered: {err}")
-    else:
-        logger.info("[TRACE /episodes] Bypassing Firestore query (local JSON / in-memory store active)")
-
-    logger.info(f"[TRACE /episodes] Final merged keys count: {len(merged)}, keys: {list(merged.keys())}")
 
     if merged:
-        logger.info("[TRACE /episodes] Branch Executing: Using Merged (Firestore/Local JSON/In-Memory)")
         episodes = sorted(list(merged.values()), key=lambda x: x.get("episode_number", 0))
     else:
-        logger.info("[TRACE /episodes] Branch Executing: Using DEFAULT_EPISODES")
-        episodes = DEFAULT_EPISODES
-
-    logger.info(f"Episodes Returned: {[e.get('id') for e in episodes]}")
+        episodes = []
 
     return {
         "status": "success",
@@ -362,7 +314,6 @@ async def admin_upload_katha_episode(
         )
 
     logger.info(f"Episode ID: {episode_id}")
-    logger.info(f"JSON path: {JSON_STORE_PATH.resolve()}")
 
     ext, content_type = _detect_video_content_type(file.filename or "", file.content_type)
     file_name = f"ep_{episode_number}_{uuid4().hex[:8]}.{ext}"
@@ -449,19 +400,11 @@ async def admin_upload_katha_episode(
         # 1. Save to in-memory dict
         IN_MEMORY_EPISODES[episode_id] = episode_data
 
-        # 2. Persist to local JSON store
-        logger.info("Before save")
-        local_store = _load_local_episodes()
-        local_store[episode_id] = episode_data
-        _save_local_episodes(local_store)
-        logger.info("After save")
-
         logger.info(f"Episode ID: {episode_id}")
         logger.info(f"Video Size: {file_size_bytes}")
         logger.info(f"Video URL: {video_cdn_url}")
-        logger.info(f"JSON Store Keys: {list(_load_local_episodes().keys())}")
 
-        # 3. Try Firestore (best-effort, non-blocking)
+        # 2. Persist to Firestore database
         if db:
             try:
                 db.collection("katha_episodes").document(episode_id).set(episode_data)
@@ -499,11 +442,6 @@ async def admin_delete_katha_episode(
     """
     if episode_id in IN_MEMORY_EPISODES:
         del IN_MEMORY_EPISODES[episode_id]
-
-    local_store = _load_local_episodes()
-    if episode_id in local_store:
-        del local_store[episode_id]
-        _save_local_episodes(local_store)
 
     db = await get_firestore()
     if db:

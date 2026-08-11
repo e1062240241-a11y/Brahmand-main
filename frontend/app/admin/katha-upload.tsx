@@ -14,15 +14,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import { API_URL } from '../../src/services/api';
 import { useAdminStore } from '../../src/store/adminStore';
 
 const getBackendUploadUrl = () => {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    const hostname = window.location.hostname || 'localhost';
-    const port = window.location.port || '8000';
-    return `http://${hostname}:${port}/api/katha/admin/upload`;
-  }
-  return 'http://localhost:8000/api/katha/admin/upload';
+  return `${API_URL}/api/katha/admin/upload`;
 };
 
 export default function AdminKathaUploadScreen() {
