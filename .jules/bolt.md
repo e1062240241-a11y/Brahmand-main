@@ -25,3 +25,6 @@
 ## 2026-08-10 - [Optimize WatermelonDB N+1 deletes]
 **Learning:** Found N+1 query loops when deleting records permanently from local SQLite WatermelonDB (e.g. iterating over records and calling `await record.destroyPermanently()`). In React Native, numerous sequential async calls over the bridge to SQLite cause significant performance bottlenecks and UI thread stutter.
 **Action:** Always batch deletes in WatermelonDB. Use `record.prepareDestroyPermanently()` to build an array of operations and commit them simultaneously with `await database.batch(...ops)`.
+## 2024-08-11 - [Optimize N+1 queries in jaap reminder worker]
+**Learning:** Found an N+1 query loop fetching individual deterministic notifications inside `jaap_reminder_worker` using `await db.get_document` and checking `db.query_documents` sequentially. In a Python async worker loop on Cloud Run, this creates significant blocking wait times.
+**Action:** Replaced iterative document fetching with `await db.get_documents_batch` to pre-fetch all deterministic `notif_id`s before the loop into an O(1) set. Then wrapped the entire fallback FCM backup check and task enqueueing process inside `asyncio.gather(*tasks, return_exceptions=True)` to execute them concurrently, significantly freeing up the event loop during mass notifications.
