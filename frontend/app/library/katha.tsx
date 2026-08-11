@@ -467,8 +467,9 @@ export default function KathaPage() {
           </View>
         </View>
 
-        {/* Episode Library Section */}
-        <View style={styles.librarySection}>
+        {/* Episode Library Section (Only shown when Off-Air) */}
+        {!status.is_live && (
+          <View style={styles.librarySection}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
             <Text style={styles.sectionTitle}>Saavan Katha Episodes</Text>
@@ -528,7 +529,8 @@ export default function KathaPage() {
               <Text style={styles.emptyText}>No episodes uploaded yet. Check back during live broadcast!</Text>
             </View>
           )}
-        </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
