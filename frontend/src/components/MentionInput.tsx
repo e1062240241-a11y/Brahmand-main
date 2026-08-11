@@ -129,7 +129,11 @@ export const MentionInput = ({
       )}
       <TextInput
         ref={inputRef}
-        style={[styles.input, inputStyle]}
+        style={[
+          styles.input,
+          multiline && { minHeight: 24, paddingTop: 4, paddingBottom: 4 },
+          inputStyle
+        ]}
         value={value}
         onChangeText={handleChangeText}
         onSelectionChange={handleSelectionChange}
@@ -154,6 +158,11 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    color: '#111111',
+    fontSize: 14,
+    lineHeight: 20,
+    paddingVertical: 2,
+    paddingHorizontal: 0,
   },
   mentionDropdown: {
     position: 'absolute',

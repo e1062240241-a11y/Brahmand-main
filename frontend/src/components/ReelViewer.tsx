@@ -20,6 +20,7 @@ import {
 import { useTabBar } from '../contexts/TabBarContext';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReportModal } from './ReportModal';
 import {
   submitReport,
@@ -1075,6 +1076,7 @@ const ReelVideoItem = React.memo(({
 });
 
 export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment, onShare }: any) => {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const { user } = useAuthStore();
@@ -1106,6 +1108,28 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
 
   // Watch-time tracking
   const watchStartRef = useRef<number>(Date.now());
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      const h = e.endCoordinates.height;
+      requestAnimationFrame(() => {
+        setKeyboardHeight(h);
+        setKeyboardVisible(true);
+      });
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      requestAnimationFrame(() => {
+        setKeyboardHeight(0);
+        setKeyboardVisible(false);
+      });
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   const [isShareVisible, setIsShareVisible] = useState(false);
   const [isCommentVisible, setIsCommentVisible] = useState(false);
   const [selectedPost, setSelectedPost] = useState<any>(null);
@@ -2099,14 +2123,23 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                 </View>
               )}
 
-              <View style={{ padding: 15, borderTopWidth: 1, borderTopColor: '#EEE', flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{
+                paddingTop: 12,
+                paddingHorizontal: 15,
+                paddingBottom: Platform.OS === 'android' ? (keyboardVisible ? 8 : Math.max(insets.bottom, 12)) : Math.max(insets.bottom, 12),
+                borderTopWidth: 1,
+                borderTopColor: '#EEE',
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FFF',
+              }}>
                 <View style={{ flex: 1, backgroundColor: '#F5F5F5', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center' }}>
                   <MentionInput
                     value={newCommentText}
                     onChangeText={setNewCommentText}
                     placeholder={replyingToComment ? `${t('language') === 'hi' ? 'को जवाब दें' : 'Reply to'} @${replyingToComment.username}...` : t('addComment')}
                     style={{ flex: 1 }}
-                    inputStyle={{ fontSize: 14, color: '#111', maxHeight: 100 }}
+                    inputStyle={{ fontSize: 14, color: '#111', minHeight: 24, maxHeight: 100, paddingVertical: 2, lineHeight: 20 }}
                     multiline
                   />
                   <TouchableOpacity
@@ -2123,6 +2156,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
                   </TouchableOpacity>
                 </View>
               </View>
+              {Platform.OS === 'android' && <View style={{ height: keyboardVisible ? keyboardHeight + insets.bottom + 8 : 0 }} />}
             </View>
           </KeyboardAvoidingView>
         </Modal>
