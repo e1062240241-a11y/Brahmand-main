@@ -154,7 +154,7 @@ const ReelProgressBar = React.memo(({ player, isActive, screenSize }: any) => {
   const [duration, setDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const durationRef = useRef(0);
-  const animFrameRef = useRef<number>();
+  const animFrameRef = useRef<number | undefined>(undefined);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -1287,7 +1287,7 @@ export const ReelViewer = ({ isVisible, initialPost, onClose, onLike, onComment,
   const videosRef = useRef<any[]>([]);
   const activeIndexRef = useRef(0);
   const { isGloballyMuted: isMuted, toggleMute } = useGlobalMute();
-  const callbacksRef = useRef({ onClose, onLike, onComment, onShare, toggleMute });
+  const callbacksRef = useRef<Record<string, any>>({ onClose, onLike, onComment, onShare, toggleMute });
 
   // OPT-2: Single AppState listener in parent — passed down as a prop to
   // ReelVideoItem. Previously every item created its own listener (N leaks).

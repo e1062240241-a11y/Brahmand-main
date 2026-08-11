@@ -670,11 +670,21 @@ export default function JaapLandingScreen() {
   ];
 
   const isJyotirlinga = (t: any) => {
-    const category = (t.category || '').trim().toLowerCase();
+    const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+    const category = (t.category || t.type || '').trim().toLowerCase();
     const categoryIds = Array.isArray(t.category_ids)
       ? t.category_ids.map((c: string) => String(c).toLowerCase())
       : [];
-    return category === 'jyotirlinga' || categoryIds.includes('jyotirlinga');
+    const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+    if (
+      category.includes('jyotirling') ||
+      categoryIds.some((c: string) => c.includes('jyotirling')) ||
+      tags.some((tg: string) => tg.includes('jyotirling')) ||
+      tid.includes('jyotirling')
+    ) {
+      return true;
+    }
+    return false;
   };
 
   const isShaktiPeetha = (t: any) => {

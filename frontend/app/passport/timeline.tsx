@@ -104,9 +104,6 @@ function PassportTimelineScreen({
   const router = useRouter();
   const zustandBadges = usePassportStore((state) => state.badges) || [];
   const allBadges = [...observedBadges, ...zustandBadges];
-  const hasFirstYatra = allBadges.some(b => b.title?.toLowerCase().includes('yatra') || b.title?.toLowerCase().includes('first')) || (journeysCount > 0);
-  const hasBookFinisher = allBadges.some(b => b.title?.toLowerCase().includes('book') || b.title?.toLowerCase().includes('finisher')) || (booksCount > 0);
-  const has1000Jaaps = allBadges.some(b => b.title?.toLowerCase().includes('jaap') || b.title?.toLowerCase().includes('1000')) || (jaapCount >= 108);
 
   const totalJaap = usePassportStore((state) => state.total_jaap);
   const zustandJourneys = usePassportStore((state) => state.journeys) || [];
@@ -119,6 +116,10 @@ function PassportTimelineScreen({
   const jaapCount = totalJaap || 0;
   const libraryCompletedCount = Object.values(libraryProgresses).filter((p: any) => p && (p.progressPercent >= 0.95 || (p.lastReadPage >= p.totalPages && p.totalPages > 0))).length;
   const booksCount = Math.max(booksCompleted, observedCertificates.length, certificates.length, libraryCompletedCount);
+
+  const hasFirstYatra = allBadges.some(b => b.title?.toLowerCase().includes('yatra') || b.title?.toLowerCase().includes('first')) || (journeysCount > 0);
+  const hasBookFinisher = allBadges.some(b => b.title?.toLowerCase().includes('book') || b.title?.toLowerCase().includes('finisher')) || (booksCount > 0);
+  const has1000Jaaps = allBadges.some(b => b.title?.toLowerCase().includes('jaap') || b.title?.toLowerCase().includes('1000')) || (jaapCount >= 108);
 
   const [queryLocation, setQueryLocation] = useState('');
   const [showFilterOptions, setShowFilterOptions] = useState(false);

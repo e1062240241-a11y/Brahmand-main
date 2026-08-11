@@ -245,22 +245,37 @@ export default function TempleScreen() {
       const allLocalTemples = await database.get('temples').query().fetch();
       
       const isJyotirlinga = (t: any) => {
-        const category = (t.category || '').trim().toLowerCase();
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
         const categoryIds = Array.isArray(t.category_ids)
           ? t.category_ids.map((c: string) => String(c).toLowerCase())
           : [];
-        return category === 'jyotirlinga' || categoryIds.includes('jyotirlinga');
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+        if (
+          category.includes('jyotirling') ||
+          categoryIds.some((c: string) => c.includes('jyotirling')) ||
+          tags.some((tg: string) => tg.includes('jyotirling')) ||
+          tid.includes('jyotirling')
+        ) {
+          return true;
+        }
+        return JYOTIRLING_TEMPLES.some((j: any) => j.id === tid);
       };
 
       const isShaktiPeetha = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
         const tName = (t.name || '').toLowerCase();
-        const category = (t.category || '').trim().toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
         const categoryIds = Array.isArray(t.category_ids)
           ? t.category_ids.map((c: string) => String(c).toLowerCase())
           : [];
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
 
-        if (category === 'shakti peetha' || category === 'shaktipeetha' || categoryIds.includes('shakti_peetha') || categoryIds.includes('shaktipeetha')) {
+        if (
+          category.includes('shakti') || category.includes('peetha') ||
+          categoryIds.some((c: string) => c.includes('shakti')) ||
+          tags.some((tg: string) => tg.includes('shakti'))
+        ) {
           return true;
         }
 
@@ -269,11 +284,39 @@ export default function TempleScreen() {
 
       const isBadaCharDham = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+
+        if (
+          category.includes('bada char dham') || category.includes('bada_char_dham') ||
+          categoryIds.some((c: string) => c.includes('bada_char_dham')) ||
+          tags.some((tg: string) => tg.includes('bada_char_dham'))
+        ) {
+          return true;
+        }
+
         return BADA_CHAR_DHAM_IDS.includes(tid);
       };
 
       const isChotaCharDham = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+
+        if (
+          category.includes('chota char dham') || category.includes('chota_char_dham') ||
+          categoryIds.some((c: string) => c.includes('chota_char_dham')) ||
+          tags.some((tg: string) => tg.includes('chota_char_dham'))
+        ) {
+          return true;
+        }
+
         return CHOTA_CHAR_DHAM_IDS.includes(tid);
       };
 
@@ -283,6 +326,20 @@ export default function TempleScreen() {
 
       const isHealingTemple = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+
+        if (
+          category.includes('healing') ||
+          categoryIds.some((c: string) => c.includes('healing')) ||
+          tags.some((tg: string) => tg.includes('healing'))
+        ) {
+          return true;
+        }
+
         return HEALING_TEMPLE_IDS.includes(tid);
       };
 
@@ -441,12 +498,40 @@ export default function TempleScreen() {
       };
 
       const isBadaCharDham = (t: any) => {
-        const tid = (t.id || t.temple_id || '').toLowerCase();
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+
+        if (
+          category.includes('bada char dham') || category.includes('bada_char_dham') ||
+          categoryIds.some((c: string) => c.includes('bada_char_dham')) ||
+          tags.some((tg: string) => tg.includes('bada_char_dham'))
+        ) {
+          return true;
+        }
+
         return BADA_CHAR_DHAM_IDS.includes(tid);
       };
 
       const isChotaCharDham = (t: any) => {
-        const tid = (t.id || t.temple_id || '').toLowerCase();
+        const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
+        const categoryIds = Array.isArray(t.category_ids)
+          ? t.category_ids.map((c: string) => String(c).toLowerCase())
+          : [];
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+
+        if (
+          category.includes('chota char dham') || category.includes('chota_char_dham') ||
+          categoryIds.some((c: string) => c.includes('chota_char_dham')) ||
+          tags.some((tg: string) => tg.includes('chota_char_dham'))
+        ) {
+          return true;
+        }
+
         return CHOTA_CHAR_DHAM_IDS.includes(tid);
       };
 
@@ -456,17 +541,20 @@ export default function TempleScreen() {
 
       const isHealingTemple = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
-        if (HEALING_TEMPLE_IDS.includes(tid)) return true;
-
-        const category = (t.category || '').trim().toLowerCase();
+        const category = (t.category || t.type || '').trim().toLowerCase();
         const name = (t.name || '').trim().toLowerCase();
         const desc = (t.description || '').trim().toLowerCase();
         const categoryIds = Array.isArray(t.category_ids)
           ? t.category_ids.map((c: string) => String(c).toLowerCase())
           : [];
+        const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+
+        if (HEALING_TEMPLE_IDS.includes(tid)) return true;
+
         return (
           category.includes('healing') ||
           categoryIds.some((c: string) => c.includes('healing')) ||
+          tags.some((tg: string) => tg.includes('healing')) ||
           name.includes('healing') ||
           name.includes('baidyanath') ||
           name.includes('baba dham') ||

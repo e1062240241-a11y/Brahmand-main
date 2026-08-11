@@ -1045,7 +1045,7 @@ export default function TempleDetailScreen() {
         const t = localTemples[0] as any;
         const realTempleId = t.templeId || t._raw?.temple_id || resolvedTempleId;
         // Protect remote API data from being overwritten if remote fetch already completed
-        setTemple((prev) => prev || {
+        setTemple((prev: any) => prev || {
           id: realTempleId,
           temple_id: realTempleId,
           name: t.name,
@@ -1157,7 +1157,7 @@ export default function TempleDetailScreen() {
         setTemple(staticTemple);
       } else {
         // Offline/local fallback for temple details
-        setTemple((prev) => prev || {
+        setTemple((prev: any) => prev || {
           id: resolvedTempleId,
           name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
           location: '',
