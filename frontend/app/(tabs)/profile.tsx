@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import {View,
+import {
+  View,
   Text,
   StyleSheet,
   TouchableOpacity,
@@ -17,7 +18,8 @@ import {View,
   Keyboard,
   Pressable,
   StatusBar
-, DeviceEventEmitter , KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler } from 'react-native';
+  , DeviceEventEmitter, KeyboardAvoidingView, Share, ActionSheetIOS, BackHandler
+} from 'react-native';
 import { useTabBar } from '../../src/contexts/TabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -223,7 +225,7 @@ export default function ProfileScreen() {
     const tabBar = useTabBar();
     showTabBar = tabBar.showTabBar;
     hideTabBar = tabBar.hideTabBar;
-  } catch (e) {}
+  } catch (e) { }
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -415,7 +417,7 @@ export default function ProfileScreen() {
                 options: ['OK'],
                 cancelButtonIndex: 0,
               },
-              () => {}
+              () => { }
             );
           } else {
             Alert.alert(
@@ -457,7 +459,7 @@ export default function ProfileScreen() {
     const optionsList = [
       { text: t('language') === 'hi' ? 'गैलरी' : 'Gallery', onPress: () => pickProfileImage(field, 'library') },
       { text: t('language') === 'hi' ? 'कैमरा' : 'Camera', onPress: () => pickProfileImage(field, 'camera') },
-      { text: t('cancel'), onPress: () => {}, style: 'cancel' },
+      { text: t('cancel'), onPress: () => { }, style: 'cancel' },
     ];
 
     if (Platform.OS === 'ios') {
@@ -554,7 +556,7 @@ export default function ProfileScreen() {
         { text: t('language') === 'hi' ? 'फ़ोटो देखें' : 'View Profile Photo', onPress: () => setAvatarModalVisible(true) },
         { text: t('language') === 'hi' ? 'फ़ोटो बदलें' : 'Change Profile Photo', onPress: () => showImageSourcePicker('photo') },
         { text: t('language') === 'hi' ? 'फ़ोटो हटाएँ' : 'Remove Profile Photo', onPress: confirmRemoveProfilePhoto, style: 'destructive' },
-        { text: t('cancel'), onPress: () => {}, style: 'cancel' },
+        { text: t('cancel'), onPress: () => { }, style: 'cancel' },
       ];
 
       if (Platform.OS === 'ios') {
@@ -641,7 +643,7 @@ export default function ProfileScreen() {
             options: ['OK'],
             cancelButtonIndex: 0,
           },
-          () => {}
+          () => { }
         );
       } else {
         Alert.alert(
@@ -742,11 +744,11 @@ export default function ProfileScreen() {
     setHasMore(true);
     setProfile(user || null);
 
-    const isPlaceholder = !userId || 
-                          userId.toLowerCase().trim() === 'undefined' || 
-                          userId.toLowerCase().trim() === 'null' || 
-                          userId.toLowerCase().trim() === 'none' ||
-                          userId === '';
+    const isPlaceholder = !userId ||
+      userId.toLowerCase().trim() === 'undefined' ||
+      userId.toLowerCase().trim() === 'null' ||
+      userId.toLowerCase().trim() === 'none' ||
+      userId === '';
 
     if (isPlaceholder) {
       setPostsLoading(false);
@@ -965,7 +967,7 @@ export default function ProfileScreen() {
     } catch (error) {
       console.warn('Failed to update post:', error);
       Alert.alert(
-        t('language') === 'hi' ? 'बदलाव सहेजने में असमर्थ' : 'Unable to save changes', 
+        t('language') === 'hi' ? 'बदलाव सहेजने में असमर्थ' : 'Unable to save changes',
         t('language') === 'hi' ? 'कृपया बाद में पुनः प्रयास करें।' : 'Please try again later.'
       );
     } finally {
@@ -1427,143 +1429,143 @@ export default function ProfileScreen() {
 
 
 
-      {/* Settings Menu Modal */}
-      <Modal visible={showSettingsModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={StyleSheet.absoluteFill} 
-            activeOpacity={1} 
-            onPress={() => setShowSettingsModal(false)} 
-          />
-          <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
-            <View style={styles.settingsHeader}>
-              <View style={styles.settingsHeaderBar} />
-              <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
-              <TouchableOpacity 
-                style={styles.settingsClose} 
-                onPress={() => setShowSettingsModal(false)}
-                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-              >
-                <Ionicons name="close" size={24} color="#000000" />
-              </TouchableOpacity>
+        {/* Settings Menu Modal */}
+        <Modal visible={showSettingsModal} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setShowSettingsModal(false)}
+            />
+            <View style={[styles.settingsSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+              <View style={styles.settingsHeader}>
+                <View style={styles.settingsHeaderBar} />
+                <Text style={styles.settingsTitle}>{t('settingsTitle')}</Text>
+                <TouchableOpacity
+                  style={styles.settingsClose}
+                  onPress={() => setShowSettingsModal(false)}
+                  hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                >
+                  <Ionicons name="close" size={24} color="#000000" />
+                </TouchableOpacity>
+              </View>
+              {Platform.OS === 'android' ? (
+                <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
+                  {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                    <View key={section.id} style={styles.settingsSection}>
+                      <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                      {section.items.map((item: SettingItem, index: number) => {
+                        const iconColor = item.disabled ? '#A0A0A0' : '#000000';
+                        const textColor = item.disabled ? '#A0A0A0' : '#000000';
+                        const showChevron = item.id !== 'language';
+                        const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
+
+                        return (
+                          <View key={item.id}>
+                            <Pressable
+                              style={({ pressed }) => [
+                                styles.settingsRow,
+                                { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Instant background highlight on press for Android too
+                                pressed && Platform.OS === 'ios' && { opacity: 0.7 }
+                              ]}
+                              android_ripple={{ color: 'rgba(255, 107, 0, 0.25)', borderless: false }}
+                              onPress={() => handleMenuPress(item)}
+                              disabled={item.disabled && item.id !== 'location'}
+                            >
+                              <Ionicons
+                                name={item.icon as any}
+                                size={20}
+                                color={iconColor}
+                                style={{ marginRight: 16 }}
+                              />
+                              <View style={styles.settingsLabelWrap}>
+                                <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                  {item.label}
+                                </Text>
+                              </View>
+                              <View style={styles.settingsRowRight}>
+                                {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                                {showChevron && (
+                                  <Ionicons
+                                    name="chevron-forward"
+                                    size={18}
+                                    color={chevronColor}
+                                  />
+                                )}
+                              </View>
+                            </Pressable>
+                            {index < section.items.length - 1 && (
+                              <View
+                                style={[
+                                  styles.settingsSeparator,
+                                  { marginLeft: 56, backgroundColor: '#EAEAEA' }
+                                ]}
+                              />
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                  <View style={styles.bottomSpacer} />
+                </KeyboardAwareScrollView>
+              ) : (
+                <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
+                  {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
+                    <View key={section.id} style={styles.settingsSection}>
+                      <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
+                      {section.items.map((item: SettingItem, index: number) => {
+                        const textColor = item.action === 'logout' ? COLORS.error : '#000000';
+                        const showChevron = !item.disabled;
+
+                        return (
+                          <View key={item.id}>
+                            <Pressable
+                              style={({ pressed }) => [
+                                styles.settingsRow,
+                                { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Highlight background on tap on iOS
+                                item.disabled && styles.settingsRowDisabled,
+                              ]}
+                              onPress={() => handleMenuPress(item)}
+                              disabled={item.disabled}
+                            >
+                              <Ionicons
+                                name={item.icon as any}
+                                size={20}
+                                color="#000"
+                                style={{ marginRight: 16 }}
+                              />
+                              <View style={styles.settingsLabelWrap}>
+                                <Text style={[styles.settingsLabel, { color: textColor }]}>
+                                  {item.label}
+                                </Text>
+                                {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
+                              </View>
+                              <View style={styles.settingsRowRight}>
+                                {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
+                                {showChevron && (
+                                  <Ionicons
+                                    name="chevron-forward"
+                                    size={18}
+                                    color="#000"
+                                  />
+                                )}
+                              </View>
+                            </Pressable>
+                            {index < section.items.length - 1 && (
+                              <View style={styles.settingsSeparator} />
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                  <View style={styles.bottomSpacer} />
+                </KeyboardAwareScrollView>
+              )}
             </View>
-            {Platform.OS === 'android' ? (
-              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-                {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
-                  <View key={section.id} style={styles.settingsSection}>
-                    <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
-                    {section.items.map((item: SettingItem, index: number) => {
-                      const iconColor = item.disabled ? '#A0A0A0' : '#000000';
-                      const textColor = item.disabled ? '#A0A0A0' : '#000000';
-                      const showChevron = item.id !== 'language';
-                      const chevronColor = item.disabled ? '#A0A0A0' : '#000000';
-
-                      return (
-                        <View key={item.id}>
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.settingsRow,
-                              { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Instant background highlight on press for Android too
-                              pressed && Platform.OS === 'ios' && { opacity: 0.7 }
-                            ]}
-                            android_ripple={{ color: 'rgba(255, 107, 0, 0.25)', borderless: false }}
-                            onPress={() => handleMenuPress(item)}
-                            disabled={item.disabled && item.id !== 'location'}
-                          >
-                            <Ionicons 
-                              name={item.icon as any} 
-                              size={20} 
-                              color={iconColor} 
-                              style={{ marginRight: 16 }} 
-                            />
-                            <View style={styles.settingsLabelWrap}>
-                              <Text style={[styles.settingsLabel, { color: textColor }]}>
-                                {item.label}
-                              </Text>
-                            </View>
-                            <View style={styles.settingsRowRight}>
-                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                              {showChevron && (
-                                <Ionicons 
-                                  name="chevron-forward" 
-                                  size={18} 
-                                  color={chevronColor} 
-                                />
-                              )}
-                            </View>
-                          </Pressable>
-                          {index < section.items.length - 1 && (
-                            <View 
-                              style={[
-                                styles.settingsSeparator,
-                                { marginLeft: 56, backgroundColor: '#EAEAEA' }
-                              ]} 
-                            />
-                          )}
-                        </View>
-                      );
-                    })}
-                  </View>
-                ))}
-                <View style={styles.bottomSpacer} />
-              </KeyboardAwareScrollView>
-            ) : (
-              <KeyboardAwareScrollView showsVerticalScrollIndicator={false}>
-                {SETTINGS_SECTIONS.map((section: { id: string; title: string; items: SettingItem[] }) => (
-                  <View key={section.id} style={styles.settingsSection}>
-                    <Text style={styles.sectionLabel}>{section.title.toUpperCase()}</Text>
-                    {section.items.map((item: SettingItem, index: number) => {
-                      const textColor = item.action === 'logout' ? COLORS.error : '#000000';
-                      const showChevron = !item.disabled;
-
-                      return (
-                        <View key={item.id}>
-                          <Pressable
-                            style={({ pressed }) => [
-                              styles.settingsRow,
-                              { backgroundColor: pressed ? 'rgba(255, 107, 0, 0.12)' : '#FFFFFF' }, // Highlight background on tap on iOS
-                              item.disabled && styles.settingsRowDisabled,
-                            ]}
-                            onPress={() => handleMenuPress(item)}
-                            disabled={item.disabled}
-                          >
-                            <Ionicons 
-                              name={item.icon as any} 
-                              size={20} 
-                              color="#000" 
-                              style={{ marginRight: 16 }} 
-                            />
-                            <View style={styles.settingsLabelWrap}>
-                              <Text style={[styles.settingsLabel, { color: textColor }]}>
-                                {item.label}
-                              </Text>
-                              {item.subLabel ? <Text style={styles.settingsSubLabel}>{item.subLabel}</Text> : null}
-                            </View>
-                            <View style={styles.settingsRowRight}>
-                              {item.value ? <Text style={styles.settingsValue}>{item.value}</Text> : null}
-                              {showChevron && (
-                                <Ionicons 
-                                  name="chevron-forward" 
-                                  size={18} 
-                                  color="#000" 
-                                />
-                              )}
-                            </View>
-                          </Pressable>
-                          {index < section.items.length - 1 && (
-                            <View style={styles.settingsSeparator} />
-                          )}
-                        </View>
-                      );
-                    })}
-                  </View>
-                ))}
-                <View style={styles.bottomSpacer} />
-              </KeyboardAwareScrollView>
-            )}
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
         <View
           style={[styles.stickyNav, { paddingTop: insets.top + 8, height: insets.top + NAV_BAR_HEIGHT + 8 }]}
@@ -1716,15 +1718,15 @@ export default function ProfileScreen() {
             </View>
             {posts.length > 0 ? (
               <FlatList
-              ref={postListRef}
-              data={posts}
-              initialNumToRender={5}
-              maxToRenderPerBatch={3}
-              windowSize={5}
-              removeClippedSubviews={Platform.OS === 'android'}
-              contentContainerStyle={{
-                paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
-              }}
+                ref={postListRef}
+                data={posts}
+                initialNumToRender={5}
+                maxToRenderPerBatch={3}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+                contentContainerStyle={{
+                  paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
+                }}
                 renderItem={({ item, index }) => {
                   const postKey = item && item.id ? `profile-detail-${item.id}` : `profile-detail-idx-${index}`;
                   return (
@@ -1866,12 +1868,12 @@ export default function ProfileScreen() {
 
                     return (
                       <FlatList
-                      data={parentComments}
-                      keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
-                      initialNumToRender={10}
-                      maxToRenderPerBatch={5}
-                      windowSize={5}
-                      removeClippedSubviews={Platform.OS === 'android'}
+                        data={parentComments}
+                        keyExtractor={(item, index) => item && item.id ? String(item.id) : `comment-idx-${index}`}
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={5}
+                        windowSize={5}
+                        removeClippedSubviews={Platform.OS === 'android'}
                         renderItem={({ item }) => {
                           const canDelete = item.user_id === user?.id || selectedCommentPost?.user_id === user?.id;
                           const replies = repliesMap[item.id] || [];
@@ -2036,10 +2038,10 @@ export default function ProfileScreen() {
         {/* Language Selection Modal */}
         <Modal visible={showLanguageModal} animationType="slide" transparent>
           <View style={styles.modalOverlay}>
-            <TouchableOpacity 
-              style={{ flex: 1 }} 
-              activeOpacity={1} 
-              onPress={() => setShowLanguageModal(false)} 
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={1}
+              onPress={() => setShowLanguageModal(false)}
             />
             <View style={styles.langModalPillContent}>
               <View style={styles.langModalHeader}>
