@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../constants/theme';
 
 export interface StoryNode {
   id: string;
@@ -31,7 +32,30 @@ interface AboutTempleStoryProps {
   busRoute?: string;
 }
 
-export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
+const FEST_COLORS = [
+  { bg: '#FFF7ED', border: '#FFEDD5', text: '#C2410C', icon: '🎪' },
+  { bg: '#F0FDF4', border: '#DCFCE7', text: '#15803D', icon: '🕉️' },
+  { bg: '#EFF6FF', border: '#DBEAFE', text: '#1D4ED8', icon: '✨' },
+  { bg: '#F5F3FF', border: '#EDE9FE', text: '#6D28D9', icon: '🪔' },
+] as const;
+
+const formatStringProp = (
+  val: string | Record<string, unknown> | null | undefined,
+  fallback: string = ''
+): string => {
+  if (!val) return fallback;
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') {
+    const obj = val as Record<string, unknown>;
+    if (obj.city || obj.state || obj.country) {
+      return [obj.city, obj.state, obj.country].filter(Boolean).join(', ');
+    }
+    return JSON.stringify(val);
+  }
+  return String(val);
+};
+
+export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
   templeName = 'Shree Temple',
   subtitle = 'Sacred Pilgrimage Site',
   introDescription = 'A profound center of devotion, revered for centuries by millions of pilgrims.',
@@ -43,18 +67,6 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
   railRoute = '',
   busRoute = '',
 }) => {
-  const formatStringProp = (val: any, fallback: string = ''): string => {
-    if (!val) return fallback;
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object') {
-      if (val.city || val.state || val.country) {
-        return [val.city, val.state, val.country].filter(Boolean).join(', ');
-      }
-      return JSON.stringify(val);
-    }
-    return String(val);
-  };
-
   const safeSubtitle = formatStringProp(subtitle, 'Sacred Pilgrimage Landmark');
   const safeIntro = formatStringProp(introDescription, 'A profound center of devotion.');
   const safeSignificance = formatStringProp(significance, 'A holy shrine blessed with sacred spiritual heritage and divine grace.');
@@ -64,41 +76,35 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
   const safeRail = formatStringProp(railRoute, '');
   const safeBus = formatStringProp(busRoute, '');
 
-  const rawNodes: StoryNode[] = [
-    {
-      id: 'significance',
-      title: 'Mythological Significance',
-      description: safeSignificance,
-      iconName: 'sparkles',
-      iconColor: '#D97706',
-      badgeBg: '#FEF3C7',
-    },
-    {
-      id: 'history',
-      title: 'History & Heritage',
-      description: safeHistory,
-      iconName: 'time-outline',
-      iconColor: '#475569',
-      badgeBg: '#F1F5F9',
-    },
-    {
-      id: 'architecture',
-      title: 'Architecture & Style',
-      description: safeArchitecture,
-      iconName: 'color-palette-outline',
-      iconColor: '#7C3AED',
-      badgeBg: '#F5F3FF',
-    },
-  ];
-
-  const storyNodes = rawNodes.filter((node) => node.description.trim().length > 0);
-
-  const festColors = [
-    { bg: '#FFF7ED', border: '#FFEDD5', text: '#C2410C', icon: '🎪' },
-    { bg: '#F0FDF4', border: '#DCFCE7', text: '#15803D', icon: '🕉️' },
-    { bg: '#EFF6FF', border: '#DBEAFE', text: '#1D4ED8', icon: '✨' },
-    { bg: '#F5F3FF', border: '#EDE9FE', text: '#6D28D9', icon: '🪔' },
-  ];
+  const storyNodes = useMemo(() => {
+    const rawNodes: StoryNode[] = [
+      {
+        id: 'significance',
+        title: 'Mythological Significance',
+        description: safeSignificance,
+        iconName: 'sparkles',
+        iconColor: '#D97706',
+        badgeBg: '#FEF3C7',
+      },
+      {
+        id: 'history',
+        title: 'History & Heritage',
+        description: safeHistory,
+        iconName: 'time-outline',
+        iconColor: '#475569',
+        badgeBg: '#F1F5F9',
+      },
+      {
+        id: 'architecture',
+        title: 'Architecture & Style',
+        description: safeArchitecture,
+        iconName: 'color-palette-outline',
+        iconColor: '#7C3AED',
+        badgeBg: '#F5F3FF',
+      },
+    ];
+    return rawNodes.filter((node) => node.description.trim().length > 0);
+  }, [safeSignificance, safeHistory, safeArchitecture]);
 
   return (
     <View style={styles.container}>
@@ -117,7 +123,12 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
           {storyNodes.map((node, index) => {
             const isLast = index === storyNodes.length - 1;
             return (
-              <View key={node.id} style={styles.storyRow}>
+              <View
+                key={node.id}
+                style={styles.storyRow}
+                accessibilityRole="text"
+                accessibilityLabel={`${node.title}: ${node.description}`}
+              >
                 {/* Left Column: Rail Line & Circle Badge */}
                 <View style={styles.railColumn}>
                   <View style={[styles.nodeCircle, { backgroundColor: node.badgeBg }]}>
@@ -143,7 +154,7 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
           <Text style={styles.subHeadingTitle}>Major festivals</Text>
           <View style={styles.chipsRow}>
             {festivals.map((fest, idx) => {
-              const theme = festColors[idx % festColors.length];
+              const theme = FEST_COLORS[idx % FEST_COLORS.length];
               return (
                 <View
                   key={`fest-chip-${idx}`}
@@ -151,6 +162,8 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
                     styles.festivalChip,
                     { backgroundColor: theme.bg, borderColor: theme.border },
                   ]}
+                  accessibilityRole="text"
+                  accessibilityLabel={`Festival: ${fest}`}
                 >
                   <Text style={[styles.festivalChipText, { color: theme.text }]}>
                     {theme.icon} {fest}
@@ -171,7 +184,11 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
 
           <View style={styles.transportCardsGrid}>
             {safeAir ? (
-              <View style={styles.transportCardItem}>
+              <View
+                style={styles.transportCardItem}
+                accessibilityRole="text"
+                accessibilityLabel={`By Air: ${safeAir}`}
+              >
                 <View style={[styles.transportIconBadge, { backgroundColor: '#EFF6FF' }]}>
                   <Ionicons name="airplane-outline" size={20} color="#2563EB" />
                 </View>
@@ -183,7 +200,11 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
             ) : null}
 
             {safeRail ? (
-              <View style={styles.transportCardItem}>
+              <View
+                style={styles.transportCardItem}
+                accessibilityRole="text"
+                accessibilityLabel={`By Rail: ${safeRail}`}
+              >
                 <View style={[styles.transportIconBadge, { backgroundColor: '#F0FDF4' }]}>
                   <Ionicons name="train-outline" size={20} color="#166534" />
                 </View>
@@ -195,7 +216,11 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
             ) : null}
 
             {safeBus ? (
-              <View style={styles.transportCardItem}>
+              <View
+                style={styles.transportCardItem}
+                accessibilityRole="text"
+                accessibilityLabel={`By Bus: ${safeBus}`}
+              >
                 <View style={[styles.transportIconBadge, { backgroundColor: '#FFF7ED' }]}>
                   <Ionicons name="bus-outline" size={20} color="#C2410C" />
                 </View>
@@ -210,7 +235,9 @@ export const AboutTempleStory: React.FC<AboutTempleStoryProps> = ({
       ) : null}
     </View>
   );
-};
+});
+
+AboutTempleStory.displayName = 'AboutTempleStory';
 
 const styles = StyleSheet.create({
   container: {
@@ -220,7 +247,7 @@ const styles = StyleSheet.create({
   sectionHeaderTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0F172A',
+    color: COLORS.textPrimary,
     marginBottom: 10,
     letterSpacing: -0.3,
   },
@@ -232,13 +259,13 @@ const styles = StyleSheet.create({
   templeSubtitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#475569',
+    color: COLORS.textSecondary,
     marginBottom: 6,
   },
   introParagraph: {
     fontSize: 14,
     fontWeight: '400',
-    color: '#475569',
+    color: COLORS.textSecondary,
     lineHeight: 22,
   },
 
@@ -262,12 +289,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 2,
     borderWidth: 0.5,
-    borderColor: '#E2E8F0',
+    borderColor: COLORS.border,
   },
   connectingLine: {
     width: 2,
     flex: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: COLORS.border,
     marginTop: -2,
     marginBottom: -2,
   },
@@ -279,13 +306,13 @@ const styles = StyleSheet.create({
   nodeTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
+    color: COLORS.textPrimary,
     marginBottom: 4,
   },
   nodeDescription: {
     fontSize: 13,
     fontWeight: '400',
-    color: '#475569',
+    color: COLORS.textSecondary,
     lineHeight: 20,
   },
 
@@ -296,7 +323,7 @@ const styles = StyleSheet.create({
   subHeadingTitle: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#0F172A',
+    color: COLORS.textPrimary,
     marginBottom: 10,
   },
   chipsRow: {
@@ -334,7 +361,7 @@ const styles = StyleSheet.create({
   transportCardItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: COLORS.surface,
     borderRadius: 14,
     borderWidth: 0.5,
     borderColor: '#CBD5E1',
@@ -351,13 +378,14 @@ const styles = StyleSheet.create({
   transportCardTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#0F172A',
+    color: COLORS.textPrimary,
     marginBottom: 2,
   },
   transportCardValue: {
     fontSize: 12,
     fontWeight: '400',
-    color: '#475569',
+    color: COLORS.textSecondary,
     lineHeight: 18,
   },
 });
+

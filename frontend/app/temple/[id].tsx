@@ -1044,7 +1044,8 @@ export default function TempleDetailScreen() {
       if (localTemples && localTemples.length > 0) {
         const t = localTemples[0] as any;
         const realTempleId = t.templeId || t._raw?.temple_id || resolvedTempleId;
-        setTemple({
+        // Protect remote API data from being overwritten if remote fetch already completed
+        setTemple((prev) => prev || {
           id: realTempleId,
           temple_id: realTempleId,
           name: t.name,
@@ -1060,9 +1061,6 @@ export default function TempleDetailScreen() {
           is_following: t.isFollowing,
           is_verified: t.isVerified,
         });
-        setIsFollowing(t.isFollowing || false);
-        setFollowerCount(t.followerCount || 0);
-        setLoading(false);
       }
     } catch (error) {
       console.error('Error loading local temple details:', error);
@@ -1070,13 +1068,10 @@ export default function TempleDetailScreen() {
   };
 
   useEffect(() => {
-    // Check local DB or static fallbacks immediately to show content instantly without full blocking screen loader
+    // Check static fallbacks immediately to show content instantly without full blocking screen loader
     const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
     if (staticTemple) {
       setTemple(staticTemple);
-      setIsFollowing(staticTemple.is_following || false);
-      setFollowerCount(staticTemple.follower_count || 0);
-      setLoading(false);
     }
     loadLocalTempleData();
     fetchTempleData();
@@ -1104,75 +1099,71 @@ export default function TempleDetailScreen() {
     }
   }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
 
- const fetchTempleData = async () => {
- try {
- const [templeRes, postsRes] = await Promise.all([
- getTemple(resolvedTempleId),
- getTemplePosts(resolvedTempleId).catch(() => ({ data: [] }))
- ]);
- setTemple(templeRes.data);
- setPosts(postsRes.data || []);
- setIsFollowing(templeRes.data?.is_following || false);
- setFollowerCount(templeRes.data?.follower_count || 0);
+  const fetchTempleData = async () => {
+    try {
+      const templeRes = await getTemple(resolvedTempleId);
+      if (templeRes?.data) {
+        setTemple(templeRes.data);
+      }
 
- // Sync fetched details into WatermelonDB
- try {
-   await database.write(async () => {
-     const templeCollection = database.get('temples');
-     const localTemples = await templeCollection.query(Q.where('temple_id', resolvedTempleId)).fetch();
-     const tData = templeRes.data;
+      // Sync fetched details into WatermelonDB
+      if (templeRes?.data) {
+        try {
+          await database.write(async () => {
+            const templeCollection = database.get('temples');
+            const localTemples = await templeCollection.query(Q.where('temple_id', resolvedTempleId)).fetch();
+            const tData = templeRes.data;
 
-     if (localTemples.length > 0) {
-       await localTemples[0].update((record: any) => {
-         record.name = tData.name || '';
-         record.location = tData.location || '';
-         record.deity = tData.deity || '';
-         record.category = tData.category || '';
-         record.description = tData.description || '';
-         record.guidance = tData.guidance || '';
-         record.imageUrl = tData.image_url || '';
-         record.youtubeUrl = tData.youtube_url || '';
-         record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
-         record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
-         record.isFollowing = tData.is_following || false;
-         record.isVerified = tData.is_verified || false;
-       });
-     } else {
-       await templeCollection.create((record: any) => {
-         record.templeId = resolvedTempleId;
-         record.name = tData.name || '';
-         record.location = tData.location || '';
-         record.deity = tData.deity || '';
-         record.category = tData.category || '';
-         record.description = tData.description || '';
-         record.guidance = tData.guidance || '';
-         record.imageUrl = tData.image_url || '';
-         record.youtubeUrl = tData.youtube_url || '';
-         record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
-         record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
-         record.isFollowing = tData.is_following || false;
-         record.isVerified = tData.is_verified || false;
-       });
-     }
-   });
- } catch (dbError) {
-   console.error('Error syncing temple details to WatermelonDB:', dbError);
- }
- } catch (error) {
-    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
-    if (staticTemple) {
-      setTemple(staticTemple);
-      setPosts([]);
-      setIsFollowing(false);
-    } else {
-      // Offline/local fallback for temple details
-      setTemple((prev: any) => prev || {
-        id: resolvedTempleId,
-        name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
-        location: '',
-        deity: '',
-        category: 'Sacred',
-        description: '',
+            if (localTemples.length > 0) {
+              await localTemples[0].update((record: any) => {
+                record.name = tData.name || '';
+                record.location = tData.location || '';
+                record.deity = tData.deity || '';
+                record.category = tData.category || '';
+                record.description = tData.description || '';
+                record.guidance = tData.guidance || '';
+                record.imageUrl = tData.image_url || '';
+                record.youtubeUrl = tData.youtube_url || '';
+                record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
+                record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
+                record.isFollowing = tData.is_following || false;
+                record.isVerified = tData.is_verified || false;
+              });
+            } else {
+              await templeCollection.create((record: any) => {
+                record.templeId = resolvedTempleId;
+                record.name = tData.name || '';
+                record.location = tData.location || '';
+                record.deity = tData.deity || '';
+                record.category = tData.category || '';
+                record.description = tData.description || '';
+                record.guidance = tData.guidance || '';
+                record.imageUrl = tData.image_url || '';
+                record.youtubeUrl = tData.youtube_url || '';
+                record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
+                record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
+                record.isFollowing = tData.is_following || false;
+                record.isVerified = tData.is_verified || false;
+              });
+            }
+          });
+        } catch (dbError) {
+          console.error('Error syncing temple details to WatermelonDB:', dbError);
+        }
+      }
+    } catch (error) {
+      const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+      if (staticTemple) {
+        setTemple(staticTemple);
+      } else {
+        // Offline/local fallback for temple details
+        setTemple((prev) => prev || {
+          id: resolvedTempleId,
+          name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+          location: '',
+          deity: '',
+          category: 'Sacred',
+          description: '',
         guidance: '',
         aarti_timings: {},
         is_following: false,

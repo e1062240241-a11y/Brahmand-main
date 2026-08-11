@@ -149,11 +149,7 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
     ]
   );
 
-  const [imgSource, setImgSource] = useState(imageSource);
-
-  useEffect(() => {
-    setImgSource(imageSource);
-  }, [imageSource]);
+  const [hasError, setHasError] = useState(false);
 
   return (
     <TouchableOpacity 
@@ -162,20 +158,19 @@ const TempleCard = React.memo(({ item, onPress, t }: TempleCardProps) => {
       onPress={() => onPress(item)}
     >
       <Image 
-        source={imgSource || DEFAULT_TEMPLE_IMAGE}
+        source={hasError ? DEFAULT_TEMPLE_IMAGE : imageSource}
         defaultSource={DEFAULT_TEMPLE_IMAGE as any}
         style={styles.templeItemImage} 
         resizeMode="cover"
         fadeDuration={0}
-        onLoad={() => {}}
         onError={(e) => {
           console.error('[TEMPLE IMAGE FAILED]', {
             id: item.temple_id || item.templeId || item.id,
             name: displayName,
-            source: imgSource,
+            source: imageSource,
             error: e.nativeEvent?.error,
           });
-          setImgSource(DEFAULT_TEMPLE_IMAGE);
+          setHasError(true);
         }}
       />
       <View style={styles.templeItemInfo}>

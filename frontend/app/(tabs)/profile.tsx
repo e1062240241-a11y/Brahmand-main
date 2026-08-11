@@ -930,7 +930,7 @@ export default function ProfileScreen() {
     hideTabBar?.();
     setEditedCaption(post?.caption || '');
     hasScrolledToPost.current = false;
-    setActivePostKey(null);
+    setActivePostKey(`profile-detail-${post.id}`);
     postOffsetsRef.current = {};
     postHeightsRef.current = {};
     try {
@@ -1714,10 +1714,11 @@ export default function ProfileScreen() {
               <FlatList
               ref={postListRef}
               data={posts}
-              initialNumToRender={5}
-              maxToRenderPerBatch={3}
-              windowSize={5}
-              removeClippedSubviews={Platform.OS === 'android'}
+              initialScrollIndex={Math.max(0, posts.findIndex(p => p.id === selectedPost?.id))}
+              initialNumToRender={10}
+              maxToRenderPerBatch={5}
+              windowSize={10}
+              removeClippedSubviews={false}
               contentContainerStyle={{
                 paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 24) + 120 : Math.max(insets.bottom, 40) + 60
               }}
