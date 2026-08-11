@@ -498,7 +498,11 @@ const ReelVideoItem = React.memo(({
       if (player) {
         try {
           player.pause();
-          player.replace?.(null);
+          if (typeof player.replaceAsync === 'function') {
+            player.replaceAsync(null);
+          } else if (typeof player.replace === 'function') {
+            player.replace(null);
+          }
           if (Platform.OS !== 'web') {
             player.destroy?.();
           }
@@ -521,7 +525,11 @@ const ReelVideoItem = React.memo(({
       if (player) {
         try {
           player.pause();
-          player.replace?.(null);
+          if (typeof player.replaceAsync === 'function') {
+            player.replaceAsync(null);
+          } else if (typeof player.replace === 'function') {
+            player.replace(null);
+          }
         } catch (e) {}
       }
       prevPostIdRef.current = currentPostId;
