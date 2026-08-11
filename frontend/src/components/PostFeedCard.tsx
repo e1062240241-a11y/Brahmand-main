@@ -21,7 +21,6 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useIsFocused } from '@react-navigation/native';
-import * as Haptics from 'expo-haptics';
 
 import { API_URL } from '../services/api';
 import { COLORS, SPACING } from '../constants/theme';
@@ -370,6 +369,8 @@ const PostFeedCardComponent = ({
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const swipeDetected = useRef<boolean>(false);
+  const touchMoved = useRef<boolean>(false);
+  const touchStartTime = useRef<number>(0);
   const lastTapRef = useRef<number>(0);
   const lastTapCoords = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
@@ -441,15 +442,13 @@ const PostFeedCardComponent = ({
     if (!likedByMe) {
       onLike?.(post);
     }
-    // Haptic feedback for double-tap like
-    if (Platform.OS !== 'web') {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
   };
 
   const handleTouchStart = (e: any) => {
     touchStartX.current = e.nativeEvent.pageX;
     touchStartY.current = e.nativeEvent.pageY;
+    touchStartTime.current = Date.now();
+    touchMoved.current = false;
     if (e.nativeEvent.locationX !== undefined && e.nativeEvent.locationY !== undefined) {
       lastTapCoords.current = {
         x: e.nativeEvent.locationX,
@@ -463,6 +462,13 @@ const PostFeedCardComponent = ({
     const deltaX = e.nativeEvent.pageX - touchStartX.current;
     const deltaY = e.nativeEvent.pageY - touchStartY.current;
 
+    // Track whether the finger moved significantly during this touch.
+    // A scroll gesture (or any finger drift) must not be treated as a tap,
+    // otherwise an accidental touch while browsing opens the full-screen reel.
+    if (Math.abs(deltaX) > 12 || Math.abs(deltaY) > 12) {
+      touchMoved.current = true;
+    }
+
     // Detect swipe (horizontal drag in either direction)
     if (Math.abs(deltaX) > 60 && Math.abs(deltaY) < 30) {
       swipeDetected.current = true;
@@ -470,17 +476,27 @@ const PostFeedCardComponent = ({
     }
   };
 
-  const handleMediaPress = () => {
+  const handleMediaPress = (e?: any) => {
     if (swipeDetected.current) return;
 
+    // Ignore scroll/finger drift touches — they shouldn't trigger tap actions
+    if (touchMoved.current) return;
+
+    if (e?.nativeEvent?.locationX !== undefined && e?.nativeEvent?.locationY !== undefined) {
+      lastTapCoords.current = {
+        x: e.nativeEvent.locationX,
+        y: e.nativeEvent.locationY,
+      };
+    }
+
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
-    if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+    const DOUBLE_TAP_DELAY = 350;
+    if (now - lastTapRef.current < DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
       lastTapRef.current = 0;
       handleDoubleTapLike(lastTapCoords.current.x, lastTapCoords.current.y);
     } else {
       lastTapRef.current = now;
-      // Single tap: open full screen
+      // Single tap: open full screen for video posts
       setTimeout(() => {
         if (Date.now() - lastTapRef.current >= DOUBLE_TAP_DELAY && lastTapRef.current !== 0) {
           if (isVideo) {

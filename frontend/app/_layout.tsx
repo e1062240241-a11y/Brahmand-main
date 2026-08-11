@@ -151,8 +151,8 @@ function useAppBackHandler() {
 
       // 2. If we are on secondary main tabs, navigate back to Home tab
       const secondaryTabs = [
-        '/messages', '/jaap', '/jobs', '/profile', '/vendor',
-        '/(tabs)/messages', '/(tabs)/jaap', '/(tabs)/jobs', '/(tabs)/profile', '/(tabs)/vendor'
+        '/messages', '/jaap', '/profile', '/vendor',
+        '/(tabs)/messages', '/(tabs)/jaap', '/(tabs)/profile', '/(tabs)/vendor'
       ];
 
       if (secondaryTabs.includes(pathname)) {
@@ -254,7 +254,6 @@ function isValidAppPath(path: string): boolean {
     '/home',
     '/messages',
     '/jaap',
-    '/jobs',
     '/profile',
     '/vendor',
     '/sos',
@@ -1190,8 +1189,9 @@ export default function RootLayout() {
                     const postsToDelete = posts.filter((p: any) => p.userId === otherId);
                     if (postsToDelete.length > 0) {
                       await database.write(async () => {
-                        for (const post of postsToDelete) {
-                          await post.destroyPermanently();
+                        const batchOps = postsToDelete.map((post: any) => post.prepareDestroyPermanently());
+                        if (batchOps.length > 0) {
+                          await database.batch(...batchOps);
                         }
                       });
                       console.log(`[Socket] Permanently deleted ${postsToDelete.length} posts by ${otherId} from WatermelonDB due to block`);

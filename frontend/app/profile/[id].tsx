@@ -584,7 +584,6 @@ const UserProfileScreen = () => {
       const seenIds = new Set<string>();
       for (const p of incomingPosts) {
         if (!p || p.id === undefined || p.id === null || String(p.id).trim() === '') {
-          console.warn('[Profile Screen Feed] Post missing valid ID:', p);
           continue;
         }
         if (p.user_id !== profileUserId) {
@@ -595,8 +594,6 @@ const UserProfileScreen = () => {
         if (!seenIds.has(idStr)) {
           seenIds.add(idStr);
           validated.push(p);
-        } else {
-          console.warn('[Profile Screen Feed] Duplicate post ID in incoming chunk:', idStr);
         }
       }
 
@@ -1416,7 +1413,6 @@ const UserProfileScreen = () => {
         renderItem={renderPost}
         keyExtractor={(item, index) => {
           if (!item || !item.id) {
-            console.warn('[Profile keyExtractor] Post missing valid ID:', item);
             return `profile-post-idx-${index}`;
           }
           return `profile-post-${item.id}`;

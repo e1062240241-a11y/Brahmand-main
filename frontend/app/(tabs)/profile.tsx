@@ -693,7 +693,6 @@ export default function ProfileScreen() {
       const seenIds = new Set<string>();
       for (const p of incomingPosts) {
         if (!p || p.id === undefined || p.id === null || String(p.id).trim() === '') {
-          console.warn('[Profile Tab Feed] Post missing valid ID:', p);
           continue;
         }
         if (p.user_id !== userId) {
@@ -704,8 +703,6 @@ export default function ProfileScreen() {
         if (!seenIds.has(idStr)) {
           seenIds.add(idStr);
           validated.push(p);
-        } else {
-          console.warn('[Profile Tab Feed] Duplicate post ID in incoming chunk:', idStr);
         }
       }
 
@@ -1607,7 +1604,6 @@ export default function ProfileScreen() {
           renderItem={renderPost}
           keyExtractor={(item, index) => {
             if (!item || !item.id) {
-              console.warn('[Profile Tab keyExtractor] Post missing valid ID:', item);
               return `post-idx-${index}`;
             }
             return `post-${item.id}`;
@@ -1761,7 +1757,6 @@ export default function ProfileScreen() {
                 }}
                 keyExtractor={(item, index) => {
                   if (!item || !item.id) {
-                    console.warn('[Profile Tab Detail keyExtractor] Post missing valid ID:', item);
                     return `profile-detail-idx-${index}`;
                   }
                   return `profile-detail-${item.id}`;

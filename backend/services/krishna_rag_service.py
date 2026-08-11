@@ -121,7 +121,11 @@ def _embed_query_with_gemini(query: str) -> List[float]:
             contents=query,
             config=genai_types.EmbedContentConfig(task_type="RETRIEVAL_QUERY"),
         )
-        return result.embeddings[0].values
+        if hasattr(result, "embedding") and result.embedding and getattr(result.embedding, "values", None):
+            return result.embedding.values
+        if result.embeddings and len(result.embeddings) > 0 and getattr(result.embeddings[0], "values", None):
+            return result.embeddings[0].values
+        raise ValueError("Gemini API returned empty embeddings.")
     except Exception as e:
         logger.error(
             "[RAG] Gemini embedding failed for query '%s...': %s. "
@@ -312,9 +316,9 @@ def retrieve_relevant_shlokas(query: str, top_k: int = 5) -> List[dict]:
         )
 
         shlokas = []
-        docs      = results.get("documents", [[]])[0]
-        metas     = results.get("metadatas", [[]])[0]
-        distances = results.get("distances", [[]])[0]
+        docs      = (results.get("documents") or [[]])[0] if results else []
+        metas     = (results.get("metadatas") or [[]])[0] if results else []
+        distances = (results.get("distances") or [[]])[0] if results else []
 
         for doc, meta, dist in zip(docs, metas, distances):
             if dist < 0.7:

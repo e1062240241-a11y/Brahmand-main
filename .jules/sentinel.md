@@ -53,3 +53,10 @@
 **Vulnerability:** The `backend/admin_portal/katha_upload.html` file was being served by an unauthenticated endpoint `@app.get("/admin/katha-upload")`. Even though the API endpoint it interacted with was secured, serving secret internal web portals exposes the existence of admin routes and internal structures, acting as an Information Exposure risk.
 **Learning:** Hardcoded "secret" pages or unauthenticated admin HTML portals are unnecessary attack surfaces, especially when modern applications use mobile admin panels or strictly authenticated web dashboards.
 **Prevention:** Remove legacy or unauthenticated HTML admin portals. All administrative functions should be built directly into the authenticated frontend (e.g. React Native app) or explicitly secured behind a reverse proxy/auth-middleware before serving any HTML.
+## $(date +%Y-%m-%d) - [CRITICAL] Prevent Plaintext Storage Fallback for E2EE Keys
+
+**Vulnerability:** The `getItem` method in `frontend/src/utils/secureStorage.ts` included a "fallback" condition. If decryption of a value failed, it checked whether the value "looked like" base64 ciphertext. If it didn't (e.g. contained periods like a JWT), it returned the raw string directly as a plaintext fallback.
+
+**Learning:** "Fail open" mechanisms in cryptographic utilities act as bypass vulnerabilities. By trying to be helpful and returning raw data when decryption fails, an attacker who manages to inject plaintext data into the store (or alters the ciphertext structure) can bypass encryption entirely and force the application to consume unauthorized plaintext data.
+
+**Prevention:** Never use a fallback mechanism that returns unverified/unencrypted data when decryption fails. Always fail securely (fail-closed) by returning null or throwing an explicit error to prevent consumption of malformed or unauthorized data.

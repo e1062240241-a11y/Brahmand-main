@@ -2601,55 +2601,6 @@ export const addVendorPhoto = (vendorId: string, photo: string) =>
 export const deleteVendor = (vendorId: string, otp?: string) =>
   api.delete(`/vendors/${vendorId}`, { params: { otp } });
 
-export interface JobProfilePayload {
-  name: string;
-  current_address: string;
-  experience_years: number;
-  profession: string;
-  preferred_work_city: string;
-  latitude?: number;
-  longitude?: number;
-  location_link?: string;
-  photos?: string[];
-  cv_url?: string;
-}
-
-export const createOrUpdateJobProfile = (data: JobProfilePayload) =>
-  api.post("/jobs/profile", data);
-
-export const getMyJobProfile = () => api.get("/jobs/profile/my");
-
-export const getJobProfile = (profileId: string) =>
-  api.get(`/jobs/profile/${profileId}`);
-
-export const getJobProfiles = (params?: {
-  search?: string;
-  profession?: string;
-  city?: string;
-  lat?: number;
-  lng?: number;
-  limit?: number;
-}) => api.get("/jobs/profiles", { params });
-
-export const uploadJobProfileFile = (
-  profileId: string,
-  docType: "photo" | "cv",
-  file: { uri: string; name: string; type: string },
-) => {
-  return (async () => {
-    const formData = new FormData();
-    formData.append("doc_type", docType);
-    await appendMultipartFile(formData, "file", file);
-
-    return api.post(`/jobs/profile/${profileId}/upload`, formData, {
-      headers:
-        Platform.OS === "web"
-          ? { "Content-Type": "multipart/form-data" }
-          : undefined,
-    });
-  })();
-};
-
 // =================== UTILITY APIS ===================
 
 export const getWisdom = () => api.get("/wisdom/today");

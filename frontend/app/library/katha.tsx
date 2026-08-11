@@ -55,11 +55,17 @@ const DEFAULT_EPISODE: KathaEpisode = {
 
 interface KathaStatus {
   is_live: boolean;
-  mode: string; // LIVE_BROADCAST, REPEAT_TELECAST, OFF_AIR
+  mode: string;
   title: string;
   guru_name: string;
   banner_message: string;
   next_stream_at: string;
+  server_time_ist?: string;
+  current_broadcast_start_time?: string;
+  active_episode_number?: number;
+  active_video_url?: string;
+  active_episode_id?: string;
+  active_duration?: string;
 }
 
 export default function KathaPage() {
@@ -73,6 +79,7 @@ export default function KathaPage() {
   const [episodes, setEpisodes] = useState<KathaEpisode[]>([DEFAULT_EPISODE]);
   const [activeEpisode, setActiveEpisode] = useState<KathaEpisode | null>(DEFAULT_EPISODE);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  const [hasSyncedLive, setHasSyncedLive] = useState(false);
   const [status, setStatus] = useState<KathaStatus>({
     is_live: false,
     mode: 'OFF_AIR',
@@ -88,13 +95,24 @@ export default function KathaPage() {
   const [showControls, setShowControls] = useState(true);
   const hideControlsTimer = useRef<any>(null);
 
-  const activeVideoUrl = activeEpisode?.video_url || 'https://vjs.zencdn.net/v/oceans.mp4';
+  const isUserSelectedOldEpisode = activeEpisode && activeEpisode.id !== status.active_episode_id;
+  const activeVideoUrl = isUserSelectedOldEpisode
+    ? activeEpisode.video_url
+    : (status.active_video_url || 'https://vjs.zencdn.net/v/oceans.mp4');
+
+  // We want to pause initially if it's live and we haven't synced yet
+  const shouldInitialPause = status.is_live && !isUserSelectedOldEpisode && !hasSyncedLive;
 
   const player = useSafeVideoPlayer(activeVideoUrl, (p) => {
     try {
       p.loop = false;
       p.muted = false;
-      p.play();
+      if (shouldInitialPause) {
+        p.pause();
+        setIsPlaying(false);
+      } else {
+        p.play();
+      }
     } catch (_e) {}
   });
 
@@ -106,18 +124,29 @@ export default function KathaPage() {
       console.log("player.duration:", player?.duration);
 
       // Live Sync Logic
-      if (status.is_live && status.server_time_ist && status.current_broadcast_start_time && !hasSyncedLive) {
+      if (status.is_live && status.server_time_ist && status.current_broadcast_start_time && !hasSyncedLive && !isUserSelectedOldEpisode) {
         // Only attempt to seek if video has loaded its duration and is ready
         if (player.status === 'readyToPlay' || player.status === 'playing') {
           const serverTime = new Date(status.server_time_ist).getTime();
           const startTime = new Date(status.current_broadcast_start_time).getTime();
+          // We use absolute seekTo (which is mapped to currentTime on web/expo-video if needed, but seekBy from 0 is also fine)
           const offsetSeconds = Math.max(0, (serverTime - startTime) / 1000);
 
           console.log(`[Katha Live Sync] ServerTime: ${status.server_time_ist}, StartTime: ${status.current_broadcast_start_time}`);
           console.log(`[Katha Live Sync] Calculated Offset: ${offsetSeconds} seconds`);
 
           if (offsetSeconds > 0) {
-            player.seekBy(offsetSeconds);
+            // Initially the video is at 0:00 (paused)
+            try {
+              if (player.seekTo) {
+                player.seekTo(offsetSeconds);
+              } else if (player.seekBy) {
+                player.seekBy(offsetSeconds);
+              } else {
+                player.currentTime = offsetSeconds;
+              }
+            } catch(e) { console.log(e); }
+
             setHasSyncedLive(true);
             setIsPlaying(true);
             player.play();
@@ -127,7 +156,7 @@ export default function KathaPage() {
     } else {
       console.log("player instance: initializing or invalid");
     }
-  }, [activeVideoUrl, player, status, player?.status]);
+  }, [activeVideoUrl, player, status, player?.status, hasSyncedLive, isUserSelectedOldEpisode]);
 
   // Zero-Heat Thermal Management: Instantly pause video when screen loses focus
   useEffect(() => {
@@ -315,22 +344,40 @@ export default function KathaPage() {
             style={styles.playerWrapper}
             onPress={resetControlsTimer}
           >
-            {activeVideoUrl ? (
-              <SafeVideoView
-                player={player}
-                ExpoVideoModule={ExpoVideoModule}
-                source={activeVideoUrl}
-                posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
-                style={styles.videoPlayer}
-                nativeControls={false}
-                contentFit="cover"
-              />
+            {!status.is_live && !isUserSelectedOldEpisode ? (
+              <View style={styles.offAirContainer}>
+                <Image
+                  source={shamikPathakCover}
+                  style={[StyleSheet.absoluteFillObject, { opacity: 0.3 }]}
+                  resizeMode="cover"
+                />
+                <Ionicons name="radio" size={48} color="#FF6B00" />
+                <Text style={styles.offAirTitle}>Currently Off-Air</Text>
+                <Text style={styles.offAirSub}>
+                  {status.banner_message}
+                </Text>
+                <Text style={[styles.offAirSub, { marginTop: 12, color: '#FF6B00', fontWeight: 'bold' }]}>
+                  Next stream at {status.next_stream_at ? new Date(status.next_stream_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '8:00 AM'}
+                </Text>
+              </View>
             ) : (
-              <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
+              activeVideoUrl ? (
+                <SafeVideoView
+                  player={player}
+                  ExpoVideoModule={ExpoVideoModule}
+                  source={activeVideoUrl}
+                  posterSource={activeEpisode?.thumbnail_url && !imageErrors[activeEpisode?.id || ''] ? { uri: activeEpisode.thumbnail_url } : shamikPathakCover}
+                  style={styles.videoPlayer}
+                  nativeControls={false}
+                  contentFit="cover"
+                />
+              ) : (
+                <Image source={shamikPathakCover} style={styles.videoPlayer} resizeMode="cover" />
+              )
             )}
 
             {/* Hotstar Minimalist Control Overlay (No Seeking Bar, Live Speed Stream) */}
-            {showControls && (
+            {showControls && (status.is_live || isUserSelectedOldEpisode) && (
               <View style={styles.hotstarOverlay}>
                 <LinearGradient
                   colors={['rgba(0,0,0,0.7)', 'transparent', 'rgba(0,0,0,0.85)']}
@@ -409,19 +456,20 @@ export default function KathaPage() {
           {/* Active Episode Details */}
           <View style={styles.activeDetails}>
             <Text style={styles.activeTitle}>
-              {activeEpisode ? activeEpisode.title : status.title}
+              {isUserSelectedOldEpisode ? activeEpisode?.title : status.title}
             </Text>
             <Text style={styles.guruSubtitle}>
-              {activeEpisode?.guru_name || status.guru_name} • Spiritual Guru & Astrologer
+              {isUserSelectedOldEpisode ? activeEpisode?.guru_name : status.guru_name} • Spiritual Guru & Astrologer
             </Text>
             <Text style={styles.scheduleText}>
-              {status.banner_message}
+              {isUserSelectedOldEpisode ? 'Library Episode' : status.banner_message}
             </Text>
           </View>
         </View>
 
-        {/* Episode Library Section */}
-        <View style={styles.librarySection}>
+        {/* Episode Library Section (Only shown when Off-Air) */}
+        {!status.is_live && (
+          <View style={styles.librarySection}>
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="movie-play-outline" size={22} color="#FF6B00" />
             <Text style={styles.sectionTitle}>Saavan Katha Episodes</Text>
@@ -481,7 +529,8 @@ export default function KathaPage() {
               <Text style={styles.emptyText}>No episodes uploaded yet. Check back during live broadcast!</Text>
             </View>
           )}
-        </View>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -541,7 +590,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   offAirContainer: {
-    backgroundColor: '#000',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#111',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,

@@ -86,7 +86,7 @@ except ImportError:
 from models.schemas import (
     OTPRequest, OTPVerify, UserCreate, UserUpdate, ProfileUpdate, SavedKundliRequest,
     LocationSetup, DualLocationSetup, MessageCreate, DirectMessageCreate,
-    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, JobProfileCreate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
+    CircleCreate, CircleJoin, CircleUpdate, CircleInvite, HelpRequestCreate, VendorCreate, VendorUpdate, SOSCreate, AstrologyProfile, CommunityRequestCreate, CommunityCreate
 )
 from pydantic import BaseModel, Field
 from middleware.security import verify_token, optional_verify_token, create_jwt_token
@@ -137,6 +137,8 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("google_genai").setLevel(logging.WARNING)
+logging.getLogger("google_genai.models").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 _sandbox_auth_cache = {
@@ -5526,7 +5528,7 @@ async def get_horoscope(token_data: dict = Depends(verify_token)):
     zodiac_signs = ["Capricorn", "Aquarius", "Pisces", "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius"]
     zodiac_sign = zodiac_signs[(month - 1) % 12]
 
-    horoscope = await _generate_horoscope_with_gemini(zodiac_sign)
+    horoscope = await _generate_horoscope_with_groq(zodiac_sign)
     day_of_year = datetime.utcnow().timetuple().tm_yday
     return {
         "zodiac_sign": zodiac_sign,
@@ -9171,7 +9173,7 @@ async def get_kyc_status(token_data: dict = Depends(verify_token)):
 
 @api_router.post("/kyc/aadhaar/otp")
 async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
-    """Generate Aadhaar OTP via Sandbox for user-level KYC (jobs/organizer flow)."""
+    """Generate Aadhaar OTP via Sandbox for user-level KYC."""
     db = await get_db()
     user_id = token_data["user_id"]
 
@@ -9259,7 +9261,7 @@ async def generate_user_aadhaar_otp(data: dict = Body(...), token_data: dict = D
 
 @api_router.post("/kyc/aadhaar/otp/verify")
 async def verify_user_aadhaar_otp(data: dict = Body(...), token_data: dict = Depends(verify_token)):
-    """Verify Aadhaar OTP via Sandbox for user-level KYC (jobs/organizer flow)."""
+    """Verify Aadhaar OTP via Sandbox for user-level KYC."""
     db = await get_db()
     user_id = token_data["user_id"]
 
@@ -10807,83 +10809,87 @@ Speak like a wise charioteer (Sarathi) guiding the user out of chaos. Provide cl
             summaries_context = "\n".join([f"- {s}" for s in history_summaries])
             system_prompt = system_prompt + f"\n\nUSER HISTORY & LONG-TERM MEMORY (Summary of past interactions):\n{summaries_context}\nUse this past context to maintain consistency in your relationship and wisdom with the user."
 
-        async def _call_gemini_primary(messages_list: list, sys_prompt: str, model_name: str = "gemma-4-26b-a4b-it") -> str:
-            gemini_key = os.environ.get("GEMINI_API_KEY")
-            if not gemini_key:
-                raise ValueError("GEMINI_API_KEY not set")
+        async def _call_groq_primary(messages_list: list, sys_prompt: str, model_name: str = None) -> str:
+            groq_key = os.environ.get("GROQ_API_KEY")
+            if not groq_key:
+                raise ValueError("GROQ_API_KEY not set")
 
-            from google import genai
-            from google.genai import types
+            model_to_use = model_name or os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
-            client = genai.Client(api_key=gemini_key)
+            from utils.groq_rate_limiter import groq_rate_limiter
+            acquired = await groq_rate_limiter.acquire(estimated_tokens=600, timeout=15.0)
+            if not acquired:
+                raise RuntimeError("Groq Rate Limit capacity exceeded (30 RPM / 30k TPM)")
 
-            contents = []
+            formatted_msgs = [{"role": "system", "content": sys_prompt}]
             for msg in messages_list[-10:]:
-                role = "user" if msg.get("role") == "user" else "model"
+                role = "user" if msg.get("role") == "user" else "assistant"
                 text = msg.get("content", "")
                 if text:
-                    contents.append(types.Content(
-                        role=role,
-                        parts=[types.Part.from_text(text=text)]
-                    ))
+                    formatted_msgs.append({"role": role, "content": text})
 
-            config = types.GenerateContentConfig(
-                system_instruction=sys_prompt,
-                temperature=0.7,
-                thinking_config=types.ThinkingConfig(thinking_budget=0),
-            )
-
-            def _sync_call():
-                res = client.models.generate_content(
-                    model=model_name,
-                    contents=contents if contents else latest_user_msg,
-                    config=config,
+            def _sync_groq_call():
+                import requests
+                headers = {
+                    "Authorization": f"Bearer {groq_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "model": model_to_use,
+                    "messages": formatted_msgs,
+                    "temperature": 0.7,
+                    "max_tokens": 1024
+                }
+                resp = requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=30
                 )
-                return res.text
+                resp.raise_for_status()
+                res_data = resp.json()
+                return res_data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-            return await asyncio.to_thread(_sync_call)
+            return await asyncio.to_thread(_sync_groq_call)
 
         assistant_reply = None
 
-        # Step 1: Primary - Try Gemini API directly (Model: gemma-4-26b-a4b-it, thinking budget: 0)
-        # Fast response without waiting for ChromaDB!
+        # Step 1: Primary - Independent Groq API Call
         try:
-            logger.info("[Krishna-Chat] Calling primary Gemini API (model=gemma-4-26b-a4b-it, thinking=off)...")
-            assistant_reply = await _call_gemini_primary(db_messages, system_prompt, model_name="gemma-4-26b-a4b-it")
+            logger.info("[Krishna-Chat] Calling primary Groq API...")
+            assistant_reply = await _call_groq_primary(db_messages, system_prompt)
             if assistant_reply and len(assistant_reply.strip()) > 0:
-                logger.info("[Krishna-Chat] Primary Gemini API responded successfully! Skipping ChromaDB RAG wait.")
-        except Exception as gemini_err:
-            logger.warning("[Krishna-Chat] Primary Gemini API call failed (%s). Falling back to ChromaDB RAG...", gemini_err)
+                logger.info("[Krishna-Chat] Primary Groq API responded successfully!")
+        except Exception as groq_err:
+            logger.warning("[Krishna-Chat] Groq API call failed (%s). Activating independent ChromaDB/Gita DB fallback...", groq_err)
 
-        # Step 2: Fallback - ChromaDB / Gita RAG Retrieval if Gemini API fails
+        # Step 2: Fallback - Independent ChromaDB / Gita DB Fallback (No extra Groq/Gemini API calls)
         if not assistant_reply:
-            rag_query = latest_user_msg
-            if profile and profile.get("focus_area") and profile.get("focus_area").lower() not in ("general", "none", ""):
-                rag_query = f"Bhagavad Gita wisdom for {latest_user_msg} in {profile['focus_area']}"
-
-            rag_context = ""
             try:
-                from services.krishna_rag_service import retrieve_relevant_shlokas_async, build_rag_context
-                if latest_user_msg:
-                    shlokas = await retrieve_relevant_shlokas_async(rag_query, top_k=5)
-                    rag_context = build_rag_context(shlokas)
-                    if rag_context:
-                        source = shlokas[0].get("source", "unknown") if shlokas else "unknown"
-                        logger.info(
-                            "[RAG-Fallback] Injecting %d Gita shlokas (source=%s) for query: '%s'",
-                            len(shlokas), source, rag_query[:60],
-                        )
+                from services.krishna_rag_service import retrieve_relevant_shlokas
+                shlokas = retrieve_relevant_shlokas(latest_user_msg, top_k=1)
+                if shlokas and len(shlokas) > 0:
+                    shloka_data = shlokas[0]
+                    ch = shloka_data.get("chapter", "")
+                    v = shloka_data.get("verse", "")
+                    txt = shloka_data.get("text", "")
+                    trans = shloka_data.get("translation", "")
+                    assistant_reply = (
+                        f"Arre mere bhakta, Bhagavad Gita (Adhyay {ch}, Shlok {v}) mein kaha gaya hai:\n\n"
+                        f"\"{txt}\"\n\n"
+                        f"Bhaavarth: {trans}\n\n"
+                        f"Sadaiv dharma aur karma ke maarg par chalo. Jai Shri Krishna! 🙏"
+                    )
             except Exception as rag_err:
-                logger.error("[RAG-Fallback] ChromaDB retrieval failed: %s", rag_err)
+                logger.warning("[Krishna-Chat] ChromaDB RAG fallback attempt failed: %s", rag_err)
 
-            final_system_prompt = system_prompt
-            if rag_context:
-                final_system_prompt = system_prompt + f"\n\n{rag_context}"
-
+        if not assistant_reply:
             try:
-                assistant_reply = await _call_gemini_primary(db_messages, final_system_prompt, model_name="gemma-4-26b-a4b-it")
+                from utils.krishna_gita_db import get_gita_solution
+                sol = get_gita_solution(latest_user_msg)
+                assistant_reply = sol.get("response", "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏")
             except Exception as fallback_err:
-                logger.error("[Krishna-Chat] Fallback LLM generation failed: %s", fallback_err)
+                logger.error("[Krishna-Chat] Fallback retrieval failed: %s", fallback_err)
                 assistant_reply = "Arre mere bhakta, tumhaare mann ke is chintan ko main samajh raha hoon. Chalo, hum jeevan aur aatm-gyaan ke maarg par baatein karte hain. Jai Shri Krishna! 🙏"
             
         # Apply regex shloka replacement for any dynamic shloka references
@@ -12457,7 +12463,7 @@ async def extract_user_kyc_text_from_image(
     image_base64: Optional[str] = Form(None),
     token_data: dict = Depends(verify_token)
 ):
-    """Use Google Cloud Vision to extract text from user KYC images (jobs flow)."""
+    """Use Google Cloud Vision to extract text from user KYC images."""
     if vision is None:
         raise HTTPException(status_code=501, detail="Google Cloud Vision client library is not installed")
 
@@ -12882,212 +12888,6 @@ async def delete_vendor(vendor_id: str, otp: str = Query(None), token_data: dict
     
     logger.info(f"Vendor {vendor_id} deleted by {user_id}")
     return {"message": "Vendor deleted successfully"}
-
-
-# =================== JOB PROFILES ===================
-
-@api_router.post("/jobs/profile")
-async def create_or_update_job_profile(data: JobProfileCreate, token_data: dict = Depends(verify_token)):
-    """Create or update current user's job profile."""
-    db = await get_db()
-    user_id = token_data["user_id"]
-    user = await db.get_document('users', user_id)
-
-    profile_payload = {
-        "owner_id": user_id,
-        "name": (data.name or (user or {}).get('name') or '').strip(),
-        "current_address": (data.current_address or '').strip(),
-        "experience_years": data.experience_years or 0,
-        "profession": (data.profession or '').strip(),
-        "preferred_work_city": (data.preferred_work_city or '').strip(),
-        "latitude": data.latitude,
-        "longitude": data.longitude,
-        "location_link": data.location_link,
-        "photos": data.photos or [],
-        "cv_url": data.cv_url,
-    }
-
-    existing = await db.find_one('job_profiles', [('owner_id', '==', user_id)])
-    if existing:
-        await db.update_document('job_profiles', existing['id'], profile_payload)
-        profile = await db.get_document('job_profiles', existing['id'])
-        return profile
-
-    profile_id = await db.create_document('job_profiles', profile_payload)
-    await db.update_document('users', user_id, {'job_profile_id': profile_id})
-    profile_payload['id'] = profile_id
-    return profile_payload
-
-
-@api_router.get("/jobs/profile/my")
-async def get_my_job_profile(token_data: dict = Depends(verify_token)):
-    """Get current user's job profile."""
-    db = await get_db()
-    user_id = token_data["user_id"]
-    profile = await db.find_one('job_profiles', [('owner_id', '==', user_id)])
-    return profile
-
-
-def _can_view_job_cv(requester_user: Optional[dict], profile_owner_id: Optional[str]) -> bool:
-    if not requester_user:
-        return False
-    if requester_user.get('id') == profile_owner_id:
-        return True
-    return requester_user.get('kyc_status') == 'verified'
-
-
-@api_router.get("/jobs/profile/{profile_id}")
-async def get_job_profile(profile_id: str, token_data: dict = Depends(verify_token)):
-    """Get a single job profile with CV visibility gated by KYC verification."""
-    db = await get_db()
-    requester_id = token_data["user_id"]
-
-    profile = await db.get_document('job_profiles', profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Job profile not found")
-
-    requester_user = await db.get_document('users', requester_id)
-    if not _can_view_job_cv(requester_user, profile.get('owner_id')):
-        profile['cv_url'] = None
-
-    return profile
-
-
-@api_router.get("/jobs/profiles")
-async def get_job_profiles(
-    search: Optional[str] = None,
-    profession: Optional[str] = None,
-    city: Optional[str] = None,
-    lat: Optional[float] = None,
-    lng: Optional[float] = None,
-    limit: int = 50,
-    token_data: Optional[dict] = Depends(optional_verify_token)
-):
-    """Get job profiles with optional filters."""
-    db = await get_db()
-    profiles = await db.query_documents('job_profiles', limit=limit)
-    requester_user = None
-    requester_id = None
-    if token_data and token_data.get("user_id"):
-        requester_id = token_data["user_id"]
-        requester_user = await db.get_document('users', requester_id)
-
-    if profession:
-        profession_lower = profession.lower()
-        profiles = [p for p in profiles if profession_lower in str(p.get('profession', '')).lower()]
-
-    if city:
-        city_lower = city.lower()
-        profiles = [p for p in profiles if city_lower in str(p.get('preferred_work_city', '')).lower()]
-
-    if search:
-        term = search.lower()
-        profiles = [
-            p for p in profiles
-            if term in str(p.get('name', '')).lower()
-            or term in str(p.get('profession', '')).lower()
-            or term in str(p.get('preferred_work_city', '')).lower()
-        ]
-
-    if lat and lng:
-        import math
-        for profile in profiles:
-            if profile.get('latitude') and profile.get('longitude'):
-                R = 6371
-                lat1, lon1 = math.radians(lat), math.radians(lng)
-                lat2, lon2 = math.radians(profile['latitude']), math.radians(profile['longitude'])
-                dlat, dlon = lat2 - lat1, lon2 - lon1
-                a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
-                profile['distance'] = R * 2 * math.asin(math.sqrt(a))
-            else:
-                profile['distance'] = None
-        profiles.sort(key=lambda p: p.get('distance') or 999999)
-
-    for profile in profiles:
-        if not _can_view_job_cv(requester_user, profile.get('owner_id')):
-            profile['cv_url'] = None
-
-    return profiles
-
-
-@api_router.post("/jobs/profile/{profile_id}/upload")
-async def upload_job_profile_file(
-    profile_id: str,
-    doc_type: str = Form(...),
-    file: UploadFile = File(...),
-    token_data: dict = Depends(verify_token)
-):
-    """Upload job profile assets (photo/cv) to Firebase Storage."""
-    from firebase_admin import storage as firebase_storage
-
-    db = await get_db()
-    user_id = token_data["user_id"]
-    profile = await db.get_document('job_profiles', profile_id)
-    if not profile:
-        raise HTTPException(status_code=404, detail="Job profile not found")
-
-    if profile.get('owner_id') != user_id:
-        raise HTTPException(status_code=403, detail="Only the owner can upload profile files")
-
-    if doc_type not in {'photo', 'cv'}:
-        raise HTTPException(status_code=400, detail="doc_type must be one of: photo, cv")
-
-    file_bytes = await file.read()
-    if not file_bytes:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty")
-
-    content_type = file.content_type or 'application/octet-stream'
-    if doc_type == 'photo' and content_type not in {'image/png', 'image/jpeg', 'image/jpg', 'image/webp'}:
-        raise HTTPException(status_code=400, detail="Photo must be an image")
-    if doc_type == 'cv' and content_type not in {
-        'application/pdf', 'image/png', 'image/jpeg', 'image/jpg',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    }:
-        raise HTTPException(status_code=400, detail="CV must be PDF, DOC, DOCX, or image")
-
-    extension = 'bin'
-    if '/' in content_type:
-        extension = content_type.split('/')[-1].replace('jpeg', 'jpg')
-
-    bucket_name = os.getenv('FIREBASE_STORAGE_BUCKET') or os.getenv('EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET') or 'sanatan-lok.firebasestorage.app'
-    try:
-        bucket = firebase_storage.bucket(bucket_name) if bucket_name else firebase_storage.bucket()
-
-        timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
-        if doc_type == 'photo':
-            object_path = f"jobs/{profile_id}/photos/{timestamp}.{extension}"
-        else:
-            object_path = f"jobs/{profile_id}/cv/cv.{extension}"
-
-        blob = bucket.blob(object_path)
-        download_token = uuid4().hex
-        blob.metadata = {'firebaseStorageDownloadTokens': download_token}
-        blob.upload_from_string(file_bytes, content_type=content_type)
-
-        public_url = (
-            f"https://firebasestorage.googleapis.com/v0/b/{bucket.name}/o/"
-            f"{quote(object_path, safe='')}?alt=media&token={download_token}"
-        )
-    except Exception as exc:
-        logger.exception("Job profile file upload failed for profile_id=%s doc_type=%s", profile_id, doc_type)
-        raise HTTPException(status_code=500, detail=f"Firebase Storage upload failed: {str(exc)}")
-
-    update_data = {}
-    if doc_type == 'photo':
-        update_data['photos'] = [public_url]
-    else:
-        update_data['cv_url'] = public_url
-
-    await db.update_document('job_profiles', profile_id, update_data)
-
-    return {
-        "message": "File uploaded",
-        "doc_type": doc_type,
-        "path": object_path,
-        "url": public_url,
-        **update_data,
-    }
 
 
 @api_router.get("/admin/vendors/review-queue")
@@ -14208,8 +14008,9 @@ async def create_sos_alert(data: SOSCreate, token_data: dict = Depends(verify_to
         except Exception as e:
             logger.error(f"Failed to broadcast SOS to community {comm_id}: {e}")
     
-    # Emit SOS alert via socket to nearby users
-    await sio.emit('sos_alert', sos_data)
+    # Emit SOS alert via socket to target (notified) users only, not a global broadcast
+    if all_target_user_ids:
+        await sio.emit('sos_alert', sos_data, room=[f"user_{uid}" for uid in all_target_user_ids])
     
     # Start escalation process in background
     await task_queue.enqueue(_escalate_sos_notifications, sos_id, all_target_user_ids)
@@ -14358,7 +14159,14 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                     'reputation': reputation
                 })
     
-    await sio.emit('sos_resolved', {'sos_id': sos_id, 'status': status})
+    # Emit to creator and all responders only (targeted, not a global broadcast)
+    resolved_rooms = [f"user_{alert.get('user_id')}"] if alert.get('user_id') else []
+    resolved_rooms += [
+        f"user_{r.get('user_id')}"
+        for r in (alert.get('responders', []) or [])
+        if r.get('user_id')
+    ]
+    await sio.emit('sos_resolved', {'sos_id': sos_id, 'status': status}, room=resolved_rooms)
     
     logger.info(f"SOS alert {sos_id} marked as {status} by {user_id}")
     return {"message": f"SOS alert {status}"}
@@ -14438,13 +14246,20 @@ async def respond_to_sos(sos_id: str, response: str = Body(..., embed=True), tok
         except Exception as e:
             logger.error(f"Failed to save SOS responder notification: {e}")
 
+    # Emit to creator and all responders only (targeted, not a global broadcast)
+    response_rooms = [f"user_{creator_user_id}"] if creator_user_id else []
+    for existing in (updated_alert or {}).get('responders', []) or []:
+        rid = existing.get('user_id')
+        if rid and f"user_{rid}" not in response_rooms:
+            response_rooms.append(f"user_{rid}")
+
     await sio.emit('sos_response', {
         'sos_id': sos_id,
         'responder_id': user_id,
         'responder_name': (user or {}).get('name', 'User'),
         'responder_count': responder_count,
         'response': response
-    })
+    }, room=response_rooms)
     
     logger.info(f"User {user_id} responded to SOS {sos_id}: {response} (total responders: {responder_count})")
     return {"message": f"Response recorded: {response}"}
@@ -14510,11 +14325,13 @@ async def update_sos_responder_status(
     except Exception as e:
         logger.error(f"Failed to save SOS responder status update notification: {e}")
 
-    await sio.emit('sos_responder_status', {
-        'sos_id': sos_id,
-        'responder_id': user_id,
-        'status': status
-    })
+    # Emit to creator only (targeted, not a global broadcast)
+    if alert.get('user_id'):
+        await sio.emit('sos_responder_status', {
+            'sos_id': sos_id,
+            'responder_id': user_id,
+            'status': status
+        }, room=f"user_{alert.get('user_id')}")
 
     return {"message": "Responder status updated"}
 
@@ -14885,13 +14702,14 @@ RASHI_TO_ENGLISH = {
     "Dhanu": "sagittarius", "Makar": "capricorn", "Kumbh": "aquarius", "Meen": "pisces"
 }
 
-async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
+async def _generate_horoscope_with_groq(zodiac_name: str) -> dict:
     import os
     import asyncio
     import json
     import random
     from datetime import datetime
     from utils.cache import cache_manager
+    from utils.groq_rate_limiter import groq_rate_limiter
     
     zodiac_clean = zodiac_name.lower().strip()
     today = datetime.utcnow().strftime("%Y-%m-%d")
@@ -14905,14 +14723,19 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
     except Exception as e:
         logger.warning("Failed to fetch cached horoscope for %s: %s", zodiac_clean, e)
     
+    acquired = await groq_rate_limiter.acquire(estimated_tokens=500, timeout=15.0)
+    if not acquired:
+        logger.warning("[Horoscope] Groq rate limit reached, triggering mock generator")
+        raise RuntimeError("Groq Rate limit exceeded")
+
     def _call():
         import requests
-        nvidia_key = os.environ.get("NVIDIA_API_KEY")
-        invoke_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+        groq_key = os.environ.get("GROQ_API_KEY")
+        invoke_url = "https://api.groq.com/openai/v1/chat/completions"
 
         headers = {
-            "Authorization": f"Bearer {nvidia_key}",
-            "Accept": "application/json"
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json"
         }
 
         prompt = (
@@ -14934,16 +14757,13 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
         )
 
         payload = {
-            "model": "google/gemma-4-31b-it",
+            "model": os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b"),
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": 1024,
-            "temperature": 1.0,
-            "top_p": 0.95,
-            "stream": False,
-            "chat_template_kwargs": {"enable_thinking": False}
+            "temperature": 0.7
         }
 
-        response = requests.post(invoke_url, headers=headers, json=payload, timeout=45)
+        response = requests.post(invoke_url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
         result = response.json()
         return result.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -14977,7 +14797,7 @@ async def _generate_horoscope_with_gemini(zodiac_name: str) -> dict:
             
         return data
     except Exception as e:
-        logger.warning("Gemini horoscope generation failed, using mock generator: %s", e)
+        logger.warning("Groq horoscope generation failed, using mock generator: %s", e)
         
         # Seed random to ensure different signs have completely different, day-consistent values
         import hashlib
@@ -15058,7 +14878,7 @@ async def get_daily_horoscope_api(
         # Handle case where user passes Hindi name
         name = RASHI_TO_ENGLISH.get(zodiac_name, name)
         
-        payload = await _generate_horoscope_with_gemini(name)
+        payload = await _generate_horoscope_with_groq(name)
         return payload
     except Exception as exc:
         logger.error("Horoscope fetch failed: %s", exc)
@@ -15070,7 +14890,7 @@ async def get_horoscope(rashi: str):
     """Get daily horoscope for a rashi (using Gemini)"""
     english_name = RASHI_TO_ENGLISH.get(rashi, rashi.lower())
     try:
-        horoscope = await _generate_horoscope_with_gemini(english_name)
+        horoscope = await _generate_horoscope_with_groq(english_name)
         # Return in a format compatible with old structure if needed, or just the new one
         return {
             "rashi": rashi,
@@ -15102,7 +14922,7 @@ async def get_user_horoscope(token_data: dict = Depends(verify_token)):
     
     english_name = RASHI_TO_ENGLISH.get(user_rashi, user_rashi.lower())
     try:
-        horoscope = await _generate_horoscope_with_gemini(english_name)
+        horoscope = await _generate_horoscope_with_groq(english_name)
         return {
             "has_profile": True,
             "rashi": user_rashi,
@@ -15824,6 +15644,7 @@ async def _remove_socket_from_voice_room(sid: str):
             ROOM_PARTICIPANTS.pop(room, None)
 
     await sio.emit('peer_left', {'peerId': peer_id}, room=room, skip_sid=sid)
+    await _broadcast_room_active_count(room)
 
 @sio.event
 async def connect(sid, environ, auth):
@@ -15848,6 +15669,7 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     logger.info(f"Socket disconnected: {sid}")
+    await _remove_socket_from_voice_room(sid)
 async def _broadcast_room_active_count(room: str):
     if not room:
         return

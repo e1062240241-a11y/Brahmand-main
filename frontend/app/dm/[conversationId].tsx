@@ -445,6 +445,7 @@ const DirectMessageScreen = () => {
   const dmT = (key: keyof typeof DM_STRINGS.en) => DM_STRINGS[dmLang]?.[key] ?? DM_STRINGS.en[key];
   const flatListRef = useRef<FlatList>(null);
   const textInputRef = useRef<TextInput>(null);
+  const isNearBottomRef = useRef(true);
   const insets = useSafeAreaInsets();
   const windowDimensions = useWindowDimensions();
   const windowHeight = windowDimensions.height; // ponytail: quick fix for missing windowHeight variable
@@ -469,6 +470,15 @@ const DirectMessageScreen = () => {
       hideSubscription.remove();
     };
   }, [windowDimensions.height]);
+
+  // Auto-scroll to latest message when new ones arrive and user is near the bottom
+  useEffect(() => {
+    if (!messages.length) return;
+    if (!isNearBottomRef.current) return;
+    const t = setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    return () => clearTimeout(t);
+  }, [messages.length]);
+
   const [conversation, setConversation] = useState<Conversation | null>(() => {
     if (userId && userName) {
       return {
@@ -671,6 +681,8 @@ const DirectMessageScreen = () => {
     if (isFocused) {
       setHasMarkedRead(false);
       setTimeout(() => markMessagesAsRead(), 500);
+      isNearBottomRef.current = true;
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 300);
     }
   }, [isFocused]);
 
@@ -1113,6 +1125,29 @@ const DirectMessageScreen = () => {
     let pollingInterval: NodeJS.Timeout | null = null;
     const socketListenerId = `dm_${conversationId}_${Date.now()}`;
 
+    const stopPolling = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (pollingInterval) return;
+      pollingInterval = setInterval(async () => {
+        if (AppState.currentState !== 'active') return;
+        await fetchMessagesViaAPI();
+      }, 4000);
+    };
+
+    const handleSocketConnect = () => {
+      stopPolling();
+    };
+
+    const handleSocketDisconnect = () => {
+      startPolling();
+    };
+
     const handleRequestUpdated = (data: any) => {
       if (data && (data.chat_id === conversationId || data.conversation_id === conversationId)) {
         console.log('[Chat] dm_request_updated event received:', data);
@@ -1128,11 +1163,14 @@ const DirectMessageScreen = () => {
       }
     };
 
+    socketService.onEvent('connect', handleSocketConnect);
+    socketService.onEvent('disconnect', handleSocketDisconnect);
+    socketService.onEvent('dm_request_updated', handleRequestUpdated);
+
     (async () => {
       try {
         await socketService.connect();
         socketService.joinRoom(conversationId!);
-        socketService.onEvent('dm_request_updated', handleRequestUpdated);
 
         socketService.onMessage(socketListenerId, async (rawMessage: any) => {
           if (isBlockedRef.current) return;
@@ -1170,7 +1208,9 @@ const DirectMessageScreen = () => {
             }
             setHasMarkedRead(false);
             markMessagesAsRead();
-            setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+            if (isNearBottomRef.current) {
+              setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+            }
           } else {
             setHasMarkedRead(false);
             await Promise.allSettled([
@@ -1180,17 +1220,24 @@ const DirectMessageScreen = () => {
           }
         });
       } catch (error) {
-        console.error('[Chat] Socket real-time setup failed:', error);
+        console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
+        startPolling();
       }
     })();
+
+    if (!socketService.isConnected() && !pollingInterval) {
+      startPolling();
+    }
 
     setTimeout(() => markMessagesAsRead(), 1000);
 
     return () => {
       socketService.offEvent('dm_request_updated', handleRequestUpdated);
+      socketService.offEvent('connect', handleSocketConnect);
+      socketService.offEvent('disconnect', handleSocketDisconnect);
       socketService.offMessage(socketListenerId);
       socketService.leaveRoom(conversationId!);
-      if (pollingInterval) clearInterval(pollingInterval);
+      stopPolling();
     };
   }, [conversationId, fetchConversation, fetchMessagesViaAPI, markMessagesAsRead, uploadingMedia]);
 
@@ -2036,8 +2083,19 @@ const DirectMessageScreen = () => {
               renderItem={renderMessage}
               keyExtractor={(item, index) => `${item.id || index}_${index}`}
               contentContainerStyle={[styles.messagesList, { paddingBottom: bottomPadding + 8 }]}
-              onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-              onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+              onContentSizeChange={() => {
+                if (isNearBottomRef.current) flatListRef.current?.scrollToEnd({ animated: false });
+              }}
+              onLayout={() => {
+                isNearBottomRef.current = true;
+                flatListRef.current?.scrollToEnd({ animated: false });
+              }}
+              onScroll={(e) => {
+                const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                isNearBottomRef.current =
+                  contentOffset.y + layoutMeasurement.height >= contentSize.height - 120;
+              }}
+              scrollEventThrottle={100}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               ListEmptyComponent={

@@ -531,6 +531,31 @@ const ChatScreen = ({
       await fetchCommunityInfo();
     };
 
+    const startPolling = () => {
+      if (pollingInterval) return;
+      pollingInterval = setInterval(async () => {
+        if (AppState.currentState !== 'active') return;
+        const shouldContinue = await fetchMessages(true);
+        if (shouldContinue === false && pollingInterval) {
+          clearInterval(pollingInterval);
+          pollingInterval = null;
+        }
+      }, 4000);
+    };
+
+    const stopPolling = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+    };
+
+    const handleSocketConnect = () => stopPolling();
+    const handleSocketDisconnect = () => startPolling();
+
+    socketService.onEvent('connect', handleSocketConnect);
+    socketService.onEvent('disconnect', handleSocketDisconnect);
+
     const setupSocket = async () => {
       try {
         await socketService.connect();
@@ -538,37 +563,24 @@ const ChatScreen = ({
         socketService.onMessage(listenerId, (message) => addRealtimeMessage(message));
       } catch (error) {
         console.error('[Chat] Socket real-time setup failed, falling back to polling:', error);
-        if (!pollingInterval) {
-          pollingInterval = setInterval(async () => {
-            if (AppState.currentState !== 'active') return;
-            const shouldContinue = await fetchMessages(true);
-            if (shouldContinue === false && pollingInterval) {
-              clearInterval(pollingInterval);
-            }
-          }, 3000);
-        }
+        startPolling();
       }
     };
 
     loadClearedAtAndData();
 
-    if (Platform.OS === 'web') {
-      // Web uses polling only for group/community chat; socket transport is unreliable in this setup.
-      pollingInterval = setInterval(async () => {
-        if (AppState.currentState !== 'active') return;
-        const shouldContinue = await fetchMessages(true);
-        if (shouldContinue === false && pollingInterval) {
-          clearInterval(pollingInterval);
-        }
-      }, 3000);
-    } else {
-      setupSocket();
+    setupSocket();
+
+    if (!socketService.isConnected() && !pollingInterval) {
+      startPolling();
     }
 
     return () => {
       socketService.leaveRoom(room);
+      socketService.offEvent('connect', handleSocketConnect);
+      socketService.offEvent('disconnect', handleSocketDisconnect);
       socketService.offMessage(listenerId);
-      if (pollingInterval) clearInterval(pollingInterval);
+      stopPolling();
     };
   }, [type, id, subgroup, fetchMessages, fetchCircleInfo, clearChatStorageKey, clearedAtMs, addRealtimeMessage]);
 
@@ -707,8 +719,9 @@ const ChatScreen = ({
         await database.write(async () => {
           const collection = database.get('chats');
           const records = await collection.query(Q.where('chat_id', id)).fetch();
-          for (const record of records) {
-            await record.destroyPermanently();
+          const batchOps = records.map(record => record.prepareDestroyPermanently());
+          if (batchOps.length > 0) {
+            await database.batch(...batchOps);
           }
         });
       } catch (err) {}
@@ -967,13 +980,17 @@ const ChatScreen = ({
             await database.write(async () => {
               const chatsColl = database.get('chats');
               const msgs = await chatsColl.query(Q.where('chat_id', id)).fetch();
-              for (const m of msgs) await m.destroyPermanently();
+              const batchOps = msgs.map(m => m.prepareDestroyPermanently());
 
               const convsColl = database.get('conversations');
               try {
                 const conv = await convsColl.find(id);
-                await conv.destroyPermanently();
+                batchOps.push(conv.prepareDestroyPermanently());
               } catch (e) {}
+
+              if (batchOps.length > 0) {
+                await database.batch(...batchOps);
+              }
             });
           } catch (e) {}
         }

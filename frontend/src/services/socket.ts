@@ -23,8 +23,10 @@ class SocketService {
       transports: Platform.OS === 'web' || isLocalTunnel ? ['polling'] : ['websocket', 'polling'],
       auth: { token },
       autoConnect: true,
-      reconnectionAttempts: 5,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       timeout: isLocalTunnel ? 20000 : 10000,
       ...(Platform.OS === 'web' ? { upgrade: false, withCredentials: false } : {}),
     };
@@ -35,32 +37,46 @@ class SocketService {
       };
     }
 
-    this.socket = io(SOCKET_URL, socketOptions);
+    if (!this.socket) {
+      this.socket = io(SOCKET_URL, socketOptions);
 
-    this.socket.on('connect', () => {
-      console.log('Socket connected');
-    });
-
-    this.socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected', reason);
-    });
-
-    this.socket.on('new_message', (message) => {
-      this.messageCallbacks.forEach((callback) => callback(message));
-    });
-
-    this.socket.on('new_dm', (message) => {
-      this.messageCallbacks.forEach((callback) => callback(message));
-    });
-
-    for (const [eventName, callbacks] of this.eventCallbacks.entries()) {
-      callbacks.forEach((callback) => {
-        this.socket?.on(eventName, callback);
+      this.socket.on('connect', () => {
+        console.log('Socket connected');
       });
+
+      this.socket.on('disconnect', (reason) => {
+        console.log('Socket disconnected', reason);
+      });
+
+      this.socket.on('new_message', (message) => {
+        this.messageCallbacks.forEach((callback) => callback(message));
+      });
+
+      this.socket.on('new_dm', (message) => {
+        this.messageCallbacks.forEach((callback) => callback(message));
+      });
+
+      for (const [eventName, callbacks] of this.eventCallbacks.entries()) {
+        callbacks.forEach((callback) => {
+          this.socket?.on(eventName, callback);
+        });
+      }
+    } else if (!this.socket.connected) {
+      // Socket exists but is (re)connecting; reuse it instead of creating a
+      // duplicate. socket.io reconnection handles the rest.
+      this.socket.connect();
     }
 
     this.connectPromise = new Promise<void>((resolve, reject) => {
       if (!this.socket) return reject(new Error('Socket not initialized'));
+      const socket = this.socket;
+
+      const connectTimeoutMs = isLocalTunnel ? 20000 : 10000;
+      const onConnectTimeout = setTimeout(() => {
+        cleanup();
+        this.connectPromise = null;
+        reject(new Error(`Socket connect timed out after ${connectTimeoutMs}ms`));
+      }, connectTimeoutMs);
 
       const onConnect = () => {
         cleanup();
@@ -70,35 +86,19 @@ class SocketService {
       const onConnectError = (err: any) => {
         cleanup();
         this.connectPromise = null;
-        if (this.socket) {
-          this.socket.disconnect();
-          this.socket = null;
-        }
         reject(err);
       };
 
-      const connectTimeoutMs = isLocalTunnel ? 20000 : 10000;
-      const onConnectTimeout = setTimeout(() => {
-        cleanup();
-        this.connectPromise = null;
-        if (this.socket) {
-          this.socket.disconnect();
-          this.socket = null;
-        }
-        reject(new Error(`Socket connect timed out after ${connectTimeoutMs}ms`));
-      }, connectTimeoutMs);
-
       const cleanup = () => {
-        if (!this.socket) return;
         clearTimeout(onConnectTimeout);
-        this.socket.off('connect', onConnect);
-        this.socket.off('connect_error', onConnectError);
-        this.socket.off('connect_timeout', onConnectError);
+        socket.off('connect', onConnect);
+        socket.off('connect_error', onConnectError);
+        socket.off('connect_timeout', onConnectError);
       };
 
-      this.socket.once('connect', onConnect);
-      this.socket.once('connect_error', onConnectError);
-      this.socket.once('connect_timeout', onConnectError);
+      socket.once('connect', onConnect);
+      socket.once('connect_error', onConnectError);
+      socket.once('connect_timeout', onConnectError);
     });
 
     return this.connectPromise;
@@ -106,10 +106,17 @@ class SocketService {
 
   disconnect() {
     if (this.socket) {
+      this.socket.removeAllListeners();
       this.socket.disconnect();
       this.socket = null;
     }
     this.connectPromise = null;
+    this.messageCallbacks.clear();
+    this.eventCallbacks.clear();
+  }
+
+  isConnected(): boolean {
+    return !!(this.socket && this.socket.connected);
   }
 
   joinRoom(room: string, peerId?: string) {

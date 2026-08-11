@@ -57,7 +57,6 @@ export const useFeedStore = create<FeedState>((set, get) => ({
         const seenIds = new Set<string>();
         for (const post of posts) {
           if (!post || post.id === undefined || post.id === null || String(post.id).trim() === '') {
-            console.warn('[Feed Validation Store] Post missing valid ID:', post);
             continue;
           }
           const idStr = String(post.id);

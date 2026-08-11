@@ -59,8 +59,8 @@ export const UploadProgressBanner = () => {
   if (!showBanner) return null;
 
   // Determine if we are on a tab page where the tab-bar is visible.
-  // Tab bar pages typically include home, messages, jaap, jobs, profile.
-  const tabPages = ['/home', '/messages', '/jaap', '/jobs', '/profile'];
+  // Tab bar pages typically include home, messages, jaap, profile.
+  const tabPages = ['/home', '/messages', '/jaap', '/profile'];
   const isTabPage = tabPages.some(page => pathname.startsWith(page)) || pathname === '/' || pathname === '';
   const bottomPosition = isTabPage ? 90 : 30;
 

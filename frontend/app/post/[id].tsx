@@ -157,15 +157,12 @@ const PostScreen = () => {
       const seenIds = new Set<string>();
       for (const item of rawItems) {
         if (!item || item.id === undefined || item.id === null || String(item.id).trim() === '') {
-          console.warn('[Post Detail Feed] Post missing valid ID:', item);
           continue;
         }
         const idStr = String(item.id);
         if (!seenIds.has(idStr)) {
           seenIds.add(idStr);
           cleanItems.push(item);
-        } else {
-          console.warn('[Post Detail Feed] Duplicate post ID in incoming chunk:', idStr);
         }
       }
 
@@ -622,7 +619,6 @@ const PostScreen = () => {
 
   const keyExtractor = useCallback((item: any, index: number) => {
     if (!item || item.id === undefined || item.id === null) {
-      console.warn('[Post Detail keyExtractor] Post missing valid ID:', item);
       return `post-idx-${index}`;
     }
     return String(item.id);

@@ -121,15 +121,7 @@ export const secureStorage = {
           // ignore
         }
 
-        // If decryption failed, but the value doesn't look like base64 ciphertext
-        // (e.g. contains spaces, special characters, or dots of a JWT token),
-        // we can return it as plaintext fallback.
-        const isBase64Ciphertext = /^[A-Za-z0-9+/=]+$/.test(encryptedValue);
-        if (!isBase64Ciphertext || encryptedValue.includes('.')) {
-          return encryptedValue;
-        }
-
-        // Otherwise, it is ciphertext that we failed to decrypt. Return null to prevent JSON parsing crashes.
+        // If decryption failed, return null to prevent JSON parsing crashes.
         return null;
       } catch (decryptError) {
         console.warn(`[SecureStorage] Error during decryption of key "${key}":`, decryptError);
