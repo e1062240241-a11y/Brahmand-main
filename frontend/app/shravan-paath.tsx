@@ -79,15 +79,36 @@ const NamasteIcon = ({ size = 16, color = '#8A5A2B' }) => (
   </Svg>
 );
 
-const shivlingImg = require('../assets/images/shivling.jpeg');
+const shivlingImg = require('../assets/images/shivling.webp');
 
 // High quality sharp Shivling Artwork for Section 3
 const ShivlingArtwork = () => (
-  <Image
-    source={shivlingImg}
-    style={{ width: 130, height: 150, borderRadius: 16 }}
-    resizeMode="cover"
-  />
+  <View
+    style={{
+      width: 120,
+      height: 165,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: '#2C3936',
+      position: 'relative',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 3,
+    }}
+  >
+    <Image
+      source={shivlingImg}
+      style={{
+        width: '100%',
+        height: 205,
+        position: 'absolute',
+        bottom: 0,
+      }}
+      resizeMode="cover"
+    />
+  </View>
 );
 
 export default function ShravanPaathPage() {
@@ -352,7 +373,7 @@ export default function ShravanPaathPage() {
           </View>
 
           {/* SECTION 3: WHAT TO EXPECT IN THIS SHIV PAATH */}
-          <View style={[styles.sectionCard, Platform.OS === 'android' && { marginTop: -28 }]}>
+          <View style={[styles.sectionCard, { marginBottom: 2 }, Platform.OS === 'android' && { marginTop: -28 }]}>
             <View style={styles.cardHeaderRow}>
               <Text style={styles.cardHeaderTitle}>What to expect in this Shiv Paath</Text>
               <Text style={styles.cardOrnament}>⤝</Text>
@@ -417,14 +438,23 @@ export default function ShravanPaathPage() {
             <LinearGradient
               colors={
                 interested
-                  ? ['#2E7D32', '#4CAF50', '#81C784', '#2E7D32']
-                  : ['#FF6B00', '#F25C05', '#D85A00', '#FF8C00']
+                  ? ['#4CAF50', '#81C784', '#2E7D32']
+                  : ['#FFB74D', '#FF6B00', '#D85A00']
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.spaceBtnBorderGradient}
             >
-              <View style={[styles.spaceBtnInner, interested && styles.spaceBtnInnerActive]}>
+              <LinearGradient
+                colors={
+                  interested
+                    ? ['#2E7D32', '#1B5E20']
+                    : ['#FF6B00', '#C84B00']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0.9 }}
+                style={styles.spaceBtnInner}
+              >
                 {/* Background Stars Layer (Only Stars Rotating Animation) */}
                 <Animated.View
                   pointerEvents="none"
@@ -453,21 +483,21 @@ export default function ShravanPaathPage() {
                       <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
                         <Path
                           d="M4.5 12.5L9.5 17.5L19.5 6.5"
-                          stroke="#4CAF50"
+                          stroke="#FFFFFF"
                           strokeWidth="3.5"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
                       </Svg>
                     ) : (
-                      <Ionicons name="notifications" size={18} color="#FFDB3B" />
+                      <Ionicons name="notifications" size={18} color="#FFF8E7" />
                     )}
                   </View>
                   <Text style={styles.spaceStrongText}>
                     {interested ? 'REGISTRATION CONFIRMED' : 'मैं INTERESTED हूँ'}
                   </Text>
                 </View>
-              </View>
+              </LinearGradient>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -820,7 +850,8 @@ const styles = StyleSheet.create({
   /* COSMIC SPACE ANIMATED BUTTON STYLES (Clean Rotating Stars & Orange Border) */
   spaceBtnContainer: {
     width: '100%',
-    marginVertical: 10,
+    marginTop: 2,
+    marginBottom: 10,
     alignSelf: 'center',
     shadowColor: '#D85A00',
     shadowOffset: { width: 0, height: 4 },
@@ -869,8 +900,8 @@ const styles = StyleSheet.create({
     width: 2.5,
     height: 2.5,
     borderRadius: 1.25,
-    backgroundColor: '#FFFFFF',
-    opacity: 0.7,
+    backgroundColor: '#FFF59D',
+    opacity: 0.85,
   },
   starDot3: {
     position: 'absolute',
@@ -879,7 +910,7 @@ const styles = StyleSheet.create({
     width: 3.5,
     height: 3.5,
     borderRadius: 1.75,
-    backgroundColor: '#FFDB3B',
+    backgroundColor: '#FFECB3',
     opacity: 0.95,
   },
   starDot4: {
@@ -899,8 +930,8 @@ const styles = StyleSheet.create({
     width: 3,
     height: 3,
     borderRadius: 1.5,
-    backgroundColor: '#FE53BB',
-    opacity: 0.85,
+    backgroundColor: '#FFD54F',
+    opacity: 0.9,
   },
   starDot6: {
     position: 'absolute',
@@ -909,8 +940,8 @@ const styles = StyleSheet.create({
     width: 2.5,
     height: 2.5,
     borderRadius: 1.25,
-    backgroundColor: '#8F51EA',
-    opacity: 0.75,
+    backgroundColor: '#FFF8E7',
+    opacity: 0.85,
   },
   starDot7: {
     position: 'absolute',
@@ -920,7 +951,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: '#FFFFFF',
-    opacity: 0.9,
+    opacity: 0.95,
   },
   starDot8: {
     position: 'absolute',
@@ -929,8 +960,8 @@ const styles = StyleSheet.create({
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: '#FFFFFF',
-    opacity: 0.6,
+    backgroundColor: '#FFE082',
+    opacity: 0.8,
   },
   spaceBtnContentRow: {
     flexDirection: 'row',
