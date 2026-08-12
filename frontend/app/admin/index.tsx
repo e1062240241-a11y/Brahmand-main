@@ -1251,7 +1251,7 @@ export default function AdminPanelScreen() {
         </View>
         <View style={{ flex: 1, marginLeft: 10 }}>
           <Text style={styles.uploadBunnyTitle}>Upload Video to Bunny</Text>
-          <Text style={styles.uploadBunnySubtitle}>Saavan Katha Daily Video & Stream Manager</Text>
+          <Text style={styles.uploadBunnySubtitle}>Shravan Katha Daily Video & Stream Manager</Text>
         </View>
         <Ionicons name="arrow-forward" size={18} color="#FFF" />
       </TouchableOpacity>
