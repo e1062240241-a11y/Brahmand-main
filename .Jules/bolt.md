@@ -25,3 +25,6 @@
 ## 2026-08-10 - [Optimize WatermelonDB N+1 deletes]
 **Learning:** Found N+1 query loops when deleting records permanently from local SQLite WatermelonDB (e.g. iterating over records and calling `await record.destroyPermanently()`). In React Native, numerous sequential async calls over the bridge to SQLite cause significant performance bottlenecks and UI thread stutter.
 **Action:** Always batch deletes in WatermelonDB. Use `record.prepareDestroyPermanently()` to build an array of operations and commit them simultaneously with `await database.batch(...ops)`.
+## 2024-08-11 - [Optimize N+1 queries in SOS alerts resolution]
+**Learning:** Found N+1 queries in `resolve_sos` when processing responders. Iterating through responders and making individual `await db.create_document`, `await db.get_document`, and `await db.update_document` calls inside a loop creates significant latency for SOS alert resolution, potentially blocking the async event loop.
+**Action:** When handling a list of users (e.g. responders), always pre-fetch user documents using `await db.get_documents_batch`, queue up structural modifications or new records, and use `await db.batch_create_documents` and `await db.batch_update_documents` instead of calling individual methods in a loop.
