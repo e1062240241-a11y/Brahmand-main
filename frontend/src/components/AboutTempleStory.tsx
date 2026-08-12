@@ -402,9 +402,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   uiverseCardText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     textAlign: 'center',
+    lineHeight: 14,
   },
 
   /* 4. Restored Travel Section Cards */

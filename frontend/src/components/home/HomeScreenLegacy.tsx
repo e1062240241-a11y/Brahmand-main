@@ -10,7 +10,7 @@ import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { Animated, AppState, Dimensions, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { styles } from './home.styles';
 import { FEATURE_CARD_HEIGHT, FEATURE_CARD_WIDTH, FEATURE_SNAP_INTERVAL, PAGE_PADDING, SCREEN_WIDTH, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
@@ -868,52 +868,104 @@ const JaapBanners = React.memo(function JaapBanners({
                                     pointerEvents="none"
                                 />
 
-                                <View
-                                    pointerEvents="none"
-                                    style={{
-                                        position: 'absolute',
-                                        top: 8,
-                                        right: 10,
-                                        width: 52,
-                                        height: 52,
-                                        borderRadius: 26,
-                                        backgroundColor: '#F4C55A',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        borderWidth: 2,
-                                        borderColor: '#FFF8DC',
-                                        shadowColor: '#000',
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.4,
-                                        shadowRadius: 3,
-                                        elevation: 5,
-                                        zIndex: 10,
-                                    }}>
-                                    <View style={{
-                                        width: 44,
-                                        height: 44,
-                                        borderRadius: 22,
-                                        borderWidth: 1.5,
-                                        borderStyle: 'dashed',
-                                        borderColor: '#6B4500',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        paddingHorizontal: 2,
-                                    }}>
-                                        <Text style={{
-                                            color: '#6B4500',
-                                            fontSize: 5.5,
-                                            fontWeight: '800',
-                                            fontFamily: Platform.OS === 'ios' ? 'Montserrat' : 'Montserrat-ExtraBold',
-                                            textAlign: 'center',
-                                            lineHeight: 7,
-                                            letterSpacing: 0.1,
-                                            textTransform: 'uppercase',
-                                        }}>
-                                            FREE REGISTRATION
-                                        </Text>
-                                    </View>
-                                </View>
+                                {/* TOP RIGHT CORNER: HIGH VISIBILITY LIVE PILL BADGE WITH SUBTLE PULSE ANIMATION */}
+                                {(() => {
+                                    const pulseAnim = React.useRef(new Animated.Value(1)).current;
+                                    const pulseOpacity = React.useRef(new Animated.Value(0.4)).current;
+                                    React.useEffect(() => {
+                                        const loop = Animated.loop(
+                                            Animated.parallel([
+                                                Animated.sequence([
+                                                    Animated.timing(pulseAnim, {
+                                                        toValue: 1.15,
+                                                        duration: 1200,
+                                                        useNativeDriver: true,
+                                                    }),
+                                                    Animated.timing(pulseAnim, {
+                                                        toValue: 1,
+                                                        duration: 1200,
+                                                        useNativeDriver: true,
+                                                    }),
+                                                ]),
+                                                Animated.sequence([
+                                                    Animated.timing(pulseOpacity, {
+                                                        toValue: 0.05,
+                                                        duration: 1200,
+                                                        useNativeDriver: true,
+                                                    }),
+                                                    Animated.timing(pulseOpacity, {
+                                                        toValue: 0.4,
+                                                        duration: 1200,
+                                                        useNativeDriver: true,
+                                                    }),
+                                                ]),
+                                            ])
+                                        );
+                                        loop.start();
+                                        return () => loop.stop();
+                                    }, []);
+
+                                    return (
+                                        <View
+                                            pointerEvents="none"
+                                            style={{
+                                                position: 'absolute',
+                                                top: 8,
+                                                right: 8,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                backgroundColor: '#D32F2F',
+                                                paddingHorizontal: 9,
+                                                paddingVertical: 4,
+                                                borderRadius: 14,
+                                                borderWidth: 2,
+                                                borderColor: 'rgba(255, 255, 255, 0.25)',
+                                                shadowColor: '#D32F2F',
+                                                shadowOffset: { width: 0, height: 0 },
+                                                shadowOpacity: 0.8,
+                                                shadowRadius: 10,
+                                                elevation: 6,
+                                                zIndex: 10,
+                                            }}
+                                        >
+                                            {/* Outer Subtle Pulse Ring */}
+                                            <Animated.View
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: 6,
+                                                    width: 12,
+                                                    height: 12,
+                                                    borderRadius: 6,
+                                                    backgroundColor: '#FFFFFF',
+                                                    transform: [{ scale: pulseAnim }],
+                                                    opacity: pulseOpacity,
+                                                }}
+                                            />
+                                            {/* Solid Center Live Dot */}
+                                            <View
+                                                style={{
+                                                    width: 6,
+                                                    height: 6,
+                                                    borderRadius: 3,
+                                                    backgroundColor: '#FFFFFF',
+                                                    marginRight: 5,
+                                                    marginLeft: 1,
+                                                }}
+                                            />
+                                            <Text
+                                                style={{
+                                                    color: '#FFFFFF',
+                                                    fontSize: 10.5,
+                                                    fontWeight: '900',
+                                                    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
+                                                    letterSpacing: 0.6,
+                                                }}
+                                            >
+                                                LIVE
+                                            </Text>
+                                        </View>
+                                    );
+                                })()}
 
                                 <View
                                     pointerEvents="box-none"

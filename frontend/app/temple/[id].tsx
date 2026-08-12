@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { WebView } from 'react-native-webview';
-import { getTemple, getTemplePosts } from '../../src/services/api';
+import { getTemple } from '../../src/services/api';
 import { database } from '../../src/database';
 import { Q } from '@nozbe/watermelondb';
 import { COLORS, SPACING, BORDER_RADIUS } from '../../src/constants/theme';
@@ -2617,6 +2617,10 @@ export default function TempleDetailScreen() {
                     colors={['transparent', 'rgba(0,0,0,0.45)']}
                     style={styles.heroImageOverlay}
                   />
+                  <View style={styles.expandImageBadge}>
+                    <Ionicons name="expand-outline" size={12} color="#FFFFFF" />
+                    <Text style={styles.expandImageBadgeText}>Tap to view photo</Text>
+                  </View>
                 </TouchableOpacity>
 
                 {/* Floating Action Share FAB (Overlapping Hero & Content) */}
@@ -3053,6 +3057,26 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: 60,
+  },
+  expandImageBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  expandImageBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   floatingShareFab: {
     position: 'absolute',

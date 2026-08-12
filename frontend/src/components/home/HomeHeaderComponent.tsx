@@ -8,12 +8,206 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Animated, AppState, Image, ImageBackground, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { styles } from './home.styles';
 import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
+
+const DynamicEventBadge = React.memo(function DynamicEventBadge({
+    eventStatus,
+    targetLiveTime,
+}: {
+    eventStatus: 'upcoming' | 'starting_soon' | 'live' | 'between_streams' | 'ended' | 'campaign_completed';
+    targetLiveTime?: Date;
+}) {
+    const isLive = eventStatus === 'live';
+    const pulseAnim = React.useRef(new Animated.Value(1)).current;
+    const pulseOpacity = React.useRef(new Animated.Value(0.4)).current;
+    const [timeLeftStr, setTimeLeftStr] = React.useState<string>('');
+
+    const hasFiredImpression = React.useRef(false);
+
+    // Track Single Impression Analytics on mount
+    React.useEffect(() => {
+        if (!hasFiredImpression.current) {
+            hasFiredImpression.current = true;
+            if (__DEV__) {
+                console.log(`[Analytics] banner_impression fired for eventStatus: ${eventStatus}`);
+            }
+        }
+    }, [eventStatus]);
+
+    // Force real-time recalculation on App Background -> Foreground transition
+    const [, setAppStateTick] = React.useState(0);
+    React.useEffect(() => {
+        const subscription = AppState.addEventListener('change', (nextAppState) => {
+            if (nextAppState === 'active') {
+                setAppStateTick((prev) => prev + 1);
+            }
+        });
+        return () => subscription.remove();
+    }, []);
+
+    // Real-time Countdown Interval for upcoming / starting_soon / between_streams states
+    React.useEffect(() => {
+        if (isLive || eventStatus === 'ended' || eventStatus === 'campaign_completed' || !targetLiveTime) {
+            setTimeLeftStr('');
+            return;
+        }
+
+        const updateTimer = () => {
+            const now = new Date();
+            const diffMs = targetLiveTime.getTime() - now.getTime();
+
+            if (diffMs <= 0) {
+                setTimeLeftStr('00:00');
+                return;
+            }
+
+            const totalSecs = Math.floor(diffMs / 1000);
+            const hours = Math.floor(totalSecs / 3600);
+            const minutes = Math.floor((totalSecs % 3600) / 60);
+
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            if (hours > 0) {
+                setTimeLeftStr(`${pad(hours)}h ${pad(minutes)}m`);
+            } else {
+                setTimeLeftStr(`${pad(minutes)}m`);
+            }
+        };
+
+        updateTimer();
+        const intervalId = setInterval(updateTimer, 1000);
+        return () => clearInterval(intervalId);
+    }, [eventStatus, isLive, targetLiveTime]);
+
+    // Live Pulse Animation Loop
+    React.useEffect(() => {
+        if (!isLive) return;
+        const loop = Animated.loop(
+            Animated.parallel([
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.15,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                ]),
+                Animated.sequence([
+                    Animated.timing(pulseOpacity, {
+                        toValue: 0.05,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseOpacity, {
+                        toValue: 0.4,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                ]),
+            ])
+        );
+        loop.start();
+        return () => loop.stop();
+    }, [isLive, pulseAnim, pulseOpacity]);
+
+    let badgeBg = 'rgba(216, 90, 0, 0.9)';
+    let badgeBorder = 'rgba(255, 215, 0, 0.5)';
+    let badgeText = timeLeftStr ? `Starts in ${timeLeftStr}` : 'FREE REGISTRATION';
+    let badgeIcon = timeLeftStr ? '⏰' : '🔱';
+
+    if (eventStatus === 'live') {
+        badgeBg = '#D32F2F';
+        badgeBorder = 'rgba(255, 255, 255, 0.3)';
+        badgeText = 'LIVE';
+        badgeIcon = '🔴';
+    } else if (eventStatus === 'starting_soon') {
+        badgeBg = '#E65100';
+        badgeBorder = 'rgba(255, 235, 59, 0.8)';
+        badgeText = timeLeftStr ? `STARTING SOON (${timeLeftStr})` : 'STARTING SOON';
+        badgeIcon = '🔴';
+    } else if (eventStatus === 'between_streams') {
+        badgeBg = 'rgba(30, 25, 20, 0.88)';
+        badgeBorder = '#FFD700';
+        badgeText = timeLeftStr ? `Next Live in ${timeLeftStr}` : 'REPLAY AVAILABLE';
+        badgeIcon = '📺';
+    } else if (eventStatus === 'campaign_completed' || eventStatus === 'ended') {
+        badgeBg = 'rgba(40, 40, 40, 0.85)';
+        badgeBorder = 'rgba(255, 215, 0, 0.4)';
+        badgeText = 'SHRAVAN KATHA COMPLETED';
+        badgeIcon = '🕉';
+    }
+
+    return (
+        <View
+            pointerEvents="none"
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: badgeBg,
+                paddingHorizontal: 9,
+                paddingVertical: 4.5,
+                borderRadius: 14,
+                borderWidth: 1.5,
+                borderColor: badgeBorder,
+                shadowColor: isLive ? '#D32F2F' : '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.6,
+                shadowRadius: 6,
+                elevation: 6,
+                marginLeft: 8,
+            }}
+        >
+            {isLive && (
+                <>
+                    <Animated.View
+                        style={{
+                            position: 'absolute',
+                            left: 6,
+                            width: 12,
+                            height: 12,
+                            borderRadius: 6,
+                            backgroundColor: '#FFFFFF',
+                            transform: [{ scale: pulseAnim }],
+                            opacity: pulseOpacity,
+                        }}
+                    />
+                    <View
+                        style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: 3,
+                            backgroundColor: '#FFFFFF',
+                            marginRight: 5,
+                            marginLeft: 1,
+                        }}
+                    />
+                </>
+            )}
+            {!isLive && (
+                <Text style={{ fontSize: 9.5, marginRight: 4 }}>{badgeIcon}</Text>
+            )}
+            <Text
+                style={{
+                    color: isLive ? '#FFFFFF' : '#FFF8E7',
+                    fontSize: 10,
+                    fontWeight: '900',
+                    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
+                    letterSpacing: 0.5,
+                }}
+            >
+                {badgeText}
+            </Text>
+        </View>
+    );
+});
 
 export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
     user,
@@ -490,6 +684,60 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                         >
                             {/* Live Katha Banner (First) */}
                             {(() => {
+                                // Dynamic Event State Calculation (13 August - 11 September Shravan Maas Shiv Katha)
+                                // Standardized to Asia/Kolkata (IST UTC+5:30)
+                                const getISTDate = () => {
+                                    const d = new Date();
+                                    const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+                                    return new Date(utc + (3600000 * 5.5)); // UTC + 5:30 IST offset
+                                };
+                                const now = getISTDate();
+
+                                // Campaign dates in IST: 13 August 2026 8:00 AM IST to 11 September 2026 9:30 AM IST
+                                const campaignStart = new Date(2026, 7, 13, 8, 0, 0); // Month 7 = August
+                                const campaignEnd = new Date(2026, 8, 11, 9, 30, 0); // Month 8 = September 11th 9:30 AM IST
+
+                                let eventStatus: 'upcoming' | 'starting_soon' | 'live' | 'between_streams' | 'ended' | 'campaign_completed' = 'upcoming';
+                                let targetLiveTime = new Date(2026, 7, 13, 8, 0, 0);
+
+                                if (now.getTime() < campaignStart.getTime()) {
+                                    // Before campaign starts (Today 12 Aug) -> strictly upcoming targeting 13 Aug 8:00 AM
+                                    eventStatus = 'upcoming';
+                                    targetLiveTime = campaignStart;
+                                } else if (now.getTime() > campaignEnd.getTime()) {
+                                    // After full 1-month campaign completes (After 11 Sept 9:30 AM IST)
+                                    eventStatus = 'campaign_completed';
+                                } else {
+                                    // Within Campaign (13 Aug to 11 Sep): Check daily 8:00 AM - 9:30 AM IST window
+                                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                                    const startMinutes = 8 * 60; // 8:00 AM IST (480 mins)
+                                    const endMinutes = 9 * 60 + 30; // 9:30 AM IST (570 mins)
+                                    const startingSoonMinutes = 7 * 60 + 45; // 7:45 AM IST (15 mins before 8:00 AM)
+
+                                    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+                                        eventStatus = 'live';
+                                    } else if (currentMinutes >= startingSoonMinutes && currentMinutes < startMinutes) {
+                                        eventStatus = 'starting_soon';
+                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+                                    } else if (currentMinutes > endMinutes) {
+                                        // Daily stream ended -> Enter between_streams state (Replay available + Next Live countdown)
+                                        // Dynamic check: if today is 11 September, next live doesn't exist
+                                        const isLastDay = now.getMonth() === 8 && now.getDate() === 11;
+                                        if (isLastDay) {
+                                            eventStatus = 'campaign_completed';
+                                        } else {
+                                            eventStatus = 'between_streams';
+                                            targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8, 0, 0);
+                                        }
+                                    } else {
+                                        // Early morning before 7:45 AM IST -> Next Live starts today at 8:00 AM
+                                        eventStatus = 'upcoming';
+                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+                                    }
+                                }
+
+                                const isLive = eventStatus === 'live';
+
                                 return (
                                     <TouchableOpacity
                                         activeOpacity={0.95}
@@ -560,73 +808,8 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 pointerEvents="none"
                                             />
 
-                                            {/* TOP RIGHT CORNER: ELEGANT & READABLE FREE REGISTRATION GOLD BADGE */}
-                                            <View
-                                                pointerEvents="none"
-                                                style={{
-                                                    position: 'absolute',
-                                                    top: 6,
-                                                    right: 6,
-                                                    width: 44,
-                                                    height: 44,
-                                                    borderRadius: 22,
-                                                    backgroundColor: '#F5B041',
-                                                    justifyContent: 'center',
-                                                    alignItems: 'center',
-                                                    borderWidth: 1.5,
-                                                    borderColor: '#FFF8DC',
-                                                    shadowColor: '#000',
-                                                    shadowOffset: { width: 0, height: 2 },
-                                                    shadowOpacity: 0.35,
-                                                    shadowRadius: 3,
-                                                    elevation: 5,
-                                                    zIndex: 10,
-                                                }}
-                                            >
-                                                {/* Inner Dashed Bezel */}
-                                                <View
-                                                    style={{
-                                                        width: 38,
-                                                        height: 38,
-                                                        borderRadius: 19,
-                                                        borderWidth: 1,
-                                                        borderStyle: 'dashed',
-                                                        borderColor: '#5B3A00',
-                                                        justifyContent: 'center',
-                                                        alignItems: 'center',
-                                                        paddingHorizontal: 2,
-                                                    }}
-                                                >
-                                                    <Text
-                                                        style={{
-                                                            color: '#5B3A00',
-                                                            fontSize: 8.5,
-                                                            fontWeight: '900',
-                                                            fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
-                                                            textAlign: 'center',
-                                                            letterSpacing: 0.4,
-                                                            lineHeight: 10,
-                                                            marginBottom: 1,
-                                                        }}
-                                                    >
-                                                        FREE
-                                                    </Text>
-                                                    <Text
-                                                        style={{
-                                                            color: '#5B3A00',
-                                                            fontSize: 4.8,
-                                                            fontWeight: '900',
-                                                            fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
-                                                            textAlign: 'center',
-                                                            letterSpacing: -0.1,
-                                                            lineHeight: 6,
-                                                            textTransform: 'uppercase',
-                                                        }}
-                                                    >
-                                                        REGISTRATION
-                                                    </Text>
-                                                </View>
-                                            </View>
+                                            {/* TOP RIGHT CORNER: DYNAMIC BADGE & LIVE COUNTDOWN TIMER ACCORDING TO LIFECYCLE */}
+                                            <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
 
                                             {/* LEFT CONTENT AREA */}
                                             <View
@@ -644,12 +827,29 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     justifyContent: 'flex-start',
                                                     alignItems: 'flex-start',
                                                 }}>
-                                                {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा (Cross-Platform Unified Typography) */}
+                                                {/* MAIN HEADING BLOCK - श्रावण मास & शिव कथा */}
                                                 <View style={{
                                                     width: '100%',
                                                     alignItems: 'flex-start',
                                                 }}>
-                                                    {/* श्रावण मास with iOS matra height fix & 32 lineHeight on Android */}
+                                                    {/* TOP BANNER TITLE CHIP (🔴 LIVE | श्रावण विशेष on top-left if live) */}
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                                        {isLive && (
+                                                            <View style={{
+                                                                flexDirection: 'row',
+                                                                alignItems: 'center',
+                                                                backgroundColor: 'rgba(211, 47, 47, 0.85)',
+                                                                paddingHorizontal: 6,
+                                                                paddingVertical: 2,
+                                                                borderRadius: 4,
+                                                                marginRight: 6,
+                                                            }}>
+                                                                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#FFF', marginRight: 4 }} />
+                                                                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '900', letterSpacing: 0.4 }}>LIVE</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+
                                                     <View style={{ paddingLeft: 10 }}>
                                                         <Text
                                                             numberOfLines={1}
@@ -691,7 +891,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         </Text>
                                                     </View>
 
-                                                    {/* SPEAKER NAME - Acharya Shamik Ji with horizontal flourishes */}
+                                                    {/* SPEAKER NAME - Acharya Shamik Ji */}
                                                     <View style={{
                                                         flexDirection: 'row',
                                                         alignItems: 'center',
@@ -735,7 +935,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                     </View>
                                                 </View>
 
-                                                {/* DATE SECTION & NOTIFY BUTTON */}
+                                                {/* DATE SECTION & DYNAMIC CTA BUTTON */}
                                                 <View style={{
                                                     alignSelf: 'flex-start',
                                                     marginTop: Platform.OS === 'android' ? 1 : 3,
@@ -756,7 +956,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         </Text>
                                                     </View>
 
-                                                    {/* Supporting text */}
+                                                    {/* Dynamic Supporting Text */}
                                                     <Text style={{
                                                         color: '#FFFFFF',
                                                         opacity: 0.95,
@@ -767,31 +967,108 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         textShadowOffset: { width: 0, height: 1 },
                                                         textShadowRadius: 3,
                                                     }}>
-                                                        हर दिन LIVE श्रावण माह में
+                                                        {eventStatus === 'live'
+                                                            ? '🔴 अभी LIVE प्रसारण चल रहा है'
+                                                            : eventStatus === 'starting_soon'
+                                                                ? '⏰ सुबह 8:00 बजे शुरू होगा'
+                                                                : eventStatus === 'between_streams'
+                                                                    ? 'Next Live • 8:00 AM'
+                                                                    : eventStatus === 'campaign_completed' || eventStatus === 'ended'
+                                                                        ? '🕉 Shravan Katha Series Completed'
+                                                                        : 'हर दिन सुबह 8:00 बजे LIVE'}
                                                     </Text>
 
-                                                    {/* Uiverse Notify Button with sliding hover fill & navigation to shravan-paath */}
-                                                    <UiverseNotifyButton
-                                                        isNotified={!!reminders['shravan_katha']}
-                                                        onPress={async () => {
-                                                            try {
-                                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                                            } catch (_e) { }
-                                                            const isCurrentlyNotified = !!reminders['shravan_katha'];
-                                                            await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
-                                                            router.push({
-                                                                pathname: '/shravan-paath',
-                                                                params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
-                                                            });
-                                                        }}
-                                                        label="Notify Me"
-                                                        notifiedLabel="Notified"
-                                                        size="small"
-                                                        style={{
-                                                            marginTop: Platform.OS === 'android' ? 3 : 5,
-                                                            alignSelf: 'flex-start',
-                                                        }}
-                                                    />
+                                                    {/* DYNAMIC CTA BUTTON & ALIGNED COUNTDOWN TIMER ACCORDING TO LIVE EVENT LIFECYCLE */}
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'android' ? 4 : 6 }}>
+                                                        {isLive ? (
+                                                            <Pressable
+                                                                style={{
+                                                                    backgroundColor: '#D32F2F',
+                                                                    paddingHorizontal: 14,
+                                                                    paddingVertical: 7,
+                                                                    borderRadius: 20,
+                                                                    flexDirection: 'row',
+                                                                    alignItems: 'center',
+                                                                    borderWidth: 1,
+                                                                    borderColor: '#FF8A80',
+                                                                    shadowColor: '#D32F2F',
+                                                                    shadowOffset: { width: 0, height: 2 },
+                                                                    shadowOpacity: 0.7,
+                                                                    shadowRadius: 5,
+                                                                    elevation: 5,
+                                                                }}
+                                                                android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: false }}
+                                                                onPress={() => {
+                                                                    try {
+                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                                    } catch (_e) { }
+                                                                    router.push({
+                                                                        pathname: '/shravan-paath',
+                                                                        params: { autoPlay: '1' }
+                                                                    });
+                                                                }}
+                                                            >
+                                                                <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900', marginRight: 4 }}>▶</Text>
+                                                                <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>Watch Now</Text>
+                                                            </Pressable>
+                                                        ) : eventStatus === 'campaign_completed' ? (
+                                                            <Pressable
+                                                                style={{
+                                                                    backgroundColor: 'rgba(50, 50, 50, 0.9)',
+                                                                    paddingHorizontal: 12,
+                                                                    paddingVertical: 6,
+                                                                    borderRadius: 20,
+                                                                    flexDirection: 'row',
+                                                                    alignItems: 'center',
+                                                                    borderWidth: 1,
+                                                                    borderColor: '#FFD700',
+                                                                }}
+                                                                onPress={() => router.push('/shravan-paath')}
+                                                            >
+                                                                <Text style={{ color: '#FFD700', fontSize: 10.5, fontWeight: '800' }}>▶ Watch Full Series</Text>
+                                                            </Pressable>
+                                                        ) : (eventStatus === 'between_streams' || eventStatus === 'ended') ? (
+                                                            <Pressable
+                                                                style={{
+                                                                    backgroundColor: 'rgba(50, 50, 50, 0.9)',
+                                                                    paddingHorizontal: 12,
+                                                                    paddingVertical: 6,
+                                                                    borderRadius: 20,
+                                                                    flexDirection: 'row',
+                                                                    alignItems: 'center',
+                                                                    borderWidth: 1,
+                                                                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                                                                }}
+                                                                onPress={() => router.push('/shravan-paath')}
+                                                            >
+                                                                <Text style={{ color: '#FFF', fontSize: 10.5, fontWeight: '800' }}>▶ Watch Replay</Text>
+                                                            </Pressable>
+                                                        ) : (
+                                                            <UiverseNotifyButton
+                                                                isNotified={!!reminders['shravan_katha']}
+                                                                onPress={async () => {
+                                                                    try {
+                                                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                                                    } catch (_e) { }
+                                                                    const isCurrentlyNotified = !!reminders['shravan_katha'];
+                                                                    await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                                                                    router.push({
+                                                                        pathname: '/shravan-paath',
+                                                                        params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
+                                                                    });
+                                                                }}
+                                                                label={eventStatus === 'starting_soon' ? "Remind Me" : "Notify Me"}
+                                                                notifiedLabel="Notified"
+                                                                size="small"
+                                                                style={{
+                                                                    alignSelf: 'center',
+                                                                }}
+                                                            />
+                                                        )}
+
+                                                        {/* Dynamic Countdown / Live Badge Aligned next to Notify Button */}
+                                                        <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
+                                                    </View>
                                                 </View>
                                             </View>
                                         </View>
@@ -1059,42 +1336,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 </ImageBackground>
                             </View>
                         </ScrollView>
-
-                        <View style={{ position: 'absolute', bottom: 15, left: 0, right: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, zIndex: 10 }}>
-                            <View style={{
-                                width: activeBannerIndex === 0 ? 20 : 6,
-                                height: 6,
-                                borderRadius: 3,
-                                backgroundColor: activeBannerIndex === 0 ? '#FAC775' : 'rgba(255,255,255,0.4)',
-                                shadowColor: activeBannerIndex === 0 ? '#FAC775' : 'transparent',
-                                shadowOffset: { width: 0, height: 0 },
-                                shadowOpacity: 0.8,
-                                shadowRadius: 4,
-                                elevation: 2,
-                            }} />
-                            <View style={{
-                                width: activeBannerIndex === 1 ? 20 : 6,
-                                height: 6,
-                                borderRadius: 3,
-                                backgroundColor: activeBannerIndex === 1 ? '#FAC775' : 'rgba(255,255,255,0.4)',
-                                shadowColor: activeBannerIndex === 1 ? '#FAC775' : 'transparent',
-                                shadowOffset: { width: 0, height: 0 },
-                                shadowOpacity: 0.8,
-                                shadowRadius: 4,
-                                elevation: 2,
-                            }} />
-                            <View style={{
-                                width: activeBannerIndex === 2 ? 20 : 6,
-                                height: 6,
-                                borderRadius: 3,
-                                backgroundColor: activeBannerIndex === 2 ? '#FAC775' : 'rgba(255,255,255,0.4)',
-                                shadowColor: activeBannerIndex === 2 ? '#FAC775' : 'transparent',
-                                shadowOffset: { width: 0, height: 0 },
-                                shadowOpacity: 0.8,
-                                shadowRadius: 4,
-                                elevation: 2,
-                            }} />
-                        </View>
                     </View>
                 </View>
 
