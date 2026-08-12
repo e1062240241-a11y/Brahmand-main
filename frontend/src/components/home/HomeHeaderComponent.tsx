@@ -14,6 +14,7 @@ import { Animated, AppState, Image, ImageBackground, Platform, Pressable, Scroll
 import { styles } from './home.styles';
 import { PAGE_PADDING, baseQuickAccess, formatFestivalDate, shivaImage } from './homeConstants';
 import { ActionCardsRow } from './ActionCardsRow';
+import { scheduleShravanKatha15MinReminder } from '../../services/pushNotifications';
 
 const DynamicEventBadge = React.memo(function DynamicEventBadge({
     eventStatus,
@@ -124,10 +125,7 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
     let badgeIcon = timeLeftStr ? '⏰' : '🔱';
 
     if (eventStatus === 'live') {
-        badgeBg = '#D32F2F';
-        badgeBorder = 'rgba(255, 255, 255, 0.3)';
-        badgeText = 'LIVE';
-        badgeIcon = '🔴';
+        return null;
     } else if (eventStatus === 'starting_soon') {
         badgeBg = '#E65100';
         badgeBorder = 'rgba(255, 235, 59, 0.8)';
@@ -151,59 +149,21 @@ const DynamicEventBadge = React.memo(function DynamicEventBadge({
             style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: badgeBg,
-                paddingHorizontal: 9,
-                paddingVertical: 4.5,
-                borderRadius: 14,
-                borderWidth: 1.5,
-                borderColor: badgeBorder,
-                shadowColor: isLive ? '#D32F2F' : '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.6,
-                shadowRadius: 6,
-                elevation: 6,
-                marginLeft: 8,
+                marginLeft: 10,
             }}
         >
-            {isLive && (
-                <>
-                    <Animated.View
-                        style={{
-                            position: 'absolute',
-                            left: 6,
-                            width: 12,
-                            height: 12,
-                            borderRadius: 6,
-                            backgroundColor: '#FFFFFF',
-                            transform: [{ scale: pulseAnim }],
-                            opacity: pulseOpacity,
-                        }}
-                    />
-                    <View
-                        style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: 3,
-                            backgroundColor: '#FFFFFF',
-                            marginRight: 5,
-                            marginLeft: 1,
-                        }}
-                    />
-                </>
-            )}
-            {!isLive && (
-                <Text style={{ fontSize: 9.5, marginRight: 4 }}>{badgeIcon}</Text>
-            )}
             <Text
                 style={{
-                    color: isLive ? '#FFFFFF' : '#FFF8E7',
-                    fontSize: 10,
-                    fontWeight: '900',
-                    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
-                    letterSpacing: 0.5,
+                    color: '#FFD700',
+                    fontSize: 11,
+                    fontWeight: '800',
+                    letterSpacing: 0.3,
+                    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+                    textShadowOffset: { width: 1, height: 1 },
+                    textShadowRadius: 2,
                 }}
             >
-                {badgeText}
+                {badgeIcon} {badgeText}
             </Text>
         </View>
     );
@@ -694,34 +654,47 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                 const now = getISTDate();
 
                                 // Campaign dates in IST: 13 August 2026 8:00 AM IST to 11 September 2026 9:30 AM IST
-                                const campaignStart = new Date(2026, 7, 13, 8, 0, 0); // Month 7 = August
+                                const campaignStart = new Date(2026, 7, 13, 8, 0, 0); // Month 7 = August 13th 8:00 AM IST
                                 const campaignEnd = new Date(2026, 8, 11, 9, 30, 0); // Month 8 = September 11th 9:30 AM IST
 
                                 let eventStatus: 'upcoming' | 'starting_soon' | 'live' | 'between_streams' | 'ended' | 'campaign_completed' = 'upcoming';
-                                let targetLiveTime = new Date(2026, 7, 13, 8, 0, 0);
+                                let targetLiveTime = campaignStart;
 
                                 if (now.getTime() < campaignStart.getTime()) {
-                                    // Before campaign starts (Today 12 Aug) -> strictly upcoming targeting 13 Aug 8:00 AM
+                                    // Before campaign officially launches (Today 12 Aug) -> Upcoming targeting 13 Aug 8:00 AM IST
                                     eventStatus = 'upcoming';
                                     targetLiveTime = campaignStart;
                                 } else if (now.getTime() > campaignEnd.getTime()) {
                                     // After full 1-month campaign completes (After 11 Sept 9:30 AM IST)
                                     eventStatus = 'campaign_completed';
                                 } else {
-                                    // Within Campaign (13 Aug to 11 Sep): Check daily 8:00 AM - 9:30 AM IST window
+                                    // Within Campaign (13 Aug to 11 Sep): Check daily 8:00 AM & 8:00 PM IST windows
                                     const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                                    const startMinutes = 8 * 60; // 8:00 AM IST (480 mins)
-                                    const endMinutes = 9 * 60 + 30; // 9:30 AM IST (570 mins)
-                                    const startingSoonMinutes = 7 * 60 + 45; // 7:45 AM IST (15 mins before 8:00 AM)
+                                    
+                                    const mStart = 8 * 60; // 8:00 AM IST (480 mins)
+                                    const mEnd = 9 * 60 + 30; // 9:30 AM IST (570 mins)
+                                    const mSoon = 7 * 60 + 45; // 7:45 AM IST
 
-                                    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+                                    const eStart = 20 * 60; // 8:00 PM IST (1200 mins)
+                                    const eEnd = 21 * 60 + 30; // 9:30 PM IST (1290 mins)
+                                    const eSoon = 19 * 60 + 45; // 7:45 PM IST
+
+                                    if ((currentMinutes >= mStart && currentMinutes <= mEnd) ||
+                                        (currentMinutes >= eStart && currentMinutes <= eEnd)) {
                                         eventStatus = 'live';
-                                    } else if (currentMinutes >= startingSoonMinutes && currentMinutes < startMinutes) {
+                                    } else if (currentMinutes >= mSoon && currentMinutes < mStart) {
                                         eventStatus = 'starting_soon';
                                         targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
-                                    } else if (currentMinutes > endMinutes) {
-                                        // Daily stream ended -> Enter between_streams state (Replay available + Next Live countdown)
-                                        // Dynamic check: if today is 11 September, next live doesn't exist
+                                    } else if (currentMinutes >= eSoon && currentMinutes < eStart) {
+                                        eventStatus = 'starting_soon';
+                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+                                    } else if (currentMinutes < mSoon) {
+                                        eventStatus = 'upcoming';
+                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+                                    } else if (currentMinutes < eSoon) {
+                                        eventStatus = 'between_streams';
+                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0, 0);
+                                    } else {
                                         const isLastDay = now.getMonth() === 8 && now.getDate() === 11;
                                         if (isLastDay) {
                                             eventStatus = 'campaign_completed';
@@ -729,27 +702,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                             eventStatus = 'between_streams';
                                             targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 8, 0, 0);
                                         }
-                                    } else {
-                                        // Early morning before 7:45 AM IST -> Next Live starts today at 8:00 AM
-                                        eventStatus = 'upcoming';
-                                        targetLiveTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
                                     }
                                 }
 
                                 const isLive = eventStatus === 'live';
 
                                 return (
-                                    <TouchableOpacity
-                                        activeOpacity={0.95}
-                                        onPress={() => {
-                                            try {
-                                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                            } catch (_e) { }
-                                            router.push({
-                                                pathname: '/shravan-paath',
-                                                params: { is_interested: reminders['shravan_katha'] ? '1' : '0' }
-                                            });
-                                        }}
+                                    <View
                                         style={[styles.featuredLiveCard, { width: screenWidth - 40, shadowColor: 'transparent', shadowOpacity: 0, elevation: 0, backgroundColor: 'transparent' }]}
                                     >
                                         <View style={{ flex: 1, borderRadius: 16, overflow: 'hidden' }}>
@@ -808,6 +767,32 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 pointerEvents="none"
                                             />
 
+                                            {/* TOP RIGHT CORNER: LIVE BADGE WHEN ON-AIR */}
+                                            {isLive && (
+                                                <View style={{
+                                                    position: 'absolute',
+                                                    top: 12,
+                                                    right: 12,
+                                                    zIndex: 20,
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    backgroundColor: '#D32F2F',
+                                                    paddingHorizontal: 9,
+                                                    paddingVertical: 4,
+                                                    borderRadius: 12,
+                                                    borderWidth: 1,
+                                                    borderColor: '#FF8A80',
+                                                    shadowColor: '#D32F2F',
+                                                    shadowOffset: { width: 0, height: 2 },
+                                                    shadowOpacity: 0.8,
+                                                    shadowRadius: 5,
+                                                    elevation: 6,
+                                                }}>
+                                                    <Text style={{ color: '#FFF', fontSize: 10.5, fontWeight: '900', letterSpacing: 0.5, marginRight: 5 }}>LIVE NOW</Text>
+                                                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#FFF' }} />
+                                                </View>
+                                            )}
+
                                             {/* TOP RIGHT CORNER: DYNAMIC BADGE & LIVE COUNTDOWN TIMER ACCORDING TO LIFECYCLE */}
                                             <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
 
@@ -834,20 +819,6 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                 }}>
                                                     {/* TOP BANNER TITLE CHIP (🔴 LIVE | श्रावण विशेष on top-left if live) */}
                                                     <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                                                        {isLive && (
-                                                            <View style={{
-                                                                flexDirection: 'row',
-                                                                alignItems: 'center',
-                                                                backgroundColor: 'rgba(211, 47, 47, 0.85)',
-                                                                paddingHorizontal: 6,
-                                                                paddingVertical: 2,
-                                                                borderRadius: 4,
-                                                                marginRight: 6,
-                                                            }}>
-                                                                <View style={{ width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#FFF', marginRight: 4 }} />
-                                                                <Text style={{ color: '#FFF', fontSize: 9, fontWeight: '900', letterSpacing: 0.4 }}>LIVE</Text>
-                                                            </View>
-                                                        )}
                                                     </View>
 
                                                     <View style={{ paddingLeft: 10 }}>
@@ -967,13 +938,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                         textShadowOffset: { width: 0, height: 1 },
                                                         textShadowRadius: 3,
                                                     }}>
-                                                        {eventStatus === 'live'
+                                                        {(eventStatus as any) === 'live'
                                                             ? '🔴 अभी LIVE प्रसारण चल रहा है'
-                                                            : eventStatus === 'starting_soon'
+                                                            : (eventStatus as any) === 'starting_soon'
                                                                 ? '⏰ सुबह 8:00 बजे शुरू होगा'
-                                                                : eventStatus === 'between_streams'
+                                                                : (eventStatus as any) === 'between_streams'
                                                                     ? 'Next Live • 8:00 AM'
-                                                                    : eventStatus === 'campaign_completed' || eventStatus === 'ended'
+                                                                    : (eventStatus as any) === 'campaign_completed' || (eventStatus as any) === 'ended'
                                                                         ? '🕉 Shravan Katha Series Completed'
                                                                         : 'हर दिन सुबह 8:00 बजे LIVE'}
                                                     </Text>
@@ -1002,16 +973,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     try {
                                                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                                                     } catch (_e) { }
-                                                                    router.push({
-                                                                        pathname: '/shravan-paath',
-                                                                        params: { autoPlay: '1' }
-                                                                    });
+                                                                    router.push('/library/katha');
                                                                 }}
                                                             >
                                                                 <Text style={{ color: '#FFF', fontSize: 11, fontWeight: '900', marginRight: 4 }}>▶</Text>
                                                                 <Text style={{ color: '#FFF', fontSize: 11.5, fontWeight: '800', letterSpacing: 0.3 }}>Watch Now</Text>
                                                             </Pressable>
-                                                        ) : eventStatus === 'campaign_completed' ? (
+                                                        ) : (eventStatus as any) === 'campaign_completed' ? (
                                                             <Pressable
                                                                 style={{
                                                                     backgroundColor: 'rgba(50, 50, 50, 0.9)',
@@ -1023,11 +991,11 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     borderWidth: 1,
                                                                     borderColor: '#FFD700',
                                                                 }}
-                                                                onPress={() => router.push('/shravan-paath')}
+                                                                onPress={() => router.push('/library/katha')}
                                                             >
                                                                 <Text style={{ color: '#FFD700', fontSize: 10.5, fontWeight: '800' }}>▶ Watch Full Series</Text>
                                                             </Pressable>
-                                                        ) : (eventStatus === 'between_streams' || eventStatus === 'ended') ? (
+                                                        ) : ((eventStatus as any) === 'between_streams' || (eventStatus as any) === 'ended') ? (
                                                             <Pressable
                                                                 style={{
                                                                     backgroundColor: 'rgba(50, 50, 50, 0.9)',
@@ -1039,7 +1007,7 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     borderWidth: 1,
                                                                     borderColor: 'rgba(255, 255, 255, 0.3)',
                                                                 }}
-                                                                onPress={() => router.push('/shravan-paath')}
+                                                                onPress={() => router.push('/library/katha')}
                                                             >
                                                                 <Text style={{ color: '#FFF', fontSize: 10.5, fontWeight: '800' }}>▶ Watch Replay</Text>
                                                             </Pressable>
@@ -1052,6 +1020,9 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                                     } catch (_e) { }
                                                                     const isCurrentlyNotified = !!reminders['shravan_katha'];
                                                                     await handleSetReminder('shravan_katha', 'Shravan Shiv Katha');
+                                                                    if (!isCurrentlyNotified) {
+                                                                        scheduleShravanKatha15MinReminder().catch(() => {});
+                                                                    }
                                                                     router.push({
                                                                         pathname: '/shravan-paath',
                                                                         params: { is_interested: !isCurrentlyNotified ? '1' : '0' }
@@ -1066,13 +1037,13 @@ export const HomeHeaderComponent = React.memo(function HomeHeaderComponent({
                                                             />
                                                         )}
 
-                                                        {/* Dynamic Countdown / Live Badge Aligned next to Notify Button */}
+                                                         {/* Dynamic Countdown / Live Badge Aligned next to Notify Button */}
                                                         <DynamicEventBadge eventStatus={eventStatus} targetLiveTime={targetLiveTime} />
                                                     </View>
                                                 </View>
                                             </View>
                                         </View>
-                                    </TouchableOpacity>
+                                    </View>
                                 );
                             })()}
 

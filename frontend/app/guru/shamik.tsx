@@ -416,7 +416,23 @@ export default function AcharyaShamikHimalayanProfileScreen() {
 
             <TouchableOpacity
               style={styles.secondaryCtaBtn}
-              onPress={() => router.push('/library/katha')}
+              onPress={async () => {
+                try {
+                  const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001'}/api/katha/status`);
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.is_live) {
+                      router.push('/library/katha');
+                      return;
+                    }
+                  }
+                } catch (_e) {}
+                Alert.alert(
+                  '🕉️ Shravan Live Katha',
+                  'Shravan Live Katha broadcast starts tomorrow 13th August at 8:00 AM IST.\n\nDaily Live Stream Schedule:\n• Morning Stream: 8:00 AM IST\n• Night Telecast: 8:00 PM IST',
+                  [{ text: 'OK', style: 'default' }]
+                );
+              }}
             >
               <Ionicons name="play-circle-outline" size={15} color={LIGHT_THEME.primaryForest} />
               <Text style={styles.secondaryCtaText}>{isHindi ? 'कथा देखें' : 'Watch'}</Text>
@@ -602,7 +618,23 @@ export default function AcharyaShamikHimalayanProfileScreen() {
                 <TouchableOpacity
                   key={item.id}
                   style={styles.videoCard}
-                  onPress={() => router.push('/library/katha')}
+                  onPress={async () => {
+                    try {
+                      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001'}/api/katha/status`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        if (data.is_live) {
+                          router.push('/library/katha');
+                          return;
+                        }
+                      }
+                    } catch (_e) {}
+                    Alert.alert(
+                      '🕉️ Shravan Live Katha',
+                      'Shravan Live Katha broadcast starts tomorrow 13th August at 8:00 AM IST.\n\nDaily Live Stream Schedule:\n• Morning Stream: 8:00 AM IST\n• Evening Stream: 5:48 PM IST\n• Night Telecast: 8:00 PM IST',
+                      [{ text: 'OK', style: 'default' }]
+                    );
+                  }}
                 >
                   <Image source={item.image} style={styles.videoThumb} resizeMode="cover" />
                   <View style={styles.videoOverlay}>

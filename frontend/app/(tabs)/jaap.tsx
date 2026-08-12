@@ -1148,7 +1148,7 @@ export default function JaapLandingScreen() {
             {/* Katha Section */}
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>
-                {t('language') === 'hi' ? 'कथा' : 'Katha'}
+                {t('language') === 'hi' ? 'श्रावण कथा' : 'Shravan Katha'}
               </Text>
             </View>
 
@@ -1159,7 +1159,20 @@ export default function JaapLandingScreen() {
                   pressed && Platform.OS === 'ios' && { opacity: 0.9 }
                 ]}
                 android_ripple={{ color: 'rgba(255,107,0,0.15)', borderless: false }}
-                onPress={() => router.push('/library/katha' as any)}
+                onPress={async () => {
+                  try {
+                    const res = await api.get('/katha/status');
+                    if (res.data && res.data.is_live) {
+                      router.push('/library/katha' as any);
+                      return;
+                    }
+                  } catch (_e) {}
+                  Alert.alert(
+                    '🕉️ Shravan Live Katha',
+                    'Shravan Live Katha broadcast starts tomorrow 13th August at 8:00 AM IST.\n\nDaily Live Stream Schedule:\n• Morning Stream: 8:00 AM IST\n• Night Telecast: 8:00 PM IST',
+                    [{ text: 'OK', style: 'default' }]
+                  );
+                }}
               >
                 <View style={styles.coverBoxKatha}>
                   <Image

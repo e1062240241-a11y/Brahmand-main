@@ -540,9 +540,11 @@ export async function scheduleShivKathaNotification(
         },
         sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
       },
-      trigger: (Platform.OS === 'android'
-        ? { seconds: delay, channelId }
-        : { seconds: delay }) as any,
+      trigger: {
+        seconds: delay,
+        channelId,
+        type: 'timeInterval',
+      } as any,
     });
 
     try {
@@ -554,6 +556,81 @@ export async function scheduleShivKathaNotification(
     return notifId;
   } catch (e) {
     console.warn('[Push] Failed to schedule Shiv Katha notification:', e);
+    return null;
+  }
+}
+
+/**
+ * Schedules a push notification 15 minutes before Shravan Live Katha starts:
+ * Title: 🕉️ Shravan Live Katha
+ * Body: Shravan Live Katha is about to start. Please Join
+ * Route: /library/katha
+ */
+export async function scheduleShravanKatha15MinReminder() {
+  if (Platform.OS === 'web') return null;
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
+  const title = '🕉️ Shravan Live Katha';
+  const body = 'Shravan Live Katha is about to start. Please Join';
+  const channelId = 'default_v4';
+
+  const now = new Date();
+  const getISTDate = () => {
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + (3600000 * 5.5));
+  };
+  const ist = getISTDate();
+  const currentMins = ist.getHours() * 60 + ist.getMinutes();
+
+  // Target pre-stream times in minutes from midnight (15 mins before 8:00 AM & 8:00 PM IST)
+  const targets = [
+    7 * 60 + 45,  // 7:45 AM
+    19 * 60 + 45, // 7:45 PM
+  ];
+
+  const CAMPAIGN_START_MS = new Date('2026-08-13T07:45:00+05:30').getTime();
+  let nextTargetMins = targets.find(t => t > currentMins);
+  
+  let targetDateMs: number;
+  if (ist.getTime() < CAMPAIGN_START_MS) {
+    // Before official campaign start date (Today 12 Aug) -> Schedule first notification for 13 Aug 7:45 AM IST
+    targetDateMs = CAMPAIGN_START_MS;
+  } else if (nextTargetMins !== undefined) {
+    const tDate = new Date(ist);
+    tDate.setHours(Math.floor(nextTargetMins / 60), nextTargetMins % 60, 0, 0);
+    targetDateMs = tDate.getTime();
+  } else {
+    const tDate = new Date(ist);
+    tDate.setDate(tDate.getDate() + 1);
+    tDate.setHours(7, 45, 0, 0);
+    targetDateMs = tDate.getTime();
+  }
+
+  const secondsUntilReminder = Math.max(5, Math.floor((targetDateMs - ist.getTime()) / 1000));
+
+  try {
+    const notifId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data: {
+          type: 'shravan_katha_live',
+          route: '/(tabs)/home',
+        },
+        sound: __DEV__ ? true : (Platform.OS === 'ios' ? 'bell_ios.caf' : 'bell'),
+      },
+      trigger: {
+        seconds: secondsUntilReminder,
+        channelId,
+        type: 'timeInterval',
+      } as any,
+    });
+
+    console.log(`[Push] Shravan Katha 15-min live reminder scheduled in ${secondsUntilReminder}s (id: ${notifId})`);
+    return notifId;
+  } catch (e) {
+    console.warn('[Push] Failed to schedule Shravan Katha 15-min reminder:', e);
     return null;
   }
 }
