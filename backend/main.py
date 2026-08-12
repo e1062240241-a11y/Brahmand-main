@@ -16211,38 +16211,67 @@ async def _jaap_reminder_worker():
                         "mrityunjaya": ("Mahamrityunjaya Mantra", "🙏 Live Jaap Starting Soon"),
                     }
                     
+                    # ⚡ Bolt Optimization: Batch fetch and concurrent query resolution
+                    valid_reminders = []
+                    notif_ids = []
+                    seen_uids_mantras = set()
+
                     for r in reminders:
                         mantra_type = r.get("mantra_type")
                         uid = r.get("user_id")
                         if not uid or not mantra_type or (uid, mantra_type) in seen_uids_mantras:
                             continue
-                        seen_uids_mantras.add((uid, mantra_type))
-                        
+
                         # EXCLUDE event pre-registrations (shravan_katha) and coming soon mantras (shani_chalisa, ganga, etc.)
                         if mantra_type not in VALID_LIVE_JAAPS:
                             continue
 
-                        mantra_title, notif_title = VALID_LIVE_JAAPS[mantra_type]
-                        
                         cache_key = (uid, mantra_type, session['name'], date_str)
                         if cache_key in sent_reminders_cache:
                             logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (already sent today)")
                             continue
                             
-                        # Deterministic notification ID to prevent duplicates across multiple servers/workers
+                        seen_uids_mantras.add((uid, mantra_type))
+
                         notif_id = f"jaap_reminder:{uid}:{mantra_type}:{session['name'].lower()}:{date_str}"
-                        try:
-                            existing_notif = await db.get_document("notifications", notif_id)
-                            if existing_notif:
-                                logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (Deterministic Doc Check)")
-                                sent_reminders_cache[cache_key] = now_ts
-                                continue
-                        except Exception as check_err:
-                            logger.warning(f"Error checking deterministic {mantra_type} reminder: {check_err}")
+                        notif_ids.append(notif_id)
+
+                        valid_reminders.append({
+                            'uid': uid,
+                            'mantra_type': mantra_type,
+                            'notif_id': notif_id,
+                            'cache_key': cache_key
+                        })
+
+                    if not valid_reminders:
+                        continue
+
+                    # 1. Batch fetch deterministic notification IDs
+                    existing_notifs_map = {}
+                    try:
+                        existing_notifs = await db.get_documents_batch("notifications", notif_ids)
+                        existing_notifs_map = {n['id']: n for n in existing_notifs if n and 'id' in n}
+                    except Exception as err:
+                        logger.warning(f"Error batch fetching deterministic reminders: {err}")
+
+                    # 2. Setup tasks for fallback checking
+                    fallback_reminders = []
+                    fallback_tasks = []
+
+                    for r in valid_reminders:
+                        uid = r['uid']
+                        mantra_type = r['mantra_type']
+                        notif_id = r['notif_id']
+                        cache_key = r['cache_key']
+
+                        if notif_id in existing_notifs_map:
+                            logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (Deterministic Doc Check)")
+                            sent_reminders_cache[cache_key] = now_ts
+                            continue
                             
-                        # Check Firestore notifications collection as secondary backup
-                        try:
-                            recent_notifs = await db.query_documents(
+                        fallback_reminders.append(r)
+                        fallback_tasks.append(
+                            db.query_documents(
                                 "notifications",
                                 filters=[
                                     ("user_id", "==", uid),
@@ -16250,38 +16279,55 @@ async def _jaap_reminder_worker():
                                 ],
                                 limit=10
                             )
+                        )
+
+                    # 3. Execute fallback queries concurrently
+                    if fallback_tasks:
+                        results = await asyncio.gather(*fallback_tasks, return_exceptions=True)
+
+                        for r, result in zip(fallback_reminders, results):
+                            uid = r['uid']
+                            mantra_type = r['mantra_type']
+                            notif_id = r['notif_id']
+                            cache_key = r['cache_key']
+
+                            mantra_title, notif_title = VALID_LIVE_JAAPS[mantra_type]
+
                             already_sent = False
-                            for n in recent_notifs:
-                                n_data = n.get("data", {}) or {}
-                                if n_data.get("session_name") == session['name'] and n_data.get("mantra_type") == mantra_type:
-                                    created_at_str = n.get("created_at")
-                                    if created_at_str:
-                                        try:
-                                            created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
-                                            now_utc = datetime.now(timezone.utc)
-                                            if (now_utc - created_at).total_seconds() < 600:
-                                                already_sent = True
-                                                break
-                                        except Exception:
-                                            pass
+                            if isinstance(result, list):
+                                for n in result:
+                                    n_data = n.get("data", {}) or {}
+                                    if n_data.get("session_name") == session['name'] and n_data.get("mantra_type") == mantra_type:
+                                        created_at_str = n.get("created_at")
+                                        if created_at_str:
+                                            try:
+                                                created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                                                now_utc = datetime.now(timezone.utc)
+                                                if (now_utc - created_at).total_seconds() < 600:
+                                                    already_sent = True
+                                                    break
+                                            except Exception:
+                                                pass
+
+                            elif isinstance(result, Exception):
+                                logger.warning(f"Error checking duplicate reminder backup for {uid}: {result}")
+
                             if already_sent:
                                 logger.info(f"Skipping duplicate {mantra_type} reminder for user {uid} (FCM backup)")
                                 sent_reminders_cache[cache_key] = now_ts
                                 continue
-                        except Exception as check_err:
-                            logger.warning(f"Error checking duplicate reminder backup: {check_err}")
 
-                        # Send notification via task queue
-                        await task_queue.enqueue(
-                            FirebaseNotificationService.notify_jaap_reminder,
-                            user_id=uid,
-                            title=notif_title,
-                            body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
-                            mantra_type=mantra_type,
-                            session_name=session['name'],
-                            notification_id=notif_id
-                        )
-                        sent_reminders_cache[cache_key] = now_ts
+                            # Send notification via task queue
+                            await task_queue.enqueue(
+                                FirebaseNotificationService.notify_jaap_reminder,
+                                user_id=uid,
+                                title=notif_title,
+                                body=f"Your {session['name']} {mantra_title} session starts in 5 minutes. Join now!",
+                                mantra_type=mantra_type,
+                                session_name=session['name'],
+                                notification_id=notif_id
+                            )
+                            sent_reminders_cache[cache_key] = now_ts
                     
         except Exception as e:
             logger.error(f"Error in jaap reminder worker: {e}")
