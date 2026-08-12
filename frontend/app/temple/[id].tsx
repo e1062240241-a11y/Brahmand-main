@@ -2675,25 +2675,6 @@ if (!temple) {
               </View>
             );
           })()}
-              </View>
-
-              {/* Entry Fee / Free */}
-              <View style={styles.infoChip}>
-                <Ionicons name="ticket-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.infoChipText}>
-                  {t('language') === 'hi' ? 'प्रवेश:' : 'Entry:'} {quickFacts.entryFee}
-                </Text>
-              </View>
-
-              {/* Best Time to Visit */}
-              <View style={styles.infoChip}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.infoChipText}>
-                  {t('language') === 'hi' ? 'उत्कृष्ट समय:' : 'Best Time:'} {quickFacts.bestTime}
-                </Text>
-              </View>
-            </View>
-          </View>
 
           {/* 3. DARSHAN & AARTI (Day Timeline Visualization) */}
           <DarshanAartiTimeline
