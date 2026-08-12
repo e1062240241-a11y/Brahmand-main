@@ -209,7 +209,6 @@ const FilterOption = React.memo(({ location, isSelected, onPress }: FilterOption
 export default function TempleScreen() {
   const router = useRouter();
   const { t } = useTranslation();
-  const [selectedTempleSection, setSelectedTempleSection] = useState<'Jyotirling' | 'Others'>('Jyotirling');
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -221,7 +220,6 @@ export default function TempleScreen() {
   const [selectedLocations, setSelectedLocations] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const scrollY = useRef(new Animated.Value(0)).current;
   // Cache of the full local temples array to avoid re-querying the DB on every
   // pagination load / search keystroke. Refreshed only on reset (page 1).
   const allLocalTemplesRef = useRef<any[] | null>(null);
@@ -437,6 +435,8 @@ export default function TempleScreen() {
       if (formatted.length === 0 && selectedCategory === 'Jyotirlinga') {
         formatted = JYOTIRLING_TEMPLES.map(j => ({
           id: j.id,
+          temple_id: j.id,
+          templeId: j.id,
           name: j.name,
           location: j.location,
           deity: j.deity,
