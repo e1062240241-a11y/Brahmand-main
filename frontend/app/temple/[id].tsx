@@ -2593,7 +2593,7 @@ export default function TempleDetailScreen() {
             const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || 'Oct – Mar';
 
             const deityLabel = (temple?.deity || 'LORD GANESHA').toUpperCase();
-            const categoryBadge = { label: temple?.category || specialTemple?.category || 'Sacred Shrine' };
+            const categoryBadge = getCategoryBadge(temple?.category || specialTemple?.category) || { label: temple?.category || specialTemple?.category || 'Sacred Shrine' };
 
             return (
               <View style={styles.infoCard}>
@@ -3415,13 +3415,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 45,
   },
-  templeName: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1F2937',
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
   templeDeity: {
     fontSize: 13,
     fontWeight: '700',
@@ -3698,15 +3691,6 @@ const styles = StyleSheet.create({
  fontSize: 12,
  color: COLORS.textLight,
  marginTop: SPACING.sm,
- },
- shortSummaryText: {
-   fontSize: 14,
-   color: '#4B5563',
-   textAlign: 'center',
-   marginTop: 8,
-   lineHeight: 20,
-   fontWeight: '500',
-   paddingHorizontal: 8,
  },
  badgeRow: {
    flexDirection: 'row',
