@@ -1099,10 +1099,13 @@ export default function TempleDetailScreen() {
   };
 
   useEffect(() => {
+    setLoading(true);
     // Check static fallbacks immediately to show content instantly without full blocking screen loader
     const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
     if (staticTemple) {
       setTemple(staticTemple);
+    } else {
+      setTemple(null);
     }
     loadLocalTempleData();
     fetchTempleData();
@@ -1136,6 +1139,24 @@ export default function TempleDetailScreen() {
       const templeRes = await getTemple(resolvedTempleId);
       if (templeRes?.data) {
         setTemple(templeRes.data);
+      } else {
+        const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+        if (staticTemple) {
+          setTemple(staticTemple);
+        } else {
+          setTemple((prev: any) => prev || {
+            id: resolvedTempleId,
+            name: resolvedTempleId.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+            location: '',
+            deity: '',
+            category: 'Sacred',
+            description: '',
+            guidance: '',
+            aarti_timings: {},
+            is_following: false,
+            is_verified: false,
+          });
+        }
       }
 
       // Sync fetched details into WatermelonDB
@@ -1253,16 +1274,16 @@ export default function TempleDetailScreen() {
     : (typeof (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo) === 'string' && (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo).startsWith('http'))
       ? [temple.image_url || temple.imageUrl || temple.image || temple.photo]
       : [templeImageSource];
-  const darshanTimings = temple.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
-  const templeContact = temple.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
+  const darshanTimings = temple?.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
+  const templeContact = temple?.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
 
   // Helper to resolve official website with strict domain verification
   const getOfficialTempleWebsite = () => {
-    const rawWebsite = temple.website || temple.official_website || temple.website_url;
+    const rawWebsite = temple?.website || temple?.official_website || temple?.website_url;
     if (rawWebsite && typeof rawWebsite === 'string' && rawWebsite.trim() && !rawWebsite.includes('google.com/search')) {
       return rawWebsite.trim();
     }
-    const nameLower = (temple.name || '').toLowerCase();
+    const nameLower = (temple?.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
     const keyLower = (templeKey || '').toLowerCase();
     const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
@@ -1341,7 +1362,7 @@ export default function TempleDetailScreen() {
   // Helper to resolve official helpline number
   const getOfficialTempleHelpline = () => {
     if (templeContact) return templeContact;
-    const nameLower = (temple.name || '').toLowerCase();
+    const nameLower = (temple?.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
     const keyLower = (templeKey || '').toLowerCase();
     const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
@@ -1398,7 +1419,7 @@ export default function TempleDetailScreen() {
 
   // Helper to resolve accurate Darshan, Opening/Closing, & VIP Darshan for 12 Jyotirlingas & Major Shrines
   const getAuthenticTempleDarshanDetails = () => {
-    const nameLower = (temple.name || '').toLowerCase();
+    const nameLower = (temple?.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
     const keyLower = (templeKey || '').toLowerCase();
     const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
@@ -1505,7 +1526,7 @@ export default function TempleDetailScreen() {
 
   // Helper to resolve verified 6-section temple knowledge (About, Mythological Significance, History, Architecture, Major Festivals, Pilgrimage Circuit)
   const getAuthenticJyotirlingaDetails = () => {
-    const nameLower = (temple.name || '').toLowerCase();
+    const nameLower = (temple?.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
     const keyLower = (templeKey || '').toLowerCase();
     const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
@@ -1756,10 +1777,10 @@ export default function TempleDetailScreen() {
 
   // Helper to resolve accurate, temple-specific authentic facilities
   const getAuthenticTempleFacilities = (): string[] => {
-    if (temple.facilities && Array.isArray(temple.facilities) && temple.facilities.length > 0) {
+    if (temple?.facilities && Array.isArray(temple.facilities) && temple.facilities.length > 0) {
       return temple.facilities;
     }
-    const nameLower = (temple.name || '').toLowerCase();
+    const nameLower = (temple?.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
     const keyLower = (templeKey || '').toLowerCase();
     const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
@@ -1836,7 +1857,7 @@ export default function TempleDetailScreen() {
   }
 
   const getAuthenticVisitorGuidelines = (): VisitorGuideline[] => {
-    const nameLower = (temple.name || '').toLowerCase();
+    const nameLower = (temple?.name || '').toLowerCase();
     const idLower = (resolvedTempleId || '').toLowerCase();
     const keyLower = (templeKey || '').toLowerCase();
     const match = (str: string) => nameLower.includes(str) || idLower.includes(str) || keyLower.includes(str);
@@ -2460,11 +2481,11 @@ export default function TempleDetailScreen() {
   const authenticJyotirlingaDetails = useMemo(() => getAuthenticJyotirlingaDetails(), [temple, resolvedTempleId, templeKey]);
 
   const getTempleDescription = () => {
-    return authenticJyotirlingaDetails?.about || temple.description || specialTempleData?.description || '';
+    return authenticJyotirlingaDetails?.about || temple?.description || specialTempleData?.description || '';
   };
 
   const getTempleGuidance = () => {
-    if (temple.guidance) {
+    if (temple?.guidance) {
       return temple.guidance;
     }
     return specialTempleData?.guidance || '';
@@ -2510,24 +2531,36 @@ export default function TempleDetailScreen() {
   const resolvedShortSummary = getAuthenticShortSummary();
   const templeDescription = getTempleDescription();
   const templeGuidance = getTempleGuidance();
-  const templeHistory = authenticJyotirlingaDetails?.history || temple.history;
-  const templeArchitecture = authenticJyotirlingaDetails?.architecture || temple.architecture;
-  const templeSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || temple.significance;
-  const templeRituals = authenticJyotirlingaDetails?.sacredRituals || temple.rituals || temple.sacred_rituals;
-  const templeFestivals = authenticJyotirlingaDetails?.festivals || temple.festivals || temple.major_festivals;
+  const templeHistory = authenticJyotirlingaDetails?.history || temple?.history;
+  const templeArchitecture = authenticJyotirlingaDetails?.architecture || temple?.architecture;
+  const templeSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || temple?.significance;
+  const templeRituals = authenticJyotirlingaDetails?.sacredRituals || temple?.rituals || temple?.sacred_rituals;
+  const templeFestivals = authenticJyotirlingaDetails?.festivals || temple?.festivals || temple?.major_festivals;
   const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple?.pilgrimage_circuit || temple?.circuit;
 
   if (loading && !temple) {
     return (
-      <View style={styles.loadingContainer}>
-        <CustomLoader size={70} message="Loading Sacred Temple..." />
-      </View>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.floatingBackButtonContainer}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.floatingBackButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={24} color="#111" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.loadingContainer}>
+          <CustomLoader size={70} message="Loading Sacred Temple..." />
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!temple) {
     return (
       <SafeAreaView style={styles.container}>
+        <View style={styles.floatingBackButtonContainer}>
+          <TouchableOpacity onPress={handleGoBack} style={styles.floatingBackButton} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+            <Ionicons name="arrow-back" size={24} color="#111" />
+          </TouchableOpacity>
+        </View>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color="#999" />
           <Text style={styles.errorText}>
@@ -2566,6 +2599,7 @@ export default function TempleDetailScreen() {
             const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || 'Oct – Mar';
 
             const deityLabel = (temple?.deity || 'LORD GANESHA').toUpperCase();
+            const categoryBadge = { label: temple?.category || specialTemple?.category || 'Sacred Shrine' };
 
             return (
               <View style={styles.infoCard}>
@@ -2627,7 +2661,7 @@ export default function TempleDetailScreen() {
                     <View style={styles.greenTagPill}>
                       <Ionicons name="shield-checkmark-outline" size={13} color="#16A34A" />
                       <Text style={styles.greenTagPillText}>
-                        {temple.heritage_status || 'Heritage Site'}
+                        {temple?.heritage_status || 'Heritage Site'}
                       </Text>
                     </View>
                   </View>
