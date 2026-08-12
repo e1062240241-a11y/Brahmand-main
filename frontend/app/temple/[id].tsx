@@ -2593,7 +2593,8 @@ export default function TempleDetailScreen() {
             const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || 'Oct – Mar';
 
             const deityLabel = (temple?.deity || 'LORD GANESHA').toUpperCase();
-            const categoryBadge = getCategoryBadge(temple?.category || specialTemple?.category) || { label: temple?.category || specialTemple?.category || 'Sacred Shrine' };
+            const specialCat = (specialTemple as any)?.category;
+            const categoryBadge = getCategoryBadge(temple?.category || specialCat) || { label: temple?.category || specialCat || 'Sacred Shrine' };
 
             return (
               <View style={styles.infoCard}>
