@@ -852,13 +852,6 @@ const getCategoryBadge = (category?: string) => {
   return { emoji: '🛕', label: category };
 };
 
-const formatFollowerCount = (count: number): string => {
-  if (!count || count <= 0) return '0';
-  if (count >= 10000000) return `${(count / 10000000).toFixed(1).replace(/\.0$/, '')}Cr`;
-  if (count >= 100000) return `${(count / 100000).toFixed(1).replace(/\.0$/, '')}L`;
-  if (count >= 1000) return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}K`;
-  return count.toString();
-};
 
 const getSpecialTempleKey = (nameOrId: string) => {
  const normalizedName = String(nameOrId || '').toLowerCase();
@@ -1002,6 +995,7 @@ export default function TempleDetailScreen() {
  const router = useRouter();
  const [temple, setTemple] = useState<any>(null);
  const [loading, setLoading] = useState(true);
+
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
@@ -1098,42 +1092,6 @@ export default function TempleDetailScreen() {
     }
   };
 
-  useEffect(() => {
-    setLoading(true);
-    // Check static fallbacks immediately to show content instantly without full blocking screen loader
-    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
-    if (staticTemple) {
-      setTemple(staticTemple);
-    } else {
-      setTemple(null);
-    }
-    loadLocalTempleData();
-    fetchTempleData();
-  }, [id, fetchTempleData]);
-
-  useEffect(() => {
-    if (isCurrentlyLive && !isYoutubeModalVisible) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 0.3,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
-    }
-    return () => { pulseAnim.stopAnimation(); };
-  }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
-
   const fetchTempleData = useCallback(async () => {
     try {
       const templeRes = await getTemple(resolvedTempleId);
@@ -1200,7 +1158,7 @@ export default function TempleDetailScreen() {
               record.isVerified = tData.is_verified || false;
             });
           }
-        }).catch((dbError) => {
+        }).catch((dbError: any) => {
           console.error('Error syncing temple details to WatermelonDB:', dbError);
         });
       }
@@ -1217,16 +1175,52 @@ export default function TempleDetailScreen() {
           deity: '',
           category: 'Sacred',
           description: '',
-        guidance: '',
-        aarti_timings: {},
-        is_following: false,
-        is_verified: false,
-      });
+          guidance: '',
+          aarti_timings: {},
+          is_following: false,
+          is_verified: false,
+        });
+      }
+    } finally {
+      setLoading(false);
     }
- } finally {
- setLoading(false);
- }
- }, [resolvedTempleId]);
+  }, [resolvedTempleId]);
+
+  useEffect(() => {
+    setLoading(true);
+    // Check static fallbacks immediately to show content instantly without full blocking screen loader
+    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    if (staticTemple) {
+      setTemple(staticTemple);
+    } else {
+      setTemple(null);
+    }
+    loadLocalTempleData();
+    fetchTempleData();
+  }, [id, fetchTempleData]);
+
+  useEffect(() => {
+    if (isCurrentlyLive && !isYoutubeModalVisible) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.3,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
+    return () => { pulseAnim.stopAnimation(); };
+  }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
 
   const handleGoBack = () => {
     try {
@@ -3235,32 +3229,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
     width: '100%',
   },
-  followButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFF0E6',
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    borderRadius: 24,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    gap: 8,
-    flex: 1,
-    maxWidth: 200,
-  },
-  followButtonActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  followButtonText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.primary,
-  },
-  followButtonTextActive: {
-    color: '#FFFFFF',
-  },
+
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -3278,12 +3247,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.primary,
   },
-  followerCountText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 10,
-  },
+
   darshanTimingsCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
