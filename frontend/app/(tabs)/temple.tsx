@@ -222,14 +222,27 @@ export default function TempleScreen() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const scrollY = useRef(new Animated.Value(0)).current;
+  // Cache of the full local temples array to avoid re-querying the DB on every
+  // pagination load / search keystroke. Refreshed only on reset (page 1).
+  const allLocalTemplesRef = useRef<any[] | null>(null);
 
   const PAGE_SIZE = 20;
+
+  // Stable string representation of the selected-locations Set so memoized
+  // callbacks/effects don't break on every render (a Set always gets a new ref).
+  const selectedLocationsKey = Array.from(selectedLocations).join(',');
 
   const loadMoreTemples = useCallback(async (pageNum: number, isReset: boolean = false) => {
     try {
       setLoading(true);
-      // Fetch records from database
-      const allLocalTemples = await database.get('temples').query().fetch();
+      // Use cached temples on pagination; refresh from DB only on a reset (page 1).
+      let allLocalTemples: any[];
+      if (isReset || allLocalTemplesRef.current === null) {
+        allLocalTemples = await database.get('temples').query().fetch();
+        allLocalTemplesRef.current = allLocalTemples;
+      } else {
+        allLocalTemples = allLocalTemplesRef.current as any[];
+      }
       
       const isJyotirlinga = (t: any) => {
         const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
@@ -456,13 +469,13 @@ export default function TempleScreen() {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, selectedCategory, selectedLocations, charDhamSubFilter]);
+  }, [searchQuery, selectedCategory, selectedLocationsKey, charDhamSubFilter]);
 
 
   // Reset pagination on filter or search parameters change
   useEffect(() => {
     loadMoreTemples(1, true);
-  }, [searchQuery, selectedCategory, selectedLocations, charDhamSubFilter]);
+  }, [searchQuery, selectedCategory, selectedLocationsKey, charDhamSubFilter, loadMoreTemples]);
 
   const loadLocalTemples = useCallback(async () => {
     try {
@@ -575,9 +588,8 @@ export default function TempleScreen() {
   }, []);
 
   useEffect(() => {
-    loadLocalTemples();
     fetchData();
-  }, [loadLocalTemples, fetchData]);
+  }, [fetchData]);
 
   const openTempleDetails = useCallback((item: any) => {
     const targetId = item.temple_id || item.templeId || item.id;

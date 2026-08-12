@@ -832,6 +832,17 @@ const AMENITY_MAP: Record<string, { label: string; iconName: any; iconColor: str
   holy_kund: { label: 'Holy Kund', iconName: 'water-outline', iconColor: '#0284C7', bgColor: '#F0F9FF' },
 };
 
+const GUIDELINE_ICONS: Record<string, { iconName: any; iconColor: string; badgeBg: string }> = {
+  '🎟️': { iconName: 'ticket-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' },
+  '⏳': { iconName: 'time-outline', iconColor: '#D97706', badgeBg: '#FFFBEB' },
+  '👕': { iconName: 'shirt-outline', iconColor: '#7C3AED', badgeBg: '#F5F3FF' },
+  '📵': { iconName: 'phone-portrait-outline', iconColor: '#DC2626', badgeBg: '#FEF2F2' },
+  '👞': { iconName: 'footsteps-outline', iconColor: '#D97706', badgeBg: '#FFFBEB' },
+  '♿': { iconName: 'body-outline', iconColor: '#059669', badgeBg: '#ECFDF5' },
+  '🚻': { iconName: 'home-outline', iconColor: '#0D9488', badgeBg: '#F0FDFA' },
+  '👥': { iconName: 'people-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' },
+};
+
 const getCategoryBadge = (category?: string) => {
   if (!category) return null;
   const lower = category.toLowerCase().trim();
@@ -1014,6 +1025,17 @@ export default function TempleDetailScreen() {
   const resolvedYoutubeUrl = temple?.youtube_url || specialTempleData?.youtubeUrl || null;
   const isCurrentlyLive = Boolean(resolvedYoutubeUrl);
 
+  const quickFacts = useMemo(() => {
+    const specialKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
+    const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
+    const estYear = temple?.established_year || temple?.year_built || temple?.establishedYear || specialTemple?.establishedYear || 'Ancient';
+    const entryFee = (temple?.entry_fee !== undefined && temple?.entry_fee !== null)
+      ? (temple.entry_fee === 0 || temple.entry_fee === 'Free' ? (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry') : typeof temple.entry_fee === 'number' ? `₹${temple.entry_fee}` : temple.entry_fee)
+      : (specialTemple?.entryFee || (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry'));
+    const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || (t('language') === 'hi' ? 'अक्टूबर से मार्च' : 'October to March');
+    return { estYear, entryFee, bestTime };
+  }, [temple, templeKey, t]);
+
   useEffect(() => {
     if (autoplayAarti === 'true' && resolvedYoutubeUrl) {
       setIsYoutubeModalVisible(true);
@@ -1095,7 +1117,7 @@ export default function TempleDetailScreen() {
     }
     loadLocalTempleData();
     fetchTempleData();
-  }, [id]);
+  }, [id, fetchTempleData]);
 
   useEffect(() => {
     if (isCurrentlyLive && !isYoutubeModalVisible) {
@@ -1103,12 +1125,12 @@ export default function TempleDetailScreen() {
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 0.3,
-            duration: 800,
+            duration: 1500,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
-            duration: 800,
+            duration: 1500,
             useNativeDriver: true,
           }),
         ])
@@ -1117,9 +1139,10 @@ export default function TempleDetailScreen() {
       pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
     }
+    return () => { pulseAnim.stopAnimation(); };
   }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
 
-  const fetchTempleData = async () => {
+  const fetchTempleData = useCallback(async () => {
     try {
       const templeRes = await getTemple(resolvedTempleId);
       if (templeRes?.data) {
@@ -1128,48 +1151,48 @@ export default function TempleDetailScreen() {
 
       // Sync fetched details into WatermelonDB
       if (templeRes?.data) {
-        try {
-          await database.write(async () => {
-            const templeCollection = database.get('temples');
-            const localTemples = await templeCollection.query(Q.where('temple_id', resolvedTempleId)).fetch();
-            const tData = templeRes.data;
+        // Run the DB write in the background (non-blocking) so it doesn't delay UI render.
+        // Error handling is preserved via .catch().
+        database.write(async () => {
+          const templeCollection = database.get('temples');
+          const localTemples = await templeCollection.query(Q.where('temple_id', resolvedTempleId)).fetch();
+          const tData = templeRes.data;
 
-            if (localTemples.length > 0) {
-              await localTemples[0].update((record: any) => {
-                record.name = tData.name || '';
-                record.location = tData.location || '';
-                record.deity = tData.deity || '';
-                record.category = tData.category || '';
-                record.description = tData.description || '';
-                record.guidance = tData.guidance || '';
-                record.imageUrl = tData.image_url || '';
-                record.youtubeUrl = tData.youtube_url || '';
-                record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
-                record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
-                record.isFollowing = tData.is_following || false;
-                record.isVerified = tData.is_verified || false;
-              });
-            } else {
-              await templeCollection.create((record: any) => {
-                record.templeId = resolvedTempleId;
-                record.name = tData.name || '';
-                record.location = tData.location || '';
-                record.deity = tData.deity || '';
-                record.category = tData.category || '';
-                record.description = tData.description || '';
-                record.guidance = tData.guidance || '';
-                record.imageUrl = tData.image_url || '';
-                record.youtubeUrl = tData.youtube_url || '';
-                record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
-                record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
-                record.isFollowing = tData.is_following || false;
-                record.isVerified = tData.is_verified || false;
-              });
-            }
-          });
-        } catch (dbError) {
+          if (localTemples.length > 0) {
+            await localTemples[0].update((record: any) => {
+              record.name = tData.name || '';
+              record.location = tData.location || '';
+              record.deity = tData.deity || '';
+              record.category = tData.category || '';
+              record.description = tData.description || '';
+              record.guidance = tData.guidance || '';
+              record.imageUrl = tData.image_url || '';
+              record.youtubeUrl = tData.youtube_url || '';
+              record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
+              record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
+              record.isFollowing = tData.is_following || false;
+              record.isVerified = tData.is_verified || false;
+            });
+          } else {
+            await templeCollection.create((record: any) => {
+              record.templeId = resolvedTempleId;
+              record.name = tData.name || '';
+              record.location = tData.location || '';
+              record.deity = tData.deity || '';
+              record.category = tData.category || '';
+              record.description = tData.description || '';
+              record.guidance = tData.guidance || '';
+              record.imageUrl = tData.image_url || '';
+              record.youtubeUrl = tData.youtube_url || '';
+              record.coords = tData.coords ? JSON.stringify(tData.coords) : null;
+              record.aartiTimings = tData.aarti_timings ? JSON.stringify(tData.aarti_timings) : null;
+              record.isFollowing = tData.is_following || false;
+              record.isVerified = tData.is_verified || false;
+            });
+          }
+        }).catch((dbError) => {
           console.error('Error syncing temple details to WatermelonDB:', dbError);
-        }
+        });
       }
     } catch (error) {
       const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
@@ -1193,7 +1216,7 @@ export default function TempleDetailScreen() {
  } finally {
  setLoading(false);
  }
- };
+ }, [resolvedTempleId]);
 
   const handleGoBack = () => {
     try {
@@ -1249,11 +1272,11 @@ if (!temple) {
   const displayName = templeKey || temple.name || 'Temple';
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
   const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
-  const templeImageSource = resolveTempleImage({
+  const templeImageSource = useMemo(() => resolveTempleImage({
     ...temple,
     temple_id: temple.temple_id || temple.templeId || resolvedTempleId,
     name: temple.name || displayName,
-  });
+  }), [temple, resolvedTempleId, displayName]);
 
   const categoryBadge = getCategoryBadge(temple.category);
   const templeImages: any[] = (Array.isArray(temple.images) && temple.images.length > 0)
@@ -2581,45 +2604,33 @@ if (!temple) {
           </View>
 
           {/* 2. QUICK FACTS */}
-          {(() => {
-            const specialKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
-            const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
-            const estYear = temple?.established_year || temple?.year_built || temple?.establishedYear || specialTemple?.establishedYear || 'Ancient';
-            const entryFee = (temple?.entry_fee !== undefined && temple?.entry_fee !== null)
-              ? (temple.entry_fee === 0 || temple.entry_fee === 'Free' ? (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry') : typeof temple.entry_fee === 'number' ? `₹${temple.entry_fee}` : temple.entry_fee)
-              : (specialTemple?.entryFee || (t('language') === 'hi' ? 'निःशुल्क प्रवेश' : 'Free Entry'));
-            const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || (t('language') === 'hi' ? 'अक्टूबर से मार्च' : 'October to March');
-
-            return (
-              <View style={styles.section}>
-                <View style={styles.quickFactsGrid}>
-                  {/* Established Year */}
-                  <View style={styles.infoChip}>
-                    <Ionicons name="time-outline" size={16} color={COLORS.primary} />
-                    <Text style={styles.infoChipText}>
-                      {t('language') === 'hi' ? 'स्थापना:' : 'Est:'} {estYear}
-                    </Text>
-                  </View>
-
-                  {/* Entry Fee / Free */}
-                  <View style={styles.infoChip}>
-                    <Ionicons name="ticket-outline" size={16} color={COLORS.primary} />
-                    <Text style={styles.infoChipText}>
-                      {t('language') === 'hi' ? 'प्रवेश:' : 'Entry:'} {entryFee}
-                    </Text>
-                  </View>
-
-                  {/* Best Time to Visit */}
-                  <View style={styles.infoChip}>
-                    <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
-                    <Text style={styles.infoChipText}>
-                      {t('language') === 'hi' ? 'उत्कृष्ट समय:' : 'Best Time:'} {bestTime}
-                    </Text>
-                  </View>
-                </View>
+          <View style={styles.section}>
+            <View style={styles.quickFactsGrid}>
+              {/* Established Year */}
+              <View style={styles.infoChip}>
+                <Ionicons name="time-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.infoChipText}>
+                  {t('language') === 'hi' ? 'स्थापना:' : 'Est:'} {quickFacts.estYear}
+                </Text>
               </View>
-            );
-          })()}
+
+              {/* Entry Fee / Free */}
+              <View style={styles.infoChip}>
+                <Ionicons name="ticket-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.infoChipText}>
+                  {t('language') === 'hi' ? 'प्रवेश:' : 'Entry:'} {quickFacts.entryFee}
+                </Text>
+              </View>
+
+              {/* Best Time to Visit */}
+              <View style={styles.infoChip}>
+                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
+                <Text style={styles.infoChipText}>
+                  {t('language') === 'hi' ? 'उत्कृष्ट समय:' : 'Best Time:'} {quickFacts.bestTime}
+                </Text>
+              </View>
+            </View>
+          </View>
 
           {/* 3. DARSHAN & AARTI (Day Timeline Visualization) */}
           <DarshanAartiTimeline
@@ -2644,17 +2655,6 @@ if (!temple) {
                 bgColor: '#EFF6FF',
               };
             });
-
-            const GUIDELINE_ICONS: Record<string, { iconName: any; iconColor: string; badgeBg: string }> = {
-              '🎟️': { iconName: 'ticket-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' },
-              '⏳': { iconName: 'time-outline', iconColor: '#D97706', badgeBg: '#FFFBEB' },
-              '👕': { iconName: 'shirt-outline', iconColor: '#7C3AED', badgeBg: '#F5F3FF' },
-              '📵': { iconName: 'phone-portrait-outline', iconColor: '#DC2626', badgeBg: '#FEF2F2' },
-              '👞': { iconName: 'footsteps-outline', iconColor: '#D97706', badgeBg: '#FFFBEB' },
-              '♿': { iconName: 'body-outline', iconColor: '#059669', badgeBg: '#ECFDF5' },
-              '🚻': { iconName: 'home-outline', iconColor: '#0D9488', badgeBg: '#F0FDFA' },
-              '👥': { iconName: 'people-outline', iconColor: '#2563EB', badgeBg: '#EFF6FF' },
-            };
 
             const hasTopShoeAmenity = authenticFacilities.some(f => f.includes('shoe') || f.includes('footwear'));
 
