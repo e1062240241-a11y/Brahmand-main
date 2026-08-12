@@ -194,7 +194,7 @@ export default function AdminKathaUploadScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: 'Saavan Katha Video Upload', headerShown: false }} />
+      <Stack.Screen options={{ title: 'Shravan Katha Video Upload', headerShown: false }} />
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -211,7 +211,7 @@ export default function AdminKathaUploadScreen() {
         </View>
 
         <Text style={styles.pageTitle}>Acharya Shamik Pathak Ji</Text>
-        <Text style={styles.pageSubtitle}>Upload Saavan Katha daily videos directly to Bunny.net CDN</Text>
+        <Text style={styles.pageSubtitle}>Upload Shravan Katha daily videos directly to Bunny.net CDN</Text>
 
         <View style={styles.formCard}>
           {/* Episode Number & Date */}
@@ -245,7 +245,7 @@ export default function AdminKathaUploadScreen() {
               style={styles.input}
               value={title}
               onChangeText={setTitle}
-              placeholder="e.g. Saavan Katha Day 1 — Shiv Mahima & Mangalacharan"
+              placeholder="e.g. Shravan Katha Day 1 — Shiv Mahima & Mangalacharan"
             />
           </View>
 

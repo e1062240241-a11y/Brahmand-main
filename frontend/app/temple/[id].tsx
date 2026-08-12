@@ -1222,6 +1222,39 @@ export default function TempleDetailScreen() {
     return () => { pulseAnim.stopAnimation(); };
   }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
 
+  useEffect(() => {
+    // Check static fallbacks immediately to show content instantly without full blocking screen loader
+    const staticTemple = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    if (staticTemple) {
+      setTemple(staticTemple);
+    }
+    loadLocalTempleData();
+    fetchTempleData();
+  }, [id, fetchTempleData]);
+
+  useEffect(() => {
+    if (isCurrentlyLive && !isYoutubeModalVisible) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 0.3,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
+    return () => { pulseAnim.stopAnimation(); };
+  }, [isCurrentlyLive, isYoutubeModalVisible, pulseAnim]);
+
   const handleGoBack = () => {
     try {
       if (router.canGoBack()) {
@@ -2593,7 +2626,8 @@ export default function TempleDetailScreen() {
             const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || 'Oct – Mar';
 
             const deityLabel = (temple?.deity || 'LORD GANESHA').toUpperCase();
-            const categoryBadge = { label: temple?.category || specialTemple?.category || 'Sacred Shrine' };
+            const specialCat = (specialTemple as any)?.category;
+            const categoryBadge = getCategoryBadge(temple?.category || specialCat) || { label: temple?.category || specialCat || 'Sacred Shrine' };
 
             return (
               <View style={styles.infoCard}>
@@ -3439,13 +3473,6 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 45,
   },
-  templeName: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#1F2937',
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
   templeDeity: {
     fontSize: 13,
     fontWeight: '700',
@@ -3722,15 +3749,6 @@ const styles = StyleSheet.create({
  fontSize: 12,
  color: COLORS.textLight,
  marginTop: SPACING.sm,
- },
- shortSummaryText: {
-   fontSize: 14,
-   color: '#4B5563',
-   textAlign: 'center',
-   marginTop: 8,
-   lineHeight: 20,
-   fontWeight: '500',
-   paddingHorizontal: 8,
  },
  badgeRow: {
    flexDirection: 'row',
