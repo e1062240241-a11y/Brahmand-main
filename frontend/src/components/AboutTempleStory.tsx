@@ -1,7 +1,13 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useMemo, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { COLORS } from '../constants/theme';
+import { getFestivalList } from '../services/api';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export interface StoryNode {
   id: string;
@@ -32,11 +38,12 @@ interface AboutTempleStoryProps {
   busRoute?: string;
 }
 
-const FEST_COLORS = [
-  { bg: '#FFF7ED', border: '#FFEDD5', text: '#C2410C', icon: '🎪' },
-  { bg: '#F0FDF4', border: '#DCFCE7', text: '#15803D', icon: '🕉️' },
-  { bg: '#EFF6FF', border: '#DBEAFE', text: '#1D4ED8', icon: '✨' },
-  { bg: '#F5F3FF', border: '#EDE9FE', text: '#6D28D9', icon: '🪔' },
+const FEST_THEMES = [
+  { bg: '#FFF7ED', border: '#FFEDD5', badgeBg: '#FFEDD5', iconColor: '#EA580C', textColor: '#9A3412', iconName: 'sparkles-outline' as const },
+  { bg: '#F0FDF4', border: '#DCFCE7', badgeBg: '#DCFCE7', iconColor: '#166534', textColor: '#166534', iconName: 'flame-outline' as const },
+  { bg: '#EFF6FF', border: '#DBEAFE', badgeBg: '#DBEAFE', iconColor: '#2563EB', textColor: '#1D4ED8', iconName: 'calendar-outline' as const },
+  { bg: '#F5F3FF', border: '#EDE9FE', badgeBg: '#EDE9FE', iconColor: '#7C3AED', textColor: '#6D28D9', iconName: 'flower-outline' as const },
+  { bg: '#FDF2F8', border: '#FCE7F3', badgeBg: '#FCE7F3', iconColor: '#DB2777', textColor: '#9D174D', iconName: 'ribbon-outline' as const },
 ] as const;
 
 const formatStringProp = (
@@ -76,13 +83,33 @@ export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
   const safeRail = formatStringProp(railRoute, '');
   const safeBus = formatStringProp(busRoute, '');
 
-  const DEFAULT_FESTIVALS = ['Maha Shivratri', 'Shravan Somvar', 'Annakutotsav'];
+  const router = useRouter();
+
+  const handleFestPress = useCallback(async (festName: string) => {
+    if (!festName) return;
+    try {
+      const response = await getFestivalList();
+      const items: any[] = response?.data || [];
+      const cleanTarget = festName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      let matchedIndex = items.findIndex((f: any) => {
+        const name = (f?.name || f?.festival_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return name && (name === cleanTarget || name.includes(cleanTarget) || cleanTarget.includes(name));
+      });
+
+      if (matchedIndex >= 0) {
+        router.push(`/festival-detail?index=${matchedIndex}`);
+      }
+    } catch {
+      // Do nothing if festival is not found in master list
+    }
+  }, [router]);
+
   const safeFestivals = useMemo(() => {
     if (Array.isArray(festivals) && festivals.length > 0) {
-      const valid = festivals.map(f => (typeof f === 'string' ? f.trim() : String(f))).filter(Boolean);
-      if (valid.length > 0) return valid;
+      return festivals.map(f => (typeof f === 'string' ? f.trim() : String(f))).filter(Boolean);
     }
-    return DEFAULT_FESTIVALS;
+    return [];
   }, [festivals]);
 
   const storyNodes = useMemo(() => {
@@ -157,27 +184,38 @@ export const AboutTempleStory = React.memo<AboutTempleStoryProps>(({
         </View>
       )}
 
-      {/* 3. MAJOR FESTIVALS CELEBRATED */}
+      {/* 3. MAJOR FESTIVALS CELEBRATED (Uiverse Expanding Flex Cards) */}
       {safeFestivals.length > 0 && (
         <View style={styles.festivalsBlock}>
           <Text style={styles.subHeadingTitle}>Major festivals</Text>
-          <View style={styles.chipsRow}>
+          <View style={styles.expandingCardsRow}>
             {safeFestivals.map((fest, idx) => {
-              const theme = FEST_COLORS[idx % FEST_COLORS.length];
+              const theme = FEST_THEMES[idx % FEST_THEMES.length];
               return (
-                <View
-                  key={`fest-chip-${idx}`}
+                <TouchableOpacity
+                  key={`fest-card-${idx}`}
+                  activeOpacity={0.85}
+                  onPress={() => handleFestPress(fest)}
                   style={[
-                    styles.festivalChip,
-                    { backgroundColor: theme.bg, borderColor: theme.border },
+                    styles.uiverseCard,
+                    {
+                      backgroundColor: theme.bg,
+                      borderColor: theme.border,
+                    },
                   ]}
-                  accessibilityRole="text"
+                  accessibilityRole="button"
                   accessibilityLabel={`Festival: ${fest}`}
                 >
-                  <Text style={[styles.festivalChipText, { color: theme.text }]}>
-                    {theme.icon} {fest}
+                  <View style={[styles.uiverseIconBadge, { backgroundColor: theme.badgeBg }]}>
+                    <Ionicons name={theme.iconName} size={20} color={theme.iconColor} />
+                  </View>
+                  <Text
+                    style={[styles.uiverseCardText, { color: theme.textColor }]}
+                    numberOfLines={2}
+                  >
+                    {fest}
                   </Text>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
@@ -325,7 +363,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  /* 3. Festival Chips */
+  /* 3. Uiverse Expanding Festival Cards */
   festivalsBlock: {
     marginBottom: 18,
   },
@@ -335,23 +373,38 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: 10,
   },
-  chipsRow: {
+  expandingCardsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignItems: 'stretch',
+    gap: 10,
   },
-  festivalChip: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: '#CBD5E1',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  uiverseCard: {
+    flex: 1,
+    minHeight: 84,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  festivalChipText: {
+  uiverseIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uiverseCardText: {
     fontSize: 12,
-    fontWeight: '500',
-    color: '#334155',
+    fontWeight: '700',
+    textAlign: 'center',
   },
 
   /* 4. Restored Travel Section Cards */

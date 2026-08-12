@@ -513,7 +513,7 @@ const TEMPLE_IMAGES: Record<string, ImageSourcePropType> = {
   'sacred-vasukital': require('../../assets/images/imagetemple/vasukital.webp'),
 };
 
-const DEFAULT_TEMPLE_IMAGE: number = require('../../assets/images/clean_parchment_bg.webp');
+const DEFAULT_TEMPLE_IMAGE: number = require('../../assets/images/temple-fallback-icon.png');
 
 const DETAILED_LOOKUP_CACHE = new Map<string, any>();
 const IMAGE_LOOKUP_CACHE = new Map<string, ImageSourcePropType>();
@@ -569,7 +569,7 @@ Object.keys(TEMPLE_IMAGES).forEach((key) => {
 });
 
 const TEMPLE_FALLBACK_POOL: ImageSourcePropType[] = [
-  require('../../assets/images/clean_parchment_bg.webp'),
+  require('../../assets/images/temple-fallback-icon.png'),
 ];
 
 const _rawGetTempleImageByNameDetailed = (name: string) => {

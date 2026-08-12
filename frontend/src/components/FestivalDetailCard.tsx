@@ -360,7 +360,7 @@ const GuideItem = ({
 // Main Component
 const FestivalDetailCard = ({ festival, onBack, onGuidePress, onRelatedFestivalPress }: FestivalDetailCardProps) => {
   const [visitedSections, setVisitedSections] = useState<string[]>([]);
-  const festivalName = festival.festival_name || festival.name || 'Hariyali Teej';
+  const festivalName = festival.festival_name || festival.name || festival.title || '';
   const festivalId = festival.id || festivalName;
 
   // Enrichments data mapping

@@ -994,7 +994,6 @@ export default function TempleDetailScreen() {
  const resolvedTempleId = decodeURIComponent(String(id || '')).trim();
  const router = useRouter();
  const [temple, setTemple] = useState<any>(null);
- const [posts, setPosts] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
 
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
@@ -1204,47 +1203,27 @@ export default function TempleDetailScreen() {
  }
  };
 
-  if (loading && !temple) {
-   return (
-     <View style={styles.loadingContainer}>
-       <CustomLoader size={70} message="Loading Sacred Temple..." />
-     </View>
-   );
-  }
-
-if (!temple) {
-    return (
-      <SafeAreaView style={styles.container}>
-      <View style={styles.errorContainer}>
-      <Ionicons name="alert-circle" size={48} color="#999" />
-      <Text style={styles.errorText}>
-        {t('language') === 'hi' ? 'मंदिर नहीं मिला' : 'Temple not found'}
-      </Text>
-      </View>
-      </SafeAreaView>
-    );
-    }
+  // All hook declarations proceed unconditionally above early returns to strictly honor React Rules of Hooks
 
 
 
 
 
 
-  const displayName = templeKey || temple.name || 'Temple';
+  const displayName = templeKey || temple?.name || 'Temple';
   const isYoutubeUrl = Boolean(resolvedYoutubeUrl && (resolvedYoutubeUrl.includes('youtube.com') || resolvedYoutubeUrl.includes('youtu.be')));
-  const aartiSessions = getTempleAartiSessions(temple.aarti_timings || {}, temple.name);
+  const aartiSessions = getTempleAartiSessions(temple?.aarti_timings || {}, temple?.name);
   const templeImageSource = useMemo(() => resolveTempleImage({
     ...temple,
-    temple_id: temple.temple_id || temple.templeId || resolvedTempleId,
-    name: temple.name || displayName,
+    temple_id: temple?.temple_id || temple?.templeId || resolvedTempleId,
+    name: temple?.name || displayName,
   }), [temple, resolvedTempleId, displayName]);
 
-  const categoryBadge = getCategoryBadge(temple.category);
-  const templeImages: any[] = (Array.isArray(temple.images) && temple.images.length > 0)
+  const templeImages: any[] = (Array.isArray(temple?.images) && temple.images.length > 0)
     ? temple.images
-    : (temple.image_url || temple.imageUrl || temple.image || temple.photo) && typeof (temple.image_url || temple.imageUrl || temple.image || temple.photo) === 'string' && (temple.image_url || temple.imageUrl || temple.image || temple.photo).startsWith('http')
+    : (typeof (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo) === 'string' && (temple?.image_url || temple?.imageUrl || temple?.image || temple?.photo).startsWith('http'))
       ? [temple.image_url || temple.imageUrl || temple.image || temple.photo]
-      : [];
+      : [templeImageSource];
   const darshanTimings = temple.timings && typeof temple.timings === 'object' && Object.keys(temple.timings).length > 0 ? temple.timings : null;
   const templeContact = temple.contact && typeof temple.contact === 'string' && temple.contact.trim() ? temple.contact.trim() : null;
 
@@ -2462,6 +2441,44 @@ if (!temple) {
     return specialTempleData?.guidance || '';
   };
 
+  const getAuthenticShortSummary = (): string => {
+    const genericPhrase = 'ancient holy temple offering rich spiritual';
+    if (temple?.short_summary && !temple.short_summary.toLowerCase().includes(genericPhrase)) {
+      return temple.short_summary;
+    }
+
+    if (authenticJyotirlingaDetails?.about) {
+      const firstSentence = authenticJyotirlingaDetails.about.split('.')[0].trim();
+      if (firstSentence) return `${firstSentence}.`;
+    }
+
+    if (specialTempleData?.description) {
+      const firstSentence = specialTempleData.description.split('.')[0].trim();
+      if (firstSentence) return `${firstSentence}.`;
+    }
+
+    const staticDetail = STATIC_TEMPLE_DETAILS[resolvedTempleId];
+    if (staticDetail?.description) {
+      const firstSentence = staticDetail.description.split('.')[0].trim();
+      if (firstSentence) return `${firstSentence}.`;
+    }
+
+    if (temple?.description && !temple.description.toLowerCase().includes(genericPhrase)) {
+      const firstSentence = temple.description.split('.')[0].trim();
+      if (firstSentence && firstSentence.length > 15) return `${firstSentence}.`;
+    }
+
+    const deityStr = temple?.deity || 'the Divine';
+    const locStr = formatTempleLocation(temple);
+    const hasLoc = locStr && locStr !== 'Unknown location';
+
+    if (hasLoc) {
+      return `Revered sacred shrine of ${deityStr} in ${locStr}, welcoming pilgrims for divine darshan and blessings.`;
+    }
+    return `Sacred pilgrimage center dedicated to ${deityStr}, revered by devotees for its spiritual heritage.`;
+  };
+
+  const resolvedShortSummary = getAuthenticShortSummary();
   const templeDescription = getTempleDescription();
   const templeGuidance = getTempleGuidance();
   const templeHistory = authenticJyotirlingaDetails?.history || temple.history;
@@ -2469,7 +2486,29 @@ if (!temple) {
   const templeSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || temple.significance;
   const templeRituals = authenticJyotirlingaDetails?.sacredRituals || temple.rituals || temple.sacred_rituals;
   const templeFestivals = authenticJyotirlingaDetails?.festivals || temple.festivals || temple.major_festivals;
-  const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple.pilgrimage_circuit || temple.circuit;
+  const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple?.pilgrimage_circuit || temple?.circuit;
+
+  if (loading && !temple) {
+    return (
+      <View style={styles.loadingContainer}>
+        <CustomLoader size={70} message="Loading Sacred Temple..." />
+      </View>
+    );
+  }
+
+  if (!temple) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#999" />
+          <Text style={styles.errorText}>
+            {t('language') === 'hi' ? 'मंदिर नहीं मिला' : 'Temple not found'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
   <View style={styles.container}>
     <LinearGradient 
@@ -2487,111 +2526,129 @@ if (!temple) {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Temple Info Card — Enhanced Hero */}
-          {/* 1. HERO & OVERVIEW */}
-          <View style={styles.infoCard}>
-            <View style={styles.heroImageContainer}>
-              <ExpoImage
-                source={templeImageSource}
-                style={styles.heroImage}
-                contentFit="cover"
-                contentPosition="top"
-                transition={200}
-              />
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.55)']}
-                style={styles.heroImageOverlay}
-              />
-            </View>
+          {/* 1. HERO & CONTENT CARD (Prompt Spec Compliant) */}
+          {(() => {
+            const specialKey = getSpecialTempleKey(temple?.name || resolvedTempleId || '');
+            const specialTemple = SPECIAL_TEMPLE_DATA[specialKey];
+            const estYear = temple?.established_year || temple?.year_built || temple?.establishedYear || specialTemple?.establishedYear || 'Ancient';
+            const entryFee = (temple?.entry_fee !== undefined && temple?.entry_fee !== null)
+              ? (temple.entry_fee === 0 || temple.entry_fee === 'Free' ? 'Free Entry' : typeof temple.entry_fee === 'number' ? `₹${temple.entry_fee}` : temple.entry_fee)
+              : (specialTemple?.entryFee || 'Free Entry');
+            const bestTime = temple?.best_time_to_visit || specialTemple?.bestTimeToVisit || 'Oct – Mar';
 
-            <View style={styles.heroInfoContent}>
-              <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
-              {temple.deity ? <Text style={styles.templeDeity} numberOfLines={1}>{temple.deity}</Text> : null}
+            const deityLabel = (temple?.deity || 'LORD GANESHA').toUpperCase();
 
-              {/* short_summary directly below deity */}
-              {temple.short_summary ? (
-                <Text style={styles.shortSummaryText}>{temple.short_summary}</Text>
-              ) : null}
-
-              {/* Category Badge & Heritage Status */}
-              <View style={styles.badgeRow}>
-                {categoryBadge && (
-                  <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryBadgeText}>{categoryBadge.emoji} {categoryBadge.label}</Text>
-                  </View>
-                )}
-                {temple.heritage_status && (
-                  <View style={styles.heritageBadge}>
-                    <Text style={styles.heritageBadgeText}>🏛️ {temple.heritage_status}</Text>
-                  </View>
-                )}
-              </View>
-
-              <TouchableOpacity
-                style={styles.locationCard}
-                onPress={openTempleLocation}
-                activeOpacity={0.8}
-              >
-                <View style={styles.locationRow}>
-                  <Ionicons name="location" size={16} color={COLORS.primary} />
-                  <Text style={styles.locationText}>
-                    {locationStr}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Open in Maps Action Button */}
-              <TouchableOpacity
-                style={styles.openInMapsButton}
-                onPress={openTempleLocation}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="map-outline" size={16} color="#059669" />
-                <Text style={styles.openInMapsText}>
-                  {t('language') === 'hi' ? 'मैप्स में खोलें' : 'Open in Maps'}
-                </Text>
-                <Ionicons name="open-outline" size={14} color="#059669" />
-              </TouchableOpacity>
-
-              {/* Share Action Row */}
-              <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.shareButton} onPress={handleShare} activeOpacity={0.75}>
-                  <Ionicons name="share-social-outline" size={18} color={COLORS.primary} />
-                  <Text style={styles.shareButtonText}>
-                    {t('language') === 'hi' ? 'शेयर करें' : 'Share'}
-                  </Text>
+            return (
+              <View style={styles.infoCard}>
+                {/* 1. HERO SECTION */}
+                <TouchableOpacity
+                  style={styles.heroImageContainer}
+                  activeOpacity={0.9}
+                  onPress={() => {
+                    setActiveGalleryIndex(0);
+                    setGalleryModalVisible(true);
+                  }}
+                >
+                  <ExpoImage
+                    source={templeImageSource}
+                    style={styles.heroImage}
+                    contentFit="cover"
+                    contentPosition="top"
+                    transition={200}
+                  />
+                  <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.45)']}
+                    style={styles.heroImageOverlay}
+                  />
                 </TouchableOpacity>
-              </View>
-            </View>
-          </View>
 
-          {/* 2. QUICK FACTS */}
-          <View style={styles.section}>
-            <View style={styles.quickFactsGrid}>
-              {/* Established Year */}
-              <View style={styles.infoChip}>
-                <Ionicons name="time-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.infoChipText}>
-                  {t('language') === 'hi' ? 'स्थापना:' : 'Est:'} {quickFacts.estYear}
-                </Text>
-              </View>
+                {/* Floating Action Share FAB (Overlapping Hero & Content) */}
+                <TouchableOpacity
+                  style={styles.floatingShareFab}
+                  onPress={handleShare}
+                  activeOpacity={0.85}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="share-outline" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
 
-              {/* Entry Fee / Free */}
-              <View style={styles.infoChip}>
-                <Ionicons name="ticket-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.infoChipText}>
-                  {t('language') === 'hi' ? 'प्रवेश:' : 'Entry:'} {quickFacts.entryFee}
-                </Text>
-              </View>
+                {/* 2. CONTENT SECTION */}
+                <View style={styles.heroInfoContent}>
+                  {/* Deity Pill Badge */}
+                  <View style={styles.deityPillBadge}>
+                    <Text style={styles.deityPillBadgeText}>{deityLabel}</Text>
+                  </View>
 
-              {/* Best Time to Visit */}
-              <View style={styles.infoChip}>
-                <Ionicons name="calendar-outline" size={16} color={COLORS.primary} />
-                <Text style={styles.infoChipText}>
-                  {t('language') === 'hi' ? 'उत्कृष्ट समय:' : 'Best Time:'} {quickFacts.bestTime}
-                </Text>
+                  {/* Title: Temple Name */}
+                  <Text style={styles.templeName} numberOfLines={2}>{displayName}</Text>
+
+                  {/* Description: 2-3 lines */}
+                  {resolvedShortSummary ? (
+                    <Text style={styles.shortSummaryText} numberOfLines={3}>{resolvedShortSummary}</Text>
+                  ) : null}
+
+                  {/* 3. TAG ROW */}
+                  <View style={styles.tagRowContainer}>
+                    {categoryBadge && (
+                      <View style={styles.amberTagPill}>
+                        <Ionicons name="sparkles-outline" size={13} color="#D97706" />
+                        <Text style={styles.amberTagPillText}>{categoryBadge.label}</Text>
+                      </View>
+                    )}
+                    <View style={styles.greenTagPill}>
+                      <Ionicons name="shield-checkmark-outline" size={13} color="#16A34A" />
+                      <Text style={styles.greenTagPillText}>
+                        {temple.heritage_status || 'Heritage Site'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 4. LOCATION CARD */}
+                  <TouchableOpacity
+                    style={styles.locationCardBox}
+                    onPress={openTempleLocation}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="location-sharp" size={16} color="#EA580C" />
+                    <Text style={styles.locationCardText} numberOfLines={2}>
+                      {formatTempleLocation(temple)}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {/* 5. INFO STAT GRID */}
+                  <View style={styles.infoStatGrid}>
+                    <View style={styles.statBoxCol}>
+                      <Ionicons name="time-outline" size={16} color="#D97706" />
+                      <Text style={styles.statBoxLabel}>AGE</Text>
+                      <Text style={styles.statBoxValue} numberOfLines={1}>{estYear}</Text>
+                    </View>
+                    <View style={styles.statBoxCol}>
+                      <Ionicons name="ticket-outline" size={16} color="#2563EB" />
+                      <Text style={styles.statBoxLabel}>ENTRY</Text>
+                      <Text style={styles.statBoxValue} numberOfLines={1}>{entryFee}</Text>
+                    </View>
+                    <View style={styles.statBoxCol}>
+                      <Ionicons name="calendar-outline" size={16} color="#059669" />
+                      <Text style={styles.statBoxLabel}>BEST TIME</Text>
+                      <Text style={styles.statBoxValue} numberOfLines={1}>{bestTime}</Text>
+                    </View>
+                  </View>
+
+                  {/* 6. PRIMARY CTA */}
+                  <TouchableOpacity
+                    style={styles.primaryCtaButton}
+                    onPress={openTempleLocation}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="map-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.primaryCtaButtonText}>
+                      {t('language') === 'hi' ? 'मैप्स में खोलें' : 'Open in maps'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-          </View>
+            );
+          })()}
 
           {/* 3. DARSHAN & AARTI (Day Timeline Visualization) */}
           <DarshanAartiTimeline
@@ -2667,7 +2724,7 @@ if (!temple) {
                 significance={templeSignificance || 'Believed to be one of the sacred pilgrimage shrines where divine energies reside.'}
                 history={typeof templeHistory === 'string' ? templeHistory : 'Tracing ancient origins, rebuilt across eras by royal patrons and devotees.'}
                 architecture={templeArchitecture || 'Built in traditional sacred Indian temple architectural style with carved stone pillars and sanctum.'}
-                festivals={Array.isArray(temple?.festivals) ? temple.festivals : []}
+                festivals={Array.isArray(templeFestivals) ? templeFestivals : []}
                 airRoute={airInfo || ""}
                 railRoute={railInfo || ""}
                 busRoute={busInfo || ""}
@@ -2845,11 +2902,14 @@ if (!temple) {
           const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
           setActiveGalleryIndex(idx);
         }}
-        renderItem={({ item }) => (
-          <View style={{ width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
-            <Image source={{ uri: item }} style={styles.galleryFullImage} resizeMode="contain" />
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const imgSrc = typeof item === 'string' ? { uri: item } : item;
+          return (
+            <View style={{ width: SCREEN_WIDTH, justifyContent: 'center', alignItems: 'center' }}>
+              <ExpoImage source={imgSrc} style={styles.galleryFullImage} contentFit="contain" />
+            </View>
+          );
+        }}
       />
       {/* Pagination dots */}
       {templeImages.length > 1 && (
@@ -2913,18 +2973,18 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 4,
+    borderRadius: 16,
+    overflow: 'visible',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   heroImageContainer: {
     width: '100%',
-    height: 280,
+    height: 200,
     position: 'relative',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: 'hidden',
   },
   heroImage: {
     width: '100%',
@@ -2935,27 +2995,156 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 80,
+    height: 60,
+  },
+  floatingShareFab: {
+    position: 'absolute',
+    top: 178,
+    right: 20,
+    zIndex: 99,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#1E293B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
   },
   heroInfoContent: {
-    padding: 20,
-    alignItems: 'center',
+    paddingTop: 28,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
-  categoryBadge: {
-    backgroundColor: '#FFF3EB',
-    borderWidth: 1,
-    borderColor: '#FFD0B3',
+  deityPillBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#FEF3C7',
     borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 10,
-    marginBottom: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
   },
-  categoryBadgeText: {
+  deityPillBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#D97706',
+    letterSpacing: 0.5,
+  },
+  templeName: {
+    fontSize: 19,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 25,
+    marginBottom: 6,
+  },
+  shortSummaryText: {
     fontSize: 13,
-    fontWeight: '700',
-    color: '#D95200',
-    letterSpacing: 0.3,
+    color: '#4B5563',
+    lineHeight: 20,
+    fontWeight: '400',
+    marginBottom: 12,
+  },
+  tagRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginBottom: 12,
+  },
+  amberTagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  amberTagPillText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#B45309',
+  },
+  greenTagPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#DCFCE7',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  greenTagPillText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#15803D',
+  },
+  locationCardBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+  },
+  locationCardText: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#4B5563',
+  },
+  infoStatGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  statBoxCol: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    gap: 4,
+  },
+  statBoxLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+  },
+  statBoxValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1F2937',
+    textAlign: 'center',
+  },
+  primaryCtaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#EA580C',
+    borderRadius: 10,
+    paddingVertical: 14,
+    width: '100%',
+  },
+  primaryCtaButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   openInMapsButton: {
     flexDirection: 'row',
