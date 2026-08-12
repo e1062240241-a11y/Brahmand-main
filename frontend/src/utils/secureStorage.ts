@@ -78,10 +78,19 @@ export const secureStorage = {
       const encryptedValue = await AsyncStorage.getItem(key);
       if (!encryptedValue) return null;
 
-      // If it is obviously plaintext JSON (starts with { or [), return it directly
+      // If it is obviously plaintext JSON (starts with { or [), migrate it to encrypted storage
       const trimmed = encryptedValue.trim();
       if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || 
           (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          const encryptionKey = await getEncryptionKey();
+          const rawKey = CryptoJS.SHA256(encryptionKey);
+          const rawIv = CryptoJS.MD5(encryptionKey);
+          const reEncrypted = CryptoJS.AES.encrypt(encryptedValue, rawKey, { iv: rawIv }).toString();
+          await AsyncStorage.setItem(key, reEncrypted);
+        } catch (migrationError) {
+          console.warn(`[SecureStorage] Migration of plaintext JSON failed for key "${key}":`, migrationError);
+        }
         return encryptedValue;
       }
 
