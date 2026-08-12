@@ -1001,7 +1001,6 @@ export default function TempleDetailScreen() {
  const resolvedTempleId = decodeURIComponent(String(id || '')).trim();
  const router = useRouter();
  const [temple, setTemple] = useState<any>(null);
- const [posts, setPosts] = useState<any[]>([]);
  const [loading, setLoading] = useState(true);
   const [isYoutubeModalVisible, setIsYoutubeModalVisible] = useState(false);
   const [galleryModalVisible, setGalleryModalVisible] = useState(false);
