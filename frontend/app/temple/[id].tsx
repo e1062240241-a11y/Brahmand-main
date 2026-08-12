@@ -1232,26 +1232,7 @@ export default function TempleDetailScreen() {
  }
  };
 
-  if (loading && !temple) {
-   return (
-     <View style={styles.loadingContainer}>
-       <CustomLoader size={70} message="Loading Sacred Temple..." />
-     </View>
-   );
-  }
-
-if (!temple) {
-    return (
-      <SafeAreaView style={styles.container}>
-      <View style={styles.errorContainer}>
-      <Ionicons name="alert-circle" size={48} color="#999" />
-      <Text style={styles.errorText}>
-        {t('language') === 'hi' ? 'मंदिर नहीं मिला' : 'Temple not found'}
-      </Text>
-      </View>
-      </SafeAreaView>
-    );
-    }
+  // All hook declarations proceed unconditionally above early returns to strictly honor React Rules of Hooks
 
 
 
@@ -2534,7 +2515,29 @@ if (!temple) {
   const templeSignificance = authenticJyotirlingaDetails?.mythologicalSignificance || temple.significance;
   const templeRituals = authenticJyotirlingaDetails?.sacredRituals || temple.rituals || temple.sacred_rituals;
   const templeFestivals = authenticJyotirlingaDetails?.festivals || temple.festivals || temple.major_festivals;
-  const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple.pilgrimage_circuit || temple.circuit;
+  const templeCircuit = authenticJyotirlingaDetails?.pilgrimageCircuit || temple?.pilgrimage_circuit || temple?.circuit;
+
+  if (loading && !temple) {
+    return (
+      <View style={styles.loadingContainer}>
+        <CustomLoader size={70} message="Loading Sacred Temple..." />
+      </View>
+    );
+  }
+
+  if (!temple) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle" size={48} color="#999" />
+          <Text style={styles.errorText}>
+            {t('language') === 'hi' ? 'मंदिर नहीं मिला' : 'Temple not found'}
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
   <View style={styles.container}>
     <LinearGradient 
