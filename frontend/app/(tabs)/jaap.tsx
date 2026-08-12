@@ -522,8 +522,18 @@ export default function JaapLandingScreen() {
     }
   }, [isFocused]);
 
-  // Auto-scroll effect for More Live Jaaps
+  // Auto-scroll effect for More Live Jaaps (Only active when focused and app in foreground)
+  const [appActive, setAppActive] = useState(() => AppState.currentState === 'active');
+
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      setAppActive(nextAppState === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (!isFocused || !appActive) return;
     const maxOffset = CARD_WIDTH * (LIVE_JAAPS.length - 2);
     const autoScroll = setInterval(() => {
       jaapScrollOffset.current += jaapScrollDir.current * CARD_WIDTH;
@@ -535,7 +545,7 @@ export default function JaapLandingScreen() {
       jaapScrollRef.current?.scrollTo({ x: jaapScrollOffset.current, animated: true });
     }, 4000);
     return () => clearInterval(autoScroll);
-  }, []);
+  }, [isFocused, appActive]);
 
   const liveActive = isWithinGayatriMantraWindow(now);
   const liveEnd = getCurrentGayatriEnd(now);
@@ -660,11 +670,21 @@ export default function JaapLandingScreen() {
   ];
 
   const isJyotirlinga = (t: any) => {
-    const category = (t.category || '').trim().toLowerCase();
+    const tid = (t.templeId || t.temple_id || t.id || '').toLowerCase();
+    const category = (t.category || t.type || '').trim().toLowerCase();
     const categoryIds = Array.isArray(t.category_ids)
       ? t.category_ids.map((c: string) => String(c).toLowerCase())
       : [];
-    return category === 'jyotirlinga' || categoryIds.includes('jyotirlinga');
+    const tags = Array.isArray(t.tags) ? t.tags.map((tg: string) => String(tg).toLowerCase()) : [];
+    if (
+      category.includes('jyotirling') ||
+      categoryIds.some((c: string) => c.includes('jyotirling')) ||
+      tags.some((tg: string) => tg.includes('jyotirling')) ||
+      tid.includes('jyotirling')
+    ) {
+      return true;
+    }
+    return false;
   };
 
   const isShaktiPeetha = (t: any) => {
@@ -1125,7 +1145,7 @@ export default function JaapLandingScreen() {
               })}
             </ScrollView>
 
-            {/* Katha Section (Temporarily hidden from UI) */}
+            {/* Katha Section */}
             <View style={styles.sectionHeaderParity}>
               <Text style={styles.sectionTitleText}>
                 {t('language') === 'hi' ? 'कथा' : 'Katha'}

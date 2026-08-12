@@ -730,7 +730,7 @@ const ChatScreen = ({
         await database.write(async () => {
           const collection = database.get('chats');
           const records = await collection.query(Q.where('chat_id', id)).fetch();
-          const batchOps = records.map(record => record.prepareDestroyPermanently());
+          const batchOps = records.map((record: any) => record.prepareDestroyPermanently());
           if (batchOps.length > 0) {
             await database.batch(...batchOps);
           }
@@ -991,7 +991,7 @@ const ChatScreen = ({
             await database.write(async () => {
               const chatsColl = database.get('chats');
               const msgs = await chatsColl.query(Q.where('chat_id', id)).fetch();
-              const batchOps = msgs.map(m => m.prepareDestroyPermanently());
+              const batchOps = msgs.map((m: any) => m.prepareDestroyPermanently());
 
               const convsColl = database.get('conversations');
               try {

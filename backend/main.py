@@ -14127,20 +14127,26 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
     
     if status == 'resolved':
         responders = alert.get('responders', []) or []
-        for responder in responders:
-            responder_id = responder.get('user_id')
-            if not responder_id:
-                continue
-            try:
+
+        # ⚡ Bolt Optimization: Batch process notifications and user updates to prevent N+1 queries
+        responder_ids = [r.get('user_id') for r in responders if r.get('user_id')]
+
+        if responder_ids:
+            notification_docs = []
+            for responder_id in responder_ids:
                 notification_data = {'type': 'sos_resolved', 'sos_id': sos_id}
-                await task_queue.enqueue(
-                    FirebaseNotificationService.send_push_notification,
-                    responder_id,
-                    'SOS Resolved',
-                    f"{alert.get('user_name')} is safe now. Thank you for helping.",
-                    notification_data
-                )
-                await db.create_document('notifications', {
+                try:
+                    await task_queue.enqueue(
+                        FirebaseNotificationService.send_push_notification,
+                        responder_id,
+                        'SOS Resolved',
+                        f"{alert.get('user_name')} is safe now. Thank you for helping.",
+                        notification_data
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to enqueue push notification for responder {responder_id}: {e}")
+
+                notification_docs.append({
                     'user_id': responder_id,
                     'title': 'SOS Resolved',
                     'body': f"{alert.get('user_name')} is safe now. Thank you for helping.",
@@ -14149,15 +14155,27 @@ async def resolve_sos_alert(sos_id: str, status: str = Body(..., embed=True), to
                     'is_read': False,
                     'created_at': datetime.now(timezone.utc).isoformat()
                 })
-            except Exception as e:
-                logger.error(f"Failed to send/save SOS resolved notification for responder {responder_id}: {e}")
             
-            responder_user = await db.get_document('users', responder_id)
-            if responder_user:
-                reputation = responder_user.get('reputation', 0) + 1
-                await db.update_document('users', responder_id, {
-                    'reputation': reputation
-                })
+            if notification_docs:
+                try:
+                    await db.batch_create_documents('notifications', notification_docs)
+                except Exception as e:
+                    logger.error(f"Failed to batch create SOS resolved notifications: {e}")
+
+            # Batch fetch and update users for reputation
+            try:
+                responder_users = await db.get_documents_batch('users', responder_ids)
+                user_updates = []
+                for user_doc in responder_users:
+                    if user_doc and 'id' in user_doc:
+                        user_updates.append((user_doc['id'], {
+                            'reputation': user_doc.get('reputation', 0) + 1
+                        }))
+
+                if user_updates:
+                    await db.batch_update_documents('users', user_updates)
+            except Exception as e:
+                logger.error(f"Failed to batch update responder reputations: {e}")
     
     # Emit to creator and all responders only (targeted, not a global broadcast)
     resolved_rooms = [f"user_{alert.get('user_id')}"] if alert.get('user_id') else []
